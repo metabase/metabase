@@ -1010,7 +1010,7 @@
                       (lib/remove-field 1 (first columns))
                       (lib/add-field 1 (first columns))
                       fields-of))))
-      (testing "removing and adding back the columnd from the second breakout"
+      (testing "removing and adding back the column from the second breakout"
         (is (nil? (-> query
                       (lib/remove-field 1 (second columns))
                       (lib/add-field 1 (second columns))
