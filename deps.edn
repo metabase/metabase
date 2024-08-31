@@ -174,7 +174,10 @@
   potemkin/potemkin                         {:mvn/version "0.4.7"               ; utility macros & fns
                                              :exclusions  [riddley/riddley]}
   pretty/pretty                             {:mvn/version "1.0.5"}              ; protocol for defining how custom types should be pretty printed
-  redux/redux                               {:mvn/version "0.1.4"}              ; Utility functions for building and composing transducers
+  ;; Dependency below is our fork of redux - utility functions for building and composing transducers. The
+  ;; group/artifact name is the same as with the upstream so that it overrides the original dependency everywhere.
+  redux/redux                               {:git/url "https://github.com/metabase/redux"
+                                             :sha "4a37feaf817a2a6b5ef688c927f6fd4375964433"}
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
   ring/ring-core                            {:mvn/version "1.12.0"}             ; HTTP abstraction
   ring/ring-jetty-adapter                   {:mvn/version "1.12.0"              ; Jetty adapter
