@@ -696,6 +696,11 @@ export const getRawSeries = createSelector(
       queryResult,
       datasetQuery: lastRunDatasetQuery,
     });
+
+    // HACK: expose data to be send to ai proxy/flask
+    window.questionData = rawSeries;
+    window.queryResult = queryResult;
+
     if (isShowingRawTable && rawSeries?.length > 0) {
       const [{ card, data }] = rawSeries;
       return [

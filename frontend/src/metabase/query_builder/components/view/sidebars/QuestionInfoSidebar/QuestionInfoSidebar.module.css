@@ -1,0 +1,35 @@
+.Analysis {
+  font-size: 0.9rem;
+  /* color: color-mix(in srgb, var(--mb-color-brand) 50%, white); */
+  a {
+    /* background-color: color-mix(in srgb, orange 10%, white); */
+    border-radius: 0.25rem;
+    color: var(--mb-color-text-primary) !important;
+    font-weight: bold;
+  }
+
+  li {
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--mb-color-border);
+  }
+}
+
+.RingProgress {
+  circle {
+    transition: stroke-dasharray 1s;
+  }
+}
+
+.CloseTheme {
+  color: var(--mb-color-text-light);
+
+  :hover {
+    color: var(--mb-color-text-primary);
+  }
+}
+
+.VoteButton {
+  flex-grow: 1 !important;
+}

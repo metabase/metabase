@@ -22,7 +22,7 @@ export const MODAL_TYPES = {
 export type QueryModalType = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
 
 export const SIDEBAR_SIZES = {
-  NORMAL: 355,
+  NORMAL: 400,
   TIMELINE: 300,
 };
 

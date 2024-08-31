@@ -125,6 +125,7 @@ export const getCardsSeriesModels = (
   renderingContext: RenderingContext,
 ) => {
   const hasMultipleCards = rawSeries.length > 1;
+
   return rawSeries.flatMap((cardDataset, index) => {
     const cardColumns = cardsColumns[index];
 

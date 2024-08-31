@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
@@ -12,7 +12,7 @@ const urlByVariant = {
   cool: "app/assets/img/metabot-shades.svg",
 };
 
-export interface MetabotLogoProps {
+export interface MetabotLogoProps extends HTMLAttributes<HTMLImageElement> {
   className?: string;
   variant?: MetabotVariant;
 }

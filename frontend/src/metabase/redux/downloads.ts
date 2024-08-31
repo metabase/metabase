@@ -138,17 +138,22 @@ const downloadChart = async ({
 export const downloadDataset = createAsyncThunk(
   "metabase/downloads/downloadDataset",
   async ({ opts, id }: { opts: DownloadQueryResultsOpts; id: number }) => {
+    console.log("opts", opts);
     const params = getDatasetParams(opts);
     const response = await getDatasetResponse(params);
     const name = getDatasetFileName(response.headers, opts.type);
     const fileContent = await response.blob();
+
+    // FIXME: Hacky way to make the CSV available
+    (window as any).csvBlob = fileContent;
+
     openSaveDialog(name, fileContent);
 
     return { id, name };
   },
 );
 
-const getDatasetParams = ({
+export const getDatasetParams = ({
   type,
   question,
   dashboardId,
@@ -274,7 +279,7 @@ interface TransformResponseProps {
   response?: Response;
 }
 
-const getDatasetResponse = ({
+export const getDatasetResponse = ({
   url,
   method,
   body,
@@ -307,7 +312,7 @@ const getDatasetResponse = ({
   }
 };
 
-const getDatasetFileName = (headers: Headers, type: string) => {
+export const getDatasetFileName = (headers: Headers, type: string) => {
   const header = headers.get("Content-Disposition") ?? "";
   const headerContent = decodeURIComponent(header);
   const fileNameMatch = headerContent.match(/filename="(?<fileName>.+)"/);

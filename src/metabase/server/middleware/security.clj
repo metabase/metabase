@@ -97,6 +97,14 @@
                   :img-src      ["*"
                                  "'self' data:"]
                   :connect-src  ["'self'"
+                                 ;;;;;;;;;;;;
+                                 ; AI stuff ;
+                                 ;;;;;;;;;;;;
+                                 "https://api.openai.com"
+                                 ; AI-proxy:
+                                 "http://0.0.0.0:8000"
+                                 "http://0.0.0.0:8000/v1/chat"
+                                 "http://0.0.0.0:8000/v1/chat/"
                                  ;; Google Identity Services
                                  "https://accounts.google.com"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
