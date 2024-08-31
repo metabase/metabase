@@ -125,7 +125,7 @@
        semantic-type
        :Relation/*)]))
 
-(def ^:private global-fingerprinter
+(defn- global-fingerprinter []
   (redux/post-complete
    (robust-fuse {:distinct-count cardinality
                  :nil%           (stats/share nil?)})
@@ -133,11 +133,11 @@
 
 (defmethod fingerprinter :default
   [_]
-  global-fingerprinter)
+  (global-fingerprinter))
 
 (defmethod fingerprinter [:type/* :Semantic/* :type/FK]
   [_]
-  global-fingerprinter)
+  (global-fingerprinter))
 
 (defmethod fingerprinter [:type/* :Semantic/* :type/PK]
   [_]
@@ -155,7 +155,7 @@
   (redux/post-complete
    (redux/juxt
     fingerprinter
-    global-fingerprinter)
+    (global-fingerprinter))
    (fn [[type-fingerprint global-fingerprint]]
      (merge global-fingerprint
             type-fingerprint))))
