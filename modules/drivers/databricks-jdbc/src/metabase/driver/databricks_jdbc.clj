@@ -1,5 +1,6 @@
 (ns metabase.driver.databricks-jdbc
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.hive-like :as driver.hive-like]
@@ -105,6 +106,62 @@
                                       :name)
                                 fields)]
             (set fields*))))))})
+
+(def ^:private ^:dynamic *database*
+  "Used to get `[:details :catalog]` in `sql-jdbc.sync/describe-table-fields :databricks-jdbc`. Bound in
+  `driver/describe-table :databricks-jdbc`. Catalog is used as parameter of [[table-fields-sql-str]]."
+  nil)
+
+(defmethod driver/describe-table :databricks-jdbc
+  [driver database table]
+  (binding [*database* database]
+    ((get-method driver/describe-table :sql-jdbc) driver database table)))
+
+(def ^:private describe-table-field-keys
+  #{:column_name :column_default :comment :is_nullable :data_type})
+
+(defn- row-map->field-metadata
+  [{:keys [column_name column_default comment is_nullable data_type]
+    :as row-map}]
+  (doseq [key describe-table-field-keys]
+    (assert (contains? row-map key)))
+  (merge {:name column_name
+          :database-type data_type
+          ;; At the moment there is no way to decide whether column is auto increment with Databricks.
+          ;; `IS_IDENTITY` column is always "NO". Docs say it is reserved for future use. See the following:
+          ;; https://docs.databricks.com/en/sql/language-manual/information-schema/columns.html. Then, with regards
+          ;; to alternative ways of fetching that information, `describe ...` does not contain that and rows that
+          ;; are result of `.getColumns` have corresponding column always set to nil.
+          :database-is-autoincrement false
+          :database-required? (and (nil? column_default)
+                                   (= "NO" is_nullable))}
+         (when comment
+           {:comment comment})))
+
+(def ^:private table-fields-sql-str
+  (str/join "\n"
+            ["select *"
+             "  from information_schema.columns"
+             "  where"
+             "    table_catalog = ?"
+             "    AND table_schema = ?"
+             "    AND table_name = ?"]))
+
+(defmethod sql-jdbc.sync/describe-table-fields :databricks-jdbc
+  [driver ^Connection _conn table _db-name-or-nil]
+  (let [catalog-name (get-in *database* [:details :catalog])
+        schema-name  (get-in *database* [:details :schema])
+        table-name   (:name table)]
+    (into
+     #{}
+     (comp
+      (map row-map->field-metadata)
+      (sql-jdbc.sync/describe-table-fields-xf driver *database*))
+     ;; TODO: Maybe I could swap this for plain jdbc version! hence I'd be able to use existing connection!
+     (sql-jdbc.execute/reducible-query *database* [table-fields-sql-str
+                                                   catalog-name
+                                                   schema-name
+                                                   table-name]))))
 
 (defmethod sql.qp/quote-style :databricks-jdbc
   [_driver]
