@@ -783,7 +783,39 @@ const TITLE_LOCALES_BN = {
   'website.year.wise.education.stat' : {
     'en' : 'Net Enrolment Rate & Dropout Rate',
     'bn' : 'নীট ভর্তির হার এবং ঝরে পড়ার হার'
-  }
+  },
+  'tangerine.teach.total.observations' : {
+    'en' : 'Total Observations',
+    'bn' : 'মোট পর্যবেক্ষণ'
+  },
+  'tangerine.registered.teachers' : {
+    'en' : 'Registered teachers',
+    'bn' : 'নিবন্ধিত শিক্ষক'
+  },
+  'tangerine.teach.all.school.vs.distinct.school' : {
+    'en' : 'Assessed versus Non-assessed schools',
+    'bn' : 'মূল্যায়িত বনাম অমূল্যায়িত বিদ্যালয়'
+  },
+  'tangerine.teach.count.by.subject': {
+    'en': 'Subject Assessment',
+    'bn': 'মূল্যায়িত সাবজেক্ট'
+  },
+  'tangerine.count.teacher.subject.geowise.summary' : {
+    'en' : 'Subject and grade wise teacher count',
+    'bn' : 'বিষয় এবং শ্রেণি অনুযায়ী শিক্ষক সংখ্যা'
+  },
+  'tangerine.teach.student.gender.distribution' : {
+    'en' : 'Student gender distribution',
+    'bn' : 'জেন্ডার অনুযায়ী শিক্ষার্থী সংখ্যা'
+  },
+  'tangerine.teach.student.age.count' : {
+    'en' : 'Student age distribution',
+    'bn' : 'বয়সভিত্তিক শিক্ষার্থী সংখ্যা'
+  },
+  'tangerine.teach.subject.gender.distribution' : {
+    'en' : 'Subject and gender wise student count',
+    'bn' : 'বিষয় এবং জেন্ডার অনুযায়ী শিক্ষার্থী সংখ্যা'
+  },
 }
 
 export function dashcard_locale_title (locale, title_key) {
