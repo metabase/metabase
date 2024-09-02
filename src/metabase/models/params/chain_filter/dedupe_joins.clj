@@ -45,9 +45,9 @@
 
 (defn- forced-nodes
   "Return the transitive closure of nodes reachable from `start-nodes` by a single edge only.
-  `node-fn` selects the target node of an edge returned by `node->edges`.  `node-edges` is a function returning the
+  `node-fn` selects the target node of an edge returned by `node->edges`.  `node->edges` is a function returning the
   edges going from a node. (Note that source and target nodes can be both lhs and rhs tables depending on `node-fn`
-  and `node-edges`.)"
+  and `node->edges`.)"
   [node-fn start-nodes node->edges]
   (loop [[node & nodes] start-nodes, result start-nodes]
     (if (nil? node)
@@ -65,7 +65,7 @@
   removed.
 
   Note that this function implements a simple greedy algorithm, replacing the previous optimal, but exponential
-  implementation. Some of the current test case take ages with the original function."
+  implementation."
   [source-id in-joins keep-ids]
   (let [;; get rid of parallel edges, for our purposes they are equivalent
         edges (m/distinct-by edge-nodes in-joins)
