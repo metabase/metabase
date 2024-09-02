@@ -9209,7 +9209,7 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
-    - changeSet:
+  - changeSet:
       id: v53.2024-09-01T10:32:00
       author: jordigiam
       comment: Add insights column to postcheckpoints
