@@ -1,4 +1,3 @@
-import { isEmbeddingSdk } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
@@ -72,7 +71,3 @@ export const activateEEPlugins = () => {
   activateCollectionCleanupPlugin();
   activateTroubleshootingPlugin();
 };
-
-if (!isEmbeddingSdk) {
-  activateEEPlugins();
-}
