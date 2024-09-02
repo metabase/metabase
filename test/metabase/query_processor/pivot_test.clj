@@ -683,3 +683,18 @@
                 [:expression "pivot-grouping"]
                 [:aggregation 0]])
              (mapv :field_ref (mt/cols (qp.pivot/run-pivot-query query))))))))
+
+(deftest ^:parallel splice-in-remap-test
+  (let [splice #'qp.pivot/splice-in-remap]
+    (is (= []
+           (splice [] {1 0, 4 3})))
+    (is (= [0 1]
+           (splice [0] {1 0, 4 3})))
+    (is (= [2]
+           (splice [1] {1 0, 4 3})))
+    (is (= [0 1 2]
+           (splice [0 1] {1 0, 4 3})))
+    (is (= [0 1 3 4]
+           (splice [0 2] {1 0, 4 3})))
+    (is (= [1 3 4 7]
+           (splice [1 2 5] {1 4, 5 2})))))
