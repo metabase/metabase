@@ -31,6 +31,9 @@ export type CliState = Partial<{
   /** Sampled values of the tenancy columns from the selected tables (e.g. tenancy_id -> [1, 2, 3]) */
   tenantIdsMap: Record<string, (string | number)[]>;
 
+  /** ID of the "Our models" collection */
+  modelCollectionId: number;
+
   /** Directory where the Express.js mock server is saved to */
   mockServerDir: string;
 

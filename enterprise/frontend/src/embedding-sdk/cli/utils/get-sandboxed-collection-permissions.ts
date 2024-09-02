@@ -5,7 +5,7 @@ interface Options {
 
 const ALL_USERS_GROUP_ID = 1;
 
-export function getCollectionPermissions(options: Options) {
+export function getSandboxedCollectionPermissions(options: Options) {
   const { groupIds, collectionIds } = options;
 
   const groups: Record<string, Record<string, string>> = {};
