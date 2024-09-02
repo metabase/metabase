@@ -1,14 +1,53 @@
 (ns metabase.models.serialization
-  "Defines several helper functions and multimethods for the serialization system.
-  Serialization is an enterprise feature, but in the interest of keeping all the code for an entity in one place, these
-  methods are defined here and implemented for all the exported models.
+  "Defines core interfaces for serialization.
 
-  Whether to export a new model:
-  - Generally, the high-profile user facing things (databases, questions, dashboards, snippets, etc.) are exported.
-  - Internal or automatic things (users, activity logs, permissions) are not.
+  Serialization is an enterprise feature, but in the interest of keeping all the code for an entity in one place,
+  these methods are defined here and implemented for all the exported models.
 
-  If the model is not exported, add it to the exclusion lists in the tests. Every model should be explicitly listed as
-  exported or not, and a test enforces this so serialization isn't forgotten for new models."
+  ## Whether to export a new model
+
+  Export if it's a high-profile user facing entity: Database, Question, Dashboard, Snippet, etc.
+  Do not export if it's internal or automatic: Users (created automatically), logs, revisions, cache, permissions.
+
+  ## How to deal with serialization
+
+  - Add it to a respectful list at [[metabase-enterprise.serialization.v2.models]]
+  - If it was `excluded-models` list, then your job is done
+  - Define serialization multi-methods on a model (see `Card` and `Collection` for more complex examples or `Action`
+    and `Segment` for less involved stuff)
+    - `serdes/make-spec` - this is the main entry point. Should list every field in the model (this is checked in
+      tests)
+    - `serdes/descendants` - if model should be extracted along with some support (like Collection and all its
+      children), you need to specify what to fetch - see `Card` for an example (used during export)
+    - `serdes/dependencies` - if model references other models, you need to declare which ones, see `Action` for an
+      example (used during import)
+  - Write tests
+    - basic layout (that all entity fields are mentioned, fks are marked as such) is tested automatically
+    - see [[metabase-enterprise.serialization.v2.extract-test]] and [[metabase-enterprise.serialization.v2.load-test]]
+      for examples
+    - basically try to think what special stuff is happening and test for corner cases
+    - do you store mbql? some other json structure? See `Card` for examples
+
+  ## Existing transformations
+
+  - `(serdes/fk :model/Card)` or `(serdes/fk :model/Database :name)` - export foreign key in a portable way
+  - `(serdes/nested :model/DashboardCard :dashboard_id opts)` - include some entities in your entity export
+  - `(serdes/parent-ref)` - symmetrical call for `serdes/nested` to handle parent ids (you'd use it on `:dashboard_id`
+    in that case)
+  - `(serdes/date)` - format/parse dates with a stable format
+  - `(serdes/kw)` - de/keywordize values during de/serialization
+  - `(serdes/as :parent_id)` - store value as a different key
+  - `(serdes/compose inner outer)` - compose two transformations
+
+  ## Use cases
+
+  ### Skip value depending on data
+
+  See `Database/details`, but overall:
+  - Put it in `:skip` if this column shouldn't be synchronized
+  - You have to make decisions inside `:transform` column `:export` function (or `:import`)
+  - To prevent value being serialized, return `::serdes/skip` instead of `nil` (the reason being that serialization
+    format distinguishes between `nil` and absence)"
   (:refer-clojure :exclude [descendants])
   (:require
    [cheshire.core :as json]
@@ -309,12 +348,18 @@
   "Return specification for serialization. This should be a map of three keys: `:copy`, `:skip`, `:transform`.
 
   `:copy` and `:skip` are vectors of field names. `:skip` is only used in tests to check that all fields were
-  mentioned.
+  mentioned. `:transform` is a map from field name to an `{:import (fn [v] ...) :export (fn [v] ...)}` map.
 
-  `:transform` is a map from field name to a `{:ser (fn [v] ...) :des (fn [v] ...)}` map with functions to
-  serialize/deserialize data.
+  For behavior, see `extract-one` and `xform-one`. Two fields - `id` and `updated_at` - are always skipped, no need to
+  mention them in `:skip`.
 
-  For behavior, see `extract-one` and `xform-one`."
+  Example:
+
+  (defmethod serdes/make-spec \"ModelName\" [_model-name _opts]
+    {:copy [:name :description]
+     :skip [;; it's nice to comment why it's skipped
+            :internal_data]
+     :transform {:card_id (serdes/fk :model/Card)}})"
   (fn [model-name _opts] model-name))
 
 (defmethod make-spec :default [_ _] nil)
