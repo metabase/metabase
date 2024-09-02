@@ -338,7 +338,7 @@ jobs:
         env:
           BUCKET: "metabase-mocha-reports" # create a var if it works. e.g. vars.AWS_S3_TEST_RESULTS_BUCKET
           FOLDER: "./cypress/reports/mochareports"
-          TARGET_FOLDER: mocha-123
+          TARGET_FOLDER: mocha-12
         shell: bash
         run: | # sh
           DATE=$(date '+%Y-%m-%d')
