@@ -74,6 +74,7 @@ export default class LegendItem extends Component {
         style={{
           overflowX: "hidden",
           flex: "0 1 auto",
+          paddingLeft: showDot ? "4px" : "0",
         }}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
