@@ -9188,7 +9188,47 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v53.2024-09-01T10:30:00
+      author: jordigiam
+      comment: Add insights column to postcheckpoints
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms: postgresql
+        - not:
+            - columnExists:
+                tableName: postcheckpoints
+                columnName: insights
+      changes:
+        - addColumn:
+            tableName: postcheckpoints
+            columns:
+              - column:
+                  name: insights
+                  type: jsonb
+                  constraints:
+                    nullable: true
 
+    - changeSet:
+      id: v53.2024-09-01T10:32:00
+      author: jordigiam
+      comment: Add insights column to postcheckpoints
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms: h2
+        - not:
+            - columnExists:
+                tableName: postcheckpoints
+                columnName: insights
+      changes:
+        - addColumn:
+            tableName: postcheckpoints
+            columns:
+              - column:
+                  name: insights
+                  type: clob
+                  constraints:
+                    nullable: true
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
