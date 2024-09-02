@@ -98,39 +98,44 @@
 (defn number-formatter
   "Return a function that will take a number and format it according to its column viz settings. Useful to compute the
   format string once and then apply it over many values."
-  [{:keys [semantic_type effective_type base_type]
+  [{:keys  [semantic_type effective_type base_type]
     col-id :id field-ref :field_ref col-name :name col-settings :settings :as col}
    viz-settings]
-  (let [global-type-settings (common/global-type-settings col viz-settings)
-        col-id (or col-id (second field-ref))
-        column-settings (-> (get viz-settings ::mb.viz/column-settings)
-                            (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
-        column-settings (merge
-                         (or (get column-settings {::mb.viz/field-id col-id})
-                             (get column-settings {::mb.viz/column-name col-name}))
-                         (qualify-keys col-settings)
-                         global-type-settings)
-        global-settings (merge
-                         global-type-settings
-                         (::mb.viz/global-column-settings viz-settings))
-        currency?       (boolean (or (= (::mb.viz/number-style column-settings) "currency")
-                                     (= (::mb.viz/number-style viz-settings) "currency")
-                                     (and (nil? (::mb.viz/number-style column-settings))
-                                          (or
-                                           (::mb.viz/currency-style column-settings)
-                                           (::mb.viz/currency column-settings)))))
+  (let [global-type-settings (try
+                               (common/global-type-settings col viz-settings)
+                               (catch Exception _e
+                                 (common/global-type-settings (dissoc col :base_type :effective_type) viz-settings)))
+        col-id               (or col-id (second field-ref))
+        column-settings      (-> (get viz-settings ::mb.viz/column-settings)
+                                 (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
+        column-settings      (merge
+                              (or (get column-settings {::mb.viz/field-id col-id})
+                                  (get column-settings {::mb.viz/column-name col-name}))
+                              (qualify-keys col-settings)
+                              global-type-settings)
+        global-settings      (merge
+                              global-type-settings
+                              (::mb.viz/global-column-settings viz-settings))
+        currency?            (boolean (or (= (::mb.viz/number-style column-settings) "currency")
+                                          (= (::mb.viz/number-style viz-settings) "currency")
+                                          (and (nil? (::mb.viz/number-style column-settings))
+                                               (or
+                                                (::mb.viz/currency-style column-settings)
+                                                (::mb.viz/currency column-settings)))))
+
         {::mb.viz/keys [number-separators decimals scale number-style
                         prefix suffix currency-style currency]} (merge
                                                                  (when currency?
                                                                    (:type/Currency global-settings))
                                                                  (:type/Number global-settings)
                                                                  column-settings)
-        currency        (when currency?
-                          (keyword (or currency "USD")))
-        integral?       (isa? (or effective_type base_type) :type/Integer)
-        relation?       (isa? semantic_type :Relation/*)
-        percent?        (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
-        scientific?     (= number-style "scientific")
+
+        currency           (when currency?
+                             (keyword (or currency "USD")))
+        integral?          (isa? (or effective_type base_type) :type/Integer)
+        relation?          (isa? semantic_type :Relation/*)
+        percent?           (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
+        scientific?        (= number-style "scientific")
         [decimal grouping] (or number-separators
                                (get-in (public-settings/custom-formatting) [:type/Number :number_separators])
                                ".,")
@@ -148,33 +153,33 @@
                                   percent?
                                   (* 100))
               decimals-in-value (digits-after-decimal scaled-value)
-              decimal-digits (cond
-                               decimals decimals ;; if user ever specifies # of decimals, use that
-                               integral? 0
-                               scientific? (min 2 (max decimals-in-value
-                                                       ;; Scientific representation can introduce its own decimal
-                                                       ;; digits even in integer numbers. Count how many integer
-                                                       ;; digits are in the number (but limit to 2).
-                                                       (int (Math/log10 (abs scaled-value)))))
-                               currency? (get-in currency/currency [currency :decimal_digits])
-                               percent?  (min 2 decimals-in-value) ;; 5.5432 -> %554.32
-                               :else (if (>= (abs scaled-value) 1)
-                                       (min 2 decimals-in-value) ;; values greater than 1 round to 2 decimal places
-                                       (let [n-figs (sig-figs-after-decimal scaled-value decimal)]
-                                         (if (> n-figs 2)
-                                           (max 2 (- decimals-in-value (- n-figs 2))) ;; values less than 1 round to 2 sig-dig
-                                           decimals-in-value))))
-              fmtr (or (@fmtr-cache decimal-digits)
-                       (let [fmt-str (cond-> base
-                                       (not (zero? decimal-digits)) (str "." (apply str (repeat decimal-digits "0")))
-                                       scientific? (str "E0"))
-                             fmtr (doto (DecimalFormat. fmt-str symbols) (.setRoundingMode RoundingMode/HALF_UP))]
-                         (vswap! fmtr-cache assoc decimal-digits fmtr)
-                         fmtr))]
+              decimal-digits    (cond
+                                  decimals    decimals ;; if user ever specifies # of decimals, use that
+                                  integral?   0
+                                  scientific? (min 2 (max decimals-in-value
+                                                          ;; Scientific representation can introduce its own decimal
+                                                          ;; digits even in integer numbers. Count how many integer
+                                                          ;; digits are in the number (but limit to 2).
+                                                          (int (Math/log10 (abs scaled-value)))))
+                                  currency?   (get-in currency/currency [currency :decimal_digits])
+                                  percent?    (min 2 decimals-in-value) ;; 5.5432 -> %554.32
+                                  :else       (if (>= (abs scaled-value) 1)
+                                                (min 2 decimals-in-value) ;; values greater than 1 round to 2 decimal places
+                                                (let [n-figs (sig-figs-after-decimal scaled-value decimal)]
+                                                  (if (> n-figs 2)
+                                                    (max 2 (- decimals-in-value (- n-figs 2))) ;; values less than 1 round to 2 sig-dig
+                                                    decimals-in-value))))
+              fmtr              (or (@fmtr-cache decimal-digits)
+                                    (let [fmt-str (cond-> base
+                                                    (not (zero? decimal-digits)) (str "." (apply str (repeat decimal-digits "0")))
+                                                    scientific?                  (str "E0"))
+                                          fmtr    (doto (DecimalFormat. fmt-str symbols) (.setRoundingMode RoundingMode/HALF_UP))]
+                                      (vswap! fmtr-cache assoc decimal-digits fmtr)
+                                      fmtr))]
           (->NumericWrapper
            (let [inline-currency? (and currency?
                                        (false? (::mb.viz/currency-in-header column-settings)))
-                 sb (StringBuilder.)]
+                 sb               (StringBuilder.)]
              ;; Using explicit StringBuilder to avoid touching the slow `clojure.core/str` multi-arity.
              (when prefix (.append sb prefix))
              (when (and inline-currency? (or (nil? currency-style)

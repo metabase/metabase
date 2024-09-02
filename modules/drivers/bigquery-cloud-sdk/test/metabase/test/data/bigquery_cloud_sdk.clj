@@ -125,7 +125,7 @@
                :type/Date           :DATE
                :type/DateTime       :DATETIME
                :type/DateTimeWithTZ :TIMESTAMP
-               :type/Decimal        :NUMERIC
+               :type/Decimal        :BIGNUMERIC
                :type/Dictionary     :RECORD
                :type/Float          :FLOAT
                :type/Integer        :INTEGER

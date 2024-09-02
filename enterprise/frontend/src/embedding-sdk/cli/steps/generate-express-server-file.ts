@@ -1,21 +1,16 @@
 import fs from "fs/promises";
 
 import { input } from "@inquirer/prompts";
-import { dirname } from "path";
 
-import { getExpressServerGeneratedMessage } from "../constants/messages";
+import { installMockServerDeps } from "embedding-sdk/cli/utils/install-mock-server-deps";
+
+import { MOCK_SERVER_PACKAGE_JSON } from "../constants/mock-server-package-json";
 import { getExpressServerSnippet } from "../snippets";
 import type { CliStepMethod } from "../types/cli";
 import { printError } from "../utils/print";
 
 export const generateExpressServerFile: CliStepMethod = async state => {
-  const { instanceUrl, token } = state;
-
-  // If a valid license token is not present, we don't need to generate the Express.js server.
-  // When JWT is not enabled, they are not able to login with SSO.
-  if (!token) {
-    return [{ type: "success" }, state];
-  }
+  const { instanceUrl } = state;
 
   if (!instanceUrl) {
     const message = "Missing instance URL.";
@@ -23,13 +18,13 @@ export const generateExpressServerFile: CliStepMethod = async state => {
     return [{ type: "error", message }, state];
   }
 
-  let filePath: string;
+  let mockServerDir: string;
 
   // eslint-disable-next-line no-constant-condition -- ask until user provides a valid path
   while (true) {
-    filePath = await input({
-      message: "Where should we save the example Express 'server.js' file?",
-      default: ".",
+    mockServerDir = await input({
+      message: "Where should we save the example Express mock server folder?",
+      default: "mock-server",
       validate: value => {
         if (!value) {
           return "The path cannot be empty.";
@@ -39,11 +34,9 @@ export const generateExpressServerFile: CliStepMethod = async state => {
       },
     });
 
-    filePath += "/server.js";
-
     // Create the parent directories if it doesn't already exist.
     try {
-      await fs.mkdir(dirname(filePath), { recursive: true });
+      await fs.mkdir(mockServerDir, { recursive: true });
 
       break;
     } catch (error) {
@@ -55,12 +48,15 @@ export const generateExpressServerFile: CliStepMethod = async state => {
 
   const snippet = getExpressServerSnippet({
     instanceUrl,
-    tenantIds: state.tenantIds ?? [],
+    tenantIdsMap: state.tenantIdsMap,
   });
 
-  await fs.writeFile(filePath, snippet.trim());
+  await fs.writeFile(`${mockServerDir}/server.js`, snippet.trim());
 
-  console.log(getExpressServerGeneratedMessage(filePath));
+  const packageJson = JSON.stringify(MOCK_SERVER_PACKAGE_JSON, null, 2);
+  await fs.writeFile(`${mockServerDir}/package.json`, packageJson);
 
-  return [{ type: "done" }, state];
+  await installMockServerDeps(mockServerDir);
+
+  return [{ type: "done" }, { ...state, mockServerDir }];
 };
