@@ -255,53 +255,53 @@
 ;;  alert_above_goal boolean, -- For a goal condition, alert when above the goal
 (deftest pulses-and-alerts-test
   (mt/with-temp [Card         c {}
-                           ;; ---------- Pulses ----------
-                           Pulse        p1 {}
-                           Pulse        p2 {}
-                           Pulse        p3 {}
-                           PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "daily", :channel_type "email"}
-                           PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "weekly" :schedule_day "sun", :channel_type "email"}
-                           PulseChannel _ {:pulse_id (u/the-id p2), :schedule_type "daily", :channel_type "slack"}
-                           ;; Pulse 1 gets 2 Cards (1 CSV)
-                           PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c)}
-                           PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c), :include_csv true}
-                           ;; Pulse 2 gets 1 Card
-                           PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c)}
-                           ;; Pulse 3 gets 7 Cards (1 CSV, 2 XLS, 2 BOTH)
-                           PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c)}
-                           PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c)}
-                           PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_csv true}
-                           PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_xls true}
-                           PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_xls true}
-                           PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_csv true, :include_xls true}
-                           PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_csv true, :include_xls true}
-                           ;; ---------- Alerts ----------
-                           Pulse        a1 {:alert_condition "rows", :alert_first_only false}
-                           Pulse        a2 {:alert_condition "rows", :alert_first_only true}
-                           Pulse        a3 {:alert_condition "goal", :alert_first_only false}
-                           Pulse        _  {:alert_condition "goal", :alert_first_only false, :alert_above_goal true}
-                           ;; Alert 1 is Email, Alert 2 is Email & Slack, Alert 3 is Slack-only
-                           PulseChannel _ {:pulse_id (u/the-id a1), :channel_type "email"}
-                           PulseChannel _ {:pulse_id (u/the-id a1), :channel_type "email"}
-                           PulseChannel _ {:pulse_id (u/the-id a2), :channel_type "slack"}
-                           PulseChannel _ {:pulse_id (u/the-id a3), :channel_type "slack"}
-                           ;; Alert 1 gets 2 Cards (1 CSV)
-                           PulseCard    _ {:pulse_id (u/the-id a1), :card_id (u/the-id c)}
-                           PulseCard    _ {:pulse_id (u/the-id a1), :card_id (u/the-id c), :include_csv true}
-                           ;; Alert 2 gets 1 Card
-                           PulseCard    _ {:pulse_id (u/the-id a1), :card_id (u/the-id c)}
-                           ;; Alert 3 gets 7 Cards (1 CSV, 2 XLS, 2 BOTH)
-                           PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
-                           PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
-                           PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_csv true}
-                           PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_xls true}
-                           PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_xls true}
-                           PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_csv true, :include_xls true}
-                           PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_csv true, :include_xls true}
-                           ;; Alert 4 gets 3 Cards
-                           PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
-                           PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
-                           PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}]
+                 ;; ---------- Pulses ----------
+                 Pulse        p1 {}
+                 Pulse        p2 {}
+                 Pulse        p3 {}
+                 PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "daily", :channel_type "email"}
+                 PulseChannel _ {:pulse_id (u/the-id p1), :schedule_type "weekly" :schedule_day "sun", :channel_type "email"}
+                 PulseChannel _ {:pulse_id (u/the-id p2), :schedule_type "daily", :channel_type "slack"}
+                 ;; Pulse 1 gets 2 Cards (1 CSV)
+                 PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c)}
+                 PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c), :include_csv true}
+                 ;; Pulse 2 gets 1 Card
+                 PulseCard    _ {:pulse_id (u/the-id p1), :card_id (u/the-id c)}
+                 ;; Pulse 3 gets 7 Cards (1 CSV, 2 XLS, 2 BOTH)
+                 PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c)}
+                 PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c)}
+                 PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_csv true}
+                 PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_xls true}
+                 PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_xls true}
+                 PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_csv true, :include_xls true}
+                 PulseCard    _ {:pulse_id (u/the-id p3), :card_id (u/the-id c), :include_csv true, :include_xls true}
+                 ;; ---------- Alerts ----------
+                 Pulse        a1 {:alert_condition "rows", :alert_first_only false}
+                 Pulse        a2 {:alert_condition "rows", :alert_first_only true}
+                 Pulse        a3 {:alert_condition "goal", :alert_first_only false}
+                 Pulse        _  {:alert_condition "goal", :alert_first_only false, :alert_above_goal true}
+                 ;; Alert 1 is Email, Alert 2 is Email & Slack, Alert 3 is Slack-only
+                 PulseChannel _ {:pulse_id (u/the-id a1), :channel_type "email"}
+                 PulseChannel _ {:pulse_id (u/the-id a1), :channel_type "email"}
+                 PulseChannel _ {:pulse_id (u/the-id a2), :channel_type "slack"}
+                 PulseChannel _ {:pulse_id (u/the-id a3), :channel_type "slack"}
+                 ;; Alert 1 gets 2 Cards (1 CSV)
+                 PulseCard    _ {:pulse_id (u/the-id a1), :card_id (u/the-id c)}
+                 PulseCard    _ {:pulse_id (u/the-id a1), :card_id (u/the-id c), :include_csv true}
+                 ;; Alert 2 gets 1 Card
+                 PulseCard    _ {:pulse_id (u/the-id a1), :card_id (u/the-id c)}
+                 ;; Alert 3 gets 7 Cards (1 CSV, 2 XLS, 2 BOTH)
+                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
+                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
+                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_csv true}
+                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_xls true}
+                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_xls true}
+                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_csv true, :include_xls true}
+                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c), :include_csv true, :include_xls true}
+                 ;; Alert 4 gets 3 Cards
+                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
+                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}
+                 PulseCard    _ {:pulse_id (u/the-id a3), :card_id (u/the-id c)}]
     (is (malli= [:map
                  [:pulses               [:int {:min 3}]]
                  [:with_table_cards     [:int {:min 2}]]
