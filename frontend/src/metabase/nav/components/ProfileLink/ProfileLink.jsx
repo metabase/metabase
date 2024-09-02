@@ -19,7 +19,7 @@ import {
   getApplicationName,
   getIsWhiteLabeling,
 } from "metabase/selectors/whitelabel";
-
+import { getUser } from "metabase/selectors/user";
 import { useHelpLink } from "./useHelpLink";
 
 // generate the proper set of list items for the current user
@@ -31,6 +31,7 @@ const mapStateToProps = state => ({
 export default connect(mapStateToProps)(ProfileLink);
 
 function ProfileLink({ adminItems, onLogout }) {
+  const currentUser = useSelector(getUser);
   const [modalOpen, setModalOpen] = useState(null);
   const version = useSetting("version");
   const applicationName = useSelector(getApplicationName);
@@ -55,27 +56,6 @@ function ProfileLink({ adminItems, onLogout }) {
         link: Urls.accountSettings(),
         event: `Navbar;Profile Dropdown;Edit Profile`,
       },
-      showAdminSettingsItem && {
-        title: t`Admin settings`,
-        icon: null,
-        link: "/admin",
-        event: `Navbar;Profile Dropdown;Enter Admin`,
-      },
-      /*
-      helpLink.visible && {
-        title: t`Help`,
-        icon: null,
-        link: helpLink.href,
-        externalLink: true,
-        event: `Navbar;Profile Dropdown;About ${tag}`,
-      },
-      */
-      {
-        title: t`About ${applicationName}`,
-        icon: null,
-        action: () => openModal("about"),
-        event: `Navbar;Profile Dropdown;About ${tag}`,
-      },
       {
         title: t`Sign out`,
         icon: null,
@@ -85,26 +65,53 @@ function ProfileLink({ adminItems, onLogout }) {
     ].filter(Boolean);
   };
 
+  const getUserInitials = () => {
+    if (!currentUser) return "AB"; // Default value in case user data is not available
+    const { first_name, last_name } = currentUser;
+    const firstInitial = first_name ? first_name.charAt(0).toUpperCase() : "";
+    const lastInitial = last_name ? last_name.charAt(0).toUpperCase() : "";
+    return `${firstInitial}${lastInitial}`;
+  };
+
+  const userInitials = getUserInitials();
+
   // show trademark if application name is not whitelabeled
   const isWhiteLabeling = useSelector(getIsWhiteLabeling);
   const showTrademark = !isWhiteLabeling;
+
+  const renderMenuTrigger = ({ open, onClick }) => (
+    <div
+      onClick={onClick}
+      style={{
+        backgroundColor: "#587330",
+        color: color("text-white"),
+        padding: "8px",
+        alignContent: "center",
+        cursor: "pointer",
+        display: "inline-block",
+        borderRadius: "6px",
+        height: "36px",
+        width: "auto"
+      }}
+    >
+      {userInitials}
+    </div>
+  );
+
   return (
     <div>
       <EntityMenu
-        tooltip={t`Settings`}
+        tooltip={t`Account`}
         items={generateOptionsForUser()}
-        triggerIcon="gear"
+        renderTrigger={renderMenuTrigger} // Use custom trigger function
         triggerProps={{
           color: color("text-medium"),
+          backgroundColor: "#587330",
           hover: {
             backgroundColor: "#587330",
             color: color("text-white"),
           },
         }}
-        // I've disabled this transition, since it results in the menu
-        // sometimes not appearing until content finishes loading on complex
-        // dashboards and questions #39303
-        // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
         transitionDuration={0}
       />
       {modalOpen === "about" ? (
