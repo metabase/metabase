@@ -13,8 +13,6 @@ For an introduction to expressions, check out the [overview of custom expression
   - [Average](#average)
   - [Count](#count)
   - [CountIf](./expressions/countif.md)
-  - [CumulativeCount](#cumulativecount)
-  - [CumulativeSum](#cumulativesum)
   - [Distinct](#distinct)
   - [Max](#max)
   - [Median](#median)
@@ -87,6 +85,8 @@ For an introduction to expressions, check out the [overview of custom expression
 
   - [Window functions](#window-functions)
     - [Offset](#offset)
+    - [CumulativeCount](#cumulativecount)
+    - [CumulativeSum](#cumulativesum)
 
 - [Limitations](#limitations)
   - [Database limitations](#database-limitations)
@@ -118,24 +118,6 @@ Only counts rows where the condition is true.
 Syntax: `CountIf(condition)`.
 
 Example: `CountIf([Subtotal] > 100)` would return the number of rows where the subtotal were greater than 100.
-
-### CumulativeCount
-
-The additive total of rows across a breakout.
-
-Syntax: `CumulativeCount`.
-
-Example: `CumulativeCount`.
-
-### CumulativeSum
-
-The rolling sum of a column across a breakout.
-
-Syntax: `CumulativeSum(column)`.
-
-Example: `CumulativeSum([Subtotal])`.
-
-Related: [Sum](#sum) and [SumIf](#sumif).
 
 ### Distinct
 
@@ -734,9 +716,33 @@ Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer,
 
 ## Window functions
 
+### CumulativeCount
+
+The additive total of rows across a breakout. `CumulativeCount` can only be used in the **Summarize** section.
+
+Because `CumulativeCount` refers to other rows, the order of the groups in the **Group By** section in the Summarization step matters. Metabase will sort by the first group, then partition by any additional groups. For example, if you want to see the cumulative counts of orders by product category over time, you should first group by `Created At`, then by the product category.
+
+Syntax: `CumulativeCount`.
+
+Example: `CumulativeCount`.
+
+### CumulativeSum
+
+The rolling sum of a column across a breakout. `CumulativeSum` can only be used in the **Summarize** section.
+
+Because `CumulativeSum` refers to other rows, the order of the groups in the **Group By** section in the Summarization step matters. Metabase will sort by the first group, then partition by any additional groups. For example, if you want to see the cumulative sum of order totals by product category over time, you should first group by `Created At`, then by the product category.
+
+Syntax: `CumulativeSum(column)`.
+
+Example: `CumulativeSum([Subtotal])`.
+
+Related: [Sum](#sum) and [SumIf](#sumif).
+
 ### Offset
 
 > ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB.
+
+See the [Offset](./expressions/offset.md) page for more information.
 
 Returns the value of an expression in a different row. `Offset` can only be used in the query builder's Summarize step (you cannot use `Offset` to create a custom column).
 
@@ -747,8 +753,6 @@ The `expression` is the value to get from a different row.
 The `rowOffset` is the number relative to the current row. For example, `-1` for the previous row, or `1` for the next row.
 
 Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the previous row.
-
-See [Offset](./expressions/offset.md).
 
 ## Limitations
 
