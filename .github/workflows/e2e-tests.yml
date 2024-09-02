@@ -323,6 +323,7 @@ jobs:
 
   upload-to-s3:
     runs-on: ubuntu-22.04
+    needs: [before-upload]
     permissions:
       pull-requests: write
     steps:
@@ -351,6 +352,57 @@ jobs:
       - name: Add or update a comment
         uses: marocchino/sticky-pull-request-comment@v2
         with:
+          header: mocha-test-results
+          append: true
+          message: |
+            Some tests failed. See the [link](${{ steps.s3-mocha-upload.outputs.URL }}) for details.
+
+  before-upload:
+    runs-on: ubuntu-22.04
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: recreate comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: mocha-test-results
           recreate: true
+          message: |
+            Test run in progress.
+
+  upload-to-s3-1:
+    runs-on: ubuntu-22.04
+    needs: [before-upload]
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Upload test results to S3
+        id: s3-mocha-upload
+        env:
+          BUCKET: "metabase-mocha-reports" # create a var if it works. e.g. vars.AWS_S3_TEST_RESULTS_BUCKET
+          FOLDER: "./cypress/reports/mochareports"
+          TARGET_FOLDER: mocha-12-1
+        shell: bash
+        run: | # sh
+          DATE=$(date '+%Y-%m-%d')
+          aws s3 cp ${FOLDER}/cypress-test-report.html s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/$TARGET_FOLDER
+          # accessible URL
+          URL=$(echo http://metabase-mocha-reports.s3-website-us-east-1.amazonaws.com/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/$TARGET_FOLDER)
+
+          echo "::set-output name=url::$URL"
+
+      - name: Add or update a comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: mocha-test-results
+          append: true
           message: |
             Some tests failed. See the [link](${{ steps.s3-mocha-upload.outputs.URL }}) for details.
