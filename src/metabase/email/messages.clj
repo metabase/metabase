@@ -63,7 +63,7 @@
 (defn- logo-url []
   (let [url (public-settings/application-logo-url)]
     (cond
-      (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"
+      (= url "app/assets/img/logo.svg") "https://cdn.prod.website-files.com/655fddfadddfb98d779e7024/667b01aaea382d4304f911e7_Omniloy.svg"
 
       :else nil)))
       ;; NOTE: disabling whitelabeled URLs for now since some email clients don't render them correctly
