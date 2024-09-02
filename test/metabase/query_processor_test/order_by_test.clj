@@ -26,6 +26,30 @@
                           [:asc $id]]
                :limit    10}))))))
 
+(deftest ^:parallel duplicate-order-bys-test
+  ;; This test succeeds because the normalize-preprocessing-middleware normalizes and dedups the order-by clauses
+  ;; before the query makes it to the validate-query middleware.
+  (mt/test-drivers (mt/normal-drivers)
+    (is (= [[1 12 375]
+            [1  9 139]
+            [1  1  72]
+            [2 15 129]
+            [2 12 471]
+            [2 11 325]
+            [2  9 590]
+            [2  9 833]
+            [2  8 380]
+            [2  5 719]]
+           (mt/formatted-rows
+            [int int int]
+            (mt/run-mbql-query checkins
+              {:fields   [$venue_id $user_id $id]
+               :order-by [[:asc $venue_id]
+                          [:asc $venue_id]
+                          [:desc $user_id]
+                          [:asc $id]]
+               :limit    10}))))))
+
 (deftest ^:parallel order-by-aggregate-fields-test
   (mt/test-drivers (mt/normal-drivers)
     (testing :count
