@@ -105,6 +105,11 @@ export function PieChart(props: VisualizationProps) {
     .map(s => {
       const label = s.data.isOther ? s.data.key : s.data.name;
 
+      // Hidden slices don't have a percentage
+      if (s.data.normalizedPercentage === 0) {
+        return label;
+      }
+
       const percent =
         settings["pie.percent_visibility"] === "legend" ||
         settings["pie.percent_visibility"] === "both"
