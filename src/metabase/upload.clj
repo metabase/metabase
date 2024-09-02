@@ -396,9 +396,9 @@
   [table-id field->display-name]
   (let [field->display-name (update-keys field->display-name (comp u/lower-case-en name))
         case-statement      (into [:case]
-                             (mapcat identity)
-                             (for [[n display-name] field->display-name]
-                               [[:= [:lower :name] n] display-name]))]
+                                  (mapcat identity)
+                                  (for [[n display-name] field->display-name]
+                                    [[:= [:lower :name] n] display-name]))]
     ;; Using t2/update! results in an invalid query for certain versions of PostgreSQL
     ;; SELECT * FROM \"metabase_field\" WHERE \"id\" AND (\"table_id\" = ?) AND ...
     ;;                                        ^^^^^
