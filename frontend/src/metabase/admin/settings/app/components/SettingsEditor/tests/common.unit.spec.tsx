@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, within } from "__support__/ui";
+import { screen } from "__support__/ui";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -9,56 +9,6 @@ import {
 import { EMAIL_URL, FULL_APP_EMBEDDING_URL, setup } from "./setup";
 
 describe("SettingsEditor", () => {
-  describe("Static embedding", () => {
-    it("should show info about static embedding", async () => {
-      await setup({
-        settings: [createMockSettingDefinition({ key: "enable-embedding" })],
-        settingValues: createMockSettings({ "enable-embedding": true }),
-      });
-
-      // Go to embedding settings page
-      await userEvent.click(screen.getByText("Embedding"));
-
-      const withinStaticEmbeddingCard = within(
-        screen.getByRole("article", {
-          name: "Static embedding",
-        }),
-      );
-
-      expect(
-        withinStaticEmbeddingCard.getByRole("heading", {
-          name: "Static embedding",
-        }),
-      ).toBeInTheDocument();
-      expect(
-        withinStaticEmbeddingCard.getByText(/Use static embedding when/),
-      ).toBeInTheDocument();
-    });
-
-    it("should allow access to the static embedding settings page", async () => {
-      await setup({
-        settings: [createMockSettingDefinition({ key: "enable-embedding" })],
-        settingValues: createMockSettings({ "enable-embedding": true }),
-      });
-
-      // Go to embedding settings page
-      await userEvent.click(screen.getByText("Embedding"));
-
-      // Go to static embedding settings page
-      await userEvent.click(
-        within(
-          screen.getByRole("article", {
-            name: "Static embedding",
-          }),
-        ).getByRole("button", { name: "Manage" }),
-      );
-
-      expect(screen.getByText("Embedding secret key")).toBeInTheDocument();
-    });
-  });
-
-  describe("Embedding SDK", () => {});
-
   describe("Interactive embedding", () => {
     it("should show info about interactive embedding", async () => {
       await setup({

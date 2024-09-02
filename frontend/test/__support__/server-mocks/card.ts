@@ -74,7 +74,3 @@ export function setupCardPublicLinkEndpoints(cardId: CardId) {
     id: cardId,
   });
 }
-
-export function setupCardEmbeddable() {
-  fetchMock.get("path:/api/card/embeddable", []);
-}

@@ -1,4 +1,6 @@
-import { act, screen } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+
+import { act, screen, within } from "__support__/ui";
 
 import {
   embeddingSettingsUrl,
@@ -12,11 +14,17 @@ import {
 describe("[OSS] embedding settings", () => {
   describe("when the embedding is disabled", () => {
     describe("static embedding", () => {
-      it("should not allow going to static embedding settings page", async () => {
-        const { history } = await setupEmbedding({
-          settingValues: { "enable-embedding": false },
-        });
+      let history: Awaited<ReturnType<typeof setupEmbedding>>["history"];
 
+      beforeEach(async () => {
+        history = (
+          await setupEmbedding({
+            settingValues: { "enable-embedding": false },
+          })
+        ).history;
+      });
+
+      it("should not allow going to static embedding settings page", async () => {
         expect(screen.getByRole("button", { name: "Manage" })).toBeDisabled();
 
         act(() => {
@@ -29,10 +37,6 @@ describe("[OSS] embedding settings", () => {
       });
 
       it("should prompt to upgrade to remove the Powered by text", async () => {
-        await setupEmbedding({
-          settingValues: { "enable-embedding": false },
-        });
-
         expect(screen.getByText("upgrade to a paid plan")).toBeInTheDocument();
 
         expect(
@@ -41,6 +45,34 @@ describe("[OSS] embedding settings", () => {
           "href",
           "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embed-settings&source_plan=oss",
         );
+      });
+
+      it("should show info about static embedding", async () => {
+        const withinStaticEmbeddingCard = within(
+          screen.getByRole("article", {
+            name: "Static embedding",
+          }),
+        );
+
+        expect(
+          withinStaticEmbeddingCard.getByRole("heading", {
+            name: "Static embedding",
+          }),
+        ).toBeInTheDocument();
+        expect(
+          withinStaticEmbeddingCard.getByText(/Use static embedding when/),
+        ).toBeInTheDocument();
+      });
+
+      it("should not allow access to the static embedding settings page", async () => {
+        // Go to static embedding settings page
+        expect(
+          within(
+            screen.getByRole("article", {
+              name: "Static embedding",
+            }),
+          ).getByRole("button", { name: "Manage" }),
+        ).toBeDisabled();
       });
     });
 
@@ -101,15 +133,47 @@ describe("[OSS] embedding settings", () => {
     });
   });
   describe("when the embedding is enabled", () => {
-    it("should allow going to static embedding settings page", async () => {
-      const { history } = await setupEmbedding({
-        settingValues: { "enable-embedding": true },
+    describe("static embedding", () => {
+      it("should allow going to static embedding settings page", async () => {
+        const { history } = await setupEmbedding({
+          settingValues: { "enable-embedding": true },
+        });
+
+        await goToStaticEmbeddingSettings();
+
+        const location = history.getCurrentLocation();
+        expect(location.pathname).toEqual(staticEmbeddingSettingsUrl);
       });
 
-      await goToStaticEmbeddingSettings();
+      it("should show info about static embedding", async () => {
+        const withinStaticEmbeddingCard = within(
+          screen.getByRole("article", {
+            name: "Static embedding",
+          }),
+        );
 
-      const location = history.getCurrentLocation();
-      expect(location.pathname).toEqual(staticEmbeddingSettingsUrl);
+        expect(
+          withinStaticEmbeddingCard.getByRole("heading", {
+            name: "Static embedding",
+          }),
+        ).toBeInTheDocument();
+        expect(
+          withinStaticEmbeddingCard.getByText(/Use static embedding when/),
+        ).toBeInTheDocument();
+      });
+
+      it("should not allow access to the static embedding settings page", async () => {
+        // Go to static embedding settings page
+        await userEvent.click(
+          within(
+            screen.getByRole("article", {
+              name: "Static embedding",
+            }),
+          ).getByRole("button", { name: "Manage" }),
+        );
+
+        expect(screen.getByText("Embedding secret key")).toBeInTheDocument();
+      });
     });
 
     it("should not allow going to interactive embedding settings page", async () => {

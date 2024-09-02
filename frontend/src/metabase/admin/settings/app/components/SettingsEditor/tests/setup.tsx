@@ -4,8 +4,6 @@ import { IndexRedirect, Route } from "react-router";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupApiKeyEndpoints,
-  setupCardEmbeddable,
-  setupDashboardEmbeddable,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -69,8 +67,6 @@ export const setup = async ({
   setupApiKeyEndpoints([]);
   setupSettingsEndpoints(settings);
   setupPropertiesEndpoints(settingValuesWithToken);
-  setupCardEmbeddable();
-  setupDashboardEmbeddable();
 
   const { history } = renderWithProviders(
     <Route path="/admin/settings">
