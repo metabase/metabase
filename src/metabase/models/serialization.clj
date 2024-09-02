@@ -41,10 +41,13 @@
 
   ## Use cases
 
-  ### Skip value depending on situation
+  ### Skip value depending on data
 
-  See `Database/details`, but overall: you have to make decisions inside `:export`/`:import` functions themselves, not
-  in `serdes/make-spec` function."
+  See `Database/details`, but overall:
+  - Put it in `:skip` if this column shouldn't be synchronized
+  - You have to make decisions inside `:transform` column `:export` function (or `:import`)
+  - To prevent value being serialized, return `::serdes/skip` instead of `nil` (the reason being that serialization
+    format distinguishes between `nil` and absence)"
   (:refer-clojure :exclude [descendants])
   (:require
    [cheshire.core :as json]
