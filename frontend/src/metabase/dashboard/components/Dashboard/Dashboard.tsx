@@ -14,6 +14,7 @@ import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
 import type { DashboardControlsPassedProps } from "metabase/dashboard/hoc/types";
 import type {
+  CancelledFetchDashboardResult,
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
@@ -39,6 +40,7 @@ import type {
   ValuesSourceType,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 import type {
   DashboardSidebarName,
   SelectedTabId,
@@ -263,8 +265,7 @@ function DashboardInner(props: DashboardProps) {
       });
 
       if (!isSuccessfulFetchDashboardResult(result)) {
-        const payload = result.payload as { isCancelled?: boolean };
-        if (!payload.isCancelled) {
+        if (!isCancelledFetchDashboardResult(result)) {
           setErrorPage(result.payload);
         }
         return;
@@ -538,6 +539,12 @@ function isSuccessfulFetchDashboardResult(
 ): result is SuccessfulFetchDashboardResult {
   const hasError = "error" in result;
   return !hasError;
+}
+
+export function isCancelledFetchDashboardResult(
+  result: FetchDashboardResult,
+): result is CancelledFetchDashboardResult {
+  return isObject(result.payload) && Boolean(result.payload.isCancelled);
 }
 
 export const Dashboard = DashboardControls(DashboardInner);
