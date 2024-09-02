@@ -120,7 +120,7 @@ export const DataPickerModal = ({
     [onChange, onClose, tryLogRecentItem],
   );
 
-  const tabs = useMemo(() => {
+  const tabs = (function getTabs() {
     const computedTabs: EntityPickerTab<
       DataPickerItem["id"],
       DataPickerItem["model"],
@@ -214,18 +214,7 @@ export const DataPickerModal = ({
     }
 
     return computedTabs;
-  }, [
-    databaseId,
-    hasMetrics,
-    hasModels,
-    hasNestedQueriesEnabled,
-    hasQuestions,
-    metricsShouldShowItem,
-    models,
-    modelsShouldShowItem,
-    questionsShouldShowItem,
-    value,
-  ]);
+  })();
 
   return (
     <EntityPickerModal

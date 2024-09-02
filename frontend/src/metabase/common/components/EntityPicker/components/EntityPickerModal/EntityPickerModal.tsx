@@ -152,7 +152,7 @@ export function EntityPickerModal<
       : relevantModelRecents;
   }, [recentItems, searchModels, recentFilter]);
 
-  const tabs: EntityPickerTab<Id, Model, Item>[] = useMemo(() => {
+  const tabs: EntityPickerTab<Id, Model, Item>[] = (function getTabs() {
     const computedTabs: EntityPickerTab<Id, Model, Item>[] = [];
     const hasRecentsTab =
       hydratedOptions.hasRecents && filteredRecents.length > 0;
@@ -200,16 +200,7 @@ export function EntityPickerModal<
     }
 
     return computedTabs;
-  }, [
-    defaultToRecentTab,
-    filteredRecents,
-    hydratedOptions.hasRecents,
-    isLoadingRecentItems,
-    passedTabs,
-    searchQuery,
-    searchResults,
-    selectedItem,
-  ]);
+  })();
 
   const hasTabs = tabs.length > 1;
   const initialTabId = useMemo(
