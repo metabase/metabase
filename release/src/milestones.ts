@@ -298,6 +298,7 @@ export async function checkMilestoneForRelease({
     owner,
     repo,
     version,
+    ignorePatches: true,
   });
 
   const compareResponse = await github.rest.repos.compareCommitsWithBasehead({
