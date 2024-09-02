@@ -82,6 +82,42 @@ describe("[OSS] embedding settings", () => {
       });
     });
 
+    describe("embedding SDK", () => {
+      it("should show info about embedding SDK", async () => {
+        const withinEmbeddingSdkCard = within(
+          screen.getByRole("article", {
+            name: "Embedding SDK for React",
+          }),
+        );
+
+        expect(
+          withinEmbeddingSdkCard.getByRole("heading", {
+            name: "Embedding SDK for React",
+          }),
+        ).toBeInTheDocument();
+        expect(
+          withinEmbeddingSdkCard.getByText(
+            /Interactive embedding with full, granular control./,
+          ),
+        ).toBeInTheDocument();
+      });
+
+      it("should allow access to the embedding SDK settings page", async () => {
+        // Go to embedding SDK settings page
+        await userEvent.click(
+          within(
+            screen.getByRole("article", {
+              name: "Embedding SDK for React",
+            }),
+          ).getByRole("button", { name: "Try it out" }),
+        );
+
+        expect(
+          screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
+        ).toBeDisabled();
+      });
+    });
+
     describe("interactive embedding", () => {
       it("should not allow going to interactive settings page", async () => {
         act(() => {
@@ -186,6 +222,42 @@ describe("[OSS] embedding settings", () => {
         );
 
         expect(screen.getByText("Embedding secret key")).toBeInTheDocument();
+      });
+    });
+
+    describe("embedding SDK", () => {
+      it("should show info about embedding SDK", async () => {
+        const withinEmbeddingSdkCard = within(
+          screen.getByRole("article", {
+            name: "Embedding SDK for React",
+          }),
+        );
+
+        expect(
+          withinEmbeddingSdkCard.getByRole("heading", {
+            name: "Embedding SDK for React",
+          }),
+        ).toBeInTheDocument();
+        expect(
+          withinEmbeddingSdkCard.getByText(
+            /Interactive embedding with full, granular control./,
+          ),
+        ).toBeInTheDocument();
+      });
+
+      it("should allow access to the embedding SDK settings page", async () => {
+        // Go to embedding SDK settings page
+        await userEvent.click(
+          within(
+            screen.getByRole("article", {
+              name: "Embedding SDK for React",
+            }),
+          ).getByRole("button", { name: "Try it out" }),
+        );
+
+        expect(
+          screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
+        ).toBeDisabled();
       });
     });
 
