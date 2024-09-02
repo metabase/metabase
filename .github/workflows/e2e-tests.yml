@@ -344,4 +344,5 @@ jobs:
           DATE=$(date '+%Y-%m-%d')
           URL=$(aws s3 cp ${FOLDER}/cypress-test-report.html s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/$TARGET_FOLDER)
           # export URL
+          echo $URL
           echo "::set-output name=url::$URL"
