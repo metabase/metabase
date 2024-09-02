@@ -2,7 +2,11 @@ import _ from "underscore";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import {
+  SdkError,
+  SdkLoader,
+  withPublicComponentWrapper,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import { useCommonDashboardParams } from "embedding-sdk/components/public/InteractiveDashboard/use-common-dashboard-params";
 import {
   type SdkDashboardDisplayProps,
@@ -11,6 +15,7 @@ import {
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { Box } from "metabase/ui";
@@ -110,6 +115,22 @@ const InteractiveDashboardInner = ({
   );
 };
 
-export const InteractiveDashboard = withPublicComponentWrapper(
-  InteractiveDashboardInner,
-);
+export const InteractiveDashboard =
+  withPublicComponentWrapper<InteractiveDashboardProps>(
+    ({ dashboardId, ...rest }) => {
+      const { id, isLoading } = useValidatedEntityId({
+        type: "dashboard",
+        id: dashboardId,
+      });
+
+      if (isLoading) {
+        return <SdkLoader />;
+      }
+
+      if (!id) {
+        return <SdkError message="ID not found" />;
+      }
+
+      return <InteractiveDashboardInner dashboardId={id} {...rest} />;
+    },
+  );
