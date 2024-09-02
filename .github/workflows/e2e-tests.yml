@@ -354,6 +354,7 @@ jobs:
         with:
           header: mocha-test-results
           append: true
+          hide: true
           message: |
             Some tests failed. See the [link](${{ steps.s3-mocha-upload.outputs.URL }}) for details.
 
@@ -404,5 +405,6 @@ jobs:
         with:
           header: mocha-test-results
           append: true
+          hide: true
           message: |
             Some tests failed. See the [link](${{ steps.s3-mocha-upload.outputs.URL }}) for details.
