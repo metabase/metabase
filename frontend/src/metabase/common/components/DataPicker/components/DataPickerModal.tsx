@@ -1,37 +1,25 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
-  CollectionItemModel,
   DatabaseId,
   RecentContexts,
   RecentItem,
   TableId,
 } from "metabase-types/api";
 
-import type { EntityPickerTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
-import { QuestionPicker } from "../../QuestionPicker";
 import { useAvailableData } from "../hooks";
 import type {
   DataPickerItem,
   DataPickerModalOptions,
   DataPickerValue,
 } from "../types";
-import {
-  castQuestionPickerItemToDataPickerItem,
-  createShouldShowItem,
-  isMetricItem,
-  isModelItem,
-  isQuestionItem,
-  isTableItem,
-  isValueItem,
-} from "../utils";
+import { createShouldShowItem, isValueItem } from "../utils";
 
-import { TablePicker } from "./TablePicker";
+import { getTabs } from "./getTabs";
 
 interface Props {
   /**
@@ -44,12 +32,6 @@ interface Props {
   onChange: (value: TableId) => void;
   onClose: () => void;
 }
-
-const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["card"];
-
-const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
-
-const METRIC_PICKER_MODELS: CollectionItemModel[] = ["metric"];
 
 const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
 
@@ -120,112 +102,19 @@ export const DataPickerModal = ({
     [onChange, onClose, tryLogRecentItem],
   );
 
-  const tabs = useMemo(() => {
-    const computedTabs: EntityPickerTab<
-      DataPickerItem["id"],
-      DataPickerItem["model"],
-      DataPickerItem
-    >[] = [];
-
-    if (hasModels && hasNestedQueriesEnabled && models.includes("dataset")) {
-      computedTabs.push({
-        id: "models-tab",
-        displayName: t`Models`,
-        model: "dataset" as const,
-        folderModels: ["collection" as const],
-        icon: "model",
-        render: ({ onItemSelect }) => (
-          <QuestionPicker
-            initialValue={isModelItem(value) ? value : undefined}
-            models={MODEL_PICKER_MODELS}
-            options={options}
-            shouldShowItem={modelsShouldShowItem}
-            onItemSelect={questionPickerItem => {
-              const item =
-                castQuestionPickerItemToDataPickerItem(questionPickerItem);
-              onItemSelect(item);
-            }}
-          />
-        ),
-      });
-    }
-
-    if (hasMetrics && hasNestedQueriesEnabled && models.includes("metric")) {
-      computedTabs.push({
-        id: "metrics-tab",
-        displayName: t`Metrics`,
-        model: "metric" as const,
-        folderModels: ["collection" as const],
-        icon: "metric",
-        render: ({ onItemSelect }) => (
-          <QuestionPicker
-            initialValue={isMetricItem(value) ? value : undefined}
-            models={METRIC_PICKER_MODELS}
-            options={options}
-            shouldShowItem={metricsShouldShowItem}
-            onItemSelect={questionPickerItem => {
-              const item =
-                castQuestionPickerItemToDataPickerItem(questionPickerItem);
-              onItemSelect(item);
-            }}
-          />
-        ),
-      });
-    }
-
-    if (models.includes("table")) {
-      computedTabs.push({
-        id: "tables-tab",
-        displayName: t`Tables`,
-        model: "table" as const,
-        folderModels: ["database" as const, "schema" as const],
-        icon: "table",
-        render: ({ onItemSelect }) => (
-          <TablePicker
-            databaseId={databaseId}
-            value={isTableItem(value) ? value : undefined}
-            onItemSelect={onItemSelect}
-          />
-        ),
-      });
-    }
-
-    if (hasQuestions && hasNestedQueriesEnabled && models.includes("card")) {
-      computedTabs.push({
-        id: "questions-tab",
-        displayName: t`Saved questions`,
-        model: "card" as const,
-        folderModels: ["collection" as const],
-        icon: "folder",
-        render: ({ onItemSelect }) => (
-          <QuestionPicker
-            initialValue={isQuestionItem(value) ? value : undefined}
-            models={QUESTION_PICKER_MODELS}
-            options={options}
-            shouldShowItem={questionsShouldShowItem}
-            onItemSelect={questionPickerItem => {
-              const item =
-                castQuestionPickerItemToDataPickerItem(questionPickerItem);
-              onItemSelect(item);
-            }}
-          />
-        ),
-      });
-    }
-
-    return computedTabs;
-  }, [
+  const tabs = getTabs({
     databaseId,
     hasMetrics,
     hasModels,
     hasNestedQueriesEnabled,
     hasQuestions,
-    metricsShouldShowItem,
     models,
+    options,
+    value,
+    metricsShouldShowItem,
     modelsShouldShowItem,
     questionsShouldShowItem,
-    value,
-  ]);
+  });
 
   return (
     <EntityPickerModal
