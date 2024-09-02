@@ -4,6 +4,7 @@
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::direction
@@ -21,6 +22,5 @@
    [:asc  :mbql.clause/asc]
    [:desc :mbql.clause/desc]])
 
-;;; TODO -- should there be a no-duplicates constraint here?
 (mr/def ::order-bys
-  [:sequential {:min 1} [:ref ::order-by]])
+  (lib.schema.util/distinct-ignoring-uuids [:sequential {:min 1} [:ref ::order-by]]))
