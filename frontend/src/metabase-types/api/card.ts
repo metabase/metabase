@@ -4,6 +4,7 @@ import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type { Collection, CollectionId } from "./collection";
 import type { DashCardId, DashboardId } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
+import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Parameter } from "./parameters";
@@ -18,6 +19,7 @@ export type CardType = "model" | "question" | "metric";
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
   id: CardId;
+  entity_id: CardEntityId;
   created_at: string;
   updated_at: string;
   name: string;
@@ -246,6 +248,7 @@ export interface ModerationReview {
 }
 
 export type CardId = number;
+export type CardEntityId = BaseEntityId;
 export type ModerationReviewStatus = "verified" | null;
 
 export type CardFilterOption =
