@@ -132,9 +132,17 @@ export function PieChart(props: VisualizationProps) {
       },
     );
 
-  const onToggleSeriesVisibility = (event: MouseEvent, sliceIndex: number) => {
+  const handleToggleSeriesVisibility = (
+    event: MouseEvent,
+    sliceIndex: number,
+  ) => {
     const slice = chartModel.slices[sliceIndex];
-    toggleSliceVisibility(slice.data.key);
+    const willShowSlice = hiddenSlices.has(slice.data.key);
+    const hasMoreVisibleSlices =
+      chartModel.slices.length - hiddenSlices.size > 1;
+    if (hasMoreVisibleSlices || willShowSlice) {
+      toggleSliceVisibility(slice.data.key);
+    }
   };
 
   useCloseTooltipOnScroll(chartRef);
@@ -150,7 +158,7 @@ export function PieChart(props: VisualizationProps) {
       gridSize={props.gridSize}
       hovered={props.hovered}
       isDashboard={isDashboard}
-      onToggleSeriesVisibility={onToggleSeriesVisibility}
+      onToggleSeriesVisibility={handleToggleSeriesVisibility}
     >
       <ChartRenderer
         ref={containerRef}
