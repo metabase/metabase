@@ -69,6 +69,5 @@ export const activateEEPlugins = () => {
 };
 
 if (!isEmbeddingSdk) {
-  console.warn("EE plugins are  being activated");
-  // activateEEPlugins();
+  activateEEPlugins();
 }
