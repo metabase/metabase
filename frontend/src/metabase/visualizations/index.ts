@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import type {
+  CardDisplayType,
   DatasetData,
   Series,
   TransformedSeries,
@@ -10,8 +11,8 @@ import type {
 import type { RemappingHydratedDatasetColumn } from "./types";
 import type { Visualization } from "./types/visualization";
 
-const visualizations = new Map<string, Visualization>();
-const aliases = new Map<string, Visualization>();
+const visualizations = new Map<CardDisplayType, Visualization>();
+const aliases = new Map<CardDisplayType, Visualization>();
 visualizations.get = function (key) {
   return (
     Map.prototype.get.call(this, key) ||
@@ -31,6 +32,7 @@ export function getSensibleDisplays(data: DatasetData) {
 }
 
 let defaultVisualization: Visualization;
+
 export function setDefaultVisualization(visualization: Visualization) {
   defaultVisualization = visualization;
 }
@@ -58,7 +60,7 @@ export function registerVisualization(visualization: Visualization) {
   }
 }
 
-type SeriesLike = Array<{ card: { display: string } }>;
+type SeriesLike = Array<{ card: { display: CardDisplayType } }>;
 
 export function getVisualizationRaw(series: SeriesLike) {
   return visualizations.get(series[0].card.display);
@@ -95,7 +97,7 @@ export function getVisualizationTransformed(series: TransformedSeries) {
   return { series, visualization };
 }
 
-export function getIconForVisualizationType(display: string) {
+export function getIconForVisualizationType(display: CardDisplayType) {
   const viz = visualizations.get(display);
   return viz?.iconName ?? "unknown";
 }
@@ -108,22 +110,22 @@ export const extractRemappings = (series: Series) => {
   return se;
 };
 
-export function getMaxMetricsSupported(display: string) {
+export function getMaxMetricsSupported(display: CardDisplayType) {
   const visualization = visualizations.get(display);
   return visualization?.maxMetricsSupported || Infinity;
 }
 
-export function getMaxDimensionsSupported(display: string) {
+export function getMaxDimensionsSupported(display: CardDisplayType) {
   const visualization = visualizations.get(display);
   return visualization?.maxDimensionsSupported || 2;
 }
 
-export function canSavePng(display: string) {
+export function canSavePng(display: CardDisplayType) {
   const visualization = visualizations.get(display);
   return visualization?.canSavePng ?? true;
 }
 
-export function getDefaultSize(display: string) {
+export function getDefaultSize(display: CardDisplayType) {
   const visualization = visualizations.get(display);
   return visualization?.defaultSize;
 }
