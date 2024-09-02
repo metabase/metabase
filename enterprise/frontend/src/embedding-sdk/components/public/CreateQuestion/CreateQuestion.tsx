@@ -11,6 +11,11 @@ type CreateQuestionProps = Pick<InteractiveQuestionProps, "plugins"> &
 export const CreateQuestion = ({
   plugins,
   isSaveEnabled,
+  onSave,
 }: CreateQuestionProps = {}) => (
-  <QuestionEditor plugins={plugins} isSaveEnabled={isSaveEnabled} />
+  <QuestionEditor
+    plugins={plugins}
+    isSaveEnabled={isSaveEnabled}
+    onSave={onSave}
+  />
 );

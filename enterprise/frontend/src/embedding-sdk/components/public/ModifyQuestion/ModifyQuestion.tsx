@@ -11,10 +11,12 @@ export const ModifyQuestion = ({
   questionId,
   plugins,
   isSaveEnabled,
+  onSave,
 }: ModifyQuestionProps = {}) => (
   <QuestionEditor
     questionId={questionId}
     plugins={plugins}
     isSaveEnabled={isSaveEnabled}
+    onSave={onSave}
   />
 );
