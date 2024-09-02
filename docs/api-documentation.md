@@ -40,6 +40,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Bookmark](api/bookmark.md)
 - [Cache](api/cache.md)
 - [Card](api/card.md)
+- [Channel](api/channel.md)
 - [Cloud migration](api/cloud-migration.md)
 - [Collection](api/collection.md)
 - [Content verification review*](api/ee/content-verification-review.md)

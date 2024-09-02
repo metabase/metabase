@@ -48,7 +48,7 @@ Features not yet supported:
 
 ## Quickstart
 
-Run `npx @metabase/embedding-sdk-react start` in your React project to get started.
+Run `npx @metabase/embedding-sdk-react@latest start` in your React project to get started.
 
 This will start a local Metabase instance with Docker and generate sample dashboard components from your data. First run
 of this command will take 1 - 2 minutes to install the dependencies.

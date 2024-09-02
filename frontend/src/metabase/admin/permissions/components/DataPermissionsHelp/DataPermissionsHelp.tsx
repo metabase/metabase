@@ -3,9 +3,9 @@ import { jt, t } from "ttag";
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
+import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Accordion,
@@ -32,6 +32,7 @@ export const DataPermissionsHelp = () => {
       DataPermissionValue.LEGACY_NO_SELF_SERVICE,
     ),
   );
+  const { url: docsUrl } = useDocsUrl("permissions/data");
 
   return (
     <Flex direction="column" py={rem(22)} px="1rem">
@@ -224,9 +225,7 @@ export const DataPermissionsHelp = () => {
 
       <Text component="footer" align="center" py="1.5rem" weight={600}>
         {jt`${(
-          <ExternalLink
-            href={MetabaseSettings.docsUrl("permissions/data")}
-          >{t`Learn more`}</ExternalLink>
+          <ExternalLink href={docsUrl}>{t`Learn more`}</ExternalLink>
         )} about data permissions`}
       </Text>
     </Flex>
