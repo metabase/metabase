@@ -346,5 +346,5 @@ jobs:
           # export URL
           # echo $URL
           # echo "::set-output name=url::$URL"
-          cat ${FOLDER}/cypress-test-report.html
           aws s3 cp ${FOLDER}/cypress-test-report.html s3://$BUCKET/11/$TARGET_FOLDER
+          aws s3 presign s3://metabase-mocha-reports/11/mocha-123/cypress-test-report.html
