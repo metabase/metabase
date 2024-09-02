@@ -394,18 +394,22 @@
 
 (defn- set-display-names!
   [table-id field->display-name]
-  (let [field-names    (map (comp u/lower-case-en name key) field->display-name)
-        case-statement (into [:case]
+  (let [field->display-name (update-keys field->display-name (comp u/lower-case-en name))
+        case-statement      (into [:case]
                              (mapcat identity)
                              (for [[n display-name] field->display-name]
-                               [[:= [:lower :name] [:lower (name n)]] display-name]))]
-    (t2/update! :model/Field
-                [:and
-                 [:= :table_id table-id]
-                 [:in [:lower :name] field-names]
-                 ;; We don't want to replace display names that have been set manually.
-                 [:= [:lower :name] [:lower :display_name]]]
-                {:display_name case-statement})))
+                               [[:= [:lower :name] n] display-name]))]
+    ;; Using t2/update! results in an invalid query for certain versions of PostgreSQL
+    ;; SELECT * FROM \"metabase_field\" WHERE \"id\" AND (\"table_id\" = ?) AND ...
+    ;;                                        ^^^^^
+    ;; ERROR: argument of AND must be type boolean, not type integer
+    (t2/query {:update (t2/table-name :model/Field)
+               :set {:display_name case-statement}
+               :where [:and
+                       [:= :table_id table-id]
+                       [:in [:lower :name] (keys field->display-name)]
+                       ;; Only replace display names that have not been overridden already.
+                       [:= [:lower :name] [:lower :display_name]]]})))
 
 (defn- uploads-enabled? []
   (some? (:db_id (public-settings/uploads-settings))))
