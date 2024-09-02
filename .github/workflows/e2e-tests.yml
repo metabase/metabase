@@ -342,8 +342,9 @@ jobs:
         shell: bash
         run: | # sh
           DATE=$(date '+%Y-%m-%d')
-          # URL=$(aws s3 cp ${FOLDER}/cypress-test-report.html s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/$TARGET_FOLDER)
+          URL=$(aws s3 cp ${FOLDER}/cypress-test-report.html s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/$TARGET_FOLDER)
+          # example url: http://metabase-mocha-reports.s3-website-us-east-1.amazonaws.com/11/mocha-123
           # export URL
           # echo $URL
           # echo "::set-output name=url::$URL"
-          aws s3 cp ${FOLDER}/cypress-test-report.html s3://$BUCKET/11/$TARGET_FOLDER --acl public-read
+          # aws s3 cp ${FOLDER}/cypress-test-report.html s3://$BUCKET/11/$TARGET_FOLDER --acl public-read
