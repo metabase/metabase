@@ -47,7 +47,7 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   }
 
   printEmptyLines(1);
-  console.log(green(SDK_LEARN_MORE_MESSAGE));
+  printWithPadding(green(SDK_LEARN_MORE_MESSAGE));
 
   return [{ type: "success" }, state];
 };
