@@ -10,6 +10,7 @@ import {
   updateDatabaseEngine,
 } from "metabase/setup/actions";
 import { updateIn } from "icepick";
+import { push } from "react-router-redux";
 
 export const DatabasesConnections = () => {
   const dispatch = useDispatch();
@@ -22,6 +23,7 @@ export const DatabasesConnections = () => {
   const handleDatabaseSubmit = async (database: DatabaseData) => {
     try {
       await dispatch(submitDatabase(database)).unwrap();
+      dispatch(push("/browse/databases"));
     } catch (error) {
       throw getSubmitError(error);
     }

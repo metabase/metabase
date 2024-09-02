@@ -21,7 +21,7 @@ export const GlobalStyles = (): JSX.Element => {
   const styles = css`
     ${getMetabaseCssVariables(theme)}
     :root {
-      --mb-default-font-family: "${font}";
+      --mb-default-font-family: "Inter";
     }
 
     ${defaultFontFiles({ baseUrl: sitePath })}
