@@ -51,3 +51,7 @@ export function setupDashboardPublicLinkEndpoints(dashboardId: DashboardId) {
     id: dashboardId,
   });
 }
+
+export function setupDashboardEmbeddable() {
+  fetchMock.get("path:/api/dashboard/embeddable", []);
+}
