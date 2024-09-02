@@ -10,9 +10,12 @@ import { Box, Group, Tabs } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
-const QuestionEditorInner = () => {
-  const { originalQuestion, question, queryResults, runQuestion } =
-    useInteractiveQuestionContext();
+export type QuestionEditorProps = {
+  isSaveEnabled?: boolean;
+};
+
+const QuestionEditorInner = ({ isSaveEnabled }: QuestionEditorProps) => {
+  const { queryResults, runQuestion } = useInteractiveQuestionContext();
 
   const [activeTab, setActiveTab] = useState<
     "notebook" | "visualization" | (string & unknown) | null
@@ -44,15 +47,19 @@ const QuestionEditorInner = () => {
               </Tabs.Tab>
             ) : null}
           </Group>
-          <Group>
-            <InteractiveQuestion.ResetButton
-              onClick={() => {
-                setActiveTab("notebook");
-                closeSaveModal();
-              }}
-            />
-            <InteractiveQuestion.SaveButton onClick={openSaveModal} />
-          </Group>
+          {!isSaveFormOpen && (
+            <Group>
+              <InteractiveQuestion.ResetButton
+                onClick={() => {
+                  setActiveTab("notebook");
+                  closeSaveForm();
+                }}
+              />
+              {isSaveEnabled && (
+                <InteractiveQuestion.SaveButton onClick={openSaveForm} />
+              )}
+            </Group>
+          )}
         </Group>
 
         <Tabs.Panel value="notebook">
@@ -83,9 +90,10 @@ const QuestionEditorInner = () => {
 
 export const QuestionEditor = ({
   questionId,
+  isSaveEnabled = true,
   plugins,
-}: InteractiveQuestionProps) => (
+}: InteractiveQuestionProps & QuestionEditorProps) => (
   <InteractiveQuestion questionId={questionId} plugins={plugins}>
-    <QuestionEditorInner />
+    <QuestionEditorInner isSaveEnabled={isSaveEnabled} />
   </InteractiveQuestion>
 );
