@@ -54,22 +54,36 @@
                 (contains? (get target 2) :stage-number)))
          parameters)))
 
+(defn- add-stage-to-temporal-unit-parameters
+  "Points temporal-unit parameters to the penultimate stage unless the stage is specified."
+  [parameters]
+  (mapv (fn [{param-type :type, :keys [target], :as parameter}]
+          (cond-> parameter
+            (and (= param-type :temporal-unit)
+                 (mbql.u/is-clause? :dimension target)
+                 (nil? (get-in target [2 :stage-number])))
+            (assoc-in [:target 2 :stage-number] -2)))
+        parameters))
+
 (defn query-for-card
   "Generate a query for a saved Card"
-  [{query :dataset_query
-    :as   card} parameters constraints middleware & [ids]]
-  (let [query (-> query
-                  ;; don't want default constraints overridding anything that's already there
-                  (m/dissoc-in [:middleware :add-default-userland-constraints?])
-                  (assoc :constraints constraints
-                         :parameters  parameters
-                         :middleware  middleware))
-        query (cond-> query
+  [{dataset-query :dataset_query
+    :as           card} parameters constraints middleware & [ids]]
+  (let [query (cond-> dataset-query
                 ;; If query has aggregation and breakout at the top level,
                 ;; parameters refer to stages as if a new stage was appended.
                 ;; This is so that we can distinguish if a filter should be applied
                 ;; before of after summarizing.
                 (filter-stage-used? parameters) lib/ensure-filter-stage)
+        query (-> query
+                  ;; don't want default constraints overridding anything that's already there
+                  (m/dissoc-in [:middleware :add-default-userland-constraints?])
+                  (assoc :constraints constraints
+                         :parameters  (cond-> parameters
+                                        ;; filter stage has been added
+                                        (not= query dataset-query)
+                                        add-stage-to-temporal-unit-parameters)
+                         :middleware  middleware))
         cs    (-> (cache-strategy card (:dashboard-id ids))
                   (enrich-strategy query))]
     (assoc query :cache-strategy cs)))

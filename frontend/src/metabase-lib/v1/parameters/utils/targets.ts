@@ -135,11 +135,18 @@ export function buildColumnTarget(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
+  parameter: Parameter | undefined,
 ): StructuredParameterDimensionTarget {
   const fieldRef = Lib.legacyRef(query, stageIndex, column);
 
   if (!isConcreteFieldReference(fieldRef)) {
     throw new Error(`Cannot build column target field reference: ${fieldRef}`);
+  }
+
+  if (parameter && isTemporalUnitParameter(parameter)) {
+    // Temporal unit parameters apply only to the last stage.
+    // We don't attach "stage-number" to prevent BE from calling Lib.ensureFilterStage on the query.
+    return ["dimension", fieldRef];
   }
 
   return ["dimension", fieldRef, { "stage-number": stageIndex }];
