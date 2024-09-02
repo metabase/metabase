@@ -37,7 +37,12 @@ import { activateWhitelabelPlugins } from "./whitelabel";
 MetabaseSettings.docsTag = () => "latest";
 PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
+let pluginEnabled = false;
 export const activateEEPlugins = () => {
+  if (pluginEnabled) {
+    return;
+  }
+  pluginEnabled = true;
   activateWhitelabelPlugins();
   activateContentVerificationPlugin();
   activateCollectionsPlugin();
