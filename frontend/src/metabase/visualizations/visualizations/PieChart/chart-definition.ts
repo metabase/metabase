@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
-import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import {
   ChartSettingsError,
@@ -92,7 +92,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     }),
     "pie.rows": {
       section: t`Data`,
-      widget: ChartSettingOrderedSimple,
+      widget: ChartSettingSeriesOrder,
       getHidden: (_rawSeries, settings) => settings["pie.dimension"] == null,
       getValue: (rawSeries, settings) => {
         return getPieRows(rawSeries, settings, (value, options) =>
