@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import type {
-  type CardDisplayType,
+  CardDisplayType,
   DatasetData,
   Series,
   TransformedSeries,

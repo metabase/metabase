@@ -14,11 +14,6 @@ import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
-import {
-  onCloseChartType,
-  onOpenChartSettings,
-  setUIControls,
-} from "metabase/query_builder/actions";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import { ChartTypeSidebar } from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -104,15 +99,6 @@ const StaticQuestionInner = ({
     loadCardData();
   }, [questionId, parameterValues]);
 
-  const changeVisualization = (newQuestion: Question) => {
-    setState({
-      card: newQuestion.card(),
-      result: result,
-      loading: false,
-      error: null,
-    });
-  };
-
   const isLoading = loading || (!result && !error) || isValidatingEntityId;
 
   if (error) {
@@ -146,11 +132,7 @@ const StaticQuestionInner = ({
             <ChartTypeSidebar
               question={question}
               result={result}
-              onOpenChartSettings={onOpenChartSettings}
-              onCloseChartType={onCloseChartType}
               query={legacyQuery}
-              setUIControls={setUIControls}
-              updateQuestion={changeVisualization}
             />
           </Box>
         )}

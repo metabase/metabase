@@ -63,7 +63,6 @@ class View extends Component {
       isShowingChartSettingsSidebar,
       isShowingChartTypeSidebar,
       onCloseChartSettings,
-      onCloseChartType,
     } = this.props;
 
     if (isShowingChartSettingsSidebar) {
@@ -97,12 +96,7 @@ class View extends Component {
         <ChartTypeSidebar
           question={this.props.question}
           result={this.props.result}
-          onOpenChartSettings={this.props.onOpenChartSettings}
-          onCloseChartType={this.props.onCloseChartType}
-          updateQuestion={this.props.updateQuestion}
-          setUIControls={this.props.setUIControls}
           query={this.props.query}
-          onClose={onCloseChartType}
         />
       );
     }

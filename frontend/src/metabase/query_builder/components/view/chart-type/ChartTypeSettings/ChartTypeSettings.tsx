@@ -11,18 +11,18 @@ import { Space, Stack, Text } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Query from "metabase-lib/v1/queries/Query";
-import type { CardDisplayType, Dataset } from "metabase-types/api";
+import type { CardDisplayType } from "metabase-types/api";
 
 import { ChartTypeList } from "../ChartTypeList";
 
-import { getSensibleVisualizations } from "./util";
+import {
+  type GetSensibleVisualizationsProps,
+  getSensibleVisualizations,
+} from "./util";
 
-type ChartTypeSettingsProps = {
+export type ChartTypeSettingsProps = {
   question: Question;
-  result: Dataset;
-  query: Query;
-};
+} & GetSensibleVisualizationsProps;
 
 function useChartVisualizationSettings(question: Question) {
   const dispatch = useDispatch();

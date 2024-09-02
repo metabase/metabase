@@ -1,1 +1,4 @@
-export { ChartTypeSettings } from "./ChartTypeSettings";
+export {
+  ChartTypeSettings,
+  type ChartTypeSettingsProps,
+} from "./ChartTypeSettings";

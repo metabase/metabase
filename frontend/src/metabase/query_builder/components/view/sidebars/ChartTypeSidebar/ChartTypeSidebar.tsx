@@ -4,22 +4,16 @@ import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import { onCloseChartType } from "metabase/query_builder/actions";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import { ChartTypeSettings } from "metabase/query_builder/components/view/chart-type/ChartTypeSettings";
-import type Question from "metabase-lib/v1/Question";
-import type Query from "metabase-lib/v1/queries/Query";
-import type { Dataset } from "metabase-types/api";
-
-export type ChartTypeSidebarProps = {
-  question: Question;
-  result: Dataset;
-  query: Query;
-};
+import {
+  ChartTypeSettings,
+  type ChartTypeSettingsProps,
+} from "metabase/query_builder/components/view/chart-type/ChartTypeSettings";
 
 export const ChartTypeSidebar = ({
   question,
   result,
   query,
-}: ChartTypeSidebarProps) => {
+}: ChartTypeSettingsProps) => {
   const dispatch = useDispatch();
 
   return (

@@ -6,11 +6,17 @@ import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
 import type Query from "metabase-lib/v1/queries/Query";
 import type { CardDisplayType, Dataset } from "metabase-types/api";
 
-const isSensibleVisualization = (
-  result: Dataset,
-  query: Query,
-  vizType: CardDisplayType,
-): boolean => {
+type IsSensibleVisualizationProps = {
+  result: Dataset | null;
+  query: Query;
+  vizType: CardDisplayType;
+};
+
+const isSensibleVisualization = ({
+  result,
+  query,
+  vizType,
+}: IsSensibleVisualizationProps): boolean => {
   const visualization = visualizations.get(vizType);
   return (
     (result?.data &&
@@ -19,13 +25,15 @@ const isSensibleVisualization = (
   );
 };
 
+export type GetSensibleVisualizationsProps = Omit<
+  IsSensibleVisualizationProps,
+  "vizType"
+>;
+
 export const getSensibleVisualizations = ({
   result,
   query,
-}: {
-  result: Dataset;
-  query: Query;
-}): [CardDisplayType[], CardDisplayType[]] => {
+}: GetSensibleVisualizationsProps): [CardDisplayType[], CardDisplayType[]] => {
   const availableVizTypes = Array.from(visualizations.entries())
     .filter(([_, config]) => !config.hidden)
     .map(([vizType]) => vizType);
@@ -33,6 +41,6 @@ export const getSensibleVisualizations = ({
   const orderedVizTypes = _.union(DEFAULT_ORDER, availableVizTypes);
 
   return _.partition(orderedVizTypes, vizType =>
-    isSensibleVisualization(result, query, vizType),
+    isSensibleVisualization({ result, query, vizType }),
   );
 };
