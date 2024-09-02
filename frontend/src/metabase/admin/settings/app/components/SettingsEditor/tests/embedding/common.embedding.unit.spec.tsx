@@ -1,6 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import { act, screen, within } from "__support__/ui";
+import {
+  createMockSettingDefinition,
+  createMockSettings,
+} from "metabase-types/api/mocks";
+
+import { FULL_APP_EMBEDDING_URL, setup } from "../setup";
 
 import {
   embeddingSettingsUrl,
@@ -122,6 +128,17 @@ describe("[OSS] embedding settings", () => {
     );
   });
 
+  it("should redirect users back to embedding settings page when visiting the full-app embedding page when embedding is not enabled", async () => {
+    await setup({
+      settings: [createMockSettingDefinition({ key: "enable-embedding" })],
+      settingValues: createMockSettings({ "enable-embedding": false }),
+      initialRoute: FULL_APP_EMBEDDING_URL,
+    });
+
+    expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
+    expect(screen.getByText(/Embed dashboards, questions/)).toBeInTheDocument();
+  });
+
   describe("when the embedding is enabled", () => {
     let history: Awaited<ReturnType<typeof setupEmbedding>>["history"];
 
@@ -188,6 +205,13 @@ describe("[OSS] embedding settings", () => {
         expect(history.getCurrentLocation().pathname).toEqual(
           embeddingSettingsUrl,
         );
+      });
+
+      it("should show info about interactive embedding", async () => {
+        expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
+        expect(
+          screen.getByText(/Embed dashboards, questions/),
+        ).toBeInTheDocument();
       });
     });
   });
