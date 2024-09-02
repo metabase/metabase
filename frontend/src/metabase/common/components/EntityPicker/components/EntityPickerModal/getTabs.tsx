@@ -44,7 +44,7 @@ export function getTabs<
   searchQuery,
   searchResults,
   selectedItem,
-}: Props<Id, Model, Item>) {
+}: Props<Id, Model, Item>): EntityPickerTab<Id, Model, Item>[] {
   const computedTabs: EntityPickerTab<Id, Model, Item>[] = [];
   const hasRecentsTab = options.hasRecents && recents.length > 0;
   const hasSearchTab = !!searchQuery;
