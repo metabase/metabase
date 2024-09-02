@@ -9,10 +9,10 @@
   Export if it's a high-profile user facing entity: Database, Question, Dashboard, Snippet, etc.
   Do not export if it's internal or automatic: Users (created automatically), logs, revisions, cache, permissions.
 
-  ## How to deal with serialization
+  ## How to deal with serialization for a new model
 
-  - Add it to a respectful list at [[metabase-enterprise.serialization.v2.models]]
-  - If it was `excluded-models` list, then your job is done
+  - Add it to the appropriate list in [[metabase-enterprise.serialization.v2.models]]
+  - If it is in the `excluded-models` list, then your job is done
   - Define serialization multi-methods on a model (see `Card` and `Collection` for more complex examples or `Action`
     and `Segment` for less involved stuff)
     - `serdes/make-spec` - this is the main entry point. Should list every field in the model (this is checked in
