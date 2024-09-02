@@ -21,10 +21,13 @@ import {
 } from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
 import { useSelector } from "metabase/lib/redux";
 import { getInitialMessage } from "metabase/redux/initialMessage";
+import { getDBInputValue, getCompanyName } from "metabase/redux/initialDb";
 import { useListDatabasesQuery } from "metabase/api";
 import { SemanticError } from "metabase/components/ErrorPages";
-const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId }) => {
+const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId, insights }) => {
     const initialMessage = useSelector(getInitialMessage);
+    const initialDbName = useSelector(getDBInputValue);
+    const initialCompanyName = useSelector(getCompanyName);
     const inputRef = useRef(null);
     const dispatch = useDispatch();
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
@@ -104,7 +107,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
             setDefaultQuestion([]);
             setCard([]);
             setCardHash([]);
-            handleGetDatasetQueryWithCards(oldCardId)
+            setResult([])
+            if(chatType == "insights" && insights.length > 0) {
+                setInsightsList([])
+                handleGetInsightsWithCards(insights)
+            } else {
+                handleGetDatasetQueryWithCards(oldCardId)
+            }
             setMessages(parsedMessages);
         }
     }, [selectedMessages]);
@@ -292,10 +301,12 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         const { insights } = func.arguments;
         try {
             const newInsightsList = [];
+            const processedInsights = [];
 
             for (const insight of insights) {
                 const fetchedCard = await CardApi.get({ cardId: insight.cardId });
                 const queryCard = await CardApi.query({ cardId: insight.cardId });
+                const getDatasetQuery = fetchedCard?.dataset_query;
                 const defaultQuestionTest = Question.create({
                     databaseId: 1,
                     name: fetchedCard.name,
@@ -306,13 +317,14 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                 });
                 const newQuestion = defaultQuestionTest.setCard(fetchedCard);
 
-                newInsightsList.push({
+                processedInsights.push({
                     insightExplanation: insight.insightExplanation,
                     card: fetchedCard,
                     queryCard: queryCard,
                     defaultQuestion: newQuestion,
                 });
             }
+            newInsightsList.push(processedInsights);
 
             setInsightsList(prevInsights => [...prevInsights, ...newInsightsList]);
 
@@ -325,6 +337,49 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
             removeLoadingMessage();
         }
     };
+
+    const handleGetInsightsWithCards = async(insightsArray) => {
+        console.log('insightsArray', insightsArray);
+        try {
+            const newInsightsList = [];
+    
+            for (const insights of insightsArray) {
+                const processedInsights = [];
+                for (const insight of insights) {
+                    const fetchedCard = await CardApi.get({ cardId: insight.cardId });
+                    const queryCard = await CardApi.query({ cardId: insight.cardId });
+                    const getDatasetQuery = fetchedCard?.dataset_query;
+                    const defaultQuestionTest = Question.create({
+                        databaseId: 1,
+                        name: fetchedCard.name,
+                        type: "query",
+                        display: fetchedCard.display,
+                        visualization_settings: {},
+                        dataset_query: getDatasetQuery,
+                    });
+                    const newQuestion = defaultQuestionTest.setCard(fetchedCard);
+                    processedInsights.push({
+                        insightExplanation: insight.insightExplanation,
+                        card: fetchedCard,
+                        queryCard: queryCard,
+                        defaultQuestion: newQuestion,
+                    });
+                }
+                newInsightsList.push(processedInsights);
+            }
+    
+            setInsightsList(prevInsights => [...prevInsights, ...newInsightsList]);
+    
+        } catch (error) {
+            console.error("Error fetching card content:", error);
+            setShowError(true);
+            setError("There was an error fetching the insights. Please provide feedback if this issue persists.");
+        } finally {
+            setIsLoading(false);
+            removeLoadingMessage();
+        }
+    };
+    
 
 
     const handleGetCalulationOptions = async func => {
@@ -549,6 +604,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
             }
         }
     }, [initialMessage, ws, isConnected]);
+
+    useEffect(() => {   
+        if(initialDbName !== null && initialCompanyName !== '') {
+            setDBInputValue(initialDbName)
+            setCompanyName(initialCompanyName)
+        }
+    }, [initialDbName, initialCompanyName])
 
 
     return (

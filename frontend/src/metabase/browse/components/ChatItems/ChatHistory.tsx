@@ -3,7 +3,16 @@ import { Box, Text, ScrollArea, Title, Divider } from "metabase/ui";
 import { useListCheckpointsQuery } from "metabase/api/checkpoints";
 import dayjs from "dayjs";
 
-const ChatHistory = ({ setSelectedChatHistory, setThreadId, type, setOldCardId }: any) => {
+interface ChatHistoryProps {
+  setSelectedChatHistory: (history: any) => void;
+  setThreadId: (id: any) => void;
+  type: string;
+  setOldCardId: (id: any) => void;
+  setInsights: (insights: any) => void; // Optional prop
+}
+
+
+const ChatHistory = ({ setSelectedChatHistory, setThreadId, type, setOldCardId, setInsights }: ChatHistoryProps) => {
   const [chatHistory, setChatHistory] = useState({
     today: [],
     last7Days: [],
@@ -19,13 +28,14 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId, type, setOldCardId }
   useEffect(() => {
     if (checkpoints && checkpoints.length > 0) {
       const groupedHistory = checkpoints.reduce((acc: any, checkpoint: any) => {
-        const { thread_id, step, agent_name, agent_description, card_id } = checkpoint;
+        const { thread_id, step, agent_name, agent_description, card_id, insights } = checkpoint;
         if (!acc[thread_id]) {
           acc[thread_id] = {
             ...checkpoint,
             card_id: card_id !== null && card_id !== 0 ? [card_id] : [],
             agent_description: agent_description && agent_description !== "" ? [agent_description] : [],
             agent_name: agent_name && agent_name !== "" ? [agent_name] : [],
+            insights: insights && insights !== null && insights !== "{}" ? [insights] : [],
           };
         } else {
           if (acc[thread_id].step < step) {
@@ -34,6 +44,7 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId, type, setOldCardId }
               card_id: acc[thread_id].card_id,
               agent_description: acc[thread_id].agent_description,
               agent_name: acc[thread_id].agent_name,
+              insights: acc[thread_id].insights
             };
           }
     
@@ -51,6 +62,11 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId, type, setOldCardId }
           if (agent_name && agent_name !== "" && !acc[thread_id].agent_name.includes(agent_name)) {
             acc[thread_id].agent_name.push(agent_name);
           }
+
+          // Always update insights if it's provided and non-empty
+          if (insights && insights !== "{}" && !acc[thread_id].insights.includes(insights)) {
+            acc[thread_id].insights.push(insights);
+          }
         }
     
         return acc;
@@ -62,7 +78,9 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId, type, setOldCardId }
       );
       let chatGroups;
       if(type == "getInsights") {
-        chatGroups = filteredGroups;
+        chatGroups = filteredGroups.filter((group: any) =>
+          Array.isArray(group.insights) && group.insights.length > 0
+        );
       } else {
         chatGroups = filteredGroups.filter((group: any) =>
           Array.isArray(group.card_id) && group.card_id.length > 0
@@ -102,6 +120,14 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId, type, setOldCardId }
     setOldCardId([])
     const parsedMetadata = JSON.parse(item.metadata);
     const messages = parsedMetadata.writes?.solve?.messages || [];
+    const parsedCheckpoint = JSON.parse(item.checkpoint);
+    if(type == "getInsights") {
+      const newInsights = item.insights
+      const parsedInsights = newInsights.map((insight:string) => JSON.parse(insight));
+      if(parsedInsights.length > 0) {
+        setInsights(parsedInsights)
+      }
+    }
     setThreadId(item.thread_id);
     setSelectedChatHistory(messages);
     setOldCardId(item.card_id)
