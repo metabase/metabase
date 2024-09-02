@@ -20,12 +20,18 @@ const setupEnterprise = (opts?: SetupOpts) => {
 
 describe("[EE, no token] embedding settings", () => {
   describe("when the embedding is disabled", () => {
+    let history: Awaited<ReturnType<typeof setupEmbedding>>["history"];
+
+    beforeEach(async () => {
+      history = (
+        await setupEnterprise({
+          settingValues: { "enable-embedding": false },
+        })
+      ).history;
+    });
+
     describe("static embedding", () => {
       it("should not allow going to static embedding settings page", async () => {
-        const { history } = await setupEnterprise({
-          settingValues: { "enable-embedding": false },
-        });
-
         expect(screen.getByRole("button", { name: "Manage" })).toBeDisabled();
 
         act(() => {
@@ -38,10 +44,6 @@ describe("[EE, no token] embedding settings", () => {
       });
 
       it("should prompt to upgrade to remove the Powered by text", async () => {
-        await setupEnterprise({
-          settingValues: { "enable-embedding": false },
-        });
-
         expect(screen.getByText("upgrade to a paid plan")).toBeInTheDocument();
 
         expect(
@@ -55,10 +57,6 @@ describe("[EE, no token] embedding settings", () => {
 
     describe("interactive embedding", () => {
       it("should not allow going to interactive settings page", async () => {
-        const { history } = await setupEnterprise({
-          settingValues: { "enable-embedding": false },
-        });
-
         act(() => {
           history.push(interactiveEmbeddingSettingsUrl);
         });
@@ -69,9 +67,6 @@ describe("[EE, no token] embedding settings", () => {
       });
 
       it("should have a learn more button for interactive embedding", async () => {
-        await setupEnterprise({
-          settingValues: { "enable-embedding": false },
-        });
         expect(
           screen.getByRole("link", { name: "Learn More" }),
         ).toBeInTheDocument();
@@ -81,25 +76,7 @@ describe("[EE, no token] embedding settings", () => {
         );
       });
 
-      it("should link to quickstart for interactive embedding", async () => {
-        await setupEnterprise({
-          settingValues: {
-            "enable-embedding": false,
-            version: { tag: "v1.49.3" },
-          },
-        });
-        expect(getQuickStartLink()).toBeInTheDocument();
-        expect(getQuickStartLink()).toHaveProperty(
-          "href",
-          "https://www.metabase.com/docs/v0.49/embedding/interactive-embedding-quick-start-guide.html?utm_source=oss&utm_media=embed-settings",
-        );
-      });
-
       it("should link to https://www.metabase.com/blog/why-full-app-embedding", async () => {
-        await setupEnterprise({
-          settingValues: { "enable-embedding": false },
-        });
-
         expect(
           screen.getByText("offer multi-tenant, self-service analytics"),
         ).toHaveProperty(
@@ -109,12 +86,33 @@ describe("[EE, no token] embedding settings", () => {
       });
     });
   });
-  describe("when the embedding is enabled", () => {
-    it("should allow going to static embedding settings page", async () => {
-      const { history } = await setupEnterprise({
-        settingValues: { "enable-embedding": true },
-      });
 
+  it("should link to quickstart for interactive embedding", async () => {
+    await setupEnterprise({
+      settingValues: {
+        "enable-embedding": false,
+        version: { tag: "v1.49.3" },
+      },
+    });
+    expect(getQuickStartLink()).toBeInTheDocument();
+    expect(getQuickStartLink()).toHaveProperty(
+      "href",
+      "https://www.metabase.com/docs/v0.49/embedding/interactive-embedding-quick-start-guide.html?utm_source=oss&utm_media=embed-settings",
+    );
+  });
+
+  describe("when the embedding is enabled", () => {
+    let history: Awaited<ReturnType<typeof setupEmbedding>>["history"];
+
+    beforeEach(async () => {
+      history = (
+        await setupEmbedding({
+          settingValues: { "enable-embedding": true },
+        })
+      ).history;
+    });
+
+    it("should allow going to static embedding settings page", async () => {
       await goToStaticEmbeddingSettings();
 
       const location = history.getCurrentLocation();
@@ -122,10 +120,6 @@ describe("[EE, no token] embedding settings", () => {
     });
 
     it("should not allow going to interactive embedding settings page", async () => {
-      const { history } = await setupEnterprise({
-        settingValues: { "enable-embedding": true },
-      });
-
       expect(
         screen.queryByRole("button", { name: "Configure" }),
       ).not.toBeInTheDocument();
