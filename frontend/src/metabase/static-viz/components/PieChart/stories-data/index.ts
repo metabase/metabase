@@ -28,13 +28,13 @@ import numericDimension from "./numeric-dimension.json";
 import numericSQLColumnCrashes28568 from "./numeric-sql-column-crashes-28568.json";
 import percentagesOnChartBooleanDimensionCrashes44085 from "./percentages-on-chart-boolean-dimension-crashes-44085.json";
 import relativeDateDimension from "./relative-date-dimension.json";
+import reorderedRenamedSlices from "./reordered-renamed-slices.json";
 import showPercentagesBoth from "./show-percentages-both.json";
 import showPercentagesOff from "./show-percentages-off.json";
 import showPercentagesOnChartDense from "./show-percentages-on-chart-dense.json";
 import showPercentagesOnChart from "./show-percentages-on-chart.json";
 import singleDimension from "./single-dimension.json";
 import smallMinimumSlicePercentage from "./small-min-slice-percentage.json";
-import sortedMetricCol from "./sorted-metric-col.json";
 import tinySlicesDisappear43766 from "./tiny-slices-disappear-43766.json";
 import truncatedTotal from "./truncated-total.json";
 import unaggregatedDimension from "./unaggregated-dimension.json";
@@ -46,6 +46,7 @@ export const data = {
   colors,
   hideLegend,
   hideTotal,
+  reorderedRenamedSlices,
   smallMinimumSlicePercentage,
   largeMinimumSlicePercentage,
   zeroMinimumSlicePercentage,
@@ -69,7 +70,6 @@ export const data = {
   unaggregatedDimension,
   singleDimension,
   longDimensionName,
-  sortedMetricCol,
   tinySlicesDisappear43766,
   missingCurrencyFormatting44086,
   missingCurrencyFormatting2,

@@ -47,7 +47,7 @@ describeWithSnowplow(
         // Snowplow
         expectGoodSnowplowEvent({
           event: "csv_upload_clicked",
-          source: "left_nav",
+          triggered_from: "left_nav",
         });
         expectGoodSnowplowEvent({
           event: testFile.valid ? "csv_upload_successful" : "csv_upload_failed",

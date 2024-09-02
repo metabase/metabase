@@ -1,0 +1,14 @@
+archived: false
+collection_id: p8Zq2ud7JlSoSBXdJWIaW
+created_at: '2024-08-28T14:31:56.93662Z'
+creator_id: ann@heart.band
+default: false
+description: null
+entity_id: PsHfXHhETFiTIRQODuYB8
+events: []
+icon: star
+name: Empty Timeline
+serdes/meta:
+- id: PsHfXHhETFiTIRQODuYB8
+  label: empty_timeline
+  model: Timeline

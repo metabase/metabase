@@ -77,7 +77,7 @@
   io.github.eerohele/pp                     {:git/tag "2024-01-04.60"           ; super fast pretty-printing library
                                              :git/sha "a428751"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.2.6"}              ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.2.10"}             ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1" #_ "must be 1.7.1"} ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
@@ -95,6 +95,7 @@
                                                           org.bouncycastle/bcpkix-jdk18on
                                                           org.bouncycastle/bcprov-jdk18on]}
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
+  methodical/methodical                     {:mvn/version "1.0.123"}            ; drop-in replacements for Clojure multimethods and adds several advanced features
   metosin/malli                             {:mvn/version "0.16.3"}             ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.1.0"}              ; NanoID generator for generating entity_ids
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
@@ -173,7 +174,10 @@
   potemkin/potemkin                         {:mvn/version "0.4.7"               ; utility macros & fns
                                              :exclusions  [riddley/riddley]}
   pretty/pretty                             {:mvn/version "1.0.5"}              ; protocol for defining how custom types should be pretty printed
-  redux/redux                               {:mvn/version "0.1.4"}              ; Utility functions for building and composing transducers
+  ;; Dependency below is our fork of redux - utility functions for building and composing transducers. The
+  ;; group/artifact name is the same as with the upstream so that it overrides the original dependency everywhere.
+  redux/redux                               {:git/url "https://github.com/metabase/redux"
+                                             :sha "4a37feaf817a2a6b5ef688c927f6fd4375964433"}
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
   ring/ring-core                            {:mvn/version "1.12.0"}             ; HTTP abstraction
   ring/ring-jetty-adapter                   {:mvn/version "1.12.0"              ; Jetty adapter
@@ -183,8 +187,8 @@
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere
-  weavejester/dependency                    {:mvn/version "0.2.1"}              ; Dependency graphs and topological sorting
-  }
+  weavejester/dependency                    {:mvn/version "0.2.1"}}             ; Dependency graphs and topological sorting
+
 
 
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -234,20 +238,18 @@
                                  {:mvn/version "0.3.0"}                     ; Enables easy memory measurement
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2024.03.13"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
+    clj-kondo/clj-kondo          {:mvn/version "2024.08.01"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
     djblue/portal                {:mvn/version "0.56.0"}                    ; ui for inspecting values
     hashp/hashp                  {:mvn/version "0.2.2"}                     ; debugging/spying utility
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
-    io.github.metabase/hawk      {:git/url "https://github.com/metabase/hawk"
-                                  :git/sha "ac3c663b22114d99303b8da88d982248da391780"}
+    io.github.metabase/hawk      {:mvn/version "1.0.0"}
     jonase/eastwood              {:mvn/version "1.4.2"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     lambdaisland/deep-diff2      {:mvn/version "2.11.216"}                  ; way better diffs
-    methodical/methodical        {:mvn/version "1.0.111"}                   ; drop-in replacements for Clojure multimethods and adds several advanced features
     org.clojure/algo.generic     {:mvn/version "1.0.1"}
     peridot/peridot              {:git/url "https://github.com/piranha/peridot.git"
                                   :sha "999d0a02425c906c35bace749654dc095ecf3e6a"} ; mocking Ring requests; waiting for upstream release of commit 0fc7c01 (explicit charset)
@@ -400,6 +402,71 @@
     "modules/drivers/vertica/test"]}
 
 ;;; Linters
+
+  ;; clojure -M:kondo --lint src test
+  ;;
+  ;; clojure -M:kondo --version
+  ;;
+  ;; clojure -M:kondo --copy-configs --dependencies --lint "$(clojure -A:dev -Spath)" --skip-lint --parallel
+  ;;
+  ;; Run Kondo from the JVM using the pinned version. Preferable to running the installed command since we can pin the
+  ;; version here which may be different from the version installed on your computer.
+  ;;
+  ;; Use this to only run Kondo against specific files.
+  :kondo
+  {:replace-deps
+   {clj-kondo/clj-kondo {:mvn/version "2024.08.01"}}
+
+   :main-opts
+   ["-m" "clj-kondo.main"]}
+
+  ;; clojure -M:kondo:kondo/all
+  ;;
+  ;; Like the command above but includes arguments so it lints everything.
+  :kondo/all
+  {:main-opts
+   ["-m" "clj-kondo.main"
+    ;; disabled for now since this seems to cause random failures -- see https://github.com/clj-kondo/clj-kondo/issues/2218
+    #_"--parallel"
+    ;; enable this if Kondo isn't working as expected or if LSP jump-to-definition is being fussy
+    #_"--debug"
+    "--lint"
+    "src"
+    "test"
+    "enterprise/backend/src"
+    "enterprise/backend/test"
+    "bin/build/src"
+    "bin/build/test"
+    "bin/lint-migrations-file/src"
+    "bin/lint-migrations-file/test"
+    "bin/release-list/src"
+    "bin/release-list/test"
+    "modules/drivers/athena/src"
+    "modules/drivers/athena/test"
+    "modules/drivers/bigquery-cloud-sdk/src"
+    "modules/drivers/bigquery-cloud-sdk/test"
+    "modules/drivers/druid-jdbc/src"
+    "modules/drivers/druid-jdbc/test"
+    "modules/drivers/druid/src"
+    "modules/drivers/druid/test"
+    "modules/drivers/mongo/src"
+    "modules/drivers/mongo/test"
+    "modules/drivers/oracle/src"
+    "modules/drivers/oracle/test"
+    "modules/drivers/presto-jdbc/src"
+    "modules/drivers/presto-jdbc/test"
+    "modules/drivers/redshift/src"
+    "modules/drivers/redshift/test"
+    "modules/drivers/snowflake/src"
+    "modules/drivers/snowflake/test"
+    "modules/drivers/sparksql/src"
+    "modules/drivers/sparksql/test"
+    "modules/drivers/sqlite/src"
+    "modules/drivers/sqlite/test"
+    "modules/drivers/sqlserver/src"
+    "modules/drivers/sqlserver/test"
+    "modules/drivers/vertica/src"
+    "modules/drivers/vertica/test"]}
 
   ;; clojure -M:ee:drivers:check
   ;;

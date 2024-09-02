@@ -49,7 +49,7 @@ import {
 } from "./DatabaseEditApp.styled";
 
 interface DatabaseEditAppProps {
-  database: Database;
+  database?: Database;
   params: { databaseId: DatabaseId };
   reset: () => void;
   initializeDatabase: (databaseId: DatabaseId) => void;
@@ -168,24 +168,28 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
                 loading={!database}
                 error={initializeError}
               >
-                <DatabaseEditContent>
-                  <DatabaseEditForm>
-                    <DatabaseForm
-                      initialValues={database}
-                      isAdvanced
-                      onSubmit={handleSubmit}
-                      setIsDirty={setIsDirty}
-                      autofocusFieldName={autofocusFieldName}
-                    />
-                  </DatabaseEditForm>
-                  <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
-                </DatabaseEditContent>
+                {editingExistingDatabase && database.is_attached_dwh ? (
+                  <div>{t`This database cannot be modified.`}</div>
+                ) : (
+                  <DatabaseEditContent>
+                    <DatabaseEditForm>
+                      <DatabaseForm
+                        initialValues={database}
+                        isAdvanced
+                        onSubmit={handleSubmit}
+                        setIsDirty={setIsDirty}
+                        autofocusFieldName={autofocusFieldName}
+                      />
+                    </DatabaseEditForm>
+                    <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
+                  </DatabaseEditContent>
+                )}
               </LoadingAndErrorWrapper>
             </div>
           </div>
         </ErrorBoundary>
 
-        {editingExistingDatabase && (
+        {editingExistingDatabase && !database.is_attached_dwh && (
           <Sidebar
             database={database}
             isAdmin={isAdmin}
