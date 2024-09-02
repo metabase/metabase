@@ -4,12 +4,11 @@
 //
 // The following cases are considered errors:
 //
-// 1. MetabaseSettings.learnUrl(string)
-// 2. useDocsUrl hook
-// 3. getDocsUrl selector from "metabase/selectors/settings"
-// 4. getLearnUrl selector from "metabase/selectors/settings"
-// 5. inline string "metabase.com/docs/"
-// 6. inline string "metabase.com/learn/"
+// 1. useDocsUrl hook
+// 2. getDocsUrl selector from "metabase/selectors/settings"
+// 3. getLearnUrl selector from "metabase/selectors/settings"
+// 4. inline string "metabase.com/docs/"
+// 5. inline string "metabase.com/learn/"
 //
 // If a link shouldn't be rendered conditionally e.g. it's only show for admins, or is rendered inside admin settings, you need to disable the rule with a reason.
 // e.g. "// eslint-disable-next-line no-unconditional-metabase-links-render -- This link only shows for admins."
@@ -50,7 +49,6 @@ module.exports = {
   },
 
   create(context) {
-    let metabaseSettings;
     let isGetDocsUrlSelectorImported = false;
     let isGetLearnUrlSelectorImported = false;
     let isGetShowMetabaseLinksSelectorImported = false;
@@ -89,17 +87,6 @@ module.exports = {
 
     return {
       ImportDeclaration(node) {
-        if (
-          getImportedModuleNode(node, {
-            isDefault: true,
-            source: "metabase/lib/settings",
-          })
-        ) {
-          metabaseSettings = getImportedModuleNode(node, {
-            isDefault: true,
-            source: "metabase/lib/settings",
-          });
-        }
         if (
           getImportedModuleNode(node, {
             named: "getDocsUrl",
@@ -165,20 +152,6 @@ module.exports = {
           !isGetShowMetabaseLinksSelectorImported &&
           node?.callee?.type === "Identifier" &&
           node?.callee?.name === "getLearnUrl"
-        ) {
-          context.report({
-            node,
-            message: ERROR_MESSAGE,
-          });
-        }
-
-        // call `MetabaseSettings.learnUrl`
-        if (
-          metabaseSettings?.references.some(
-            reference => reference.identifier === node?.callee?.object,
-          ) &&
-          !isGetShowMetabaseLinksSelectorImported &&
-          ["learnUrl", "docsUrl"].includes(node?.callee?.property?.name)
         ) {
           context.report({
             node,

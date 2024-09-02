@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import Banner from "metabase/components/Banner";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
-import MetabaseSettings from "metabase/lib/settings";
+import { getStoreUrl } from "metabase/selectors/settings";
 import type { TokenStatus } from "metabase-types/api";
 
 interface PaymentBannerProps {
@@ -19,7 +19,7 @@ export const PaymentBanner = ({ isAdmin, tokenStatus }: PaymentBannerProps) => {
           <ExternalLink
             key="payment-past-due"
             className={CS.link}
-            href={MetabaseSettings.storeUrl()}
+            href={getStoreUrl()}
           >
             {t`review your payment settings`}
           </ExternalLink>
@@ -33,7 +33,7 @@ export const PaymentBanner = ({ isAdmin, tokenStatus }: PaymentBannerProps) => {
           <ExternalLink
             key="payment-unpaid"
             className={CS.link}
-            href={MetabaseSettings.storeUrl()}
+            href={getStoreUrl()}
           >
             {t`Review your payment settings`}
           </ExternalLink>

@@ -26,13 +26,6 @@ const docsUrl = MetabaseSettings.docsUrl("permissions/data")`,
   },
   {
     code: `
-import MetabaseSettings from "metabase/lib/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-
-const docsUrl = MetabaseSettings.learnUrl("permissions/data")`,
-  },
-  {
-    code: `
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
@@ -112,15 +105,6 @@ const docsUrl = Settings.docsUrl("permissions/data")`,
 import MetabaseSettings from "metabase/lib/settings";
 
 const docsUrl = MetabaseSettings.docsUrl("permissions/data")`,
-    error:
-      /Metabase links must be rendered conditionally\.(.|\n)*Please import `getShowMetabaseLinks`(.|\n)*Or add comment to indicate the reason why this rule needs to be disabled/,
-  },
-  {
-    name: "Detect MetabaseSettings.learn()",
-    code: `
-import MetabaseSettings from "metabase/lib/settings";
-
-const docsUrl = MetabaseSettings.learnUrl("permissions/data")`,
     error:
       /Metabase links must be rendered conditionally\.(.|\n)*Please import `getShowMetabaseLinks`(.|\n)*Or add comment to indicate the reason why this rule needs to be disabled/,
   },

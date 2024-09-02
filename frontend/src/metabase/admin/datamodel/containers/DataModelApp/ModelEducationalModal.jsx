@@ -6,7 +6,7 @@ import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import MetabaseSettings from "metabase/lib/settings";
+import { getLearnUrl } from "metabase/selectors/settings";
 
 import {
   ButtonLink,
@@ -20,7 +20,7 @@ ModelEducationalModal.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-const EDUCATION_URL = MetabaseSettings.learnUrl("getting-started/models");
+const EDUCATION_URL = getLearnUrl("getting-started/models");
 
 export function ModelEducationalModal({ isOpen, onClose }) {
   return (

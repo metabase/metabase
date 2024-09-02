@@ -26,7 +26,6 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
 import { trackPageView } from "metabase/lib/analytics";
-import MetabaseSettings from "metabase/lib/settings";
 import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
 import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
@@ -62,10 +61,13 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
 } from "./route-guards";
+import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
 export const getRoutes = store => {
   const applicationName = getApplicationName(store.getState());
+  const hasUserSetup = getSetting(store.getState(), "has_user_setup");
+
   return (
     <Route title={applicationName} component={App}>
       {/* SETUP */}
@@ -73,7 +75,7 @@ export const getRoutes = store => {
         path="/setup"
         component={Setup}
         onEnter={(nextState, replace) => {
-          if (MetabaseSettings.hasUserSetup()) {
+          if (hasUserSetup) {
             replace("/");
           }
           trackPageView(location.pathname);

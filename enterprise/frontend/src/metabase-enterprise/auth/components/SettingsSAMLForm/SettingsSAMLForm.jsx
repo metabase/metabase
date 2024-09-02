@@ -9,7 +9,7 @@ import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { updateSamlSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
@@ -23,7 +23,6 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import MetabaseSettings from "metabase/lib/settings";
 import { Stack } from "metabase/ui";
 
 import {
@@ -72,11 +71,13 @@ const SettingsSAMLForm = ({ elements = [], settingValues = {}, onSubmit }) => {
     "people-and-groups/authenticating-with-saml",
   );
 
+  const siteUrl = useSetting("site-url");
+
   return (
     <FormProvider
       initialValues={{
         ...attributeValues,
-        [FAKE_ACS_URL_KEY]: getAcsCustomerUrl(),
+        [FAKE_ACS_URL_KEY]: `${siteUrl}/auth/sso`,
       }}
       onSubmit={handleSubmit}
       enableReinitialize
@@ -269,10 +270,6 @@ const getAttributeValues = (values, defaults) => {
       isDefaultable ? values[key] ?? defaults[key] : values[key],
     ]),
   );
-};
-
-const getAcsCustomerUrl = () => {
-  return `${MetabaseSettings.get("site-url")}/auth/sso`;
 };
 
 SettingsSAMLForm.propTypes = propTypes;

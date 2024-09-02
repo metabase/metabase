@@ -138,4 +138,26 @@ export function compareVersions(
   return 0;
 }
 
+export function newVersionAvailable({
+  currentVersion,
+  latestVersion,
+}: {
+  currentVersion: string;
+  latestVersion: string;
+}) {
+  const result = compareVersions(currentVersion, latestVersion);
+  return result != null && result < 0;
+}
+
+export function versionIsLatest({
+  currentVersion,
+  latestVersion,
+}: {
+  currentVersion: string;
+  latestVersion: string;
+}) {
+  const result = compareVersions(currentVersion, latestVersion);
+  return result != null && result >= 0;
+}
+
 export const isEEBuild = () => PLUGIN_IS_EE_BUILD.isEEBuild();

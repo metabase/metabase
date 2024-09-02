@@ -2,12 +2,12 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useSetting } from "metabase/common/hooks";
 import TokenField from "metabase/components/TokenField";
 import UserAvatar from "metabase/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import { isEmail } from "metabase/lib/email";
 import { recipientIsValid } from "metabase/lib/pulse";
-import MetabaseSettings from "metabase/lib/settings";
 import { Text } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
@@ -33,7 +33,7 @@ export const RecipientPicker = ({
   };
 
   const isValid = recipients.every(r => recipientIsValid(r));
-  const domains = MetabaseSettings.subscriptionAllowedDomains().join(", ");
+  const domains = useSetting("subscription-allowed-domains");
 
   return (
     <div>
@@ -68,7 +68,9 @@ export const RecipientPicker = ({
           updateOnInputBlur
         />
       </div>
-      {!isValid && <ErrorMessage>{invalidRecipientText(domains)}</ErrorMessage>}
+      {domains && !isValid && (
+        <ErrorMessage>{invalidRecipientText(domains)}</ErrorMessage>
+      )}
     </div>
   );
 };
