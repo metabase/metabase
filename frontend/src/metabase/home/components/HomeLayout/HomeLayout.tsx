@@ -22,21 +22,28 @@ export const HomeLayout = () => {
   const [selectedChatHistory, setSelectedChatHistory] = useState([]);
   const [selectedThreadId, setSelectedThreadId] = useState(null);
   const [selectedChatType, setSelectedChatType] = useState("default");
-  const [selectedChatHistoryType, setSelectedChatHistoryType] = useState("dataAgent");
+  const [selectedChatHistoryType, setSelectedChatHistoryType] =
+    useState("dataAgent");
   const [oldCardId, setOldCardId] = useState(null);
   const [insights, setInsights] = useState([]);
   const dispatch = useDispatch();
-  const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
-    const databases = data?.data;
-    useEffect(() => {
-        if (databases) {
-            const cubeDatabase = databases.find(database => database.is_cube === true);
-            if (cubeDatabase) {
-              dispatch(setDBInputValue(cubeDatabase.id as number));
-              dispatch(setCompanyName(cubeDatabase.company_name as string));
-            }
-        }
-    }, [databases]);
+  const {
+    data,
+    isLoading: dbLoading,
+    error: dbError,
+  } = useListDatabasesQuery();
+  const databases = data?.data;
+  useEffect(() => {
+    if (databases) {
+      const cubeDatabase = databases.find(
+        database => database.is_cube === true,
+      );
+      if (cubeDatabase) {
+        dispatch(setDBInputValue(cubeDatabase.id as number));
+        dispatch(setCompanyName(cubeDatabase.company_name as string));
+      }
+    }
+  }, [databases]);
 
   useEffect(() => {
     setInputValue("");
@@ -46,16 +53,16 @@ export const HomeLayout = () => {
   useEffect(() => {
     if (window.location.pathname === "/") {
       setSelectedChatType("default");
-      setSelectedChatHistoryType("dataAgent")
-      setInsights([])
+      setSelectedChatHistoryType("dataAgent");
+      setInsights([]);
     } else if (window.location.pathname === "/browse/insights") {
       setSelectedChatType("insights");
-      setSelectedChatHistoryType("getInsights")
-      setInsights(insights)
+      setSelectedChatHistoryType("getInsights");
+      setInsights(insights);
     } else if (window.location.pathname === "/browse/chat") {
       setSelectedChatType("default");
-      setSelectedChatHistoryType("dataAgent")
-      setInsights([])
+      setSelectedChatHistoryType("dataAgent");
+      setInsights([]);
     }
   }, [window.location.pathname]);
 
@@ -79,7 +86,7 @@ export const HomeLayout = () => {
         <LayoutRoot data-testid="home-page">
           <ContentContainer>
             <ChatGreeting chatType={selectedChatType} />
-            <HomeInitialOptions />
+            {/* <HomeInitialOptions /> REMOVED UNTIL FUNCTIONALITY IS COMPLETED*/}
           </ContentContainer>
           <ChatSection>
             <ChatPrompt

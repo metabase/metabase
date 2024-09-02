@@ -74,6 +74,7 @@ const BROWSE_CHAT = "/browse/chat";
 const BROWSE_SEMANTIC_LAYER = "/browse/semantic-layer";
 const BROWSE_LIBRARY = "/collection/2-library";
 const BROWSE_INSIGHTS = "/browse/insights";
+const BROWSE_SETTINGS = "/admin/settings/setup";
 
 function MainNavbarView({
   isAdmin,
@@ -249,35 +250,22 @@ function MainNavbarView({
               />*/}
             </ErrorBoundary>
           </SidebarSection>
-
-          {/*<SidebarSection>
-            <ErrorBoundary>
-              <BrowseNavSection
-                nonEntityItem={nonEntityItem}
-                onItemSelect={onItemSelect}
-                hasDataAccess={hasDataAccess}
-              />
-              {hasDataAccess && (
-                <>
-                  {!hasOwnDatabase && isAdmin && (
-                    <AddYourOwnDataLink
-                      icon="add"
-                      url={ADD_YOUR_OWN_DATA_URL}
-                      isSelected={nonEntityItem?.url?.startsWith(
-                        ADD_YOUR_OWN_DATA_URL,
-                      )}
-                      onClick={onItemSelect}
-                    >
-                      {t`Add your own data`}
-                    </AddYourOwnDataLink>
-                  )}
-                </>
-              )}
-            </ErrorBoundary>
-          </SidebarSection>
-          */}
         </div>
         <WhatsNewNotification />
+
+        <SidebarSection>
+          <ErrorBoundary>
+            <PaddedSidebarLink
+              icon="gear"
+              url={BROWSE_SETTINGS}
+              isSelected={nonEntityItem?.url?.startsWith(BROWSE_SETTINGS)}
+              onClick={onItemSelect}
+              aria-label={t`Settings`}
+            >
+              {t`Settings`}
+            </PaddedSidebarLink>
+          </ErrorBoundary>
+        </SidebarSection>
       </SidebarContentRoot>
     </ErrorBoundary>
   );
