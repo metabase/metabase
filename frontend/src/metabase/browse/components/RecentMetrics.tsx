@@ -27,6 +27,7 @@ export function RecentMetrics({
       aria-labelledby={skeleton ? undefined : headingId}
       mah={skeleton ? "11rem" : undefined}
       style={skeleton ? { overflow: "hidden" } : undefined}
+      data-testid="recent-metric"
     >
       <Text
         id={skeleton ? undefined : headingId}

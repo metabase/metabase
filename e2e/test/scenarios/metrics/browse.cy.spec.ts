@@ -13,7 +13,8 @@ import {
   restore,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, ACCOUNTS_ID, ACCOUNTS } =
+  SAMPLE_DATABASE;
 
 type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
   name: string;
@@ -71,17 +72,115 @@ const PRODUCTS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
   display: "scalar",
 };
 
+const PRODUCTS_TIMESERIES_METRIC: StructuredQuestionDetailsWithName = {
+  name: "Count of products over time",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "month" },
+      ],
+    ],
+  },
+  display: "line",
+};
+
+const PRODUCTS_BY_CATEGORY_METRIC: StructuredQuestionDetailsWithName = {
+  name: "Count of products by category",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["count"]],
+    breakout: [["field", PRODUCTS.CATEGORY, null]],
+  },
+};
+
+const ORDERS_COUNT_BY_PRODUCT_METRIC: StructuredQuestionDetailsWithName = {
+  name: "Count of orders by product",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [["field", ORDERS.PRODUCT_ID, null]],
+  },
+};
+
+const ACCOUNTS_TIMESERIES_METRIC: StructuredQuestionDetailsWithName = {
+  name: "Count of accounts by day",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": ACCOUNTS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        ACCOUNTS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "day" },
+      ],
+    ],
+  },
+  display: "line",
+};
+
+const ACCOUNTS_NON_TIME_METRIC: StructuredQuestionDetailsWithName = {
+  name: "Count of accounts by city",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": ACCOUNTS_ID,
+    aggregation: [["count"]],
+    breakout: [["field", ACCOUNTS.COUNTRY, null]],
+  },
+  display: "line",
+};
+
+const ACCOUNTS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
+  name: "Count of accounts",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": ACCOUNTS_ID,
+    aggregation: [["count"]],
+    breakout: [],
+  },
+  display: "line",
+};
+
 const ALL_METRICS = [
   ORDERS_SCALAR_METRIC,
   ORDERS_SCALAR_MODEL_METRIC,
   ORDERS_TIMESERIES_METRIC,
   PRODUCTS_SCALAR_METRIC,
+  PRODUCTS_TIMESERIES_METRIC,
+  PRODUCTS_BY_CATEGORY_METRIC,
+  ORDERS_COUNT_BY_PRODUCT_METRIC,
+  ACCOUNTS_TIMESERIES_METRIC,
+  ACCOUNTS_NON_TIME_METRIC,
+  ACCOUNTS_SCALAR_METRIC,
 ];
 
 function createMetrics(
   metrics: StructuredQuestionDetailsWithName[] = ALL_METRICS,
 ) {
-  metrics.forEach(metric => createQuestion(metric));
+  return metrics.reduce(
+    (acc: Cypress.Chainable, metric: StructuredQuestionDetailsWithName) => {
+      return acc.then(ids => {
+        // Wrap each id so we can return a list of all ids
+        return createQuestion(metric, {
+          wrapId: true,
+        }).then(res => [...ids, res.body.id]);
+      });
+    },
+    cy.wrap([]),
+  );
 }
 
 function metricsTable() {
@@ -94,6 +193,10 @@ function findMetric(name: string) {
 
 function getMetricsTableItem(index: number) {
   return metricsTable().findAllByTestId("metric-name").eq(index);
+}
+
+function recentMetric(name: string) {
+  return cy.findByTestId("recent-metric").contains(name);
 }
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -202,7 +305,7 @@ describe("scenarios > browse > metrics", () => {
 
     it("should be possible to sort the metrics", () => {
       createMetrics(
-        ALL_METRICS.map((metric, index) => ({
+        ALL_METRICS.slice(0, 4).map((metric, index) => ({
           ...metric,
           name: `Metric ${alphabet[index]}`,
           description: `Description ${alphabet[25 - index]}`,
@@ -285,6 +388,46 @@ describe("scenarios > browse > metrics", () => {
 
       metricsTable().findByLabelText("Metric options").click();
       popover().findByText("Move to trash").should("not.exist");
+    });
+  });
+
+  describe("recent metrics", () => {
+    it("should render recent metrics when there are enough metrics", () => {
+      cy.signInAsAdmin();
+      createMetrics(ALL_METRICS).then(ids => {
+        ids.slice(0, 3).forEach((id: number) => {
+          // Request the metric to make it show up in recents
+          cy.request(`/api/card/${id}`);
+        });
+      });
+
+      cy.visit("/browse/metrics");
+      main().findByText("Recents").should("be.visible");
+      recentMetric(ALL_METRICS[0].name).should("be.visible");
+      recentMetric(ALL_METRICS[1].name).should("be.visible");
+      recentMetric(ALL_METRICS[2].name).should("be.visible");
+      recentMetric(ALL_METRICS[3].name).should("not.exist");
+    });
+
+    it("should not render recent metrics when there no recent metrics", () => {
+      cy.signInAsAdmin();
+      createMetrics(ALL_METRICS);
+
+      cy.visit("/browse/metrics");
+      main().findByText("Recents").should("not.exist");
+    });
+
+    it("should not render recent metrics when there are not enough metrics", () => {
+      cy.signInAsAdmin();
+      createMetrics(ALL_METRICS.slice(0, 4)).then(ids => {
+        ids.slice(0, 3).forEach((id: number) => {
+          // Request the metric to make it show up in recents
+          cy.request(`/api/card/${id}`);
+        });
+      });
+
+      cy.visit("/browse/metrics");
+      main().findByText("Recents").should("not.exist");
     });
   });
 });
