@@ -1,4 +1,6 @@
-import { act, screen } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+
+import { act, screen, within } from "__support__/ui";
 
 import type { SetupOpts } from "./setup";
 import {
@@ -52,6 +54,42 @@ describe("[EE, no token] embedding settings", () => {
           "href",
           "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_content=embed-settings&source_plan=oss",
         );
+      });
+    });
+
+    describe("embedding SDK", () => {
+      it("should show info about embedding SDK", async () => {
+        const withinEmbeddingSdkCard = within(
+          screen.getByRole("article", {
+            name: "Embedding SDK for React",
+          }),
+        );
+
+        expect(
+          withinEmbeddingSdkCard.getByRole("heading", {
+            name: "Embedding SDK for React",
+          }),
+        ).toBeInTheDocument();
+        expect(
+          withinEmbeddingSdkCard.getByText(
+            /Interactive embedding with full, granular control./,
+          ),
+        ).toBeInTheDocument();
+      });
+
+      it("should allow access to the embedding SDK settings page", async () => {
+        // Go to embedding SDK settings page
+        await userEvent.click(
+          within(
+            screen.getByRole("article", {
+              name: "Embedding SDK for React",
+            }),
+          ).getByRole("button", { name: "Try it out" }),
+        );
+
+        expect(
+          screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
+        ).toBeDisabled();
       });
     });
 
@@ -117,6 +155,42 @@ describe("[EE, no token] embedding settings", () => {
 
       const location = history.getCurrentLocation();
       expect(location.pathname).toEqual(staticEmbeddingSettingsUrl);
+    });
+
+    describe("embedding SDK", () => {
+      it("should show info about embedding SDK", async () => {
+        const withinEmbeddingSdkCard = within(
+          screen.getByRole("article", {
+            name: "Embedding SDK for React",
+          }),
+        );
+
+        expect(
+          withinEmbeddingSdkCard.getByRole("heading", {
+            name: "Embedding SDK for React",
+          }),
+        ).toBeInTheDocument();
+        expect(
+          withinEmbeddingSdkCard.getByText(
+            /Interactive embedding with full, granular control./,
+          ),
+        ).toBeInTheDocument();
+      });
+
+      it("should allow access to the embedding SDK settings page", async () => {
+        // Go to embedding SDK settings page
+        await userEvent.click(
+          within(
+            screen.getByRole("article", {
+              name: "Embedding SDK for React",
+            }),
+          ).getByRole("button", { name: "Try it out" }),
+        );
+
+        expect(
+          screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
+        ).toBeDisabled();
+      });
     });
 
     it("should not allow going to interactive embedding settings page", async () => {
