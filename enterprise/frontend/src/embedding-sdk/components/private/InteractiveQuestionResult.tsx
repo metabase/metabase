@@ -9,7 +9,7 @@ import {
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Group, Stack } from "metabase/ui";
 
-import { InteractiveQuestion } from "../public";
+import { InteractiveQuestion } from "../public/InteractiveQuestion";
 
 import { useInteractiveQuestionContext } from "./InteractiveQuestion/context";
 
