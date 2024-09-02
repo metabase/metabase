@@ -83,6 +83,6 @@
                                      (remove terminal-ids))
                                edges)
         degrees (node-degrees intermediate-ids tree)
-        redundant-nodes (into #{} (keep (fn [[n r]] (when (< r 2) n))) degrees)]
+        redundant-nodes (into #{} (keep (fn [[n d]] (when (< d 2) n))) degrees)]
     ;; Return the tree with edges incident to redundant nodes removed.
     (into [] (remove #(some redundant-nodes (edge-nodes %))) tree)))
