@@ -1849,7 +1849,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
-        (with-uploads-enabled!
+        (with-uploads-enabled
           (testing "Append should handle new non-ascii columns being added in the latest CSV"
             (with-upload-table! [table (create-upload-table!)]
               (column-display-names-for-table table)
