@@ -1332,7 +1332,7 @@
            (not (uuid? (->honeysql driver arg)))
              ;; Check for inlined values
            (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
-    [::cast field "varchar"]
+    [::cast field "varchar(36)"]
     field))
 
 (mu/defn- maybe-cast-uuid-for-text-compare
@@ -1340,7 +1340,7 @@
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
   [field]
   (if (uuid-field? field)
-    [::cast field "varchar"]
+    [::cast field "varchar(36)"]
     field))
 
 (defmethod ->honeysql [:sql ::cast]
