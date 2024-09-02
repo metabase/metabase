@@ -394,15 +394,15 @@
 
 (defn- set-display-names!
   [table-id field->display-name]
-  (let [field-names    (map (comp name key) field->display-name)
+  (let [field-names    (map (comp u/lower-case-en name key) field->display-name)
         case-statement (into [:case]
                              (mapcat identity)
                              (for [[n display-name] field->display-name]
-                               [[:= :name (name n)] display-name]))]
+                               [[:= [:lower :name] [:lower (name n)]] display-name]))]
     (t2/update! :model/Field
                 [:and
                  [:= :table_id table-id]
-                 [:in :name field-names]
+                 [:in [:lower :name] field-names]
                  ;; We don't want to replace display names that have been set manually.
                  [:= [:lower :name] [:lower :display_name]]]
                 {:display_name case-statement})))
