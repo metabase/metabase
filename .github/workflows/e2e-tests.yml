@@ -346,4 +346,5 @@ jobs:
           # export URL
           # echo $URL
           # echo "::set-output name=url::$URL"
+          cat ${FOLDER}/cypress-test-report.html
           aws s3 cp ${FOLDER}/cypress-test-report.html s3://$BUCKET/11/$TARGET_FOLDER
