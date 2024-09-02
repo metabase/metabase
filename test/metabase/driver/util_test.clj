@@ -199,14 +199,14 @@
              :type         "select"}
             {:name        "my-schema-filters-patterns"
              :placeholder "E.x. public,auth*"
-             :description "Comma separated names of schemas that should appear in Metabase"
+             :description "Comma separated names of schemas that should appear in Omniloy"
              :helper-text "You can use patterns like \"auth*\" to match multiple schemas"
              :type        "text"
              :visible-if  {:my-schema-filters-type "inclusion"}
              :required    true}
             {:name        "my-schema-filters-patterns"
              :placeholder "E.x. public,auth*"
-             :description "Comma separated names of schemas that should NOT appear in Metabase"
+             :description "Comma separated names of schemas that should NOT appear in Omniloy"
              :helper-text "You can use patterns like \"auth*\" to match multiple schemas"
              :type        "text"
              :visible-if  {:my-schema-filters-type "exclusion"}

@@ -126,7 +126,7 @@
   :default    (if config/is-test?
                 3000
                 10000)
-  :doc "Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
+  :doc "Timeout in milliseconds for connecting to databases, both Omniloy application database and data connections.
         In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value
         as the connections via tunnels have more overhead than connections without.")
 
@@ -142,9 +142,9 @@
   :default    (if config/is-prod?
                 20
                 3)
-  :doc "Timeout in minutes for databases query execution, both Metabase application database and data connections.
+  :doc "Timeout in minutes for databases query execution, both Omnilot application database and data connections.
   If you have long-running queries, you might consider increasing this value.
-  Adjusting the timeout does not impact Metabase’s frontend.
+  Adjusting the timeout does not impact Omniloy’s frontend.
   Please be aware that other services (like Nginx) may still drop long-running queries.")
 
 (defn- connection-error? [^Throwable throwable]
@@ -230,7 +230,7 @@
 (def supports?-timeout-ms
   "The maximum time in milliseconds that [[supports?]] should take to execute. This should be enough for a driver to
    query the database and check if it supports a feature under normal circumstances, but not so high that it delays
-   critical metabase features that use this check."
+   critical Omniloy features that use this check."
   5000)
 
 (def ^:dynamic *memoize-supports?*
@@ -375,14 +375,14 @@
      {:name (str prop-name "-patterns")
       :type "text"
       :placeholder "E.x. public,auth*"
-      :description (trs "Comma separated names of {0} that should appear in Metabase" (u/lower-case-en disp-name))
+      :description (trs "Comma separated names of {0} that should appear in Omniloy" (u/lower-case-en disp-name))
       :visible-if  {(keyword type-prop-nm) "inclusion"}
       :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (u/lower-case-en disp-name))
       :required true}
      {:name (str prop-name "-patterns")
       :type "text"
       :placeholder "E.x. public,auth*"
-      :description (trs "Comma separated names of {0} that should NOT appear in Metabase" (u/lower-case-en disp-name))
+      :description (trs "Comma separated names of {0} that should NOT appear in Omniloy" (u/lower-case-en disp-name))
       :visible-if  {(keyword type-prop-nm) "exclusion"}
       :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (u/lower-case-en disp-name))
       :required true}]))
