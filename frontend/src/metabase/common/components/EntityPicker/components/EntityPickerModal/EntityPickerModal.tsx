@@ -1,5 +1,5 @@
 import { useWindowEvent } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -10,18 +10,29 @@ import { Modal } from "metabase/ui";
 import type {
   RecentContexts,
   RecentItem,
-  SearchModel,
   SearchRequest,
   SearchResult,
   SearchResultId,
 } from "metabase-types/api";
 
+import { RECENTS_TAB_ID, SEARCH_TAB_ID } from "../../constants";
 import type {
   EntityPickerOptions,
-  EntityTab,
+  EntityPickerTab,
+  EntityPickerTabId,
+  TabFolderState,
   TypeWithModel,
 } from "../../types";
-import { EntityPickerSearchInput } from "../EntityPickerSearch/EntityPickerSearch";
+import {
+  computeInitialTabId,
+  getFolderModels,
+  getSearchModels,
+  getSearchTabText,
+} from "../../utils";
+import {
+  EntityPickerSearchInput,
+  EntityPickerSearchResults,
+} from "../EntityPickerSearch";
 import { RecentsTab } from "../RecentsTab";
 
 import { ButtonBar } from "./ButtonBar";
@@ -50,15 +61,21 @@ export const defaultOptions: EntityPickerModalOptions = {
 // needs to be above popovers and bulk actions
 export const ENTITY_PICKER_Z_INDEX = BULK_ACTIONS_Z_INDEX;
 
-export interface EntityPickerModalProps<Model extends string, Item> {
+export const DEFAULT_RECENTS_CONTEXT: RecentContexts[] = [
+  "selections",
+  "views",
+];
+
+export interface EntityPickerModalProps<
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+> {
   title?: string;
   selectedItem: Item | null;
   initialValue?: Partial<Item>;
-  onConfirm?: () => void;
-  onItemSelect: (item: Item) => void;
   canSelectItem: boolean;
-  onClose: () => void;
-  tabs: EntityTab<Model>[];
+  tabs: EntityPickerTab<Id, Model, Item>[];
   options?: Partial<EntityPickerOptions>;
   searchResultFilter?: (results: SearchResult[]) => SearchResult[];
   recentFilter?: (results: RecentItem[]) => RecentItem[];
@@ -70,20 +87,20 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   defaultToRecentTab?: boolean;
   /**recentsContext: Defaults to returning recents based off both views and selections. Can be overridden by props */
   recentsContext?: RecentContexts[];
+  onClose: () => void;
+  onConfirm?: () => void;
+  onItemSelect: (item: Item) => void;
 }
 
 export function EntityPickerModal<
   Id extends SearchResultId,
-  Model extends SearchModel,
+  Model extends string,
   Item extends TypeWithModel<Id, Model>,
 >({
   title = t`Choose an item`,
-  onItemSelect,
   canSelectItem,
-  onConfirm,
   selectedItem,
   initialValue,
-  onClose,
   tabs: passedTabs,
   options,
   actionButtons = [],
@@ -92,8 +109,11 @@ export function EntityPickerModal<
   trapFocus = true,
   searchParams,
   defaultToRecentTab = true,
-  recentsContext = ["selections", "views"],
-}: EntityPickerModalProps<Model, Item>) {
+  recentsContext = DEFAULT_RECENTS_CONTEXT,
+  onClose,
+  onConfirm,
+  onItemSelect,
+}: EntityPickerModalProps<Id, Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
     useListRecentsQuery(
@@ -106,10 +126,6 @@ export function EntityPickerModal<
     null,
   );
 
-  const [showActionButtons, setShowActionButtons] = useState<boolean>(
-    !!actionButtons.length,
-  );
-
   const hydratedOptions = useMemo(
     () => ({ ...defaultOptions, ...options }),
     [options],
@@ -119,53 +135,120 @@ export function EntityPickerModal<
 
   const { open } = useModalOpen();
 
-  const tabModels = useMemo(
-    () => passedTabs.map(t => t.model).filter(Boolean),
-    [passedTabs],
-  );
+  const searchModels = useMemo(() => getSearchModels(passedTabs), [passedTabs]);
+  const folderModels = useMemo(() => getFolderModels(passedTabs), [passedTabs]);
 
   const filteredRecents = useMemo(() => {
-    const relevantModelRecents =
-      recentItems?.filter(recentItem =>
-        tabModels.includes(recentItem.model as Model),
-      ) || [];
+    if (!recentItems) {
+      return [];
+    }
+
+    const relevantModelRecents = recentItems.filter(recentItem => {
+      return searchModels.includes(recentItem.model);
+    });
 
     return recentFilter
       ? recentFilter(relevantModelRecents)
       : relevantModelRecents;
-  }, [recentItems, tabModels, recentFilter]);
+  }, [recentItems, searchModels, recentFilter]);
 
-  const tabs: EntityTab<Model | "recents">[] = useMemo(
-    () =>
-      hydratedOptions.hasRecents && filteredRecents.length > 0
-        ? [
-            {
-              model: "recents",
-              displayName: t`Recents`,
-              icon: "clock",
-              element: (
-                <RecentsTab
-                  isLoading={isLoadingRecentItems}
-                  recentItems={filteredRecents}
-                  onItemSelect={onItemSelect}
-                  selectedItem={selectedItem}
-                />
-              ),
-            },
-            ...passedTabs,
-          ]
-        : passedTabs,
-    [
-      selectedItem,
-      onItemSelect,
-      passedTabs,
-      isLoadingRecentItems,
-      hydratedOptions.hasRecents,
-      filteredRecents,
-    ],
+  const tabs: EntityPickerTab<Id, Model, Item>[] = useMemo(() => {
+    const computedTabs: EntityPickerTab<Id, Model, Item>[] = [];
+    const hasRecentsTab =
+      hydratedOptions.hasRecents && filteredRecents.length > 0;
+    const hasSearchTab = !!searchQuery;
+    // This is to prevent different tab being initially open and then flickering back
+    // to recents tab once recents have loaded (due to computeInitialTab)
+    const shouldOptimisticallyAddRecentsTabWhileLoading =
+      defaultToRecentTab && isLoadingRecentItems;
+
+    if (hasRecentsTab || shouldOptimisticallyAddRecentsTabWhileLoading) {
+      computedTabs.push({
+        id: RECENTS_TAB_ID,
+        model: null,
+        folderModels: [],
+        displayName: t`Recents`,
+        icon: "clock",
+        render: ({ onItemSelect }) => (
+          <RecentsTab
+            isLoading={isLoadingRecentItems}
+            recentItems={filteredRecents}
+            onItemSelect={onItemSelect}
+            selectedItem={selectedItem}
+          />
+        ),
+      });
+    }
+
+    computedTabs.push(...passedTabs);
+
+    if (hasSearchTab) {
+      computedTabs.push({
+        id: SEARCH_TAB_ID,
+        model: null,
+        folderModels: [],
+        displayName: getSearchTabText(searchResults, searchQuery),
+        icon: "search",
+        render: ({ onItemSelect }) => (
+          <EntityPickerSearchResults
+            searchResults={searchResults}
+            onItemSelect={onItemSelect}
+            selectedItem={selectedItem}
+          />
+        ),
+      });
+    }
+
+    return computedTabs;
+  }, [
+    defaultToRecentTab,
+    filteredRecents,
+    hydratedOptions.hasRecents,
+    isLoadingRecentItems,
+    passedTabs,
+    searchQuery,
+    searchResults,
+    selectedItem,
+  ]);
+
+  const hasTabs = tabs.length > 1;
+  const initialTabId = useMemo(
+    () => computeInitialTabId({ initialValue, tabs, defaultToRecentTab }),
+    [initialValue, tabs, defaultToRecentTab],
+  );
+  const [selectedTabId, setSelectedTabId] =
+    useState<EntityPickerTabId>(initialTabId);
+  // we don't want to show bonus actions on recents or search tabs
+  const showActionButtons = ![SEARCH_TAB_ID, RECENTS_TAB_ID].includes(
+    selectedTabId,
+  );
+  const [tabFolderState, setTabFolderState] = useState<TabFolderState>({});
+  const _selectedFolder = tabFolderState[selectedTabId]; // TODO: use me
+
+  const handleSelectItem = useCallback(
+    (item: Item) => {
+      const isFolder = folderModels.includes(item.model);
+
+      if (isFolder) {
+        setTabFolderState(state => ({
+          ...state,
+          [selectedTabId]: item,
+        }));
+      }
+
+      onItemSelect(item);
+    },
+    [folderModels, selectedTabId, onItemSelect],
   );
 
-  const hasTabs = tabs.length > 1 || searchQuery;
+  useEffect(() => {
+    // when the searchQuery changes, switch to the search tab
+    if (searchQuery) {
+      setSelectedTabId(SEARCH_TAB_ID);
+    } else {
+      setSelectedTabId(initialTabId);
+    }
+  }, [searchQuery, initialTabId]);
 
   useWindowEvent(
     "keydown",
@@ -208,7 +291,7 @@ export function EntityPickerModal<
             <Modal.Title lh="2.5rem">{title}</Modal.Title>
             {hydratedOptions.showSearch && (
               <EntityPickerSearchInput
-                models={tabModels}
+                models={searchModels}
                 setSearchResults={setSearchResults}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -223,17 +306,15 @@ export function EntityPickerModal<
           <ErrorBoundary>
             {hasTabs ? (
               <TabsView
+                selectedTabId={selectedTabId}
                 tabs={tabs}
-                onItemSelect={onItemSelect}
-                searchQuery={searchQuery}
-                searchResults={searchResults}
-                selectedItem={selectedItem}
-                initialValue={initialValue}
-                defaultToRecentTab={defaultToRecentTab}
-                setShowActionButtons={setShowActionButtons}
+                onItemSelect={handleSelectItem}
+                onTabChange={setSelectedTabId}
               />
             ) : (
-              <SinglePickerView>{tabs[0].element}</SinglePickerView>
+              <SinglePickerView>
+                {tabs[0].render({ onItemSelect: handleSelectItem })}
+              </SinglePickerView>
             )}
             {!!hydratedOptions.hasConfirmButtons && onConfirm && (
               <ButtonBar

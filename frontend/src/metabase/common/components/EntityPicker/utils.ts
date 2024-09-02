@@ -1,8 +1,17 @@
+import { c, msgid } from "ttag";
+
 import { color } from "metabase/lib/colors";
 import type { ObjectWithModel } from "metabase/lib/icon";
 import { getIcon } from "metabase/lib/icon";
+import {
+  SEARCH_MODELS,
+  type SearchModel,
+  type SearchResult,
+  type SearchResultId,
+} from "metabase-types/api";
 
-import type { TypeWithModel } from "./types";
+import { RECENTS_TAB_ID } from "./constants";
+import type { EntityPickerTab, TypeWithModel } from "./types";
 
 export const getEntityPickerIcon = <Id, Model extends string>(
   item: TypeWithModel<Id, Model>,
@@ -35,4 +44,81 @@ export const isSelectedItem = <Id, Model extends string>(
     item.id === selectedItem.id &&
     item.model === selectedItem.model
   );
+};
+
+export const computeInitialTabId = <
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>({
+  initialValue,
+  tabs,
+  defaultToRecentTab,
+}: {
+  initialValue?: Partial<Item>;
+  tabs: EntityPickerTab<Id, Model, Item>[];
+  defaultToRecentTab: boolean;
+}): string => {
+  const hasRecents = tabs.some(tab => tab.id === RECENTS_TAB_ID);
+
+  if (hasRecents && defaultToRecentTab) {
+    return RECENTS_TAB_ID;
+  }
+
+  const initialValueTab =
+    initialValue?.model && tabs.find(tab => tab.model === initialValue.model);
+
+  if (initialValueTab) {
+    return initialValueTab.id;
+  }
+
+  return tabs[0].id;
+};
+
+const emptySearchResultTranslationContext = c(
+  "the title of a ui tab that contains search results",
+);
+const searchResultTranslationContext = c(
+  "the title of a ui tab that contains search results where {0} is the number of search results and {1} is the user-supplied search query.",
+);
+
+export function getSearchTabText(
+  searchResults: SearchResult[] | null,
+  searchQuery: string,
+): string {
+  if (!searchResults || !searchResults.length) {
+    return emptySearchResultTranslationContext.t`Search results`;
+  }
+
+  return searchResultTranslationContext.ngettext(
+    msgid`${searchResults.length} result for "${searchQuery.trim()}"`,
+    `${searchResults.length} results for "${searchQuery.trim()}"`,
+    searchResults.length,
+  );
+}
+
+export const getSearchModels = <
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>(
+  tabs: EntityPickerTab<Id, Model, Item>[],
+): SearchModel[] => {
+  return tabs.flatMap(({ model }) => {
+    return model && isSearchModel(model) ? [model] : [];
+  });
+};
+
+export const getFolderModels = <
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>(
+  tabs: EntityPickerTab<Id, Model, Item>[],
+): Model[] => {
+  return tabs.flatMap(({ folderModels }) => folderModels);
+};
+
+const isSearchModel = (model: string): model is SearchModel => {
+  return SEARCH_MODELS.some(searchModel => searchModel === model);
 };

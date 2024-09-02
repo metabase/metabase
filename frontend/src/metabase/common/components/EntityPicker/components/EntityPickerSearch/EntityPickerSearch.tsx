@@ -7,7 +7,7 @@ import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import { trackSearchClick } from "metabase/search/analytics";
-import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
+import { Box, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import type {
   SearchModel,
   SearchRequest,
@@ -18,8 +18,6 @@ import type {
 import type { TypeWithModel } from "../../types";
 import { DelayedLoadingSpinner } from "../LoadingSpinner";
 import { ChunkyList, ResultItem } from "../ResultItem";
-
-import { getSearchTabText } from "./utils";
 
 const defaultSearchFilter = (results: SearchResult[]) => results;
 
@@ -131,17 +129,3 @@ export const EntityPickerSearchResults = <
     </Box>
   );
 };
-
-export const EntityPickerSearchTab = ({
-  searchResults,
-  searchQuery,
-  onClick,
-}: {
-  searchResults: SearchResult[] | null;
-  searchQuery: string;
-  onClick: () => void;
-}) => (
-  <Tabs.Tab value="search" icon={<Icon name="search" />} onClick={onClick}>
-    {getSearchTabText(searchResults, searchQuery)}
-  </Tabs.Tab>
-);

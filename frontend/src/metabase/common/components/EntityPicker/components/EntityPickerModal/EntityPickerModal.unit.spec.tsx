@@ -18,26 +18,29 @@ import {
   createMockSearchResults,
 } from "metabase-types/api/mocks";
 
-import type { EntityTab, TypeWithModel } from "../../types";
+import type { EntityPickerTab, TypeWithModel } from "../../types";
 
 import type { EntityPickerModalOptions } from "./EntityPickerModal";
 import { EntityPickerModal } from "./EntityPickerModal";
 
-type SampleModelType = "card" | "table";
+type SampleId = number;
+type SampleModel = "card" | "table" | "collection";
+type SampleItem = TypeWithModel<SampleId, SampleModel>;
+type SampleTab = EntityPickerTab<SampleId, SampleModel, SampleItem>;
 
 interface SetupOpts {
   title?: string;
   onItemSelect?: () => void;
   onClose?: () => void;
   onConfirm?: () => void;
-  tabs?: EntityTab<SampleModelType>[];
+  tabs?: SampleTab[];
   options?: EntityPickerModalOptions;
-  selectedItem?: null | TypeWithModel<number, SampleModelType>;
+  selectedItem?: SampleItem | null;
   actionButtons?: JSX.Element[];
   recentFilter?: (item: RecentItem[]) => RecentItem[];
   recentItems?: RecentItem[];
   defaultToRecentTab?: boolean;
-  initialValue?: { model: SampleModelType };
+  initialValue?: { model: SampleModel };
   searchDelay?: number;
 }
 
@@ -45,18 +48,22 @@ const TestPicker = ({ name }: { name: string }) => (
   <p>{`Test picker ${name}`}</p>
 );
 
-const TEST_CARD_TAB: EntityTab<SampleModelType> = {
+const TEST_CARD_TAB: SampleTab = {
+  id: "cards-tab",
   icon: "audit",
   displayName: "All the foo",
   model: "card",
-  element: <TestPicker name="foo" />,
+  folderModels: ["collection" as const],
+  render: () => <TestPicker name="foo" />,
 };
 
-const TEST_TABLE_TAB: EntityTab<SampleModelType> = {
+const TEST_TABLE_TAB: SampleTab = {
+  id: "tables-tab",
   icon: "audit",
   displayName: "All the bar",
   model: "table",
-  element: <TestPicker name="bar" />,
+  folderModels: ["collection" as const],
+  render: () => <TestPicker name="bar" />,
 };
 
 const mockSearchResults = createMockSearchResults({
@@ -136,15 +143,7 @@ describe("EntityPickerModal", () => {
 
   it("should show a tab list when more than 1 tab is supplied", async () => {
     setup({
-      tabs: [
-        TEST_CARD_TAB,
-        {
-          icon: "folder",
-          displayName: "All the bar",
-          model: "table",
-          element: <TestPicker name="bar" />,
-        },
-      ],
+      tabs: [TEST_CARD_TAB, TEST_TABLE_TAB],
     });
 
     const tabList = await screen.findByRole("tablist");

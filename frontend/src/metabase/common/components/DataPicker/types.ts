@@ -65,16 +65,15 @@ export type DataPickerValue =
   | ModelItem
   | MetricItem;
 
-export type NotebookDataPickerFolderItem =
-  | CollectionItem
-  | DatabaseItem
-  | SchemaItem;
+export type DataPickerFolderItem = CollectionItem | DatabaseItem | SchemaItem;
 
-export type NotebookDataPickerValueItem =
+export type DataPickerValueItem =
   | TableItem
   | QuestionItem
   | ModelItem
   | MetricItem;
+
+export type DataPickerItem = DataPickerFolderItem | DataPickerValueItem;
 
 export type DataPickerModalOptions = EntityPickerModalOptions &
   QuestionPickerOptions;

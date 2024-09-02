@@ -6,28 +6,29 @@ import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-
 import type {
   CollectionItemModel,
   DatabaseId,
+  RecentContexts,
   RecentItem,
   TableId,
 } from "metabase-types/api";
 
-import type { EntityTab } from "../../EntityPicker";
+import type { EntityPickerTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
-import type { QuestionPickerItem } from "../../QuestionPicker";
 import { QuestionPicker } from "../../QuestionPicker";
 import { useAvailableData } from "../hooks";
 import type {
+  DataPickerItem,
   DataPickerModalOptions,
   DataPickerValue,
-  NotebookDataPickerValueItem,
 } from "../types";
 import {
+  castQuestionPickerItemToDataPickerItem,
   createShouldShowItem,
   isMetricItem,
   isModelItem,
   isQuestionItem,
   isTableItem,
-  isValidValueItem,
+  isValueItem,
 } from "../utils";
 
 import { TablePicker } from "./TablePicker";
@@ -49,6 +50,8 @@ const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["card"];
 const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
 
 const METRIC_PICKER_MODELS: CollectionItemModel[] = ["metric"];
+
+const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
 
 const options: DataPickerModalOptions = {
   ...defaultOptions,
@@ -102,9 +105,9 @@ export const DataPickerModal = ({
     return databaseId ? { table_db_id: databaseId } : undefined;
   }, [databaseId]);
 
-  const handleChange = useCallback(
-    (item: NotebookDataPickerValueItem) => {
-      if (!isValidValueItem(item.model)) {
+  const handleItemSelect = useCallback(
+    (item: DataPickerItem) => {
+      if (!isValueItem(item)) {
         return;
       }
 
@@ -117,99 +120,127 @@ export const DataPickerModal = ({
     [onChange, onClose, tryLogRecentItem],
   );
 
-  const handleCardChange = useCallback(
-    (item: QuestionPickerItem) => {
-      if (!isValidValueItem(item.model)) {
-        return;
-      }
+  const tabs = useMemo(() => {
+    const computedTabs: EntityPickerTab<
+      DataPickerItem["id"],
+      DataPickerItem["model"],
+      DataPickerItem
+    >[] = [];
 
-      onChange(getQuestionVirtualTableId(item.id));
-      tryLogRecentItem(item);
-      onClose();
-    },
-    [onChange, onClose, tryLogRecentItem],
-  );
+    if (hasModels && hasNestedQueriesEnabled && models.includes("dataset")) {
+      computedTabs.push({
+        id: "models-tab",
+        displayName: t`Models`,
+        model: "dataset" as const,
+        folderModels: ["collection" as const],
+        icon: "model",
+        render: ({ onItemSelect }) => (
+          <QuestionPicker
+            initialValue={isModelItem(value) ? value : undefined}
+            models={MODEL_PICKER_MODELS}
+            options={options}
+            shouldShowItem={modelsShouldShowItem}
+            onItemSelect={questionPickerItem => {
+              const item =
+                castQuestionPickerItemToDataPickerItem(questionPickerItem);
+              onItemSelect(item);
+            }}
+          />
+        ),
+      });
+    }
 
-  const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
-    hasModels && hasNestedQueriesEnabled
-      ? {
-          displayName: t`Models`,
-          model: "dataset" as const,
-          icon: "model",
-          element: (
-            <QuestionPicker
-              initialValue={isModelItem(value) ? value : undefined}
-              models={MODEL_PICKER_MODELS}
-              options={options}
-              shouldShowItem={modelsShouldShowItem}
-              onItemSelect={handleCardChange}
-            />
-          ),
-        }
-      : undefined,
-    hasMetrics && hasNestedQueriesEnabled
-      ? {
-          displayName: t`Metrics`,
-          model: "metric" as const,
-          icon: "metric",
-          element: (
-            <QuestionPicker
-              initialValue={isMetricItem(value) ? value : undefined}
-              models={METRIC_PICKER_MODELS}
-              options={options}
-              shouldShowItem={metricsShouldShowItem}
-              onItemSelect={handleCardChange}
-            />
-          ),
-        }
-      : undefined,
-    {
-      displayName: t`Tables`,
-      model: "table" as const,
-      icon: "table",
-      element: (
-        <TablePicker
-          databaseId={databaseId}
-          value={isTableItem(value) ? value : undefined}
-          onChange={handleChange}
-        />
-      ),
-    },
-    hasQuestions && hasNestedQueriesEnabled
-      ? {
-          displayName: t`Saved questions`,
-          model: "card" as const,
-          icon: "folder",
-          element: (
-            <QuestionPicker
-              initialValue={isQuestionItem(value) ? value : undefined}
-              models={QUESTION_PICKER_MODELS}
-              options={options}
-              shouldShowItem={questionsShouldShowItem}
-              onItemSelect={handleCardChange}
-            />
-          ),
-        }
-      : undefined,
-  ].filter(
-    (tab): tab is EntityTab<NotebookDataPickerValueItem["model"]> =>
-      tab != null && models.includes(tab.model),
-  );
+    if (hasMetrics && hasNestedQueriesEnabled && models.includes("metric")) {
+      computedTabs.push({
+        id: "metrics-tab",
+        displayName: t`Metrics`,
+        model: "metric" as const,
+        folderModels: ["collection" as const],
+        icon: "metric",
+        render: ({ onItemSelect }) => (
+          <QuestionPicker
+            initialValue={isMetricItem(value) ? value : undefined}
+            models={METRIC_PICKER_MODELS}
+            options={options}
+            shouldShowItem={metricsShouldShowItem}
+            onItemSelect={questionPickerItem => {
+              const item =
+                castQuestionPickerItemToDataPickerItem(questionPickerItem);
+              onItemSelect(item);
+            }}
+          />
+        ),
+      });
+    }
+
+    if (models.includes("table")) {
+      computedTabs.push({
+        id: "tables-tab",
+        displayName: t`Tables`,
+        model: "table" as const,
+        folderModels: ["database" as const, "schema" as const],
+        icon: "table",
+        render: ({ onItemSelect }) => (
+          <TablePicker
+            databaseId={databaseId}
+            value={isTableItem(value) ? value : undefined}
+            onItemSelect={onItemSelect}
+          />
+        ),
+      });
+    }
+
+    if (hasQuestions && hasNestedQueriesEnabled && models.includes("card")) {
+      computedTabs.push({
+        id: "questions-tab",
+        displayName: t`Saved questions`,
+        model: "card" as const,
+        folderModels: ["collection" as const],
+        icon: "folder",
+        render: ({ onItemSelect }) => (
+          <QuestionPicker
+            initialValue={isQuestionItem(value) ? value : undefined}
+            models={QUESTION_PICKER_MODELS}
+            options={options}
+            shouldShowItem={questionsShouldShowItem}
+            onItemSelect={questionPickerItem => {
+              const item =
+                castQuestionPickerItemToDataPickerItem(questionPickerItem);
+              onItemSelect(item);
+            }}
+          />
+        ),
+      });
+    }
+
+    return computedTabs;
+  }, [
+    databaseId,
+    hasMetrics,
+    hasModels,
+    hasNestedQueriesEnabled,
+    hasQuestions,
+    metricsShouldShowItem,
+    models,
+    modelsShouldShowItem,
+    questionsShouldShowItem,
+    value,
+  ]);
 
   return (
     <EntityPickerModal
       canSelectItem
-      recentFilter={recentFilter}
       defaultToRecentTab={false}
       initialValue={value}
       options={options}
+      recentsContext={RECENTS_CONTEXT}
+      recentFilter={recentFilter}
       searchParams={searchParams}
       selectedItem={value ?? null}
       tabs={tabs}
       title={title}
       onClose={onClose}
-      onItemSelect={handleChange}
-      recentsContext={["selections"]}
+      onItemSelect={handleItemSelect}
     />
   );
 };

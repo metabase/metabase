@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
-import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
+import type { RecentItem, SearchResult } from "metabase-types/api";
 
-import type { EntityTab } from "../../EntityPicker";
+import type { EntityPickerTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
@@ -105,14 +105,20 @@ export const CollectionPickerModal = ({
       ]
     : [];
 
-  const tabs: [EntityTab<SearchModel>] = [
+  const tabs: EntityPickerTab<
+    CollectionPickerItem["id"],
+    CollectionPickerItem["model"],
+    CollectionPickerItem
+  >[] = [
     {
+      id: "collections-tab",
       displayName: t`Collections`,
-      model: "collection",
+      model: "collection" as const,
+      folderModels: ["collection" as const],
       icon: "folder",
-      element: (
+      render: ({ onItemSelect }) => (
         <CollectionPicker
-          onItemSelect={handleItemSelect}
+          onItemSelect={onItemSelect}
           shouldDisableItem={shouldDisableItem}
           initialValue={value}
           options={options}
