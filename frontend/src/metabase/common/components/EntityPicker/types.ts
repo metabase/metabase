@@ -1,6 +1,8 @@
 import type { IconName } from "metabase/ui";
 import type { SearchResultId } from "metabase-types/api";
 
+import type { EntityPickerModalOptions } from "./components/EntityPickerModal";
+
 export type TypeWithModel<Id, Model extends string> = {
   id: Id;
   model: Model;
@@ -19,14 +21,6 @@ export type PickerState<Item, Query> = PickerStateItem<Item, Query>[];
 export type PickerStateItem<Item, Query> = {
   query?: Query;
   selectedItem: Item | null;
-};
-
-export type EntityPickerModalOptions = {
-  showSearch?: boolean;
-  hasConfirmButtons?: boolean;
-  confirmButtonText?: string;
-  cancelButtonText?: string;
-  hasRecents?: boolean;
 };
 
 export type EntityPickerOptions = EntityPickerModalOptions;

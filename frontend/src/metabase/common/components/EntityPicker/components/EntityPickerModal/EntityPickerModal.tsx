@@ -17,7 +17,6 @@ import type {
 
 import { RECENTS_TAB_ID, SEARCH_TAB_ID } from "../../constants";
 import type {
-  EntityPickerModalOptions,
   EntityPickerOptions,
   EntityPickerTab,
   EntityPickerTabId,
@@ -28,8 +27,13 @@ import {
   computeInitialTabId,
   getFolderModels,
   getSearchModels,
+  getSearchTabText,
 } from "../../utils";
-import { EntityPickerSearchInput } from "../EntityPickerSearch";
+import {
+  EntityPickerSearchInput,
+  EntityPickerSearchResults,
+} from "../EntityPickerSearch";
+import { RecentsTab } from "../RecentsTab";
 
 import { ButtonBar } from "./ButtonBar";
 import {
@@ -39,7 +43,14 @@ import {
   SinglePickerView,
 } from "./EntityPickerModal.styled";
 import { TabsView } from "./TabsView";
-import { getTabs } from "./getTabs";
+
+export type EntityPickerModalOptions = {
+  showSearch?: boolean;
+  hasConfirmButtons?: boolean;
+  confirmButtonText?: string;
+  cancelButtonText?: string;
+  hasRecents?: boolean;
+};
 
 export const defaultOptions: EntityPickerModalOptions = {
   showSearch: true,
@@ -141,16 +152,64 @@ export function EntityPickerModal<
       : relevantModelRecents;
   }, [recentItems, searchModels, recentFilter]);
 
-  const tabs = getTabs<Id, Model, Item>({
+  const tabs: EntityPickerTab<Id, Model, Item>[] = useMemo(() => {
+    const computedTabs: EntityPickerTab<Id, Model, Item>[] = [];
+    const hasRecentsTab =
+      hydratedOptions.hasRecents && filteredRecents.length > 0;
+    const hasSearchTab = !!searchQuery;
+    // This is to prevent different tab being initially open and then flickering back
+    // to recents tab once recents have loaded (due to computeInitialTab)
+    const shouldOptimisticallyAddRecentsTabWhileLoading =
+      defaultToRecentTab && isLoadingRecentItems;
+
+    if (hasRecentsTab || shouldOptimisticallyAddRecentsTabWhileLoading) {
+      computedTabs.push({
+        id: RECENTS_TAB_ID,
+        model: null,
+        folderModels: [],
+        displayName: t`Recents`,
+        icon: "clock",
+        render: ({ onItemSelect }) => (
+          <RecentsTab
+            isLoading={isLoadingRecentItems}
+            recentItems={filteredRecents}
+            onItemSelect={onItemSelect}
+            selectedItem={selectedItem}
+          />
+        ),
+      });
+    }
+
+    computedTabs.push(...passedTabs);
+
+    if (hasSearchTab) {
+      computedTabs.push({
+        id: SEARCH_TAB_ID,
+        model: null,
+        folderModels: [],
+        displayName: getSearchTabText(searchResults, searchQuery),
+        icon: "search",
+        render: ({ onItemSelect }) => (
+          <EntityPickerSearchResults
+            searchResults={searchResults}
+            onItemSelect={onItemSelect}
+            selectedItem={selectedItem}
+          />
+        ),
+      });
+    }
+
+    return computedTabs;
+  }, [
     defaultToRecentTab,
+    filteredRecents,
+    hydratedOptions.hasRecents,
     isLoadingRecentItems,
-    options: hydratedOptions,
     passedTabs,
-    recents: filteredRecents,
     searchQuery,
     searchResults,
     selectedItem,
-  });
+  ]);
 
   const hasTabs = tabs.length > 1;
   const initialTabId = useMemo(
