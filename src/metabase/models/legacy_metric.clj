@@ -168,20 +168,6 @@
   [_metric]
   [:name (serdes/hydrated-hash :table) :created_at])
 
-(defmethod serdes/extract-one "LegacyMetric"
-  [_model-name _opts metric]
-  (-> (serdes/extract-one-basics "LegacyMetric" metric)
-      (update :table_id   serdes/*export-table-fk*)
-      (update :creator_id serdes/*export-user*)
-      (update :definition serdes/export-mbql)))
-
-(defmethod serdes/load-xform "LegacyMetric" [metric]
-  (-> metric
-      serdes/load-xform-basics
-      (update :table_id   serdes/*import-table-fk*)
-      (update :creator_id serdes/*import-user*)
-      (update :definition serdes/import-mbql)))
-
 (defmethod serdes/dependencies "LegacyMetric" [{:keys [definition table_id]}]
   (into [] (set/union #{(serdes/table->path table_id)}
                       (serdes/mbql-deps definition))))
@@ -193,6 +179,22 @@
         serdes/table->path
         serdes/storage-table-path-prefix
         (concat ["metrics" (serdes/storage-leaf-file-name id label)]))))
+
+(defmethod serdes/make-spec "LegacyMetric" [_model-name _opts]
+  {:copy [:archived
+          :caveats
+          :description
+          :entity_id
+          :how_is_this_calculated
+          :name
+          :points_of_interest
+          :show_in_getting_started]
+   :skip []
+   :transform {:created_at        (serdes/date)
+               :creator_id        (serdes/fk :model/User)
+               :table_id          (serdes/fk :model/Table)
+               :definition        {:export serdes/export-mbql
+                                   :import serdes/import-mbql}}})
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 
