@@ -22,7 +22,9 @@ import "metabase/plugins/builtin";
 
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
-import "ee-plugins"; // eslint-disable-line import/no-duplicates
+// eslint-disable-next-line import/order -- those files may have siede-effects, let's keep them as they are
+import { activateEEPlugins } from "ee-plugins"; // eslint-disable-line import/no-duplicates
+activateEEPlugins();
 
 // Set nonce for mantine v6 deps
 import "metabase/lib/csp";
