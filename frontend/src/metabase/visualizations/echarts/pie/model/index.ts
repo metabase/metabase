@@ -103,9 +103,9 @@ export function getPieChartModel(
     throw Error("missing `pie.rows` setting");
   }
 
-  const visiblePieRows = pieRows.filter(row => row.enabled && !row.hidden);
+  const enabledPieRows = pieRows.filter(row => row.enabled && !row.hidden);
 
-  const pieRowsWithValues = visiblePieRows.map(pieRow => {
+  const pieRowsWithValues = enabledPieRows.map(pieRow => {
     const value = rowValuesByKey.get(pieRow.key);
     if (value === undefined) {
       throw Error(`No row values found for key ${pieRow.key}`);
@@ -116,15 +116,18 @@ export function getPieChartModel(
       value,
     };
   });
+  const visiblePieRows = pieRowsWithValues.filter(
+    row => !hiddenSlices.includes(row.key),
+  );
 
   // We allow negative values if every single metric value is negative or 0
   // (`isNonPositive` = true). If the values are mixed between positives and
   // negatives, we'll simply ignore the negatives in all calculations.
   const isNonPositive =
-    pieRowsWithValues.every(row => row.value <= 0) &&
-    !pieRowsWithValues.every(row => row.value === 0);
+    visiblePieRows.every(row => row.value <= 0) &&
+    !visiblePieRows.every(row => row.value === 0);
 
-  const total = pieRowsWithValues.reduce((currTotal, { value }) => {
+  const total = visiblePieRows.reduce((currTotal, { value }) => {
     if (!isNonPositive && value < 0) {
       showWarning?.(pieNegativesWarning().text);
       return currTotal;
@@ -135,15 +138,16 @@ export function getPieChartModel(
 
   const [slices, others] = _.chain(pieRowsWithValues)
     .map(({ value, color, key, name, isOther }): PieSliceData => {
+      const visible = !hiddenSlices.includes(key);
       return {
         key,
         name,
         value: isNonPositive ? -1 * value : value,
         displayValue: value,
-        normalizedPercentage: value / total, // slice percentage values are normalized to 0-1 scale
+        normalizedPercentage: visible ? value / total : 0, // slice percentage values are normalized to 0-1 scale
         rowIndex: rowIndiciesByKey.get(key),
         color,
-        visible: !hiddenSlices.includes(key),
+        visible,
         isOther,
         noHover: false,
         includeInLegend: true,
@@ -180,7 +184,10 @@ export function getPieChartModel(
   slices.forEach(slice => {
     // We increase the size of small slices, otherwise they will not be visible
     // in echarts due to the border rendering over the tiny slice
-    if (slice.normalizedPercentage < OTHER_SLICE_MIN_PERCENTAGE) {
+    if (
+      slice.visible &&
+      slice.normalizedPercentage < OTHER_SLICE_MIN_PERCENTAGE
+    ) {
       slice.value = total * OTHER_SLICE_MIN_PERCENTAGE;
     }
   });
