@@ -6,14 +6,28 @@ import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/conte
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { Stack, Title } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 
 import { useInteractiveQuestionContext } from "../context";
 
-export const SaveQuestion = ({ onClose }: { onClose: () => void }) => {
+export type SdkSaveQuestionFormProps = {
+  onSave?: (question?: Question) => Promise<void>;
+  onClose?: () => void;
+};
+
+export const SdkSaveQuestionForm = ({
+  onClose,
+  onSave,
+}: SdkSaveQuestionFormProps) => {
   const { question, originalQuestion } = useInteractiveQuestionContext();
 
   const handleCreate = useCreateQuestion();
-  const handleSave = useSaveQuestion();
+  const handleSaveQuestion = useSaveQuestion();
+
+  const handleSave = async (question: Question) => {
+    await onSave?.(question);
+    await handleSaveQuestion(question);
+  };
 
   if (!question) {
     return null;
@@ -32,7 +46,7 @@ export const SaveQuestion = ({ onClose }: { onClose: () => void }) => {
         <Title>
           <SaveQuestionTitle />
         </Title>
-        <SaveQuestionForm onCancel={onClose} />
+        <SaveQuestionForm onCancel={() => onClose?.()} />
       </Stack>
     </SaveQuestionProvider>
   );

@@ -10,7 +10,7 @@ import {
   QuestionResetButton,
   QuestionVisualization,
   SaveButton,
-  SaveQuestion,
+  SdkSaveQuestionForm,
   Summarize,
   SummarizeButton,
   Title,
@@ -67,7 +67,7 @@ const InteractiveQuestion = withPublicComponentWrapper(
   Notebook: typeof Notebook;
   NotebookButton: typeof NotebookButton;
   QuestionVisualization: typeof QuestionVisualization;
-  SaveQuestionForm: typeof SaveQuestion;
+  SaveQuestionForm: typeof SdkSaveQuestionForm;
   SaveButton: typeof SaveButton;
 };
 
@@ -82,7 +82,7 @@ InteractiveQuestion.SummarizeButton = SummarizeButton;
 InteractiveQuestion.Notebook = Notebook;
 InteractiveQuestion.NotebookButton = NotebookButton;
 InteractiveQuestion.QuestionVisualization = QuestionVisualization;
-InteractiveQuestion.SaveQuestionForm = SaveQuestion;
+InteractiveQuestion.SaveQuestionForm = SdkSaveQuestionForm;
 InteractiveQuestion.SaveButton = SaveButton;
 
 export { InteractiveQuestion };
