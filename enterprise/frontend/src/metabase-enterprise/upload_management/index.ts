@@ -3,6 +3,8 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { UploadManagementTable } from "./UploadManagementTable";
 
-if (hasPremiumFeature("upload_management")) {
-  PLUGIN_UPLOAD_MANAGEMENT.UploadManagementTable = UploadManagementTable;
-}
+export const activateUploadManagementPlugin = () => {
+  if (hasPremiumFeature("upload_management")) {
+    PLUGIN_UPLOAD_MANAGEMENT.UploadManagementTable = UploadManagementTable;
+  }
+};

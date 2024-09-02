@@ -8,23 +8,25 @@ import ModelCacheControl, {
   toggleModelPersistence,
 } from "./components/ModelCacheControl";
 
-if (hasPremiumFeature("cache_granular_controls")) {
-  PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled = () => true;
+export const activateModelPersistencePlugin = () => {
+  if (hasPremiumFeature("cache_granular_controls")) {
+    PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled = () => true;
 
-  PLUGIN_MODEL_PERSISTENCE.ModelCacheControl = ModelCacheControl;
+    PLUGIN_MODEL_PERSISTENCE.ModelCacheControl = ModelCacheControl;
 
-  PLUGIN_MODEL_PERSISTENCE.getMenuItems = (
-    model: Question,
-    onChange?: (isPersisted: boolean) => void,
-  ) => {
-    const isPersisted = model.isPersisted();
+    PLUGIN_MODEL_PERSISTENCE.getMenuItems = (
+      model: Question,
+      onChange?: (isPersisted: boolean) => void,
+    ) => {
+      const isPersisted = model.isPersisted();
 
-    return {
-      title: isPersisted
-        ? t`Turn model persistence off`
-        : t`Turn model persistence on`,
-      action: () => toggleModelPersistence(model, onChange),
-      icon: "database",
+      return {
+        title: isPersisted
+          ? t`Turn model persistence off`
+          : t`Turn model persistence on`,
+        action: () => toggleModelPersistence(model, onChange),
+        icon: "database",
+      };
     };
-  };
-}
+  }
+};

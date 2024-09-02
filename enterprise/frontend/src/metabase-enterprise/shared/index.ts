@@ -2,4 +2,6 @@ import { PLUGIN_REDUCERS } from "metabase/plugins";
 
 import { shared } from "./reducer";
 
-PLUGIN_REDUCERS.shared = shared.reducer;
+export const activateSharedPlugin = () => {
+  PLUGIN_REDUCERS.shared = shared.reducer;
+};

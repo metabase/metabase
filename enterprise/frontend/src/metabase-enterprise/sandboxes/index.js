@@ -55,44 +55,46 @@ const getEditSegementedAccessUrl = (entityId, groupId, view) =>
 const getEditSegmentedAccessPostAction = (entityId, groupId, view) =>
   push(getEditSegementedAccessUrl(entityId, groupId, view));
 
-if (hasPremiumFeature("sandboxes")) {
-  PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes = LoginAttributesWidget;
+export const activateSandboxesPlugin = () => {
+  if (hasPremiumFeature("sandboxes")) {
+    PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes = LoginAttributesWidget;
 
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.push(
-    <ModalRoute
-      key=":tableId/segmented"
-      path=":tableId/segmented"
-      modal={EditSandboxingModal}
-    />,
-  );
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES.push(
-    <ModalRoute
-      key="segmented/group/:groupId"
-      path="segmented/group/:groupId"
-      modal={EditSandboxingModal}
-    />,
-  );
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS[OPTION_SEGMENTED.value].push({
-    label: t`Edit sandboxed access`,
-    iconColor: "brand",
-    icon: "pencil",
-    actionCreator: (entityId, groupId, view) =>
-      push(getEditSegementedAccessUrl(entityId, groupId, view)),
-  });
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.push(
-    (permissions, groupId, entityId, newValue) =>
-      getSandboxedTableWarningModal(permissions, groupId, entityId, newValue),
-  );
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[OPTION_SEGMENTED.value] =
-    getEditSegmentedAccessPostAction;
+    PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.push(
+      <ModalRoute
+        key=":tableId/segmented"
+        path=":tableId/segmented"
+        modal={EditSandboxingModal}
+      />,
+    );
+    PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES.push(
+      <ModalRoute
+        key="segmented/group/:groupId"
+        path="segmented/group/:groupId"
+        modal={EditSandboxingModal}
+      />,
+    );
+    PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);
+    PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS[OPTION_SEGMENTED.value].push({
+      label: t`Edit sandboxed access`,
+      iconColor: "brand",
+      icon: "pencil",
+      actionCreator: (entityId, groupId, view) =>
+        push(getEditSegementedAccessUrl(entityId, groupId, view)),
+    });
+    PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.push(
+      (permissions, groupId, entityId, newValue) =>
+        getSandboxedTableWarningModal(permissions, groupId, entityId, newValue),
+    );
+    PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[OPTION_SEGMENTED.value] =
+      getEditSegmentedAccessPostAction;
 
-  PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(state => {
-    const sandboxes = getDraftPolicies(state);
-    const modifiedGroupIds = _.uniq(sandboxes.map(sb => sb.group_id));
-    return [{ sandboxes }, modifiedGroupIds];
-  });
+    PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(state => {
+      const sandboxes = getDraftPolicies(state);
+      const modifiedGroupIds = _.uniq(sandboxes.map(sb => sb.group_id));
+      return [{ sandboxes }, modifiedGroupIds];
+    });
 
-  PLUGIN_DATA_PERMISSIONS.hasChanges.push(hasPolicyChanges);
-  PLUGIN_REDUCERS.sandboxingPlugin = sandboxingReducer;
-}
+    PLUGIN_DATA_PERMISSIONS.hasChanges.push(hasPolicyChanges);
+    PLUGIN_REDUCERS.sandboxingPlugin = sandboxingReducer;
+  }
+};

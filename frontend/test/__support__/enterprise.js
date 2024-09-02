@@ -1,3 +1,5 @@
+import { activateEEPlugins } from "metabase-enterprise/plugins";
+
 /**
  * @deprecated use setupEnterprisePlugins with settings set via mockSettings
  */
@@ -10,5 +12,5 @@ export function setupEnterpriseTest() {
 }
 
 export function setupEnterprisePlugins() {
-  require("metabase-enterprise/plugins");
+  activateEEPlugins();
 }

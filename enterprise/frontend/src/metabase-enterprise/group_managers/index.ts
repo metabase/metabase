@@ -17,18 +17,22 @@ import {
   groupManagerAllowedPathGetter,
 } from "./utils";
 
-if (hasPremiumFeature("advanced_permissions")) {
-  PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(groupManagerAllowedPathGetter);
+export const activateGroupManagersPlugin = () => {
+  if (hasPremiumFeature("advanced_permissions")) {
+    PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(groupManagerAllowedPathGetter);
 
-  PLUGIN_GROUP_MANAGERS.UserTypeCell = UserTypeCell;
-  PLUGIN_GROUP_MANAGERS.UserTypeToggle = UserTypeToggle;
+    PLUGIN_GROUP_MANAGERS.UserTypeCell = UserTypeCell;
+    PLUGIN_GROUP_MANAGERS.UserTypeToggle = UserTypeToggle;
 
-  PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation =
-    getRemoveMembershipConfirmation;
-  PLUGIN_GROUP_MANAGERS.getChangeMembershipConfirmation =
-    getChangeMembershipConfirmation;
+    PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation =
+      getRemoveMembershipConfirmation;
+    PLUGIN_GROUP_MANAGERS.getChangeMembershipConfirmation =
+      getChangeMembershipConfirmation;
 
-  PLUGIN_GROUP_MANAGERS.deleteGroup = deleteGroup;
-  PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction = confirmDeleteMembership;
-  PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction = confirmUpdateMembership;
-}
+    PLUGIN_GROUP_MANAGERS.deleteGroup = deleteGroup;
+    PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction =
+      confirmDeleteMembership;
+    PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction =
+      confirmUpdateMembership;
+  }
+};

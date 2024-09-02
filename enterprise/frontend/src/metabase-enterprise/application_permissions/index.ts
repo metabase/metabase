@@ -15,17 +15,22 @@ import {
   settingsPermissionAllowedPathGetter,
 } from "./utils";
 
-if (hasPremiumFeature("advanced_permissions")) {
-  PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(monitoringPermissionAllowedPathGetter);
-  PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(settingsPermissionAllowedPathGetter);
+export const activateApplicationPermissionsPlugin = () => {
+  if (hasPremiumFeature("advanced_permissions")) {
+    PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(
+      monitoringPermissionAllowedPathGetter,
+    );
+    PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(settingsPermissionAllowedPathGetter);
 
-  PLUGIN_APPLICATION_PERMISSIONS.getRoutes = getRoutes;
-  PLUGIN_APPLICATION_PERMISSIONS.tabs = [
-    { name: t`Application`, value: `application` },
-  ];
+    PLUGIN_APPLICATION_PERMISSIONS.getRoutes = getRoutes;
+    PLUGIN_APPLICATION_PERMISSIONS.tabs = [
+      { name: t`Application`, value: `application` },
+    ];
 
-  PLUGIN_APPLICATION_PERMISSIONS.selectors = {
-    canManageSubscriptions,
-  };
-  PLUGIN_REDUCERS.applicationPermissionsPlugin = applicationPermissionsReducer;
-}
+    PLUGIN_APPLICATION_PERMISSIONS.selectors = {
+      canManageSubscriptions,
+    };
+    PLUGIN_REDUCERS.applicationPermissionsPlugin =
+      applicationPermissionsReducer;
+  }
+};

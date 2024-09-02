@@ -6,33 +6,35 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { CleanupCollectionModal } from "./CleanupCollectionModal";
 
-if (hasPremiumFeature("collection_cleanup")) {
-  PLUGIN_COLLECTIONS.canCleanUp = true;
+export const activateCollectionCleanupPlugin = () => {
+  if (hasPremiumFeature("collection_cleanup")) {
+    PLUGIN_COLLECTIONS.canCleanUp = true;
 
-  PLUGIN_COLLECTIONS.getCleanUpMenuItems = (
-    itemCount,
-    url,
-    isInstanceAnalyticsCustom,
-    isTrashed,
-    canWrite,
-  ) => {
-    const canCleanUpCollection =
-      itemCount !== 0 && !isInstanceAnalyticsCustom && !isTrashed && canWrite;
+    PLUGIN_COLLECTIONS.getCleanUpMenuItems = (
+      itemCount,
+      url,
+      isInstanceAnalyticsCustom,
+      isTrashed,
+      canWrite,
+    ) => {
+      const canCleanUpCollection =
+        itemCount !== 0 && !isInstanceAnalyticsCustom && !isTrashed && canWrite;
 
-    if (!canCleanUpCollection) {
-      return [];
-    }
+      if (!canCleanUpCollection) {
+        return [];
+      }
 
-    return [
-      {
-        title: t`Clean things up`,
-        icon: "archive",
-        link: `${url}/cleanup`,
-      },
-    ];
-  };
+      return [
+        {
+          title: t`Clean things up`,
+          icon: "archive",
+          link: `${url}/cleanup`,
+        },
+      ];
+    };
 
-  PLUGIN_COLLECTIONS.cleanUpRoute = (
-    <ModalRoute path="cleanup" modal={CleanupCollectionModal} />
-  );
-}
+    PLUGIN_COLLECTIONS.cleanUpRoute = (
+      <ModalRoute path="cleanup" modal={CleanupCollectionModal} />
+    );
+  }
+};
