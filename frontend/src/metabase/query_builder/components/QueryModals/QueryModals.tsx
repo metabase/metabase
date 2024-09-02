@@ -29,10 +29,7 @@ import NewEventModal from "metabase/timelines/questions/containers/NewEventModal
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Alert, Card, CollectionId, User } from "metabase-types/api";
-import type {
-  QueryBuilderMode,
-  QueryBuilderUIControls,
-} from "metabase-types/store";
+import type { QueryBuilderMode } from "metabase-types/store";
 
 interface QueryModalsProps {
   questionAlerts: Alert[];
@@ -42,7 +39,6 @@ interface QueryModalsProps {
   question: Question;
   updateQuestion: (question: Question, config?: UpdateQuestionOpts) => void;
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
-  setUIControls: (opts: Partial<QueryBuilderUIControls>) => void;
   originalQuestion: Question;
   card: Card;
   onCreate: (question: Question) => Promise<void>;

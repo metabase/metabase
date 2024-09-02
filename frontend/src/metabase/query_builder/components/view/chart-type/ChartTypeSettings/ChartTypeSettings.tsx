@@ -2,14 +2,9 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
-import {
-  onOpenChartSettings,
-  setUIControls,
-  updateQuestion,
-} from "metabase/query_builder/actions";
+import { onOpenChartSettings } from "metabase/query_builder/actions";
 import { Space, Stack, Text } from "metabase/ui";
 import visualizations from "metabase/visualizations";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";
 
@@ -20,53 +15,67 @@ import {
   getSensibleVisualizations,
 } from "./util";
 
-export type ChartTypeSettingsProps = {
-  question: Question;
+export type ChartTypeSettingsProps = ChartVisualizationControls;
+
+export type ChartVisualizationControlsProps = {
+  question?: Question;
+  onVisualizationChange: (question: Question) => void;
 } & GetSensibleVisualizationsProps;
 
-function useChartVisualizationSettings(question: Question) {
-  const dispatch = useDispatch();
+export type ChartVisualizationControls = {
+  selectedVisualization: CardDisplayType;
+  setSelectedVisualization: (display: CardDisplayType) => void;
+  makesSense: CardDisplayType[];
+  nonSense: CardDisplayType[];
+};
 
-  const setSelectedVisualization = useCallback(
-    (display: CardDisplayType) => {
-      let newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
-      const visualization = visualizations.get(display);
-      if (visualization?.onDisplayUpdate) {
-        const updatedSettings = visualization.onDisplayUpdate(
-          newQuestion.settings(),
-        );
-        newQuestion = newQuestion.setSettings(updatedSettings);
-      }
-
-      dispatch(
-        updateQuestion(newQuestion, {
-          shouldUpdateUrl: Lib.queryDisplayInfo(question.query()).isEditable,
-        }),
-      );
-      dispatch(setUIControls({ isShowingRawTable: false }));
-    },
-    [dispatch, question],
-  );
-
-  const selectedVisualization = question.display();
-
-  return { selectedVisualization, setSelectedVisualization };
-}
-
-export const ChartTypeSettings = ({
+export const useChartVisualizationSettings = ({
   query,
   question,
   result,
+  onVisualizationChange,
+}: ChartVisualizationControlsProps): ChartVisualizationControls => {
+  const [makesSense, nonSense]: [CardDisplayType[], CardDisplayType[]] =
+    useMemo(
+      () => getSensibleVisualizations({ result, query }),
+      [query, result],
+    );
+
+  const setSelectedVisualization = useCallback(
+    (display: CardDisplayType) => {
+      if (question) {
+        let newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
+        const visualization = visualizations.get(display);
+        if (visualization?.onDisplayUpdate) {
+          const updatedSettings = visualization.onDisplayUpdate(
+            newQuestion.settings(),
+          );
+          newQuestion = newQuestion.setSettings(updatedSettings);
+        }
+
+        onVisualizationChange(newQuestion);
+      }
+    },
+    [onVisualizationChange, question],
+  );
+
+  const selectedVisualization: CardDisplayType = question?.display() ?? "table";
+
+  return {
+    selectedVisualization,
+    setSelectedVisualization,
+    makesSense,
+    nonSense,
+  };
+};
+
+export const ChartTypeSettings = ({
+  selectedVisualization,
+  setSelectedVisualization,
+  makesSense,
+  nonSense,
 }: ChartTypeSettingsProps) => {
   const dispatch = useDispatch();
-
-  const { selectedVisualization, setSelectedVisualization } =
-    useChartVisualizationSettings(question);
-
-  const [makesSense, nonSense] = useMemo(
-    () => getSensibleVisualizations({ result, query }),
-    [query, result],
-  );
 
   const openChartSettings = useCallback(() => {
     dispatch(

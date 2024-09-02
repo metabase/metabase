@@ -3,6 +3,8 @@ import { useState } from "react";
 
 import type { InteractiveQuestionProps } from "embedding-sdk/components/public/InteractiveQuestion";
 import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
+import { ChartTypeSettings } from "metabase/query_builder/components/view/chart-type/ChartTypeSettings";
+import { useChartVisualizationSettings } from "metabase/query_builder/components/view/chart-type/ChartTypeSettings/ChartTypeSettings";
 import { Box, Group, Overlay, Paper, Tabs } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
@@ -12,7 +14,8 @@ export type QuestionEditorProps = {
 };
 
 const QuestionEditorInner = ({ isSaveEnabled }: QuestionEditorProps) => {
-  const { queryResults, runQuestion } = useInteractiveQuestionContext();
+  const { updateQuestion, question, queryResults, runQuestion } =
+    useInteractiveQuestionContext();
 
   const [activeTab, setActiveTab] = useState<
     "notebook" | "visualization" | (string & unknown) | null
@@ -25,8 +28,32 @@ const QuestionEditorInner = ({ isSaveEnabled }: QuestionEditorProps) => {
     await runQuestion();
   };
 
+  const {
+    selectedVisualization,
+    setSelectedVisualization,
+    makesSense,
+    nonSense,
+  } = useChartVisualizationSettings({
+    question,
+    result: queryResults?.[0],
+    query: question
+      ? question.legacyQuery({ useStructuredQuery: true })
+      : undefined,
+    onVisualizationChange: updateQuestion,
+  });
+
   return (
     <Box w="100%" h="100%">
+      <div>
+        {question && (
+          <ChartTypeSettings
+            selectedVisualization={selectedVisualization}
+            setSelectedVisualization={setSelectedVisualization}
+            makesSense={makesSense}
+            nonSense={nonSense}
+          />
+        )}
+      </div>
       <Tabs
         value={activeTab}
         onTabChange={setActiveTab}

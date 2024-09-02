@@ -3,12 +3,12 @@ import _ from "underscore";
 import { DEFAULT_ORDER } from "metabase/query_builder/components/view/chart-type/util";
 import visualizations from "metabase/visualizations";
 import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
-import type Query from "metabase-lib/v1/queries/Query";
+import type { Query } from "metabase-lib";
 import type { CardDisplayType, Dataset } from "metabase-types/api";
 
 type IsSensibleVisualizationProps = {
   result: Dataset | null;
-  query: Query;
+  query?: Query;
   vizType: CardDisplayType;
 };
 
