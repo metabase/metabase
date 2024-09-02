@@ -15,7 +15,8 @@ export type QuestionEditorProps = {
 };
 
 const QuestionEditorInner = ({ isSaveEnabled }: QuestionEditorProps) => {
-  const { queryResults, runQuestion } = useInteractiveQuestionContext();
+  const { queryResults, runQuestion, question, originalQuestion } =
+    useInteractiveQuestionContext();
 
   const [activeTab, setActiveTab] = useState<
     "notebook" | "visualization" | (string & unknown) | null
@@ -47,16 +48,16 @@ const QuestionEditorInner = ({ isSaveEnabled }: QuestionEditorProps) => {
               </Tabs.Tab>
             ) : null}
           </Group>
-          {!isSaveFormOpen && (
+          {!isSaveModalOpen && (
             <Group>
               <InteractiveQuestion.ResetButton
                 onClick={() => {
                   setActiveTab("notebook");
-                  closeSaveForm();
+                  closeSaveModal();
                 }}
               />
               {isSaveEnabled && (
-                <InteractiveQuestion.SaveButton onClick={openSaveForm} />
+                <InteractiveQuestion.SaveButton onClick={openSaveModal} />
               )}
             </Group>
           )}
