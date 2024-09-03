@@ -749,28 +749,28 @@
   (testing "Queries that error should not include visualization settings"
     (with-redefs [formatter/number-formatter (fn [& _args] (fn [_] (throw (Exception. "Test Exception"))))]
       (mt/with-temp [:model/Card {card-id :id} {:display                :table
-                                        :type                   :model
-                                        :dataset_query          {:database (mt/id)
-                                                                 :type     :query
-                                                                 :query    {:source-table (mt/id :orders)
-                                                                            :filter       [:not-null [:field (mt/id :orders :discount) {:base-type :type/Float}]]
-                                                                            :limit        1}}
-                                        :visualization_settings {:table.columns
-                                                                 [{:name "ID" :enabled false}
-                                                                  {:name "USER_ID" :enabled false}
-                                                                  {:name "PRODUCT_ID" :enabled false}
-                                                                  {:name "SUBTOTAL" :enabled false}
-                                                                  {:name "TAX" :enabled false}
-                                                                  {:name "TOTAL" :enabled false}
-                                                                  {:name "DISCOUNT" :enabled true}
-                                                                  {:name "CREATED_AT" :enabled false}
-                                                                  {:name "QUANTITY" :enabled false}]
-                                                                 :table.cell_column "SUBTOTAL"
-                                                                 :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :discount))
-                                                                                     {:currency_in_header false}}}}]
+                                                :type                   :model
+                                                :dataset_query          {:database (mt/id)
+                                                                         :type     :query
+                                                                         :query    {:source-table (mt/id :orders)
+                                                                                    :filter       [:not-null [:field (mt/id :orders :discount) {:base-type :type/Float}]]
+                                                                                    :limit        1}}
+                                                :visualization_settings {:table.columns
+                                                                         [{:name "ID" :enabled false}
+                                                                          {:name "USER_ID" :enabled false}
+                                                                          {:name "PRODUCT_ID" :enabled false}
+                                                                          {:name "SUBTOTAL" :enabled false}
+                                                                          {:name "TAX" :enabled false}
+                                                                          {:name "TOTAL" :enabled false}
+                                                                          {:name "DISCOUNT" :enabled true}
+                                                                          {:name "CREATED_AT" :enabled false}
+                                                                          {:name "QUANTITY" :enabled false}]
+                                                                         :table.cell_column "SUBTOTAL"
+                                                                         :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :discount))
+                                                                                             {:currency_in_header false}}}}]
         (let [illegal-strings ["notvisiblekey" "notvisiblevalue" "column_settings"
                                "visualization-settings" "viz-settings"]]
-          (doseq [export-format ["csv" "json" #_ "xlsx"]]
+          (doseq [export-format ["csv" "json" #_"xlsx"]]
             ;; for now, don't try to read xlsx back in, it will not be correct since we end up writing
             ;; a json blob to the output stream, it creates an invalid xlsx anyway.
             ;; This is not new behaviour, we'll just fix it when a better solution to 'errors in downloaded files' comes along
