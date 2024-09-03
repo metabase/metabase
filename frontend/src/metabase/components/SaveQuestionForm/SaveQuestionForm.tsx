@@ -25,16 +25,24 @@ export const SaveQuestionForm = ({
     useSaveQuestionContext();
 
   const nameInputPlaceholder = getPlaceholder(question.type());
+  const isDashboardQuestion = !!question.dashboardId();
+
+  const title = isDashboardQuestion
+    ? t`Save changes or save as new?`
+    : t`Replace or save as new?`;
+  const overwriteOptionName = isDashboardQuestion
+    ? t`Save changes`
+    : t`Replace original question, "${originalQuestion?.displayName()}"`;
 
   return (
     <Form>
       {showSaveType && (
         <FormRadio
           name="saveType"
-          title={t`Replace or save as new?`}
+          title={title}
           options={[
             {
-              name: t`Replace original question, "${originalQuestion?.displayName()}"`,
+              name: overwriteOptionName,
               value: "overwrite",
             },
             { name: t`Save as new question`, value: "create" },

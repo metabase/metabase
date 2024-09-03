@@ -15,6 +15,7 @@ export function bookmark(
   bm: Pick<Bookmark, "id" | "type" | "card_type" | "name" | "dashboard_id">,
 ) {
   // HACK: to make bookmarks for dashboard questions to take you to their dashboard pages
+  // TODO: need to take the user to the place on the dashboard where the question actually is...
   if (bm.type === "card" && typeof bm.dashboard_id === "number") {
     return bookmark({
       id: `dashboard-${bm.dashboard_id}`,
