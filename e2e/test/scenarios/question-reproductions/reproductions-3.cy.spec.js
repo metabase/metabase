@@ -267,17 +267,16 @@ describe("issue 38176", () => {
 
     questionInfoButton().click();
     sidesheet().within(() => {
-      cy.findByText("History");
-
       cy.findByPlaceholderText("Add description")
         .type("This is a question")
         .blur();
 
       cy.wait("@updateQuestion");
-      cy.findByText(/added a description/i);
       cy.findByRole("tab", { name: "History" }).click();
+      cy.findByText(/added a description/i);
       cy.findByTestId("question-revert-button").click();
 
+      cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/reverted to an earlier version/i).should("be.visible");
     });
 

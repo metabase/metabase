@@ -27,7 +27,12 @@ export const useConfirmation = () => {
   };
 
   const modalContent = confirmationState ? (
-    <Modal isOpen onClose={handleClose} zIndex={CONFIRM_MODAL_Z_INDEX}>
+    <Modal
+      isOpen
+      onClose={handleClose}
+      zIndex={CONFIRM_MODAL_Z_INDEX}
+      data-testid="confirm-modal"
+    >
       <ConfirmContent
         title={confirmationState.title}
         message={confirmationState?.message}

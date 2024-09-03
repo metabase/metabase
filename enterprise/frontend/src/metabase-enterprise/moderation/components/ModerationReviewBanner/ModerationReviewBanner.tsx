@@ -77,13 +77,13 @@ export const ModerationReviewText = ({ question }: { question: Question }) => {
   );
   const currentUser = useSelector(getCurrentUser);
 
-  if (!moderator || !latestModerationReview) {
+  if (!latestModerationReview) {
     return null;
   }
 
   const { bannerText } = getTextForReviewBanner(
     latestModerationReview,
-    moderator,
+    moderator ?? null,
     currentUser,
   );
 

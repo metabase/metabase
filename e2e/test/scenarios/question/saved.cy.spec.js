@@ -196,23 +196,21 @@ describe("scenarios > question > saved", () => {
     questionInfoButton().click();
 
     sidesheet().within(() => {
-      cy.findByText("History");
-
       cy.findByPlaceholderText("Add description")
         .type("This is a question")
         .blur();
 
       cy.wait("@updateQuestion");
 
+      cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/added a description/i);
 
       cy.findByTestId("question-revert-button").click();
-    });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/reverted to an earlier version/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/This is a question/i).should("not.exist");
+      cy.findByRole("tab", { name: "History" }).click();
+      cy.findByText(/reverted to an earlier version/i);
+      cy.findByText(/This is a question/i).should("not.exist");
+    });
   });
 
   it("should show collection breadcrumbs for a saved question in the root collection", () => {

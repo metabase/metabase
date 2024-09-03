@@ -37,12 +37,12 @@ const SidebarCacheForm_Base = ({
   }, [configs, id]);
 
   const saveStrategy = useSaveStrategy(id, filteredConfigs, setConfigs, model);
-  const saveAndCloseSidebar = useCallback(
+  const saveAndBack = useCallback(
     async (values: CacheStrategy) => {
       await saveStrategy(values);
-      onClose();
+      onBack();
     },
-    [saveStrategy, onClose],
+    [saveStrategy, onBack],
   );
 
   const {
@@ -57,7 +57,7 @@ const SidebarCacheForm_Base = ({
   return (
     <SidesheetSubPage
       isOpen
-      title={t`Cache settings`}
+      title={t`Caching settings`}
       onBack={() =>
         isStrategyFormDirty ? askBeforeDiscardingChanges(onBack) : onBack()
       }
@@ -76,11 +76,11 @@ const SidebarCacheForm_Base = ({
             targetModel={model}
             targetName={getItemName(model, item)}
             setIsDirty={setIsStrategyFormDirty}
-            saveStrategy={saveAndCloseSidebar}
+            saveStrategy={saveAndBack}
             savedStrategy={savedStrategy}
             shouldAllowInvalidation
             shouldShowName={false}
-            onReset={onClose}
+            onReset={onBack}
             buttonLabels={{ save: t`Save`, discard: t`Cancel` }}
             isInSidebar
           />

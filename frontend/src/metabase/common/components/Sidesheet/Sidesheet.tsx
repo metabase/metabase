@@ -45,6 +45,7 @@ export function Sidesheet({
         bg="bg-light"
         data-testid="sidesheet"
         className={Styles.SidesheetContent}
+        data-testid="sidesheet"
       >
         <Modal.Header bg="bg-light" px="xl">
           {title && (

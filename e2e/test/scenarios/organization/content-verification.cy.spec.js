@@ -179,9 +179,9 @@ describeEE("scenarios > premium > content verification", () => {
 
         questionInfoButton().click();
         sidesheet().within(() => {
-          cy.findAllByText(/A moderator verified this/);
+          cy.findAllByText(/A moderator verified this/); // overview tab
           cy.findByRole("tab", { name: "History" }).click();
-          cy.findAllByText("A moderator verified this");
+          cy.findAllByText("A moderator verified this"); // history tab
         });
         cy.findByLabelText("Close").click();
 
