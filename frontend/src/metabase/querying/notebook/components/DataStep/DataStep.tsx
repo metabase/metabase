@@ -37,7 +37,8 @@ export const DataStep = ({
     metadataProvider: Lib.MetadataProvider,
   ) => {
     const newQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
-    if (isMetric) {
+    const newAggregations = Lib.aggregations(newQuery, stageIndex);
+    if (isMetric && newAggregations.length === 0) {
       await updateQuery(Lib.aggregateByCount(newQuery, stageIndex));
     } else {
       await updateQuery(newQuery);
