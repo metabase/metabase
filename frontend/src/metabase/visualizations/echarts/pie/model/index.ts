@@ -116,8 +116,10 @@ export function getPieChartModel(
       value,
     };
   });
-  const visiblePieRows = pieRowsWithValues.filter(
-    row => !hiddenSlices.includes(row.key),
+  const visiblePieRows = pieRowsWithValues.filter(row =>
+    row.isOther
+      ? !hiddenSlices.includes(OTHER_SLICE_KEY)
+      : !hiddenSlices.includes(row.key),
   );
 
   // We allow negative values if every single metric value is negative or 0
@@ -138,7 +140,9 @@ export function getPieChartModel(
 
   const [slices, others] = _.chain(pieRowsWithValues)
     .map(({ value, color, key, name, isOther }): PieSliceData => {
-      const visible = !hiddenSlices.includes(key);
+      const visible = isOther
+        ? !hiddenSlices.includes(OTHER_SLICE_KEY)
+        : !hiddenSlices.includes(key);
       return {
         key,
         name,
@@ -167,14 +171,15 @@ export function getPieChartModel(
   // Only add "other" slice if there are slices below threshold with non-zero total
   const otherTotal = others.reduce((currTotal, o) => currTotal + o.value, 0);
   if (otherTotal > 0) {
+    const visible = !hiddenSlices.includes(OTHER_SLICE_KEY);
     slices.push({
       key: OTHER_SLICE_KEY,
       name: OTHER_SLICE_KEY,
       value: otherTotal,
       displayValue: otherTotal,
-      normalizedPercentage: otherTotal / total,
+      normalizedPercentage: visible ? otherTotal / total : 0,
       color: renderingContext.getColor("text-light"),
-      visible: true,
+      visible,
       isOther: true,
       noHover: false,
       includeInLegend: true,

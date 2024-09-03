@@ -36,14 +36,14 @@ export const getTooltipModel = (
     chartModel.slices[hoveredIndex].data.isOther &&
     chartModel.otherSlices.length > 1;
 
-  const rows = (hoveredOther ? chartModel.otherSlices : chartModel.slices).map(
-    slice => ({
+  const rows = (hoveredOther ? chartModel.otherSlices : chartModel.slices)
+    .filter(slice => slice.data.visible)
+    .map(slice => ({
       name: slice.data.name,
       value: slice.data.displayValue,
       color: hoveredOther ? undefined : slice.data.color,
       formatter: formatters.formatMetric,
-    }),
-  );
+    }));
 
   const rowsTotal = getTotalValue(rows);
   const isShowingTotalSensible = rows.length > 1;
