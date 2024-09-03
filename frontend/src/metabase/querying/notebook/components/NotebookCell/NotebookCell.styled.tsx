@@ -17,46 +17,27 @@ export const NotebookCell = styled.div<{ color: string; padding?: string }>`
   color: ${props => props.color};
 `;
 
-type NotebookCellItemContainerProps = {
+export const NotebookCellItemContainer = styled.div<{
   color: string;
   inactive?: boolean;
   readOnly?: boolean;
   disabled?: boolean;
-};
-
-function getNotebookCellItemColor(props: NotebookCellItemContainerProps) {
-  if (props.inactive) {
-    return props.disabled ? color("text-light") : props.color;
-  } else {
-    return color("text-white");
-  }
-}
-
-function getNotebookCellItemBorderColor(props: NotebookCellItemContainerProps) {
-  if (props.inactive) {
-    return props.disabled ? color("border") : alpha(props.color, 0.25);
-  } else {
-    return "transparent";
-  }
-}
-
-export const NotebookCellItemContainer = styled.div<NotebookCellItemContainerProps>`
+}>`
   display: flex;
   align-items: center;
   font-weight: bold;
-  color: ${getNotebookCellItemColor};
+  color: ${props => (props.inactive ? props.color : color("text-white"))};
   border-radius: 6px;
   border: 2px solid transparent;
-  border-color: ${getNotebookCellItemBorderColor};
+  border-color: ${props =>
+    props.inactive ? alpha(props.color, 0.25) : "transparent"};
   cursor: ${props =>
     (!props.inactive || props.onClick) && !props.readOnly && !props.disabled
       ? "pointer"
       : "default"};
-  pointer-events: ${props => props.disabled && "none"};
 
   &:hover {
-    border-color: ${props =>
-      !props.disabled && props.inactive && alpha(props.color, 0.8)};
+    border-color: ${props => props.inactive && alpha(props.color, 0.8)};
   }
 
   transition: border 300ms linear;
@@ -77,12 +58,7 @@ export const NotebookCellItemContentContainer = styled.div<{
   display: flex;
   align-items: center;
   padding: ${CONTAINER_PADDING};
-  background-color: ${props =>
-    props.inactive
-      ? props.disabled
-        ? color("bg-light")
-        : "transparent"
-      : props.color};
+  background-color: ${props => (props.inactive ? "transparent" : props.color)};
   pointer-events: ${props => (props.disabled ? "none" : "auto")};
 
   &:hover {
@@ -96,11 +72,11 @@ export const NotebookCellItemContentContainer = styled.div<{
   ${props =>
     !!props.border &&
     css`
-    border-${props.border}: 1px solid ${alpha(
+      border-${props.border}: 1px solid ${alpha(
       props.theme.fn.themeColor("bg-white"),
       0.25,
     )};
-  `}
+    `}
 
   ${props =>
     props.roundedCorners.includes("left") &&
