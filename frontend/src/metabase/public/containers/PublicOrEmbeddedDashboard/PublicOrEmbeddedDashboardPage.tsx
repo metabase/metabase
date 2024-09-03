@@ -7,7 +7,9 @@ import {
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 import { SetTitle } from "metabase/hoc/Title";
+import { parseHashOptions } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
+import { LocaleProvider } from "metabase/public/LocaleProvider";
 
 import { PublicOrEmbeddedDashboard } from "./PublicOrEmbeddedDashboard";
 import { usePublicDashboardEndpoints } from "./WithPublicDashboardEndpoints";
@@ -45,29 +47,35 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
 
   const dashboard = useSelector(getDashboardComplete);
 
+  const locale = parseHashOptions(props.location.hash)?.["locale"] as
+    | string
+    | undefined;
+
   return (
     <>
-      <SetTitle title={dashboard?.name} />
-      <PublicOrEmbeddedDashboard
-        dashboardId={dashboardId}
-        isFullscreen={isFullscreen}
-        refreshPeriod={refreshPeriod}
-        hideParameters={hideParameters}
-        isNightMode={isNightMode}
-        hasNightModeToggle={hasNightModeToggle}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        onNightModeChange={onNightModeChange}
-        onFullscreenChange={onFullscreenChange}
-        onRefreshPeriodChange={onRefreshPeriodChange}
-        background={background}
-        bordered={bordered}
-        downloadsEnabled={downloadsEnabled}
-        theme={theme}
-        titled={titled}
-        font={font}
-        parameterQueryParams={parameterQueryParams}
-        cardTitled={true}
-      />
+      <LocaleProvider locale={locale}>
+        <SetTitle title={dashboard?.name} />
+        <PublicOrEmbeddedDashboard
+          dashboardId={dashboardId}
+          isFullscreen={isFullscreen}
+          refreshPeriod={refreshPeriod}
+          hideParameters={hideParameters}
+          isNightMode={isNightMode}
+          hasNightModeToggle={hasNightModeToggle}
+          setRefreshElapsedHook={setRefreshElapsedHook}
+          onNightModeChange={onNightModeChange}
+          onFullscreenChange={onFullscreenChange}
+          onRefreshPeriodChange={onRefreshPeriodChange}
+          background={background}
+          bordered={bordered}
+          downloadsEnabled={downloadsEnabled}
+          theme={theme}
+          titled={titled}
+          font={font}
+          parameterQueryParams={parameterQueryParams}
+          cardTitled={true}
+        />
+      </LocaleProvider>
     </>
   );
 };

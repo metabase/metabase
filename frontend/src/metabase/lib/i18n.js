@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { addLocale, useLocale } from "ttag";
 
+import api from "metabase/lib/api";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/lib/date-time";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -9,11 +10,14 @@ import MetabaseSettings from "metabase/lib/settings";
 export async function loadLocalization(locale) {
   // we need to be sure to set the initial localization before loading any files
   // so load metabase/services only when we need it
-  const { I18NApi } = require("metabase/services");
   // load and parse the locale
   const translationsObject =
     locale !== "en"
-      ? await I18NApi.locale({ locale })
+      ? // ? await I18NApi.locale({ locale })
+        // the function above uses GET, which adds custom headers -> we run into CORS
+        await fetch(`${api.basename}/app/locales/${locale}.json`).then(
+          response => response.json(),
+        )
       : // We don't serve en.json. Instead, use this object to fall back to theliterals.
         {
           headers: {

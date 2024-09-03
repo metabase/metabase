@@ -337,3 +337,8 @@ const instance = new Api();
 
 export default instance;
 export const { GET, POST, PUT, DELETE } = instance;
+
+export const setLocaleHeader = locale => {
+  // eslint-disable-next-line no-literal-metabase-strings -- Header name, not a user facing string
+  DEFAULT_OPTIONS.headers["X-Metabase-Locale"] = locale ?? undefined;
+};
