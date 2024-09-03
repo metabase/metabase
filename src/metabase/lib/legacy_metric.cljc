@@ -122,9 +122,8 @@
                                                                 aggregation-pos (assoc :aggregation-position aggregation-pos))))
                                                           metrics))
              sorted (sort-by (some-fn :display-name :name) results)]
-         (if (empty? sorted)
-           nil
-           sorted))))))
+         (when (seq sorted)
+           (vec sorted)))))))
 
 (defmethod lib.metadata.calculation/metadata-method :metric
   [query stage-number [_ _opts metric-id-or-name :as metric-ref]]
