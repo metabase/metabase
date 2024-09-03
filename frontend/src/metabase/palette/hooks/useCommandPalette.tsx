@@ -61,7 +61,7 @@ export const useCommandPalette = ({
   const hasQuery = searchQuery.length > 0;
 
   const {
-    currentData: searchResultsTemp,
+    currentData: searchResults,
     isFetching: isSearchLoading,
     error: searchError,
   } = useSearchQuery(
@@ -76,38 +76,9 @@ export const useCommandPalette = ({
     },
   );
 
-  const searchResults = useMemo(() => {
-    return searchResultsTemp
-      ? {
-          ...searchResultsTemp,
-          data: searchResultsTemp.data.map(datum => {
-            if (datum.model === "card") {
-              return {
-                ...datum,
-                dashboard_id: (window as any).dashboard_id ?? 34,
-              };
-            }
-
-            return datum;
-          }),
-        }
-      : searchResultsTemp;
-  }, [searchResultsTemp]);
-
-  const { data: recentItemsTemp } = useListRecentsQuery(undefined, {
+  const { data: recentItems } = useListRecentsQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
-
-  const recentItems = useMemo(() => {
-    return (
-      recentItemsTemp?.map(item => {
-        if (item.model !== "card") {
-          return item;
-        }
-        return { ...item, dashboard_id: (window as any).dashboard_id ?? 34 };
-      }) ?? undefined
-    );
-  }, [recentItemsTemp]);
 
   const adminPaths = useSelector(getAdminPaths);
   const settingValues = useSelector(getSettings);
