@@ -327,10 +327,11 @@
         eid->id (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))]
     (mapv (fn entity-id-info [entity-id]
             [entity-id (if-let [id (get eid->id entity-id)]
-                         {:id id :type api-name :status "ok"}
+                         {:id id :type api-name :status "success"}
                          ;; handle errors
                          (if (mc/validate EntityId entity-id)
                            {:type api-name
+                            :id nil
                             :status "not-found"}
                            {:type api-name
                             :status "invalid-format"
@@ -358,7 +359,7 @@
   (if (string? id)
     (let [model (->model pre-model)
           [[_ {:keys [status] :as info}]] (entity-ids->id-for-model model [id])]
-      (if-not (= "ok" status)
+      (if-not (= "success" status)
         (throw (ex-info "problem looking up id from entity_id"
                         {:pre-model pre-model
                          :model model

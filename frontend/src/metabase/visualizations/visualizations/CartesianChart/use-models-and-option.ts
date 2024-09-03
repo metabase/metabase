@@ -29,6 +29,7 @@ export function useModelsAndOption(
     fontFamily,
     width,
     height,
+    hiddenSeries = new Set(),
     timelineEvents,
     selectedTimelineEventIds,
     onRender,
@@ -67,8 +68,21 @@ export function useModelsAndOption(
       getModel = getScatterPlotModel;
     }
 
-    return getModel(seriesToRender, settings, renderingContext, showWarning);
-  }, [card.display, seriesToRender, settings, renderingContext, showWarning]);
+    return getModel(
+      seriesToRender,
+      settings,
+      Array.from(hiddenSeries),
+      renderingContext,
+      showWarning,
+    );
+  }, [
+    card.display,
+    seriesToRender,
+    settings,
+    hiddenSeries,
+    renderingContext,
+    showWarning,
+  ]);
 
   const chartMeasurements = useMemo(
     () =>
