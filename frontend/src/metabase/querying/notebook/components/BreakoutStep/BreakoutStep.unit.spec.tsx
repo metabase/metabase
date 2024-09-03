@@ -1,8 +1,23 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, getIcon, render, screen, within } from "__support__/ui";
+import { createMockMetadata } from "__support__/metadata";
+import {
+  fireEvent,
+  getIcon,
+  queryIcon,
+  render,
+  screen,
+  within,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQueryWithClauses } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
+import { createMockCard } from "metabase-types/api/mocks";
+import {
+  createOrdersIdField,
+  createOrdersTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { DEFAULT_QUESTION, createMockNotebookStep } from "../../test-utils";
 import type { NotebookStep } from "../../types";
@@ -472,10 +487,9 @@ describe("BreakoutStep", () => {
 
   describe("metrics", () => {
     it("should allow to select date and datetime columns only", async () => {
-      const step = createMockNotebookStep({
-        question: DEFAULT_QUESTION.setType("metric"),
-      });
-      setup({ step });
+      const question = DEFAULT_QUESTION.setType("metric");
+      const step = createMockNotebookStep({ question });
+      const { getNextBreakouts } = setup({ step });
 
       await userEvent.click(screen.getByText("Pick a column to group by"));
       expect(await screen.findByText("Order")).toBeInTheDocument();
@@ -486,6 +500,61 @@ describe("BreakoutStep", () => {
       expect(await screen.findByText("Created At")).toBeInTheDocument();
       expect(await screen.findByText("Birth Date")).toBeInTheDocument();
       expect(screen.queryByText("Email")).not.toBeInTheDocument();
+
+      await userEvent.click(await screen.findByText("Created At"));
+      expect(getNextBreakouts()).toMatchObject([
+        { displayName: "Created At: Month" },
+      ]);
+    });
+
+    it("should not allow to select columns in readonly mode", () => {
+      const question = DEFAULT_QUESTION.setType("metric");
+      const step = createMockNotebookStep({ question });
+      setup({ step, readOnly: true });
+
+      expect(
+        screen.queryByText("Pick a column to group by"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("No datetime columns available"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not allow to select when there are no date or datetime columns", () => {
+      const metadata = createMockMetadata({
+        databases: [
+          createSampleDatabase({
+            tables: [createOrdersTable({ fields: [createOrdersIdField()] })],
+          }),
+        ],
+      });
+      const question = new Question(
+        createMockCard({ type: "metric" }),
+        metadata,
+      );
+      const step = createMockNotebookStep({
+        question,
+        query: question.query(),
+      });
+      setup({ step });
+
+      expect(
+        screen.getByText("No datetime columns available"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Pick a column to group by"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not allow to add more than 1 breakout", async () => {
+      const query = createQueryWithClauses({
+        breakouts: [{ tableName: "ORDERS", columnName: "CREATED_AT" }],
+      });
+      const question = DEFAULT_QUESTION.setType("metric").setQuery(query);
+      const step = createMockNotebookStep({ question });
+      setup({ step });
+
+      expect(queryIcon("add")).not.toBeInTheDocument();
     });
   });
 });
