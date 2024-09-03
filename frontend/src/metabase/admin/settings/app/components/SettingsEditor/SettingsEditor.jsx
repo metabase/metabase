@@ -81,27 +81,17 @@ class SettingsEditor extends Component {
   }
 
   /**
-   * @param {Object|import("metabase-types/api").SettingKey} settingOrKey
+   * @param {Object} setting
    * @param {*} newValue
    * @param {Object} options - allows external callers in setting's that user custom components to hook into the success or failure of the update
    * @param {function} [options.onChanged] - callback fired after the setting has been updated
    * @param {function} [options.onError] - callback fired after the setting has failed to update
    */
-  updateSetting = async (settingOrKey, newValue, options) => {
-    const {
-      settingsByKey,
-      settingValues,
-      updateSetting,
-      reloadSettings,
-      dispatch,
-    } = this.props;
+  updateSetting = async (setting, newValue, options) => {
+    const { settingValues, updateSetting, reloadSettings, dispatch } =
+      this.props;
 
     this.saveStatusRef.current.setSaving();
-
-    const setting =
-      typeof settingOrKey === "string"
-        ? settingsByKey[settingOrKey]
-        : settingOrKey;
 
     const oldValue = setting.value;
 
