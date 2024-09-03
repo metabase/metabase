@@ -7,4 +7,3 @@ export type {
 } from "@mantine/core";
 export { useHover } from "@mantine/hooks";
 export * from "./components";
-export { type MantineColor } from "./utils/colors";

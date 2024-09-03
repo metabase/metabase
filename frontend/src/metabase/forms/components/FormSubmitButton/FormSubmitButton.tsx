@@ -2,7 +2,7 @@ import type { ReactNode, Ref } from "react";
 import { forwardRef, useEffect } from "react";
 import { t } from "ttag";
 
-import type { ButtonProps, MantineColor } from "metabase/ui";
+import type { ButtonProps } from "metabase/ui";
 import { Button } from "metabase/ui";
 
 import type { FormStatus } from "../../contexts";
@@ -63,7 +63,7 @@ type SubmitButtonColorOpts = Pick<FormSubmitButtonProps, "color">;
 const getSubmitButtonColor = (
   status: FormStatus | undefined,
   { color }: SubmitButtonColorOpts,
-): MantineColor | undefined => {
+) => {
   switch (status) {
     case "fulfilled":
       return "success";

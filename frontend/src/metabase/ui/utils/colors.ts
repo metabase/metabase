@@ -59,8 +59,3 @@ export function getThemeColors(): Record<string, ColorShades> {
     ),
   };
 }
-
-export type MantineColor =
-  | typeof CUSTOM_COLORS[number]
-  | typeof ORIGINAL_COLORS[number]
-  | (string & unknown);
