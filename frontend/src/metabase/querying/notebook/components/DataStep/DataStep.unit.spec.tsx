@@ -29,6 +29,7 @@ import {
 } from "metabase-types/store/mocks";
 
 import { DEFAULT_QUESTION, createMockNotebookStep } from "../../test-utils";
+import type { NotebookStep } from "../../types";
 
 import { DataStep } from "./DataStep";
 
@@ -54,13 +55,17 @@ const createQueryWithBreakout = () => {
   return Lib.breakout(query, 0, column);
 };
 
-const setup = (
+interface SetupOpts {
+  step?: NotebookStep;
+  readOnly?: boolean;
+  isEmbeddingSdk?: boolean;
+}
+
+const setup = ({
   step = createMockNotebookStep(),
-  {
-    readOnly = false,
-    isEmbeddingSdk = false,
-  }: { readOnly?: boolean; isEmbeddingSdk?: boolean } = {},
-) => {
+  readOnly = false,
+  isEmbeddingSdk = false,
+}: SetupOpts = {}) => {
   const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
 
   const updateQuery = jest.fn();
@@ -111,7 +116,7 @@ const setup = (
 const setupEmptyQuery = () => {
   const question = Question.create({ databaseId: SAMPLE_DB_ID });
   const query = question.query();
-  return setup(createMockNotebookStep({ query }));
+  return setup({ step: createMockNotebookStep({ query }) });
 };
 
 describe("DataStep", () => {
@@ -179,7 +184,7 @@ describe("DataStep", () => {
       Lib.tableOrCardMetadata(metadataProvider, `card__${card.id}`),
     );
     const step = createMockNotebookStep({ query });
-    setup(step);
+    setup({ step });
 
     expect(screen.getByText(card.name)).toBeInTheDocument();
     expect(getIcon(icon)).toBeInTheDocument();
@@ -199,7 +204,7 @@ describe("DataStep", () => {
       const step = createMockNotebookStep({
         question: DEFAULT_QUESTION.setType("metric"),
       });
-      const { getNextQuery } = setup(step);
+      const { getNextQuery } = setup({ step });
 
       await userEvent.click(screen.getByText("Orders"));
       await userEvent.click(await screen.findByText("Products"));
@@ -217,7 +222,7 @@ describe("DataStep", () => {
 
     it("should not automatically aggregate by count for non-metrics", async () => {
       const step = createMockNotebookStep();
-      const { getNextQuery } = setup(step);
+      const { getNextQuery } = setup({ step });
 
       await userEvent.click(screen.getByText("Orders"));
       await userEvent.click(await screen.findByText("Products"));
@@ -243,7 +248,7 @@ describe("DataStep", () => {
 
     it("should render with a single column selected", async () => {
       const query = createQueryWithFields(["ID"]);
-      setup(createMockNotebookStep({ query }));
+      setup({ step: createMockNotebookStep({ query }) });
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
@@ -255,7 +260,7 @@ describe("DataStep", () => {
 
     it("should render with multiple columns selected", async () => {
       const query = createQueryWithFields(["ID", "TOTAL"]);
-      setup(createMockNotebookStep({ query }));
+      setup({ step: createMockNotebookStep({ query }) });
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
@@ -270,7 +275,7 @@ describe("DataStep", () => {
     it("should allow selecting a column", async () => {
       const query = createQueryWithFields(["ID"]);
       const step = createMockNotebookStep({ query });
-      const { getNextColumn } = setup(step);
+      const { getNextColumn } = setup({ step });
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       await userEvent.click(screen.getByLabelText("Tax"));
@@ -294,7 +299,7 @@ describe("DataStep", () => {
     it("should allow selecting all columns", async () => {
       const query = createQueryWithFields(["ID"]);
       const step = createMockNotebookStep({ query });
-      const { getNextColumn } = setup(step);
+      const { getNextColumn } = setup({ step });
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       await userEvent.click(screen.getByLabelText("Select all"));
@@ -315,7 +320,7 @@ describe("DataStep", () => {
     });
 
     it("should not display fields picker in read-only mode", () => {
-      setup(createMockNotebookStep(), { readOnly: true });
+      setup({ readOnly: true });
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });
 
@@ -327,7 +332,7 @@ describe("DataStep", () => {
     it("should not display fields picker if a query has aggregations", () => {
       const query = createQueryWithAggregation();
       const step = createMockNotebookStep({ query });
-      setup(step);
+      setup({ step });
 
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });
@@ -335,7 +340,7 @@ describe("DataStep", () => {
     it("should not display fields picker if a query has breakouts", () => {
       const query = createQueryWithBreakout();
       const step = createMockNotebookStep({ query });
-      setup(step);
+      setup({ step });
 
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });
@@ -414,7 +419,7 @@ describe("DataStep", () => {
 
     describe("embedding SDK context", () => {
       it("should not show the tooltip", async () => {
-        setup(createMockNotebookStep(), { isEmbeddingSdk: true });
+        setup({ isEmbeddingSdk: true });
 
         await userEvent.hover(screen.getByText("Orders"));
         expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
@@ -423,7 +428,7 @@ describe("DataStep", () => {
       it.each([{ metaKey: true }, { ctrlKey: true }])(
         "meta/ctrl click should not open the data source",
         async clickConfig => {
-          const { mockWindowOpen } = setup(createMockNotebookStep(), {
+          const { mockWindowOpen } = setup({
             isEmbeddingSdk: true,
           });
 
@@ -439,7 +444,7 @@ describe("DataStep", () => {
       );
 
       it("middle click should not open the data source", async () => {
-        const { mockWindowOpen } = setup(createMockNotebookStep(), {
+        const { mockWindowOpen } = setup({
           isEmbeddingSdk: true,
         });
 
