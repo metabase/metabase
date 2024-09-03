@@ -1420,6 +1420,197 @@ describe("scenarios > question > multiple column breakouts", () => {
 
   describe("data source", () => {
     describe("notebook", () => {
+      it("should be able to add filters for each source column", () => {
+        function addDateBetweenFilter({
+          columnName,
+          columnIndex,
+          columnMinValue,
+          columnMaxValue,
+        }: {
+          columnName: string;
+          columnIndex: number;
+          columnMinValue: string;
+          columnMaxValue: string;
+        }) {
+          popover().within(() => {
+            cy.findAllByText(columnName).eq(columnIndex).click();
+            cy.findByText("Specific dates…").click();
+            cy.findByText("Between").click();
+            cy.findByLabelText("Start date").clear().type(columnMinValue);
+            cy.findByLabelText("End date").clear().type(columnMaxValue);
+            cy.button("Add filter").click();
+          });
+        }
+
+        function testDatePostAggregationFilter({
+          questionDetails,
+          columnName,
+          column1MinValue,
+          column1MaxValue,
+          column2MinValue,
+          column2MaxValue,
+        }: {
+          questionDetails: StructuredQuestionDetails;
+          columnName: string;
+          column1MinValue: string;
+          column1MaxValue: string;
+          column2MinValue: string;
+          column2MaxValue: string;
+        }) {
+          createQuestion(questionDetails).then(({ body: card }) => {
+            createQuestion(getNestedQuestionDetails(card.id), {
+              visitQuestion: true,
+            });
+          });
+          openNotebook();
+
+          cy.log("add a filter for the first column");
+          getNotebookStep("data").button("Filter").click();
+          addDateBetweenFilter({
+            columnName,
+            columnIndex: 0,
+            columnMinValue: column1MinValue,
+            columnMaxValue: column1MaxValue,
+          });
+
+          cy.log("add a filter for the second column");
+          getNotebookStep("filter").icon("add").click();
+          addDateBetweenFilter({
+            columnName,
+            columnIndex: 1,
+            columnMinValue: column2MinValue,
+            columnMaxValue: column2MaxValue,
+          });
+
+          cy.log("assert query results");
+          visualize();
+          cy.wait("@dataset");
+        }
+
+        function addNumericBetweenFilter({
+          columnName,
+          columnIndex,
+          columnMinValue,
+          columnMaxValue,
+        }: {
+          columnName: string;
+          columnIndex: number;
+          columnMinValue: number;
+          columnMaxValue: number;
+        }) {
+          popover().within(() => {
+            cy.findAllByText(columnName).eq(columnIndex).click();
+            cy.findByPlaceholderText("Min")
+              .clear()
+              .type(String(columnMinValue));
+            cy.findByPlaceholderText("Max")
+              .clear()
+              .type(String(columnMaxValue));
+            cy.button("Add filter").click();
+          });
+        }
+
+        function testNumericPostAggregationFilter({
+          questionDetails,
+          columnName,
+          column1MinValue,
+          column1MaxValue,
+          column2MinValue,
+          column2MaxValue,
+        }: {
+          questionDetails: StructuredQuestionDetails;
+          columnName: string;
+          column1MinValue: number;
+          column1MaxValue: number;
+          column2MinValue: number;
+          column2MaxValue: number;
+        }) {
+          createQuestion(questionDetails).then(({ body: card }) => {
+            createQuestion(getNestedQuestionDetails(card.id), {
+              visitQuestion: true,
+            });
+          });
+          openNotebook();
+
+          cy.log("add a filter for the first column");
+          getNotebookStep("data").button("Filter").click();
+          addNumericBetweenFilter({
+            columnName,
+            columnIndex: 0,
+            columnMinValue: column1MinValue,
+            columnMaxValue: column1MaxValue,
+          });
+
+          cy.log("add a filter for the second column");
+          getNotebookStep("filter").icon("add").click();
+          addNumericBetweenFilter({
+            columnName,
+            columnIndex: 1,
+            columnMinValue: column2MinValue,
+            columnMaxValue: column2MaxValue,
+          });
+
+          cy.log("assert query results");
+          visualize();
+          cy.wait("@dataset");
+        }
+
+        cy.log("temporal buckets");
+        testDatePostAggregationFilter({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          columnName: "Created At",
+          column1MinValue: "January 1, 2023",
+          column1MaxValue: "December 31, 2023",
+          column2MinValue: "March 1, 2023",
+          column2MaxValue: "May 31, 2023",
+        });
+        assertTableData({
+          columns: ["Created At", "Created At", "Count"],
+          firstRows: [
+            ["January 1, 2023, 12:00 AM", "March 1, 2023, 12:00 AM", "256"],
+            ["January 1, 2023, 12:00 AM", "April 1, 2023, 12:00 AM", "238"],
+            ["January 1, 2023, 12:00 AM", "May 1, 2023, 12:00 AM", "271"],
+          ],
+        });
+        assertQueryBuilderRowCount(3);
+
+        cy.log("'num-bins' breakouts");
+        testNumericPostAggregationFilter({
+          questionDetails: questionWith2NumBinsBreakoutsDetails,
+          columnName: "Total",
+          column1MinValue: 10,
+          column1MaxValue: 50,
+          column2MinValue: 10,
+          column2MaxValue: 50,
+        });
+        assertTableData({
+          columns: ["Total", "Total", "Count"],
+          firstRows: [
+            ["20  –  40", "20  –  25", "214"],
+            ["20  –  40", "25  –  30", "396"],
+          ],
+        });
+        assertQueryBuilderRowCount(7);
+
+        cy.log("'bin-width' breakouts");
+        testNumericPostAggregationFilter({
+          questionDetails: questionWith2BinWidthBreakoutsDetails,
+          columnName: "Latitude",
+          column1MinValue: 10,
+          column1MaxValue: 50,
+          column2MinValue: 10,
+          column2MaxValue: 50,
+        });
+        assertTableData({
+          columns: ["Latitude", "Latitude", "Count"],
+          firstRows: [
+            ["20° N  –  40° N", "20° N  –  30° N", "87"],
+            ["20° N  –  40° N", "30° N  –  40° N", "1,176"],
+          ],
+        });
+        assertQueryBuilderRowCount(4);
+      });
+
       it("should be able to add aggregations for each source column", () => {
         function testSourceAggregation({
           questionDetails,
