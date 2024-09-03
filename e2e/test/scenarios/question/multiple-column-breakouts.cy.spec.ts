@@ -1420,6 +1420,72 @@ describe("scenarios > question > multiple column breakouts", () => {
 
   describe("data source", () => {
     describe("notebook", () => {
+      it("should be able to add aggregations for each source column", () => {
+        function testSourceAggregation({
+          questionDetails,
+          columnName,
+        }: {
+          questionDetails: StructuredQuestionDetails;
+          columnName: string;
+        }) {
+          createQuestion(questionDetails).then(({ body: card }) => {
+            createQuestion(getNestedQuestionDetails(card.id), {
+              visitQuestion: true,
+            });
+          });
+          openNotebook();
+
+          cy.log("add an aggregation for the first column");
+          getNotebookStep("data").button("Summarize").click();
+          popover().within(() => {
+            cy.findByText("Minimum of ...").click();
+            cy.findAllByText(columnName).eq(0).click();
+          });
+
+          cy.log("add an aggregation for the second column");
+          getNotebookStep("summarize").icon("add").click();
+          popover().within(() => {
+            cy.findByText("Maximum of ...").click();
+            cy.findAllByText(columnName).eq(1).click();
+          });
+
+          cy.log("assert query results");
+          visualize();
+          cy.wait("@dataset");
+        }
+
+        cy.log("temporal breakouts");
+        testSourceAggregation({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          columnName: "Created At",
+        });
+        assertTableData({
+          // TODO QP bug, should be "Min of Created At: Year",  "Max of Created At: Month"
+          columns: ["Min of Created At: Month", "Max of Created At: Month"],
+          firstRows: [["January 1, 2022, 12:00 AM", "April 1, 2026, 12:00 AM"]],
+        });
+
+        cy.log("'num-bins' breakouts");
+        testSourceAggregation({
+          questionDetails: questionWith2NumBinsBreakoutsDetails,
+          columnName: "Total",
+        });
+        assertTableData({
+          columns: ["Min of Total", "Max of Total"],
+          firstRows: [["-60", "155"]],
+        });
+
+        cy.log("'max-bins' breakouts");
+        testSourceAggregation({
+          questionDetails: questionWith2BinWidthBreakoutsDetails,
+          columnName: "Latitude",
+        });
+        assertTableData({
+          columns: ["Min of Latitude", "Max of Latitude"],
+          firstRows: [["20.00000000° N", "70.00000000° N"]],
+        });
+      });
+
       it("should be able to add breakouts for each source column", () => {
         function testSourceBreakout({
           questionDetails,
