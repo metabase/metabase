@@ -5,6 +5,7 @@ import {
   PERSIST_DATABASE,
   UNPERSIST_DATABASE,
 } from "metabase/admin/databases/database";
+import { useDocsUrl } from "metabase/common/hooks";
 import ActionButton from "metabase/components/ActionButton";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -35,10 +36,11 @@ interface ErrorResponse {
 }
 
 function FeatureDescription({ schemaName }: { schemaName: string }) {
+  const { url } = useDocsUrl("data-modeling/model-persistence");
   const docsLink = (
     <ExternalLink
       key="model-caching-link"
-      href={MetabaseSettings.docsUrl("data-modeling/model-persistence")}
+      href={url}
     >{t`Learn more.`}</ExternalLink>
   );
   return (
