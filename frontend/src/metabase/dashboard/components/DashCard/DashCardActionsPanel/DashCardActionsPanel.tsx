@@ -266,10 +266,7 @@ function DashCardActionsPanelInner({
       >
         <DashCardActionButtonsContainer>
           {buttons}
-          <DashCardActionButton
-            onClick={handleRemoveCard}
-            tooltip={isDashboardCard ? t`Delete` : t`Remove`}
-          >
+          <DashCardActionButton onClick={handleRemoveCard} tooltip={t`Remove`}>
             <DashCardActionButton.Icon name="close" />
           </DashCardActionButton>
         </DashCardActionButtonsContainer>
@@ -281,7 +278,7 @@ function DashCardActionsPanelInner({
           trapFocus
         >
           <ConfirmContent
-            title={t`Are you sure you want to delete this question?`}
+            title={t`Are you sure you want to remove this question?`}
             message={
               <>
                 {t`If you do this, this question won’t be available anymore.`}
@@ -290,8 +287,8 @@ function DashCardActionsPanelInner({
               </>
             }
             cancelButtonText={t`Cancel`}
-            confirmButtonText={t`Delete question`}
-            data-testid="delete-confirmation"
+            confirmButtonText={t`Remove question`}
+            data-testid="remove-confirmation"
             onAction={() => onRemove(dashcard)}
             onCancel={deleteConfirmationModal.close}
             onClose={deleteConfirmationModal.close}
