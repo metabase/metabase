@@ -260,6 +260,15 @@ const dashboardDetails: DashboardDetails = {
   },
 };
 
+function getNestedQuestionDetails(cardId: number) {
+  return {
+    name: "Nested question",
+    query: {
+      "source-table": `card__${cardId}`,
+    },
+  };
+}
+
 describe("scenarios > question > multiple column breakouts", () => {
   beforeEach(() => {
     restore();
@@ -1401,6 +1410,72 @@ describe("scenarios > question > multiple column breakouts", () => {
           queryColumn2Name: "Latitude: 10°",
           tableColumn1Name: "Latitude",
           tableColumn2Name: "Latitude",
+        });
+      });
+    });
+  });
+
+  describe("data source", () => {
+    describe("viz settings", () => {
+      it("should be able to toggle the fields that correspond to breakout columns in the previous stage", () => {
+        function toggleColumn(
+          columnName: string,
+          columnIndex: number,
+          isVisible: boolean,
+        ) {
+          cy.findByTestId("chartsettings-sidebar").within(() => {
+            cy.findAllByLabelText(columnName)
+              .eq(columnIndex)
+              .should(isVisible ? "not.be.checked" : "be.checked")
+              .click();
+            cy.findAllByLabelText(columnName)
+              .eq(columnIndex)
+              .should(isVisible ? "be.checked" : "not.be.checked");
+          });
+        }
+
+        function testVisibleFields({
+          questionDetails,
+          columnName,
+        }: {
+          questionDetails: StructuredQuestionDetails;
+          columnName: string;
+        }) {
+          createQuestion(questionDetails).then(({ body: card }) => {
+            createQuestion(getNestedQuestionDetails(card.id), {
+              visitQuestion: true,
+            });
+          });
+          assertTableData({
+            columns: [columnName, columnName, "Count"],
+          });
+
+          cy.findByTestId("viz-settings-button").click();
+          cy.findByTestId("chartsettings-sidebar")
+            .button("Add or remove columns")
+            .click();
+          toggleColumn(columnName, 0, false);
+          cy.wait("@dataset");
+          assertTableData({ columns: [columnName, "Count"] });
+
+          toggleColumn(columnName, 1, false);
+          cy.wait("@dataset");
+          assertTableData({ columns: ["Count"] });
+
+          toggleColumn(columnName, 0, true);
+          cy.wait("@dataset");
+          assertTableData({ columns: ["Count", columnName] });
+
+          toggleColumn(columnName, 1, true);
+          assertTableData({
+            columns: ["Count", columnName, columnName],
+          });
+        }
+
+        cy.log("temporal breakouts");
+        testVisibleFields({
+          questionDetails: multiStageQuestionWith2TemporalBreakoutsDetails,
+          columnName: "Created At",
         });
       });
     });
