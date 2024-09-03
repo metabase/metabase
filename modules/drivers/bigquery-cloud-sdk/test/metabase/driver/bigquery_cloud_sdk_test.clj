@@ -835,20 +835,24 @@
           (let [count-after (count (future-thread-names))]
             (is (< count-after (+ count-before 5)))))))))
 
-;; TODO Temporarily disabling due to flakiness (#33140)
-#_(deftest global-max-rows-test
-    (mt/test-driver :bigquery-cloud-sdk
-      (testing "The limit middleware prevents us from fetching more pages than are necessary to fulfill query max-rows"
-        (let [page-size          100
-              max-rows           1000
-              num-page-callbacks (atom 0)]
-          (binding [bigquery/*page-size*     page-size
-                    bigquery/*page-callback* (fn []
-                                               (swap! num-page-callbacks inc))]
+(deftest cancel-page-test
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (let [page-size 10
+          max-rows 50000]
+      (testing "Cancel happens after first page"
+        (mt/with-open-channels [canceled-chan (a/promise-chan)]
+          (binding [qp.pipeline/*canceled-chan* canceled-chan
+                    bigquery/*page-size*     page-size
+                    bigquery/*page-callback* (fn [] (a/put! canceled-chan true))]
             (mt/dataset test-data
-              (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
-                (is (= max-rows (count rows)))
-                (is (= (/ max-rows page-size) @num-page-callbacks)))))))))
+              ;; Page size does not guarantee the size of the response but orders table is ~20k rows.
+              (is (< 0
+                     (-> (mt/query orders {:query {:limit max-rows}})
+                         mt/process-query
+                         mt/rows
+                         count)
+                     1000)))))))))
 
 (defn- synced-tables [db-attributes]
   (t2.with-temp/with-temp [Database db db-attributes]

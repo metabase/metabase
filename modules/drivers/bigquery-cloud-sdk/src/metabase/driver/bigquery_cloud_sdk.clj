@@ -76,8 +76,9 @@
     (reduce [_ rf init]
       ;; TODO: Once we're confident that the memory/thread leaks in BigQuery are resolved, we can remove some of this
       ;; logging, and certainly remove the `n` counter.
+      ;; NOTE: Page can be nil in various situations, some are understood (early cancel) and some are not. (#47339)
       (loop [^TableResult page page
-             it                (values-iterator page)
+             it                (some-> page values-iterator)
              acc               init
              n                 0]
         (cond
@@ -93,7 +94,7 @@
               acc)
 
           ;; Clear to send: if there's more in `it`, then send it and recur.
-          (.hasNext it)
+          (some-> it .hasNext)
           (let [acc' (try
                        (rf acc (.next it))
                        (catch Throwable e
@@ -103,12 +104,12 @@
             (recur page it acc' (inc n)))
 
           ;; This page is exhausted - check for another page and keep processing.
-          (some? (.getNextPageToken page))
+          (some-> page (.hasNextPage))
           (let [_        (log/tracef "BigQuery: Fetching new page after %d rows" n)
                 _        (*page-callback*)
                 new-page (.getNextPage page)]
             (log/trace "BigQuery: New page returned")
-            (recur new-page (values-iterator new-page) acc (inc n)))
+            (recur new-page (some-> new-page values-iterator) acc (inc n)))
 
           ;; All pages exhausted, so just return.
           ;; Make sure to close the cancel-chan as well, to prevent thread leaks in execute-bigquery.
@@ -502,21 +503,23 @@
     (respond results-metadata rows)"
   [respond ^TableResult resp cancel-chan]
   (let [^Schema schema
-        (.getSchema resp)
+        (some-> resp .getSchema)
 
         parsers
-        (get-field-parsers schema)
+        (some-> schema get-field-parsers)
 
         columns
-        (for [column (fields->metabase-field-info (.. resp getSchema getFields))]
+        (for [column (some-> schema .getFields fields->metabase-field-info)]
           (-> column
               (set/rename-keys {:base-type :base_type})
-              (dissoc :database-type :database-position)))]
+              (dissoc :database-type :database-position)))
+        cols {:cols columns}
+        results (eduction (map (fn [^FieldValueList row]
+                                 (mapv parse-field-value row parsers)))
+                          (reducible-bigquery-results resp cancel-chan))]
     (respond
-     {:cols columns}
-     (eduction (map (fn [^FieldValueList row]
-                      (mapv parse-field-value row parsers)))
-               (reducible-bigquery-results resp cancel-chan)))))
+     cols
+     results)))
 
 (mu/defn- ^:dynamic *process-native*
   [respond  :- fn?
