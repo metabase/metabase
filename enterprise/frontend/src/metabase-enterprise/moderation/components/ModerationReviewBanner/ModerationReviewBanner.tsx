@@ -26,7 +26,6 @@ const ICON_BUTTON_SIZE = 16;
 interface ModerationReviewBannerProps {
   moderationReview: ModerationReview;
   user?: User | null;
-  currentUser: User;
   onRemove?: () => void;
   className?: string;
 }
