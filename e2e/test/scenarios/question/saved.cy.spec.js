@@ -1,13 +1,19 @@
 import {
+  ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  WEBHOOK_TEST_DASHBOARD,
+  WEBHOOK_TEST_HOST,
+  WEBHOOK_TEST_SESSION_ID,
+  WEBHOOK_TEST_URL,
   addSummaryGroupingField,
   appBar,
   collectionOnTheGoModal,
   entityPickerModal,
   entityPickerModalTab,
+  getAlertChannel,
   modal,
   openNotebook,
   openOrdersTable,
@@ -326,3 +332,107 @@ describe("scenarios > question > saved", () => {
     });
   });
 });
+
+//http://127.0.0.1:9080/api/session/00000000-0000-0000-0000-000000000000/requests
+
+// Ensure the webhook tester docker container is running
+// docker run -p 9080:8080/tcp tarampampam/webhook-tester serve --create-session 00000000-0000-0000-0000-000000000000
+describe(
+  "scenarios > question > saved > alerts",
+  { tags: ["@external"] },
+
+  () => {
+    const firstWebhookName = "E2E Test Webhook";
+    const secondWebhookName = "Toucan Hook";
+
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+
+      cy.request("POST", "/api/channel", {
+        name: firstWebhookName,
+        description: "All aboard the Metaboat",
+        type: "channel/http",
+        details: {
+          url: WEBHOOK_TEST_URL,
+          "auth-method": "none",
+          "fe-form-type": "none",
+        },
+      });
+
+      cy.request("POST", "/api/channel", {
+        name: secondWebhookName,
+        description: "Quack!",
+        type: "channel/http",
+        details: {
+          url: WEBHOOK_TEST_URL,
+          "auth-method": "none",
+          "fe-form-type": "none",
+        },
+      });
+
+      cy.request(
+        "DELETE",
+        `${WEBHOOK_TEST_HOST}/api/session/${WEBHOOK_TEST_SESSION_ID}/requests`,
+        { failOnStatusCode: false },
+      );
+    });
+
+    it("should allow you to enable a webhook alert", () => {
+      visitQuestion(ORDERS_COUNT_QUESTION_ID);
+      cy.findByTestId("sharing-menu-button").click();
+      popover().findByText("Create alert").click();
+      modal().button("Set up an alert").click();
+      modal().within(() => {
+        getAlertChannel(secondWebhookName).scrollIntoView();
+        getAlertChannel(secondWebhookName)
+          .findByRole("checkbox")
+          .click({ force: true });
+        cy.button("Done").click();
+      });
+      cy.findByTestId("sharing-menu-button").click();
+      popover().findByText("Edit alerts").click();
+      popover().within(() => {
+        cy.findByText("You set up an alert").should("exist");
+        cy.findByText("Edit").click();
+      });
+
+      modal().within(() => {
+        getAlertChannel(secondWebhookName).scrollIntoView();
+        getAlertChannel(secondWebhookName)
+          .findByRole("checkbox")
+          .should("be.checked");
+      });
+    });
+
+    it("should allow you to test a webhook", () => {
+      visitQuestion(ORDERS_COUNT_QUESTION_ID);
+      cy.findByTestId("sharing-menu-button").click();
+      popover().findByText("Create alert").click();
+      modal().button("Set up an alert").click();
+      modal().within(() => {
+        getAlertChannel(firstWebhookName).scrollIntoView();
+
+        getAlertChannel(firstWebhookName)
+          .findByRole("checkbox")
+          .click({ force: true });
+
+        getAlertChannel(firstWebhookName).button("Send a test").click();
+      });
+
+      cy.visit(WEBHOOK_TEST_DASHBOARD);
+
+      cy.findByRole("heading", { name: /Requests 1/ }).should("exist");
+
+      cy.request(
+        `${WEBHOOK_TEST_HOST}/api/session/${WEBHOOK_TEST_SESSION_ID}/requests`,
+      ).then(({ body }) => {
+        const payload = cy.wrap(atob(body[0].content_base64));
+
+        payload
+          .should("have.string", "alert_creator_name")
+          .and("have.string", "Bobby Tables");
+      });
+    });
+  },
+);

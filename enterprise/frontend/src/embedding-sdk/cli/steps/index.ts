@@ -16,3 +16,4 @@ export * from "./generate-component-files";
 export * from "./generate-express-server-file";
 export * from "./setup-license";
 export * from "./setup-embedding-settings";
+export * from "./show-post-setup-steps";

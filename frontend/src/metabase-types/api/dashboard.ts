@@ -1,5 +1,6 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type {
+  BaseEntityId,
   ClickBehavior,
   Collection,
   CollectionAuthorityLevel,
@@ -33,6 +34,7 @@ export type DashboardWidth = "full" | "fixed";
 
 export interface Dashboard {
   id: DashboardId;
+  entity_id: BaseEntityId;
   created_at: string;
   updated_at: string;
   collection?: Collection | null;
@@ -104,7 +106,7 @@ export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   card_id: CardId | null;
   card: Card | VirtualCard;
   collection_authority_level?: CollectionAuthorityLevel;
-  entity_id: string;
+  entity_id: BaseEntityId;
   visualization_settings?: DashCardVisualizationSettings;
   justAdded?: boolean;
   created_at: string;
@@ -167,11 +169,11 @@ export type DashboardTabId = number;
 export type DashboardTab = {
   id: DashboardTabId;
   dashboard_id: DashboardId;
-  entity_id: string;
+  entity_id?: BaseEntityId;
   name: string;
   position?: number;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type DashboardParameterMapping = {

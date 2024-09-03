@@ -105,33 +105,19 @@ function createQueryWithInlineExpressionWithOperator() {
   });
 }
 
-function createQueryWithDateExpressionAndAggregation() {
+function createQueryWithOpaqueBreakoutAndAggregation() {
   return createQuery({
     query: {
       database: SAMPLE_DB_ID,
       type: "query",
       query: {
-        expressions: {
-          "Created At plus one month": [
-            "datetime-add",
-            [
-              "field",
-              PRODUCTS.CREATED_AT,
-              {
-                "base-type": "type/DateTime",
-              },
-            ],
-            1,
-            "month",
-          ],
-        },
         aggregation: [["count"]],
         breakout: [
           [
-            "expression",
-            "Created At plus one month",
+            "field",
+            PRODUCTS.CATEGORY,
             {
-              "base-type": "type/DateTime",
+              "base-type": "type/Text",
             },
           ],
         ],
@@ -445,7 +431,7 @@ describe("AggregationPicker", () => {
 
     it("does not display the shortcut if there are no possible breakouts to use", () => {
       setup({
-        query: createQueryWithDateExpressionAndAggregation(),
+        query: createQueryWithOpaqueBreakoutAndAggregation(),
       });
       expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
     });

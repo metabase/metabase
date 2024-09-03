@@ -464,7 +464,7 @@
                        :status-code 400})))))
 
 (api/defendpoint POST "/"
-  "Create a new `Card`."
+  "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
   {name                   ms/NonBlankString

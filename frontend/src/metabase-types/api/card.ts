@@ -4,9 +4,12 @@ import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type { Collection, CollectionId } from "./collection";
 import type { DashCardId, DashboardId } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
+import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
+import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Parameter } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
+import type { CollectionEssentials } from "./search";
 import type { Table } from "./table";
 import type { UserInfo } from "./user";
 import type { SmartScalarComparison } from "./visualization-settings";
@@ -16,6 +19,7 @@ export type CardType = "model" | "question" | "metric";
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
   id: CardId;
+  entity_id: CardEntityId;
   created_at: string;
   updated_at: string;
   name: string;
@@ -226,6 +230,7 @@ export interface ModerationReview {
 }
 
 export type CardId = number;
+export type CardEntityId = BaseEntityId;
 export type ModerationReviewStatus = "verified" | null;
 
 export type CardFilterOption =
@@ -289,3 +294,38 @@ export interface UpdateCardRequest {
   cache_ttl?: number;
   collection_preview?: boolean;
 }
+
+export type CardError = {
+  field?: string;
+  table: string;
+  type: "inactive-field" | "inactive-table" | "unknown-field" | "unknown-table";
+};
+
+export type InvalidCard = Pick<
+  Card,
+  | "archived"
+  | "collection_id"
+  | "collection_position"
+  | "dataset_query"
+  | "description"
+  | "id"
+  | "name"
+  | "updated_at"
+  | "creator"
+> & {
+  collection: CollectionEssentials;
+  collection_preview: boolean;
+  entity_id: string;
+  errors: CardError[];
+  display: CardDisplayType;
+};
+
+export type InvalidCardResponse = {
+  data: InvalidCard[];
+} & PaginationResponse;
+
+export type InvalidCardRequest = {
+  sort_direction?: "asc" | "desc";
+  sort_column?: string;
+  collection_id?: CollectionId | null;
+} & PaginationRequest;
