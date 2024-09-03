@@ -313,8 +313,8 @@
 (defn recursive-connection?
   "Whether or not we are in a recursive call to [[do-with-connection-with-options]]. If we are, you shouldn't set
   Connection options AGAIN, as that may override previous options that we don't want to override."
-  []
   {:added "0.47.0"}
+  []
   (pos? *connection-recursion-depth*))
 
 (mu/defn do-with-resolved-connection

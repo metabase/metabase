@@ -7,7 +7,7 @@ import * as Lib from "metabase-lib";
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
-export function BreakoutStep({
+export function .BreakoutStep({
   query,
   step,
   color,
@@ -128,12 +128,11 @@ const BreakoutPopover = ({
     const filteredColumns = columns.reduce(
       (columns: Lib.ColumnMetadata[], column) => {
         const columnInfo = Lib.displayInfo(query, stageIndex, column);
-        const { breakoutPositions = [] } = columnInfo;
         if (isMetric && !Lib.isDateOrDateTime(column)) {
           return columns;
         } else if (breakout && checkColumnSelected(columnInfo, breakoutIndex)) {
           columns.push(Lib.breakoutColumn(query, stageIndex, breakout));
-        } else if (breakoutPositions.length === 0) {
+        } else {
           columns.push(column);
         }
         return columns;

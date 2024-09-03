@@ -86,10 +86,7 @@
                        report)
                      (catch Exception e
                        (reset! err e)
-                       (log/errorf "Error during serialization: %s %s"
-                                   (ex-message e)
-                                   (-> (ex-data e)
-                                       (dissoc :toucan2/context-trace))))))]
+                       (serdes/log-stripped-error "Error during serialization" e))))]
     {:archive       (when (.exists dst)
                       dst)
      :log-file      (when (.exists log-file)
@@ -131,10 +128,7 @@
                              (v2.load/load-metabase! {:continue-on-error continue-on-error}))))
                      (catch Exception e
                        (reset! err e)
-                       (log/errorf "Error during deserialization: %s %s"
-                                   (ex-message e)
-                                   (-> (ex-data e)
-                                       (dissoc :toucan2/context-trace))))))]
+                       (serdes/log-stripped-error "Error during deserialization" e))))]
     {:log-file      log-file
      :error-message (some-> @err str)
      :report        report

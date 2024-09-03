@@ -1,102 +1,88 @@
 (ns metabase.models.params.chain-filter.dedupe-joins
   (:require
-   [clojure.core.logic :as l]
-   [clojure.set :as set]))
+   [clojure.set :as set]
+   [medley.core :as m]))
 
-(defn- lhso
-  "A relation such that the left-hand side (LHS) of `join` is `lhs`."
-  [join lhs]
-  (l/featurec join {:lhs {:table lhs}}))
+(def ^:private source-node (comp :table :lhs))
 
-(defn- rhso
-  "A relation such that the right-hand side (RHS) of `join` is `rhs`."
-  [join rhs]
-  (l/featurec join {:rhs {:table rhs}}))
+(def ^:private target-node (comp :table :rhs))
 
-(defn- anyg
-  "A psuedo-relation such that goal `g` succeeds for at least one item in `coll`."
-  [g coll]
-  (l/conda
-   ((l/fresh [head]
-      (l/firsto coll head)
-      (g head)))
-   ((l/fresh [more]
-      (l/resto coll more)
-      (anyg g more)))))
+(def ^:private edge-nodes (juxt source-node target-node))
 
-(defn- has-joino
-  "A relation such that `joins` has a join whose RHS is `rhs`."
-  [joins rhs]
-  (anyg #(rhso % rhs) joins))
+(defn- weight
+  [terminal-ids edge]
+  (let [[s e] (edge-nodes edge)]
+    (+ (if (terminal-ids s) 0 1)
+       (if (terminal-ids e) 0 1))))
 
-(defn- parent-joino
-  "True if `join-1` can be considered a 'parent' of `join-2` -- if the Table made available by `join-1` (its RHS) is
-  needed for `join-2` (its LHS)."
-  [join-1 join-2]
-  (l/fresh [id]
-    (rhso join-1 id)
-    (lhso join-2 id)))
+(defn- node-degrees
+  "Return a map from the nodes in `nodes` to their degree in the graph with `edges`.
+  The degree of a node is the number of edges incident to it. A loop edge contributes 2 to the degree.
+  Nodes without any edges are not included in the map."
+  [nodes edges]
+  (reduce (fn [degrees edge]
+            (reduce #(update %1 %2 (fnil inc 0))
+                    degrees
+                    (filter nodes (edge-nodes edge))))
+          {}
+          edges))
 
-(defn- list-beforeo
-  "A relation such that `sublist` is all items in `lst` up to (but not including) `item`."
-  [lst sublist item]
-  #_:clj-kondo/ignore
-  (l/matcha [lst sublist]
-    ([[] []])
-    ([[item . _] []])
-    ([[?x . ?list-more] [?x . ?sublist-more]]
-     (list-beforeo ?list-more ?sublist-more item))))
+(defn- make-tree
+  "Return a subset of `edges` forming a tree starting from node `source-id` and
+  containing all nodes in `terminal-ids`.
+  The tree is built greedily, there is no guarantee that we find the optimal one."
+  [source-id edges terminal-ids]
+  (loop [s #{source-id}, edges edges, tree-edges []]
+    (if (set/subset? terminal-ids s)
+      tree-edges
+      (if-let [out-edges (seq (filter (comp s source-node) edges))]
+        (let [edge (apply min-key #(weight terminal-ids %) out-edges)
+              s' (conj s (target-node edge))]
+          (recur s'
+                 (remove (comp s' target-node) edges)
+                 (conj tree-edges edge)))
+        tree-edges))))
 
-(defn- parent-beforeo
-  "A relationship such that the parent join of `join` appears before it in `joins`."
-  [joins join]
-  (l/fresh [joins-before parent]
-    (list-beforeo joins joins-before join)
-    (parent-joino parent join)
-    (l/membero parent joins-before)))
-
-(defn- distinct-rhso
-  "A relationship such that all RHS tables in `joins` are distinct."
-  [joins]
-  (let [rhses (vec (l/lvars (count joins)))]
-    (dorun (map rhso joins rhses))
-    (l/all
-     (l/distincto rhses))))
+(defn- forced-nodes
+  "Return the transitive closure of nodes reachable from `start-nodes` by a single edge only.
+  `node-fn` selects the target node of an edge returned by `node->edges`.  `node->edges` is a function returning the
+  edges going from a node. (Note that source and target nodes can be both lhs and rhs tables depending on `node-fn`
+  and `node->edges`.)"
+  [node-fn start-nodes node->edges]
+  (loop [[node & nodes] start-nodes, result start-nodes]
+    (if (nil? node)
+      result
+      (let [[edge & more] (node->edges node)]
+        (if (or (nil? edge) (seq more))
+          (recur nodes result)
+          (let [next-node (node-fn edge)]
+            (recur (cons next-node nodes) (conj result next-node))))))))
 
 (defn dedupe-joins
   "Remove unnecessary joins from a collection of `in-joins`.
 
   `keep-ids` = the IDs of Tables that we want to keep joins for. Joins that are not needed to keep these Tables may be
-  removed."
+  removed.
+
+  Note that this function implements a simple greedy algorithm, replacing the previous optimal, but exponential
+  implementation."
   [source-id in-joins keep-ids]
-  ;; we can't keep any joins that don't exist in `in-joins`, so go ahead and remove IDs for those joins if they're not
-  ;; present
-  (let [keep-ids (set/intersection (set keep-ids)
-                                   (set (map #(get-in % [:rhs :table]) in-joins)))]
-    (first
-     (some
-      seq
-      (for [num-joins (range (count keep-ids) (inc (count in-joins)))]
-        (let [out-joins (vec (l/lvars num-joins))]
-          (l/run 1 [q]
-            (l/== q out-joins)
-            ;; every join in out-joins must be present in the original non-deduped set of joins
-            (l/everyg (fn [join]
-                        (l/membero join in-joins))
-                      out-joins)
-            ;; no duplicate joins (this is mostly for optimization since we also deduplicate RHSes below)
-            (l/distincto out-joins)
-            ;; a join for every rhs must be present
-            (l/everyg (fn [id]
-                        (has-joino out-joins id))
-                      keep-ids)
-            ;; no duplicate rhses
-            (distinct-rhso out-joins)
-            ;; joins must be in order (e.g. parent join must come first)
-            (l/everyg (fn [join]
-                        (l/conda
-                         ;; either the LHS is the source Table...
-                         ((lhso join source-id))
-                         ;; or its LHS must have already been joined
-                         ((parent-beforeo out-joins join))))
-                      out-joins))))))))
+  (let [;; get rid of parallel edges, for our purposes they are equivalent
+        edges (m/distinct-by edge-nodes in-joins)
+        out-edges (group-by source-node edges)
+        in-edges (group-by target-node edges)
+        ;; Collect the IDs that must be included either way to prefer them
+        ;; during the construction of the tree.
+        transitive-keep-ids (forced-nodes source-node keep-ids in-edges)
+        transitive-source-ids (forced-nodes target-node #{source-id} out-edges)
+        terminal-ids (set/union transitive-source-ids transitive-keep-ids)
+        tree (make-tree source-id edges terminal-ids)
+        ;; The tree might contain nodes we don't need: any non-terminal node with degree less than 2 is redundant.
+        intermediate-ids (into #{}
+                               (comp (mapcat edge-nodes)
+                                     (remove terminal-ids))
+                               edges)
+        degrees (node-degrees intermediate-ids tree)
+        redundant-nodes (into #{} (keep (fn [[n d]] (when (< d 2) n))) degrees)]
+    ;; Return the tree with edges incident to redundant nodes removed.
+    (into [] (remove #(some redundant-nodes (edge-nodes %))) tree)))

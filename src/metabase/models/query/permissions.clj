@@ -18,6 +18,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -59,7 +60,7 @@
 ;;
 
 (mu/defn query->source-table-ids :- [:set [:or [:= ::native] ::lib.schema.id/table]]
-  "Return a sequence of all Table IDs referenced by `query`."
+  "Return a sequence of all Table IDs referenced by `query`, and/or the ::native keyword for native queries."
   [query :- :map]
   (set
    (flatten
@@ -100,7 +101,7 @@
   ;; ignore the current user for the purposes of calculating the permissions required to run the query. Don't want the
   ;; preprocessing to fail because current user doesn't have permissions to run it when we're not trying to run it at
   ;; all
-  (binding [api/*current-user-id* nil]
+  (mw.session/as-admin
     ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query)))
 
 (defn- referenced-card-ids

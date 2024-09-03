@@ -391,10 +391,12 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric with a custom aggregation expression based on 1 metric", () => {
       createQuestion(ORDERS_SCALAR_METRIC);
       startNewMetric();
+      cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
       entityPickerModal().within(() => {
         entityPickerModalTab("Metrics").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       });
+      cy.wait("@queryMetadata");
       getNotebookStep("summarize")
         .findByText(ORDERS_SCALAR_METRIC.name)
         .click();

@@ -1,6 +1,5 @@
 (ns metabase.query-processor.preprocess
   (:require
-   [clojure.data :as data]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.query :as lib.query]
@@ -61,14 +60,16 @@
   (-> (fn [query]
         (let [query (cond-> query
                       (:lib/type query) ->legacy)]
-          (middleware-fn query)))
+          (vary-meta (middleware-fn query)
+                     assoc :converted-form query)))
       (with-meta (meta middleware-fn))))
 
 (defn- ensure-pmbql [middleware-fn]
   (-> (fn [query]
         (let [query (cond->> query
                       (not (:lib/type query)) (lib.query/query (qp.store/metadata-provider)))]
-          (middleware-fn query)))
+          (vary-meta (middleware-fn query)
+                     assoc :converted-form query)))
       (with-meta (meta middleware-fn))))
 
 (def ^:private middleware
@@ -141,7 +142,8 @@
                                            middleware-fn)]
                   (list middleware-fn-name '=> <>
                         ^{:portal.viewer/default :portal.viewer/diff}
-                        (data/diff query <>)))))
+                        [(or (-> <> meta :converted-form) query)
+                         <>]))))
             ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
             (when-not (map? <>)
               (throw (ex-info (format "Middleware did not return a valid query.")

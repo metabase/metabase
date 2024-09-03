@@ -12,6 +12,7 @@ import {
   filter,
   filterField,
   filterWidget,
+  leftSidebar,
   openNotebook,
   openSeriesSettings,
   popover,
@@ -603,10 +604,10 @@ describe("issue 21504", () => {
     });
 
     cy.findByTestId("viz-settings-button").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Display").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("April 2022").should("be.visible");
+
+    leftSidebar().within(() => {
+      cy.findByText("January 2025").should("be.visible");
+    });
   });
 });
 
