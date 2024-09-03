@@ -720,7 +720,7 @@ Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer,
 
 The additive total of rows across a breakout. `CumulativeCount` can only be used in the **Summarize** section.
 
-Because `CumulativeCount` refers to other rows, the order of the groups in the **Group By** section in the Summarization step matters. Metabase will sort by the first group, then partition by any additional groups. For example, if you want to see the cumulative counts of orders by product category over time, you should first group by `Created At`, then by the product category.
+Because `CumulativeCount` refers to other rows, the order of the groups in the **Group By** section is important. Metabase will sort by the first group, then partition by any additional groups. For example, if you want to see the cumulative counts of orders over time by product category, you should first group by `Created At`, _then_ group by the product category.
 
 Syntax: `CumulativeCount`.
 
@@ -730,7 +730,7 @@ Example: `CumulativeCount`.
 
 The rolling sum of a column across a breakout. `CumulativeSum` can only be used in the **Summarize** section.
 
-Because `CumulativeSum` refers to other rows, the order of the groups in the **Group By** section in the Summarization step matters. Metabase will sort by the first group, then partition by any additional groups. For example, if you want to see the cumulative sum of order totals by product category over time, you should first group by `Created At`, then by the product category.
+Because `CumulativeSum` refers to other rows, the order of the groups in the **Group By** section is important. Metabase will sort by the first group, then partition by any additional groups. For example, if you want to see the cumulative sum of order totals over time by product category, you should first group by `Created At`, _then_ group by product category.
 
 Syntax: `CumulativeSum(column)`.
 
@@ -742,7 +742,7 @@ Related: [Sum](#sum) and [SumIf](#sumif).
 
 > ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB.
 
-See the [Offset](./expressions/offset.md) page for more information.
+For more info, check out our page on [`Offset`](./expressions/offset.md).
 
 Returns the value of an expression in a different row. `Offset` can only be used in the query builder's Summarize step (you cannot use `Offset` to create a custom column).
 
