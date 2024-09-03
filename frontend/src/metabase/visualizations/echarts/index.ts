@@ -4,6 +4,7 @@ import {
   LineChart,
   ScatterChart,
   SunburstChart,
+  TreemapChart,
 } from "echarts/charts";
 import {
   BrushComponent,
@@ -37,5 +38,6 @@ export const registerEChartsModules = () => {
     DatasetComponent,
     LabelLayout,
     TooltipComponent,
+    TreemapChart,
   ]);
 };
