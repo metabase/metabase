@@ -10,6 +10,7 @@ import {
 } from "metabase-types/store/mocks";
 
 import { createMockNotebookStep } from "../../test-utils";
+import type { NotebookStep } from "../../types";
 
 import { AggregateStep } from "./AggregateStep";
 
@@ -21,7 +22,11 @@ function createAggregatedQuery() {
   });
 }
 
-function setup(step = createMockNotebookStep()) {
+interface SetupOpts {
+  step?: NotebookStep;
+}
+
+function setup({ step = createMockNotebookStep() }: SetupOpts = {}) {
   const updateQuery = jest.fn();
 
   renderWithProviders(
@@ -70,13 +75,13 @@ describe("AggregateStep", () => {
   });
 
   it("should render correctly with an aggregation", () => {
-    setup(createMockNotebookStep({ query: createAggregatedQuery() }));
+    setup({ step: createMockNotebookStep({ query: createAggregatedQuery() }) });
     expect(screen.getByText("Average of Quantity")).toBeInTheDocument();
   });
 
   it("should use foreign key name for foreign table columns", () => {
-    setup(
-      createMockNotebookStep({
+    setup({
+      step: createMockNotebookStep({
         query: createQueryWithClauses({
           aggregations: [
             {
@@ -87,7 +92,7 @@ describe("AggregateStep", () => {
           ],
         }),
       }),
-    );
+    });
     expect(screen.getByText("Average of Product → Rating")).toBeInTheDocument();
   });
 
@@ -108,9 +113,9 @@ describe("AggregateStep", () => {
   });
 
   it("should change an aggregation operator", async () => {
-    const { getNextQuery, getRecentAggregationClause } = setup(
-      createMockNotebookStep({ query: createAggregatedQuery() }),
-    );
+    const { getNextQuery, getRecentAggregationClause } = setup({
+      step: createMockNotebookStep({ query: createAggregatedQuery() }),
+    });
 
     await userEvent.click(screen.getByText("Average of Quantity"));
     await userEvent.click(screen.getByText("Average of ...")); // go back to operator selection
@@ -128,9 +133,9 @@ describe("AggregateStep", () => {
   });
 
   it("should change an aggregation column", async () => {
-    const { getNextQuery, getRecentAggregationClause } = setup(
-      createMockNotebookStep({ query: createAggregatedQuery() }),
-    );
+    const { getNextQuery, getRecentAggregationClause } = setup({
+      step: createMockNotebookStep({ query: createAggregatedQuery() }),
+    });
 
     await userEvent.click(screen.getByText("Average of Quantity"));
     await userEvent.click(screen.getByText("Total"));
@@ -147,9 +152,9 @@ describe("AggregateStep", () => {
   });
 
   it("should remove an aggregation", async () => {
-    const { getNextQuery } = setup(
-      createMockNotebookStep({ query: createAggregatedQuery() }),
-    );
+    const { getNextQuery } = setup({
+      step: createMockNotebookStep({ query: createAggregatedQuery() }),
+    });
 
     await userEvent.click(getIcon("close"));
 
