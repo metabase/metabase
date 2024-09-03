@@ -36,12 +36,13 @@ export function Sidesheet({
 }: SidesheetProps) {
   return (
     <Modal.Root opened={isOpen} onClose={onClose} h="100dvh">
-      <Modal.Overlay aria-label="modal-overlay" />
+      <Modal.Overlay data-testid="modal-overlay" />
       <Modal.Content
         transitionProps={{ transition: "slide-left" }}
         px="none"
         w={sizes[size]}
         bg="bg-light"
+        data-testid="sidesheet"
         className={Styles.SidesheetContent}
       >
         <Modal.Header bg="bg-light" px="xl">
@@ -53,7 +54,6 @@ export function Sidesheet({
           <Modal.CloseButton aria-label={t`Close`} />
         </Modal.Header>
         <Modal.Body
-          data-testid="sidesheet"
           p={0}
           style={{
             display: "flex",

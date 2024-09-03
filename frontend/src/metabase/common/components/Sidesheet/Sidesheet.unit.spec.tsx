@@ -54,7 +54,7 @@ describe("Sidesheet", () => {
       </Sidesheet>,
     );
 
-    const closeButton = screen.getByLabelText("close");
+    const closeButton = screen.getByLabelText("Close");
     await userEvent.click(closeButton);
     expect(closeSpy).toHaveBeenCalledTimes(1);
   });
@@ -68,7 +68,7 @@ describe("Sidesheet", () => {
       </Sidesheet>,
     );
 
-    const backdrop = screen.getByLabelText("modal overlay");
+    const backdrop = screen.getByTestId("modal-overlay");
     await userEvent.click(backdrop);
     expect(closeSpy).toHaveBeenCalledTimes(1);
   });
