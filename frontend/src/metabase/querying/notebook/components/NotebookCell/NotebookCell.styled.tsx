@@ -35,6 +35,7 @@ export const NotebookCellItemContainer = styled.div<{
     (!props.inactive || props.onClick) && !props.readOnly && !props.disabled
       ? "pointer"
       : "default"};
+  pointer-events: ${props => props.disabled && "none"};
 
   &:hover {
     border-color: ${props => props.inactive && alpha(props.color, 0.8)};
