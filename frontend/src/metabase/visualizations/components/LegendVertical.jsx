@@ -5,8 +5,8 @@ import { Component } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
+import { Popover } from "metabase/ui";
 
 import LegendS from "./Legend.module.css";
 import LegendItem from "./LegendItem";
@@ -128,23 +128,30 @@ export default class LegendVertical extends Component {
           );
         })}
         {overflowCount > 0 ? (
-          <li key="extra" className={cx(CS.flex, CS.flexNoShrink)}>
-            <Tooltip
-              tooltip={
-                <LegendVertical
-                  className={CS.p2}
-                  titles={extraItems}
-                  colors={extraColors}
+          <Popover>
+            <Popover.Target>
+              <li className={cx(CS.flex, CS.flexNoShrink, CS.cursorPointer)}>
+                <LegendItem
+                  title={overflowCount + 1 + " " + t`more`}
+                  color="gray"
+                  showTooltip={false}
                 />
-              }
-            >
-              <LegendItem
-                title={overflowCount + 1 + " " + t`more`}
-                color="gray"
-                showTooltip={false}
+              </li>
+            </Popover.Target>
+            <Popover.Dropdown>
+              <LegendVertical
+                className={CS.p2}
+                titles={extraItems}
+                colors={extraColors}
+                hiddenIndices={hiddenIndices.map(i =>
+                  i >= items.length ? i - items.length : i,
+                )}
+                onToggleSeriesVisibility={(event, sliceIndex) =>
+                  onToggleSeriesVisibility(event, sliceIndex + items.length)
+                }
               />
-            </Tooltip>
-          </li>
+            </Popover.Dropdown>
+          </Popover>
         ) : null}
       </ol>
     );
