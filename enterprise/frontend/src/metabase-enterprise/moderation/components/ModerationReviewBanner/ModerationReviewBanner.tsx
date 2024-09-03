@@ -1,8 +1,9 @@
 import _ from "underscore";
 
-import { useCurrentUser } from "embedding-sdk";
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { alpha, color } from "metabase/lib/colors";
+import { useSelector } from "metabase/lib/redux";
 import { getRelativeTime } from "metabase/lib/time";
 import { Flex, Icon, Text as UIText } from "metabase/ui";
 import {
@@ -35,7 +36,7 @@ export const ModerationReviewBanner = ({
   className,
 }: ModerationReviewBannerProps) => {
   const { data: moderator } = useGetUserQuery(moderationReview.moderator_id);
-  const currentUser = useCurrentUser();
+  const currentUser = useSelector(getCurrentUser);
 
   if (!moderator) {
     return null;
@@ -74,7 +75,7 @@ export const ModerationReviewText = ({ question }: { question: Question }) => {
   const { data: moderator } = useGetUserQuery(
     latestModerationReview?.moderator_id ?? skipToken,
   );
-  const currentUser = useCurrentUser();
+  const currentUser = useSelector(getCurrentUser);
 
   if (!moderator || !latestModerationReview) {
     return null;
