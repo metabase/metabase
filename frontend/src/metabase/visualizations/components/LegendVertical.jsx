@@ -80,22 +80,29 @@ export default class LegendVertical extends Component {
             hovered && hovered.index != null && index !== hovered.index;
           const legendItemTitle = Array.isArray(title) ? title[0] : title;
           const isVisible = !hiddenIndices.includes(index);
+
+          const handleMouseEnter = () => {
+            onHoverChange?.({
+              index,
+              element: ReactDOM.findDOMNode(this.refs["legendItem" + index]),
+            });
+          };
+
+          const handleMouseLeave = () => {
+            onHoverChange?.();
+          };
+
           return (
             <li
               key={index}
               ref={"item" + index}
               className={cx(CS.flex, CS.flexNoShrink)}
-              onMouseEnter={e =>
-                isVisible &&
-                onHoverChange &&
-                onHoverChange({
-                  index,
-                  element: ReactDOM.findDOMNode(
-                    this.refs["legendItem" + index],
-                  ),
-                })
-              }
-              onMouseLeave={e => isVisible && onHoverChange && onHoverChange()}
+              onMouseEnter={e => {
+                if (isVisible) {
+                  handleMouseEnter();
+                }
+              }}
+              onMouseLeave={handleMouseLeave}
               data-testid={`legend-item-${legendItemTitle}`}
               {...(hovered && { "aria-current": !isMuted })}
             >
@@ -106,9 +113,14 @@ export default class LegendVertical extends Component {
                 isMuted={isMuted}
                 isVisible={isVisible}
                 showTooltip={false}
-                onToggleSeriesVisibility={event =>
-                  onToggleSeriesVisibility(event, index)
-                }
+                onToggleSeriesVisibility={event => {
+                  if (isVisible) {
+                    handleMouseLeave();
+                  } else {
+                    handleMouseEnter();
+                  }
+                  onToggleSeriesVisibility(event, index);
+                }}
               />
               {Array.isArray(title) && (
                 <span
