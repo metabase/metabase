@@ -3,19 +3,18 @@ import type React from "react";
 import CS from "metabase/css/core/index.css";
 import { type MantineStyleSystemProps, Paper, Stack, Title } from "metabase/ui";
 
-interface SidesheetCardProps {
-  title?: string;
+type SidesheetCardProps = {
+  title?: React.ReactNode;
   children: React.ReactNode;
-  styleProps?: Partial<MantineStyleSystemProps>;
-}
+} & PaperProps
 
 export const SidesheetCard = ({
   title,
   children,
-  ...styleProps
+  ...paperProps
 }: SidesheetCardProps) => {
   return (
-    <Paper p="lg" withBorder shadow="none" {...styleProps}>
+    <Paper p="lg" withBorder shadow="none" {...paperProps}>
       {title && (
         <Title mb="sm" size="sm" color="text-light">
           {title}
