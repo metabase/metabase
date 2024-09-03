@@ -783,4 +783,4 @@
                   (is (false? (str/blank? results-string)))
                   (is (true? (str/includes? results-string "Test Exception")))
                   (testing (format "String \"%s\" is not in the error message." illegal)
-                      (is (false? (str/includes? results-string illegal)))))))))))))
+                    (is (false? (str/includes? results-string illegal)))))))))))))
