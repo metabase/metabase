@@ -5,18 +5,11 @@ import { InteractiveQuestion } from "embedding-sdk/components/public/Interactive
 import { Box, Group, Overlay, Paper, Tabs } from "metabase/ui";
 
 import type { InteractiveQuestionProps } from "../../public/InteractiveQuestion";
-import type { SdkSaveQuestionFormProps } from "../InteractiveQuestion/components";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
-export type QuestionEditorProps = {
-  isSaveEnabled?: boolean;
-} & Pick<SdkSaveQuestionFormProps, "onSave">;
-
-const QuestionEditorInner = ({
-  isSaveEnabled,
-  onSave,
-}: QuestionEditorProps) => {
-  const { queryResults, runQuestion } = useInteractiveQuestionContext();
+const QuestionEditorInner = () => {
+  const { queryResults, runQuestion, isSaveEnabled } =
+    useInteractiveQuestionContext();
 
   const [activeTab, setActiveTab] = useState<
     "notebook" | "visualization" | (string & unknown) | null
@@ -74,10 +67,7 @@ const QuestionEditorInner = ({
       {isSaveEnabled && isSaveFormOpen && (
         <Overlay center>
           <Paper>
-            <InteractiveQuestion.SaveQuestionForm
-              onSave={onSave}
-              onClose={closeSaveForm}
-            />
+            <InteractiveQuestion.SaveQuestionForm onClose={closeSaveForm} />
           </Paper>
         </Overlay>
       )}
@@ -88,10 +78,17 @@ const QuestionEditorInner = ({
 export const QuestionEditor = ({
   questionId,
   isSaveEnabled = true,
+  onBeforeSave,
   onSave,
   plugins,
-}: InteractiveQuestionProps & QuestionEditorProps) => (
-  <InteractiveQuestion questionId={questionId} plugins={plugins}>
-    <QuestionEditorInner onSave={onSave} isSaveEnabled={isSaveEnabled} />
+}: InteractiveQuestionProps) => (
+  <InteractiveQuestion
+    questionId={questionId}
+    plugins={plugins}
+    onSave={onSave}
+    onBeforeSave={onBeforeSave}
+    isSaveEnabled={isSaveEnabled}
+  >
+    <QuestionEditorInner />
   </InteractiveQuestion>
 );

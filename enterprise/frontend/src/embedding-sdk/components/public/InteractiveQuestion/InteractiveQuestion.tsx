@@ -15,19 +15,24 @@ import {
   SummarizeButton,
   Title,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
-import { InteractiveQuestionProvider } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import {
+  InteractiveQuestionProvider,
+  type InteractiveQuestionProviderProps,
+} from "embedding-sdk/components/private/InteractiveQuestion/context";
 import {
   InteractiveQuestionResult,
   type InteractiveQuestionResultProps,
 } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import type { CardEntityId, CardId } from "metabase-types/api";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId?: CardId | CardEntityId;
-  plugins?: SdkPluginsConfig;
-}>;
+  questionId?: InteractiveQuestionProviderProps["cardId"];
+  plugins?: InteractiveQuestionProviderProps["componentPlugins"];
+}> &
+  Pick<
+    InteractiveQuestionProviderProps,
+    "onBeforeSave" | "onSave" | "isSaveEnabled"
+  >;
 
 export const _InteractiveQuestion = ({
   questionId,
@@ -37,9 +42,18 @@ export const _InteractiveQuestion = ({
   plugins,
   height,
   children = null,
+  onBeforeSave,
+  onSave,
+  isSaveEnabled,
 }: InteractiveQuestionProps &
   InteractiveQuestionResultProps): JSX.Element | null => (
-  <InteractiveQuestionProvider cardId={questionId} componentPlugins={plugins}>
+  <InteractiveQuestionProvider
+    cardId={questionId}
+    componentPlugins={plugins}
+    onBeforeSave={onBeforeSave}
+    onSave={onSave}
+    isSaveEnabled={isSaveEnabled}
+  >
     {children ?? (
       <InteractiveQuestionResult
         height={height}
