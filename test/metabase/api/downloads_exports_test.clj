@@ -769,7 +769,7 @@
                                                                          :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :discount))
                                                                                              {:currency_in_header false}}}}]
         (let [illegal-strings ["notvisiblekey" "notvisiblevalue" "column_settings"
-                               "visualization-settings" "viz-settings"]]
+                               "visualization-settings" ":viz-settings" "visualization_settings"]]
           (doseq [export-format ["csv" "json" #_"xlsx"]]
             ;; for now, don't try to read xlsx back in, it will not be correct since we end up writing
             ;; a json blob to the output stream, it creates an invalid xlsx anyway.
@@ -782,4 +782,5 @@
                 (doseq [illegal illegal-strings]
                   (is (false? (str/blank? results-string)))
                   (is (true? (str/includes? results-string "Test Exception")))
-                  (is (false? (str/includes? results-string illegal))))))))))))
+                  (testing (format "String \"%s\" is not in the error message." illegal)
+                      (is (false? (str/includes? results-string illegal)))))))))))))

@@ -61,7 +61,7 @@
         (let [obj (if (map? obj)
                     (walk/prewalk (fn [x]
                                     (if (map? x)
-                                      (apply dissoc x [:json_query :preprocessed])
+                                      (apply dissoc x [:visualization_settings :visualization-settings :viz-settings :preprocessed :column_settings :column-settings])
                                       x))
                                   obj)
                     obj)]
