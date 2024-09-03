@@ -495,6 +495,10 @@ export const PLUGIN_EMBEDDING = {
   isInteractiveEmbeddingEnabled: (_state: State) => false,
 };
 
+export const PLUGIN_EMBEDDING_SDK = {
+  isEnabled: () => false,
+};
+
 export const PLUGIN_CONTENT_VERIFICATION = {
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
   availableModelFilters: {} as AvailableModelFilters,

@@ -287,6 +287,7 @@ interface PublicSettings {
   "ee-ai-features-enabled"?: boolean;
   "email-configured?": boolean;
   "embedding-app-origin": string;
+  "embedding-app-origins-sdk": string;
   "enable-enhancements?": boolean;
   "enable-password-login": boolean;
   engines: Record<string, Engine>;

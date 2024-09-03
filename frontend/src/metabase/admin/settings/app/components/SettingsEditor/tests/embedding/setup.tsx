@@ -1,10 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import type { Settings } from "metabase-types/api";
 import {
+  createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
@@ -23,6 +24,7 @@ export const setupEmbedding = async ({
   hasEnterprisePlugins = false,
 }: SetupOpts) => {
   const returnedValue = await setup({
+    settings: [createMockSettingDefinition({ key: "enable-embedding" })],
     settingValues: createMockSettings(settingValues),
     tokenFeatures: createMockTokenFeatures({
       embedding: hasEmbeddingFeature,
@@ -43,7 +45,13 @@ export const goToStaticEmbeddingSettings = async () => {
 };
 
 export const goToInteractiveEmbeddingSettings = async () => {
-  await userEvent.click(screen.getByText("Configure"));
+  await userEvent.click(
+    within(
+      screen.getByRole("article", {
+        name: "Interactive embedding",
+      }),
+    ).getByRole("button", { name: "Configure" }),
+  );
 };
 
 export const getQuickStartLink = () => {

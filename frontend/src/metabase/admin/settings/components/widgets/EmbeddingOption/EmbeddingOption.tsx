@@ -1,9 +1,11 @@
+import cx from "classnames";
 import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import {
@@ -11,14 +13,14 @@ import {
   getSetting,
   getUpgradeUrl,
 } from "metabase/selectors/settings";
-import type { ButtonProps } from "metabase/ui";
-import { Button, Flex, Text, Title } from "metabase/ui";
+import { Button, type ButtonProps, Flex, Icon, Text, Title } from "metabase/ui";
 
+import EmbeddingOptionStyle from "./EmbeddingOption.module.css";
 import { BoldExternalLink, Label, StyledCard } from "./EmbeddingOption.styled";
-import InteractiveEmbeddingOff from "./InteractiveEmbeddingOff.svg?component";
-import InteractiveEmbeddingOn from "./InteractiveEmbeddingOn.svg?component";
-import StaticEmbeddingOff from "./StaticEmbeddingOff.svg?component";
-import StaticEmbeddingOn from "./StaticEmbeddingOn.svg?component";
+import InteractiveEmbedding from "./InteractiveEmbedding.svg?component";
+import SdkIcon from "./SdkIcon.svg?component";
+import StaticEmbedding from "./StaticEmbedding.svg?component";
+
 interface EmbeddingOptionProps {
   title: string;
   label?: string;
@@ -34,11 +36,14 @@ function EmbeddingOption({
   children,
   icon,
 }: EmbeddingOptionProps) {
+  const titleId = useUniqueId();
   return (
-    <StyledCard compact>
+    <StyledCard compact role="article" aria-labelledby={titleId}>
       {icon}
       <Flex gap="md" mt="md" mb="sm" direction={"row"}>
-        <Title order={2}>{title}</Title>
+        <Title id={titleId} order={2}>
+          {title}
+        </Title>
         {label && <Label>{label}</Label>}
       </Flex>
       <Text lh={"1.25rem"} mb={"lg"}>
@@ -66,7 +71,13 @@ export const StaticEmbeddingOptionCard = () => {
 
   return (
     <EmbeddingOption
-      icon={enabled ? <StaticEmbeddingOn /> : <StaticEmbeddingOff />}
+      icon={
+        <StaticEmbedding
+          className={cx(EmbeddingOptionStyle.icon, {
+            [EmbeddingOptionStyle.disabled]: !enabled,
+          })}
+        />
+      }
       title={t`Static embedding`}
       description={jt`Use static embedding when you don’t want to give people ad hoc query access to their data for whatever reason, or you want to present data that applies to all of your tenants at once.${
         shouldPromptToUpgrade && (
@@ -87,6 +98,30 @@ export const StaticEmbeddingOptionCard = () => {
   );
 };
 
+export function EmbeddingSdkOptionCard() {
+  const isEmbeddingEnabled = useSetting("enable-embedding");
+  const isEE = PLUGIN_EMBEDDING.isEnabled();
+
+  return (
+    <EmbeddingOption
+      icon={
+        <SdkIcon
+          className={cx(EmbeddingOptionStyle.icon, {
+            [EmbeddingOptionStyle.disabled]: !isEmbeddingEnabled,
+          })}
+        />
+      }
+      title={t`Embedding SDK for React`}
+      label={t`PRO & ENTERPRISE`}
+      description={t`Interactive embedding with full, granular control. Embed and style individual Metabase components in your app, and tailor the experience to each person. Allows for CSS styling, custom user flows, event subscriptions, and more. Only available with SSO via JWT.`}
+    >
+      <LinkButton to={"/admin/settings/embedding-in-other-applications/sdk"}>
+        {!isEE ? t`Try it out` : t`Configure`}
+      </LinkButton>
+    </EmbeddingOption>
+  );
+}
+
 export const InteractiveEmbeddingOptionCard = () => {
   const isEE = PLUGIN_EMBEDDING.isEnabled();
   const plan = useSelector(state =>
@@ -102,11 +137,11 @@ export const InteractiveEmbeddingOptionCard = () => {
   return (
     <EmbeddingOption
       icon={
-        !isEE || enabled ? (
-          <InteractiveEmbeddingOn />
-        ) : (
-          <InteractiveEmbeddingOff />
-        )
+        <InteractiveEmbedding
+          className={cx(EmbeddingOptionStyle.icon, {
+            [EmbeddingOptionStyle.disabled]: isEE && !enabled,
+          })}
+        />
       }
       title={t`Interactive embedding`}
       label={t`PRO & ENTERPRISE`}
@@ -123,6 +158,7 @@ export const InteractiveEmbeddingOptionCard = () => {
         href={`${quickStartUrl}?utm_source=${plan}&utm_media=embed-settings`}
       >
         {t`Check out our Quick Start`}
+        <Icon name="share" aria-hidden />
       </BoldExternalLink>
       {isEE ? (
         <LinkButton

@@ -74,7 +74,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         "With the embedding enabled, we should now see two new sections on the main page",
       );
       cy.log("The first section: 'Static embedding'");
-      cy.findByTestId("-static-embedding-setting").within(() => {
+      cy.findByRole("article", { name: "Static embedding" }).within(() => {
         // FE unit tests are making sure this section doesn't exist when a valid token is provided,
         // so we don't have to do it here usign a conditional logic
         assertLinkMatchesUrl("upgrade to a paid plan", upgradeUrl);
@@ -111,7 +111,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.location("pathname").should("eq", embeddingPage);
 
       cy.log("The second section: 'Interactive embedding'");
-      cy.findByTestId("-interactive-embedding-setting").within(() => {
+      cy.findByRole("article", { name: "Interactive embedding" }).within(() => {
         cy.findByText("Interactive embedding");
 
         cy.findByRole("link", { name: "Learn More" })

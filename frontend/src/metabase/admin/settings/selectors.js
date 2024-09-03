@@ -22,15 +22,12 @@ import {
 import { CloudPanel } from "./components/CloudPanel";
 import { BccToggleWidget } from "./components/Email/BccToggleWidget";
 import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
+import { EmbeddingSettings } from "./components/EmbeddingSettings";
+import { EmbeddingSdkSettings } from "./components/EmbeddingSettings/EmbeddingSdkSettings";
 import SettingsLicense from "./components/SettingsLicense";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import { UploadSettings } from "./components/UploadSettings";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
-import {
-  InteractiveEmbeddingOptionCard,
-  StaticEmbeddingOptionCard,
-} from "./components/widgets/EmbeddingOption";
-import { EmbeddingSwitchWidget } from "./components/widgets/EmbeddingSwitchWidget";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
 import {
@@ -428,22 +425,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
     key: "enable-embedding",
     name: t`Embedding`,
     order: 100,
-    settings: [
-      {
-        key: "enable-embedding",
-        display_name: t`Embedding`,
-        description: null,
-        widget: EmbeddingSwitchWidget,
-      },
-      {
-        key: "-static-embedding",
-        widget: StaticEmbeddingOptionCard,
-      },
-      {
-        key: "-interactive-embedding",
-        widget: InteractiveEmbeddingOptionCard,
-      },
-    ],
+    component: EmbeddingSettings,
+    settings: [],
   },
   "embedding-in-other-applications/standalone": {
     settings: [
@@ -493,6 +476,10 @@ export const ADMIN_SETTINGS_SECTIONS = {
         getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
       },
     ],
+  },
+  "embedding-in-other-applications/sdk": {
+    component: EmbeddingSdkSettings,
+    settings: [],
   },
   "embedding-in-other-applications/full-app": {
     settings: [
