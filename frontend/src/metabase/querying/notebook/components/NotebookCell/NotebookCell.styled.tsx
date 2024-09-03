@@ -77,7 +77,7 @@ export const NotebookCellItemContentContainer = styled.div<{
       props.theme.fn.themeColor("bg-white"),
       0.25,
     )};
-    `}
+  `}
 
   ${props =>
     props.roundedCorners.includes("left") &&
