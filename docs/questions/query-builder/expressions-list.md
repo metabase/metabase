@@ -720,7 +720,7 @@ Window functions can only be used in the **Summarize** section. They cannot be u
 
 ### CumulativeCount
 
-For more info, check out our page on [`CumulativeCount`](./expressions/cumulativecount.md).
+For more info, check out our page on [`CumulativeCount`](./expressions/cumulative.md).
 
 The additive total of rows across a breakout.
 
@@ -730,7 +730,7 @@ Example: `CumulativeCount`.
 
 ### CumulativeSum
 
-For more info, check out our page on [`CumulativeSum`](./expressions/cumulativesum.md).
+For more info, check out our page on [`CumulativeSum`](./expressions/cumulative.md).
 
 The rolling sum of a column across a breakout.
 
