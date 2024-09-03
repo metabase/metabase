@@ -1,7 +1,7 @@
 import type React from "react";
 import { t } from "ttag";
 
-import { type MantineStyleSystemProps, Modal, Stack } from "metabase/ui";
+import { Modal, Stack } from "metabase/ui";
 
 import Styles from "./sidesheet.module.css";
 
@@ -33,8 +33,7 @@ export function Sidesheet({
   size = "sm",
   children,
   removeBodyPadding,
-  ...styleProps
-}: SidesheetProps & Partial<MantineStyleSystemProps>) {
+}: SidesheetProps) {
   return (
     <Modal.Root opened={isOpen} onClose={onClose} h="100dvh">
       <Modal.Overlay data-testid="modal-overlay" />
@@ -45,7 +44,6 @@ export function Sidesheet({
         bg="bg-light"
         data-testid="sidesheet"
         className={Styles.SidesheetContent}
-        data-testid="sidesheet"
       >
         <Modal.Header bg="bg-light" px="xl">
           {title && (
@@ -71,7 +69,6 @@ export function Sidesheet({
             mt={title ? "none" : "md"}
             h="100%"
             className={Styles.OverflowAuto}
-            {...styleProps}
           >
             {children}
           </Stack>
