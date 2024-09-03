@@ -13,7 +13,10 @@ import {
   getTotalValue,
 } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
-import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
+import type {
+  PieChartModel,
+  PieSlice,
+} from "metabase/visualizations/echarts/pie/model/types";
 import {
   getMarkerColorClass,
   useClickedStateTooltipSync,
@@ -27,33 +30,31 @@ import type {
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 
 export const getTooltipModel = (
-  dataIndex: number,
+  hoveredSlice: PieSlice,
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
 ): EChartsTooltipModel => {
-  const hoveredIndex = dataIndexToHoveredIndex(dataIndex);
-  const hoveredOther =
-    chartModel.slices[hoveredIndex].data.isOther &&
-    chartModel.otherSlices.length > 1;
-
-  const rows = (hoveredOther ? chartModel.otherSlices : chartModel.slices)
+  const rows = (
+    hoveredSlice.data.isOther ? chartModel.otherSlices : chartModel.slices
+  )
     .filter(slice => slice.data.visible)
     .map(slice => ({
       name: slice.data.name,
       value: slice.data.displayValue,
-      color: hoveredOther ? undefined : slice.data.color,
+      color: hoveredSlice.data.isOther ? undefined : slice.data.color,
       formatter: formatters.formatMetric,
     }));
 
   const rowsTotal = getTotalValue(rows);
   const isShowingTotalSensible = rows.length > 1;
 
-  const formattedRows: EChartsTooltipRow[] = rows.map((row, index) => {
+  const formattedRows: EChartsTooltipRow[] = rows.map(row => {
     const markerColorClass = row.color
       ? getMarkerColorClass(row.color)
       : undefined;
     return {
-      isFocused: !hoveredOther && index === hoveredIndex,
+      isFocused:
+        !hoveredSlice.data.isOther && row.name === hoveredSlice.data.key,
       markerColorClass,
       name: row.name,
       values: [
@@ -78,17 +79,23 @@ export const getTooltipModel = (
   };
 };
 
-const dataIndexToHoveredIndex = (index: number) => index - 1;
-const hoveredIndexToDataIndex = (index: number) => index + 1;
+const hoveredIndexToDataIndex = (index: number, chartModel: PieChartModel) => {
+  const baseIndex = index + 1;
+  const slicesBefore = chartModel.slices.slice(0, index);
+  const hiddenSlicesBefore = slicesBefore.filter(slice => !slice.data.visible);
+  return baseIndex - hiddenSlicesBefore.length;
+};
 
 function getHoverData(
   event: EChartsSeriesMouseEvent,
   chartModel: PieChartModel,
 ) {
-  if (event.dataIndex == null) {
+  if (!event.name) {
     return null;
   }
-  const index = dataIndexToHoveredIndex(event.dataIndex);
+  const index = chartModel.slices.findIndex(
+    slice => slice.data.key === event.name,
+  );
 
   const indexOutOfBounds = chartModel.slices[index] == null;
   if (indexOutOfBounds || chartModel.slices[index].data.noHover) {
@@ -109,10 +116,10 @@ function handleClick(
   onVisualizationClick: VisualizationProps["onVisualizationClick"],
   chartModel: PieChartModel,
 ) {
-  if (!event.dataIndex) {
+  const slice = chartModel.slices.find(slice => slice.data.key === event.name);
+  if (!slice) {
     return;
   }
-  const slice = chartModel.slices[dataIndexToHoveredIndex(event.dataIndex)];
   const data =
     slice.data.rowIndex != null
       ? dataProp.rows[slice.data.rowIndex].map((value, index) => ({
@@ -163,19 +170,19 @@ export function useChartEvents(
 
       chart.dispatchAction({
         type: "highlight",
-        dataIndex: hoveredIndexToDataIndex(hoveredIndex),
+        dataIndex: hoveredIndexToDataIndex(hoveredIndex, chartModel),
         seriesIndex: 0,
       });
 
       return () => {
         chart.dispatchAction({
           type: "downplay",
-          dataIndex: hoveredIndexToDataIndex(hoveredIndex),
+          dataIndex: hoveredIndexToDataIndex(hoveredIndex, chartModel),
           seriesIndex: 0,
         });
       };
     },
-    [chart, hoveredIndex],
+    [chart, chartModel, hoveredIndex],
   );
 
   useClickedStateTooltipSync(chartRef.current, props.clicked);
