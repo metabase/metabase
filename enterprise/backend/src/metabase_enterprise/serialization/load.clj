@@ -148,7 +148,7 @@
   [entity]
   (lib.util.match/replace entity
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
-    ;; and also *current* expresion forms used in parameter mapping dimensions
+    ;; and also *current* expression forms used in parameter mapping dimensions
     ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
     [:field-id (fully-qualified-name :guard string?)]
     (mbql-fully-qualified-names->ids* [:field fully-qualified-name nil])

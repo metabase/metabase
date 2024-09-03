@@ -1,4 +1,5 @@
 import type { RegularCollectionId } from "./collection";
+import type { BaseEntityId } from "./entity-id";
 import type { UserId, UserInfo } from "./user";
 
 export type NativeQuerySnippetId = number;
@@ -12,7 +13,7 @@ export interface NativeQuerySnippet {
   creator_id: UserId;
   creator: UserInfo;
   archived: boolean;
-  entity_id: string;
+  entity_id: BaseEntityId;
   created_at: string;
   updated_at: string;
 }

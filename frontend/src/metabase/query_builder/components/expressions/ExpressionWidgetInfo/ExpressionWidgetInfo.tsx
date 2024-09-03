@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { useDocsUrl } from "metabase/common/hooks";
 import { Box, Tooltip } from "metabase/ui";
 
 import {
@@ -11,12 +9,10 @@ import {
   TooltipLabel,
 } from "./ExpressionWidgetInfo.styled";
 
-export const EXPRESSIONS_DOCUMENTATION_URL = MetabaseSettings.docsUrl(
-  "questions/query-builder/expressions",
-);
-
 export function ExpressionWidgetInfo() {
-  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
+    "questions/query-builder/expressions",
+  );
 
   return showMetabaseLinks ? (
     <Tooltip
@@ -29,7 +25,7 @@ export function ExpressionWidgetInfo() {
     >
       <InfoLink
         target="_blank"
-        href={EXPRESSIONS_DOCUMENTATION_URL}
+        href={docsUrl}
         tabIndex={-1}
         aria-label={t`Open expressions documentation`}
       >
