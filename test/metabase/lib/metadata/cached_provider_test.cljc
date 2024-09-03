@@ -29,7 +29,7 @@
               (lib.metadata.protocols/table provider 1)))
       (is (= 1
              @fetch-count)))
-    (testing "Second fetch"
+    (testing "Third fetch"
       (is (=? {:id 1}
               (lib.metadata.protocols/table provider 1)))
       (is (= 1
