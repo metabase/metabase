@@ -4,7 +4,7 @@ import { SortDirection } from "metabase-types/api/sorting";
 import { createMockModelResult } from "../test-utils";
 import type { ModelResult } from "../types";
 
-import { getMaxRecentModelCount, sortCards } from "./utils";
+import { getMaxRecentItemsCount, sortCards } from "./utils";
 
 describe("sortModels", () => {
   let id = 0;
@@ -184,18 +184,18 @@ describe("sortModels", () => {
 
 describe("getMaxRecentModelCount", () => {
   it("returns 8 for modelCount greater than 20", () => {
-    expect(getMaxRecentModelCount(21)).toBe(8);
-    expect(getMaxRecentModelCount(100)).toBe(8);
+    expect(getMaxRecentItemsCount(21)).toBe(8);
+    expect(getMaxRecentItemsCount(100)).toBe(8);
   });
 
   it("returns 4 for modelCount greater than 9 and less than or equal to 20", () => {
-    expect(getMaxRecentModelCount(10)).toBe(4);
-    expect(getMaxRecentModelCount(20)).toBe(4);
+    expect(getMaxRecentItemsCount(10)).toBe(4);
+    expect(getMaxRecentItemsCount(20)).toBe(4);
   });
 
   it("returns 0 for modelCount of 9 or less", () => {
-    expect(getMaxRecentModelCount(0)).toBe(0);
-    expect(getMaxRecentModelCount(5)).toBe(0);
-    expect(getMaxRecentModelCount(9)).toBe(0);
+    expect(getMaxRecentItemsCount(0)).toBe(0);
+    expect(getMaxRecentItemsCount(5)).toBe(0);
+    expect(getMaxRecentItemsCount(9)).toBe(0);
   });
 });
