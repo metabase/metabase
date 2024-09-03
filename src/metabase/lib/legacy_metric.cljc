@@ -112,15 +112,18 @@
                                        (keep-indexed (fn [index aggregation-clause]
                                                        (when (lib.util/clause-of-type? aggregation-clause :metric)
                                                          [(get aggregation-clause 2) index])))
-                                       (lib.aggregation/aggregations query stage-number))]
-         (cond
-           (empty? metrics)             nil
-           (empty? metric-aggregations) (vec metrics)
-           :else                        (mapv (fn [metric-metadata]
-                                                (let [aggregation-pos (-> metric-metadata :id metric-aggregations)]
-                                                  (cond-> metric-metadata
-                                                    aggregation-pos (assoc :aggregation-position aggregation-pos))))
-                                              metrics)))))))
+                                       (lib.aggregation/aggregations query stage-number))
+             results (cond
+                       (empty? metrics)             nil
+                       (empty? metric-aggregations) (vec metrics)
+                       :else                        (mapv (fn [metric-metadata]
+                                                            (let [aggregation-pos (-> metric-metadata :id metric-aggregations)]
+                                                              (cond-> metric-metadata
+                                                                aggregation-pos (assoc :aggregation-position aggregation-pos))))
+                                                          metrics))
+             sorted (sort-by (some-fn :display-name :name) results)]
+         (when (seq sorted)
+           (vec sorted)))))))
 
 (defmethod lib.metadata.calculation/metadata-method :metric
   [query stage-number [_ _opts metric-id-or-name :as metric-ref]]
