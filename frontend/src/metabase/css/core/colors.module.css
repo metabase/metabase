@@ -49,7 +49,7 @@
   --mb-color-bg-black: #2e353b;
   --mb-color-bg-dark: #93a1ab;
   --mb-color-bg-medium: #edf2f5;
-  --mb-color-bg-light: var(--mb-base-color-gray-10);
+  --mb-color-bg-light: var(--mb-base-color-gray-5);
   --mb-color-bg-white: var(--mb-base-color-white);
   --mb-color-bg-error: #ed6e6e55;
   --mb-color-bg-night: #42484e;
@@ -76,7 +76,7 @@
   /**
     * Base colors
     *
-    * @see https://www.figma.com/design/OlyKP09vro7EkQ2ZzXDDla/color-playground?node-id=501-2549&t=gDVRrOsKLTdMYIUQ-0
+    * @see https://www.figma.com/design/YxiDXi1DzmXJCTMCuqXaaY/Applying-the-updated-colors?node-id=4001-16486&node-type=FRAME&t=Iwv4nAfH8QF1J5QG-0
     *
     * These are the base colors that should never change and never be used
     * directly in any components or CSS properties. They should only be used
