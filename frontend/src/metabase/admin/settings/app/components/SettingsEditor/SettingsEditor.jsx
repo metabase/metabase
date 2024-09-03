@@ -26,7 +26,7 @@ import {
   getNewVersionAvailable,
   getSections,
   getSettingValues,
-  getSettingsByKey,
+  getSettings,
 } from "../../../selectors";
 import {
   initializeSettings,
@@ -39,7 +39,7 @@ import { SettingsSection } from "./SettingsSection";
 
 const mapStateToProps = (state, props) => {
   return {
-    settingsByKey: getSettingsByKey(state, props),
+    settings: getSettings(state, props),
     settingValues: getSettingValues(state, props),
     derivedSettingValues: getDerivedSettingValues(state, props),
     sections: getSections(state, props),
@@ -151,8 +151,8 @@ class SettingsEditor extends Component {
   };
 
   handleChangeSetting = (key, value) => {
-    const { settingsByKey, updateSetting } = this.props;
-    const setting = settingsByKey[key];
+    const { settings, updateSetting } = this.props;
+    const setting = _.findWhere(settings, { key });
     if (!setting) {
       console.error(`Attempted to change unknown setting ${key}`);
       throw new Error(t`Unknown setting ${key}`);
@@ -161,13 +161,9 @@ class SettingsEditor extends Component {
   };
 
   renderSettingsPane() {
-    const {
-      activeSection,
-      settingsByKey,
-      settingValues,
-      derivedSettingValues,
-    } = this.props;
-    const isLoading = Object.keys(settingsByKey).length === 0;
+    const { activeSection, settings, settingValues, derivedSettingValues } =
+      this.props;
+    const isLoading = settings.length === 0;
 
     if (isLoading) {
       return null;
