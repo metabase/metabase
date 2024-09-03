@@ -73,7 +73,7 @@ export const NotebookCellItemContentContainer = styled.div<{
   ${props =>
     !!props.border &&
     css`
-      border-${props.border}: 1px solid ${alpha(
+    border-${props.border}: 1px solid ${alpha(
       props.theme.fn.themeColor("bg-white"),
       0.25,
     )};
