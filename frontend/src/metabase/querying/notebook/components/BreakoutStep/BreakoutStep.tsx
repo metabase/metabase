@@ -7,7 +7,7 @@ import * as Lib from "metabase-lib";
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
-export function .BreakoutStep({
+export function BreakoutStep({
   query,
   step,
   color,
