@@ -1,6 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
+import {
+  getIcon,
+  queryIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQueryWithClauses } from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -9,7 +14,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { createMockNotebookStep } from "../../test-utils";
+import { DEFAULT_QUESTION, createMockNotebookStep } from "../../test-utils";
 import type { NotebookStep } from "../../types";
 
 import { AggregateStep } from "./AggregateStep";
@@ -160,5 +165,18 @@ describe("AggregateStep", () => {
 
     const nextQuery = getNextQuery();
     expect(Lib.aggregations(nextQuery, 0)).toHaveLength(0);
+  });
+
+  describe("metrics", () => {
+    it("should not allow to remove an existing aggregation or add another one", () => {
+      const query = createAggregatedQuery();
+      const question = DEFAULT_QUESTION.setType("metric").setQuery(query);
+      const step = createMockNotebookStep({ question, query });
+      setup({ step });
+
+      expect(screen.getByText("Average of Quantity")).toBeInTheDocument();
+      expect(queryIcon("close")).not.toBeInTheDocument();
+      expect(queryIcon("add")).not.toBeInTheDocument();
+    });
   });
 });
