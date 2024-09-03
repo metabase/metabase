@@ -129,9 +129,13 @@ export const getTrendLines = (
     return;
   }
 
+  const visibleSeriesModels = seriesModels.filter(
+    seriesModel => seriesModel.visible,
+  );
+
   const seriesModelsWithTrends = getSeriesModelsWithTrends(
     rawSeries,
-    seriesModels,
+    visibleSeriesModels,
   );
 
   if (seriesModelsWithTrends.length === 0) {
@@ -163,6 +167,7 @@ export const getTrendLines = (
       color: Color(renderingContext.getColor(seriesModel.color))
         .lighten(0.25)
         .hex(),
+      visible: true,
       column: seriesModel.column,
       columnIndex: seriesModel.columnIndex,
     }),

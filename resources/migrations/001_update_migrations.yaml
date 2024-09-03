@@ -8532,6 +8532,28 @@ databaseChangeLog:
                   name: parameter_id
 
   - changeSet:
+      id: v50.2024-08-27T00:00:00
+      author: devurandom
+      comment: Add is_attached_dwh to metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: is_attached_dwh
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_attached_dwh
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: 'This is an attached data warehouse, do not serialize it and hide its details from the UI'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v51.2024-05-13T15:30:57
       author: metamben
       comment: Backup of dataset_query rewritten by the metrics v2 migration
@@ -9247,27 +9269,6 @@ databaseChangeLog:
                   name: status
                   type: ${text.type}
                   remarks: running, failed, or completed
-
-  - changeSet:
-      id: v51.2024-08-27T00:00:00
-      author: devurandom
-      comment: Add is_attached_dwh to metabase_database
-      preConditions:
-        - not:
-            - columnExists:
-                tableName: metabase_database
-                columnName: is_attached_dwh
-      changes:
-        - addColumn:
-            tableName: metabase_database
-            columns:
-              - column:
-                  name: is_attached_dwh
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  remarks: 'This is an attached data warehouse, do not serialize it and hide its details from the UI'
-                  constraints:
-                    nullable: false
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

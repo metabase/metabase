@@ -30,6 +30,7 @@ export function WaterfallChart({
   const chartModel = getWaterfallChartModel(
     rawSeries,
     computedVisualizationSettings,
+    [],
     renderingContext,
   );
   const chartMeasurements = getChartMeasurements(

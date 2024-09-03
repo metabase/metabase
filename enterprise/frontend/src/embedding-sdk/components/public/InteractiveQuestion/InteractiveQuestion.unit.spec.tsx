@@ -115,21 +115,6 @@ describe("InteractiveQuestion", () => {
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 
-  it("should render when question is valid", async () => {
-    setup();
-
-    await waitForLoaderToBeRemoved();
-
-    expect(
-      within(screen.getByTestId("TableInteractive-root")).getByText(
-        TEST_COLUMN.display_name,
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(screen.getByRole("gridcell")).getByText("Test Row"),
-    ).toBeInTheDocument();
-  });
-
   it("should render loading state when rerunning the query", async () => {
     setup();
 
@@ -153,6 +138,21 @@ describe("InteractiveQuestion", () => {
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(
       within(await screen.findByRole("gridcell")).getByText("Test Row"),
+    ).toBeInTheDocument();
+  });
+
+  it("should render when question is valid", async () => {
+    setup();
+
+    await waitForLoaderToBeRemoved();
+
+    expect(
+      within(screen.getByTestId("TableInteractive-root")).getByText(
+        TEST_COLUMN.display_name,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("gridcell")).getByText("Test Row"),
     ).toBeInTheDocument();
   });
 

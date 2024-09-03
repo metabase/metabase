@@ -435,8 +435,9 @@ export const getSeriesOnlyTooltipModel = (
     }),
   );
 
-  const rows: EChartsTooltipRow[] = chartModel.seriesModels.map(
-    (seriesModel, seriesIndex) => {
+  const rows: EChartsTooltipRow[] = chartModel.seriesModels
+    .filter(seriesModel => seriesModel.visible)
+    .map((seriesModel, seriesIndex) => {
       const prevValue = computeDiffWithPreviousPeriod(
         chartModel,
         seriesIndex,
@@ -458,8 +459,7 @@ export const getSeriesOnlyTooltipModel = (
           prevValue,
         ],
       };
-    },
-  );
+    });
 
   return {
     header,
@@ -476,8 +476,10 @@ export const getStackedTooltipModel = (
   datum: Datum,
 ): EChartsTooltipModel | null => {
   const stackSeriesRows = chartModel.seriesModels
-    .filter(seriesModel =>
-      seriesStack?.seriesKeys.includes(seriesModel.dataKey),
+    .filter(
+      seriesModel =>
+        seriesModel.visible &&
+        seriesStack?.seriesKeys.includes(seriesModel.dataKey),
     )
     .map(seriesModel => {
       return {
