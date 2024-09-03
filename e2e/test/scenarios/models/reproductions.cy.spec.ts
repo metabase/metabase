@@ -49,6 +49,7 @@ import {
   setTokenFeatures,
   sidebar,
   sidebar,
+  sidesheet,
   startNewModel,
   startNewQuestion,
   summarize,
@@ -994,7 +995,7 @@ describe("issue 34574", () => {
       questionInfoButton().click();
     });
 
-    cy.findByTestId("sidebar-right").within(() => {
+    sidesheet().within(() => {
       cy.log("Set the model description to a markdown text");
       cy.intercept("GET", "/api/card/*/query_metadata").as("metadata");
       cy.findByPlaceholderText("Add description").type(

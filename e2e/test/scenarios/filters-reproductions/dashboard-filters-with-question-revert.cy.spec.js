@@ -122,6 +122,7 @@ describe("issue 35954", () => {
             .click();
           cy.wait("@revertQuestion");
           // Mid-test assertions to root out the flakiness
+          cy.findByRole("tab", { name: "History" }).click();
           cy.findByTestId("saved-question-history-list").should(
             "contain",
             "You edited this",
