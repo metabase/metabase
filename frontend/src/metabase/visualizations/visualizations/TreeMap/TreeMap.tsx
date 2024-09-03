@@ -17,6 +17,10 @@ export function TreeMap(_props: VisualizationProps) {
     series: [
       {
         type: "treemap",
+        nodeClick: false,
+        breadcrumb: {
+          show: false,
+        },
         data: [
           {
             name: "nodeA",
