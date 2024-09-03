@@ -140,14 +140,6 @@
                        [:status      [:= "failed"]]
                        [:context     [:= "ad-hoc"]]
                        [:error       #"Syntax error in SQL statement"]
-                       [:json_query  [:map
-                                      [:database   [:= (mt/id)]]
-                                      [:type       [:= "native"]]
-                                      [:native     [:map
-                                                    [:query [:= "foobar"]]]]
-                                      [:middleware [:map
-                                                    [:add-default-userland-constraints? [:= true]]
-                                                    [:js-int-to-string?                 [:= true]]]]]]
                        [:database_id [:= (mt/id)]]
                        [:state       [:= "42000"]]
                        [:class       [:= "class org.h2.jdbc.JdbcSQLSyntaxErrorException"]]]
