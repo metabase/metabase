@@ -28,7 +28,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { createMockNotebookStep } from "../../test-utils";
+import { DEFAULT_QUESTION, createMockNotebookStep } from "../../test-utils";
 
 import { DataStep } from "./DataStep";
 
@@ -185,13 +185,48 @@ describe("DataStep", () => {
     expect(getIcon(icon)).toBeInTheDocument();
   });
 
-  it("should change a table", async () => {
-    const { getNextTableName } = setup();
+  describe("data selection", () => {
+    it("should change a table", async () => {
+      const { getNextTableName } = setup();
 
-    await userEvent.click(screen.getByText("Orders"));
-    await userEvent.click(await screen.findByText("Products"));
+      await userEvent.click(screen.getByText("Orders"));
+      await userEvent.click(await screen.findByText("Products"));
 
-    expect(getNextTableName()).toBe("Products");
+      expect(getNextTableName()).toBe("Products");
+    });
+
+    it("should automatically aggregate by count for metrics", async () => {
+      const step = createMockNotebookStep({
+        question: DEFAULT_QUESTION.setType("metric"),
+      });
+      const { getNextQuery } = setup(step);
+
+      await userEvent.click(screen.getByText("Orders"));
+      await userEvent.click(await screen.findByText("Products"));
+
+      const { stageIndex } = step;
+      const nextQuery = getNextQuery();
+      const nextAggregations = Lib.aggregations(nextQuery, stageIndex);
+      expect(nextAggregations).toHaveLength(1);
+      expect(
+        Lib.displayInfo(nextQuery, stageIndex, nextAggregations[0]),
+      ).toMatchObject({
+        displayName: "Count",
+      });
+    });
+
+    it("should not automatically aggregate by count for non-metrics", async () => {
+      const step = createMockNotebookStep();
+      const { getNextQuery } = setup(step);
+
+      await userEvent.click(screen.getByText("Orders"));
+      await userEvent.click(await screen.findByText("Products"));
+
+      const { stageIndex } = step;
+      const nextQuery = getNextQuery();
+      const nextAggregations = Lib.aggregations(nextQuery, stageIndex);
+      expect(nextAggregations).toHaveLength(0);
+    });
   });
 
   describe("fields selection", () => {
