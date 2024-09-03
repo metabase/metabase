@@ -266,6 +266,9 @@ function getNestedQuestionDetails(cardId: number) {
     query: {
       "source-table": `card__${cardId}`,
     },
+    visualization_settings: {
+      "table.pivot": false,
+    },
   };
 }
 
@@ -1416,6 +1419,84 @@ describe("scenarios > question > multiple column breakouts", () => {
   });
 
   describe("data source", () => {
+    describe("notebook", () => {
+      it("should be able to add breakouts for each source column", () => {
+        function testSourceBreakout({
+          questionDetails,
+          columnName,
+        }: {
+          questionDetails: StructuredQuestionDetails;
+          columnName: string;
+        }) {
+          createQuestion(questionDetails).then(({ body: card }) => {
+            createQuestion(getNestedQuestionDetails(card.id), {
+              visitQuestion: true,
+            });
+          });
+          openNotebook();
+
+          cy.log("add an aggregation");
+          getNotebookStep("data").button("Summarize").click();
+          popover().findByText("Count of rows").click();
+
+          cy.log("add a breakout for the first source column");
+          getNotebookStep("summarize")
+            .findByTestId("breakout-step")
+            .findByText("Pick a column to group by")
+            .click();
+          popover().findAllByText(columnName).eq(0).click();
+
+          cy.log("add a breakout for the second source column");
+          getNotebookStep("summarize")
+            .findByTestId("breakout-step")
+            .icon("add")
+            .click();
+          popover().findAllByText(columnName).eq(1).click();
+
+          cy.log("assert query results");
+          visualize();
+          cy.wait("@dataset");
+        }
+
+        cy.log("temporal breakouts");
+        testSourceBreakout({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          columnName: "Created At",
+        });
+        assertTableData({
+          // TODO QP bug, should be "Created At",  "Created At"
+          columns: ["Created At: Month", "Created At: Month", "Count"],
+          firstRows: [["January 2022", "April 2022", "1"]],
+        });
+
+        cy.log("'num-bins' breakouts");
+        testSourceBreakout({
+          questionDetails: questionWith2NumBinsBreakoutsDetails,
+          columnName: "Total",
+        });
+        assertTableData({
+          columns: ["Total", "Total", "Count"],
+          firstRows: [
+            ["-60  –  -40", "-60  –  -40", "1"],
+            ["0  –  20", "0  –  20", "3"],
+          ],
+        });
+
+        cy.log("'max-bins' breakouts");
+        testSourceBreakout({
+          questionDetails: questionWith2BinWidthBreakoutsDetails,
+          columnName: "Latitude",
+        });
+        assertTableData({
+          columns: ["Latitude", "Latitude", "Count"],
+          firstRows: [
+            ["20° N  –  30° N", "20° N  –  30° N", "1"],
+            ["20° N  –  30° N", "30° N  –  40° N", "1"],
+          ],
+        });
+      });
+    });
+
     describe("viz settings", () => {
       it("should be able to toggle the fields that correspond to breakout columns in the source card", () => {
         function toggleColumn(
