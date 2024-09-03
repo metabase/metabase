@@ -138,6 +138,8 @@
 
     [:field _ (_ :guard :temporal-unit)]
     true
+    [:expression _ (_ :guard :temporal-unit)]
+    true
 
     :+
     (some (partial mbql.u/is-clause? :interval) (rest clause))
@@ -223,14 +225,16 @@
           [:expression expression-name])))))
 
 (defn- col-info-for-expression
-  [inner-query [_expression expression-name :as clause]]
+  [inner-query [_expression expression-name {:keys [temporal-unit] :as _opts} :as clause]]
   (merge
    (infer-expression-type (mbql.u/expression-with-name inner-query expression-name))
    {:name            expression-name
     :display_name    expression-name
     ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
     :expression_name expression-name
-    :field_ref       (fe-friendly-expression-ref clause)}))
+    :field_ref       (fe-friendly-expression-ref clause)}
+   (when temporal-unit
+     {:unit temporal-unit})))
 
 (mu/defn- col-info-for-field-clause*
   [{:keys [source-metadata], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]

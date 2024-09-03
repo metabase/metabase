@@ -41,6 +41,7 @@ export type BaseSeriesModel = {
   name: string;
   color: string;
   dataKey: DataKey;
+  visible: boolean;
   column: DatasetColumn;
   columnIndex: number;
 };

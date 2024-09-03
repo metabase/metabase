@@ -225,6 +225,7 @@
                         (is (= #{"Card" "Database" "Collection"}
                                (log-types (str/split-lines log))))
                         (is (re-find #"Failed to read file for Collection DoesNotExist" log))
+                        (is (re-find #"Unable to ingest file" log)) ;; underlying error
                         (is (= {:deps-chain #{[{:id "**ID**", :model "Card"}]},
                                 :error      :metabase-enterprise.serialization.v2.load/not-found,
                                 :model      "Collection",

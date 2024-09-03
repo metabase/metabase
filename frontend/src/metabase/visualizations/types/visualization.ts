@@ -90,6 +90,7 @@ export interface VisualizationProps {
   metadata: Metadata;
   rawSeries: RawSeries;
   settings: ComputedVisualizationSettings;
+  hiddenSeries?: Set<string>;
   headerIcon: IconProps;
   errorIcon: IconName;
   actionButtons: ReactNode;
@@ -137,6 +138,7 @@ export interface VisualizationProps {
   "graph.metrics"?: string[];
 
   canRemoveSeries?: (seriesIndex: number) => boolean;
+  canToggleSeriesVisibility?: boolean;
   onRemoveSeries?: (event: React.MouseEvent, seriesIndex: number) => void;
   onUpdateWarnings?: any;
 }
