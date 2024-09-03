@@ -1,8 +1,6 @@
-import chalk from "chalk";
+import { blue, green, yellow } from "chalk";
 
-import { HARDCODED_USERS } from "../constants/hardcoded-users";
-
-import { CONTAINER_NAME } from "./config";
+import { CONTAINER_NAME, SDK_NPM_LINK } from "./config";
 
 export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
   Could not find a package.json file in the current directory.
@@ -26,17 +24,8 @@ export const INSTANCE_CONFIGURED_MESSAGE = `
   ${DELETE_CONTAINER_MESSAGE}
 `;
 
-export const PREMIUM_TOKEN_REQUIRED_MESSAGE =
-  "  Don't forget to add your premium token to your Metabase instance in the admin settings! The embedding demo will not work without a license.";
-
-export const NO_TENANCY_COLUMN_WARNING_MESSAGE = `
-  Your have not selected any tables with a multi-tenancy column.
-  You can still use the SDK, but you will not be able to sandbox your tables.
-`;
-
 export const getGeneratedComponentFilesMessage = (path: string) => `
   Generated example React components files in "${path}".
-  You can import the <AnalyticsPage /> component in your React app.
 `;
 
 export const getEmbeddingFailedMessage = (reason: string) => `
@@ -49,11 +38,8 @@ export const getEmbeddingFailedMessage = (reason: string) => `
 export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
   // eslint-disable-next-line no-unconditional-metabase-links-render -- link for the CLI message
   `
-  Metabase instance is ready for embedding.
-  Go to ${chalk.blue(instanceUrl)} to start using Metabase.
-
+  Metabase is running at ${blue(instanceUrl)}
   You can find your login credentials at METABASE_LOGIN.json
-  Don't forget to put this file in your .gitignore.
 
   Metabase will phone home some data collected via Snowplow.
   We don’t collect any usernames, emails, server IPs, database details of any kind, or
@@ -65,19 +51,26 @@ export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
   Read more: https://www.metabase.com/docs/latest/installation-and-operation/information-collection
 `;
 
-export const NOT_ENOUGH_TENANCY_COLUMN_ROWS = `
-  At least ${HARDCODED_USERS.length} rows with valid tenancy columns are needed for sandboxing.
-  You can add your tenant's IDs to the "customer_id" user attribute in settings.
-`;
-
-export const getExpressServerGeneratedMessage = (filePath: string) => {
-  const NPM_INSTALL_DEPS_COMMAND = chalk.blue(
-    "npm install express express-session jsonwebtoken cors node-fetch@2",
-  );
+export const getNoTenantMessage = (unsampledTableNames: string[]) => {
+  const tables = unsampledTableNames.join(", ");
+  const warningTitle = `Sandboxing is not configured for the following tables: ${tables}.`;
 
   return `
-  Generated an example Express.js server in "${filePath}".
-  Add the dependencies with "${NPM_INSTALL_DEPS_COMMAND}"
-  Start the server with "node ${filePath}".
+  ${yellow(warningTitle)}
+
+  At least one tenant is needed to demonstrate sandboxing.
+  You can assign your tenant's id to your user attribute, e.g. "customer_id: 5".
 `;
 };
+
+export const SETUP_PRO_LICENSE_MESSAGE = `
+  This tool can set up permissions for multi-tenancy and a mock back-end server that
+  signs users into Metabase to emulate the experience from different tenants.
+
+  To proceed, you will need a Pro license.
+  If you skip, we will proceed without multi-tenancy or SSO.
+`;
+
+export const SDK_LEARN_MORE_MESSAGE = `All done! 🚀 Learn more about the SDK here: ${green(
+  SDK_NPM_LINK,
+)}`;

@@ -9,19 +9,8 @@ import {
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Group, Stack } from "metabase/ui";
 
-import {
-  BackButton,
-  Filter,
-  FilterBar,
-  FilterButton,
-  Notebook,
-  NotebookButton,
-  QuestionResetButton,
-  QuestionVisualization,
-  Summarize,
-  SummarizeButton,
-  Title,
-} from "./InteractiveQuestion/components";
+import { InteractiveQuestion } from "../public/InteractiveQuestion";
+
 import { useInteractiveQuestionContext } from "./InteractiveQuestion/context";
 
 export interface InteractiveQuestionResultProps {
@@ -45,18 +34,18 @@ const ResultView = ({
   };
 
   if (questionView === "filter") {
-    return <Filter onClose={returnToVisualization} />;
+    return <InteractiveQuestion.Filter onClose={returnToVisualization} />;
   }
 
   if (questionView === "summarize") {
-    return <Summarize onClose={returnToVisualization} />;
+    return <InteractiveQuestion.Summarize onClose={returnToVisualization} />;
   }
 
   if (questionView === "notebook") {
-    return <Notebook onApply={returnToVisualization} />;
+    return <InteractiveQuestion.Notebook onApply={returnToVisualization} />;
   }
 
-  return <QuestionVisualization />;
+  return <InteractiveQuestion.QuestionVisualization />;
 };
 
 export const InteractiveQuestionResult = ({
@@ -81,22 +70,22 @@ export const InteractiveQuestionResult = ({
     content = (
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
-          <BackButton />
-          {withTitle && (customTitle ?? <Title />)}
-          {withResetButton && <QuestionResetButton />}
-          <FilterButton
+          <InteractiveQuestion.BackButton />
+          {withTitle && (customTitle ?? <InteractiveQuestion.Title />)}
+          {withResetButton && <InteractiveQuestion.ResetButton />}
+          <InteractiveQuestion.FilterButton
             onClick={() =>
               setQuestionView(
                 questionView === "filter" ? "visualization" : "filter",
               )
             }
           />
-          <SummarizeButton
+          <InteractiveQuestion.SummarizeButton
             isOpen={questionView === "summarize"}
             onOpen={() => setQuestionView("summarize")}
             onClose={() => setQuestionView("visualization")}
           />
-          <NotebookButton
+          <InteractiveQuestion.NotebookButton
             isOpen={questionView === "notebook"}
             onClick={() =>
               setQuestionView(
@@ -106,7 +95,7 @@ export const InteractiveQuestionResult = ({
           />
         </Flex>
 
-        <FilterBar />
+        <InteractiveQuestion.FilterBar />
 
         <Group
           h="100%"

@@ -7,7 +7,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import {
-  getDocsUrlForVersion,
+  getDocsUrl,
   getSetting,
   getUpgradeUrl,
 } from "metabase/selectors/settings";
@@ -94,10 +94,9 @@ export const InteractiveEmbeddingOptionCard = () => {
   );
   const enabled = useSetting("enable-embedding");
   const quickStartUrl = useSelector(state =>
-    getDocsUrlForVersion(
-      getSetting(state, "version"),
-      "embedding/interactive-embedding-quick-start-guide",
-    ),
+    getDocsUrl(state, {
+      page: "embedding/interactive-embedding-quick-start-guide",
+    }),
   );
 
   return (
