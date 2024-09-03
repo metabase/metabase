@@ -101,7 +101,7 @@ describe("scenarios > question > custom column", () => {
     getNotebookStep("summarize").findByText("Half Price").should("be.visible");
   });
 
-  it("should not show temporal units for a date/time custom column", () => {
+  it("should show temporal units for a date/time custom column", () => {
     openOrdersTable({ mode: "notebook" });
     cy.icon("add_data").click();
 
@@ -121,12 +121,13 @@ describe("scenarios > question > custom column", () => {
       .findByRole("option", { name: "Product Date" })
       .within(() => {
         cy.findByLabelText("Binning strategy").should("not.exist");
-        cy.findByLabelText("Temporal bucket").should("not.exist");
+        cy.findByLabelText("Temporal bucket").should("exist");
       })
       .click();
+    popover().last().findByLabelText("Day").click();
 
     getNotebookStep("summarize")
-      .findByText("Product Date")
+      .findByText("Product Date: Day")
       .should("be.visible");
   });
 

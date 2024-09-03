@@ -95,8 +95,10 @@
   (let [new-unit (keyword value)]
     (lib.util.match/replace-in
       query [:query :breakout]
-      [:field (_ :guard #(= target-field-id %)) (opts :guard #(= temporal-unit (:temporal-unit %)))]
-      [:field target-field-id (assoc opts :temporal-unit new-unit)])))
+      [(tag :guard #{:field :expression})
+       (_ :guard #(= target-field-id %))
+       (opts :guard #(= temporal-unit (:temporal-unit %)))]
+      [tag target-field-id (assoc opts :temporal-unit new-unit)])))
 
 (defn expand
   "Expand parameters for MBQL queries in `query` (replacing Dashboard or Card-supplied params with the appropriate
