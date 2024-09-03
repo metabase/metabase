@@ -622,12 +622,30 @@ export const getSettingValues = createSelector(getSettings, settings => {
   return settingValues;
 });
 
-export const getNewVersionAvailable = createSelector(getSettings, settings => {
-  return newVersionAvailable({
-    currentVersion: settings["current-version"],
-    latestVersion: settings["latest-version"],
-  });
-});
+export const getCurrentVersion = createSelector(
+  getDerivedSettingValues,
+  settings => {
+    return settings.version?.tag;
+  },
+);
+
+export const getLatestVersion = createSelector(
+  getDerivedSettingValues,
+  settings => {
+    return settings["version-info"]?.latest?.version;
+  },
+);
+
+export const getNewVersionAvailable = createSelector(
+  getCurrentVersion,
+  getLatestVersion,
+  (currentVersion, latestVersion) => {
+    return newVersionAvailable({
+      currentVersion,
+      latestVersion,
+    });
+  },
+);
 
 export const getSections = createSelector(
   getSettings,

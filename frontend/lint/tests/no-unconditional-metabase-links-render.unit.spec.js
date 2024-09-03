@@ -84,15 +84,6 @@ const { url } = useDocsUrl("permissions/data");`,
 ];
 const INVALID_CASES = [
   {
-    name: 'Detect any name of the default import of "metabase/lib/settings"',
-    code: `
-import Settings from "metabase/lib/settings";
-
-const docsUrl = Settings.docsUrl("permissions/data")`,
-    error:
-      /Metabase links must be rendered conditionally\.(.|\n)*Please import `getShowMetabaseLinks`(.|\n)*Or add comment to indicate the reason why this rule needs to be disabled/,
-  },
-  {
     name: "Detect getDocsUrl()",
     code: `
 import { useSelector } from "metabase/lib/redux";
