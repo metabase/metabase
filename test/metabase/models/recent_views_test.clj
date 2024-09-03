@@ -214,7 +214,7 @@
                                     [:model/Dashboard dashboard-id]
                                     [:model/Collection collection-id]
                                     [:model/Table table-id]]]
-            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view))
+            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id))
           (is (= [{:id "ID",
                    :name "tablet",
                    :description nil,

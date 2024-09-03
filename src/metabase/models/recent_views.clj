@@ -80,7 +80,7 @@
 (def rv-models
   "These are models for which we will retrieve recency."
   [:card :dataset :metric
-   ;; n.b.: `:card` and `:model` are stored in recent_views as "card", and a join with report_card is
+   ;; n.b.: `:card`, `metric` and `:model` are stored in recent_views as "card", and a join with report_card is
    ;; needed to distinguish between them.
    :dashboard :table :collection])
 
