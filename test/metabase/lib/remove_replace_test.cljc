@@ -16,7 +16,7 @@
 (deftest ^:parallel remove-clause-order-bys-test
   (let [query (-> lib.tu/venues-query
                   (lib/order-by (meta/field-metadata :venues :name))
-                  (lib/order-by (meta/field-metadata :venues :name)))
+                  (lib/order-by (meta/field-metadata :venues :price)))
         order-bys (lib/order-bys query)]
     (is (= 2 (count order-bys)))
     (is (= 1 (-> query
@@ -346,7 +346,7 @@
     (let [query (-> lib.tu/venues-query
                     (lib/filter (lib/= "myvenue" (meta/field-metadata :venues :name)))
                     (lib/order-by (meta/field-metadata :venues :name))
-                    (lib/order-by (meta/field-metadata :venues :name)))
+                    (lib/order-by (meta/field-metadata :venues :price)))
           order-bys (lib/order-bys query)]
       (is (= 2 (count order-bys)))
       (let [replaced (-> query

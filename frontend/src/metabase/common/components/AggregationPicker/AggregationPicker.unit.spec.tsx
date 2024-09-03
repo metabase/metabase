@@ -232,6 +232,30 @@ describe("AggregationPicker", () => {
       });
     });
 
+    it("should have a working global search", async () => {
+      setup();
+
+      expect(screen.getByPlaceholderText("Find...")).toBeInTheDocument();
+
+      await userEvent.type(screen.getByPlaceholderText("Find..."), "Count");
+
+      ["Count of rows", "Cumulative count of rows"].forEach(name => {
+        expect(screen.getByRole("option", { name })).toBeInTheDocument();
+      });
+
+      [
+        "Sum of ...",
+        "Average of ...",
+        "Number of distinct values of ...",
+        "Cumulative sum of ...",
+        "Standard deviation of ...",
+        "Minimum of ...",
+        "Maximum of ...",
+      ].forEach(name => {
+        expect(screen.queryByRole("option", { name })).not.toBeInTheDocument();
+      });
+    });
+
     it("should apply a column-less operator", async () => {
       const { getRecentClauseInfo } = setup();
 
