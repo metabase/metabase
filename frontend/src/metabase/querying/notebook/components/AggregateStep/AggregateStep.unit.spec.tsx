@@ -2,11 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import {
-  columnFinder,
-  createQuery,
-  findAggregationOperator,
-} from "metabase-lib/test-helpers";
+import { createQueryWithClauses } from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   createMockQueryBuilderState,
@@ -17,19 +13,12 @@ import { createMockNotebookStep } from "../../test-utils";
 
 import { AggregateStep } from "./AggregateStep";
 
-function createAggregatedQuery({
-  table = "ORDERS",
-  column = "QUANTITY",
-}: { table?: string; column?: string } = {}) {
-  const initialQuery = createQuery();
-  const average = findAggregationOperator(initialQuery, "avg");
-  const findColumn = columnFinder(
-    initialQuery,
-    Lib.aggregationOperatorColumns(average),
-  );
-  const quantity = findColumn(table, column);
-  const clause = Lib.aggregationClause(average, quantity);
-  return Lib.aggregate(initialQuery, 0, clause);
+function createAggregatedQuery() {
+  return createQueryWithClauses({
+    aggregations: [
+      { operatorName: "avg", tableName: "ORDERS", columnName: "QUANTITY" },
+    ],
+  });
 }
 
 function setup(step = createMockNotebookStep()) {
@@ -88,9 +77,14 @@ describe("AggregateStep", () => {
   it("should use foreign key name for foreign table columns", () => {
     setup(
       createMockNotebookStep({
-        query: createAggregatedQuery({
-          table: "PRODUCTS",
-          column: "RATING",
+        query: createQueryWithClauses({
+          aggregations: [
+            {
+              operatorName: "avg",
+              tableName: "PRODUCTS",
+              columnName: "RATING",
+            },
+          ],
         }),
       }),
     );
