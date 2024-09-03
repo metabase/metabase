@@ -4,7 +4,7 @@ import { fireEvent, getIcon, render, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQueryWithClauses } from "metabase-lib/test-helpers";
 
-import { createMockNotebookStep } from "../../test-utils";
+import { DEFAULT_QUESTION, createMockNotebookStep } from "../../test-utils";
 import type { NotebookStep } from "../../types";
 
 import { BreakoutStep } from "./BreakoutStep";
@@ -470,5 +470,22 @@ describe("BreakoutStep", () => {
     });
   });
 
-  describe("metrics", () => {});
+  describe("metrics", () => {
+    it("should allow to select date and datetime columns only", async () => {
+      const step = createMockNotebookStep({
+        question: DEFAULT_QUESTION.setType("metric"),
+      });
+      setup({ step });
+
+      await userEvent.click(screen.getByText("Pick a column to group by"));
+      expect(await screen.findByText("Order")).toBeInTheDocument();
+      expect(await screen.findByText("Created At")).toBeInTheDocument();
+      expect(screen.queryByText("Tax")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("User"));
+      expect(await screen.findByText("Created At")).toBeInTheDocument();
+      expect(await screen.findByText("Birth Date")).toBeInTheDocument();
+      expect(screen.queryByText("Email")).not.toBeInTheDocument();
+    });
+  });
 });
