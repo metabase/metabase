@@ -131,6 +131,8 @@ describe("issue 35954", () => {
             .findAllByTestId("question-revert-button")
             .should("have.length", 2);
 
+          cy.findByLabelText("Close").click();
+
           cy.findByLabelText(`Back to ${dashboardDetails.name}`).click();
 
           cy.get("@dashboardId").then(id => {
@@ -182,6 +184,7 @@ describe("issue 35954", () => {
         visitQuestion(this.questionId);
 
         questionInfoButton().click();
+        cy.findByRole("tab", { name: "History" }).click();
         cy.findByTestId("saved-question-history-list")
           .find("li")
           .filter(":contains(You edited this)")

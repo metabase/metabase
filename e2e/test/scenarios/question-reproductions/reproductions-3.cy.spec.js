@@ -280,7 +280,8 @@ describe("issue 38176", () => {
       cy.findByText(/reverted to an earlier version/i).should("be.visible");
     });
 
-    cy.findAllByRole("gridcell").should("contain", "NL");
+    cy.findByLabelText("Close").click();
+    tableInteractive().should("contain", "NL");
   });
 });
 

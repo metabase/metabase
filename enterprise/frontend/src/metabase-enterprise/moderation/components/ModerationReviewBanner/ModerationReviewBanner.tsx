@@ -12,7 +12,7 @@ import {
   getTextForReviewBanner,
 } from "metabase-enterprise/moderation/service";
 import type Question from "metabase-lib/v1/Question";
-import type { ModerationReview, User } from "metabase-types/api";
+import type { ModerationReview } from "metabase-types/api";
 
 import {
   Container,
@@ -25,8 +25,6 @@ const ICON_BUTTON_SIZE = 16;
 
 interface ModerationReviewBannerProps {
   moderationReview: ModerationReview;
-  user?: User | null;
-  onRemove?: () => void;
   className?: string;
 }
 

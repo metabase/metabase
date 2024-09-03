@@ -1011,7 +1011,7 @@ describe("issue 34574", () => {
     cy.log(
       "Make sure the markdown is properly preserved in the model details page",
     );
-    cy.findByRole("link", { name: "Model details" }).click();
+    cy.findByRole("link", { name: "See more about this model" }).click();
     cy.findByLabelText("Description").within(assertMarkdownPreview);
 
     cy.log(
