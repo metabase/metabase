@@ -22,6 +22,10 @@
   normalized-locale-string
   translate])
 
+  (def ^:dynamic *header-locale*
+    "This will contain the value for the locale coming from `X-Metabase-Locale`"
+    nil)
+
 (def ^:dynamic *user-locale*
   "Bind this to a string, keyword, or `Locale` to set the locale for the current User. To get the locale we should
   *use*, use the `user-locale` function instead."
@@ -44,7 +48,9 @@
   "Locale string we should *use* for the current User (e.g. `tru` messages) -- `*user-locale*` if bound, otherwise the
   system locale as a string."
   []
-  (or *user-locale*
+  (or
+    *header-locale*
+    *user-locale*
       (site-locale-string)))
 
 (defn site-locale
