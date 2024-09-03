@@ -32,7 +32,7 @@ export function useSyncedQueryString(
   }, [deps]);
 }
 
-const QUERY_PARAMS_ALLOW_LIST = ["objectId", "tab"];
+const QUERY_PARAMS_ALLOW_LIST = ["objectId", "locale", "tab"];
 
 function buildSearchString(object: Record<string, any>) {
   const currentSearchParams = querystring.parse(

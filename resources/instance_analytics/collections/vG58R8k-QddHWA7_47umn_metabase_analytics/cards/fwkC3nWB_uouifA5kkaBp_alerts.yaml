@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -170,7 +169,11 @@ result_metadata:
     - v_alerts
     - creator_id
   - null
-  fk_target_field_id: 739
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_fields
+  - active
   id:
   - Internal Metabase Database
   - public
@@ -404,13 +407,13 @@ result_metadata:
   visibility_type: normal
 visualization_settings:
   column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
-    : column_title: Question
+    '["name","full_name"]':
+      column_title: Creator
+    '["name","name"]':
+      column_title: Question
       link_text: ''
       link_url: /question/{{card_id}}
       view_as: link
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - Creator"}]]'
-    : column_title: Creator
   table.cell_column: card_id
   table.columns:
   - enabled: true
@@ -550,7 +553,6 @@ serdes/meta:
 - id: fwkC3nWB_uouifA5kkaBp
   label: alerts
   model: Card
-initially_published_at: null
-last_used_at: '2024-05-16T21:01:38.038034Z'
 metabase_version: vUNKNOWN (44d194b)
+source_card_id: skoPT2xiuEcUV8vFkHE6S
 type: question

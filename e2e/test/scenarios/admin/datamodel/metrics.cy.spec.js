@@ -1,11 +1,16 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  entityPickerModal,
+  entityPickerModalTab,
   filter,
   filterField,
+  getNotebookStep,
+  hovercard,
   modal,
   openOrdersTable,
   popover,
   restore,
+  startNewQuestion,
   summarize,
   visualize,
 } from "e2e/support/helpers";
@@ -337,6 +342,145 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.log("**Assert that there is a filter text visible**");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("ID > 0 OR ID < 9876543210");
+    });
+
+    it("custom metrics should be sorted", () => {
+      const metric = {
+        name: "Metric",
+        description: "desc",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "aggregation-options",
+              [
+                "sum",
+                [
+                  "*",
+                  ["field", ORDERS.DISCOUNT, null],
+                  ["field", ORDERS.QUANTITY, null],
+                ],
+              ],
+              { "display-name": "CE" },
+            ],
+          ],
+        },
+      };
+
+      createMetric({
+        ...metric,
+        name: "Z Metric",
+      });
+      createMetric({
+        ...metric,
+        name: "A Metric",
+      });
+
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+
+      getNotebookStep("summarize")
+        .findByText("Pick the metric you want to see")
+        .click();
+      popover().within(() => {
+        cy.findByText("Common Metrics").click();
+
+        cy.findAllByRole("option").eq(0).should("contain", "A Metric");
+        cy.findAllByRole("option").eq(1).should("contain", "Z Metric");
+      });
+    });
+
+    it("it should be possible to search for custom metrics by name (even if it has a space)", () => {
+      createMetric({
+        name: "Metric with a space",
+        description: "desc",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "aggregation-options",
+              [
+                "sum",
+                [
+                  "*",
+                  ["field", ORDERS.DISCOUNT, null],
+                  ["field", ORDERS.QUANTITY, null],
+                ],
+              ],
+              { "display-name": "CE" },
+            ],
+          ],
+        },
+      });
+
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+
+      getNotebookStep("summarize")
+        .findByText("Pick the metric you want to see")
+        .click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Find...").type("Metric with");
+        cy.findByText("Metric with a space").should("be.visible");
+
+        cy.findByPlaceholderText("Find...").clear().type("Cumulative");
+        cy.findByText("Cumulative sum of ...").should("be.visible");
+        cy.findByText("Cumulative count of rows").should("be.visible");
+      });
+    });
+
+    it("should show the description for metrics", () => {
+      createMetric({
+        name: "Metric name",
+        description: "This is a description _with markdown_",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "aggregation-options",
+              [
+                "sum",
+                [
+                  "*",
+                  ["field", ORDERS.DISCOUNT, null],
+                  ["field", ORDERS.QUANTITY, null],
+                ],
+              ],
+              { "display-name": "CE" },
+            ],
+          ],
+        },
+      });
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+
+      getNotebookStep("summarize")
+        .findByText("Pick the metric you want to see")
+        .click();
+      popover().within(() => {
+        cy.findByText("Common Metrics").click();
+        cy.findByText("Metric name").should("be.visible");
+        cy.findByText("Metric name").realHover();
+
+        cy.findByLabelText("More info").should("exist").realHover();
+      });
+
+      hovercard().within(() => {
+        cy.contains("This is a description").should("be.visible");
+        cy.contains("with markdown").should("be.visible");
+      });
     });
   });
 });

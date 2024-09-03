@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -197,12 +196,12 @@ visualization_settings:
   column_settings:
     '["name","count"]':
       show_mini_bar: true
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
-    : column_title: Question ID
+    '["name","entity_id"]':
+      column_title: Question ID
       link_url: question/{{entity_id}}
       view_as: link
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
-    : column_title: Question name
+    '["name","name"]':
+      column_title: Question name
       link_text: ''
       link_url: question/{{entity_id}}
       view_as: link
@@ -242,6 +241,6 @@ serdes/meta:
 - id: _lfXwss_MckZBidbcJsgk
   label: most_viewed_questions
   model: Card
-initially_published_at: null
 metabase_version: null
+source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

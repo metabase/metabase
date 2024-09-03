@@ -10,6 +10,8 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log]
+   [metabase.util.performance :as perf]
    [redux.core :as redux])
   (:import
    (com.bigml.histogram Histogram)
@@ -23,20 +25,21 @@
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
   [& rfs]
-  (fn
-    ([] (mapv (fn [rf] (rf)) rfs))
-    ([accs] (mapv (fn [rf acc] (rf (unreduced acc))) rfs accs))
-    ([accs row]
-     (let [all-reduced? (volatile! true)
-           results      (mapv (fn [rf acc x]
-                                (if-not (reduced? acc)
-                                  (do (vreset! all-reduced? false)
-                                      (rf acc x))
-                                  acc))
-                              rfs accs row)]
-       (if @all-reduced?
-         (reduced results)
-         results)))))
+  (let [rfs (vec rfs)]
+    (fn
+      ([] (perf/mapv (fn [rf] (rf)) rfs))
+      ([accs] (perf/mapv (fn [rf acc] (rf (unreduced acc))) rfs accs))
+      ([accs row]
+       (let [all-reduced? (volatile! true)
+             results      (perf/mapv (fn [rf acc x]
+                                       (if-not (reduced? acc)
+                                         (do (vreset! all-reduced? false)
+                                             (rf acc x))
+                                         acc))
+                                     rfs accs row)]
+         (if @all-reduced?
+           (reduced results)
+           results))))))
 
 (defn constant-fingerprinter
   "Constantly return `init`."
@@ -63,25 +66,30 @@
                                       ~v
                                       (catch Throwable _#))]))))
 
-(defmacro ^:private with-reduced-error
-  [msg & body]
-  `(let [result# (sync-util/with-error-handling ~msg ~@body)]
-     (if (instance? Throwable result#)
-       (reduced result#)
-       result#)))
+(defmacro ^:private do-with-error-handling
+  "This macro and its usage is written in a specific way to ensure that try-catch blocks don't produce closures."
+  [form action-on-exception msg]
+  `(if sync-util/*log-exceptions-and-continue?*
+     (try ~form
+          (catch Throwable e#
+            (metabase.util.log/warn e# ~msg)
+            (~action-on-exception e#)))
+     ~form))
 
 (defn with-error-handling
   "Wrap `rf` in an error-catching transducer."
   [rf msg]
+  ;; This function is written in a specific way to ensure that try-catch blocks don't produce closures.
   (fn
-    ([] (with-reduced-error msg (rf)))
+    ([]
+     (do-with-error-handling (rf) reduced msg))
     ([acc]
-     (unreduced
-      (if (or (reduced? acc)
-              (instance? Throwable acc))
-        acc
-        (with-reduced-error msg (rf acc)))))
-    ([acc e] (with-reduced-error msg (rf acc e)))))
+     (if (or (reduced? acc)
+             (instance? Throwable acc))
+       (unreduced acc)
+       (do-with-error-handling (unreduced (rf acc)) identity msg)))
+    ([acc e]
+     (do-with-error-handling (rf acc e) reduced msg))))
 
 (defn robust-fuse
   "Like `redux/fuse` but wraps every reducing fn in `with-error-handling` and returns `nil` for
@@ -117,7 +125,7 @@
        semantic-type
        :Relation/*)]))
 
-(def ^:private global-fingerprinter
+(defn- global-fingerprinter []
   (redux/post-complete
    (robust-fuse {:distinct-count cardinality
                  :nil%           (stats/share nil?)})
@@ -125,11 +133,11 @@
 
 (defmethod fingerprinter :default
   [_]
-  global-fingerprinter)
+  (global-fingerprinter))
 
 (defmethod fingerprinter [:type/* :Semantic/* :type/FK]
   [_]
-  global-fingerprinter)
+  (global-fingerprinter))
 
 (defmethod fingerprinter [:type/* :Semantic/* :type/PK]
   [_]
@@ -147,7 +155,7 @@
   (redux/post-complete
    (redux/juxt
     fingerprinter
-    global-fingerprinter)
+    (global-fingerprinter))
    (fn [[type-fingerprint global-fingerprint]]
      (merge global-fingerprint
             type-fingerprint))))

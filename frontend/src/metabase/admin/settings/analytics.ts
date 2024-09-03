@@ -1,7 +1,7 @@
 import { trackSchemaEvent } from "metabase/lib/analytics";
 
 export const trackTrackingPermissionChanged = (isEnabled: boolean) => {
-  trackSchemaEvent("settings", "1-0-1", {
+  trackSchemaEvent("settings", {
     event: isEnabled
       ? "tracking_permission_enabled"
       : "tracking_permission_disabled",
@@ -12,7 +12,7 @@ export const trackTrackingPermissionChanged = (isEnabled: boolean) => {
 export const trackCustomHomepageDashboardEnabled = (
   source: "admin" | "homepage",
 ) => {
-  trackSchemaEvent("settings", "1-0-2", {
+  trackSchemaEvent("settings", {
     event: "homepage_dashboard_enabled",
     source,
   });

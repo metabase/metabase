@@ -254,7 +254,7 @@ const getTooltipFooterData = (
   return [
     {
       key: DATETIME_ABSOLUTE_UNIT_COMPARISON[unit],
-      col: seriesModel.column,
+      col: null,
       value: formatChangeWithSign(change),
     },
   ];

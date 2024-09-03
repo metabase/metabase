@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
    [metabase.audit :as audit]
    [metabase.core :as mbc]
    [metabase.models
@@ -31,9 +32,15 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2])
-  (:import
-   (java.time OffsetDateTime)))
+   [toucan2.core :as t2]))
+
+(comment
+  ;; Use this spell in your test body to add the given fixtures to the round trip baseline.
+  (round-trip-test/add-to-baseline!))
+
+(comment
+  ;; Use this spell in your test body to add the given fixtures to the round trip baseline.
+  (round-trip-test/add-to-baseline!))
 
 (defn- by-model [model-name extraction]
   (->> extraction
@@ -333,6 +340,7 @@
                        _
                        {:action_id action-id
                         :dashboard_id other-dash-id}]
+
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one Card :id c1-id))]
           (is (=? {:serdes/meta                 [{:model "Card" :id c1-eid :label "some_question"}]
@@ -710,7 +718,7 @@
                    :creator_id  "ann@heart.band"
                    :definition  {:source-table ["My Database" nil "Schemaless Table"]
                                  :aggregation [[:sum [:field ["My Database" nil "Schemaless Table" "Some Field"] nil]]]}
-                   :created_at  OffsetDateTime}
+                   :created_at  string?}
                   ser))
           (is (not (contains? ser :id)))
 

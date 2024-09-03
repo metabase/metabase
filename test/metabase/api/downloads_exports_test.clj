@@ -18,7 +18,6 @@
    [metabase.public-settings :as public-settings]
    [metabase.pulse :as pulse]
    [metabase.query-processor.streaming.csv :as qp.csv]
-   [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.test :as mt])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)
@@ -432,7 +431,7 @@
                                                                [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]]
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
-        (binding [qp.xlsx/*pivot-export-post-processing-enabled* true]
+        (mt/with-temporary-setting-values [public-settings/temp-native-pivot-exports true]
           (let [result (mt/user-http-request :crowberto :post 200 (format "card/%d/query/xlsx?format_rows=false" pivot-card-id))
                 pivot  (with-open [in (io/input-stream result)]
                          (->> (spreadsheet/load-workbook in)
@@ -440,7 +439,7 @@
                               ((fn [s] (.getPivotTables ^XSSFSheet s)))))]
             (is (not (nil? pivot)))))))))
 
-(deftest ^:parallel zero-column-native-pivot-tables-test
+(deftest zero-column-native-pivot-tables-test
   (testing "Pivot tables with zero columns download correctly as xlsx."
     (mt/dataset test-data
       (mt/with-temp [:model/Card {pivot-card-id :id}
@@ -457,7 +456,7 @@
                                                 :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
-        (binding [qp.xlsx/*pivot-export-post-processing-enabled* true]
+        (mt/with-temporary-setting-values [public-settings/temp-native-pivot-exports true]
           (let [result       (mt/user-http-request :crowberto :post 200 (format "card/%d/query/xlsx?format_rows=false" pivot-card-id))
                 [pivot data] (with-open [in (io/input-stream result)]
                                (let [wb    (spreadsheet/load-workbook in)
@@ -476,7 +475,7 @@
                     ["Doohickey" #inst "2016-09-01T00:00:00.000-00:00" 45.65]]
                    (take 6 data)))))))))
 
-(deftest ^:parallel zero-row-native-pivot-tables-test
+(deftest zero-row-native-pivot-tables-test
   (testing "Pivot tables with zero rows download correctly as xlsx."
     (mt/dataset test-data
       (mt/with-temp [:model/Card {pivot-card-id :id}
@@ -491,7 +490,7 @@
                                                {:source-table (mt/id :products)
                                                 :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
-        (binding [qp.xlsx/*pivot-export-post-processing-enabled* true]
+        (mt/with-temporary-setting-values [public-settings/temp-native-pivot-exports true]
           (let [result       (mt/user-http-request :crowberto :post 200 (format "card/%d/query/xlsx?format_rows=false" pivot-card-id))
                 [pivot data] (with-open [in (io/input-stream result)]
                                (let [wb    (spreadsheet/load-workbook in)

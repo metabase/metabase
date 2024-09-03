@@ -165,6 +165,7 @@
                                                    :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
                                                    :timestamp String,
                                                    :display_name "Name",
+                                                   :table_schema nil
                                                    :model :table}]]
                                      [true true [{:description nil,
                                                   :can_write true,
@@ -173,6 +174,7 @@
                                                   :id table-id,
                                                   :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
                                                   :timestamp String,
+                                                  :table_schema nil
                                                   :display_name "Name",
                                                   :model :table}]]]]
       (with-redefs [mi/can-read? (constantly read?)
@@ -217,6 +219,7 @@
                    :name "tablet",
                    :description nil,
                    :model :table,
+                   :table_schema nil
                    :display_name "I am the table",
                    :can_write true,
                    :database {:id db-id, :name "My DB", :initial_sync_status "incomplete"}}
@@ -515,8 +518,6 @@
 
           (doseq [model-id model-ids]
             (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view)))
-        (def t (t2/select :model/RecentViews))
-        (def rv0 (recent-views (mt/user->id :rasta)))
         (with-redefs [mi/can-read? (constantly true)
                       data-perms/user-has-permission-for-table? (constantly true)]
           (let [freqs (frequencies (map :model

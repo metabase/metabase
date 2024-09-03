@@ -12,3 +12,4 @@ enterprise/backend/src/metabase_enterprise/task/truncate_audit_table.clj @noahmo
 enterprise/backend/src/metabase_enterprise/internal_user.clj @noahmoss
 src/metabase/**/*permissions* @noahmoss
 src/metabase/integrations @noahmoss
+snowplow/* @metabase/data
