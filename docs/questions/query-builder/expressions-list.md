@@ -716,11 +716,13 @@ Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer,
 
 ## Window functions
 
+Window functions can only be used in the **Summarize** section. They cannot be used to create a custom column or a custom filter.
+
 ### CumulativeCount
 
-The additive total of rows across a breakout. `CumulativeCount` can only be used in the **Summarize** section.
+For more info, check out our page on [`CumulativeCount`](./expressions/cumulativecount.md).
 
-Because `CumulativeCount` refers to other rows, the order of the groups in the **Group By** section is important. Metabase will sort by the first group, then partition by any additional groups. For example, if you want to see the cumulative counts of orders over time by product category, you should first group by `Created At`, _then_ group by the product category.
+The additive total of rows across a breakout.
 
 Syntax: `CumulativeCount`.
 
@@ -728,9 +730,9 @@ Example: `CumulativeCount`.
 
 ### CumulativeSum
 
-The rolling sum of a column across a breakout. `CumulativeSum` can only be used in the **Summarize** section.
+For more info, check out our page on [`CumulativeSum`](./expressions/cumulativesum.md).
 
-Because `CumulativeSum` refers to other rows, the order of the groups in the **Group By** section is important. Metabase will sort by the first group, then partition by any additional groups. For example, if you want to see the cumulative sum of order totals over time by product category, you should first group by `Created At`, _then_ group by product category.
+The rolling sum of a column across a breakout.
 
 Syntax: `CumulativeSum(column)`.
 
