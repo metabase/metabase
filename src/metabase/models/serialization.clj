@@ -1,3 +1,4 @@
+;; -*- outline-regexp: "[; ]+#+[[:space:]]+" -*-
 (ns metabase.models.serialization
   "Defines core interfaces for serialization.
 
@@ -1627,6 +1628,18 @@
                                   (maybe-lift outer-xform :export :export-with-context))
    :import-with-context (compose* (maybe-lift outer-xform :import :import-with-context)
                                   (maybe-lift inner-xform :import :import-with-context))})
+
+;;; ## Utilities
+
+(defmacro log-stripped-error
+  "Log errors with no stacktrace"
+  [prefix e]
+  `(loop [prefix# ~prefix
+          e#      ~e]
+     (when e#
+       (log/errorf (str prefix# ": " (ex-message e#) " " (-> (ex-data e#)
+                                                             (dissoc :toucan2/context-trace))))
+       (recur "  caused by" (.getCause ^Exception e#)))))
 
 ;;; ## Memoizing appdb lookups
 
