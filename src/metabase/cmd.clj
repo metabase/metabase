@@ -312,6 +312,8 @@
         (init-fn))
       (apply @(cmd->var command-name) args)
       (catch Throwable e
+        (when (:cmd/exit (ex-data e)) ;; fast-track for commands that have their own error handling
+          (System/exit 1))
         (.printStackTrace e)
         (fail! (str "Command failed with exception: " (.getMessage e))))))
   (System/exit 0))
