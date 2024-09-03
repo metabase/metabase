@@ -1421,7 +1421,9 @@
                                                     (if broken-refs?
                                                       [:field {} (meta/id :products :category)]
                                                       [:field {:base-type :type/Text} "Products__CATEGORY"])
-                                                    [:field {:join-alias "Card 2 - Category"} (meta/id :products :category)]]]
+                                                    (if broken-refs?
+                                                      [:field {:join-alias "Card 2 - Category"} (meta/id :products :category)]
+                                                      [:field {:join-alias "Card 2 - Category"} "CATEGORY"])]]
                                       :alias      "Card 2 - Category"}]
                              :limit 2}]}
                   (lib.tu.mocks-31769/query))))))))
