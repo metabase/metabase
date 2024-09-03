@@ -155,9 +155,9 @@ export default class LegendVertical extends Component {
                 className={CS.p2}
                 titles={extraItems}
                 colors={extraColors}
-                hiddenIndices={hiddenIndices.map(i =>
-                  i >= items.length ? i - items.length : i,
-                )}
+                hiddenIndices={hiddenIndices
+                  .filter(i => i >= items.length - 1)
+                  .map(i => i - items.length)}
                 onToggleSeriesVisibility={(event, sliceIndex) =>
                   onToggleSeriesVisibility(event, sliceIndex + items.length)
                 }
