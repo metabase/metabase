@@ -7,21 +7,23 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 import {
-  LegendItemDot,
   LegendItemLabel,
   LegendItemRemoveIcon,
   LegendItemRoot,
   LegendItemTitle,
 } from "./LegendItem.styled";
+import { LegendItemDot } from "./LegendItemDot";
 
 const propTypes = {
   item: PropTypes.object,
   index: PropTypes.number,
   isMuted: PropTypes.bool,
   isVertical: PropTypes.bool,
+  isInsidePopover: PropTypes.bool,
   isReversed: PropTypes.bool,
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
+  onToggleSeriesVisibility: PropTypes.func,
   onRemoveSeries: PropTypes.func,
 };
 
@@ -30,11 +32,17 @@ const LegendItem = ({
   index,
   isMuted,
   isVertical,
+  isInsidePopover,
   isReversed,
   onHoverChange,
   onSelectSeries,
+  onToggleSeriesVisibility,
   onRemoveSeries,
 }) => {
+  const handleDotClick = event => {
+    onToggleSeriesVisibility?.(event, index);
+  };
+
   const handleItemClick = event => {
     onSelectSeries && onSelectSeries(event, index, isReversed);
   };
@@ -55,17 +63,22 @@ const LegendItem = ({
     <LegendItemRoot isVertical={isVertical} data-testid="legend-item">
       <LegendItemLabel
         isMuted={isMuted}
-        onClick={onSelectSeries && handleItemClick}
         onMouseEnter={onHoverChange && handleItemMouseEnter}
         onMouseLeave={onHoverChange && handleItemMouseLeave}
       >
-        <LegendItemDot color={item.color} />
+        <LegendItemDot
+          color={item.color}
+          isVisible={item.visible}
+          onClick={onToggleSeriesVisibility && handleDotClick}
+        />
         <LegendItemTitle
           className={cx(
             DashboardS.fullscreenNormalText,
             DashboardS.fullscreenNightText,
             EmbedFrameS.fullscreenNightText,
           )}
+          isInsidePopover={isInsidePopover}
+          onClick={onSelectSeries && handleItemClick}
         >
           <Ellipsified>{item.name}</Ellipsified>
         </LegendItemTitle>

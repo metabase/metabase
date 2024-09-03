@@ -118,6 +118,7 @@ describe("series", () => {
         const result = getCardsSeriesModels(
           rawSeries,
           cardsColumns,
+          [],
           createMockComputedVisualizationSettings(),
           renderingContextMock,
         );
@@ -134,6 +135,7 @@ describe("series", () => {
           name: metricColumns.metrics[0].column.display_name,
           tooltipName: metricColumns.metrics[0].column.display_name,
           vizSettingsKey: metricColumns.metrics[0].column.name,
+          visible: true,
         });
       });
 
@@ -144,6 +146,7 @@ describe("series", () => {
         const result = getCardsSeriesModels(
           rawSeries,
           cardsColumns,
+          [],
           createMockComputedVisualizationSettings({
             series_settings: {
               [metricColumns.metrics[0].column.name]: {
@@ -161,6 +164,22 @@ describe("series", () => {
           tooltipName: "foo",
         });
       });
+
+      it("should mark series as invisible if it's dataKey is in hiddenSeries list", () => {
+        const rawSeries = [metricSeries];
+        const cardsColumns = [metricColumns];
+
+        const result = getCardsSeriesModels(
+          rawSeries,
+          cardsColumns,
+          ["1:count"],
+          createMockComputedVisualizationSettings(),
+          renderingContextMock,
+        );
+
+        expect(result).toHaveLength(1);
+        expect(result[0].visible).toBe(false);
+      });
     });
 
     describe("single breakout card", () => {
@@ -171,6 +190,7 @@ describe("series", () => {
         const result = getCardsSeriesModels(
           rawSeries,
           cardsColumns,
+          [],
           createMockComputedVisualizationSettings(),
           renderingContextMock,
         );
@@ -209,6 +229,7 @@ describe("series", () => {
         const result = getCardsSeriesModels(
           rawSeries,
           cardsColumns,
+          [],
           createMockComputedVisualizationSettings({
             series_settings: {
               "formatted: type2": {
@@ -250,6 +271,7 @@ describe("series", () => {
         const result = getCardsSeriesModels(
           rawSeries,
           cardsColumns,
+          [],
           createMockComputedVisualizationSettings(),
           renderingContextMock,
         );
@@ -276,6 +298,7 @@ describe("series", () => {
         const result = getCardsSeriesModels(
           rawSeries,
           cardsColumns,
+          [],
           createMockComputedVisualizationSettings(),
           renderingContextMock,
         );
@@ -323,6 +346,7 @@ describe("series", () => {
         const result = getCardsSeriesModels(
           rawSeries,
           cardsColumns,
+          [],
           createMockComputedVisualizationSettings({
             series_settings: {
               [metricColumns.metrics[0].column.name]: {
