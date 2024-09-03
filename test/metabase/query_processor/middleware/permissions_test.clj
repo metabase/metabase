@@ -272,12 +272,24 @@
 
 (deftest inactive-table-test
   (testing "Make sure a query on an inactive table fails to run"
-    (mt/with-full-data-perms-for-all-users!
-      (mt/with-temp [Database db {}
-                     Table    table {:db_id (u/the-id db)
-                                     :active false}]
+    (mt/with-temp [Database db {:name "Test DB"}
+                   Table    table {:db_id (u/the-id db)
+                                   :name "Inactive Table"
+                                   :schema "PUBLIC"
+                                   :active false}]
+      (mt/with-full-data-perms-for-all-users!
         (is (thrown-with-msg?
-             ExceptionInfo
+             Exception
+             #"Table \"Test DB.PUBLIC.Inactive Table\" is inactive."
+             (check-perms-for-rasta
+              {:database (u/the-id db)
+               :type     :query
+               :query    {:source-table (u/the-id table)}}))))
+
+      ;; Don't leak metadata about the table if the user doesn't have access to it, even if it's inactive
+      (mt/with-no-data-perms-for-all-users!
+        (is (thrown-with-msg?
+             Exception
              #"Table [\d,]+ is inactive."
              (check-perms-for-rasta
               {:database (u/the-id db)
