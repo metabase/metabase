@@ -622,15 +622,16 @@ export const getNewVersionAvailable = createSelector(getSettings, settings => {
 });
 
 export const getSections = createSelector(
-  getSettingsByKey,
+  getSettings,
   getDerivedSettingValues,
   getUserIsAdmin,
-  (settingsByKey, derivedSettingValues, isAdmin) => {
-    if (_.isEmpty(settingsByKey)) {
+  (settings, derivedSettingValues, isAdmin) => {
+    if (!settings || _.isEmpty(settings)) {
       return {};
     }
 
     const sections = getSectionsWithPlugins();
+    const settingsByKey = _.groupBy(settings, "key");
     const sectionsWithAPISettings = {};
     for (const [slug, section] of Object.entries(sections)) {
       const isHidden = section.getHidden?.(derivedSettingValues);
@@ -641,7 +642,7 @@ export const getSections = createSelector(
 
       const settings = section.settings.map(function (setting) {
         const apiSetting =
-          settingsByKey[setting.key] && settingsByKey[setting.key];
+          settingsByKey[setting.key] && settingsByKey[setting.key][0];
 
         if (apiSetting) {
           const value = setting.showActualValue
