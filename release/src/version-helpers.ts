@@ -236,7 +236,7 @@ export function getLastReleaseFromTags({tags, ignorePatches = false}: { tags: Ta
   return tags
     .map(tag => tag.ref.replace('refs/tags/', ''))
     .filter(tag => !isRCVersion(tag)) // we want to ignore RC tags because release notes should be cumulative
-    .filter(ignorePatches ? v => !isPatchVersion(v) :  () => true) // ignore patch versions since we don't release notes for them
+    .filter(ignorePatches ? v => !isPatchVersion(v) :  () => true)
     .sort(versionSort)
     .reverse()[0];
 }
