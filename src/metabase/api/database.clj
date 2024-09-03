@@ -169,9 +169,7 @@
                                                   [:= :archived false]
                                                   [:= :dataset (= question-type :dataset)]
                                                   [:in :database_id ids-of-dbs-that-support-source-queries]
-                                                  (collection/visible-collection-ids->honeysql-filter-clause
-                                                   (collection/permissions-set->visible-collection-ids
-                                                    @api/*current-user-permissions-set*))]
+                                                  (collection/visible-collection-filter-clause)]
                                                  additional-constraints)
                                  :order-by [[:%lower.name :asc]]}))))
 

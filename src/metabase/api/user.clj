@@ -298,9 +298,7 @@
 (defn- add-has-question-and-dashboard
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard."
   [user]
-  (let [coll-ids-filter (collection/visible-collection-ids->honeysql-filter-clause
-                          :collection_id
-                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
+  (let [coll-ids-filter (collection/visible-collection-filter-clause)
         perms-query {:where [:and
                              [:= :archived false]
                              coll-ids-filter]}]

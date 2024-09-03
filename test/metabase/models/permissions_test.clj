@@ -606,3 +606,21 @@
     #{2} {1 ["/db/2/schema/"]}                     {1 {2 {:data {:schemas :all}}}}
     #{2} {1 ["/query/db/2/schema/" "/data/db/2/"]} {1 {2 {:query {:schemas :all}, :data {:native :write}}}}
     #{2} {1 ["/db/2/"]}                            {1 {2 {:data {:native :write, :schemas :all}}}}))
+
+(deftest maybe-break-out-permission-data-test
+  (testing "We can break out a collection permission"
+    (are [object m] (= m (select-keys (#'perms/maybe-break-out-permission-data {:object object})
+                                      [:collection_id :perm_type :perm_value]))
+      "/collection/123/" {:collection_id 123
+                          :perm_type :perms/collection-access
+                          :perm_value :read-and-write}
+      "/collection/123/read/" {:collection_id 123
+                               :perm_type :perms/collection-access
+                               :perm_value :read}
+
+      ;; We only do this for collection permissions right now.
+      "/foo/1234/" {}
+
+      ;; Note that WE DON'T break out the root collection bits at this point. Maybe we will down the road, but we need
+      ;; to think about how this works since the collection ID will be `NULL`.
+      "/collection/root/" {})))
