@@ -8,7 +8,7 @@ import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { Box, Stack } from "metabase/ui";
 import type { SettingKey } from "metabase-types/api";
 
-import { getSettingsByKey } from "../../selectors";
+import { getSettings } from "../../selectors";
 import SettingHeader from "../SettingHeader";
 import { SetByEnvVarWrapper } from "../SettingsSetting";
 import { SettingTextInput } from "../widgets/SettingTextInput";
@@ -35,7 +35,7 @@ export function EmbeddingSdkSettings({
   const sdkOriginsSetting = useMergeSetting(SDK_ORIGINS_SETTING);
 
   function onChangeSdkOrigins(value: string | null) {
-    updateSetting(sdkOriginsSetting.key, value);
+    updateSetting({ key: SDK_ORIGINS_SETTING.key }, value);
   }
   const hasEmbeddingSdkFeature = PLUGIN_EMBEDDING_SDK.isEnabled();
 
@@ -70,7 +70,9 @@ export function EmbeddingSdkSettings({
 
 type DisplaySetting = { key: SettingKey };
 function useMergeSetting(displaySetting: DisplaySetting) {
-  const apiSetting = useSelector(getSettingsByKey)[displaySetting.key];
+  const apiSetting = useSelector(getSettings).find(
+    (setting: any) => setting.key === displaySetting.key,
+  );
   const mergedSetting = useMemo(() => {
     return {
       ...apiSetting,

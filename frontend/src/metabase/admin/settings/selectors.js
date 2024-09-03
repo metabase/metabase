@@ -595,15 +595,6 @@ export const getSettings = createSelector(
     ),
 );
 
-/**
- * @typedef {import("metabase-types/store").State} State
- *
- * @type {(state: State) => Record<keyof import("metabase/selectors/settings").GetSettings<State>, any>}
- */
-export const getSettingsByKey = createSelector(getSettings, settings =>
-  _.indexBy(settings, "key"),
-);
-
 // getSettings selector returns settings for admin setting page and values specified by
 // environment variables set to "null". Actual applied setting values are coming from
 // /api/session/properties API handler and getDerivedSettingValues returns them.
