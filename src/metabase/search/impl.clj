@@ -433,6 +433,16 @@
        :order-by order-clause
        :limit    search.config/*db-max-results*})))
 
+SearchContext
+(full-search-query
+ {:archived? true
+  :current-user-id (t2/select-one-pk :model/User {:order-by [[:id :asc]]})
+  :current-user-perms #{}
+  :model-ancestors? false
+  :models #{"dashboard"} #_search.config/all-models
+  :search-string nil
+  })
+
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by for each result."
   [results]
