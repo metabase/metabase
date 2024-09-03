@@ -7,7 +7,7 @@
 (deftest ->id-test
   (api.embed.common/get-and-clear-translation-count!)
   (is (= @#'api.embed.common/default-eid-translation-counter
-           (api.embed.common/entity-id-translation-counter)))
+         (api.embed.common/entity-id-translation-counter)))
   (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
     (is (= card-id (api.embed.common/->id :card card-id)))
     (is (= card-id (api.embed.common/->id :model/Card card-id)))
