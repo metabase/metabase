@@ -3,7 +3,7 @@ import { t } from "ttag";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import { Box, Text } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
-import type { RecentItem } from "metabase-types/api";
+import type { RecentCollectionItem } from "metabase-types/api";
 
 import { RecentModelsGrid } from "./RecentModels.styled";
 
@@ -11,7 +11,7 @@ export function RecentMetrics({
   metrics = [],
   skeleton,
 }: {
-  metrics?: RecentItem[];
+  metrics?: RecentCollectionItem[];
   skeleton?: boolean;
 }) {
   if (!skeleton && metrics.length === 0) {

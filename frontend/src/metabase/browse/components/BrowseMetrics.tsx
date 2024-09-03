@@ -7,6 +7,7 @@ import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import EmptyState from "metabase/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Box, Flex, Group, Icon, Stack, Text, Title } from "metabase/ui";
+import type { RecentCollectionItem, RecentItem } from "metabase-types/api";
 
 import type { MetricResult } from "../types";
 
@@ -108,7 +109,10 @@ function useRecentMetrics(metrics: MetricResult[] | undefined) {
   const recentMetrics = useMemo(() => {
     const maxRecentMetricsCount = getMaxRecentItemsCount(metrics?.length);
     return data
-      ?.filter(recent => recent.model === "metric")
+      ?.filter(
+        (recent: RecentItem): recent is RecentCollectionItem =>
+          recent.model === "metric",
+      )
       ?.slice(0, maxRecentMetricsCount);
   }, [data, metrics]);
 
