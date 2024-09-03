@@ -9294,7 +9294,12 @@ databaseChangeLog:
   - changeSet:
       id: v51.2024-09-03T17:57:12
       author: adam-james
-      comment: Add pulse_card.pivot_results
+      comment: Add pivot_results to pulse_card
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: pulse_card
+                columnName: pivot_results
       changes:
         - addColumn:
             tableName: pulse_card
