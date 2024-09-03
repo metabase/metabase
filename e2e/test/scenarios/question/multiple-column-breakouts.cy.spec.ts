@@ -1417,7 +1417,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
   describe("data source", () => {
     describe("viz settings", () => {
-      it("should be able to toggle the fields that correspond to breakout columns in the previous stage", () => {
+      it("should be able to toggle the fields that correspond to breakout columns in the source card", () => {
         function toggleColumn(
           columnName: string,
           columnIndex: number,
