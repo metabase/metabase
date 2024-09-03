@@ -41,7 +41,6 @@ export default class LegendHorizontal extends Component {
               key={index}
               data-testid={`legend-item-${title}`}
               {...(hovered && { "aria-current": !isMuted })}
-              style={{ backgroundColor: "red" }}
             >
               <LegendItem
                 ref={this["legendItem" + index]}
