@@ -8,6 +8,7 @@ import {
   getDashboardCard,
   leftSidebar,
   modal,
+  pieSlices,
   popover,
   restore,
   scatterBubbleWithColor,
@@ -68,6 +69,19 @@ const MANY_LEGEND_ITEMS_QUESTION = {
   },
 };
 
+const PIE_CHART_QUESTION = {
+  name: "pie chart",
+  display: "pie",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [JOINED_PEOPLE_STATE_FIELD_REF],
+  },
+  visualization_settings: {
+    "pie.slice_threshold": 3.15,
+  },
+};
+
 const SPLIT_AXIS_QUESTION = {
   name: "two aggregations + split axis + trendline",
   display: "combo",
@@ -117,6 +131,7 @@ describe("scenarios > visualizations > legend", () => {
         MANY_LEGEND_ITEMS_QUESTION,
         SPLIT_AXIS_QUESTION,
         SCATTER_VIZ_QUESTION,
+        PIE_CHART_QUESTION,
       ],
       cards: [
         {
@@ -142,6 +157,12 @@ describe("scenarios > visualizations > legend", () => {
           row: 18,
           size_x: 24,
           size_y: 6,
+        },
+        {
+          col: 0,
+          row: 24,
+          size_x: 24,
+          size_y: 5,
         },
       ],
     }).then(({ dashboard }) => visitDashboard(dashboard.id));
@@ -311,6 +332,44 @@ describe("scenarios > visualizations > legend", () => {
         cy.findByText("54").should("not.exist"); // old max y-axis value
         cy.findByText("42").should("exist"); // new max y-axis value
       });
+    });
+
+    getDashboardCard(4).within(() => {
+      cy.findByText("18,760").should("exist"); // total value
+      pieSlices().should("have.length", 9);
+      getPieChartLegendItemPercentage("TX").should("have.text", "7.15%");
+
+      hideSeries(0); // TX (Texas)
+
+      pieSlices().should("have.length", 8);
+      cy.findByText("18,760").should("not.exist");
+      cy.findByText("17,418").should("exist");
+      getPieChartLegendItemPercentage("TX").should("not.exist");
+
+      cy.findByText("3 more").click();
+    });
+    popover().within(() => {
+      getPieChartLegendItemPercentage("CA").should("have.text", "3.52%");
+      getPieChartLegendItemPercentage("MI").should("have.text", "3.42%");
+      getPieChartLegendItemPercentage("Other").should("have.text", "71.63%");
+
+      hideSeries(2); // "Other" slice
+
+      getPieChartLegendItemPercentage("CA").should("have.text", "12.4%");
+      getPieChartLegendItemPercentage("MI").should("have.text", "12.1%");
+      getPieChartLegendItemPercentage("Other").should("not.exist");
+    });
+    getDashboardCard(4).within(() => {
+      pieSlices().should("have.length", 7);
+      cy.findByText("17,418").should("not.exist");
+      cy.findByText("4,942").should("exist");
+
+      cy.findByText("3 more").click(); // close popover
+
+      showSeries(0);
+
+      pieSlices().should("have.length", 8);
+      getPieChartLegendItemPercentage("TX").should("have.text", "21.36%");
     });
 
     // Ensure can't toggle series visibility in edit mode
@@ -517,4 +576,10 @@ function showSeries(legendItemIndex) {
     .eq(legendItemIndex)
     .findByLabelText("Show series")
     .click();
+}
+
+function getPieChartLegendItemPercentage(sliceName) {
+  // ChartWithLegend actually renders two legend elements for visual balance
+  // https://github.com/metabase/metabase/blob/9053d6fe2b8a9500e67559d35d39259a8a87c4f6/frontend/src/metabase/visualizations/components/ChartWithLegend.jsx#L140
+  return cy.findAllByTestId(`legend-item-${sliceName}`).eq(0).children().eq(1);
 }
