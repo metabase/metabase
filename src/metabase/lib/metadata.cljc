@@ -135,6 +135,23 @@
     (card metadata-providerable card-id)
     (table metadata-providerable table-id)))
 
+(defn- editable-stages?
+  [query stages]
+  (let [{:keys [source-table source-card] :as stage0} (first stages)]
+    (boolean (and (when-let [{:keys [id]} (database query)]
+                    (= (:database query) id))
+                  (or (and source-table (table query source-table))
+                      (and source-card  (card  query source-card))
+                      (and
+                       (= (:lib/type stage0) :mbql.stage/native)
+                       ;; Couldn't import and use `lib.native/has-write-permissions` here due to a circular dependency
+                       ;; TODO Find a way to unify has-write-permissions and this function?
+                       (= :write (:native-permissions (database query)))))
+                  (every? #(editable-stages? query %)
+                          (for [a-stage      stages
+                                a-join       (:joins a-stage)]
+                            (:stages a-join)))))))
+
 (mu/defn editable? :- :boolean
   "Given a query, returns whether it is considered editable.
 
@@ -143,18 +160,12 @@
   - Database is present but it doesn't have native write permissions;
   - Database is present but tables (at least the `:source-table`) are missing (missing table permissions); or
   - Similarly, the card specified by `:source-card` is missing from the metadata.
-  If metadata for the `:source-table` or `:source-card` can be found, then the query is editable."
+  If metadata for the `:source-table` or `:source-card` can be found, then the query is editable.
+  The above conditions must hold for every joined source too."
   [query :- ::lib.schema/query]
-  (let [{:keys [source-table source-card] :as stage0} (lib.util/query-stage query 0)]
-    (boolean (and (when-let [{:keys [id]} (database query)]
-                    (= (:database query) id))
-                  (or (and source-table (table query source-table))
-                      (and source-card  (card  query source-card))
-                      (and
-                       (= (:lib/type stage0) :mbql.stage/native)
-                        ;; Couldn't import and use `lib.native/has-write-permissions` here due to a circular dependency
-                        ;; TODO Find a way to unify has-write-permissions and this function?
-                       (= :write (:native-permissions (database query)))))))))
+  (let [stages (:stages query)]
+    (mu/disable-enforcement
+      (editable-stages? query stages))))
 
 ;;; TODO -- I'm wondering if we need both this AND [[bulk-metadata-or-throw]]... most of the rest of the stuff here
 ;;; throws if we can't fetch the metadata, not sure what situations we wouldn't want to do that in places that use
