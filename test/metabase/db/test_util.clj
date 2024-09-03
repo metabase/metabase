@@ -2,9 +2,12 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.db :as mdb]
+   [metabase.test.util.timezone :as test.tz]
    [metabase.util.random :as u.random]
    [potemkin :as p]
-   [pretty.core :as pretty]))
+   [pretty.core :as pretty]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -39,3 +42,26 @@
     (with-open [conn (.getConnection data-source)]
       (is (= [{:one 1}]
              (jdbc/query {:connection conn} "SELECT 1 AS one;"))))))
+
+(defn do-with-app-db-timezone-id!
+  "Sets the app DB time zone to `tz` and runs `thunk`."
+  [tz thunk]
+  (if (= (mdb/db-type) :h2)
+    (test.tz/do-with-system-timezone-id! tz thunk)
+    ;; otherwise if db-type is postgres or mysql
+    (let [initial-tz (val (first (t2/query-one (case (mdb/db-type)
+                                                 :postgres "SELECT current_setting('TIMEZONE')"
+                                                 :mysql    "SELECT @@global.time_zone"))))
+          set-tz! (fn [x]
+                    (t2/query (case (mdb/db-type)
+                                :postgres (format "SET TIME ZONE '%s';" x)
+                                :mysql    (format "SET @@global.time_zone = '%s';" x))))]
+      (set-tz! tz)
+      (try (thunk)
+           (finally
+             (set-tz! initial-tz))))))
+
+(defmacro with-app-db-timezone-id!
+  "Execute `body` with the system time zone of the app db temporarily changed to the time zone named by `timezone-id`."
+  [timezone-id & body]
+  `(do-with-app-db-timezone-id! ~timezone-id (fn [] ~@body)))
