@@ -1,7 +1,7 @@
-import { trackEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/lib/analytics";
 
 export const trackButtonClicked = () => {
-  trackEvent({
+  trackSimpleEvent({
     event: "csv_upload_clicked",
     triggered_from: "left_nav",
   });

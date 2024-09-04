@@ -8532,6 +8532,28 @@ databaseChangeLog:
                   name: parameter_id
 
   - changeSet:
+      id: v50.2024-08-27T00:00:00
+      author: devurandom
+      comment: Add is_attached_dwh to metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: is_attached_dwh
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_attached_dwh
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: 'This is an attached data warehouse, do not serialize it and hide its details from the UI'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v51.2024-05-13T15:30:57
       author: metamben
       comment: Backup of dataset_query rewritten by the metrics v2 migration
@@ -9248,27 +9270,6 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: running, failed, or completed
 
-  - changeSet:
-      id: v51.2024-08-27T00:00:00
-      author: devurandom
-      comment: Add is_attached_dwh to metabase_database
-      preConditions:
-        - not:
-            - columnExists:
-                tableName: metabase_database
-                columnName: is_attached_dwh
-      changes:
-        - addColumn:
-            tableName: metabase_database
-            columns:
-              - column:
-                  name: is_attached_dwh
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  remarks: 'This is an attached data warehouse, do not serialize it and hide its details from the UI'
-                  constraints:
-                    nullable: false
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
@@ -9278,25 +9279,27 @@ databaseChangeLog:
 # 1) Think through some of these points when writing a migration, learn from our past mistakes:
 #    - Do you really need a migration? Could the feature work without it? Prefer not to if possible.
 #      Data in the wild can be vastly different from what you expect, and it's hard to get right.
-#    - If you still need to, make sure it works when Metabase is encrypted. Fields like `metabase_database.details`
-#      or `setting.value` can be encrypted, so you need to decrypt them in your migration. See #42617, #44048.
-#    - Prefer SQL migrations over custom migrations.
-#    - Still, make sure your migration is backward compatible: it might not be possible to add a constraint back
-#      if you are dropping it in a migration.
+#    - Make sure your migration is backward compatible: it might not be possible to add a constraint back
+#      if you drop it in a migration.
 #    - Postgres, MySQL and H2 have their differences. Make sure your migration works for all.
-#    - Custom migrations and their tests demand a high level of reliability. They should only use code from the standard library.
-#      Requiring code from the Metabase codebase is a bad idea because it can change and break your migration.
-#      More in `metabase.db.custom_migrations` namespace doc.
-#    - Custom migrations shouldn't use Toucan models; work directly with the table names.
+#    - Database encryption is a major issue:
+#      - Fields like `metabase_database.details` or `setting.value` can be encrypted, so you need to decrypt them in
+#        your migration. See #42617, #44048.
+#      - Database could be partially encrypted, see https://www.notion.so/72575933ef2a446bafd16909e05a7387
+#    - Custom migrations:
+#      - Prefer SQL migrations when possible.
+#      - Never use application code: it can change and *will* break your migration.
+#      - Do not use Toucan models - refer table names directly.
+#      - If it's a big change, consider using Quartz, see #42279
+#      - More in `metabase.db.custom_migrations` namespace doc.
+#    - Never delete a migration: users won't be able to downgrade. If you really need to, see #44908
+#    - Migration id (`vXX.<date>`) must match its earliest released version:
+#      - Do not backport `v51....` to version 50, Metabase will try to downgrade it.
+#      - Instead, write a migration with an oldest target you plan to backport to in mind.
 #
 # 2) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
 #    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
 #    this check but it's nicer to know now instead of waiting for CI.
-#
-#   1a) Ensure your changes are compatible with Liquibase rollback. See comments starting with
-#       0.45 migrations for more notes. Rollback to 0.44 and forwards to the latest migration is tested
-#       automatically and the migrations linter will check for the presence of rollback where required as
-#       much as possible.
 #
 # 3) Migration IDs should follow the format
 #

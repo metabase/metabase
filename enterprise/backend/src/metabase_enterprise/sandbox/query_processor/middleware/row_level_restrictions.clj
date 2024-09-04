@@ -24,6 +24,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.middleware.fetch-source-query-legacy :as fetch-source-query-legacy]
    [metabase.query-processor.store :as qp.store]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -123,7 +124,7 @@
     (let [query        {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                         :type     :query
                         :query    source-query}
-          preprocessed (binding [*current-user-id* nil]
+          preprocessed (mw.session/as-admin
                          ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
     (catch Throwable e
@@ -143,7 +144,7 @@
 
 (mu/defn- mbql-query-metadata :- [:+ :map]
   [inner-query]
-  (binding [*current-user-id* nil]
+  (mw.session/as-admin
     ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
      {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
       :type     :query
@@ -172,7 +173,7 @@
 
 (mu/defn- native-query-metadata :- [:+ :map]
   [source-query :- [:map [:source-query :any]]]
-  (let [result (binding [*current-user-id* nil]
+  (let [result (mw.session/as-admin
                  ((requiring-resolve 'metabase.query-processor/process-query)
                   {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                    :type     :query
@@ -347,7 +348,7 @@
         (assoc &match ::gtap? true)))))
 
 (defn- expected-cols [query]
-  (binding [*current-user-id* nil]
+  (mw.session/as-admin
     ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols) query)))
 
 (defn- gtapped-query

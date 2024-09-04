@@ -18,6 +18,7 @@ interface ColumnItemProps {
   role?: string;
   draggable?: boolean;
   icon?: IconProps["name"];
+  removeIcon?: IconProps["name"];
   onClick?: () => void;
   onAdd?: (target: HTMLElement) => void;
   onRemove?: (target: HTMLElement) => void;
@@ -33,6 +34,7 @@ const BaseColumnItem = ({
   role,
   draggable = false,
   icon,
+  removeIcon = "eye_outline",
   onClick,
   onAdd,
   onRemove,
@@ -80,7 +82,7 @@ const BaseColumnItem = ({
           )}
           {onRemove && (
             <ActionIcon
-              icon="eye_outline"
+              icon={removeIcon}
               onClick={onRemove}
               data-testid={`${title}-hide-button`}
             />

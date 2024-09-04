@@ -266,6 +266,10 @@ export function tableInteractive() {
   return cy.findByTestId("TableInteractive-root");
 }
 
+export function tableInteractiveBody() {
+  return cy.get("#main-data-grid");
+}
+
 export function tableHeaderClick(headerString) {
   tableInteractive().within(() => {
     cy.findByTextEnsureVisible(headerString).trigger("mousedown");
