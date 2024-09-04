@@ -75,21 +75,21 @@
   (malli.registry/schema registry type))
 
 (defn -with-doc
-  "Add a `:doc/message` option to a `schema`. Tries to merge it in existing vector schemas to avoid unnecessary
+  "Add a `:description` option to a `schema`. Tries to merge it in existing vector schemas to avoid unnecessary
   indirection."
   [schema docstring]
   (cond
     (and (vector? schema)
          (map? (second schema)))
     (let [[tag opts & args] schema]
-      (into [tag (assoc opts :doc/message docstring)] args))
+      (into [tag (assoc opts :description docstring)] args))
 
     (vector? schema)
     (let [[tag & args] schema]
-      (into [tag {:doc/message docstring}] args))
+      (into [tag {:description docstring}] args))
 
     :else
-    [:schema {:doc/message docstring} schema]))
+    [:schema {:description docstring} schema]))
 
 #?(:clj
    (defmacro def
