@@ -106,6 +106,7 @@
    ;;
    [:archived?          [:maybe :boolean]]
    [:current-user-id    pos-int?]
+   [:is-superuser?      :boolean] ;; ideally this would be provided on all paths
    [:current-user-perms [:set perms.u/PathSchema]]
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]
@@ -113,7 +114,6 @@
    ;;
    ;; optional
    ;;
-   [:is-superuser?                       {:optional true} :boolean] ;; ideally this would be provided on all paths
    [:created-at                          {:optional true} ms/NonBlankString]
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
