@@ -21,14 +21,14 @@ CumulativeCount
 CumulativeSum(column)
 ```
 
-Cumulative metrics can only be used in the query builder's **Summarize** step — you cannot use cumulative metrics to create a custom column or in a custom filter.
+Cumulative metrics can only be used in the query builder's **Summarize** step — you can't use cumulative metrics to create a custom column or filter.
 
 ## How cumulative metrics are computed
 
 Under the hood, cumulative metrics is computed in three steps:
 
-1. Group records using the breakout from the **Group by** block,
-2. Count the rows in each group,
+1. Group records using the breakout from the **Group by** block.
+2. Count the rows in each group.
 3. For each group, compute the cumulative total of the counts in all previous groups, including the current group.
 
 Because cumulative metrics use values from previous rows, the sort order in the breakout column matters.
@@ -49,13 +49,13 @@ If the sort is changed (while values remain the same), then the cumulative count
 | July     | 5       | 2 + 5 = 7         |
 | November | 4       | 2 + 5 + 4 = 11    |
 
-Metabase will automatically sort the data by the breakout column in ascending order using the logic that your database uses for the column's data type. If you add a manual sort, it will only apply _after_ cumulative count or sum computes its results. Sorting here has no effect on how Metabase computes the cumulative metric.
+Metabase will automatically sort the data by the breakout column in ascending order (using the logic that your database uses for the column's data type). If you add a manual sort, it will only apply _after_ cumulative count or sum computes its results. Sorting here has no effect on how Metabase computes the cumulative metric.
 
 If you want to use a different order (for example, sort by the breakout column but in descending order), you can [use SQL](#sql).
 
 ## Cumulative metrics with multiple breakouts
 
-Because cumulative metrics calculate its summaries based on previous rows, Metabase needs to determine what those previous rows are. It will always order the rows based on the first breakout. So if there are multiple breakout columns specified in **Group by**, Metabase will:
+Because cumulative metrics calculate its summaries based on previous rows, Metabase needs to determine what those previous rows are. Cumulative metrics will always order the rows based on the _first_ breakout. So if there are multiple breakout columns specified in **Group by**, Metabase will:
 
 1. Sort by the first breakout column to determine what the previous rows are.
 2. Break out by the first column and any additional columns.
@@ -69,8 +69,8 @@ For example, if you want to see the cumulative sum of order quantity over time b
 
 In the example below, the cumulative sum uses `Created At` date for sort, and `Category` for breakout, so cumulative sum will:
 
-1. Sort by `Created At`,
-2. Break out by `Created At` and `Category`, and compute total sum of sums for each group,
+1. Sort by `Created At`.
+2. Break out by `Created At` and `Category`, and compute total sum of sums for each group.
 3. For each `Created At` and `Category`, compute the cumulative total sum of sums in the same `Category` using previous `Created At` dates.
 
 ![Cumulative sum for products over months in QB](../../images/cumulative-metric.png)
@@ -93,7 +93,7 @@ This result looks similar to the previous cumulative count result (grouped by `C
 
 ## Related functions
 
-### SQL
+### Cumulative count in SQL 
 
 In SQL, you can use window functions to compute cumulative metrics. For example, to compute cumulative count of orders over months, you can use the following query:
 
@@ -117,6 +117,9 @@ GROUP BY
 ORDER BY
   created_month ASC
 ```
+
+
+### Cumulative sums in SQL
 
 For cumulative sums, you can use:
 
