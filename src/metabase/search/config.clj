@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [malli.core :as mc]
+   [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
    [metabase.permissions.util :as perms.u]
    [metabase.public-settings :as public-settings]
@@ -45,18 +46,22 @@
   "Show this many words of context before/after matches in long search results"
   2)
 
+(def excluded-models
+  "Set of models that should not be included in search results."
+  #{"dashboard-card"
+    "dashboard-tab"
+    "dimension"
+    "permissions-group"
+    "pulse"
+    "pulse-card"
+    "pulse-channel"
+    "snippet"
+    "timeline"
+    "user"})
+
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
-  {"action"         {:db-model :model/Action :alias :action}
-   "card"           {:db-model :model/Card :alias :card}
-   "collection"     {:db-model :model/Collection :alias :collection}
-   "dashboard"      {:db-model :model/Dashboard :alias :dashboard}
-   "database"       {:db-model :model/Database :alias :database}
-   "dataset"        {:db-model :model/Card :alias :card}
-   "indexed-entity" {:db-model :model/ModelIndexValue :alias :model-index-value}
-   "metric"         {:db-model :model/LegacyMetric :alias :metric}
-   "segment"        {:db-model :model/Segment :alias :segment}
-   "table"          {:db-model :model/Table :alias :table}})
+  (apply dissoc api/model->db-model excluded-models))
 
 (def all-models
   "Set of all valid models to search for. "
