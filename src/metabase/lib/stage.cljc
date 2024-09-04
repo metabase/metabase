@@ -18,6 +18,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
@@ -427,4 +428,5 @@
              (or (empty? breakouts)
                  (and (= (count breakouts) 1)
                       (-> (lib.breakout/breakout-column query (first breakouts))
+                          (lib.temporal-bucket/with-temporal-bucket nil)
                           lib.types.isa/date-or-datetime?)))))))
