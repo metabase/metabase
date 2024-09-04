@@ -76,6 +76,6 @@
                   (let [snowplow-payload {:embedding-app-origin-set   (boolean (embedding-app-origin))
                                           :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
                                           :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}]
-                      (snowplow/track-event!
-                       (if new-value ::snowplow/embedding-enabled ::snowplow/embedding-disabled)
-                       api/*current-user-id* snowplow-payload)))))
+                    (snowplow/track-event!
+                     (if new-value ::snowplow/embedding-enabled ::snowplow/embedding-disabled)
+                     api/*current-user-id* snowplow-payload)))))
