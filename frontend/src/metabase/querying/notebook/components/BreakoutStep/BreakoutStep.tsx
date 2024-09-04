@@ -108,10 +108,9 @@ const BreakoutPopover = ({
     const filteredColumns = columns.reduce(
       (columns: Lib.ColumnMetadata[], column) => {
         const columnInfo = Lib.displayInfo(query, stageIndex, column);
-        const { breakoutPositions = [] } = columnInfo;
         if (breakout && checkColumnSelected(columnInfo, breakoutIndex)) {
           columns.push(Lib.breakoutColumn(query, stageIndex, breakout));
-        } else if (breakoutPositions.length === 0) {
+        } else {
           columns.push(column);
         }
         return columns;

@@ -3,17 +3,17 @@ import {
   SaveQuestionTitle,
 } from "metabase/components/SaveQuestionForm";
 import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/context";
-import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
-import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { Stack, Title } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../context";
 
-export const SaveQuestion = ({ onClose }: { onClose: () => void }) => {
-  const { question, originalQuestion } = useInteractiveQuestionContext();
+export type SdkSaveQuestionFormProps = {
+  onClose?: () => void;
+};
 
-  const handleCreate = useCreateQuestion();
-  const handleSave = useSaveQuestion();
+export const SdkSaveQuestionForm = ({ onClose }: SdkSaveQuestionFormProps) => {
+  const { question, originalQuestion, onSave, onCreate } =
+    useInteractiveQuestionContext();
 
   if (!question) {
     return null;
@@ -23,8 +23,8 @@ export const SaveQuestion = ({ onClose }: { onClose: () => void }) => {
     <SaveQuestionProvider
       question={question}
       originalQuestion={originalQuestion ?? null}
-      onCreate={handleCreate}
-      onSave={handleSave}
+      onCreate={onCreate}
+      onSave={onSave}
       multiStep={false}
       initialCollectionId={null}
     >
@@ -32,7 +32,7 @@ export const SaveQuestion = ({ onClose }: { onClose: () => void }) => {
         <Title>
           <SaveQuestionTitle />
         </Title>
-        <SaveQuestionForm onCancel={onClose} />
+        <SaveQuestionForm onCancel={() => onClose?.()} />
       </Stack>
     </SaveQuestionProvider>
   );
