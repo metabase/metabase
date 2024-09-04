@@ -805,6 +805,32 @@
             (is (< count-after (+ count-before 5))
                 "unbounded thread growth!")))))))
 
+(deftest later-page-fetch-returns-nil-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "BigQuery queries which fail on later pages are caught properly"
+      (let [page-counter (atom 3)
+            orig-exec    @#'bigquery/execute-bigquery
+            wrap-result  (fn wrap-result [^TableResult result]
+                           (proxy [TableResult] []
+                             (getSchema [] (.getSchema result))
+                             (getValues [] (.getValues result))
+                             (hasNextPage [] (.hasNextPage result))
+                             (getNextPage []
+                               (if (zero? @page-counter)
+                                 nil
+                                 (wrap-result (.getNextPage result))))))]
+        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters cancel-chan]
+                                                  (wrap-result (orig-exec client sql parameters cancel-chan)))]
+          (binding [bigquery/*page-size*     100 ; small pages so there are several
+                    bigquery/*page-callback* (fn []
+                                               (let [pages (swap! page-counter #(max (dec %) 0))]
+                                                 (log/debugf "*page-callback counting down: %d to go" pages)))]
+            (mt/dataset test-data
+                        ;; *page-size* is inexact - should be 300 but give it a wide margin.
+                        (is (< 10
+                               (count (mt/rows (mt/process-query (mt/query orders))))
+                               500)))))))))
+
 (deftest later-page-fetch-throws-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "BigQuery queries which fail on later pages are caught properly"
