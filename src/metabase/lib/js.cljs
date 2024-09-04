@@ -1173,6 +1173,16 @@
 ;; This interface contains several other sets of columns, like [[filterable-columns]] and [[expressionable-columns]];
 ;; these are subsets of [[visible-columns]] possibly with extra information added, such as the set of filter operators
 ;; which can be used with that column.
+;;
+;; Note: At the time of writing, `lib.ref/ref` would produce a broken ref for a column from [[returned-columns]] due to
+;; `:lib/source` differences compared to [[visible-columns]]. We cannot use such refs for for matching in
+;; [[find-matching-column]]. However, all other [[returned-columns]] properties are correct, and we can pass a column
+;; from [[visible-columns]] for the ref/needle and [[returned-columns]] for the haystack.
+;; Example - for a query with `source-card` and `:fields` clause, `:lib/source` for [[returned-columns]] would be
+;; `:source/fields` and `lib.ref/ref` would generate field id-based refs; while for [[visible-columns]] `:lib/source`
+;; would be `:source/card` and `lib.ref/ref` would generate `:lib/desired-column-alias`-based refs. As the card can
+;; contain multiple columns with the same ID (e.g. multiple breakouts of the same column, model metadata overrides) we
+;; could get exact dupliates with `lib.ref/ref` for `[[returned-columns]`.
 (defn- visible-columns*
   "Inner implementation for [[visible-columns]], which wraps this with caching."
   [a-query stage-number]
