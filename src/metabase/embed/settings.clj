@@ -15,6 +15,7 @@
   (deferred-tru "Allow this origin to embed the full {0} application"
                 (public-settings/application-name-for-setting-descriptions))
   :feature    :embedding
+  :type       :string
   :visibility :public
   :audit      :getter)
 
@@ -25,6 +26,7 @@
   :visibility :authenticated
   :export?    true
   :audit      :getter
+  :deprecated "0.51.0"
   :setter     (fn [new-value]
                 (when (not= new-value (setting/get-value-of-type :boolean :enable-embedding))
                   (setting/set-value-of-type! :boolean :enable-embedding new-value)
@@ -58,3 +60,22 @@
   :default    false
   :export?    true
   :visibility :admin)
+
+(defsetting enable-embedding-sdk
+  (deferred-tru "Used for enabling or disabling embedding SDK.")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    true
+  :audit      :getter
+  :setter     (fn [new-value]
+                (when (not= new-value (setting/get-value-of-type :boolean :enable-embedding-sdk))
+                  (setting/set-value-of-type! :boolean :enable-embedding-sdk new-value)
+                  (when (and new-value (str/blank? (embed/embedding-secret-key)))
+                    (embed/embedding-secret-key! (crypto-random/hex 32)))
+                  (let [snowplow-payload {:embedding-app-origin-set   (boolean (embedding-app-origin))
+                                          :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
+                                          :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}]
+                      (snowplow/track-event!
+                       (if new-value ::snowplow/embedding-enabled ::snowplow/embedding-disabled)
+                       api/*current-user-id* snowplow-payload)))))

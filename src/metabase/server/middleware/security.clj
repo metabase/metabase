@@ -10,6 +10,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.server.request.util :as req.util]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
   (:import
    (java.security MessageDigest SecureRandom)))
@@ -115,7 +116,7 @@
 
 (defn- embedding-app-origin
   []
-  (when (and (embed.settings/enable-embedding) (embed.settings/embedding-app-origin))
+  (when (and (embed.settings/enable-embedding-sdk) (embed.settings/embedding-app-origin))
     (embed.settings/embedding-app-origin)))
 
 (defn- content-security-policy-header-with-frame-ancestors
@@ -124,19 +125,20 @@
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (if allow-iframes? "*" (or (embedding-app-origin) "'none'")))))
 
-(defn parse-url
+(def ^:private parse-url-pattern #"^(?:(https?)://)?([^:/]+)(?::(\d+|\*))?$")
+
+(mu/defn parse-url :- [:maybe [:map
+                               [:protocol [:maybe :string]]
+                               [:domain :string]
+                               [:port [:maybe :string]]]]
   "Returns an object with protocol, domain and port for the given url"
-  [url]
+  [url :- :string]
   (if (= url "*")
     {:protocol nil :domain "*" :port "*"}
-    (let [pattern #"^(?:(https?)://)?([^:/]+)(?::(\d+|\*))?$"
-          matches (re-matches pattern url)]
-      (if-not matches
-        (do (log/errorf "Invalid URL: %s" url) nil)
-        (let [[_ protocol domain port] matches]
-          {:protocol protocol
-           :domain domain
-           :port port})))))
+    (if-let [[_ protocol domain port] (re-matches parse-url-pattern url)]
+      {:protocol protocol :domain domain :port port}
+      (do (log/errorf "Invalid URL: %s" url)
+          nil))))
 
 (defn approved-domain?
   "Checks if the domain is compatible with the reference one"
@@ -165,9 +167,9 @@
   (let [urls (str/split approved-origins-raw #" +")]
     (keep parse-url urls)))
 
-(defn approved-origin?
+(mu/defn approved-origin? :- :boolean
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
-  [raw-origin approved-origins-raw]
+  [raw-origin approved-origins-raw :- [:maybe :string]]
   (boolean
    (when (and (seq raw-origin) (seq approved-origins-raw))
      (let [approved-list (parse-approved-origins approved-origins-raw)
@@ -224,7 +226,7 @@
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
   (update response :headers #(merge %2 %1) (security-headers
-                                            :origin         ((:headers request) "origin")
+                                            :origin         (get-in request [:headers "origin"])
                                             :nonce          (:nonce request)
                                             :allow-iframes? ((some-fn req.util/public? req.util/embed?) request)
                                             :allow-cache?   (req.util/cacheable? request))))
