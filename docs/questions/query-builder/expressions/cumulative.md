@@ -49,6 +49,10 @@ If the sort is changed (while values remain the same), then the cumulative count
 | July     | 5       | 2 + 5 = 7         |
 | November | 4       | 2 + 5 + 4 = 11    |
 
+Metabase will automatically sort the data by the breakout column in ascending order using the logic that your database uses for the column's data type. If you add a manual sort, it will only apply _after_ cumulative count or sum computes its results. Sorting here has no effect on how Metabase computes the cumulative metric.
+
+If you want to use a different order (for example, sort by the breakout column but in descending order), you can [use SQL](#sql).
+
 ## Cumulative metrics with multiple breakouts
 
 Because cumulative metrics calculate its summaries based on previous rows, Metabase needs to determine what those previous rows are. It will always order the rows based on the first breakout. So if there are multiple breakout columns specified in **Group by**, Metabase will:
