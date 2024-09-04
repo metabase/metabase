@@ -21,6 +21,7 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.scoring :as scoring]
    [metabase.search.util :as search.util]
+   [metabase.search.v2.fts-postgres :as fts-postgres]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru deferred-tru]]
@@ -433,16 +434,6 @@
        :order-by order-clause
        :limit    search.config/*db-max-results*})))
 
-SearchContext
-(full-search-query
- {:archived? true
-  :current-user-id (t2/select-one-pk :model/User {:order-by [[:id :asc]]})
-  :current-user-perms #{}
-  :model-ancestors? false
-  :models #{"dashboard"} #_search.config/all-models
-  :search-string nil
-  })
-
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by for each result."
   [results]
@@ -550,21 +541,34 @@ SearchContext
     (not (zero? v))
     v))
 
-(mu/defn search
-  "Builds a search query that includes all the searchable entities and runs it"
-  [search-ctx :- SearchContext]
+(def search-implementation
+  ::postgres-fts
+  ;; ::app-db-union
+  )
+
+(defn- text-search-reducible* [search-ctx]
   (let [search-query       (full-search-query search-ctx)
         _                  (log/tracef "Searching with query:\n%s\n%s"
                                        (u/pprint-to-str search-query)
                                        (mdb.query/format-sql (first (mdb.query/compile search-query))))
         to-toucan-instance (fn [row]
                              (let [model (-> row :model search.config/model-to-db-model :db-model)]
-                               (t2.instance/instance model row)))
-        reducible-results  (t2/reducible-query search-query)
+                               (t2.instance/instance model row)))]
+    (eduction (comp (take search.config/*db-max-results*)
+                    (map t2.realize/realize)
+                    (map to-toucan-instance))
+              (t2/reducible-query search-query))))
+
+(defn- text-search-reducible [search-ctx]
+  (case search-implementation
+    ::postgres-fts (fts-postgres/text-search-reducible search-ctx)
+    ::app-db-union (text-search-reducible* search-ctx)))
+
+(mu/defn search
+  "Builds a search query that includes all the searchable entities and runs it"
+  [search-ctx :- SearchContext]
+  (let [reducible-results  (text-search-reducible search-ctx)
         xf                 (comp
-                            (take search.config/*db-max-results*)
-                            (map t2.realize/realize)
-                            (map to-toucan-instance)
                             (map #(if (and (t2/instance-of? :model/Collection %)
                                            (:archived_directly %))
                                     (assoc % :location (collection/trash-path))
@@ -679,3 +683,40 @@ SearchContext
                (not= (count models) 1))
       (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))
     (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
+
+
+(comment
+  (let [user-id (t2/select-one-pk :model/User {:order-by [[:id :asc]]})]
+    (binding [metabase.api.common/*current-user-id* user-id
+              metabase.api.common/*current-user*    (atom (t2/select-one :model/User user-id))
+              metabase.api.common/*is-superuser?*   true]
+
+      ;; remove all the :like "%meouw%" stuff
+      ;; remove the order by
+      ;; remove the limit
+      ;; remove the archived [add it back on retrieval]
+      ;; remove permissions [add it back on retrieval]
+
+      #_(full-search-query
+       {:archived?          nil
+        :current-user-id    user-id
+        :current-user-perms #{}
+        :model-ancestors?   false
+        :models             #{"card"} #_search.config/all-models
+        :search-string      nil #_"meouw"})
+
+      (full-search-query
+       {:archived?          nil
+        :current-user-id    user-id
+        :current-user-perms #{}
+        :model-ancestors?   false
+        :models             #{"dashboard"} #_search.config/all-models
+        :search-string      nil #_"meouw"})
+
+      #_(full-search-query
+         {:archived?          false
+          :current-user-id    user-id
+          :current-user-perms #{}
+          :model-ancestors?   false
+          :models             #{"card" "dashboard"} #_search.config/all-models
+          :search-string      "meouw"}))))
