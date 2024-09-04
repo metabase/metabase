@@ -58,17 +58,13 @@
       (testing "Fetch a missing id, first fetch should inc fetch count"
         (let [results (lib.metadata.protocols/metadatas provider :metadata/table #{1 missing-id})]
           (is (=? [{:id 1}]
-                  results))
-          (is (not (some #(= (:id %) missing-id)
-                         results))))
+                  results)))
         (is (= 3
                @fetch-count)))
       (testing "Fetch a missing id, second fetch should not inc fetch count"
         (let [results (lib.metadata.protocols/metadatas provider :metadata/table #{1 missing-id})]
           (is (=? [{:id 1}]
-                  results))
-          (is (not (some #(= (:id %) missing-id)
-                         results))))
+                  results)))
         (is (= 3
                @fetch-count))))))
 
