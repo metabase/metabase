@@ -16,10 +16,11 @@ import {
   setupEmbedding,
   staticEmbeddingSettingsUrl,
 } from "./setup";
+import type { History } from "./types";
 
 describe("[OSS] embedding settings", () => {
   describe("when the embedding is disabled", () => {
-    let history: Awaited<ReturnType<typeof setupEmbedding>>["history"];
+    let history: History;
 
     beforeEach(async () => {
       history = (
@@ -176,7 +177,7 @@ describe("[OSS] embedding settings", () => {
   });
 
   describe("when the embedding is enabled", () => {
-    let history: Awaited<ReturnType<typeof setupEmbedding>>["history"];
+    let history: History;
 
     beforeEach(async () => {
       history = (
