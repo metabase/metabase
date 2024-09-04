@@ -61,6 +61,7 @@ import {
   setDashCardAttributes,
   setMultipleDashCardAttributes,
   showClickBehaviorSidebar,
+  trashDashboardQuestion,
   undoRemoveCardFromDashboard,
 } from "../actions";
 import { getDashcardDataMap } from "../selectors";
@@ -108,6 +109,7 @@ const mapStateToProps = (state: State) => ({
 const mapDispatchToProps = {
   addUndo,
   removeCardFromDashboard,
+  trashDashboardQuestion,
   showClickBehaviorSidebar,
   markNewCardSeen,
   setMultipleDashCardAttributes,
@@ -480,6 +482,15 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     });
   };
 
+  onTrashDashboardQuestion = (dc: DashboardCard) => {
+    if (typeof dc.card.dashboard_id === "number") {
+      this.props.trashDashboardQuestion({
+        dashcardId: dc.id,
+        cardId: dc.card_id,
+      });
+    }
+  };
+
   onDashCardAddSeries = (dc: BaseDashboardCard) => {
     this.setState({ addSeriesModalDashCard: dc });
   };
@@ -518,6 +529,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         isXray={this.props.isXray}
         withTitle={this.props.withCardTitle}
         onRemove={this.onDashCardRemove}
+        onTrash={this.onTrashDashboardQuestion}
         onAddSeries={this.onDashCardAddSeries}
         onReplaceCard={this.onReplaceCard}
         onUpdateVisualizationSettings={

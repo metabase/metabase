@@ -14,9 +14,14 @@ const getLabels = question => {
   const type = question.type();
 
   if (type === "question") {
+    const message =
+      typeof question.dashboardId() === "number"
+        ? t`This question will be removed from its dashboard and any alerts using it.`
+        : t`This question will be removed from any dashboards or alerts using it.`;
+
     return {
       title: t`Move this question to trash?`,
-      message: t`This question will be removed from any dashboards or alerts using it.`,
+      message,
     };
   }
 
