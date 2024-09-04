@@ -278,7 +278,7 @@
                                        :join ["missing required key, received: nil"]}}}
              (:body (post! "/auto-coerce-string-repeater" {}))))
 
-      (is (= { ;; in the defendpoint body, it is coerced properly:
+      (is (= {;; in the defendpoint body, it is coerced properly:
               :pr-strd "#{:c :d/e :b :a}",
               ;; but it gets turned back into json in the request, of course.
               :api-returns ["c" "d/e" "b" "a"]}
