@@ -425,7 +425,7 @@ function Dashboard(props: DashboardProps) {
               <ArchivedEntityBanner
                 name={dashboard.name}
                 entityType="dashboard"
-                canWrite={canWrite}
+                canMove={canWrite}
                 canRestore={canRestore}
                 canDelete={canDelete}
                 onUnarchive={async () => {

@@ -72,6 +72,7 @@ export interface DashCardProps {
   onAddSeries: (dashcard: StoreDashcard) => void;
   onReplaceCard: (dashcard: StoreDashcard) => void;
   onRemove: (dashcard: StoreDashcard) => void;
+  onTrash: (dashcard: StoreDashcard) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
@@ -109,6 +110,7 @@ function DashCardInner({
   onAddSeries,
   onReplaceCard,
   onRemove,
+  onTrash,
   navigateToNewCardFromDashboard,
   markNewCardSeen,
   showClickBehaviorSidebar,
@@ -324,6 +326,7 @@ function DashCardInner({
             hasError={hasError}
             onAddSeries={onAddSeries}
             onRemove={onRemove}
+            onTrash={onTrash}
             onReplaceCard={onReplaceCard}
             onUpdateVisualizationSettings={onUpdateVisualizationSettings}
             onReplaceAllDashCardVisualizationSettings={
