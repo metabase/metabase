@@ -87,12 +87,20 @@
   [_db-id]
   (mi/superuser?))
 
+(defn- can-write?
+  [db-id]
+  (and (not= db-id audit/audit-db-id)
+       (current-user-can-write-db? db-id)))
+
 (defmethod mi/can-write? :model/Database
-  ([instance]
-   (mi/can-write? :model/Database (u/the-id instance)))
+  ;; Lack of permission to change database details will also exclude the `details` field from the HTTP response,
+  ;; cf. the implementation of [[metabase.models.interface/to-json]] for `:model/Database`.
+  ([{:keys [is_attached_dwh] :as instance}]
+   (and (can-write? (u/the-id instance))
+        (not is_attached_dwh)))
   ([_model pk]
-   (and (not= pk audit/audit-db-id)
-        (current-user-can-write-db? pk))))
+   (and (can-write? pk)
+        (not (:is_attached_dwh (t2/select-one :model/Database :id pk))))))
 
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."
@@ -433,14 +441,20 @@
 (defmethod serdes/make-spec "Database"
   [_model-name {:keys [include-database-secrets]}]
   {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-               :description :engine :is_audit :is_full_sync :is_on_demand :is_sample :metadata_sync_schedule :name
+               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :metadata_sync_schedule :name
                :points_of_interest :refingerprint :settings :timezone :uploads_enabled :uploads_schema_name
                :uploads_table_prefix]
    :skip      [;; deprecated field
                :cache_ttl]
    :transform {:created_at          (serdes/date)
                ;; details should be imported if available regardless of options
-               :details             {:export #(if include-database-secrets % ::serdes/skip) :import identity}
+               :details             {:export-with-context
+                                     (fn [current _ details]
+                                       (if (and include-database-secrets
+                                                (not (:is_attached_dwh current)))
+                                         details
+                                         ::serdes/skip))
+                                     :import identity}
                :creator_id          (serdes/fk :model/User)
                :initial_sync_status {:export identity :import (constantly "complete")}}})
 

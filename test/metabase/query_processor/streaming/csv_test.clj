@@ -2,12 +2,16 @@
   (:require
    [cheshire.core :as json]
    [clojure.data.csv :as csv]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.models.data-permissions :as data-perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.test :as mt]
-   [metabase.test.data.dataset-definitions :as defs])
+   [metabase.test.data.dataset-definitions :as defs]
+   [metabase.util :as u])
   (:import
    (java.io BufferedOutputStream ByteArrayOutputStream)))
 
@@ -30,6 +34,23 @@
          (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
                                             (json/generate-string (mt/mbql-query checkins)))]
            (take 5 (parse-and-sort-csv result))))))
+
+(deftest errors-not-include-visualization-settings
+  (testing "Queries that error should not include visualization settings"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query          (mt/mbql-query orders
+                                                                        {:order-by [[:asc $id]], :limit 5})
+                                              :visualization_settings {:column_settings {}
+                                                                       :notvisiblekey   :notvisiblevalue}}]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users)
+                                             (u/the-id (mt/db))
+                                             :perms/create-queries :query-builder)
+        (let [results        (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" card-id))
+              results-string (str results)
+              illegal-strings ["notvisiblekey" "notvisiblevalue" "column_settings"
+                               "visualization-settings" "viz-settings"]]
+          (doseq [illegal illegal-strings]
+            (is (false? (str/includes? results-string illegal)))))))))
 
 (deftest check-an-empty-date-column
   (testing "NULL values should be written correctly"

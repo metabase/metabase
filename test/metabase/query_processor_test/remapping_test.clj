@@ -9,6 +9,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-dimension-projections
     :as qp.add-dimension-projections]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -349,3 +350,26 @@
                     [2 123 "Mediocre Wooden Bench"  "Mediocre Wooden Bench"]
                     [3 105 "Fantastic Wool Shirt"   "Fantastic Wool Shirt"]]
                    (mt/rows (qp/process-query q3))))))))))
+
+(deftest ^:parallel pivot-with-remapped-breakout
+  (testing "remapped columns should be accounted for in the result rows (#46919)"
+    (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                         (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                                         (mt/id :products :title)))
+      (let [query (mt/$ids orders
+                    {:database   (mt/id)
+                     :type       :query
+                     :query      {:source-table $$orders
+                                  :aggregation  [[:sum [:field (mt/id :orders :total)]]]
+                                  :breakout     [[:field
+                                                  (mt/id :orders :product_id)
+                                                  {:base-type    :type/Integer}]]
+                                  :limit 3}
+                     :pivot_rows [0]
+                     :pivot_cols []})]
+        (is (= [["Aerodynamic Bronze Hat"     144 0    5753.63]
+                ["Aerodynamic Concrete Bench" 116 0   10035.81]
+                ["Aerodynamic Concrete Lamp"  197 0    6478.65]
+                [nil                          nil 1 1510617.7]]
+               (mt/formatted-rows [str int int 2.0]
+                                  (qp.pivot/run-pivot-query query))))))))

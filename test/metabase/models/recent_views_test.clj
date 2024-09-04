@@ -28,8 +28,10 @@
       (update :parent_collection #(into {} %))
       (update :timestamp type)))
 
-(defn recent-views [user-id]
-  (:recents (recent-views/get-recents user-id [:views])))
+(defn recent-views
+  ;; TODO: use context on backport
+  ([user-id] (recent-views user-id nil))
+  ([user-id context] (:recents (recent-views/get-recents user-id (or context [:views :selections])))))
 
 (deftest simple-get-list-card-test
   (mt/with-temp
@@ -66,6 +68,25 @@
              :timestamp String
              :model :dataset
              :database_id db-id}]
+           (mt/with-test-user :rasta
+             (mapv fixup
+                   (recent-views (mt/user->id :rasta))))))))
+
+(deftest simple-get-list-metric-test
+  (mt/with-temp
+    [:model/Collection {coll-id :id} {:name "my coll"}
+     :model/Database   {db-id :id}   {}
+     :model/Card       {card-id :id} {:type "metric" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id)
+    (is (= [{:description nil,
+             :can_write true,
+             :name "name",
+             :parent_collection {:id coll-id, :name "my coll", :authority_level nil},
+             :moderated_status nil,
+             :id card-id,
+             :display "display",
+             :timestamp java.lang.String,
+             :model :metric}]
            (mt/with-test-user :rasta
              (mapv fixup
                    (recent-views (mt/user->id :rasta))))))))
@@ -176,20 +197,24 @@
 (deftest recent-views-content-test
   (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
     (testing "`update-users-recent-views!` prunes duplicates of all models.`"
-      (mt/with-temp
-        [:model/Collection {parent-coll-id :id} {:name "parent"}
-         :model/Database   {db-id :id} {:name "My DB"}
-         :model/Card       {card-id :id} {:type "question" :name "my card" :description "this is my card" :collection_id parent-coll-id :database_id db-id}
-         :model/Card       {model-id :id} {:type "model" :name "my model" :description "this is my model" :collection_id parent-coll-id :database_id db-id}
-         :model/Dashboard  {dashboard-id :id} {:name "my dash" :description "this is my dash" :collection_id parent-coll-id}
-         :model/Collection {collection-id :id} {:name "my collection" :description "this is my collection" :location (str "/" parent-coll-id "/")}
-         :model/Table      {table-id :id} {:name "tablet" :display_name "I am the table" :db_id db-id, :is_upload true}]
+      (mt/with-full-data-perms-for-all-users!
+        (mt/with-temp
+          [:model/Collection {parent-coll-id :id} {:name "parent"}
+           :model/Database   {db-id :id} {:name "My DB"} ;; just needed for temp tables and card's db:
+
+           :model/Card       {card-id :id} {:type "question" :name "my card" :description "this is my card" :collection_id parent-coll-id :database_id db-id}
+           :model/Card       {model-id :id} {:type "model" :name "my model" :description "this is my model" :collection_id parent-coll-id :database_id db-id}
+           :model/Card       {metric-id :id} {:type "metric" :name "my metric" :display "Metric" :collection_id parent-coll-id :database_id db-id}
+           :model/Dashboard  {dashboard-id :id} {:name "my dash" :description "this is my dash" :collection_id parent-coll-id}
+           :model/Collection {collection-id :id} {:name "my collection" :description "this is my collection" :location (->location parent-coll-id)}
+           :model/Table      {table-id :id} {:name "tablet" :display_name "I am the table" :db_id db-id, :is_upload true}]
           (doseq [[model model-id] [[:model/Card card-id]
                                     [:model/Card model-id]
+                                    [:model/Card metric-id]
                                     [:model/Dashboard dashboard-id]
                                     [:model/Collection collection-id]
                                     [:model/Table table-id]]]
-            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view))
+            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id))
           (is (= [{:id "ID",
                    :name "tablet",
                    :description nil,
@@ -212,6 +237,14 @@
                    :model :dashboard,
                    :can_write true,
                    :parent_collection {:id "ID", :name "parent", :authority_level nil}}
+                  {:description nil,
+                   :can_write true,
+                   :name "my metric",
+                   :parent_collection {:id "ID", :name "parent", :authority_level nil},
+                   :moderated_status nil,
+                   :id "ID",
+                   :display "Metric",
+                   :model :metric}
                   {:id "ID",
                    :name "my model",
                    :description "this is my model",
@@ -235,12 +268,12 @@
                                                  ([_ _] true))]
                      (->> (recent-views (mt/user->id :rasta))
                           (mapv (fn [rv] (cond-> rv
-                                           true                                       (assoc :id "ID")
-                                           true                                       (dissoc :timestamp)
-                                           (-> rv :database :id)                      (assoc-in [:database :id] db-id)
-                                           (some-> rv :parent_collection)             (update :parent_collection #(into {} %))
-                                           (some-> rv :parent_collection :id number?) (assoc-in [:parent_collection :id] "ID")))))))))
-          "After inserting 2 views of each model, we should have 2 views PER each model."))))
+                                          true                                       (assoc :id "ID")
+                                          true                                       (dissoc :timestamp)
+                                          (-> rv :database :id)                      (assoc-in [:database :id] db-id)
+                                          (some-> rv :parent_collection)             (update :parent_collection #(into {} %))
+                                          (some-> rv :parent_collection :id number?) (assoc-in [:parent_collection :id] "ID")))))))))
+          "After inserting 2 views of each model, we should have 2 views PER each model.")))))
 
 (deftest most-recent-dashboard-view-test
   (testing "The most recent dashboard view is never pruned"

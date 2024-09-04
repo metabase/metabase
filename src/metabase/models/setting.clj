@@ -314,7 +314,7 @@
 
 (defprotocol ^:private Resolvable
   (resolve-setting [setting-definition-or-name]
-    "Resolve the definition map for a Setting. `setting-definition-or-name` map be a map, keyword, or string."))
+    "Resolve the definition map for a Setting. `setting-definition-or-name` may be a map, keyword, or string."))
 
 (extend-protocol Resolvable
   clojure.lang.IPersistentMap

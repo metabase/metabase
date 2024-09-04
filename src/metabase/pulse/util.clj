@@ -62,38 +62,36 @@
   "Returns subscription result for a card.
 
   This function should be executed under pulse's creator permissions."
-  [dashcard parameters]
+  [{:keys [card_id dashboard_id] :as dashcard} parameters]
   (try
-    (let [{card-id      :card_id
-           dashboard-id :dashboard_id} dashcard
-          card                         (t2/select-one :model/Card :id card-id)
-          multi-cards                  (dashboard-card/dashcard->multi-cards dashcard)
-          result-fn                    (fn [card-id]
-                                         {:card     (if (= card-id (:id card))
-                                                      card
-                                                      (t2/select-one :model/Card :id card-id))
-                                          :dashcard dashcard
-                                          :type     :card
-                                          :result   (qp.dashboard/process-query-for-dashcard
-                                                     :dashboard-id  dashboard-id
-                                                     :card-id       card-id
-                                                     :dashcard-id   (u/the-id dashcard)
-                                                     :context       :dashboard-subscription
-                                                     :export-format :api
-                                                     :parameters    parameters
-                                                     :constraints   {}
-                                                     :middleware    {:process-viz-settings?             true
-                                                                     :js-int-to-string?                 false
-                                                                     :add-default-userland-constraints? false}
-                                                     :make-run      (fn make-run [qp _export-format]
-                                                                      (^:once fn* [query info]
-                                                                        (qp
-                                                                         (qp/userland-query query info)
-                                                                         nil))))})
-          result                       (result-fn card-id)
-          series-results               (mapv (comp result-fn :id) multi-cards)]
-      (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
-                     (is-card-empty? (assoc card :result (:result result))))
-        (update result :dashcard assoc :series-results series-results)))
+    (when-let [card (t2/select-one :model/Card :id card_id :archived false)]
+      (let [multi-cards    (dashboard-card/dashcard->multi-cards dashcard)
+            result-fn      (fn [card-id]
+                             {:card     (if (= card-id (:id card))
+                                          card
+                                          (t2/select-one :model/Card :id card-id))
+                              :dashcard dashcard
+                              :type     :card
+                              :result   (qp.dashboard/process-query-for-dashcard
+                                         :dashboard-id  dashboard_id
+                                         :card-id       card-id
+                                         :dashcard-id   (u/the-id dashcard)
+                                         :context       :dashboard-subscription
+                                         :export-format :api
+                                         :parameters    parameters
+                                         :constraints   {}
+                                         :middleware    {:process-viz-settings?             true
+                                                         :js-int-to-string?                 false
+                                                         :add-default-userland-constraints? false}
+                                         :make-run      (fn make-run [qp _export-format]
+                                                          (^:once fn* [query info]
+                                                            (qp
+                                                             (qp/userland-query query info)
+                                                             nil))))})
+            result         (result-fn card_id)
+            series-results (mapv (comp result-fn :id) multi-cards)]
+        (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
+                       (is-card-empty? (assoc card :result (:result result))))
+          (update result :dashcard assoc :series-results series-results))))
     (catch Throwable e
       (log/warnf e "Error running query for Card %s" (:card_id dashcard)))))

@@ -103,10 +103,13 @@
   "Find an actual top-level dir with serialization data inside, instead of picking up various .DS_Store and similar
   things."
   ^File [^File parent]
-  (->> (.listFiles parent)
-       (u/seek (fn [^File f]
-                 (and (.isDirectory f)
-                      (some v2.ingest/legal-top-level-paths (.list f)))))))
+  (let [check-dir (fn [^File f]
+                    (and (.isDirectory f)
+                         (some v2.ingest/legal-top-level-paths (.list f))))]
+    (if (check-dir parent)
+      parent
+      (->> (.listFiles parent)
+           (u/seek check-dir)))))
 
 (defn- unpack&import [^File file & [{:keys [size continue-on-error]}]]
   (let [dst      (io/file parent-dir (u.random/random-name))
@@ -121,7 +124,8 @@
                            path (find-serialization-dir dst)]
                        (when-not path
                          (throw (ex-info "No source dir detected" {:dst   (.getPath dst)
-                                                                   :count cnt})))
+                                                                   :count cnt
+                                                                   :files (.listFiles dst)})))
                        (log/infof "In total %s entries unpacked, detected source dir: %s" cnt (.getName path))
                        (serdes/with-cache
                          (-> (v2.ingest/ingest-yaml (.getPath path))

@@ -19,7 +19,7 @@ const DatabaseAuthCodeDescription = (): JSX.Element | null => {
     return null;
   }
 
-  const clientId = details["client-id"] ?? "";
+  const clientId = details?.["client-id"] ?? "";
   const authCodeUrl = new URL(AUTH_CODE_URLS[engine]);
   const googleDriveUrl = new URL(AUTH_CODE_URLS["bigquery_with_drive"]);
   authCodeUrl.searchParams.set("client_id", String(clientId));

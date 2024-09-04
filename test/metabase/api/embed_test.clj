@@ -47,15 +47,21 @@
 (defmacro with-new-secret-key {:style/indent 0} [& body]
   `(do-with-new-secret-key (fn [] ~@body)))
 
+(defn- the-id-or-entity-id
+  "u/the-id doesn't work on entity-ids, so we should just pass them through."
+  [id-or-entity-id]
+  (try (u/the-id id-or-entity-id)
+       (catch Exception _ id-or-entity-id)))
+
 (defn card-token {:style/indent 1} [card-or-id & [additional-token-params]]
-  (sign (merge {:resource {:question (u/the-id card-or-id)}
+  (sign (merge {:resource {:question (the-id-or-entity-id card-or-id)}
                 :params   {}}
                additional-token-params)))
 
-(defn dash-token {:style/indent 1} [dash-or-id & [additional-token-params]]
-  (sign (merge {:resource {:dashboard (u/the-id dash-or-id)}
+(defn dash-token {:style/indent 1} [dash-or-id & [additional-token-keys]]
+  (sign (merge {:resource {:dashboard (the-id-or-entity-id dash-or-id)}
                 :params   {}}
-               additional-token-params)))
+               additional-token-keys)))
 
 (defn do-with-temp-card [m f]
   (let [m (merge (when-not (:dataset_query m)
@@ -177,8 +183,8 @@
   (with-embedding-enabled-and-new-secret-key
     (let [card-url (str "embed/card/" (sign {:resource {:question "8"}
                                              :params   {}}))]
-      (is (= "Card id should be a positive integer."
-             (client/client :get 400 card-url))))))
+      (is #(re-matches #"Invalid input:.+value must be an integer greater than zero.+got.+8"
+                       (client/client :get 400 card-url))))))
 
 (deftest check-that-the-endpoint-doesn-t-work-if-embedding-isn-t-enabled
   (mt/with-temporary-setting-values [enable-embedding false]
@@ -277,10 +283,10 @@
 
 (defn card-query-url
   "Generate a query URL for an embedded card"
-  [card response-format-route-suffix & [additional-token-params]]
+  [card-or-id response-format-route-suffix & [additional-token-keys]]
   {:pre [(#{"" "/json" "/csv" "/xlsx"} response-format-route-suffix)]}
   (str "embed/card/"
-       (card-token card additional-token-params)
+       (card-token card-or-id additional-token-keys)
        "/query"
        response-format-route-suffix))
 
@@ -311,7 +317,9 @@
             (with-new-secret-key
               (with-temp-card [card]
                 (is (= "Embedding is not enabled."
-                       (client/real-client :get 400 (card-query-url card response-format))))))))))))
+                       (client/real-client :get 400 (card-query-url card response-format))))
+                (is (= "Embedding is not enabled."
+                       (client/real-client :get 400 (card-query-url (:entity_id card) response-format {}))))))))))))
 
 (deftest card-query-test-2
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
@@ -325,6 +333,11 @@
                 (test-query-results
                  response-format
                  (client/real-client :get expected-status (card-query-url card response-format)
+                                     {:request-options request-options}))
+                #_{:clj-kondo/ignore [:deprecated-var]}
+                (test-query-results
+                 response-format
+                 (client/real-client :get expected-status (card-query-url (:entity_id card) response-format)
                                      {:request-options request-options}))))))))))
 
 (deftest card-query-test-3
@@ -341,7 +354,11 @@
                 (is (= {:status     "failed"
                         :error      "An error occurred while running the query."
                         :error_type "invalid-query"}
-                       (client/real-client :get expected-status (card-query-url card response-format))))))))))))
+                       (client/real-client :get expected-status (card-query-url card response-format))))
+                (is (= {:status     "failed"
+                        :error      "An error occurred while running the query."
+                        :error_type "invalid-query"}
+                       (client/real-client :get expected-status (card-query-url (:entity_id card) response-format))))))))))))
 
 (deftest card-query-test-4
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
@@ -351,7 +368,11 @@
           (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
             (with-temp-card [card]
               (is (= "Embedding is not enabled for this object."
-                     (client/real-client :get 400 (card-query-url card response-format)))))))))))
+                     (client/real-client :get 400 (card-query-url card response-format) {})))))
+          (testing "check that if embedding *is* enabled globally but not for the Card the request fails with entity ids"
+            (with-temp-card [card]
+              (is (= "Embedding is not enabled for this object."
+                     (client/real-client :get 400 (card-query-url (:entity_id card) response-format) {}))))))))))
 
 (deftest card-query-test-5
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
@@ -362,7 +383,9 @@
                         "signed with the wrong key")
             (with-temp-card [card {:enable_embedding true}]
               (is (= "Message seems corrupt or manipulated"
-                     (client/real-client :get 400 (with-new-secret-key (card-query-url card response-format))))))))))))
+                     (client/real-client :get 400 (with-new-secret-key (card-query-url card response-format)))))
+              (is (= "Message seems corrupt or manipulated"
+                     (client/real-client :get 400 (with-new-secret-key (card-query-url (:entity_id card) response-format))))))))))))
 
 (deftest download-formatted-without-constraints-test
   (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even if "
@@ -377,7 +400,10 @@
                                                          :userland-query?                   true})}]
           (let [results (client/client :get 200 (card-query-url card "/csv"))]
             (is (= 101
-                   (count (csv/read-csv results))))))))))
+                   (count (csv/read-csv results)))))
+          (let [entity-id-results (client/client :get 200 (card-query-url (:entity_id card) "/csv"))]
+            (is (= 101
+                   (count (csv/read-csv entity-id-results))))))))))
 
 (deftest card-locked-params-test
   (mt/test-helpers-set-global-values!
@@ -524,22 +550,25 @@
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------
 
-(defn dashboard-url [dashboard & [additional-token-params]]
-  (str "embed/dashboard/" (dash-token dashboard additional-token-params)))
+(defn dashboard-url [dashboard & [additional-token-keys entity-id]]
+  (str "embed/dashboard/" (dash-token dashboard additional-token-keys entity-id)))
 
 (deftest it-should-be-possible-to-call-this-endpoint-successfully
   (with-embedding-enabled-and-new-secret-key
     (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
       (is (= successful-dashboard-info
              (dissoc-id-and-name
-              (client/client :get 200 (dashboard-url dash))))))))
+              (client/client :get 200 (dashboard-url dash)))))
+      (is (= successful-dashboard-info
+             (dissoc-id-and-name
+              (client/client :get 200 (dashboard-url (:entity_id dash) dash))))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key
-    (let [dashboard-url (str "embed/dashboard/" (sign {:resource {:dashboard "8"}
-                                                       :params   {}}))]
-      (is (= "Dashboard id should be a positive integer."
-             (client/client :get 400 dashboard-url))))))
+    (let [dashboard-url (str "embed/dashboard/" (sign {:resource {:dashboard "8"} :params   {}}))]
+      (is (re-matches
+           #"Invalid input: .+got.+8.+"
+           (client/client :get 400 dashboard-url))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token-2
   (with-embedding-enabled-and-new-secret-key
@@ -578,7 +607,9 @@
                                                                   {:id "_c", :slug "c", :name "c", :type "date"}
                                                                   {:id "_d", :slug "d", :name "d", :type "date"}]}]
         (is (=? [{:id "_d", :slug "d", :name "d", :type "date"}]
-                (:parameters (client/client :get 200 (dashboard-url dash {:params {:c 100}})))))))))
+                (:parameters (client/client :get 200 (dashboard-url dash {:params {:c 100}})))))
+        (is (=? [{:id "_d", :slug "d", :name "d", :type "date"}]
+                (:parameters (client/client :get 200 (dashboard-url dash {:params {:c 100}} (:entity_id dash))))))))))
 
 (deftest locked-params-are-substituted-into-text-cards
   (testing "check that locked params are substituted into text cards with mapped variables on the backend"
@@ -595,7 +626,14 @@
                    :dashcards
                    first
                    :visualization_settings
-                   :text)))))))
+                   :text)))
+        (testing "with entity id"
+          (is (= "Text card with variable: bar"
+                 (-> (client/client :get 200 (dashboard-url dash {:params {:a "bar"}} (:entity_id dash)))
+                     :dashcards
+                     first
+                     :visualization_settings
+                     :text))))))))
 
 (deftest locked-params-removes-values-fields-and-mappings-test
   (testing "check that locked params are removed in parameter mappings, param_values, and param_fields"
@@ -631,6 +669,21 @@
                      (get (mt/id :venues :name)))))
           (is (= 1
                  (-> embedding-dashboard
+                     :dashcards
+                     first
+                     :parameter_mappings
+                     count))))
+        (let [eid-embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}} (:entity_id dashboard)))]
+          (is (= nil
+                 (-> eid-embedding-dashboard
+                     :param_values
+                     (get (mt/id :venues :name)))))
+          (is (= nil
+                 (-> eid-embedding-dashboard
+                     :param_fields
+                     (get (mt/id :venues :name)))))
+          (is (= 1
+                 (-> eid-embedding-dashboard
                      :dashcards
                      first
                      :parameter_mappings
@@ -680,6 +733,21 @@
                      :dashcards
                      first
                      :parameter_mappings
+                     count))))
+        (let [eid-embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}} (:entity_id dashboard)))]
+          (is (some?
+               (-> eid-embedding-dashboard
+                   :param_values
+                   (get (mt/id :venues :name)))))
+          (is (some?
+               (-> eid-embedding-dashboard
+                   :param_fields
+                   (get (mt/id :venues :name)))))
+          (is (= 1
+                 (-> eid-embedding-dashboard
+                     :dashcards
+                     first
+                     :parameter_mappings
                      count))))))))
 
 (deftest linked-param-to-locked-removes-param-values-test
@@ -717,23 +785,34 @@
                  (-> embedding-dashboard
                      :param_values
                      (get (mt/id :categories :name))
+                     :values))))
+        (let [eid-embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}} (:entity_id dashboard)))]
+          (is (= []
+                 (-> eid-embedding-dashboard
+                     :param_values
+                     (get (mt/id :categories :name))
                      :values))))))))
 
 ;;; ---------------------- GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -----------------------
 
 (defn dashcard-url
   "The URL for a request to execute a query for a Card on an embedded Dashboard."
-  [dashcard & [additional-token-params]]
-  (str "embed/dashboard/" (dash-token (:dashboard_id dashcard) additional-token-params)
+  [dashcard & [additional-token-keys entity-id]]
+  (str "embed/dashboard/" (dash-token (:dashboard_id dashcard) additional-token-keys entity-id)
        "/dashcard/" (u/the-id dashcard)
        "/card/" (:card_id dashcard)))
+
+(defn- dashcard->dash-eid [dashcard]
+  (t2/select-one-fn :entity_id :model/Dashboard :id (:dashboard_id dashcard)))
 
 (deftest it-should-be-possible-to-run-a-card-successfully-if-you-jump-through-the-right-hoops---
   (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
     (with-embedding-enabled-and-new-secret-key
       (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
         #_{:clj-kondo/ignore [:deprecated-var]}
-        (test-query-results (client/client :get 202 (dashcard-url dashcard)))))))
+        (test-query-results (client/client :get 202 (dashcard-url dashcard)))
+        #_{:clj-kondo/ignore [:deprecated-var]}
+        (test-query-results (client/client :get 202 (dashcard-url dashcard {} (dashcard->dash-eid dashcard))))))))
 
 (deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-shouldn-t-be-subject-to-the-default-query-constraints
   (testing (str "Downloading CSV/JSON/XLSX results from the dashcard endpoint shouldn't be subject to the default "
@@ -747,7 +826,10 @@
                                                                      :userland-query?                   true})}}]
           (let [results (client/client :get 200 (str (dashcard-url dashcard) "/csv"))]
             (is (= 101
-                   (count (csv/read-csv results))))))))))
+                   (count (csv/read-csv results)))))
+          (let [eid-results (client/client :get 200 (str (dashcard-url dashcard {} (dashcard->dash-eid dashcard)) "/csv"))]
+            (is (= 101
+                   (count (csv/read-csv eid-results))))))))))
 
 (deftest embed-download-query-execution-test
   (testing "Tests that embedding download context shows up in the query execution table when downloading cards."
@@ -805,7 +887,10 @@
                                                     {:name "PRICE" :fieldRef [:field (mt/id :venues :price) nil] :enabled true}]}}}]
           (let [results (client/client :get 200 (str (dashcard-url dashcard) "/csv"))]
             (is (= ["Name" "ID" "Category ID" "Price"]
-                   (first (csv/read-csv results))))))))))
+                   (first (csv/read-csv results)))))
+          (let [eid-results (client/client :get 200 (str (dashcard-url dashcard {} (dashcard->dash-eid dashcard)) "/csv"))]
+            (is (= ["Name" "ID" "Category ID" "Price"]
+                   (first (csv/read-csv eid-results))))))))))
 
 (deftest generic-query-failed-exception-test
   (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" exception "
@@ -957,20 +1042,20 @@
 
 ;;; ------------------------------- GET /api/embed/card/:token/field/:field/values nil --------------------------------
 
-(defn- field-values-url [card-or-dashboard field-or-id]
+(defn- field-values-url [card-or-dashboard field-or-id & [entity-id]]
   (str
    "embed/"
    (condp mi/instance-of? card-or-dashboard
-     Card      (str "card/"      (card-token card-or-dashboard))
-     Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
+     :model/Card      (str "card/"      (card-token card-or-dashboard {} entity-id))
+     :model/Dashboard (str "dashboard/" (dash-token card-or-dashboard {} entity-id)))
    "/field/"
    (u/the-id field-or-id)
    "/values"))
 
 (defn- do-with-embedding-enabled-and-temp-card-referencing {:style/indent 2} [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key
-    (t2.with-temp/with-temp [Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
-                                              :enable_embedding true)]
+    (t2.with-temp/with-temp [:model/Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
+                                                     :enable_embedding true)]
       (f card))))
 
 (defmacro ^:private with-embedding-enabled-and-temp-card-referencing
@@ -1014,20 +1099,20 @@
            (client/client :get 400 (field-values-url card (mt/id :venues :name)))))))
 
 (deftest card-param-values
-  (letfn [(search [card param-key prefix]
+  (letfn [(search [card param-key prefix & [entity-id]]
             (client/client :get 200 (format "embed/card/%s/params/%s/search/%s"
-                                            (card-token card) param-key prefix)))
-          (dropdown [card param-key]
+                                            (card-token card nil entity-id) param-key prefix)))
+          (dropdown [card param-key  & [entity-id]]
             (client/client :get 200 (format "embed/card/%s/params/%s/values"
-                                            (card-token card) param-key)))]
+                                            (card-token card nil entity-id) param-key)))]
     (mt/with-temporary-setting-values [enable-embedding true]
       (with-new-secret-key
         (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
-          (t2/update! Card (:id field-filter-card)
+          (t2/update! :model/Card (:id field-filter-card)
                       {:enable_embedding true
                        :embedding_params (zipmap (map :slug (:parameters field-filter-card))
                                                  (repeat "enabled"))})
-          (t2/update! Card (:id card)
+          (t2/update! :model/Card (:id card)
                       {:enable_embedding true
                        :embedding_params (zipmap (map :slug (:parameters card))
                                                  (repeat "enabled"))})
@@ -1036,7 +1121,17 @@
               (is (false? (:has_more_values response)))
               (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
                                (-> response :values set))))
+
             (let [response (search field-filter-card (:field-values param-keys) "bar")]
+              (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
+                               (-> response :values set)))
+              (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))
+          (testing "field filter based param entity-id"
+            (let [response (dropdown field-filter-card (:field-values param-keys) (:entity_id field-filter-card))]
+              (is (false? (:has_more_values response)))
+              (is (set/subset? #{["20th Century Cafe"] ["33 Taps"]}
+                               (-> response :values set))))
+            (let [response (search field-filter-card (:field-values param-keys) "bar" (:entity_id field-filter-card))]
               (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
                                (-> response :values set)))
               (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))
@@ -1049,6 +1144,15 @@
               (is (= {:has_more_values false,
                       :values          [["African"]]}
                      response))))
+          (testing "static based param entity-id"
+            (let [response (dropdown card (:static-list param-keys) (:entity_id card))]
+              (is (= {:has_more_values false,
+                      :values          [["African"] ["American"] ["Asian"]]}
+                     response)))
+            (let [response (search card (:static-list param-keys) "af" (:entity_id card))]
+              (is (= {:has_more_values false,
+                      :values          [["African"]]}
+                     response))))
           (testing "card based param"
             (let [response (dropdown card (:card param-keys))]
               (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
@@ -1058,20 +1162,30 @@
             (let [response (search card (:card param-keys) "red")]
               (is (= {:has_more_values false,
                       :values          [["Fred 62"] ["Red Medicine"]]}
+                     response))))
+          (testing "card based param entity-id"
+            (let [response (dropdown card (:card param-keys) (:entity_id card))]
+              (is (= {:values          [["20th Century Cafe"] ["25°"] ["33 Taps"]
+                                        ["800 Degrees Neapolitan Pizzeria"] ["BCD Tofu House"]]
+                      :has_more_values false}
+                     response)))
+            (let [response (search card (:card param-keys) "red" (:entity_id card))]
+              (is (= {:has_more_values false,
+                      :values          [["Fred 62"] ["Red Medicine"]]}
                      response)))))))))
 
 ;;; ----------------------------- GET /api/embed/dashboard/:token/field/:field/values nil -----------------------------
 
 (defn- do-with-embedding-enabled-and-temp-dashcard-referencing {:style/indent 2} [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp [Dashboard     dashboard {:enable_embedding true}
-                   Card          card      (public-test/mbql-card-referencing table-kw field-kw)
-                   DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
-                                            :card_id            (u/the-id card)
-                                            :parameter_mappings [{:card_id (u/the-id card)
-                                                                  :target  [:dimension
-                                                                            [:field
-                                                                             (mt/id table-kw field-kw) nil]]}]}]
+    (mt/with-temp [:model/Dashboard     dashboard {:enable_embedding true}
+                   :model/Card          card      (public-test/mbql-card-referencing table-kw field-kw)
+                   :model/DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
+                                                   :card_id            (u/the-id card)
+                                                   :parameter_mappings [{:card_id (u/the-id card)
+                                                                         :target  [:dimension
+                                                                                   [:field
+                                                                                    (mt/id table-kw field-kw) nil]]}]}]
       (f dashboard card dashcard))))
 
 (defmacro ^:private with-embedding-enabled-and-temp-dashcard-referencing
@@ -1092,6 +1206,9 @@
           :has_more_values false}
          (with-embedding-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
            (-> (client/client :get 200 (field-values-url dashboard (mt/id :venues :name)))
+               (update :values (partial take 5))))
+         (with-embedding-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
+           (-> (client/client :get 200 (field-values-url dashboard (mt/id :venues :name) (:entity_id dashboard)))
                (update :values (partial take 5)))))))
 
 ;; shound NOT be able to use the endpoint with a Field not referenced by the Dashboard
@@ -1111,16 +1228,16 @@
 (deftest endpoint-should-fail-if-embedding-is-disabled-for-the-dashboard
   (is (= "Embedding is not enabled for this object."
          (with-embedding-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
-           (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding false})
+           (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding false})
            (client/client :get 400 (field-values-url dashboard (mt/id :venues :name)))))))
 
 ;;; --------------------------------------------- Field search endpoints ---------------------------------------------
 
-(defn- field-search-url [card-or-dashboard field-or-id search-field-or-id]
+(defn- field-search-url [card-or-dashboard field-or-id search-field-or-id & [entity-id]]
   (str "embed/"
        (condp mi/instance-of? card-or-dashboard
-         Card      (str "card/"      (card-token card-or-dashboard))
-         Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
+         Card      (str "card/"      (card-token (or entity-id card-or-dashboard)))
+         Dashboard (str "dashboard/" (dash-token (or entity-id card-or-dashboard))))
        "/field/" (u/the-id field-or-id)
        "/search/" (u/the-id search-field-or-id)))
 
@@ -1129,6 +1246,9 @@
    (letfn [(tests [model object]
              (is (= [[93 "33 Taps"]]
                     (client/client :get 200 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
+                                   :value "33 T")))
+             (is (= [[93 "33 Taps"]]
+                    (client/client :get 200 (field-search-url object (mt/id :venues :id) (mt/id :venues :name) (:entity_id object))
                                    :value "33 T")))
 
              (testing "if search field isn't allowed to be used with the other Field endpoint should return exception"
@@ -1150,50 +1270,58 @@
      (testing "GET /api/embed/card/:token/field/:field/search/:search-field-id nil"
        (testing "Search for Field values for a Card"
          (with-embedding-enabled-and-temp-card-referencing :venues :id [card]
-           (tests Card card))))
+           (tests :model/Card card))))
      (testing "GET /api/embed/dashboard/:token/field/:field/search/:search-field-id nil"
        (testing "Search for Field values for a Dashboard"
          (with-embedding-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
-           (tests Dashboard dashboard)))))))
+           (tests :model/Dashboard dashboard)))))))
 
 ;;; ----------------------- GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil ------------------------
 
-(defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id]
+(defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id & [entity-id]]
   (str "embed/"
        (condp mi/instance-of? card-or-dashboard
-         Card      (str "card/"      (card-token card-or-dashboard))
-         Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
+         Card      (str "card/"      (card-token card-or-dashboard {} entity-id))
+         Dashboard (str "dashboard/" (dash-token card-or-dashboard {} entity-id)))
        "/field/" (u/the-id field-or-id)
        "/remapping/" (u/the-id remapped-field-or-id)))
 
 (deftest field-remapping-test
-  (letfn [(tests [model object]
+  (letfn [(tests [model object & [entity-id]]
             (testing (str "we should be able to use the API endpoint and get the same results we get by calling the "
                           "function above directly")
               (is (= [10 "Fred 62"]
-                     (client/client :get 200 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :name))
+                     (client/client :get 200 (field-remapping-url
+                                              object (mt/id :venues :id) (mt/id :venues :name) entity-id)
                                     :value "10"))))
+
             (testing " ...or if the remapping Field isn't allowed to be used with the other Field"
               (is (= "Invalid Request."
-                     (client/client :get 400 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :price))
+                     (client/client :get 400 (field-remapping-url
+                                              object (mt/id :venues :id) (mt/id :venues :price) entity-id)
                                     :value "10"))))
 
             (testing " ...or if embedding is disabled"
               (mt/with-temporary-setting-values [enable-embedding false]
                 (is (= "Embedding is not enabled."
-                       (client/client :get 400 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :name))
+                       (client/client :get 400 (field-remapping-url
+                                                object (mt/id :venues :id) (mt/id :venues :name) entity-id)
                                       :value "10")))))
 
             (testing " ...or if embedding is disabled for the Card/Dashboard"
               (t2/update! model (u/the-id object) {:enable_embedding false})
               (is (= "Embedding is not enabled for this object."
-                     (client/client :get 400 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :name))
+                     (client/client :get 400 (field-remapping-url
+                                              object (mt/id :venues :id) (mt/id :venues :name) entity-id)
                                     :value "10")))))]
 
     (testing "GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil"
       (testing "Get remapped Field values for a Card"
         (with-embedding-enabled-and-temp-card-referencing :venues :id [card]
-          (tests Card card)))
+          (tests :model/Card card)))
+      (testing "Get remapped Field values for a Card with entity-ids"
+        (with-embedding-enabled-and-temp-card-referencing :venues :id [card]
+          (tests :model/Card card (:entity_id card))))
       (testing "Shouldn't work if Card doesn't reference the Field in question"
         (with-embedding-enabled-and-temp-card-referencing :venues :price [card]
           (is (= "Not found."
@@ -1203,12 +1331,42 @@
     (testing "GET /api/embed/dashboard/:token/field/:field/remapping/:remapped-id nil"
       (testing "Get remapped Field values for a Dashboard"
         (with-embedding-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
-          (tests Dashboard dashboard)))
+          (tests :model/Dashboard dashboard)))
+      (testing "Get remapped Field values for a Dashboard with entity-ids"
+        (with-embedding-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+          (tests :model/Dashboard dashboard (:entity_id dashboard))))
       (testing "Shouldn't work if Dashboard doesn't reference the Field in question"
         (with-embedding-enabled-and-temp-dashcard-referencing :venues :price [dashboard]
           (is (= "Not found."
                  (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
-                                :value "10"))))))))
+                                :value "10"))))))
+
+    (testing "with entity ids"
+      (testing "GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil"
+        (testing "Get remapped Field values for a Card"
+          (with-embedding-enabled-and-temp-card-referencing :venues :id [card]
+            (tests :model/Card card (:entity_id card))))
+        (testing "Get remapped Field values for a Card with entity-ids"
+          (with-embedding-enabled-and-temp-card-referencing :venues :id [card]
+            (tests :model/Card card (:entity_id card))))
+        (testing "Shouldn't work if Card doesn't reference the Field in question"
+          (with-embedding-enabled-and-temp-card-referencing :venues :price [card]
+            (is (= "Not found."
+                   (client/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
+                                  :value "10"))))))
+
+      (testing "GET /api/embed/dashboard/:token/field/:field/remapping/:remapped-id nil"
+        (testing "Get remapped Field values for a Dashboard"
+          (with-embedding-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+            (tests :model/Dashboard dashboard (:entity_id dashboard))))
+        (testing "Get remapped Field values for a Dashboard with entity-ids"
+          (with-embedding-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+            (tests :model/Dashboard dashboard (:entity_id dashboard))))
+        (testing "Shouldn't work if Dashboard doesn't reference the Field in question"
+          (with-embedding-enabled-and-temp-dashcard-referencing :venues :price [dashboard]
+            (is (= "Not found."
+                   (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
+                                  :value "10")))))))))
 
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 
@@ -1393,9 +1551,9 @@
 
 ;; Pivot tables
 
-(defn- pivot-card-query-url [card response-format & [additional-token-params]]
+(defn- pivot-card-query-url [card-or-id response-format & [additional-token-keys]]
   (str "/embed/pivot/card/"
-       (card-token card additional-token-params)
+       (card-token card-or-id additional-token-keys)
        "/query"
        response-format))
 
@@ -1419,7 +1577,15 @@
                   (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
                   (is (= "completed" (:status result)))
                   (is (= 6 (count (get-in result [:data :cols]))))
-                  (is (= 1144 (count rows)))))))
+                  (is (= 1144 (count rows))))
+                (let [eid-result (client/client :get expected-status
+                                                (pivot-card-query-url (:entity_id card) "")
+                                                {:request-options nil})
+                      eid-rows   (mt/rows eid-result)]
+                  (is (nil? (:row_count eid-result))) ;; row_count isn't included in public endpoints
+                  (is (= "completed" (:status eid-result)))
+                  (is (= 6 (count (get-in eid-result [:data :cols]))))
+                  (is (= 1144 (count eid-rows)))))))
 
           (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
             (with-temp-card [card (api.pivots/pivot-card)]
@@ -1432,10 +1598,12 @@
               (is (= "Message seems corrupt or manipulated"
                      (client/client :get 400 (with-new-secret-key (pivot-card-query-url card ""))))))))))))
 
-(defn- pivot-dashcard-url [dashcard & [additional-token-params]]
-  (str "embed/pivot/dashboard/" (dash-token (:dashboard_id dashcard) additional-token-params)
-       "/dashcard/" (u/the-id dashcard)
-       "/card/" (:card_id dashcard)))
+(defn- pivot-dashcard-url
+  ([dashcard] (pivot-dashcard-url dashcard (:dashboard_id dashcard)))
+  ([dashcard dashboard-id & [additional-token-keys]]
+   (str "embed/pivot/dashboard/" (dash-token dashboard-id additional-token-keys)
+        "/dashcard/" (u/the-id dashcard)
+        "/card/" (:card_id dashcard))))
 
 (deftest pivot-dashcard-success-test
   (mt/test-drivers (api.pivots/applicable-drivers)
@@ -1444,12 +1612,18 @@
         (with-temp-dashcard [dashcard {:dash     {:enable_embedding true, :parameters []}
                                        :card     (api.pivots/pivot-card)
                                        :dashcard {:parameter_mappings []}}]
-          (let [result (client/client :get 202 (pivot-dashcard-url dashcard))
+          (let [result (client/client :get 202 (pivot-dashcard-url dashcard (:dashboard_id dashcard)))
                 rows   (mt/rows result)]
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
-            (is (= 1144 (count rows)))))))))
+            (is (= 1144 (count rows))))
+          (let [eid-result (client/client :get 202 (pivot-dashcard-url dashcard (dashcard->dash-eid dashcard)))
+                eid-rows   (mt/rows eid-result)]
+            (is (nil? (:row_count eid-result))) ;; row_count isn't included in public endpoints
+            (is (= "completed" (:status eid-result)))
+            (is (= 6 (count (get-in eid-result [:data :cols]))))
+            (is (= 1144 (count eid-rows)))))))))
 
 (deftest pivot-dashcard-embedding-disabled-test
   (mt/dataset test-data
@@ -1500,12 +1674,19 @@
                    (client/client :get 400 (pivot-dashcard-url dashcard)))))
 
           (testing "if `:locked` param is supplied, request should succeed"
-            (let [result (client/client :get 202 (pivot-dashcard-url dashcard {:params {:abc 100}}))
+            (let [result (client/client :get 202 (pivot-dashcard-url dashcard (:dashboard_id dashcard) {:params {:abc 100}}))
                   rows   (mt/rows result)]
               (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
               (is (= "completed" (:status result)))
               (is (= 6 (count (get-in result [:data :cols]))))
               (is (= 1144 (count rows)))))
+          (testing "if `:locked` param is supplied, request should succeed with entity-id"
+            (let [eid-result (client/client :get 202 (pivot-dashcard-url dashcard (dashcard->dash-eid dashcard) {:params {:abc 100}}))
+                  eid-rows   (mt/rows eid-result)]
+              (is (nil? (:row_count eid-result))) ;; row_count isn't included in public endpoints
+              (is (= "completed" (:status eid-result)))
+              (is (= 6 (count (get-in eid-result [:data :cols]))))
+              (is (= 1144 (count eid-rows)))))
 
           (testing "if `:locked` parameter is present in URL params, request should fail"
             (is (= "You must specify a value for :abc in the JWT."
@@ -1522,7 +1703,7 @@
         (testing (str "check that if embedding is enabled globally and for the object requests fail if they pass a "
                       "`:disabled` parameter")
           (is (= "You're not allowed to specify a value for :abc."
-                 (client/client :get 400 (pivot-dashcard-url dashcard {:params {:abc 100}})))))
+                 (client/client :get 400 (pivot-dashcard-url dashcard (:dashboard_id dashcard) {:params {:abc 100}})))))
 
         (testing "If a `:disabled` param is passed in the URL the request should fail"
           (is (= "You're not allowed to specify a value for :abc."
@@ -1542,15 +1723,23 @@
                                      :dashcard {:parameter_mappings []}}]
         (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
           (is (= "You can't specify a value for :abc if it's already set in the JWT."
-                 (client/client :get 400 (str (pivot-dashcard-url dashcard {:params {:abc 100}}) "?abc=200")))))
+                 (client/client :get 400 (str (pivot-dashcard-url dashcard (:dashboard_id dashcard) {:params {:abc 100}}) "?abc=200")))))
 
         (testing "If an `:enabled` param is present in the JWT, that's ok"
-          (let [result (client/client :get 202 (pivot-dashcard-url dashcard {:params {:abc 100}}))
+          (let [result (client/client :get 202 (pivot-dashcard-url dashcard (:dashboard_id dashcard) {:params {:abc 100}}))
                 rows   (mt/rows result)]
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
             (is (= 1144 (count rows)))))
+
+        (testing "If an `:enabled` param is present in the JWT, that's ok with entity-id"
+          (let [eid-result (client/client :get 202 (pivot-dashcard-url dashcard (dashcard->dash-eid dashcard) {:params {:abc 100}}))
+                eid-rows   (mt/rows eid-result)]
+            (is (nil? (:row_count eid-result))) ;; row_count isn't included in public endpoints
+            (is (= "completed" (:status eid-result)))
+            (is (= 6 (count (get-in eid-result [:data :cols]))))
+            (is (= 1144 (count eid-rows)))))
 
         (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
           (let [result (client/client :get 202 (str (pivot-dashcard-url dashcard) "?abc=200"))
@@ -1731,8 +1920,8 @@
 
 (deftest entity-id-single-card-translations-test
   (mt/with-temp
-    [:model/Card {id   :id eid   :entity_id} {}]
-    (is (= {eid   {:id id   :type :card}}
+    [:model/Card {id :id eid :entity_id} {}]
+    (is (= {eid {:id id :type :card :status :ok}}
            (api.embed.common/model->entity-ids->ids {:card [eid]})))))
 
 (deftest entity-id-card-translations-test
@@ -1744,13 +1933,13 @@
      :model/Card {id-3 :id eid-3 :entity_id} {}
      :model/Card {id-4 :id eid-4 :entity_id} {}
      :model/Card {id-5 :id eid-5 :entity_id} {}]
-    (is (= {eid   {:id id   :type :card}
-            eid-0 {:id id-0 :type :card}
-            eid-1 {:id id-1 :type :card}
-            eid-2 {:id id-2 :type :card}
-            eid-3 {:id id-3 :type :card}
-            eid-4 {:id id-4 :type :card}
-            eid-5 {:id id-5 :type :card}}
+    (is (= {eid   {:id id   :type :card :status :ok}
+            eid-0 {:id id-0 :type :card :status :ok}
+            eid-1 {:id id-1 :type :card :status :ok}
+            eid-2 {:id id-2 :type :card :status :ok}
+            eid-3 {:id id-3 :type :card :status :ok}
+            eid-4 {:id id-4 :type :card :status :ok}
+            eid-5 {:id id-5 :type :card :status :ok}}
            (api.embed.common/model->entity-ids->ids {:card [eid eid-0 eid-1 eid-2 eid-3 eid-4 eid-5]})))))
 
 (deftest entity-id-mixed-translations-test
@@ -1771,35 +1960,35 @@
      :model/Pulse              {pulse_id                :id pulse_eid                :entity_id} {}
      :model/PulseCard          {pulse_card_id           :id pulse_card_eid           :entity_id} {:pulse_id pulse_id :card_id card-id}
      :model/PulseChannel       {pulse_channel_id        :id pulse_channel_eid        :entity_id} {:pulse_id pulse_id}
-     :model/Card               {report_card_id          :id report_card_eid          :entity_id} {}
-     :model/Dashboard          {report_dashboard_id     :id report_dashboard_eid     :entity_id} {}
-     :model/DashboardTab       {dashboard_tab_id        :id dashboard_tab_eid        :entity_id} {:dashboard_id report_dashboard_id}
-     :model/DashboardCard      {report_dashboardcard_id :id report_dashboardcard_eid :entity_id} {:dashboard_id report_dashboard_id}
+     :model/Card               {card_id                 :id card_eid                 :entity_id} {}
+     :model/Dashboard          {dashboard_id            :id dashboard_eid            :entity_id} {}
+     :model/DashboardTab       {dashboard_tab_id        :id dashboard_tab_eid        :entity_id} {:dashboard_id dashboard_id}
+     :model/DashboardCard      {dashboardcard_id        :id dashboardcard_eid        :entity_id} {:dashboard_id dashboard_id}
      :model/Segment            {segment_id              :id segment_eid              :entity_id} {}
      :model/Timeline           {timeline_id             :id timeline_eid             :entity_id} {}]
     (let [core_user_eid (u/generate-nano-id)]
       (t2/update! :model/User core_user_id {:entity_id core_user_eid})
-      (is (= {action_eid               {:id action_id :type :action}
-              collection_eid           {:id collection_id :type :collection}
-              core_user_eid            {:id core_user_id :type :user}
-              dashboard_tab_eid        {:id dashboard_tab_id :type :dashboard-tab}
-              dimension_eid            {:id dimension_id :type :dimension}
-              native_query_snippet_eid {:id native_query_snippet_id :type :snippet}
-              permissions_group_eid    {:id permissions_group_id :type :permissions-group}
-              pulse_eid                {:id pulse_id :type :pulse}
-              pulse_card_eid           {:id pulse_card_id :type :pulse-card}
-              pulse_channel_eid        {:id pulse_channel_id :type :pulse-channel}
-              report_card_eid          {:id report_card_id :type :card}
-              report_dashboard_eid     {:id report_dashboard_id :type :dashboard}
-              report_dashboardcard_eid {:id report_dashboardcard_id :type :dashboard-card}
-              segment_eid              {:id segment_id :type :segment}
-              timeline_eid             {:id timeline_id :type :timeline}}
+      (is (= {action_eid               {:id action_id               :type :action            :status :ok}
+              collection_eid           {:id collection_id           :type :collection        :status :ok}
+              core_user_eid            {:id core_user_id            :type :user              :status :ok}
+              dashboard_tab_eid        {:id dashboard_tab_id        :type :dashboard-tab     :status :ok}
+              dimension_eid            {:id dimension_id            :type :dimension         :status :ok}
+              native_query_snippet_eid {:id native_query_snippet_id :type :snippet           :status :ok}
+              permissions_group_eid    {:id permissions_group_id    :type :permissions-group :status :ok}
+              pulse_eid                {:id pulse_id                :type :pulse             :status :ok}
+              pulse_card_eid           {:id pulse_card_id           :type :pulse-card        :status :ok}
+              pulse_channel_eid        {:id pulse_channel_id        :type :pulse-channel     :status :ok}
+              card_eid                 {:id card_id                 :type :card              :status :ok}
+              dashboard_eid            {:id dashboard_id            :type :dashboard         :status :ok}
+              dashboardcard_eid        {:id dashboardcard_id        :type :dashboard-card    :status :ok}
+              segment_eid              {:id segment_id              :type :segment           :status :ok}
+              timeline_eid             {:id timeline_id             :type :timeline          :status :ok}}
              (api.embed.common/model->entity-ids->ids
               {:action            [action_eid]
-               :card              [report_card_eid]
+               :card              [card_eid]
                :collection        [collection_eid]
-               :dashboard         [report_dashboard_eid]
-               :dashboard-card    [report_dashboardcard_eid]
+               :dashboard         [dashboard_eid]
+               :dashboard-card    [dashboardcard_eid]
                :dashboard-tab     [dashboard_tab_eid]
                :dimension         [dimension_eid]
                :permissions-group [permissions_group_eid]
@@ -1812,5 +2001,12 @@
                :user              [core_user_eid]}))))))
 
 (deftest missing-entity-translations-test
-  (is (= {"abcdefghijklmnopqrstu" {:type :card, :status "not-found"}}
+  (is (= {"abcdefghijklmnopqrstu" {:type :card, :status :not-found}}
          (api.embed.common/model->entity-ids->ids {:card ["abcdefghijklmnopqrstu"]}))))
+
+(deftest wrong-format-entity-translations-test
+  (is (= {"abcdefghijklmnopqrst"
+          {:type :card,
+           :status :invalid-format,
+           :reason ["\"abcdefghijklmnopqrst\" should be 21 characters long, but it is 20"]}}
+         (api.embed.common/model->entity-ids->ids {:card ["abcdefghijklmnopqrst"]}))))

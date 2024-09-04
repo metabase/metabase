@@ -480,6 +480,10 @@
   [_ bool]
   [:inline (if bool 1 0)])
 
+(defmethod sql.qp/->honeysql [:sql ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+
 (defmethod driver/humanize-connection-error-message :oracle
   [_ message]
   ;; if the connection error message is caused by the assertion above checking whether sid or service-name is set,

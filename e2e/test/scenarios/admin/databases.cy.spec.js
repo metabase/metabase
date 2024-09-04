@@ -492,6 +492,23 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.button("Remove this database").should("not.be.disabled");
   });
 
+  it("should handle is_attached_dwh databases", () => {
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, req => {
+      req.reply(res => {
+        res.body.details = null;
+        res.body.is_attached_dwh = true;
+      });
+    }).as("loadDatabase");
+
+    cy.visit("/admin/databases/1");
+    cy.wait("@loadDatabase");
+
+    cy.findByTestId("main-logo");
+    cy.findByTestId("breadcrumbs").findByText("Sample Database");
+    cy.findByRole("main").findByText("This database cannot be modified.");
+    cy.findByTestId("database-actions-panel").should("not.exist");
+  });
+
   it("should show error upon a bad request", () => {
     cy.intercept("POST", "/api/database", req => {
       req.reply({

@@ -18,7 +18,7 @@ const DatabaseClientIdDescription = (): JSX.Element | null => {
     return null;
   }
 
-  const projectId = details["project-id"] ?? "";
+  const projectId = details?.["project-id"] ?? "";
   const projectUrl = new URL(CREDENTIAL_URLS[engine]);
   projectUrl.searchParams.set("project", String(projectId));
 
