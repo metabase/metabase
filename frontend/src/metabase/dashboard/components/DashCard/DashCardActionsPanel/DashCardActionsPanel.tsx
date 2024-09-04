@@ -37,6 +37,7 @@ interface Props {
   isPreviewing: boolean;
   hasError: boolean;
   onRemove: (dashcard: DashboardCard) => void;
+  onTrash: (dashcard: DashboardCard) => void;
   onAddSeries: (dashcard: DashboardCard) => void;
   onReplaceCard: (dashcard: DashboardCard) => void;
   onReplaceAllVisualizationSettings: (
@@ -61,6 +62,7 @@ function DashCardActionsPanelInner({
   isPreviewing,
   hasError,
   onRemove,
+  onTrash,
   onAddSeries,
   onReplaceCard,
   onReplaceAllVisualizationSettings,
@@ -83,7 +85,7 @@ function DashCardActionsPanelInner({
 
   const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
 
-  const deleteConfirmationModal = useModal(false);
+  const trashConfirmationModal = useModal(false);
 
   const handleOnUpdateVisualizationSettings = useCallback(
     (settings: VisualizationSettings) => {
@@ -128,12 +130,24 @@ function DashCardActionsPanelInner({
       return;
     }
 
-    if (isDashboardCard) {
-      deleteConfirmationModal.open();
-    } else {
-      onRemove(dashcard);
+    onRemove(dashcard);
+  }, [dashcard, onRemove]);
+
+  const handleConfirmMoveToTrash = useCallback(() => {
+    if (!dashcard) {
+      return;
     }
-  }, [dashcard, onRemove, isDashboardCard, deleteConfirmationModal]);
+
+    trashConfirmationModal.open();
+  }, [dashcard, trashConfirmationModal]);
+
+  const handleMoveToTrash = useCallback(() => {
+    if (!dashcard) {
+      return;
+    }
+
+    onTrash(dashcard);
+  }, [dashcard, onTrash]);
 
   if (dashcard) {
     buttons.push(
@@ -266,32 +280,38 @@ function DashCardActionsPanelInner({
       >
         <DashCardActionButtonsContainer>
           {buttons}
-          <DashCardActionButton onClick={handleRemoveCard} tooltip={t`Remove`}>
-            <DashCardActionButton.Icon name="close" />
-          </DashCardActionButton>
+          {isDashboardCard ? (
+            <DashCardActionButton
+              onClick={handleConfirmMoveToTrash}
+              tooltip={t`Move to trash`}
+            >
+              <DashCardActionButton.Icon name="trash" />
+            </DashCardActionButton>
+          ) : (
+            <DashCardActionButton
+              onClick={handleRemoveCard}
+              tooltip={t`Remove`}
+            >
+              <DashCardActionButton.Icon name="close" />
+            </DashCardActionButton>
+          )}
         </DashCardActionButtonsContainer>
       </DashCardActionsPanelContainer>
       {isDashboardCard && (
         <Modal
-          isOpen={isDashboardCard && deleteConfirmationModal.opened}
-          onClose={deleteConfirmationModal.close}
+          isOpen={isDashboardCard && trashConfirmationModal.opened}
+          onClose={trashConfirmationModal.close}
           trapFocus
         >
           <ConfirmContent
-            title={t`Are you sure you want to remove this question?`}
-            message={
-              <>
-                {t`If you do this, this question won’t be available anymore.`}
-                <br />
-                {t`You can undo this action by going into the Dashboard Info → History.`}
-              </>
-            }
+            title={t`Move this question to trash?`}
+            message={t`This question will be removed from this dashboard and any alerts using it.`}
             cancelButtonText={t`Cancel`}
-            confirmButtonText={t`Remove question`}
-            data-testid="remove-confirmation"
-            onAction={() => onRemove(dashcard)}
-            onCancel={deleteConfirmationModal.close}
-            onClose={deleteConfirmationModal.close}
+            confirmButtonText={t`Move to trash`}
+            data-testid="trash-confirmation"
+            onAction={handleMoveToTrash}
+            onCancel={trashConfirmationModal.close}
+            onClose={trashConfirmationModal.close}
           />
         </Modal>
       )}

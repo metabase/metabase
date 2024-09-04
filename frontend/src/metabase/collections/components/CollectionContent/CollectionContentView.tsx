@@ -218,7 +218,7 @@ export const CollectionContentView = ({
               <ArchivedEntityBanner
                 name={collection.name}
                 entityType="collection"
-                canWrite={collection.can_write}
+                canMove={collection.can_write}
                 canRestore={collection.can_restore}
                 canDelete={collection.can_delete}
                 onUnarchive={async () => {

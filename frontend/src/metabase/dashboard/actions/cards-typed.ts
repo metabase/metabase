@@ -38,7 +38,9 @@ import {
   ADD_CARD_TO_DASH,
   ADD_MANY_CARDS_TO_DASH,
   REMOVE_CARD_FROM_DASH,
+  TRASH_DASHBOARD_QUESTION_FROM_DASH,
   UNDO_REMOVE_CARD_FROM_DASH,
+  UNDO_TRASH_DASHBOARD_QUESTION_FROM_DASH,
   setDashCardAttributes,
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
@@ -270,5 +272,51 @@ export const undoRemoveCardFromDashboard = createThunkAction(
       }
 
       return { dashcardId };
+    },
+);
+
+export const trashDashboardQuestion = createThunkAction(
+  TRASH_DASHBOARD_QUESTION_FROM_DASH,
+  ({
+      dashcardId,
+      cardId,
+    }: {
+      dashcardId: DashCardId;
+      cardId: DashboardCard["card_id"];
+    }) =>
+    async dispatch => {
+      await dispatch(
+        Questions.actions.setArchived({ id: cardId }, true, {
+          notify: {
+            action: () =>
+              dispatch(undoTrashDashboardQuestion({ dashcardId, cardId })),
+            undo: false,
+          },
+        }),
+      );
+      dispatch(removeCardFromDashboard({ dashcardId, cardId }));
+    },
+);
+
+const undoTrashDashboardQuestion = createThunkAction(
+  UNDO_TRASH_DASHBOARD_QUESTION_FROM_DASH,
+  ({
+      dashcardId,
+      cardId,
+    }: {
+      dashcardId: DashCardId;
+      cardId: DashboardCard["card_id"];
+    }) =>
+    async dispatch => {
+      await dispatch(
+        Questions.actions.setArchived({ id: cardId }, false, {
+          notify: {
+            action: () =>
+              dispatch(trashDashboardQuestion({ dashcardId, cardId })),
+            undo: false,
+          },
+        }),
+      );
+      dispatch(undoRemoveCardFromDashboard({ dashcardId }));
     },
 );
