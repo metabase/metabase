@@ -212,7 +212,7 @@ describe("[OSS] embedding settings", () => {
         ).toBeInTheDocument();
       });
 
-      it("should not allow access to the static embedding settings page", async () => {
+      it("should allow access to the static embedding settings page", async () => {
         // Go to static embedding settings page
         await userEvent.click(
           within(
