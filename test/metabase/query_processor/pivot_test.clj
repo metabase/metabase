@@ -696,5 +696,6 @@
            (splice [0 1] {1 0, 4 3})))
     (is (= [0 1 3 4]
            (splice [0 2] {1 0, 4 3})))
-    (is (= [1 3 4 7]
-           (splice [1 2 5] {1 4, 5 2})))))
+    (testing "chained remapping (is that something we allow?)"
+      (is (= [1 2 3 5 7]
+             (splice [1 2 5] {1 2, 2 5}))))))

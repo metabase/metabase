@@ -477,7 +477,7 @@
                    offset
                    (cond-> combination
                      selected?    (conj spliced-index)
-                     mapped-index (conj mapped-index)))))))))
+                     mapped-index (into (take-while some? (iterate remap mapped-index)))))))))))
 
 (mu/defn- make-column-mapping-fn :- ::column-mapping-fn
   "This returns a function with the signature
