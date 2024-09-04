@@ -13,7 +13,7 @@ import PeopleList from "../components/PeopleList";
 import SearchInput from "../components/SearchInput";
 import { USER_STATUS } from "../constants";
 import { usePeopleQuery } from "../hooks/use-people-query";
-
+import { CompanyHeader } from "metabase/browse/components/CompanySettings/CompanyHeader";
 const PAGE_SIZE = 25;
 
 function PeopleListingApp({ children, isAdmin }) {
@@ -53,21 +53,24 @@ function PeopleListingApp({ children, isAdmin }) {
   );
 
   const buttonText =
-    isAdmin && status === USER_STATUS.active ? t`Invite someone` : null;
+    isAdmin && status === USER_STATUS.active ? t`Invite user` : null;
 
   return (
-    <AdminPaneLayout
-      headingContent={headingContent}
-      buttonText={buttonText}
-      buttonLink={Urls.newUser()}
-    >
-      <PeopleList
-        query={query}
-        onNextPage={handleNextPage}
-        onPreviousPage={handlePreviousPage}
-      />
-      {children}
-    </AdminPaneLayout>
+    <div style={{ display: "flex", flexDirection: "column", gap: "2rem", width: "100%", paddingTop: "1rem" }}>
+      <CompanyHeader title={"People"} icon={"group"} />
+      <AdminPaneLayout
+        headingContent={headingContent}
+        buttonText={buttonText}
+        buttonLink={Urls.newUser()}
+      >
+        <PeopleList
+          query={query}
+          onNextPage={handleNextPage}
+          onPreviousPage={handlePreviousPage}
+        />
+        {children}
+      </AdminPaneLayout>
+    </div>
   );
 }
 

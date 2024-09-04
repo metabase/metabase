@@ -40,7 +40,7 @@ const mapDispatchToProps = dispatch => ({
   ...bindActionCreators(
     {
       updateDataPermission,
-      switchView: entityType => push(`/admin/permissions/data/${entityType}`),
+      switchView: entityType => push(`/settings/permissions/data/${entityType}`),
       navigateToDatabaseList: () => push(DATABASES_BASE_PATH),
       navigateToItem: item =>
         push(getDatabaseFocusPermissionsUrl(item.entityId)),

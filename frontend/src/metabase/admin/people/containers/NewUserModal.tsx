@@ -25,10 +25,10 @@ export const NewUserModal = ({ onClose }: NewUserModalProps) => {
   };
 
   return (
-    <ModalContent title="Create user" onClose={onClose}>
+    <ModalContent title="Invite user" onClose={onClose}>
       <UserForm
         initialValues={{}}
-        submitText={t`Create`}
+        submitText={t`Invite`}
         onCancel={onClose}
         onSubmit={handleSubmit}
       />

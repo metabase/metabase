@@ -19,7 +19,7 @@ import {
   getIsDataMapBreadcrumbsVisible,
   getCubeName,
   getSemanticName,
-  getSemanticSlug
+  getSemanticSlug,
 } from "metabase/selectors/app";
 import { getIsEmbedded } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
@@ -43,7 +43,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
   isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
   isSemanticLayerVisible: getIsSemanticLayerBreadcrumbsVisible(state, props),
-  isDataMapVisible: getIsDataMapBreadcrumbsVisible(state, props)
+  isDataMapVisible: getIsDataMapBreadcrumbsVisible(state, props),
 });
 
 const mapDispatchToProps = {

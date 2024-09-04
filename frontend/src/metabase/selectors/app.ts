@@ -18,8 +18,8 @@ import type { State } from "metabase-types/store";
 import { getSetting } from "./settings";
 
 interface CubeName {
-  cubeName: string,
-  slug?:string
+  cubeName: string;
+  slug?: string;
 }
 
 export interface RouterProps {
@@ -47,13 +47,9 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
 ];
 const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
 
-const PATHS_WITH_SEMANTIC_LAYER_BREADCRUMBS = [
-  /\/semantic-layer\//,
-];
+const PATHS_WITH_SEMANTIC_LAYER_BREADCRUMBS = [/\/semantic-layer\//];
 
-const PATHS_WITH_DATA_MAP_BREADCRUMBS = [
-  /\/?data-map(\/|$)/,
-];
+const PATHS_WITH_DATA_MAP_BREADCRUMBS = [/\/?data-map(\/|$)/];
 
 export const getRouterPath = (state: State, props: RouterProps) => {
   return props?.location?.pathname ?? window.location.pathname;
@@ -245,8 +241,10 @@ export const getIsSemanticLayerBreadcrumbsVisible = createSelector(
       return false;
     }
 
-    return PATHS_WITH_SEMANTIC_LAYER_BREADCRUMBS.some(pattern => pattern.test(path));
-  }
+    return PATHS_WITH_SEMANTIC_LAYER_BREADCRUMBS.some(pattern =>
+      pattern.test(path),
+    );
+  },
 );
 
 export const getIsDataMapBreadcrumbsVisible = createSelector(
@@ -257,24 +255,24 @@ export const getIsDataMapBreadcrumbsVisible = createSelector(
     }
 
     return PATHS_WITH_DATA_MAP_BREADCRUMBS.some(pattern => pattern.test(path));
-  }
+  },
 );
 
-export const getCubeName = (state: State, props:RouterProps) => {
-  return props.params?.cubeName
-}
+export const getCubeName = (state: State, props: RouterProps) => {
+  return props.params?.cubeName;
+};
 
-export const getSemanticName = (state: State, props:RouterProps) => {
-  const slug = props.params?.slug
-  if(slug) {
-    const indexOfDash = slug.indexOf('-');
+export const getSemanticName = (state: State, props: RouterProps) => {
+  const slug = props.params?.slug;
+  if (slug) {
+    const indexOfDash = slug.indexOf("-");
     if (indexOfDash === -1) {
-        return ''; // Return an empty string if no dash is found
+      return ""; // Return an empty string if no dash is found
     }
     return slug.substring(indexOfDash + 1);
   }
-}
+};
 
-export const getSemanticSlug = (state: State, props:RouterProps) => {
-  return props.params?.slug
-}
+export const getSemanticSlug = (state: State, props: RouterProps) => {
+  return props.params?.slug;
+};

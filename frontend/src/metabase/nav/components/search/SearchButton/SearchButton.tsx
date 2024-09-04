@@ -35,10 +35,14 @@ export const SearchButton = () => {
           w="240px"
           leftIcon={<Icon name="search" />}
           onClick={handleClick}
-          // TODO: Adjust this with Mantine V7
           styles={{
             inner: {
               justifyContent: "start",
+            },
+            root: {
+              "&:hover": {
+                color: "#587330",
+              },
             },
           }}
           aria-label="Search"

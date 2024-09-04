@@ -47,11 +47,6 @@ export const AccountHeader = ({
 
   return (
     <AccountHeaderRoot data-testid="account-header">
-      <HeaderSection>
-        <HeaderAvatar user={user} />
-        {userFullName && <HeaderTitle>{userFullName}</HeaderTitle>}
-        <HeaderSubtitle>{user.email}</HeaderSubtitle>
-      </HeaderSection>
       <Radio
         value={path}
         variant="underlined"

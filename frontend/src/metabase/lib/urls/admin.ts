@@ -7,39 +7,39 @@ import type {
 } from "metabase-types/api";
 
 export function newUser() {
-  return `/admin/people/new`;
+  return `/settings/people/new`;
 }
 
 export function editUser(userId: UserId) {
-  return `/admin/people/${userId}/edit`;
+  return `/settings/people/${userId}/edit`;
 }
 
 export function resetPassword(userId: UserId) {
-  return `/admin/people/${userId}/reset`;
+  return `/settings/people/${userId}/reset`;
 }
 
 export function newUserSuccess(userId: UserId) {
-  return `/admin/people/${userId}/success`;
+  return `/settings/people/${userId}/success`;
 }
 
 export function deactivateUser(userId: UserId) {
-  return `/admin/people/${userId}/deactivate`;
+  return `/settings/people/${userId}/deactivate`;
 }
 
 export function reactivateUser(userId: UserId) {
-  return `/admin/people/${userId}/reactivate`;
+  return `/settings/people/${userId}/reactivate`;
 }
 
 export function newDatabase() {
-  return `/admin/databases/create`;
+  return `/settings/databases/create`;
 }
 
 export function editDatabase(databaseId: DatabaseId) {
-  return `/admin/databases/${databaseId}`;
+  return `/settings/databases/${databaseId}`;
 }
 
 export function dataModelDatabase(databaseId: DatabaseId) {
-  return `/admin/datamodel/database/${databaseId}`;
+  return `/settings/datamodel/database/${databaseId}`;
 }
 
 export function dataModelSchema(databaseId: DatabaseId, schemaId: SchemaId) {

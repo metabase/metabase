@@ -24,11 +24,9 @@ export const MenuItemContent = styled.div<MenuItemProps>`
   text-decoration: none;
 
   :hover {
-    color: ${props => color((!props.disabled && props.hoverColor) || "brand")};
-    background-color: ${props =>
-      !props.disabled && props.hoverBgColor
-        ? color(props.hoverBgColor)
-        : "var(--mb-color-bg-light)"};
+    color: ${props =>
+      color(props.disabled ? "text-light" : props.color || "text-dark")};
+    background-color: #d5e3c3;
   }
 
   > .Icon {
@@ -38,7 +36,8 @@ export const MenuItemContent = styled.div<MenuItemProps>`
   }
 
   :hover > .Icon {
-    color: ${props => color((!props.disabled && props.hoverColor) || "brand")};
+    color: ${props =>
+      color((!props.disabled && props.hoverColor) || "text-dark")};
   }
 `;
 

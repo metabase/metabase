@@ -1,8 +1,12 @@
 import PropTypes from "prop-types";
 
 import { AccountHeader } from "../AccountHeader";
-
-import { AccountContent } from "./AccountLayout.styled";
+import { AccountImage } from "./AccountImage";
+import { CompanyHeader } from "metabase/browse/components/CompanySettings/CompanyHeader";
+import {
+  AccountContent, BrowseContainer,
+  BrowseMain
+} from "./AccountLayout.styled";
 
 const propTypes = {
   ...AccountHeader.propTypes,
@@ -11,10 +15,35 @@ const propTypes = {
 
 const AccountLayout = ({ children, ...props }) => {
   return (
-    <div>
-      <AccountHeader {...props} />
-      <AccountContent>{children}</AccountContent>
-    </div>
+
+    <BrowseContainer>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          marginBottom: "1rem",
+          width: "100%",
+          paddingRight: "2rem",
+          gap: "2rem",
+        }}
+      >
+        <div
+          style={{ display: "flex", justifyContent: "start", width: "100%" }}
+        >
+          <CompanyHeader title={"Account settings"} icon={"person"} />
+        </div>
+        <div
+          style={{ display: "flex", justifyContent: "start", width: "100%" }}
+        >
+          <AccountImage {...props} />
+        </div>
+      </div>
+      <BrowseMain style={{ marginTop: "4rem" }}>
+        <AccountHeader {...props} />
+        <AccountContent>{children}</AccountContent>
+      </BrowseMain>
+    </BrowseContainer>
   );
 };
 

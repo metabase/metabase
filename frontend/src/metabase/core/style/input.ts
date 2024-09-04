@@ -9,7 +9,7 @@ const inputPaddingBySize = {
     padding: 0.5rem 0.625rem;
   `,
   medium: css`
-    padding: 0.625rem 0.75rem;
+    padding: 0.7rem 0.75rem;
   `,
   large: css`
     padding: 0.75rem;

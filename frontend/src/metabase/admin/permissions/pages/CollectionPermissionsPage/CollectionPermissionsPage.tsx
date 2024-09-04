@@ -40,7 +40,7 @@ const mapDispatchToProps = {
   initialize: initializeCollectionPermissions,
   loadPermissions: loadCollectionPermissions,
   navigateToItem: ({ id }: { id: CollectionId }) =>
-    push(`/admin/permissions/collections/${id}`),
+    push(`/settings/permissions/collections/${id}`),
   updateCollectionPermission,
   savePermissions: saveCollectionPermissions,
 };

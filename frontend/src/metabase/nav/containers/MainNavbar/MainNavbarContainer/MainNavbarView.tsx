@@ -20,7 +20,12 @@ import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotificati
 import { UploadCSV } from "metabase/nav/containers/MainNavbar/SidebarItems/UploadCSV";
 import { getSetting } from "metabase/selectors/settings";
 import type { IconName, IconProps } from "metabase/ui";
-import type { Bookmark, Collection, User } from "metabase-types/api";
+import type {
+  Bookmark,
+  Collection,
+  CollectionId,
+  User,
+} from "metabase-types/api";
 
 import {
   AddYourOwnDataLink,
@@ -41,12 +46,14 @@ import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { useListDashboardsQuery } from "metabase/api";
 import { setOpenModal } from "metabase/redux/ui";
+import NewItemButton from "metabase/nav/components/NewItemButton";
 
 interface CollectionTreeItem extends Collection {
   icon: IconName | IconProps;
   children: CollectionTreeItem[];
 }
 type Props = {
+  collectionId?: CollectionId;
   isAdmin: boolean;
   isOpen: boolean;
   currentUser: User;
@@ -140,6 +147,9 @@ function MainNavbarView({
     <ErrorBoundary>
       <SidebarContentRoot>
         <div>
+          <SidebarSection>
+            <NewItemButton />
+          </SidebarSection>
           <SidebarSection>
             <PaddedSidebarLink
               isSelected={nonEntityItem?.url === "/"}
@@ -252,20 +262,6 @@ function MainNavbarView({
           </SidebarSection>
         </div>
         <WhatsNewNotification />
-
-        <SidebarSection>
-          <ErrorBoundary>
-            <PaddedSidebarLink
-              icon="gear"
-              url={BROWSE_SETTINGS}
-              isSelected={nonEntityItem?.url?.startsWith(BROWSE_SETTINGS)}
-              onClick={onItemSelect}
-              aria-label={t`Settings`}
-            >
-              {t`Settings`}
-            </PaddedSidebarLink>
-          </ErrorBoundary>
-        </SidebarSection>
       </SidebarContentRoot>
     </ErrorBoundary>
   );

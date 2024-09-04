@@ -8,9 +8,10 @@ export const NewButton = styled(Button)`
   align-items: center;
   height: 2.25rem;
   padding: 0.5rem;
+  padding-left: 16px;
   background-color: #587330 !important;
   border: none !important;
-
+  width: 100%;
   ${Button.TextContainer} {
     margin-left: 0;
   }
@@ -28,4 +29,5 @@ export const NewButtonText = styled.h4`
   display: inline;
   margin-left: 0.5rem;
   white-space: nowrap;
+  font-weight: normal;
 `;

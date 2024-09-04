@@ -14,25 +14,53 @@ import {
   BrowseMain,
   BrowseSection,
   CenteredEmptyState,
-} from "./BrowseContainer.styled";
-import { BrowseDataHeader } from "./BrowseDataHeader";
+} from "./CompanyContainer.styled";
+import { CompanyHeader } from "./CompanyHeader";
 import {
   DatabaseCard,
   DatabaseCardLink,
   DatabaseGrid,
-} from "./BrowseDatabases.styled";
+} from "./CompanyCards.styled";
 import {
   EngineCardIcon,
   EngineCardImage,
   EngineCardRoot,
   EngineCardTitle,
 } from "metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.styled";
-import { getEngineLogo } from "metabase/databases/utils/engine";
+import { CompanyImage } from "./CompanyImage";
 
-export const BrowseDatabases = () => {
+export const SettingsPermissions = () => {
   const dispatch = useDispatch();
   const { data, isLoading, error } = useListDatabasesQuery();
   const databases = data?.data;
+
+  const cards = [
+    {
+      id: 1,
+      title: t`Databases`,
+      type: "databases",
+      path: "/settings/databases",
+      icon: "database",
+    },
+    {
+      id: 2,
+      title: t`People`,
+      type: "people",
+      path: "/settings/people",
+      icon: "group",
+    },
+    {
+      id: 3,
+      title: t`Permissions`,
+      type: "permissions",
+      path: "/settings/permissions",
+      icon: "lock",
+    },
+  ];
+
+  const handleCardClick = (path: string) => {
+    dispatch(push(path));
+  };
 
   if (error) {
     return <LoadingAndErrorWrapper error />;
@@ -74,63 +102,52 @@ export const BrowseDatabases = () => {
       <div
         style={{
           display: "flex",
-          flexDirection: "row",
-          justifyContent: "space-between",
+          flexDirection: "column",
           alignItems: "center",
           marginBottom: "1rem",
           width: "100%",
           paddingRight: "2rem",
+          gap: "2rem",
         }}
       >
         <div
           style={{ display: "flex", justifyContent: "start", width: "100%" }}
         >
-          <BrowseDataHeader />
+          <CompanyHeader title={"Permissions"} icon={"lock"} />
         </div>
-        <div style={{ display: "flex", justifyContent: "end", width: "100%" }}>
-          <Button
-            style={{ backgroundColor: "#223800", border: "1px solid #223800" }}
-            variant="filled"
-            onClick={() => {
-              dispatch(push("/browse/databases/connections"));
-            }}
-          >
-            {t`Add connection`}
-          </Button>
+        <div
+          style={{ display: "flex", justifyContent: "start", width: "100%" }}
+        >
+          <CompanyImage />
         </div>
       </div>
-      <BrowseMain>
+      <BrowseMain style={{ marginTop: "4rem" }}>
         <BrowseSection>
-          <DatabaseGrid data-testid="database-browser">
-            {filteredDatabases.map((database: any) => {
-              // Get the logo for each database engine
-              const logo = getEngineLogo(database.engine);
-
+          <ul
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "1.5rem",
+              width: "100%",
+            }}
+          >
+            {cards.map(card => {
               return (
-                <div key={database.id}>
-                  <EngineCardRoot
-                    role="option"
-                    id={`database-option-${database.id}`} // Provide a unique ID or use an appropriate function to generate this ID
-                    isActive={false}
-                    onClick={() => {
-                      // Use push method to navigate to the database URL
-                      dispatch(push(Urls.browseDatabase(database)));
-                    }}
-                  >
-                    {logo ? (
-                      <EngineCardImage
-                        src={logo}
-                        alt={`${database.engine} logo`}
-                      />
-                    ) : (
-                      <EngineCardIcon name="database" />
-                    )}
-                    <EngineCardTitle>{database.name}</EngineCardTitle>
-                  </EngineCardRoot>
-                </div>
+                <EngineCardRoot
+                  key={card.id}
+                  onClick={() => handleCardClick(card.path)}
+                  isActive={false}
+                >
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    <EngineCardIcon name={card.icon as any} />
+                    <EngineCardTitle style={{ marginTop: 0 }}>
+                      {card.title}
+                    </EngineCardTitle>
+                  </div>
+                </EngineCardRoot>
               );
             })}
-          </DatabaseGrid>
+          </ul>
         </BrowseSection>
       </BrowseMain>
     </BrowseContainer>

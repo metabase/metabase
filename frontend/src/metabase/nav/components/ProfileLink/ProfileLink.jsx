@@ -50,15 +50,27 @@ function ProfileLink({ adminItems, onLogout }) {
     const showAdminSettingsItem = adminItems?.length > 0;
 
     return [
+      showAdminSettingsItem && {
+        title: t`Company settings`,
+        icon: "gear",
+        link: "/settings",
+        event: `Navbar;Profile Dropdown;Enter Admin`,
+      },
       {
         title: t`Account settings`,
-        icon: null,
+        icon: "person",
         link: Urls.accountSettings(),
         event: `Navbar;Profile Dropdown;Edit Profile`,
       },
       {
+        title: t`About ${applicationName}`,
+        icon: "info",
+        action: () => openModal("about"),
+        event: `Navbar;Profile Dropdown;About ${tag}`,
+      },
+      {
         title: t`Sign out`,
-        icon: null,
+        icon: "arrow_right",
         action: () => onLogout(),
         event: `Navbar;Profile Dropdown;Logout`,
       },
@@ -66,7 +78,7 @@ function ProfileLink({ adminItems, onLogout }) {
   };
 
   const getUserInitials = () => {
-    if (!currentUser) return "AB"; // Default value in case user data is not available
+    if (!currentUser) return "JD"; // Default value in case user data is not available
     const { first_name, last_name } = currentUser;
     const firstInitial = first_name ? first_name.charAt(0).toUpperCase() : "";
     const lastInitial = last_name ? last_name.charAt(0).toUpperCase() : "";
@@ -91,7 +103,11 @@ function ProfileLink({ adminItems, onLogout }) {
         display: "inline-block",
         borderRadius: "6px",
         height: "36px",
-        width: "auto"
+        width: "auto",
+        hover: {
+          backgroundColor: "#587330",
+          color: color("text-white"),
+        },
       }}
     >
       {userInitials}
