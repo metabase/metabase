@@ -106,7 +106,7 @@
    ;;
    [:archived?          [:maybe :boolean]]
    [:current-user-id    pos-int?]
-   [:is-superuser?      :boolean] ;; ideally this would be provided on all paths
+   [:is-superuser?      :boolean]
    [:current-user-perms [:set perms.u/PathSchema]]
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]
