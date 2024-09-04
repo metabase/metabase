@@ -56,6 +56,7 @@ export function EmbeddingSdkSettings({
           />
           <SetByEnvVarWrapper setting={sdkOriginsSetting}>
             <SettingTextInput
+              id={sdkOriginsSetting.key}
               setting={sdkOriginsSetting}
               onChange={onChangeSdkOrigins}
               type="text"
