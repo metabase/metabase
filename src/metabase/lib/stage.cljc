@@ -428,5 +428,7 @@
              (or (empty? breakouts)
                  (and (= (count breakouts) 1)
                       (-> (lib.breakout/breakout-column query (first breakouts))
+                          ;; extraction units change `:effective-type` to `:type/Integer`, so remove temporal bucketing
+                          ;; before doing type checks
                           (lib.temporal-bucket/with-temporal-bucket nil)
                           lib.types.isa/date-or-datetime?)))))))
