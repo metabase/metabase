@@ -1191,8 +1191,9 @@
   (let [stage       (lib.util/query-stage a-query stage-number)
         vis-columns (lib.metadata.calculation/visible-columns a-query stage-number stage)
         ret-columns (lib.metadata.calculation/returned-columns a-query stage-number stage)]
-    (->> vis-columns
-         (map #(assoc % :selected? (some? (lib.equality/find-matching-column a-query stage-number % ret-columns))))
+    (->> (for [col vis-columns
+               :let [match (lib.equality/find-matching-column a-query stage-number col ret-columns)]]
+           (assoc col :selected? (some? match)))
          to-array)))
 
 (defn ^:export visible-columns
