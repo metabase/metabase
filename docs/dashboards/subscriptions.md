@@ -54,6 +54,8 @@ If there are no results, you can tell Metabase to skip sending the email.
 
 ### Set filter values for when this gets sent
 
+{% include plans-blockquote.html feature="Dashboard subscription filter customization" %}
+
 Here you can set filters to apply when Metabase sends the subscription.
 
 ### Attach results
