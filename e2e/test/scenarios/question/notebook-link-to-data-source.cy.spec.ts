@@ -660,9 +660,6 @@ describe("scenarios > notebook > link to data source", () => {
           cy.log("Saved question should open in a new tab");
 
           getNotebookStep("join", { stage: 0, index: 1 }).within(() => {
-            // Clicking on a left join cell does not have any effect
-            cy.findByLabelText("Left table").click(clickConfig);
-
             cy.findByLabelText("Right table")
               .should("have.text", savedQuestion.name)
               .click(clickConfig);
@@ -687,9 +684,6 @@ describe("scenarios > notebook > link to data source", () => {
         (function testRawTable() {
           cy.log("Raw table should open in a new tab");
           getNotebookStep("join", { stage: 0, index: 2 }).within(() => {
-            // Clicking on a left join cell does not have any effect
-            cy.findByLabelText("Left table").click(clickConfig);
-
             cy.findByLabelText("Right table")
               .should("have.text", "Reviews")
               .click(clickConfig);
