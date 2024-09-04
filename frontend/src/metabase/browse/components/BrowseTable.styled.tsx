@@ -8,6 +8,10 @@ import {
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import Link from "metabase/core/components/Link";
 import { breakpoints } from "metabase/ui/theme";
+import {
+  ScalarRoot,
+  ScalarValueWrapper,
+} from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
 
 export const TableRow = styled.tr<{ skeleton?: boolean }>`
   :focus {
@@ -46,14 +50,14 @@ export const Cell = styled.td<ResponsiveProps>`
 `;
 
 export const NameColumn = styled(TableColumn)`
-  width: 356px;
+  width: 220px;
 
   @container ${props => props.containerName} (max-width: ${breakpoints.md}) {
-    width: 280px;
+    width: 220px;
   }
 
   @container ${props => props.containerName} (max-width: ${breakpoints.sm}) {
-    width: 200px;
+    width: 160px;
   }
 `;
 
@@ -70,5 +74,16 @@ export const CollectionLink = styled(Link)`
 
   &:hover {
     color: var(--mb-color-icon-primary) !important;
+  }
+`;
+
+export const ValueTableCell = styled(Cell)`
+  ${ScalarRoot} {
+    align-items: flex-end;
+  }
+
+  ${ScalarValueWrapper} {
+    font-size: 1em;
+    font-weight: normal;
   }
 `;

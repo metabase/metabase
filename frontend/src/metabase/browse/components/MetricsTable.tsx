@@ -6,6 +6,7 @@ import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
 } from "metabase/api";
+import type { QuestionResultLoaderProps } from "metabase/collections/components/PinnedQuestionCard/PinnedQuestionLoader";
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
@@ -21,6 +22,7 @@ import {
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
+import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import Bookmarks from "metabase/entities/bookmarks";
 import Questions from "metabase/entities/questions";
@@ -36,6 +38,8 @@ import {
   Skeleton,
 } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
+import Visualization from "metabase/visualizations/components/Visualization";
+import type Question from "metabase-lib/v1/Question";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import type { MetricResult } from "../types";
@@ -46,6 +50,7 @@ import {
   CollectionTableCell,
   NameColumn,
   TableRow,
+  ValueTableCell,
 } from "./BrowseTable.styled";
 import { getMetricDescription, sortModelOrMetric } from "./utils";
 
@@ -61,22 +66,30 @@ const DEFAULT_SORTING_OPTIONS: SortingOptions = {
 
 export const itemsTableContainerName = "ItemsTableContainer";
 
-const nameProps = {
+const sharedProps = {
   containerName: itemsTableContainerName,
+};
+
+const nameProps = {
+  ...sharedProps,
 };
 
 const descriptionProps: ResponsiveProps = {
-  hideAtContainerBreakpoint: "sm",
-  containerName: itemsTableContainerName,
+  ...sharedProps,
+  hideAtContainerBreakpoint: "md",
 };
 
 const collectionProps: ResponsiveProps = {
-  hideAtContainerBreakpoint: "xs",
-  containerName: itemsTableContainerName,
+  ...sharedProps,
+  hideAtContainerBreakpoint: "sm",
+};
+
+const valueProps = {
+  ...sharedProps,
 };
 
 const menuProps = {
-  containerName: itemsTableContainerName,
+  ...sharedProps,
 };
 
 const DOTMENU_WIDTH = 34;
@@ -95,23 +108,19 @@ export function MetricsTable({
   const handleSortingOptionsChange = skeleton ? undefined : setSortingOptions;
 
   /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
-  const collectionWidth = 38.5;
-  const descriptionWidth = 100 - collectionWidth;
+  const valueWidth = 25;
+  const collectionWidth = 30;
+  const descriptionWidth = 100 - collectionWidth - valueWidth;
 
   return (
     <Table aria-label={skeleton ? undefined : t`Table of metrics`}>
       <colgroup>
         {/* <col> for Name column */}
         <NameColumn {...nameProps} />
-
-        {/* <col> for Collection column */}
+        <TableColumn {...valueProps} width={`${valueWidth}%`} />
         <TableColumn {...collectionProps} width={`${collectionWidth}%`} />
-
-        {/* <col> for Description column */}
         <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
-
         <TableColumn {...menuProps} width={DOTMENU_WIDTH} />
-
         <Columns.RightEdge.Col />
       </colgroup>
       <thead>
@@ -128,6 +137,11 @@ export function MetricsTable({
           >
             {t`Name`}
           </SortableColumnHeader>
+          <ColumnHeader
+            style={{
+              textAlign: "right",
+            }}
+          >{t`Value`}</ColumnHeader>
           <SortableColumnHeader
             name="collection"
             sortingOptions={sortingOptions}
@@ -215,6 +229,7 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
   return (
     <TableRow onClick={handleClick}>
       <NameCell metric={metric} />
+      <ValueCell metric={metric} />
       <CollectionCell metric={metric} />
       <DescriptionCell metric={metric} />
       <MenuCell metric={metric} />
@@ -427,5 +442,47 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
         </Menu.Dropdown>
       </Menu>
     </Cell>
+  );
+}
+
+function ValueCell({ metric }: { metric?: MetricResult }) {
+  if (!metric) {
+    return <Cell />;
+  }
+
+  const { id } = metric;
+
+  return (
+    <ValueTableCell>
+      <Questions.Loader
+        id={id}
+        loadingAndErrorWrapper={false}
+        entityQuery={{ context: "collection" }}
+      >
+        {({ loading, question }: { loading: boolean; question: Question }) => {
+          if (loading) {
+            return null;
+          }
+
+          const isScalar = question.display() === "scalar";
+          if (!isScalar) {
+            // only show scalar metrics for now
+            return null;
+          }
+
+          return (
+            <QuestionResultLoader question={question}>
+              {({ loading, error, rawSeries }: QuestionResultLoaderProps) => {
+                if (loading || error || !rawSeries) {
+                  return null;
+                }
+
+                return <Visualization rawSeries={rawSeries} />;
+              }}
+            </QuestionResultLoader>
+          );
+        }}
+      </Questions.Loader>
+    </ValueTableCell>
   );
 }
