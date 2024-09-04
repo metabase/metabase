@@ -3,7 +3,6 @@
    [cheshire.core :as json]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
-   [metabase.api.common :as api]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -106,21 +105,6 @@
        :from   (from-clause-for-model model)}
       (search.filter/build-filters model context)))
 
-(defn- maybe-query-is-superuser?
-  "Not all code paths provide `:is-superuser?` for the [[SearchContext]] (yet), so query it if required."
-  [{:keys [current-user-id is-superuser?]}]
-  (cond
-    (some? is-superuser?)
-    is-superuser?
-
-    (and api/*current-user-id*
-         (some? api/*is-superuser?*)
-         (= current-user-id api/*current-user-id*))
-    api/*is-superuser?*
-
-    :else
-    (t2/select-one-fn :is_superuser [:model/User :is_superuser] :id current-user-id)))
-
 (mu/defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
   so we can return its `:name`."
@@ -128,7 +112,8 @@
    model                                         :- :string
    {:keys [filter-items-in-personal-collection
            archived
-           current-user-id] :as search-ctx} :- SearchContext]
+           current-user-id
+           is-superuser?]} :- SearchContext]
   (let [collection-id-col        (if (= model "collection")
                                    :collection.id
                                    :collection_id)
@@ -140,7 +125,7 @@
                                                        :write
                                                        :read)}
                                   {:current-user-id current-user-id
-                                   :is-superuser?   (maybe-query-is-superuser? search-ctx)})]
+                                   :is-superuser?   is-superuser?})]
     (cond-> honeysql-query
       true
       (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
@@ -622,8 +607,7 @@
    [:search-string                                        [:maybe ms/NonBlankString]]
    [:models                                               [:maybe [:set SearchableModel]]]
    [:current-user-id                                      pos-int?]
-   ;; make this required
-   [:is-superuser?                       {:optional true} :boolean]
+   [:is-superuser?                                        :boolean]
    [:current-user-perms                                   [:set perms.u/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
@@ -645,6 +629,7 @@
            created-at
            created-by
            current-user-id
+           is-superuser?
            current-user-perms
            last-edited-at
            last-edited-by
@@ -657,7 +642,7 @@
            table-db-id
            search-native-query
            verified
-           ids] :as search-ctx} :- ::search-context.input]
+           ids]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -667,7 +652,7 @@
   (let [models (if (string? models) [models] models)
         ctx    (cond-> {:archived?          (boolean archived)
                         :current-user-id    current-user-id
-                        :is-superuser?      (maybe-query-is-superuser? search-ctx)
+                        :is-superuser?      is-superuser?
                         :current-user-perms current-user-perms
                         :model-ancestors?   (boolean model-ancestors?)
                         :models             models
