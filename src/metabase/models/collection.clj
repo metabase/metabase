@@ -551,7 +551,7 @@
     visibility-config :- CollectionVisibilityConfig]
    (visible-collection-filter-clause collection-id-field visibility-config
                                      {:current-user-id api/*current-user-id*
-                                      :is-superuser? api/*is-superuser?*}))
+                                      :is-superuser?   api/*is-superuser?*}))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
     visibility-config :- CollectionVisibilityConfig
     {:keys [current-user-id is-superuser?]} :- UserScope]
