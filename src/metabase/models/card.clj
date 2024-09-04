@@ -403,24 +403,37 @@
 (defn- dashboard-internal-card? [card]
   (boolean (:dashboard_id card)))
 
-(def ^:dynamic ^:private *updating-dashboard-collection-id* false)
+(def ^:dynamic ^:private *updating-dashboard* false)
+
+(defmacro with-allowed-changes-to-dashboard-internal-card
+  "Allow making changes to dashboard-internal cards that would not normally be allowed."
+  [& body]
+  `(binding [*updating-dashboard* true]
+     ~@body))
 
 (defn- is-valid-dashboard-internal-card-for-update [card changes]
   (or (and (not (dashboard-internal-card? card))
            (not (contains? changes :dashboard_id)))
       (and
-       (or *updating-dashboard-collection-id* (not (contains? changes :collection_id)))
-       (not (contains? changes :archived))
+       (dashboard-internal-card? card)
+       (or *updating-dashboard* (not (contains? changes :collection_id)))
+       (or *updating-dashboard* (not (contains? changes :archived)))
        (not (contains? changes :collection_position))
        (or (not (contains? changes :type))
            (contains? #{:question "question" nil} (:type changes))))))
 
-(defn- check-for-invalid-dashboard-internal-update [card changes]
+(defn- handle-dashboard-internal-update [card changes]
+  (let [correct-collection-id (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard_id card))]
+    (assoc changes :collection_id correct-collection-id)))
+
+(defn- maybe-handle-dashboard-internal-update [changes card]
   (when-not (is-valid-dashboard-internal-card-for-update card changes)
     (throw (ex-info (tru "Invalid dashboard-internal card")
                     {:status-code 400
                      :changes changes
-                     :card card}))))
+                     :card card})))
+  (cond-> changes
+    (dashboard-internal-card? card) (handle-dashboard-internal-update changes)))
 
 (defn- check-dashboard-internal-card-insert [card]
   (let [correct-collection-id (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard_id card))
@@ -607,8 +620,8 @@
   ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
   ;; https://github.com/camsaul/toucan2/issues/145 .
   ;; TODO: ^ that's been fixed, this could be refactored
-  (check-for-invalid-dashboard-internal-update card (t2/changes card))
   (-> (into {:id (:id card)} (t2/changes (dissoc card :verified-result-metadata?)))
+
       maybe-normalize-query
       ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
       ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
@@ -827,13 +840,14 @@
                                          :text                (tru "Unverified due to edit")}))
     ;; ok, now save the Card
     (t2/update! Card (:id card-before-update)
-                ;; `collection_id` and `description` can be `nil` (in order to unset them).
-                ;; Other values should only be modified if they're passed in as non-nil
-                (u/select-keys-when card-updates
-                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly}
-                                    :non-nil #{:dataset_query :display :name :visualization_settings :archived
-                                               :enable_embedding :type :parameters :parameter_mappings :embedding_params
-                                               :result_metadata :collection_preview :verified-result-metadata?})))
+                (-> (u/select-keys-when card-updates
+                                        ;; `collection_id` and `description` can be `nil` (in order to unset them).
+                                        ;; Other values should only be modified if they're passed in as non-nil
+                                        :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id}
+                                        :non-nil #{:dataset_query :display :name :visualization_settings :archived
+                                                   :enable_embedding :type :parameters :parameter_mappings :embedding_params
+                                                   :result_metadata :collection_preview :verified-result-metadata?})
+                    (maybe-handle-dashboard-internal-update card-before-update))))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one Card :id (:id card-before-update))]
     (delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)

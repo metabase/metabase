@@ -4772,3 +4772,56 @@
             (mt/user-http-request :crowberto :post 202
                                   (format "dashboard/%s/dashcard/%s/card/%s/query" dashboard-id dashcard-id card-id)))
           (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))
+
+(deftest dashboard-internal-cards-test
+  ;; setup:
+  ;; - a collection, with a dashboard in it, with a dashboard-internal card in that dashboard
+  ;; - another dashboard in the root collection
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                 :model/Dashboard {other-dash-id :id} {}
+                 :model/Card {card-id :id} {:dashboard_id dash-id}
+                 :model/DashboardCard {dashcard-id :id} {:card_id card-id
+                                                         :dashboard_id dash-id}]
+    (testing "Cannot add a dashboard internal card to another dashboard"
+      (mt/user-http-request :crowberto :put 400 (str "dashboard/" other-dash-id)
+                            {:dashcards [{:id -1
+                                          :size_x 1
+                                          :size_y 1
+                                          :row 0 :col 0
+                                          :card_id card-id
+                                          :dashboard_id other-dash-id}]}))
+    (testing "Should archive all dashboard internal cards with their dashboard"
+      (is (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id)
+                                {:archived true}))
+      (is (t2/select-one-fn :archived :model/Card :id card-id))
+      (testing "And un-archive them with their dashboard, too"
+        (is (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id)
+                                  {:archived false}))
+        (is (not (t2/select-one-fn :archived :model/Card :id card-id)))))
+    (testing "Should move dashboard internal cards to new collection along with their dashboard"
+      (is (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id)
+                                {:collection_id nil}))
+      (is (nil? (t2/select-one-fn :collection_id :model/Card :id card-id))))
+    (testing "If the dashboard is deleted, its dashboard internal cards are too"
+      (t2/delete! :model/Dashboard :id dash-id)
+      (is (not (t2/exists? :model/Card :dashboard_id dash-id))))))
+
+(deftest dashboard-internal-cards-copying
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Collection {other-coll-id :id} {}
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                 :model/Card {card-id :id} {:dashboard_id dash-id
+                                            :table_id      (mt/id :orders)
+                                            :dataset_query (mt/mbql-query orders)
+                                            :database_id   (mt/id)}
+                 :model/DashboardCard {dashcard-id :id} {:card_id card-id
+                                                         :dashboard_id dash-id}]
+    (let [new-dash-id (:id (mt/user-http-request :crowberto :post 200 (str "dashboard/" dash-id "/copy")))
+          new-card (:card (first (:dashcards (t2/hydrate (t2/select-one :model/Dashboard :id new-dash-id) [:dashcards :card]))))]
+      (is (not= (:id new-card) card-id))
+      (is (=? (select-keys (t2/select-one :model/Card :id card-id)
+                           [:dataset_query :display :name :description])
+              new-card))
+      (is (= new-dash-id
+             (:dashboard_id new-card))))))
