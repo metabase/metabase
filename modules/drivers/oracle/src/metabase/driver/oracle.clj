@@ -478,7 +478,7 @@
 
 (defmethod sql.qp/->honeysql [:sql ::sql.qp/cast-to-text]
   [driver [_ expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast "varchar" expr]))
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
 
 (defmethod driver/humanize-connection-error-message :oracle
   [_ message]

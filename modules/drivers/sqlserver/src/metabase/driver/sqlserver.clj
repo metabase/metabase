@@ -629,6 +629,10 @@
                          args)]
         ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause)))))
 
+(defmethod sql.qp/->honeysql [:sqlserver ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar(256)"]))
+
 (defmethod driver/db-default-timezone :sqlserver
   [driver database]
   (sql-jdbc.execute/do-with-connection-with-options

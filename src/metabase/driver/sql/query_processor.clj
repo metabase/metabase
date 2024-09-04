@@ -1352,7 +1352,7 @@
   ;; Oracle does not support text type,
   ;; sqlserver limits varchar to 30 in casts,
   ;; athena cannot cast uuid to bounded varchars
-  (->honeysql driver [::cast "text" expr]))
+  (->honeysql driver [::cast expr "text"]))
 
 (defmethod ->honeysql [:sql :starts-with]
   [driver [_ field arg options]]
