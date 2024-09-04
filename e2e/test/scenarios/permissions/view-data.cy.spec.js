@@ -58,6 +58,20 @@ describeEE("scenarios > admin > permissions > view data > blocked", () => {
       assertPermissionForItem(g, DOWNLOAD_PERM_IDX, "No", true);
     });
 
+    cy.log(
+      "assert that user properly sees native query warning related to table level blocking",
+    );
+    getPermissionRowPermissions("All Users")
+      .eq(DATA_ACCESS_PERM_IDX)
+      .findByLabelText("warning icon")
+      .realHover();
+
+    cy.findByRole("tooltip")
+      .findByText(
+        /Users in groups with Blocked on a table can't view native queries on this database/,
+      )
+      .should("exist");
+
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`); // database level
 
     assertPermissionForItem(g, DATA_ACCESS_PERM_IDX, "Granular", false);
