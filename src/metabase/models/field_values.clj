@@ -596,9 +596,9 @@
                :type         (serdes/kw)
                :field_id     {::serdes/fk true
                               :export     (constantly ::serdes/skip)
-                              :import     (fn [_]
-                                            (let [field-ref (field-path->field-ref (serdes/path serdes/*current*))]
-                                              (serdes/*import-field-fk* field-ref)))}}})
+                              :import-with-context (fn [current _ _]
+                                                     (let [field-ref (field-path->field-ref (serdes/path current))]
+                                                       (serdes/*import-field-fk* field-ref)))}}})
 
 (defmethod serdes/load-update! "FieldValues" [_ ingested local]
   ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.

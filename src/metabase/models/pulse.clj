@@ -450,54 +450,45 @@
                              card-refs)]
       (t2/insert! PulseCard cards))))
 
-(defn- create-update-delete-channel!
-  "Utility function used by [[update-notification-channels!]] which determines how to properly update a single pulse
-  channel."
-  [notification-or-id new-channel existing-channel]
-  ;; NOTE that we force the :id of the channel being updated to the :id we *know* from our
-  ;;      existing list of PulseChannels pulled from the db to ensure we affect the right record
-  (let [channel (when new-channel
-                  (assoc new-channel
-                         :pulse_id       (u/the-id notification-or-id)
-                         :id             (:id existing-channel)
-                         :enabled        (:enabled new-channel)
-                         :channel_type   (keyword (:channel_type new-channel))
-                         :schedule_type  (keyword (:schedule_type new-channel))
-                         :schedule_frame (keyword (:schedule_frame new-channel))))]
-    (cond
-      ;; 1. in channels, NOT in db-channels = CREATE
-      (and channel (not existing-channel))  (pulse-channel/create-pulse-channel! channel)
-      ;; 2. NOT in channels, in db-channels = DELETE
-      (and (nil? channel) existing-channel) (t2/delete! PulseChannel :id (:id existing-channel))
-      ;; 3. in channels, in db-channels = UPDATE
-      (and channel existing-channel)        (pulse-channel/update-pulse-channel! channel)
-      ;; 4. NOT in channels, NOT in db-channels = NO-OP
-      :else                                 nil)))
-
 (mu/defn update-notification-channels!
   "Update the PulseChannels for a given `notification-or-id`. `channels` should be a definitive collection of *all* of
   the channels for the Notification.
 
-   * If a channel in the list has no existing `PulseChannel` object, one will be created.
+    * If a channel in the list has no existing `PulseChannel` object, one will be created.
 
-   * If an existing `PulseChannel` has no corresponding entry in `channels`, it will be deleted.
+    * If an existing `PulseChannel` has no corresponding entry in `channels`, it will be deleted.
 
-   * All previously existing channels will be updated with their most recent information."
+    * All previously existing channels will be updated with their most recent information."
   [notification-or-id channels :- [:sequential :map]]
-  (let [new-channels   (group-by (comp keyword :channel_type) channels)
-        old-channels   (group-by (comp keyword :channel_type) (t2/select PulseChannel
-                                                                         :pulse_id (u/the-id notification-or-id)))
-        handle-channel #(create-update-delete-channel! (u/the-id notification-or-id)
-                                                       (first (get new-channels %))
-                                                       (first (get old-channels %)))]
-    (assert (zero? (count (get new-channels nil)))
-            "Cannot have channels without a :channel_type attribute")
-    ;; don't automatically archive this Pulse if we end up deleting its last PulseChannel -- we're probably replacing
-    ;; it with a new one immediately thereafter.
+  (let [existing-channels   (t2/select :model/PulseChannel :pulse_id (u/the-id notification-or-id))
+        channels            (map-indexed
+                             (fn [idx channel]
+                               (assoc channel
+                                      :channel_type   (keyword (:channel_type channel))
+                                      :schedule_type  (keyword (:schedule_type channel))
+                                      :schedule_frame (keyword (:schedule_frame channel))
+                                      :pulse_id       (u/the-id notification-or-id)
+                                      ;; for "new channels" we assign it with an negative id so that
+                                      ;; row-diff will treat it as :to-create
+                                      :id             (or
+                                                       (:id channel)
+                                                       ;; new channel
+                                                       (- (inc idx)))))
+                             channels)
+        {:keys [to-create
+                to-update
+                to-delete]} (u/row-diff existing-channels
+                                        channels
+                                        {:to-compare #(dissoc % :created_at :updated_at)})]
+    (doseq [channel to-create]
+      (pulse-channel/create-pulse-channel! channel))
+    (doseq [channel to-update]
+      (assert (:id channel) "Cannot update a PulseChannel without an :id")
+      (pulse-channel/update-pulse-channel! channel))
     (binding [pulse-channel/*archive-parent-pulse-when-last-channel-is-deleted* false]
-      ;; for each of our possible channel types call our handler function
-      (doseq [[channel-type] pulse-channel/channel-types]
-        (handle-channel channel-type)))))
+      (when (seq to-delete)
+        (assert (every? :id to-delete) "Cannot delete a PulseChannel without an :id")
+        (t2/delete! PulseChannel :id [:in (map :id to-delete)])))))
 
 (mu/defn- create-notification-and-add-cards-and-channels!
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and

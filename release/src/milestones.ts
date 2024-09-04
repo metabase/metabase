@@ -1,5 +1,6 @@
 import fs from "fs";
 
+import { graphql } from "@octokit/graphql";
 import _ from "underscore";
 
 import { hiddenLabels, nonUserFacingLabels } from "./constants";
@@ -297,6 +298,7 @@ export async function checkMilestoneForRelease({
     owner,
     repo,
     version,
+    ignorePatches: true, // ignore patch versions since we don't release notes for them
   });
 
   const compareResponse = await github.rest.repos.compareCommitsWithBasehead({
@@ -387,7 +389,7 @@ export async function checkMilestoneForRelease({
       issueNumber: issue.number,
       version,
       comment: 'Issue in milestone, cannot find commit',
-    });
+    }).catch((e) => console.error(`error adding issue ${issue.number} to project`, e));
   }
 
   for (const issueNumber of issuesInCommitsNotInMilestone) {
@@ -398,7 +400,7 @@ export async function checkMilestoneForRelease({
       issueNumber: issueNumber,
       version,
       comment: 'Issue in release branch, needs milestone',
-    });
+    }).catch((e) => console.error(`error adding issue ${issueNumber} to project`, e));
   }
 
   for (const issue of openMilestoneIssues) {
@@ -409,7 +411,7 @@ export async function checkMilestoneForRelease({
       issueNumber: issue.number,
       version,
       comment: 'Issue still open in milestone',
-    });
+    }).catch((e) => console.error(`error adding issue ${issue.number} to project`, e));
   }
 
   const logText = await generateLog({
@@ -530,7 +532,7 @@ async function addIssueToProject({
   comment,
   version,
 }: GithubProps & { issueNumber: number, comment: string, version: string }) {
-  console.log(`Adding issue #${issueNumber} to project`)
+  console.log(`Possible problem issue: #${issueNumber} - ${comment}`);
 
   const issue = await getIssueWithCache({
     github,
@@ -544,7 +546,13 @@ async function addIssueToProject({
     return;
   }
 
-  const response = await github.graphql(`mutation {
+  const graphqlWithAuth = graphql.defaults({
+    headers: {
+      authorization: `token ${process.env.GITHUB_TOKEN}`,
+    },
+  });
+
+  const response = await graphqlWithAuth(`mutation {
     addProjectV2ItemById(input: {
       projectId: "${releaseIssueProject.id}",
       contentId: "${issue?.node_id}"
@@ -559,7 +567,7 @@ async function addIssueToProject({
     return;
   }
 
-  await github.graphql(`
+  await graphqlWithAuth(`
     mutation {
       setComment: updateProjectV2ItemFieldValue( input: {
         projectId: "${releaseIssueProject.id}"

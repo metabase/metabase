@@ -43,6 +43,7 @@ import RedirectWidget from "./components/widgets/RedirectWidget";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
+import { NotificationSettings } from "./notifications/NotificationSettings";
 import { updateSetting } from "./settings";
 import SetupCheckList from "./setup/components/SetupCheckList";
 import SlackSettings from "./slack/containers/SlackSettings";
@@ -277,10 +278,16 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
     ],
   },
-  slack: {
+  "notifications/slack": {
     name: "Slack",
     order: 50,
     component: SlackSettings,
+    settings: [],
+  },
+  notifications: {
+    name: t`Notification channels`,
+    order: 51,
+    component: NotificationSettings,
     settings: [],
   },
   authentication: {

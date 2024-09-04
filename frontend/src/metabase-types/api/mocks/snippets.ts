@@ -1,5 +1,6 @@
 import type { NativeQuerySnippet } from "metabase-types/api";
 
+import { createMockEntityId } from "./entity-id";
 import { createMockUser } from "./user";
 
 export const createMockNativeQuerySnippet = ({
@@ -14,7 +15,7 @@ export const createMockNativeQuerySnippet = ({
   collection_id: null,
   creator,
   creator_id,
-  entity_id: "snippet_entity_id",
+  entity_id: createMockEntityId(),
   archived: false,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),

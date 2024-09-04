@@ -32,6 +32,14 @@ Return a cryptographically secure random 32-byte token, encoded as a hexadecimal
 Anonymous usage stats. Endpoint for testing, and eventually exposing this to instance admins to let them see
   what is being phoned home.
 
+## `POST /api/util/entity_id`
+
+Translate entity IDs to model IDs.
+
+### PARAMS:
+
+-  **`entity_ids`** map.
+
 ## `POST /api/util/password_check`
 
 Endpoint that checks if the supplied password meets the currently configured password complexity rules.

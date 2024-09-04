@@ -418,4 +418,12 @@
             mb-group->scim
             scim-response)))))
 
+(defendpoint DELETE "/Groups/:id"
+  "Delete a group."
+  [id]
+  {id ms/NonBlankString}
+  (let [group (get-group-by-entity-id id)]
+    (t2/delete! :model/PermissionsGroup (u/the-id group))
+    (scim-response nil 204)))
+
 (api/define-routes)

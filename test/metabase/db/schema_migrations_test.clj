@@ -490,25 +490,27 @@
   (mt/test-driver :postgres
     (testing "FKs are not created automatically in Postgres, check that migrations add necessary indexes"
       (is (= [{:table_name  "field_usage"
-               :column_name "query_execution_id"}]
+               :column_name "query_execution_id"}
+              {:table_name  "pulse_channel"
+               :column_name "channel_id"}]
              (t2/query
               "SELECT
-                   conrelid::regclass::text AS table_name,
-                   a.attname AS column_name
-               FROM
-                   pg_constraint AS c
-                   JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
-               WHERE
-                   c.contype = 'f'
-                   AND NOT EXISTS (
-                       SELECT 1
-                       FROM pg_index AS i
-                       WHERE i.indrelid = c.conrelid
-                         AND a.attnum = ANY(i.indkey)
-                   )
-               ORDER BY
-                   table_name,
-                   column_name;"))))))
+                    conrelid::regclass::text AS table_name,
+                    a.attname AS column_name
+                FROM
+                    pg_constraint AS c
+                    JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
+                WHERE
+                    c.contype = 'f'
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM pg_index AS i
+                        WHERE i.indrelid = c.conrelid
+                          AND a.attnum = ANY(i.indkey)
+                    )
+                ORDER BY
+                    table_name,
+                    column_name;"))))))
 
 (deftest remove-collection-color-test
   (testing "Migration v48.00-019"
@@ -2572,8 +2574,8 @@
             (is (= active? (t2/select-one-fn :active :metabase_field (:id field))))))))))
 
 (deftest populate-new-permission-fields-works
-  (testing "Migration v51.2024-08-21T08:33:10"
-    (impl/test-migrations ["v51.2024-08-21T08:33:06" "v51.2024-08-21T08:33:10"] [migrate!]
+  (testing "Migration v49.2024-08-21T08:33:10"
+    (impl/test-migrations ["v49.2024-08-21T08:33:06" "v49.2024-08-21T08:33:10"] [migrate!]
       (let [read-coll-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
                                                                      {:slug "foo"}))
             read-coll-path (perms/collection-read-path read-coll-id)

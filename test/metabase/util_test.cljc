@@ -271,6 +271,13 @@
     "IBIS" "Ibis"
     "Ibis" "Ibis"))
 
+(deftest ^:parallel truncate-test
+  (are [s n expected] (= expected
+                         (u/truncate s n))
+    "string" 10 "string"
+    "string" 3  "str"
+    "string" 0  ""))
+
 #?(:clj
    (deftest capitalize-en-turkish-test
      (mt/with-locale "tr"
