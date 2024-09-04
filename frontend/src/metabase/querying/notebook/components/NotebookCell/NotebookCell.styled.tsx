@@ -35,7 +35,7 @@ export const NotebookCellItemContainer = styled.div<{
     (!props.inactive || props.onClick) && !props.readOnly && !props.disabled
       ? "pointer"
       : "default"};
-  pointer-events: ${props => props.disabled && "none"};
+  pointer-events: ${props => (props.disabled ? "none" : "auto")};
 
   &:hover {
     border-color: ${props => props.inactive && alpha(props.color, 0.8)};
@@ -60,7 +60,6 @@ export const NotebookCellItemContentContainer = styled.div<{
   align-items: center;
   padding: ${CONTAINER_PADDING};
   background-color: ${props => (props.inactive ? "transparent" : props.color)};
-  pointer-events: ${props => (props.disabled ? "none" : "auto")};
 
   &:hover {
     background-color: ${props =>
