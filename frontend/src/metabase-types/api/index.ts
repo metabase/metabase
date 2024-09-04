@@ -39,6 +39,7 @@ export * from "./task";
 export * from "./timeline";
 export * from "./user";
 export * from "./util";
+export * from "./visualization";
 export * from "./visualization-settings";
 
 // ISO8601 timestamp

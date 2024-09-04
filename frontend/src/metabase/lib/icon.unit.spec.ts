@@ -42,6 +42,7 @@ describe("getIcon", () => {
 
   describe("card display types", () => {
     it("should return the default icon for an invalid display type", () => {
+      // @ts-expect-error testing invalid display type
       expect(getIcon({ model: "card", display: "pikachu" })).toEqual({
         name: "table2",
       });
