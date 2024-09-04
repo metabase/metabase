@@ -31,9 +31,9 @@ const getValueForSorting = (
   sort_column: keyof ModelResult,
 ): string => {
   if (sort_column === "collection") {
-    return getCollectionPathAsString(model.collection);
+    return getCollectionPathAsString(model.collection) ?? "";
   } else {
-    return model[sort_column];
+    return model[sort_column] ?? "";
   }
 };
 
@@ -65,14 +65,14 @@ export function sortCards<T extends ModelResult | MetricResult>(
     a.localeCompare(b, localeCode, { sensitivity: "base" });
 
   return [...metrics].sort((metricA, metricB) => {
-    const a = getValueForSorting(metricA, sort_column) ?? "";
-    const b = getValueForSorting(metricB, sort_column) ?? "";
+    const a = getValueForSorting(metricA, sort_column);
+    const b = getValueForSorting(metricB, sort_column);
 
     let result = compare(a, b);
     if (result === 0) {
       const sort_column2 = getSecondarySortColumn(sort_column);
-      const a2 = getValueForSorting(metricA, sort_column2) ?? "";
-      const b2 = getValueForSorting(metricB, sort_column2) ?? "";
+      const a2 = getValueForSorting(metricA, sort_column2);
+      const b2 = getValueForSorting(metricB, sort_column2);
       result = compare(a2, b2);
     }
 
