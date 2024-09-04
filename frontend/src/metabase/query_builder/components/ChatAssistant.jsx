@@ -302,12 +302,22 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         try {
             const newInsightsList = [];
             const processedInsights = [];
+            if(!insights || insights.length < 1) {
+                console.warn('No insights provided.');
+                setShowError(true);
+                return;
+            }
 
             for (const insight of insights) {
-                const fetchedCard = await CardApi.get({ cardId: insight.cardId });
-                const queryCard = await CardApi.query({ cardId: insight.cardId });
-                const getDatasetQuery = fetchedCard?.dataset_query;
-                const defaultQuestionTest = Question.create({
+                try {
+                    const fetchedCard = await CardApi.get({ cardId: insight.cardId });
+                    const queryCard = await CardApi.query({ cardId: insight.cardId });
+                    if (!fetchedCard || !queryCard) {
+                        console.warn(`Skipping card with ID ${insight.cardId} due to missing data.`);
+                        continue;
+                    }
+                    const getDatasetQuery = fetchedCard?.dataset_query;
+                    const defaultQuestionTest = Question.create({
                     databaseId: 1,
                     name: fetchedCard.name,
                     type: "query",
@@ -323,14 +333,20 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                     queryCard: queryCard,
                     defaultQuestion: newQuestion,
                 });
+              } catch (error) {
+                console.warn(`Error fetching data for card ID ${insight.cardId}:`, error);
+                continue;
+              }
             }
-            newInsightsList.push(processedInsights);
-
-            setInsightsList(prevInsights => [...prevInsights, ...newInsightsList]);
+            if (processedInsights.length > 0) {
+                newInsightsList.push(processedInsights);
+                setInsightsList(prevInsights => [...prevInsights, ...newInsightsList]);
+            } else {
+            setShowError(true)
+            }
 
         } catch (error) {
             console.error("Error fetching card content:", error);
-            setShowError(true)
             setError("There was an error fetching the insights. Please provide feedback if this issue persists.");
         } finally {
             setIsLoading(false);
