@@ -5,8 +5,12 @@ import {
   getDefaultDimensions,
   getDefaultMetrics,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
-import type { VisualizationProps } from "metabase/visualizations/types";
+import type {
+  type ComputedVisualizationSettings,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import type { RawSeries } from "metabase-types/api";
 
 import { ChartRenderer } from "./TreeMap.styled";
 
@@ -54,7 +58,46 @@ Object.assign(TreeMap, {
   },
 });
 
-export function TreeMap(_props: VisualizationProps) {
+function getTreeMapModel(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  const [
+    {
+      data: { rows: rows, cols: cols },
+    },
+  ] = rawSeries;
+
+  const dimensions = settings[__DIMENSIONS];
+  const measure = settings[__MEASURES];
+
+  const dimIndexes = cols
+    .map((value, index) => [value.name, index] as const)
+    .filter(value => dimensions.includes(value[0]))
+    .map(value => value[1]);
+
+  const [measIndex] = cols
+    .map((value, index) => [value.name, index] as const)
+    .filter(value => value[0] === measure)
+    .map(value => value[1]);
+
+  const onlyNeededCols = rows.map(value =>
+    dimIndexes.map(v => value[v]).concat([value[measIndex]]),
+  );
+
+  return onlyNeededCols.map(value => {
+    return {
+      name: value[0],
+      value: value[value.length - 1],
+    };
+  });
+}
+
+export function TreeMap(props: VisualizationProps) {
+  const { rawSeries, settings } = props;
+
+  const data = getTreeMapModel(rawSeries, settings);
+
   const option = {
     series: [
       {
@@ -63,12 +106,7 @@ export function TreeMap(_props: VisualizationProps) {
         breadcrumb: {
           show: false,
         },
-        data: [
-          {
-            name: "nodeA",
-            value: 5,
-          },
-        ],
+        data,
       },
     ],
   };
