@@ -1183,6 +1183,8 @@
 ;; would be `:source/card` and `lib.ref/ref` would generate `:lib/desired-column-alias`-based refs. As the card can
 ;; contain multiple columns with the same ID (e.g. multiple breakouts of the same column, model metadata overrides) we
 ;; could get exact dupliates with `lib.ref/ref` for [[returned-columns]].
+;; `(lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns)` cannot be used here because it
+;; would compute the refs for `ret-columns` and we want to do it the other way around.
 (defn- visible-columns*
   "Inner implementation for [[visible-columns]], which wraps this with caching."
   [a-query stage-number]
