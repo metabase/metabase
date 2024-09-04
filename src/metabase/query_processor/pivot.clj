@@ -98,7 +98,7 @@
    (partial group-bitmask num-breakouts)
    (distinct
     (map
-     #(vec (sort %))
+     (comp vec sort)
      ;; this can happen for the public/embed endpoints, where we aren't given a pivot-rows / pivot-cols parameter, so
      ;; we'll just generate everything
      (if (empty? (concat pivot-rows pivot-cols))
