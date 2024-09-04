@@ -49,8 +49,6 @@ If the sort is changed (while values remain the same), then the cumulative count
 | July     | 5       | 2 + 5 = 7         |
 | November | 4       | 2 + 5 + 4 = 11    |
 
-You can preview and check the results of your summary by clicking on the ▶ button to the right of the **Summarize** block.
-
 ## Cumulative metrics with multiple breakouts
 
 Because cumulative metrics calculate its summaries based on previous rows, Metabase needs to determine what those previous rows are. It will always order the rows based on the first breakout. So if there are multiple breakout columns specified in **Group by**, Metabase will:
@@ -64,8 +62,6 @@ This sorting in step 1 only happens in the context of calculating the Cumulative
 If you then want to manually sort the results, this sorting only applies _after_ cumulative count or sum computes its results. Sorting here has no effect on how Metabase computes the cumulative metric.
 
 For example, if you want to see the cumulative sum of order quantity over time by product category, you should first group by `Created At`, _then_ group by product category.
-
-You can preview and check the results of your summary or sort by clicking on the ▶ button to the right of the block.
 
 In the example below, the cumulative sum uses `Created At` date for sort, and `Category` for breakout, so cumulative sum will:
 
