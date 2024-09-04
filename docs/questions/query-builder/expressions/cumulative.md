@@ -51,7 +51,7 @@ If the sort is changed (while values remain the same), then the cumulative count
 
 Metabase will automatically sort the data by the breakout column in ascending order (using the logic that your database uses for the column's data type). If you add a manual sort, it will only apply _after_ cumulative count or sum computes its results. Sorting here has no effect on how Metabase computes the cumulative metric.
 
-If you want to use a different order (for example, sort by the breakout column but in descending order), you can [use SQL](#sql).
+If you want to use a different order (for example, sort by the breakout column but in descending order), you can [use SQL](#related-functions).
 
 ## Cumulative metrics with multiple breakouts
 
@@ -93,7 +93,7 @@ This result looks similar to the previous cumulative count result (grouped by `C
 
 ## Related functions
 
-### Cumulative count in SQL 
+### Cumulative count in SQL
 
 In SQL, you can use window functions to compute cumulative metrics. For example, to compute cumulative count of orders over months, you can use the following query:
 
@@ -117,7 +117,6 @@ GROUP BY
 ORDER BY
   created_month ASC
 ```
-
 
 ### Cumulative sums in SQL
 
