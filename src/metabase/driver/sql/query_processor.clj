@@ -1243,7 +1243,7 @@
            (not (uuid? (->honeysql driver arg)))
              ;; Check for inlined values
            (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
-    [::cast field "varchar"]
+    [::cast-to-text field]
     field))
 
 (mu/defn ^:private maybe-cast-uuid-for-text-compare
@@ -1251,12 +1251,19 @@
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
   [field]
   (if (uuid-field? field)
-    [::cast field "varchar"]
+    [::cast-to-text field]
     field))
 
 (defmethod ->honeysql [:sql ::cast]
   [driver [_ expr database-type]]
   (h2x/maybe-cast database-type (->honeysql driver expr)))
+
+(defmethod ->honeysql [:sql ::cast-to-text]
+  [driver [_ expr]]
+  ;; Oracle does not support text type,
+  ;; sqlserver limits varchar to 30 in casts,
+  ;; athena cannot cast uuid to bounded varchars
+  (->honeysql driver [::cast expr "text"]))
 
 (defmethod ->honeysql [:sql :starts-with]
   [driver [_ field arg options]]

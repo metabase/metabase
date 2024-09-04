@@ -21,18 +21,27 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
   (:import
    (java.sql Connection ResultSet Time)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
-   (java.time.format DateTimeFormatter)))
+   (java.time
+    LocalDate
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime)
+   (java.time.format DateTimeFormatter)
+   [java.util UUID]))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
+                              :uuid-type                              true
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :index-info                             true
@@ -621,6 +630,10 @@
                          args)]
         ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause)))))
 
+(defmethod sql.qp/->honeysql [:sqlserver ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar(256)"]))
+
 (defmethod driver/db-default-timezone :sqlserver
   [driver database]
   (sql-jdbc.execute/do-with-connection-with-options
@@ -782,6 +795,18 @@
 (defmethod sql-jdbc.execute/set-parameter [:sqlserver OffsetTime]
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:sqlserver java.sql.Types/CHAR]
+  [driver ^java.sql.ResultSet rs ^java.sql.ResultSetMetaData rsmeta ^Integer i]
+  (condp = (u/lower-case-en (.getColumnTypeName rsmeta i))
+    "uniqueidentifier"
+    (fn read-column-as-UUID []
+      (when-let [s (.getObject rs i)]
+        (try
+          (UUID/fromString s)
+          (catch IllegalArgumentException _
+            s))))
+    ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc java.sql.Types/CHAR]) driver rs rsmeta i)))
 
 ;; instead of default `microsoft.sql.DateTimeOffset`
 (defmethod sql-jdbc.execute/read-column-thunk [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]
