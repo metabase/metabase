@@ -35,6 +35,8 @@ import {
   type IconName,
   Menu,
   Skeleton,
+  Text,
+  Tooltip,
 } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -481,7 +483,11 @@ function ValueCell({ metric }: { metric?: MetricResult }) {
                   return null;
                 }
 
-                return <Visualization rawSeries={rawSeries} />;
+                return (
+                  <Tooltip label={<Text>{t`Overall`}</Text>}>
+                    <Visualization rawSeries={rawSeries} />
+                  </Tooltip>
+                );
               }}
             </QuestionResultLoader>
           );
