@@ -98,7 +98,7 @@
    (partial group-bitmask num-breakouts)
    (distinct
     (map
-     vec
+     #(vec (sort %))
      ;; this can happen for the public/embed endpoints, where we aren't given a pivot-rows / pivot-cols parameter, so
      ;; we'll just generate everything
      (if (empty? (concat pivot-rows pivot-cols))
@@ -458,14 +458,15 @@
   index is selected, we have to shift the indexes before which a mapped index is inserted."
   [breakout-combination :- ::breakout-combination
    remap                :- [:map-of ::index ::index]]
-  (if (empty? breakout-combination)
-    []
+  (if (or (empty? remap)
+          (empty? breakout-combination))
+    breakout-combination
     (let [limit (apply max breakout-combination)
           selected (set breakout-combination)
           inserted (set (vals remap))]
       (loop [index 0, offset 0, combination []]
         (if (> index limit)
-          (vec (sort combination))
+          (-> combination sort vec)
           (let [offset (cond-> offset
                          (inserted (+ index offset)) inc)
                 spliced-index (+ index offset)

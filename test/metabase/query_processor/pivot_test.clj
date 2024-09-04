@@ -82,8 +82,8 @@
              (#'qp.pivot/breakout-combinations 3 [] []))))))
 
 (deftest ^:parallel breakout-combinations-test-4
-  (testing "I guess in some cases the order of breakouts can change?"
-    (is (= [[0 1 2] [1 2] [2] [1 0] [1] []]
+  (testing "The breakouts are sorted ascending."
+    (is (= [[0 1 2] [1 2] [2] [0 1] [1] []]
            (#'qp.pivot/breakout-combinations 3 [1 0] [2])))))
 
 (deftest ^:parallel validate-pivot-rows-cols-test
@@ -153,8 +153,8 @@
                           {:query {:breakout    [$orders.product_id->products.category
                                                  [:expression "pivot-grouping"]]
                                    :expressions {:pivot-grouping [:abs 3]}}}
-                          {:query {:breakout    [$orders.user_id->people.source
-                                                 $orders.user_id->people.state
+                          {:query {:breakout    [$orders.user_id->people.state
+                                                 $orders.user_id->people.source
                                                  [:expression "pivot-grouping"]]
                                    :expressions {:pivot-grouping [:abs 4]}}}
                           {:query {:breakout    [$orders.user_id->people.source
@@ -199,8 +199,8 @@
                                         num-breakouts
                                         (:pivot-rows pivot-options)
                                         (:pivot-cols pivot-options)))
-        3 [[0 1 2]   [1 2] [2] [1 0] [1] []]
-        4 [[0 1 2 3] [1 2] [2] [1 0] [1] []]))))
+        3 [[0 1 2]   [1 2] [2] [0 1] [1] []]
+        4 [[0 1 2 3] [1 2] [2] [0 1] [1] []]))))
 
 (deftest ^:parallel ignore-bad-pivot-options-test
   (mt/dataset test-data
