@@ -815,7 +815,7 @@
                            (proxy [TableResult] []
                              (getSchema [] (.getSchema result))
                              (getValues [] (.getValues result))
-                             (getNextPageToken [] (.getNextPageToken result))
+                             (hasNextPage [] (.hasNextPage result))
                              (getNextPage []
                                (if (zero? @page-counter)
                                  (throw (ex-info "onoes BigQuery failed to fetch a later page" {}))
