@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   POPOVER_ELEMENT,
+  type StructuredQuestionDetails,
   createQuestion,
   echartsContainer,
   enterCustomColumnDetails,
@@ -299,6 +300,29 @@ describe("scenarios > question > offset", () => {
       );
     });
 
+    // TODO: add an issue
+    it.skip("does not preview sql without a breakout", () => {
+      cy.intercept("POST", "/api/dataset/native").as("sqlPreview");
+
+      const query: StructuredQuery = {
+        "source-table": ORDERS_ID,
+        aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
+        limit: 5,
+      };
+
+      createQuestion({ query }, { visitQuestion: true });
+
+      openNotebook();
+
+      cy.findByLabelText("View the SQL").click();
+      cy.wait("@sqlPreview");
+
+      cy.findByTestId("native-query-preview-sidebar").should(
+        "not.contain",
+        "Error generating the query.",
+      );
+    });
+
     it("works with a single breakout", () => {
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
@@ -349,8 +373,20 @@ describe("scenarios > question > offset", () => {
       createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
-      /* TODO: assert actual values */
-      // verifyTableContent([[]]);
+      verifyTableContent([
+        [
+          "February 2026",
+          "52,249.59",
+          "February 2025",
+          "51,634.16",
+          "April 2025",
+          "51,347.1",
+          "September 2025",
+          "50,597.16",
+          "January 2026",
+          "48,260.76",
+        ],
+      ]);
     });
 
     it("works with multiple breakouts", () => {
@@ -478,6 +514,7 @@ describe("scenarios > question > offset", () => {
         legendItems,
       });
 
+      // checking data after saveQuestion is not necessary as it's covered by "works after saving a question (metabase#42323)"
       saveQuestion().then(({ response }) => {
         visitQuestion(response?.body.id);
         verifyNoQuestionError();
@@ -503,11 +540,64 @@ describe("scenarios > question > offset", () => {
       cy.findAllByTestId("notebook-cell-item").findByText(name).click();
       cy.findByTestId("expression-editor-textfield").should("contain", formula);
 
+      // TODO: remove this block or find a proper way to check console errors
       cy.on("uncaught:exception", error => {
         expect(error.message.includes("Error normalizing")).to.be.true;
         // verifies that this line is not called and whole the block can be removed
         expect(1).to.equal(2);
       });
+    });
+
+    it("should create filter and CC with offset aggregation and sort correctly", () => {
+      const questionDetails: StructuredQuestionDetails = {
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [OFFSET_SUM_TOTAL_AGGREGATION],
+            breakout: [ORDERS_CREATED_AT_BREAKOUT, PRODUCTS_CATEGORY_BREAKOUT],
+          },
+          filter: [
+            ">",
+            [
+              "field",
+              OFFSET_SUM_TOTAL_AGGREGATION_NAME,
+              { "base-type": "type/Integer" },
+            ],
+            10000,
+          ],
+          expressions: {
+            [`${OFFSET_SUM_TOTAL_AGGREGATION_NAME} * 2`]: [
+              "*",
+              [
+                "field",
+                OFFSET_SUM_TOTAL_AGGREGATION_NAME,
+                {
+                  "base-type": "type/Integer",
+                },
+              ],
+              2,
+            ],
+          },
+          "order-by": [
+            [
+              "desc",
+              [
+                "field",
+                OFFSET_SUM_TOTAL_AGGREGATION_NAME,
+                { "base-type": "type/Integer" },
+              ],
+            ],
+          ],
+        },
+      };
+
+      createQuestion(questionDetails, { visitQuestion: true });
+
+      verifyNoQuestionError();
+      verifyTableContent([
+        ["April 2025", "Gadget", "15,713", "31,426.01"],
+        ["September 2025", "Gadget", "15,017.31", "30,034.62"],
+      ]);
     });
   });
 });
