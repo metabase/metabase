@@ -265,14 +265,14 @@ describe("scenarios > question > offset", () => {
         .findByText("Pick the metric you want to see")
         .click();
       popover().findByText("Custom Expression").click();
-      enterCustomColumnDetails({ formula: prefix });
+      enterCustomColumnDetails({ formula: prefix, blur: false });
 
       cy.log("suggests offset() in aggregation expressions");
       cy.findByTestId("expression-suggestions-list-item")
         .should("exist")
         .and("have.text", "Offset");
 
-      enterCustomColumnDetails({ formula: expression });
+      enterCustomColumnDetails({ formula: expression, blur: false });
       cy.realPress("Tab");
 
       popover().within(() => {
@@ -504,7 +504,9 @@ describe("scenarios > question > offset", () => {
       cy.findByTestId("expression-editor-textfield").should("contain", formula);
 
       cy.on("uncaught:exception", error => {
-        expect(error.message.includes("Error normalizing")).not.to.be.true;
+        expect(error.message.includes("Error normalizing")).to.be.true;
+        // verifies that this line is not called and whole the block can be removed
+        expect(1).to.equal(2);
       });
     });
   });
