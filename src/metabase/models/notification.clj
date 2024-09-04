@@ -87,7 +87,7 @@
   "Find all notifications for a given event."
   [event-name]
   (t2/select :model/Notification
-             {:select [:n.*]
-              :from   [[:notification :n]]
+             {:select    [:n.*]
+              :from      [[:notification :n]]
               :left-join [[:notification_subscription :ns] [:= :n.id :ns.notification_id]]
-              :where  [:= :ns.event_name (u/qualified-name event-name)]}))
+              :where     [:= :ns.event_name (u/qualified-name event-name)]}))

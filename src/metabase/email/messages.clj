@@ -18,7 +18,6 @@
    [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
-   [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse.markdown :as markdown]
@@ -131,6 +130,11 @@
       :message-type :html
       :message      message-body})))
 
+#_(send-new-user-email! (t2/select-one :model/User :email "rasta@metabase.com")
+                        (t2/select-one-pk :model/User :email "crowberto@metabase.com")
+                        nil
+                        false)
+
 (defn- all-admin-recipients
   "Return a sequence of email addresses for all Admin users.
 
@@ -139,7 +143,7 @@
   []
   (concat (when-let [admin-email (public-settings/admin-email)]
             [admin-email])
-          (t2/select-fn-set :email 'User, :is_superuser true, :is_active true, {:order-by [[:id :asc]]})))
+          (t2/select-fn-set :email :model/User, :is_superuser true, :is_active true, {:order-by [[:id :asc]]})))
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
@@ -189,7 +193,7 @@
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by `metabase.models.login-history/human-friendly-infos`."
   [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map [:user_id pos-int?]]]
-  (let [user-info    (or (t2/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
+  (let [user-info    (or (t2/select-one [:model/User [:first_name :first-name] :email :locale] :id user-id)
                          (throw (ex-info (tru "User {0} does not exist" user-id)
                                          {:user-id user-id, :status-code 404})))
         user-locale  (or (:locale user-info) (i18n/site-locale))
@@ -235,9 +239,9 @@
      (concat
       (all-admin-recipients)
       (when (seq user-ids)
-        (t2/select-fn-set :email User {:where [:and
-                                               [:= :is_active true]
-                                               [:in :id user-ids]]}))))))
+        (t2/select-fn-set :email :model/User {:where [:and
+                                                      [:= :is_active true]
+                                                      [:in :id user-ids]]}))))))
 
 (defn send-persistent-model-error-email!
   "Format and send an email informing the user about errors in the persistent model refresh task."

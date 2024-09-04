@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
+   [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.audit-log :as audit-log]
@@ -327,8 +328,7 @@
                                     (str (public-settings/site-url) "/auth/login")
                                     ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
                                     (str (form-password-reset-url reset-token) "#new"))]
-    (classloader/require 'metabase.email.messages)
-    ((resolve 'metabase.email.messages/send-new-user-email!) new-user invitor join-url sent-from-setup?)))
+    (messages/send-new-user-email! new-user invitor join-url sent-from-setup?)))
 
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."

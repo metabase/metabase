@@ -59,7 +59,7 @@
   reuse it."
   [user :- UserAttributes]
   (try
-    (u/prog1 (first (t2/insert-returning-instances! User (merge user {:password (str (random-uuid))})))
+    (u/prog1 (t2/insert-returning-instance! User (merge user {:password (str (random-uuid))}))
       (log/infof "New SSO user created: %s (%s)" (:common_name <>) (:email <>))
       ;; publish user-invited event for audit logging
       (events/publish-event! :event/user-invited {:object (assoc <> :sso_source (:sso_source user))})

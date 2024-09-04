@@ -707,7 +707,7 @@
   "Helper function to write batched hydrations.
   Assoc to each `instances` a key `hydration-key` with data from calling `instance-key->hydrated-data-fn` by `instance-key`.
 
-    (mi/instances-with-hydrated-data
+    (instances-with-hydrated-data
       (t2/select :model/Database)
       :tables
       #(group-by :db_id
