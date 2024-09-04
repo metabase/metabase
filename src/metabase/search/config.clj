@@ -113,6 +113,7 @@
    ;;
    ;; optional
    ;;
+   [:is-superuser?                       {:optional true} :boolean] ;; ideally this would be provided on all paths
    [:created-at                          {:optional true} ms/NonBlankString]
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
