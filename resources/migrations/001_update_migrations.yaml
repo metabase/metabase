@@ -10044,6 +10044,74 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v51.2024-08-28T07:03:42
+      author: johnswanson
+      comment: Add `report_dashboardcard.is_dashboard_internal_card`
+      changes:
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: is_dashboard_internal_card
+                  type: ${boolean.type}
+                  remarks: |
+                    A denormalized representation that this edge from dashboard<->card should be the *only* edge from its card.
+                    Provides an efficient way to enforce the fact that
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-08-28T07:03:43
+      author: johnswanson
+      comment: Add `report_dashboardcard.dashboard_internal_card_id`
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE report_dashboardcard
+              ADD COLUMN dashboard_internal_card_id INT GENERATED ALWAYS AS (CASE WHEN is_dashboard_internal_card THEN card_id ELSE NULL END) STORED;
+      rollback:
+        - sql:
+            sql: >-
+              ALTER TABLE report_dashboardcard DROP COLUMN dashboard_internal_card_id;
+
+  - changeSet:
+      id: v51.2024-08-28T07:03:44
+      author: johnswanson
+      comment: Add unique index on `report_dashboardcard.dashboard_internal_card_id`
+      changes:
+        - addUniqueConstraint:
+            tableName: report_dashboardcard
+            columnNames: dashboard_internal_card_id
+            constraintName: unique_dashcard_dashboard_internal_card_id
+
+  - changeSet:
+      id: v51.2024-08-28T07:03:45
+      author: johnswanson
+      comment: Make `report_card.dashboard_id` a foreign key
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_report_card_ref_dashboard_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v51.2024-08-28T07:03:46
+      author: johnswanson
+      comment: Make `report_dashboardcard.dashboard_internal_card_id` a foreign key
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            baseColumnNames: dashboard_internal_card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_report_dashboardcard_ref_card_id
+            onDelete: CASCADE
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

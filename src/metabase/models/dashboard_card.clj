@@ -36,7 +36,10 @@
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
   (merge {:parameter_mappings     []
-          :visualization_settings {}} dashcard))
+          :visualization_settings {}}
+         ;; `dashboard_internal_card_id` is a generated column. Its only purpose is to provide a guarantee that a
+         ;; dashboard-internal Card may not have more than one `DashboardCard` link to a dashboard.
+         (dissoc dashcard :dashboard_internal_card_id)))
 
 (declare series)
 
