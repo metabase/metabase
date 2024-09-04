@@ -41,35 +41,39 @@
       500))
 
 (defn- format-exception [e]
-  (assoc (Throwable->map e) :_status (ex-status-code e)))
+  (-> (Throwable->map e)
+      (update :via (fn [cause-chain] (map #(dissoc % :data :ex-data :viz-settings :visualization_settings :visualization-settings :preprocessed) cause-chain)))
+      (assoc :_status (ex-status-code e))))
 
 (defn write-error!
   "Write an error to the output stream, formatting it nicely. Closes output stream afterwards."
-  [^OutputStream os obj]
-  (cond
-    (some #(instance? % obj)
-          [InterruptedException EofException])
-    (log/trace "Error is an InterruptedException or EofException, not writing to output stream")
+  [^OutputStream os {:keys [export-format] :as obj}]
+  (let [obj (dissoc obj :export-format)]
+    (cond
+      (some #(instance? % obj)
+            [InterruptedException EofException])
+      (log/trace "Error is an InterruptedException or EofException, not writing to output stream")
 
-    (instance? Throwable obj)
-    (recur os (format-exception obj))
+      (instance? Throwable obj)
+      (recur os (format-exception obj))
 
-    :else
-    (with-open [os os]
-      (log/trace (u/pprint-to-str (list 'write-error! obj)))
-      (try
-        (let [obj (if (map? obj)
-                    (walk/prewalk (fn [x]
-                                    (if (map? x)
-                                      (apply dissoc x [:visualization_settings :visualization-settings :viz-settings :preprocessed :column_settings :column-settings])
-                                      x))
-                                  obj)
-                    obj)]
-          (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
-            (json/generate-stream obj writer)))
-        (catch EofException _)
-        (catch Throwable e
-          (log/error e "Error writing error to output stream" obj))))))
+      :else
+      (with-open [os os]
+        (log/trace (u/pprint-to-str (list 'write-error! obj)))
+        (try
+          (let [obj (if (not= :api export-format)
+                      (walk/prewalk
+                       (fn [x]
+                         (if (map? x)
+                           (apply dissoc x [:json_query :preprocessed])
+                           x))
+                       obj)
+                      obj)]
+            (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
+              (json/generate-stream obj writer)))
+          (catch EofException _)
+          (catch Throwable e
+            (log/error e "Error writing error to output stream" obj)))))))
 
 (defn- do-f* [f ^OutputStream os _finished-chan canceled-chan]
   (try
