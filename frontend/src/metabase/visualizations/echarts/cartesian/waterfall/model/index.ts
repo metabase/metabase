@@ -33,6 +33,7 @@ import {
 export const getWaterfallChartModel = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
+  hiddenSeries: string[],
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): WaterfallChartModel => {
@@ -46,6 +47,7 @@ export const getWaterfallChartModel = (
   const [seriesModel] = getCardSeriesModels(
     singleRawSeries,
     cardsColumns[0],
+    [],
     false,
     true,
     settings,

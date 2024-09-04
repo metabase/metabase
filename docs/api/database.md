@@ -35,6 +35,11 @@ Fetch all `Databases`.
 
   * `include_only_uploadable` will only include DBs into which Metabase can insert new data.
 
+  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
+  [[metabase.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
+  in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
+  database details.
+
 ### PARAMS:
 
 -  **`include`** include must be either empty or the value tables.
@@ -60,6 +65,11 @@ Get a single Database with `id`. Optionally pass `?include=tables` or `?include=
    permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
    In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
    and tables, with no additional metadata.
+
+   Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
+   [[metabase.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
+   in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
+   database details.
 
 ### PARAMS:
 
