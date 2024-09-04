@@ -208,10 +208,15 @@ function ExplicitSize<T>({
             return;
           }
 
+          // Use requestAnimationFrame to avoid layout thrashing.
+          // This fixes the "ResizeObserver loop completed with undelivered notifications" error.
+          // Refer to https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver#observation_errors
           if (this.state.width !== width || this.state.height !== height) {
-            this.setState({ width, height }, () =>
-              this.props?.onUpdateSize?.(),
-            );
+            requestAnimationFrame(() => {
+              this.setState({ width, height }, () =>
+                this.props?.onUpdateSize?.(),
+              );
+            });
           }
         }
       };
