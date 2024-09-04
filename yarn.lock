@@ -2809,6 +2809,25 @@
     "@microsoft/tsdoc-config" "~0.17.0"
     "@rushstack/node-core-library" "5.7.0"
 
+"@microsoft/api-extractor@^7.47.7":
+  version "7.47.7"
+  resolved "https://registry.yarnpkg.com/@microsoft/api-extractor/-/api-extractor-7.47.7.tgz#3bc4450fe46c265bef857ab938aa15b9fc7a85de"
+  integrity sha512-fNiD3G55ZJGhPOBPMKD/enozj8yxJSYyVJWxRWdcUtw842rvthDHJgUWq9gXQTensFlMHv2wGuCjjivPv53j0A==
+  dependencies:
+    "@microsoft/api-extractor-model" "7.29.6"
+    "@microsoft/tsdoc" "~0.15.0"
+    "@microsoft/tsdoc-config" "~0.17.0"
+    "@rushstack/node-core-library" "5.7.0"
+    "@rushstack/rig-package" "0.5.3"
+    "@rushstack/terminal" "0.14.0"
+    "@rushstack/ts-command-line" "4.22.6"
+    lodash "~4.17.15"
+    minimatch "~3.0.3"
+    resolve "~1.22.1"
+    semver "~7.5.4"
+    source-map "~0.6.1"
+    typescript "5.4.2"
+
 "@microsoft/tsdoc-config@~0.17.0":
   version "0.17.0"
   resolved "https://registry.yarnpkg.com/@microsoft/tsdoc-config/-/tsdoc-config-0.17.0.tgz#82605152b3c1d3f5cd4a11697bc298437484d55d"
@@ -3218,6 +3237,14 @@
     jju "~1.4.0"
     resolve "~1.22.1"
     semver "~7.5.4"
+
+"@rushstack/rig-package@0.5.3":
+  version "0.5.3"
+  resolved "https://registry.yarnpkg.com/@rushstack/rig-package/-/rig-package-0.5.3.tgz#ea4d8a3458540b1295500149c04e645f23134e5d"
+  integrity sha512-olzSSjYrvCNxUFZowevC3uz8gvKr3WTpHQ7BkpjtRpA3wK+T0ybep/SRUMfr195gBzJm5gaXw0ZMgjIyHqJUow==
+  dependencies:
+    resolve "~1.22.1"
+    strip-json-comments "~3.1.1"
 
 "@rushstack/terminal@0.14.0":
   version "0.14.0"
@@ -16228,7 +16255,7 @@ lodash.uniq@4.5.0:
   resolved "https://registry.yarnpkg.com/lodash.uniq/-/lodash.uniq-4.5.0.tgz#d0225373aeb652adc1bc82e4945339a842754773"
   integrity sha1-0CJTc662Uq3BvILklFM5qEJ1R3M=
 
-lodash@4.17.21, lodash@^4.0.1, lodash@^4.17.10, lodash@^4.17.11, lodash@^4.17.14, lodash@^4.17.15, lodash@^4.17.19, lodash@^4.17.20, lodash@^4.17.21, lodash@^4.17.3, lodash@^4.2.1:
+lodash@4.17.21, lodash@^4.0.1, lodash@^4.17.10, lodash@^4.17.11, lodash@^4.17.14, lodash@^4.17.15, lodash@^4.17.19, lodash@^4.17.20, lodash@^4.17.21, lodash@^4.17.3, lodash@^4.2.1, lodash@~4.17.15:
   version "4.17.21"
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.21.tgz#679591c564c3bffaae8454cf0b3df370c3d6911c"
   integrity sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==
@@ -17294,6 +17321,13 @@ minimatch@^9.0.4, minimatch@^9.0.5:
   integrity sha512-G6T0ZX48xgozx7587koeX9Ys2NYy6Gmv//P89sEte9V9whIapMNF4idKxnW2QtCcLiTWlb/wfCabAtAFWhhBow==
   dependencies:
     brace-expansion "^2.0.1"
+
+minimatch@~3.0.3:
+  version "3.0.8"
+  resolved "https://registry.yarnpkg.com/minimatch/-/minimatch-3.0.8.tgz#5e6a59bd11e2ab0de1cfb843eb2d82e546c321c1"
+  integrity sha512-6FsRAQsxQ61mw+qP1ZzbL9Bc78x2p5OqNgNpnoAFLTrX8n5Kxph0CsnhmKKNXTWjXqU5L0pGPR7hYk+XWZr60Q==
+  dependencies:
+    brace-expansion "^1.1.7"
 
 minimist@^1.1.1, minimist@^1.1.3, minimist@^1.2.0, minimist@^1.2.5:
   version "1.2.6"
@@ -22491,7 +22525,7 @@ strip-indent@^3.0.0:
   dependencies:
     min-indent "^1.0.0"
 
-strip-json-comments@3.1.1, strip-json-comments@^3.1.0, strip-json-comments@^3.1.1:
+strip-json-comments@3.1.1, strip-json-comments@^3.1.0, strip-json-comments@^3.1.1, strip-json-comments@~3.1.1:
   version "3.1.1"
   resolved "https://registry.yarnpkg.com/strip-json-comments/-/strip-json-comments-3.1.1.tgz#31f1281b3832630434831c310c01cccda8cbe006"
   integrity sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==
@@ -23466,6 +23500,11 @@ typedoc@^0.26.6:
     minimatch "^9.0.5"
     shiki "^1.9.1"
     yaml "^2.4.5"
+
+typescript@5.4.2:
+  version "5.4.2"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.4.2.tgz#0ae9cebcfae970718474fe0da2c090cad6577372"
+  integrity sha512-+2/g0Fds1ERlP6JsakQQDXjZdZMM+rqpamFZJEKh4kwTIn3iDkgKtby0CeNd5ATNZ4Ry1ax15TMx0W2V+miizQ==
 
 typescript@^5.3.3, typescript@^5.4.5:
   version "5.4.5"
