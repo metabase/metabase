@@ -14,14 +14,12 @@ const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
 
 // this map should be synced with "tsconfig.sdk.json"
 const REPLACES_MAP = {
-  "metabase-enterprise/": `${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/metabase-enterprise/`,
-  "metabase-lib/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-lib/`,
+  "metabase-enterprise": `${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/metabase-enterprise`,
   "metabase-lib": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-lib`,
-  "metabase-shared/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-shared/`,
-  "metabase-types/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-types/`,
-  "metabase/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase/`,
-  "embedding-sdk/": `${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/embedding-sdk/`,
-  "cljs/": `${SDK_PACKAGE_NAME}/dist/target/cljs_release/`,
+  "metabase-types": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-types`,
+  "metabase": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase`,
+  "embedding-sdk": `${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/embedding-sdk`,
+  "cljs": `${SDK_PACKAGE_NAME}/dist/target/cljs_release`,
 };
 
 const traverseFilesTree = dir => {
@@ -49,7 +47,10 @@ const replaceAliasedImports = filePath => {
 
   Object.entries(REPLACES_MAP).forEach(([alias, replacement]) => {
     fileContent = fileContent
-      .replaceAll(`from "${alias}`, `from "${replacement}`)
+      // replaces "metabase-lib/foo" with "<sdk>/metabase-lib/foo"
+      .replaceAll(`from "${alias}/`, `from "${replacement}/`)
+      // replaces "metabase-lib" with "<sdk>/metabase-lib"
+      .replaceAll(`from "${alias}"`, `from "${replacement}"`)
       .replaceAll(`import("${alias}`, `import("${replacement}`)
       .replace(
         // replace dynamic imports using alias, with possible relative paths - "../../" and "frontend/src/"

@@ -544,6 +544,26 @@ describeWithSnowplow("scenarios > setup", () => {
       });
 
       expectGoodSnowplowEvents(goodEvents);
+
+      cy.findByText(
+        "Get infrequent emails about new releases and feature updates.",
+      ).click();
+
+      expectGoodSnowplowEvent({
+        event: "newsletter-toggle-clicked",
+        triggered_from: "setup",
+        event_detail: "opted-in",
+      });
+
+      cy.findByText(
+        "Get infrequent emails about new releases and feature updates.",
+      ).click();
+
+      expectGoodSnowplowEvent({
+        event: "newsletter-toggle-clicked",
+        triggered_from: "setup",
+        event_detail: "opted-out",
+      });
     });
   });
 

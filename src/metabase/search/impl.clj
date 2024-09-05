@@ -95,7 +95,7 @@
 (mu/defn- base-query-for-model :- [:map {:closed true}
                                    [:select :any]
                                    [:from :any]
-                                   [:where :any]
+                                   [:where {:optional true} :any]
                                    [:join {:optional true} :any]
                                    [:left-join {:optional true} :any]]
   "Create a HoneySQL query map with `:select`, `:from`, and `:where` clauses for `model`, suitable for the `UNION ALL`
@@ -111,7 +111,9 @@
   [honeysql-query                                :- ms/Map
    model                                         :- :string
    {:keys [filter-items-in-personal-collection
-           archived]} :- SearchContext]
+           archived
+           current-user-id
+           is-superuser?]} :- SearchContext]
   (let [collection-id-col        (if (= model "collection")
                                    :collection.id
                                    :collection_id)
@@ -121,7 +123,9 @@
                                    :include-trash-collection? true
                                    :permission-level (if archived
                                                        :write
-                                                       :read)})]
+                                                       :read)}
+                                  {:current-user-id current-user-id
+                                   :is-superuser?   is-superuser?})]
     (cond-> honeysql-query
       true
       (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
@@ -238,8 +242,7 @@
                              [:= :model.id :action.model_id])
       (sql.helpers/left-join :query_action
                              [:= :query_action.action_id :action.id])
-      (add-collection-join-and-where-clauses model
-                                             search-ctx)))
+      (add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "card"
   [_model search-ctx]
@@ -604,6 +607,7 @@
    [:search-string                                        [:maybe ms/NonBlankString]]
    [:models                                               [:maybe [:set SearchableModel]]]
    [:current-user-id                                      pos-int?]
+   [:is-superuser?                                        :boolean]
    [:current-user-perms                                   [:set perms.u/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
@@ -619,12 +623,13 @@
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]])
 
-(mu/defn search-context
+(mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
   [{:keys [archived
            created-at
            created-by
            current-user-id
+           is-superuser?
            current-user-perms
            last-edited-at
            last-edited-by
@@ -637,7 +642,7 @@
            table-db-id
            search-native-query
            verified
-           ids]}      :- ::search-context.input] :- SearchContext
+           ids]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -647,6 +652,7 @@
   (let [models (if (string? models) [models] models)
         ctx    (cond-> {:archived?          (boolean archived)
                         :current-user-id    current-user-id
+                        :is-superuser?      is-superuser?
                         :current-user-perms current-user-perms
                         :model-ancestors?   (boolean model-ancestors?)
                         :models             models

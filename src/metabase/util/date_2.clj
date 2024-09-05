@@ -514,6 +514,8 @@
     converts it to the corresponding offset/zoned type; for offset/zoned types, this applies an appropriate timezone
     shift."))
 
+(def ^:private local-time-0 (t/local-time 0))
+
 (extend-protocol WithTimeZoneSameInstant
   ;; convert to a OffsetTime with no offset (UTC); the OffsetTime method impl will apply the zone shift.
   LocalTime
@@ -526,15 +528,11 @@
 
   LocalDate
   (with-time-zone-same-instant [t zone-id]
-    (t/offset-date-time t (t/local-time 0) zone-id))
-
-  LocalDate
-  (with-time-zone-same-instant [t zone-id]
-    (t/offset-date-time t (t/local-time 0) zone-id))
+    (with-time-zone-same-instant (LocalDateTime/of t local-time-0) zone-id))
 
   LocalDateTime
-  (with-time-zone-same-instant [t zone-id]
-    (t/offset-date-time t zone-id))
+  (with-time-zone-same-instant [t ^java.time.ZoneId zone-id]
+    (OffsetDateTime/of t (.getOffset (.getRules zone-id) t)))
 
   ;; instants are always normalized to UTC, so don't make any changes here. If you want to format in a different zone,
   ;; convert to an OffsetDateTime or ZonedDateTime first.
