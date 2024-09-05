@@ -26,7 +26,7 @@ import {
 } from "./DashboardPicker";
 import { NewDashboardDialog } from "./NewDashboardDialog";
 
-interface DashboardPickerModalProps {
+export interface DashboardPickerModalProps {
   title?: string;
   onChange: (item: DashboardPickerValueItem) => void;
   onClose: () => void;
@@ -38,12 +38,17 @@ interface DashboardPickerModalProps {
     item: DashboardPickerItem,
     isReadOnlyCollection?: boolean,
   ) => boolean;
+  canSelectCollection?: boolean;
 }
 
 const canSelectItem = (
   item: DashboardPickerItem | DashboardPickerInitialValueItem | null,
+  canSelectCollection: boolean,
 ): item is DashboardPickerValueItem => {
-  return item?.model === "dashboard";
+  return (
+    item?.model === "dashboard" ||
+    (canSelectCollection && item?.model === "collection")
+  );
 };
 
 const defaultOptions: DashboardPickerOptions = {
@@ -60,11 +65,12 @@ export const DashboardPickerModal = ({
   shouldDisableItem,
   searchFilter,
   recentFilter,
+  canSelectCollection = false,
 }: DashboardPickerModalProps) => {
   options = { ...defaultOptions, ...options };
 
   const [selectedItem, setSelectedItem] = useState<DashboardPickerItem | null>(
-    canSelectItem(value) ? value : null,
+    canSelectItem(value, canSelectCollection) ? value : null,
   );
 
   const { tryLogRecentItem } = useLogRecentItem();
@@ -90,15 +96,15 @@ export const DashboardPickerModal = ({
     (item: DashboardPickerItem) => {
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
-      } else if (canSelectItem(item)) {
+      } else if (canSelectItem(item, canSelectCollection)) {
         handleOnChange(item);
       }
     },
-    [handleOnChange, options],
+    [handleOnChange, options, canSelectCollection],
   );
 
   const handleConfirm = () => {
-    if (selectedItem && canSelectItem(selectedItem)) {
+    if (selectedItem && canSelectItem(selectedItem, canSelectCollection)) {
       handleOnChange(selectedItem);
     }
   };
@@ -117,15 +123,18 @@ export const DashboardPickerModal = ({
 
   const tabs: EntityTab<CollectionPickerModel>[] = [
     {
-      displayName: t`Dashboards`,
+      displayName: canSelectCollection
+        ? t`Collections and Dashboards`
+        : t`Dashboards`,
       model: "dashboard",
+      additionalModels: canSelectCollection ? ["collection"] : undefined,
       icon: "dashboard",
       element: (
         <DashboardPicker
           onItemSelect={handleItemSelect}
           initialValue={value}
           options={options}
-          models={["dashboard"]}
+          models={["dashboard", "collection"]}
           ref={pickerRef}
           shouldDisableItem={shouldDisableItem}
         />
@@ -144,7 +153,10 @@ export const DashboardPickerModal = ({
       <EntityPickerModal
         title={title}
         onItemSelect={handleItemSelect}
-        canSelectItem={!isCreateDialogOpen && canSelectItem(selectedItem)}
+        canSelectItem={
+          !isCreateDialogOpen &&
+          canSelectItem(selectedItem, canSelectCollection)
+        }
         onConfirm={handleConfirm}
         onClose={onClose}
         selectedItem={selectedItem}

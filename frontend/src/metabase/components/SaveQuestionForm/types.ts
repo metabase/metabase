@@ -1,5 +1,5 @@
 import type Question from "metabase-lib/v1/Question";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, DashboardId } from "metabase-types/api";
 
 export type SaveQuestionProps = {
   question: Question;
@@ -15,6 +15,7 @@ export type SaveQuestionProps = {
 export type FormValues = {
   saveType: "overwrite" | "create";
   collection_id: CollectionId | null | undefined;
+  dashboard_id: DashboardId | null | undefined;
   name: string;
   description: string;
 };

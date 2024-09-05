@@ -207,6 +207,7 @@ const Questions = createEntity({
     "enable_embedding",
     "embedding_params",
     "collection_id",
+    "dashboard_id", // TODO: make sure it is in sync with src/metabase/api/card.clj
     "collection_position",
     "collection_preview",
     "result_metadata",

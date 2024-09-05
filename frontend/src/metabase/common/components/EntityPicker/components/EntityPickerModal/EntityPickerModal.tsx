@@ -120,7 +120,10 @@ export function EntityPickerModal<
   const { open } = useModalOpen();
 
   const tabModels = useMemo(
-    () => passedTabs.map(t => t.model).filter(Boolean),
+    () =>
+      passedTabs
+        .flatMap(t => (t.additionalModels || []).concat(t.model))
+        .filter(Boolean),
     [passedTabs],
   );
 
