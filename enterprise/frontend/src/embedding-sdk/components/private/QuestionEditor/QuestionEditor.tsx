@@ -78,6 +78,7 @@ const QuestionEditorInner = () => {
           question={question}
           originalQuestion={originalQuestion ?? null}
           opened={true}
+          closeOnSuccess={true}
           onClose={closeSaveModal}
           onCreate={onCreate}
           onSave={onSave}
