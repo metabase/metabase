@@ -14,6 +14,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definition-test :as dataset-definition-test]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -213,7 +214,9 @@
                     (mt/sql-jdbc-drivers)
                     (mt/normal-drivers-with-feature :uuid-type))
     (let [uuid (random-uuid)
-          uuid-query (mt/native-query {:query (format "select cast('%s' as uuid) as x" uuid)})
+          uuid-query (mt/native-query {:query (format "select cast('%s' as %s) as x"
+                                                      uuid
+                                                      (sql.tx/field-base-type->sql-type driver/*driver* :type/UUID))})
           results (qp/process-query uuid-query)
           result-metadata (get-in results [:data :results_metadata :columns])
           col-metadata (first result-metadata)]
