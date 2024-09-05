@@ -61,6 +61,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   CardId,
   RawSeries,
@@ -337,6 +338,21 @@ export const getSeriesHoverData = (
   };
 };
 
+const getAdditionalTooltipRowsData = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  seriesIndex: number,
+  dataIndex: number,
+) => {
+  const additionalColumns = new Set(settings["graph.tooltip_columns"]);
+  const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
+
+  return data.filter(
+    entry =>
+      entry.col != null && additionalColumns.has(getColumnKey(entry.col)),
+  );
+};
+
 export const getTooltipModel = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
@@ -388,7 +404,8 @@ export const getTooltipModel = (
     settings,
     datum,
     dataIndex,
-    seriesDataKey,
+    hoveredSeries,
+    seriesIndex,
   );
 };
 
@@ -425,7 +442,8 @@ export const getSeriesOnlyTooltipModel = (
   settings: ComputedVisualizationSettings,
   datum: Datum,
   dataIndex: number,
-  seriesDataKey: DataKey,
+  hoveredSeries: SeriesModel,
+  hoveredSeriesIndex: number,
 ): EChartsTooltipModel | null => {
   const header = String(
     formatValueForTooltip({
@@ -435,18 +453,20 @@ export const getSeriesOnlyTooltipModel = (
     }),
   );
 
-  const rows: EChartsTooltipRow[] = chartModel.seriesModels
+  const seriesRows: EChartsTooltipRow[] = chartModel.seriesModels
     .filter(seriesModel => seriesModel.visible)
     .map((seriesModel, seriesIndex) => {
+      const isHoveredSeries = seriesModel.dataKey === hoveredSeries.dataKey;
+      const isFocused = isHoveredSeries && chartModel.seriesModels.length > 1;
+
       const prevValue = computeDiffWithPreviousPeriod(
         chartModel,
         seriesIndex,
         dataIndex,
       );
+
       return {
-        isFocused:
-          chartModel.seriesModels.length > 1 &&
-          seriesModel.dataKey === seriesDataKey,
+        isFocused,
         name: seriesModel.name,
         markerColorClass: getMarkerColorClass(seriesModel.color),
         values: [
@@ -460,6 +480,36 @@ export const getSeriesOnlyTooltipModel = (
         ],
       };
     });
+
+  const additionalColumnsRows = getAdditionalTooltipRowsData(
+    chartModel,
+    settings,
+    hoveredSeriesIndex,
+    dataIndex,
+  ).map(data => {
+    return {
+      isSecondary: true,
+      name: data.key,
+      values: [
+        formatValueForTooltip({
+          value: data.value,
+          column: data.col,
+          settings,
+          isAlreadyScaled: true,
+        }),
+      ],
+    };
+  });
+
+  const rows = [...seriesRows];
+  if (isBreakoutSeries(hoveredSeries)) {
+    // For breakout series we show additional columns right below the series values
+    const additionalColumnsIndex =
+      seriesRows.findIndex(row => row.isFocused) + 1;
+    rows.splice(additionalColumnsIndex, 0, ...additionalColumnsRows);
+  } else {
+    rows.push(...additionalColumnsRows);
+  }
 
   return {
     header,

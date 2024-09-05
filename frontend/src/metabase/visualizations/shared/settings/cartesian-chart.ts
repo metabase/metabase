@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getMaxDimensionsSupported } from "metabase/visualizations";
+import { getCardsColumns } from "metabase/visualizations/echarts/cartesian/model";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
@@ -11,6 +12,7 @@ import {
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isAny,
   isDate,
@@ -381,4 +383,46 @@ function getDefaultLineAreaBarColumns(series: RawSeries) {
     series,
     getMaxDimensionsSupported(display),
   );
+}
+
+export function getAvailableAdditionalColumns(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+): DatasetColumn[] {
+  const alreadyIncludedColumns = new Set<DatasetColumn>();
+
+  getCardsColumns(rawSeries, settings).forEach(cardColumns => {
+    alreadyIncludedColumns.add(cardColumns.dimension.column);
+    if ("breakout" in cardColumns) {
+      alreadyIncludedColumns.add(cardColumns.breakout.column);
+      alreadyIncludedColumns.add(cardColumns.metric.column);
+    } else {
+      cardColumns.metrics.forEach(columnDescriptor =>
+        alreadyIncludedColumns.add(columnDescriptor.column),
+      );
+    }
+  });
+
+  return rawSeries
+    .flatMap(singleSeries => {
+      return singleSeries.data.cols;
+    })
+    .filter(column => !alreadyIncludedColumns.has(column));
+}
+
+export function getComputedAdditionalColumnsValue(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  const availableAdditionalColumnKeys = new Set(
+    getAvailableAdditionalColumns(rawSeries, settings).map(column =>
+      getColumnKey(column),
+    ),
+  );
+
+  const filteredStoredColumns = (
+    settings["graph.tooltip_columns"] ?? []
+  ).filter((columnKey: string) => availableAdditionalColumnKeys.has(columnKey));
+
+  return filteredStoredColumns;
 }
