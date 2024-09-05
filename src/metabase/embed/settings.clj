@@ -45,6 +45,14 @@
                                           :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
                                           :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))
 
+(defsetting enable-embedding-sdk
+  (deferred-tru "Allow admins to set the enable embedding Metabase via the SDK?")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    true
+  :audit      :getter)
+
 ;; settings for the embedding homepage
 (defsetting embedding-homepage
   (deferred-tru "Embedding homepage status, indicating if it's visible, hidden or has been dismissed")
