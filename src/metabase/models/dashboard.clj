@@ -195,7 +195,7 @@
    dashboards k
    #(group-by :dashboard_id (t2/select :model/DashboardTab
                                        :dashboard_id [:in (map :id dashboards)]
-                                       {:order-by [[:dashboard_id :asc] [:position :asc]]}))
+                                       {:order-by [[:dashboard_id :asc] [:position :asc] [:id :asc]]}))
    :id
    {:default []}))
 
