@@ -125,6 +125,8 @@ describe("scenarios > visualizations > legend", () => {
   });
 
   it("should toggle series visibility on a dashboard", () => {
+    cy.viewport(1800, 1600);
+
     cy.createDashboardWithQuestions({
       questions: [
         SINGLE_AGGREGATION_QUESTION,
