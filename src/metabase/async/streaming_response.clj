@@ -41,9 +41,7 @@
       500))
 
 (defn- format-exception [e]
-  (-> (Throwable->map e)
-      (update :via (fn [cause-chain] (map #(dissoc % :data :ex-data :viz-settings :visualization_settings :visualization-settings :preprocessed) cause-chain)))
-      (assoc :_status (ex-status-code e))))
+  (assoc (Throwable->map e) :_status (ex-status-code e)))
 
 (defn write-error!
   "Write an error to the output stream, formatting it nicely. Closes output stream afterwards."
