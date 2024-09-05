@@ -703,6 +703,7 @@
    metabase.api.card-test/with-temp-native-card!                                                                             hooks.common/with-two-bindings
    metabase.api.card-test/with-temp-native-card-with-params!                                                                 hooks.common/with-two-bindings
    metabase.api.collection-test/with-french-user-and-personal-collection                                                     hooks.common/with-two-top-level-bindings
+   metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
