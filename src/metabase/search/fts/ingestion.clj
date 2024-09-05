@@ -1,133 +1,120 @@
 (ns metabase.search.fts.ingestion
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
-   [metabase.util.honey-sql-2 :as h2x]
+   [honey.sql :as sql]
+   [metabase.search.config :as search.config]
+   [metabase.search.impl :as search.impl]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
+
+(set! *warn-on-reflection* true)
+
+(def ^:private tsv-language "english")
 
 (def ^:private primary-keys
   [:name :description])
 
 (def ^:private secondary-keys
-  [:collection_name :table_description])
+  [#_:collection_name :table_description])
 
 (defn- combine-fields [m ks]
   (str/join " " (keep m ks)))
 
-(defn- display-data [m]
-  (select-keys m [:id :model :name :description]))
-
-(defn- attrs
-  "Attributes for the tsvector"
-  [_m]
-  ;; ideas:
-  ;; - collection name
-  ;; - archived
-  ;; -
-  nil)
+(defn- model-rank [model]
+  (let [idx (.indexOf search.config/models-search-order model)]
+    (if (= -1 idx)
+      ;; Give unknown models the lowest priority
+      (count search.config/models-search-order)
+      idx)))
 
 (defn- legacy->index [m]
-  {:primary       (combine-fields m primary-keys)
-   :secondary     (combine-fields m secondary-keys)
-   :model         (:model m)
-   :model_id      (:id m)
-   ;; TODO - share this with existing rankers
-   :model_rank    1
-   :display_data  (json/generate-string (display-data m))
-   :attrs         (attrs m)
-   ;; fks
-   :collection_id (:collection_id m)
-   :database_id   (:database_id m)
-   :table_id      (:table_id m)})
+  (let [search-text (str
+                     (combine-fields m primary-keys) " "
+                     (combine-fields m secondary-keys))]
+    {;; entity
+     :model         (:model m)
+     :model_id      (:id m)
+     ;; search
+     ;; :search_text   search-text
+     :search_vector [:to_tsvector
+                     [:inline tsv-language]
+                     [:cast search-text :text]]
+     ;; scoring related
+     :model_rank    (model-rank (:model m))
+     ;; permission releated entities
+     :collection_id (:collection_id m)
+     :database_id   (:database_id m)
+     :table_id      (:table_id m)
+     ;; filter related
+     :archived      (boolean (:archived m))}))
 
-(defn reducible-cards
-  "Gimme something to index"
-  []
+(defn- search-items-reducible []
   (t2/reducible-query
-   ;; Taken from existing search queries
-   `{:select    ([~(h2x/literal "card") :model]
-                 :card.id
-                 :card.name
-                 [[:cast nil :text] :display_name]
-                 :card.description
-                 :card.archived
-                 :card.collection_id
-                 [:collection.name :collection_name]
-                 [:collection.type :collection_type]
-                 [:collection.location :collection_location]
-                 [:collection.authority_level :collection_authority_level]
-                 :card.archived_directly
-                 :card.collection_position
-                 :card.creator_id
-                 :card.created_at
-                 [[:case [:not= :bookmark.id nil] true :else false] :bookmark]
-                 :card.updated_at
-                 ;; for ranking
-                 [{:select [:%count.*],
-                   :from   [:report_dashboardcard]
-                   :where  [:= :report_dashboardcard.card_id :card.id]}
-                  :dashboardcard_count]
-                 [:r.timestamp :last_edited_at]
-                 [:r.user_id :last_editor_id]
-                 [:mr.status :moderated_status]
-                 :card.display
-                 :card.dataset_query),
-     :from      [[:report_card :card]],
-     :where     [:and
-                 #_[:or [:like [:lower :card.name] "%meouw%"] [:like [:lower :card.description] "%meouw%"]]
-                 #_[:= :card.archived false]
-                 [:= :card.type "question"]
-                 #_[:or
-                    [:= :collection_id nil]
-                    [:in
-                     :collection_id
-                     {:select :id,
-                      :from   [[{:union-all [{:select [:c.*],
-                                              :from   [[:collection :c]],
-                                              :join   [[:permissions :p]
-                                                       [:= :c.id :p.collection_id]
-                                                       [:permissions_group :pg]
-                                                       [:= :pg.id :p.group_id]
-                                                       [:permissions_group_membership :pgm]
-                                                       [:= :pgm.group_id :pg.id]],
-                                              :where  [:and
-                                                       [:= :pgm.user_id 1]
-                                                       [:= :p.perm_type "perms/collection-access"]
-                                                       [:or [:= :p.perm_value "read-and-write"] [:= :p.perm_value "read"]]]}
-                                             {:select [:c.*], :from [[:collection :c]], :where [:in :id (3)]}]}
-                                :c]],
-                      :where  [:and nil nil nil nil nil]}]]
-                 [:= :collection.namespace nil]],
-     :left-join [[:card_bookmark :bookmark]
-                 [:and [:= :bookmark.card_id :card.id] [:= :bookmark.user_id 1]]
-                 [:collection :collection]
-                 [:= :collection_id :collection.id]
-                 [:revision :r]
-                 [:and [:= :r.model_id :card.id] [:= :r.most_recent true] [:= :r.model "Card"]]
-                 [:moderation_review :mr]
-                 [:and
-                  [:= :mr.moderated_item_type "card"]
-                  [:= :mr.moderated_item_id :card.id]
-                  [:= :mr.most_recent true]]],
-     }))
+   (search.impl/full-search-query
+    {:archived?          nil
+     ;; this does not matter since we're a superuser
+     :current-user-id    1
+     :is-superuser?      true
+     :current-user-perms #{"/"}
+     :model-ancestors?   false
+     :models             search.config/all-models
+     :search-string      nil})))
 
+(defn search-query
+  "Use the index table to search for records."
+  [search-term]
+  (map (juxt :model_id :model)
+       (t2/query
+        (sql/format
+         {:select [:*]
+          :from   [:search_index]
+          :where  [:raw "search_vector @@ websearch_to_tsquery('" tsv-language "', " [:param :search-term] ")"]}
+         {:params {:search-term search-term}}))))
+
+(defn- legacy-query
+  "Use the source tables directly to search for records."
+  [search-term]
+  (map (juxt :id :model)
+       (t2/query
+        (search.impl/full-search-query
+         {:archived?          nil
+          ;; this does not matter since we're a superuser
+          :current-user-id    1
+          :is-superuser?      true
+          :current-user-perms #{"/"}
+          :model-ancestors?   false
+          :models             (disj search.config/all-models "indexed-entity")
+          :search-string      search-term}))))
+
+(defn build-index!
+  "Go over all searchable items and populate the index with them."
+  []
+  (->> (search-items-reducible)
+       (eduction
+        ;; not sure how to get this to play nicely with partition
+         (comp
+          (map t2.realize/realize)
+          (map legacy->index)))
+       (run!
+        (fn [entry]
+          (t2/delete! :model/SearchIndex
+                      :model    (:model entry)
+                      :model_id (:model_id entry))
+          (t2/insert! :model/SearchIndex entry)))))
 
 (comment
   (t2/delete! :model/SearchIndex)
-  (t2/select :model/SearchIndex)
   (t2/count :model/SearchIndex)
+  (build-index!)
 
-  (run! (fn [x-or-xs]
-          (t2/insert! :model/SearchIndex x-or-xs)
-          )
-        (eduction
-         (comp
-          ;; not sure how to get this to play nicely with partition
-          (map t2.realize/realize)
-          (map legacy->index)
-          #_(partition-all 2)
-          #_(take 2))
-         (reducible-cards)))
+  (search-query "satisfaction")
+  (legacy-query "satisfaction")
+  (search-query "e-commerce")
+  (legacy-query "e-commerce")
+  (search-query "example")
+  (legacy-query "example")
+  (search-query "rasta")
+  (legacy-query "rasta")
+
 
   (t2.realize/realize (reducible-cards)))
