@@ -19,12 +19,11 @@ import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { FixedSizeIcon, Flex, Icon, Skeleton } from "metabase/ui";
+import { FixedSizeIcon, Flex, Skeleton } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import type { MetricResult } from "../types";
-import { getIcon } from "../utils";
 
 import {
   Cell,
@@ -209,7 +208,6 @@ function preventDefault(event: MouseEvent) {
 
 function NameCell({ metric }: { metric?: MetricResult }) {
   const headingId = `metric-${metric?.id ?? "dummy"}-heading`;
-  const icon = getIcon(metric);
 
   return (
     <ItemNameCell
@@ -228,12 +226,6 @@ function NameCell({ metric }: { metric?: MetricResult }) {
         }}
         onClick={preventDefault}
       >
-        <Icon
-          size={16}
-          {...icon}
-          color="var(--mb-color-icon-primary)"
-          style={{ flexShrink: 0 }}
-        />
         {metric ? (
           <EntityItem.Name
             name={metric?.name || ""}
