@@ -86,9 +86,9 @@
                                                          :add-default-userland-constraints? false}
                                          :make-run      (fn make-run [qp _export-format]
                                                           (^:once fn* [query info]
-                                                                  (qp
-                                                                   (qp/userland-query query info)
-                                                                   nil))))})
+                                                            (qp
+                                                             (qp/userland-query query info)
+                                                             nil))))})
             result         (result-fn card_id)
             series-results (mapv (comp result-fn :id) multi-cards)]
         (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
