@@ -619,7 +619,7 @@
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]])
 
-(mu/defn search-context
+(mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
   [{:keys [archived
            created-at
@@ -637,7 +637,7 @@
            table-db-id
            search-native-query
            verified
-           ids]}      :- ::search-context.input] :- SearchContext
+           ids]}      :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)

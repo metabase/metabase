@@ -57,6 +57,7 @@ const getBubbleSizeDomain = (
 export function getScatterPlotModel(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
+  hiddenSeries: string[],
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): ScatterPlotModel {
@@ -68,6 +69,7 @@ export function getScatterPlotModel(
   const unsortedSeriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,
+    hiddenSeries,
     settings,
     renderingContext,
   );

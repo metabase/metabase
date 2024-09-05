@@ -38,6 +38,7 @@ export function ScatterPlot({
   const chartModel = getScatterPlotModel(
     rawSeries,
     computedVisualizationSettings,
+    [],
     renderingContext,
   );
 
