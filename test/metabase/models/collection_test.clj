@@ -172,7 +172,7 @@
   [[collections-binding options] & body]
   `(do-with-collection-hierarchy! ~options (fn [~collections-binding] ~@body)))
 
-(defn do-with-current-user-perms-for-collections*!
+(defn- do-with-current-user-perms-for-collections*!
   [collections-or-ids collections-or-ids-to-discard body-fn]
   (if (seq collections-or-ids-to-discard)
     (mt/with-discarded-collections-perms-changes (first collections-or-ids-to-discard)
@@ -187,11 +187,11 @@
       (mt/with-test-user :rasta
         (body-fn)))))
 
-(defn do-with-current-user-perms-for-collections!
+(defn- do-with-current-user-perms-for-collections!
   [collections-or-ids body-fn]
   (do-with-current-user-perms-for-collections*! collections-or-ids collections-or-ids body-fn))
 
-(defmacro with-current-user-perms-for-collections!
+(defmacro ^:private with-current-user-perms-for-collections!
   "Run `body` with the current User permissions for `collections-or-ids`.
 
      (with-current-user-perms-for-collections [a b c]

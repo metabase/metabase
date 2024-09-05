@@ -168,6 +168,10 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        partition-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -188,6 +192,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mariadb-10-2-ee'
+        test-args: :partition/total 2 :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -205,6 +210,10 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        partition-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -225,6 +234,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mariadb-latest-ee'
+        test-args: :partition/total 2 :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -474,7 +484,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        partition-index: [0, 1, 2, 3]
+        partition-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: mysql
@@ -495,7 +505,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-8-0-ee'
-        test-args: :partition/total 4 :partition/index ${{ matrix.partition-index }}
+        test-args: :partition/total 2 :partition/index ${{ matrix.partition-index }}
 
   be-tests-mysql-latest-ee:
     needs: files-changed
@@ -644,6 +654,10 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        partition-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: postgres
@@ -668,12 +682,17 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-ee'
+        test-args: :partition/total 2 :partition/index ${{ matrix.partition-index }}
 
   be-tests-postgres-latest-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        partition-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: postgres
@@ -701,6 +720,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-latest-ee'
+        test-args: :partition/total 2 :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
