@@ -950,7 +950,8 @@ describe("issue 29304", () => {
       cy.clock();
     });
 
-    it("should render scalar with correct size on the first render (metabase#29304)", () => {
+    // FIXME: requestAnimationFrame does not play well with layout in Cypress (metabase#47606)
+    it.skip("should render scalar with correct size on the first render (metabase#29304)", () => {
       cy.createDashboard().then(({ body: dashboard }) => {
         cy.createQuestionAndAddToDashboard(
           SCALAR_QUESTION,
@@ -975,7 +976,8 @@ describe("issue 29304", () => {
       });
     });
 
-    it("should render smart scalar with correct size on the first render (metabase#29304)", () => {
+    // FIXME: requestAnimationFrame does not play well with layout in Cypress (metabase#47606)
+    it.skip("should render smart scalar with correct size on the first render (metabase#29304)", () => {
       cy.createDashboard().then(({ body: dashboard }) => {
         cy.createQuestionAndAddToDashboard(
           SMART_SCALAR_QUESTION,
