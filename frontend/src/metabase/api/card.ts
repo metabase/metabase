@@ -85,6 +85,30 @@ export const cardApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
     }),
+    persistModel: builder.mutation<void, CardId>({
+      query: id => ({
+        method: "POST",
+        url: `/api/card/${id}/persist`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [
+          idTag("card", id),
+          idTag("persisted-model", id),
+          listTag("persisted-info"),
+        ]),
+    }),
+    unpersistModel: builder.mutation<void, CardId>({
+      query: id => ({
+        method: "POST",
+        url: `/api/card/${id}/unpersist`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [
+          idTag("card", id),
+          idTag("persisted-model", id),
+          listTag("persisted-info"),
+        ]),
+    }),
     refreshModelCache: builder.mutation<void, CardId>({
       query: id => ({
         method: "POST",
@@ -109,4 +133,6 @@ export const {
   useDeleteCardMutation,
   useCopyCardMutation,
   useRefreshModelCacheMutation,
+  usePersistModelMutation,
+  useUnpersistModelMutation,
 } = cardApi;

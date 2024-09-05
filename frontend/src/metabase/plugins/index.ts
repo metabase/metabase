@@ -50,6 +50,7 @@ import type {
   Group,
   GroupPermissions,
   GroupsPermissions,
+  ModelCacheRefreshStatus,
   Revision,
   SearchResult,
   User,
@@ -489,8 +490,13 @@ export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
 
 export const PLUGIN_MODEL_PERSISTENCE = {
   isModelLevelPersistenceEnabled: () => false,
-  ModelCacheControl: PluginPlaceholder as any,
-  getMenuItems: (_question?: any, _onChange?: any) => ({}),
+  ModelCacheToggle: PluginPlaceholder as ({
+    persistedModel,
+    model,
+  }: {
+    persistedModel: ModelCacheRefreshStatus;
+    model: Question;
+  }) => JSX.Element,
 };
 
 export const PLUGIN_EMBEDDING = {
