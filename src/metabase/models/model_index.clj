@@ -4,6 +4,8 @@
    [clojure.string :as str]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
@@ -11,6 +13,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -56,10 +59,11 @@
 (mu/defn- fix-expression-refs :- mbql.s/Field
   "Convert expression ref into a field ref.
 
-Expression refs (`[:expression \"full-name\"]`) are how the _query_ refers to a custom column. But nested queries
-don't, (and shouldn't) care that those are expressions. They are just another field. The field type is always
-`:type/Text` enforced by the endpoint to create model indexes."
-  [field-ref :- mbql.s/Field base-type]
+  Expression refs (`[:expression \"full-name\"]`) are how the _query_ refers to a custom column. But nested queries
+  don't, (and shouldn't) care that those are expressions. They are just another field. The field type is always
+  `:type/Text` enforced by the endpoint to create model indexes."
+  [field-ref :- mbql.s/Field
+   base-type :- ::lib.schema.common/base-type]
   (case (first field-ref)
     :field field-ref
     :expression (let [[_ expression-name] field-ref]
@@ -70,10 +74,18 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
                     {:field-ref field-ref
                      :valid-clauses [:field :expression]}))))
 
-(defn- fetch-values
-  [model-index]
+(mr/def ::model-index
+  [:map
+   [:model_id  ::lib.schema.id/card]
+   [:value_ref some?]
+   [:pk_ref    some?]])
+
+(mu/defn ^:private fetch-values
+  [model-index :- ::model-index]
   (let [model     (t2/select-one Card :id (:model_id model-index))
-        fix       (fn [field-ref base-type] (-> field-ref mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))
+        fix       (mu/fn [field-ref :- some?
+                          base-type :- ::lib.schema.common/base-type]
+                    (-> field-ref mbql.normalize/normalize-field-ref (fix-expression-refs base-type)))
         ;; :type/Text and :type/Integer are ensured at creation time on the api.
         value-ref (-> model-index :value_ref (fix :type/Text))
         pk-ref    (-> model-index :pk_ref (fix :type/Integer))]
@@ -103,9 +115,12 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
     {:additions (set/difference source current)
      :deletions (set/difference current source)}))
 
-(defn add-values!
+(mu/defn add-values!
   "Add indexed values to the model_index_value table."
-  [model-index]
+  [model-index :- [:merge
+                   ::model-index
+                   [:map
+                    [:id pos-int?]]]]
   (let [[error-message values-to-index] (fetch-values model-index)
         current-index-values            (into #{}
                                               (map (juxt :model_pk :name))
@@ -140,7 +155,7 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
                                      "indexed")}))
         (catch Exception e
           (log/errorf e "Error saving model-index values for model-index: %d, model: %d"
-                      (:id model-index) (:model-id model-index))
+                      (:id model-index) (:model_id model-index))
           (t2/update! ModelIndex (:id model-index)
                       {:state      "error"
                        :error      (ex-message e)

@@ -5,6 +5,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test.data :as data]
+   [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -74,6 +75,10 @@
   "Implementation of `with-no-data-perms-for-all-users`. Sets every data permission for all databases to the
   least permissive value for the All Users permission group for the duration of the test."
   [thunk]
+  ;; make sure app DB is set up and test users are created
+  (initialize/initialize-if-needed! :db :test-users)
+  ;; make sure at least the normal test-data DB is loaded
+  (data/db)
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
     (doseq [[perm-type _] data-perms/Permissions
             db-id         (t2/select-pks-set :model/Database)]
