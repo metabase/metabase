@@ -74,8 +74,10 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
           color: theme.fn.themeColor("text-dark"),
           cursor: "pointer",
           "&[data-disabled]": {
-            color: theme.fn.themeColor("text-light"),
-            cursor: "default",
+            "&:not([data-css-specificity-hack='😢'])": {
+              color: theme.fn.themeColor("text-light"),
+              cursor: "default",
+            },
           },
         },
         description: {
