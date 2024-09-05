@@ -14,12 +14,9 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
@@ -417,18 +414,3 @@
     (cond-> query
       (and (lib.breakout/breakouts query) (lib.aggregation/aggregations query))
       append-stage)))
-
-(defmethod lib.query/can-run-method :mbql.stage/mbql
-  [query card-type]
-  (or (not= card-type :metric)
-      (let [aggregations (lib.aggregation/aggregations query 0)
-            breakouts    (lib.breakout/breakouts query 0)]
-        (and (= (lib.query/stage-count query) 1)
-             (= (count aggregations) 1)
-             (or (empty? breakouts)
-                 (and (= (count breakouts) 1)
-                      (-> (lib.breakout/breakout-column query (first breakouts))
-                          ;; extraction units change `:effective-type` to `:type/Integer`, so remove temporal bucketing
-                          ;; before doing type checks
-                          (lib.temporal-bucket/with-temporal-bucket nil)
-                          lib.types.isa/date-or-datetime?)))))))
