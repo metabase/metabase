@@ -318,7 +318,14 @@ class Visualization extends PureComponent {
   };
 
   onRender = ({ yAxisSplit, warnings = [] } = {}) => {
-    this.setState({ yAxisSplit, warnings });
+    const currentYAxisSplit = this.state.yAxisSplit;
+    const currentWarnings = this.state.warnings;
+    if (
+      !_.isEqual(currentYAxisSplit, yAxisSplit) ||
+      !_.isEqual(currentWarnings, warnings)
+    ) {
+      this.setState({ yAxisSplit, warnings });
+    }
   };
 
   onRenderError = error => {

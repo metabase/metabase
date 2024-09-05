@@ -1055,3 +1055,18 @@
                    (t2/select-one-fn
                     (comp #(select-keys % [:display_name :description]) first :result_metadata)
                     :model/Card :id card-id)))))))))
+
+(deftest do-not-send-alert-with-archived-card-test
+  (mt/with-temp
+    [:model/Card         {card-id :id}  {:archived      true
+                                         :dataset_query (mt/mbql-query orders {:limit 1})}
+     :model/Pulse        {pulse-id :id} {:name            "Test Pulse"
+                                         :alert_condition "rows"}
+     :model/PulseCard    _              {:pulse_id pulse-id
+                                         :card_id  card-id}
+     :model/PulseChannel _              {:pulse_id pulse-id
+                                         :channel_type "email"
+                                         :details      {:emails ["foo@metabase.com"]}}]
+   (pulse.test-util/email-test-setup
+    (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
+    (is (empty? @mt/inbox)))))
