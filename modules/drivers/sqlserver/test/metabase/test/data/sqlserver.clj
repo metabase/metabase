@@ -17,6 +17,7 @@
                                    :type/Decimal        "DECIMAL"
                                    :type/Float          "FLOAT"
                                    :type/Integer        "INTEGER"
+                                   :type/UUID           "UNIQUEIDENTIFIER"
                                    ;; TEXT is considered deprecated -- see
                                    ;; https://msdn.microsoft.com/en-us/library/ms187993.aspx
                                    :type/Text           "VARCHAR(1024)"
