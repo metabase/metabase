@@ -1,11 +1,12 @@
-import { useMemo } from "react";
+import { type ChangeEvent, useMemo } from "react";
 import { jt, t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import { Box, Stack } from "metabase/ui";
+import { Box, Stack, Switch } from "metabase/ui";
 import type { SettingKey } from "metabase-types/api";
 
 import { getSettings } from "../../selectors";
@@ -34,10 +35,16 @@ export function EmbeddingSdkSettings({
 }: AdminSettingComponentProps) {
   const sdkOriginsSetting = useMergeSetting(SDK_ORIGINS_SETTING);
 
-  function onChangeSdkOrigins(value: string | null) {
+  const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
+
+  function handleChangeSdkOrigins(value: string | null) {
     updateSetting({ key: SDK_ORIGINS_SETTING.key }, value);
   }
   const hasEmbeddingSdkFeature = PLUGIN_EMBEDDING_SDK.isEnabled();
+
+  function handleToggleEmbeddingSdk(event: ChangeEvent<HTMLInputElement>) {
+    updateSetting({ key: "enable-embedding-sdk" }, event.target.checked);
+  }
 
   return (
     <Box p="0.5rem 1rem 0">
@@ -49,6 +56,13 @@ export function EmbeddingSdkSettings({
             [t`Embedding SDK for React`],
           ]}
         />
+        <Switch
+          label={t`Enable Embedding SDK for React`}
+          labelPosition="left"
+          size="sm"
+          checked={isEmbeddingSdkEnabled}
+          onChange={handleToggleEmbeddingSdk}
+        />
         <Box>
           <SettingHeader
             id={sdkOriginsSetting.key}
@@ -58,7 +72,7 @@ export function EmbeddingSdkSettings({
             <SettingTextInput
               id={sdkOriginsSetting.key}
               setting={sdkOriginsSetting}
-              onChange={onChangeSdkOrigins}
+              onChange={handleChangeSdkOrigins}
               type="text"
               disabled={!hasEmbeddingSdkFeature}
             />
