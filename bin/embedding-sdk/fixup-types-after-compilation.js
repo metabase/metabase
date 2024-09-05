@@ -17,10 +17,10 @@ const REPLACES_MAP = {
   "metabase-enterprise/": `${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/metabase-enterprise/`,
   "metabase-lib/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-lib/`,
   "metabase-lib": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-lib`,
-  "metabase-shared/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-shared/`,
   "metabase-types/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase-types/`,
   "metabase/": `${SDK_PACKAGE_NAME}/dist/frontend/src/metabase/`,
   "embedding-sdk/": `${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/embedding-sdk/`,
+  "embedding-sdk": `${SDK_PACKAGE_NAME}/dist/enterprise/frontend/src/embedding-sdk`,
   "cljs/": `${SDK_PACKAGE_NAME}/dist/target/cljs_release/`,
 };
 
