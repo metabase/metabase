@@ -49,8 +49,8 @@
   "Transducer that samples a fixed number `n` of samples consistently.
    https://en.wikipedia.org/wiki/Reservoir_sampling. Uses java.util.Random
   with a seed of `n` to ensure a consistent sample if a dataset has not changed.
-  The returned instance is mutable, so don't reuse it."
-  [n]
+  The returned instance is mutable, so don't reuse it. `f` is invoked on the element before adding it to the sample."
+  [n f]
   (let [n (int n)
         rng (Random. n)
         counter (int-array 1) ;; A box for a mutable primitive int.
@@ -68,8 +68,8 @@
              idx (.nextInt rng c+1)]
          (aset counter 0 c+1)
          (cond
-           (< c n)   (aset reservoir c x)
-           (< idx n) (aset reservoir idx x)))))))
+           (< c n)   (aset reservoir c (f x))
+           (< idx n) (aset reservoir idx (f x))))))))
 
 (defn- simple-linear-regression
   "Faster and more efficient implementation of `kixi.stats.estimate/simple-linear-regression`. Computes some of squares
@@ -172,12 +172,9 @@
                                  {:model   (model offset slope)
                                   :formula (formula offset slope)}))))
                           redux/juxt*)
-     :validation-set ((keep (fn [row]
-                              (let [x (fx row)
-                                    y (fy row)]
-                                (when (and x y)
-                                  [x y]))))
-                      (reservoir-sample validation-set-size))})
+     :validation-set ((filter (fn [row] (and (fx row) (fy row))))
+                      (reservoir-sample validation-set-size
+                                        (fn [row] [(fx row) (fy row)])))})
    (fn [{:keys [validation-set fits]}]
      (some->> fits
               (remove nil?)
