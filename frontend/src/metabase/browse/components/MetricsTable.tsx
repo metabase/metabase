@@ -56,7 +56,12 @@ import {
   ValueTableCell,
   ValueWrapper,
 } from "./BrowseTable.styled";
-import { getMetricDescription, sortModelOrMetric } from "./utils";
+import {
+  getMetricDescription,
+  getMetricValue,
+  isMetricScalar,
+  sortModelOrMetric,
+} from "./utils";
 
 type MetricsTableProps = {
   metrics?: MetricResult[];
@@ -459,23 +464,19 @@ function ValueCell({ metric }: { metric?: MetricResult }) {
   return (
     <ValueTableCell>
       <ValueWrapper>
-        <Questions.Loader
-          id={id}
-          loadingAndErrorWrapper={false}
-          entityQuery={{ context: "collection" }}
-        >
+        <Questions.Loader id={id} loadingAndErrorWrapper={false}>
           {({
             loading,
             question,
           }: {
             loading: boolean;
-            question: Question;
+            question?: Question;
           }) => {
-            if (loading) {
+            if (loading || !question) {
               return null;
             }
 
-            const isScalar = question.display() === "scalar";
+            const isScalar = isMetricScalar(question);
             if (!isScalar) {
               // only show scalar metrics for now
               return null;
@@ -488,27 +489,19 @@ function ValueCell({ metric }: { metric?: MetricResult }) {
                     return null;
                   }
 
-                  const data = rawSeries?.[0]?.data;
-                  if (!data) {
+                  const metricValue = getMetricValue(rawSeries);
+                  if (!metricValue) {
                     return null;
                   }
 
-                  const lastRow = data.rows?.at(-1);
-                  const firstColumnValue = lastRow?.[0];
-
-                  const firstColumnMetadata =
-                    data.results_metadata?.columns?.[0];
-
-                  if (!firstColumnValue) {
-                    return null;
-                  }
+                  const { value, column } = metricValue;
 
                   return (
                     <Tooltip label={<Text>{t`Overall`}</Text>}>
                       <Value>
-                        {formatValue(firstColumnValue, {
+                        {formatValue(value, {
                           jsx: true,
-                          column: firstColumnMetadata,
+                          column,
                         })}
                       </Value>
                     </Tooltip>
