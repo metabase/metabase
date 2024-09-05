@@ -73,9 +73,9 @@
 
 (defn- simple-linear-regression
   "Faster and more efficient implementation of `kixi.stats.estimate/simple-linear-regression`. Computes some of squares
-  on each step, and on the completing step returns `[offset slope]`. Additionally accepts `x-link-fn` and `y-link-fn`
-  functions which should be double->double."
-  [fx, fy, ^clojure.lang.IFn$DD x-link-fn, ^clojure.lang.IFn$DD y-link-fn]
+  on each step, and on the completing step returns `[offset slope]`. Additionally accepts `x-scale` and `y-scale`
+  which should either be `:linear` or `:log`."
+  [fx fy x-scale y-scale]
   (fn
     ([] (double-array 6))
     ([^doubles arr e]
@@ -83,8 +83,10 @@
            y (fy e)]
        (if (or (nil? x) (nil? y))
          arr
-         (let [x    (.invokePrim x-link-fn (double x))
-               y    (.invokePrim y-link-fn (double y))
+         (let [x    (cond-> (double x)
+                      (identical? x-scale :log) Math/log)
+               y    (cond-> (double y)
+                      (identical? y-scale :log) Math/log)
                c    (aget arr 0)
                mx   (aget arr 1)
                my   (aget arr 2)
@@ -121,38 +123,34 @@
             (math/abs (- (fy x) (fy-hat x))))))
    stats/mean))
 
-(defn- double-identity ^double [^double x] x)
-
-(defn- double-log ^double [^double x] (Math/log x))
-
 (def ^:private trendline-function-families
   ;; http://mathworld.wolfram.com/LeastSquaresFitting.html
-  [{:x-link-fn double-identity
-    :y-link-fn double-identity
+  [{:x-scale   :linear
+    :y-scale   :linear
     :model     (fn [offset slope]
                  (fn [x]
                    (+ offset (* slope x))))
     :formula   (fn [offset slope]
                  [:+ offset [:* slope :x]])}
    ;; http://mathworld.wolfram.com/LeastSquaresFittingExponential.html
-   {:x-link-fn double-identity
-    :y-link-fn double-log
+   {:x-scale   :linear
+    :y-scale   :log
     :model     (fn [offset slope]
                  (fn [x]
                    (* (math/exp offset) (math/exp (* slope x)))))
     :formula   (fn [offset slope]
                  [:* (math/exp offset) [:exp [:* slope :x]]])}
    ;; http://mathworld.wolfram.com/LeastSquaresFittingLogarithmic.html
-   {:x-link-fn double-log
-    :y-link-fn double-identity
+   {:x-scale   :log
+    :y-scale   :identity
     :model     (fn [offset slope]
                  (fn [x]
-                   (+ offset (* slope (double-log x)))))
+                   (+ offset (* slope (Math/log x)))))
     :formula   (fn [offset slope]
                  [:+ offset [:* slope [:log :x]]])}
    ;; http://mathworld.wolfram.com/LeastSquaresFittingPowerLaw.html
-   {:x-link-fn double-log
-    :y-link-fn double-log
+   {:x-scale   :log
+    :y-scale   :log
     :model     (fn [offset slope]
                  (fn [x]
                    (* (math/exp offset) (math/pow x slope))))
@@ -168,9 +166,9 @@
   [fx fy]
   (redux/post-complete
    (fingerprinters/robust-fuse
-    {:fits           (->> (for [{:keys [x-link-fn y-link-fn formula model]} trendline-function-families]
+    {:fits           (->> (for [{:keys [x-scale y-scale formula model]} trendline-function-families]
                             (redux/post-complete
-                             (simple-linear-regression fx fy x-link-fn y-link-fn)
+                             (simple-linear-regression fx fy x-scale y-scale)
                              (fn [[offset slope]]
                                (when (every? u/real-number? [offset slope])
                                  {:model   (model offset slope)
@@ -257,7 +255,7 @@
              ((filter (comp u/real-number? yfn))
               (redux/juxt ((map yfn) (last-2))
                           ((map xfn) (last-2))
-                          (simple-linear-regression xfn yfn double-identity double-identity)
+                          (simple-linear-regression xfn yfn :linear :linear)
                           (best-fit xfn yfn))))
            (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit-equation]]
              (let [unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
