@@ -3,26 +3,27 @@ import { useState } from "react";
 
 import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
-import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
-import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { Box, Group, Tabs } from "metabase/ui";
 
 import type { InteractiveQuestionProps } from "../../public/InteractiveQuestion";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
-
 const QuestionEditorInner = () => {
-  const { queryResults, runQuestion, question, originalQuestion, isSaveEnabled } =
-    useInteractiveQuestionContext();
+  const {
+    queryResults,
+    runQuestion,
+    isSaveEnabled,
+    question,
+    originalQuestion,
+    onSave,
+    onCreate,
+  } = useInteractiveQuestionContext();
 
   const [activeTab, setActiveTab] = useState<
     "notebook" | "visualization" | (string & unknown) | null
   >("notebook");
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
-
-  const handleCreate = useCreateQuestion();
-  const handleSave = useSaveQuestion();
 
   const onOpenVisualizationTab = async () => {
     setActiveTab("visualization");
@@ -78,8 +79,8 @@ const QuestionEditorInner = () => {
           originalQuestion={originalQuestion ?? null}
           opened={true}
           onClose={closeSaveModal}
-          onCreate={handleCreate}
-          onSave={handleSave}
+          onCreate={onCreate}
+          onSave={onSave}
         />
       )}
     </Box>
