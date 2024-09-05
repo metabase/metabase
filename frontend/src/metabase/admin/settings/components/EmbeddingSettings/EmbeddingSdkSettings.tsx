@@ -41,6 +41,7 @@ export function EmbeddingSdkSettings({
     updateSetting({ key: SDK_ORIGINS_SETTING.key }, value);
   }
   const hasEmbeddingSdkFeature = PLUGIN_EMBEDDING_SDK.isEnabled();
+  const canEditSdkOrigins = hasEmbeddingSdkFeature && isEmbeddingSdkEnabled;
 
   function handleToggleEmbeddingSdk(event: ChangeEvent<HTMLInputElement>) {
     updateSetting({ key: "enable-embedding-sdk" }, event.target.checked);
@@ -74,7 +75,7 @@ export function EmbeddingSdkSettings({
               setting={sdkOriginsSetting}
               onChange={handleChangeSdkOrigins}
               type="text"
-              disabled={!hasEmbeddingSdkFeature}
+              disabled={!canEditSdkOrigins}
             />
           </SetByEnvVarWrapper>
         </Box>
