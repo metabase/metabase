@@ -44,7 +44,7 @@ describe("SettingsEditor", () => {
         createMockSettingDefinition({ key: "enable-embedding" }),
         createMockSettingDefinition({ key: "embedding-app-origin" }),
       ],
-      settingValues: createMockSettings({ "enable-embedding": true }),
+      settingValues: createMockSettings({ "enable-embedding-sdk": true }),
     });
 
     await userEvent.click(screen.getByText("Embedding"));

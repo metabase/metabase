@@ -37,13 +37,13 @@
   (mt/with-premium-features #{:embedding}
     (testing "Frame ancestors from `embedding-app-origin` setting"
       (let [multiple-ancestors "https://*.metabase.com http://metabase.internal"]
-        (tu/with-temporary-setting-values [enable-embedding     true
+        (tu/with-temporary-setting-values [enable-embedding-sdk true
                                            embedding-app-origin multiple-ancestors]
           (is (= (str "frame-ancestors " multiple-ancestors)
                  (csp-directive "frame-ancestors"))))))
 
     (testing "Frame ancestors is 'none' for nil `embedding-app-origin`"
-      (tu/with-temporary-setting-values [enable-embedding     true
+      (tu/with-temporary-setting-values [enable-embedding-sdk true
                                          embedding-app-origin nil]
         (is (= "frame-ancestors 'none'"
                (csp-directive "frame-ancestors")))))
@@ -63,7 +63,7 @@
 
     (testing "Only the first of multiple embedding origins are used in `X-Frame-Options`"
       (let [embedding-app-origins ["https://site1.metabase.com" "https://our_metabase.internal"]]
-        (tu/with-temporary-setting-values [enable-embedding     true
+        (tu/with-temporary-setting-values [enable-embedding-sdk true
                                            embedding-app-origin (str/join " " embedding-app-origins)]
           (is (= (str "ALLOW-FROM " (first embedding-app-origins))
                  (x-frame-options-header))))))))

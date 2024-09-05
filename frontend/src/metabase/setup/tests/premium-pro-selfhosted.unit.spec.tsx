@@ -70,7 +70,7 @@ describe("setup (EE build, `embedding` feature but no `hosting` to simulate pro 
 
     expect(await getLastSettingsPutPayload()).toEqual({
       "embedding-homepage": "visible",
-      "enable-embedding": true,
+      "enable-embedding-sdk": true,
       "setup-embedding-autoenabled": true,
       "setup-license-active-at-setup": true,
     });

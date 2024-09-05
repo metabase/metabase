@@ -77,7 +77,7 @@ function setup(
       storeInitialState: {
         currentUser: createMockUser({ is_superuser: true }),
         settings: createMockSettingsState({
-          "enable-embedding": true,
+          "enable-embedding-sdk": true,
           "embedding-secret-key": "my_super_secret_key",
         }),
       },

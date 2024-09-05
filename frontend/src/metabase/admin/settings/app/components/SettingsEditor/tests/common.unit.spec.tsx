@@ -13,7 +13,7 @@ describe("SettingsEditor", () => {
     it("should show info about interactive embedding", async () => {
       await setup({
         settings: [createMockSettingDefinition({ key: "enable-embedding" })],
-        settingValues: createMockSettings({ "enable-embedding": true }),
+        settingValues: createMockSettings({ "enable-embedding-sdk": true }),
       });
 
       await userEvent.click(screen.getByText("Embedding"));

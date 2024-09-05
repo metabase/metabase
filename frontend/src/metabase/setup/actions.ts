@@ -243,7 +243,7 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
     }
 
     if (interestedInEmbedding && !enableEmbeddingSetByEnv) {
-      settingsToChange["enable-embedding"] = true;
+      settingsToChange["enable-embedding-sdk"] = true;
       settingsToChange["setup-embedding-autoenabled"] = true;
     }
 

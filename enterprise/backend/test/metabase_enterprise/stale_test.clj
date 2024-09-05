@@ -287,7 +287,7 @@
                  :sort-direction :asc})))))
     (testing "If they are enabled, publicy shared or embedded content is excluded"
       (mt/with-temporary-setting-values [enable-public-sharing true
-                                         enable-embedding      true]
+                                         enable-embedding-sdk  true]
         (is (= {:rows [{:id card-id3 :model :model/Card}
                        {:id dash-id3 :model :model/Dashboard}]
                 :total 2}

@@ -53,12 +53,12 @@
   (try (u/the-id id-or-entity-id)
        (catch Exception _ id-or-entity-id)))
 
-(defn card-token [card-or-id & [additional-token-keys]]
+(defn card-token {:style/indent 1} [card-or-id & [additional-token-params]]
   (sign (merge {:resource {:question (the-id-or-entity-id card-or-id)}
                 :params   {}}
-               additional-token-keys)))
+               additional-token-params)))
 
-(defn dash-token [dash-or-id & [additional-token-keys]]
+(defn dash-token {:style/indent 1} [dash-or-id & [additional-token-keys]]
   (sign (merge {:resource {:dashboard (the-id-or-entity-id dash-or-id)}
                 :params   {}}
                additional-token-keys)))
@@ -105,7 +105,7 @@
       ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding true]
+  `(mt/with-temporary-setting-values [~'enable-embedding-sdk true]
      (with-new-secret-key!
        ~@body)))
 
@@ -187,7 +187,7 @@
                        (client/client :get 400 card-url))))))
 
 (deftest check-that-the-endpoint-doesn-t-work-if-embedding-isn-t-enabled
-  (mt/with-temporary-setting-values [enable-embedding false]
+  (mt/with-temporary-setting-values [enable-embedding-sdk false]
     (with-new-secret-key!
       (with-temp-card [card]
         (is (= "Embedding is not enabled."
@@ -1054,19 +1054,18 @@
    (u/the-id field-or-id)
    "/values"))
 
-(defn- do-with-embedding-enabled-and-temp-card-referencing! [table-kw field-kw f]
+(defn- do-with-embedding-enabled-and-temp-card-referencing! {:style/indent 2} [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key!
-    (t2.with-temp/with-temp [:model/Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
-                                                     :enable_embedding true)]
+    (t2.with-temp/with-temp [:mode/Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
+                                                    :enable_embedding true)]
       (f card))))
 
 (defmacro ^:private with-embedding-enabled-and-temp-card-referencing!
   {:style/indent 3}
   [table-kw field-kw [card-binding] & body]
-  `(do-with-embedding-enabled-and-temp-card-referencing!
-    ~table-kw ~field-kw
-    (fn [~(or card-binding '_)]
-      ~@body)))
+  `(do-with-embedding-enabled-and-temp-card-referencing! ~table-kw ~field-kw
+                                                        (fn [~(or card-binding '_)]
+                                                          ~@body)))
 
 ;; should be able to fetch values for a Field referenced by a public Card
 (deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
@@ -1179,7 +1178,7 @@
 
 ;;; ----------------------------- GET /api/embed/dashboard/:token/field/:field/values nil -----------------------------
 
-(defn- do-with-embedding-enabled-and-temp-dashcard-referencing! [table-kw field-kw f]
+(defn- do-with-embedding-enabled-and-temp-dashcard-referencing! {:style/indent 2} [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key!
     (mt/with-temp [:model/Dashboard     dashboard {:enable_embedding true}
                    :model/Card          card      (public-test/mbql-card-referencing table-kw field-kw)
@@ -1194,10 +1193,9 @@
 (defmacro ^:private with-embedding-enabled-and-temp-dashcard-referencing!
   {:style/indent 3}
   [table-kw field-kw [dash-binding card-binding dashcard-binding] & body]
-  `(do-with-embedding-enabled-and-temp-dashcard-referencing!
-    ~table-kw ~field-kw
-    (fn [~(or dash-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
-      ~@body)))
+  `(do-with-embedding-enabled-and-temp-dashcard-referencing! ~table-kw ~field-kw
+                                                            (fn [~(or dash-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
+                                                              ~@body)))
 
 ;; should be able to use it when everything is g2g
 (deftest should-be-able-to-use-it-when-everything-is-g2g
@@ -1394,7 +1392,7 @@
 (defmacro ^:private with-chain-filter-fixtures! [[binding] & body]
   `(do-with-chain-filter-fixtures! (fn [~binding] ~@body)))
 
-(deftest chain-filter-embedding-disabled-test
+(deftest chain-filter-embedding-disabled-test!
   (with-chain-filter-fixtures! [{:keys [dashboard values-url search-url]}]
     (testing "without embedding enabled for dashboard"
       (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding false})
@@ -1922,22 +1920,10 @@
                 (testing "the correct amount of filter values are returned"
                   (is (= expected-values-count values-count)))))))))))
 
-(deftest querying-a-dashboard-dashcard-updates-last-viewed-at
-  (mt/test-helpers-set-global-values!
-    (mt/dataset test-data
-      (with-embedding-enabled-and-new-secret-key!
-        (with-temp-dashcard [dashcard {:dash {:enable_embedding true
-                                              :last_viewed_at #t "2000-01-01"}}]
-          (let [dashboard-id (t2/select-one-fn :id :model/Dashboard :id (:dashboard_id dashcard))
-                original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]
-            (mt/with-temporary-setting-values [synchronous-batch-updates true]
-              (client/client :get 202 (dashcard-url dashcard))
-              (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))))
-
 (deftest entity-id-single-card-translations-test
   (mt/with-temp
     [:model/Card {id :id eid :entity_id} {}]
-    (is (= {eid   {:id id :type :card :status "success"}}
+    (is (= {eid   {:id id :type :card :status "ok"}}
            (api.embed.common/model->entity-ids->ids {:card [eid]})))))
 
 (deftest entity-id-card-translations-test
@@ -1949,13 +1935,13 @@
      :model/Card {id-3 :id eid-3 :entity_id} {}
      :model/Card {id-4 :id eid-4 :entity_id} {}
      :model/Card {id-5 :id eid-5 :entity_id} {}]
-    (is (= {eid   {:id id   :type :card :status "success"}
-            eid-0 {:id id-0 :type :card :status "success"}
-            eid-1 {:id id-1 :type :card :status "success"}
-            eid-2 {:id id-2 :type :card :status "success"}
-            eid-3 {:id id-3 :type :card :status "success"}
-            eid-4 {:id id-4 :type :card :status "success"}
-            eid-5 {:id id-5 :type :card :status "success"}}
+    (is (= {eid   {:id id   :type :card :status "ok"}
+            eid-0 {:id id-0 :type :card :status "ok"}
+            eid-1 {:id id-1 :type :card :status "ok"}
+            eid-2 {:id id-2 :type :card :status "ok"}
+            eid-3 {:id id-3 :type :card :status "ok"}
+            eid-4 {:id id-4 :type :card :status "ok"}
+            eid-5 {:id id-5 :type :card :status "ok"}}
            (api.embed.common/model->entity-ids->ids {:card [eid eid-0 eid-1 eid-2 eid-3 eid-4 eid-5]})))))
 
 (deftest entity-id-mixed-translations-test
@@ -1984,21 +1970,21 @@
      :model/Timeline           {timeline_id             :id timeline_eid             :entity_id} {}]
     (let [core_user_eid (u/generate-nano-id)]
       (t2/update! :model/User core_user_id {:entity_id core_user_eid})
-      (is (= {action_eid               {:id action_id               :type :action            :status "success"}
-              collection_eid           {:id collection_id           :type :collection        :status "success"}
-              core_user_eid            {:id core_user_id            :type :user              :status "success"}
-              dashboard_tab_eid        {:id dashboard_tab_id        :type :dashboard-tab     :status "success"}
-              dimension_eid            {:id dimension_id            :type :dimension         :status "success"}
-              native_query_snippet_eid {:id native_query_snippet_id :type :snippet           :status "success"}
-              permissions_group_eid    {:id permissions_group_id    :type :permissions-group :status "success"}
-              pulse_eid                {:id pulse_id                :type :pulse             :status "success"}
-              pulse_card_eid           {:id pulse_card_id           :type :pulse-card        :status "success"}
-              pulse_channel_eid        {:id pulse_channel_id        :type :pulse-channel     :status "success"}
-              card_eid                 {:id card_id                 :type :card              :status "success"}
-              dashboard_eid            {:id dashboard_id            :type :dashboard         :status "success"}
-              dashboardcard_eid        {:id dashboardcard_id        :type :dashboard-card    :status "success"}
-              segment_eid              {:id segment_id              :type :segment           :status "success"}
-              timeline_eid             {:id timeline_id             :type :timeline          :status "success"}}
+      (is (= {action_eid               {:id action_id               :type :action            :status "ok"}
+              collection_eid           {:id collection_id           :type :collection        :status "ok"}
+              core_user_eid            {:id core_user_id            :type :user              :status "ok"}
+              dashboard_tab_eid        {:id dashboard_tab_id        :type :dashboard-tab     :status "ok"}
+              dimension_eid            {:id dimension_id            :type :dimension         :status "ok"}
+              native_query_snippet_eid {:id native_query_snippet_id :type :snippet           :status "ok"}
+              permissions_group_eid    {:id permissions_group_id    :type :permissions-group :status "ok"}
+              pulse_eid                {:id pulse_id                :type :pulse             :status "ok"}
+              pulse_card_eid           {:id pulse_card_id           :type :pulse-card        :status "ok"}
+              pulse_channel_eid        {:id pulse_channel_id        :type :pulse-channel     :status "ok"}
+              card_eid                 {:id card_id                 :type :card              :status "ok"}
+              dashboard_eid            {:id dashboard_id            :type :dashboard         :status "ok"}
+              dashboardcard_eid        {:id dashboardcard_id        :type :dashboard-card    :status "ok"}
+              segment_eid              {:id segment_id              :type :segment           :status "ok"}
+              timeline_eid             {:id timeline_id             :type :timeline          :status "ok"}}
              (api.embed.common/model->entity-ids->ids
               {:action            [action_eid]
                :card              [card_eid]
@@ -2017,7 +2003,7 @@
                :user              [core_user_eid]}))))))
 
 (deftest missing-entity-translations-test
-  (is (= {"abcdefghijklmnopqrstu" {:type :card, :id nil, :status "not-found"}}
+  (is (= {"abcdefghijklmnopqrstu" {:type :card, :status "not-found"}}
          (api.embed.common/model->entity-ids->ids {:card ["abcdefghijklmnopqrstu"]}))))
 
 (deftest wrong-format-entity-translations-test

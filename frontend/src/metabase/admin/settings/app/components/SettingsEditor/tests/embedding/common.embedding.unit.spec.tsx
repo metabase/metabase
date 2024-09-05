@@ -103,7 +103,7 @@ describe("[OSS] embedding settings", () => {
   describe("when the embedding is enabled", () => {
     it("should allow going to static embedding settings page", async () => {
       const { history } = await setupEmbedding({
-        settingValues: { "enable-embedding": true },
+        settingValues: { "enable-embedding-sdk": true },
       });
 
       await goToStaticEmbeddingSettings();
@@ -114,7 +114,7 @@ describe("[OSS] embedding settings", () => {
 
     it("should not allow going to interactive embedding settings page", async () => {
       const { history } = await setupEmbedding({
-        settingValues: { "enable-embedding": true },
+        settingValues: { "enable-embedding-sdk": true },
       });
 
       expect(

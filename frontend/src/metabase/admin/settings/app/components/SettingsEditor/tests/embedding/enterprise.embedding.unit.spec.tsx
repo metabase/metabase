@@ -112,7 +112,7 @@ describe("[EE, no token] embedding settings", () => {
   describe("when the embedding is enabled", () => {
     it("should allow going to static embedding settings page", async () => {
       const { history } = await setupEnterprise({
-        settingValues: { "enable-embedding": true },
+        settingValues: { "enable-embedding-sdk": true },
       });
 
       await goToStaticEmbeddingSettings();
@@ -123,7 +123,7 @@ describe("[EE, no token] embedding settings", () => {
 
     it("should not allow going to interactive embedding settings page", async () => {
       const { history } = await setupEnterprise({
-        settingValues: { "enable-embedding": true },
+        settingValues: { "enable-embedding-sdk": true },
       });
 
       expect(

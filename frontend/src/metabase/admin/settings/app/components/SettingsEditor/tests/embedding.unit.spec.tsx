@@ -29,7 +29,7 @@ describe("SettingsEditor", () => {
         createMockSettingDefinition({ key: "session-cookie-samesite" }),
       ],
       settingValues: createMockSettings({
-        "enable-embedding": true,
+        "enable-embedding-sdk": true,
         "session-cookie-samesite": "lax",
       }),
     });
@@ -57,7 +57,7 @@ describe("SettingsEditor", () => {
         ],
         settingValues: createMockSettings({
           "embedding-app-origin": "https://example.com",
-          "enable-embedding": true,
+          "enable-embedding-sdk": true,
           "session-cookie-samesite": "lax",
         }),
       });
@@ -77,7 +77,7 @@ describe("SettingsEditor", () => {
         ],
         settingValues: createMockSettings({
           "embedding-app-origin": "",
-          "enable-embedding": true,
+          "enable-embedding-sdk": true,
           "session-cookie-samesite": "lax",
         }),
       });
@@ -99,7 +99,7 @@ describe("SettingsEditor", () => {
         ],
         settingValues: createMockSettings({
           "embedding-app-origin": "https://example.com",
-          "enable-embedding": true,
+          "enable-embedding-sdk": true,
           "session-cookie-samesite": "none",
         }),
       });
