@@ -57,6 +57,14 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
     const [toolWaitingResponse, setToolWaitingResponse] = useState(null);
     const [approvalChangeButtons, setApprovalChangeButtons] = useState(false);
     const [visualizationIndex, setVisualizationIndex] = useState(-1);
+    const [pythonCode, setPythonCode] = useState([]);
+    const [logStdout, setLogStdout] = useState([]);
+    const [logStderr, setLogStderr] = useState([]);
+    const [insightsImages, setInsightsImages] = useState([]);
+    const [isInsightModalOpen, setIsInsightModalOpen] = useState(false);
+    const [isEditing, setIsEditing] = useState(false); // Tracks whether in edit mode
+    const [editedCode, setEditedCode] = useState(''); // Holds the current edited code
+    const [hasChanges, setHasChanges] = useState(false); 
     const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
     const databases = data?.data;
     useEffect(() => {
@@ -166,6 +174,43 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         setIsModalOpen(false);
     };
 
+    const openInsightModal = (insightIndex) => {
+        setSelectedIndex(insightIndex)
+        setEditedCode(pythonCode[insightIndex])
+        setIsInsightModalOpen(true);
+    };
+
+    const closeInsightModal = () => {
+        setSelectedIndex(null)
+        setIsInsightModalOpen(false);
+    };
+
+    // Handler for the "Edit Code" button
+    const handleEditClick = () => {
+        setIsEditing(!isEditing);
+    };
+
+    // Handler for the code editor
+    const handleCodeChange = (event) => {
+        const newCode = event.target.value;
+        setEditedCode(newCode);
+        setHasChanges(newCode !== pythonCode[selectedIndex]); // Check if there are changes
+    };
+
+    // Handler for the "Re-run" button
+    const handleRerunClick = () => {
+        if (hasChanges) {
+            // Logic to re-run the code goes here
+            console.log("Re-running code:", editedCode);
+            const response = {
+                type: "runPythonCode",
+                data: editedCode,
+                thread_id: threadId,
+            };
+            ws && ws.send(JSON.stringify(response));
+        }
+    };
+
     const handleFunctionalityMessages = async functions => {
         functions.forEach(async func => {
             switch (func.function_name) {
@@ -175,6 +220,21 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                 case "getInsights":
                     await handleGetInsights(func);
                     break;
+                case "getPythonCode":
+                    await handleGetPythonCode(func);
+                    break;
+                case "getInsightsImages":
+                    await handleGetInsightsImages(func);
+                    break;
+                case "logStdout":
+                    await handleLogStdout(func);
+                    break;
+                case "logStderr":
+                    await handleLogStderr(func);
+                    break;  
+                case "pythonCodeResult":
+                    await handleRunPythonCode(func);
+                    break;     
                 case "calculationOptions":
                     await handleGetCalulationOptions(func);
                     break;
@@ -355,7 +415,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
     };
 
     const handleGetInsightsWithCards = async(insightsArray) => {
-        console.log('insightsArray', insightsArray);
         try {
             const newInsightsList = [];
     
@@ -396,7 +455,49 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         }
     };
     
+    const handleGetPythonCode = async func => {
+        const { pythonCode } = func.arguments;
+        try {
+            setPythonCode(prevPythonCode => [...prevPythonCode, pythonCode]);
+        } catch (error) {
+            console.error("Error getting python code:", error);
+            setError("There was an error fetching the python code. Please provide feedback if this issue persists.");
+        }
+    };
 
+    const handleGetInsightsImages = async func => {
+        const { insights } = func.arguments;
+        try {
+            const newInsightsList = [];
+            newInsightsList.push(insights);
+            setInsightsList(prevInsights => [...prevInsights, ...newInsightsList]);
+        } catch (error) {
+            console.error("Error getting insights:", error);
+            setError("There was an error fetching the insights");
+        }
+    };
+
+    const handleLogStdout = async func => {
+        const { message } = func.arguments;
+        try {
+            if(!message.includes('Loading data')) {
+                setLogStdout(prevLogStdout => [...prevLogStdout, message]);
+            }
+        } catch (error) {
+            console.error("Error getting log stdout:", error);
+            setError("There was an error fetching log stdout.");
+        }
+    };
+
+    const handleLogStderr = async func => {
+        const { message } = func.arguments;
+        try {
+            setLogStderr(prevLogStderr => [...prevLogStderr, message]);
+        } catch (error) {
+            console.error("Error getting log stderr:", error);
+            setError("There was an error fetching log stderr.");
+        }
+    };
 
     const handleGetCalulationOptions = async func => {
         const { calculationOptions } = func.arguments;
@@ -418,6 +519,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         );
         setToolWaitingResponse("approveSemantycLayerChanges");
         setApprovalChangeButtons(true);
+    };
+
+    const handleRunPythonCode = async func => {
+        const { logs, results } = func.arguments;
     };
 
     const handleProcessInfo = async func => {
@@ -668,7 +773,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                     <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen}
                         approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
                         card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} insightsList={insightsList}
-                        showError={showError}
+                        showError={showError} openInsightModal={openInsightModal}
                     />
                             <div
                                 style={{
@@ -926,6 +1031,82 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                                 onClick={() => { redirect(); }}
                             >
                                 Go to builder & save
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+            {isInsightModalOpen && selectedIndex !== null && (
+                <Modal isOpen={isInsightModalOpen} onClose={closeInsightModal}>
+                    <div style={{ padding: "20px", position: "relative" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                            <h2 style={{ fontSize: "24px", fontWeight: "600", margin: 0, paddingLeft: "1rem" }}>Verify Code</h2>
+                            <Icon
+                                name="close"
+                                size={24}
+                                style={{ cursor: "pointer", color: "#76797D", paddingRight: "1rem" }}
+                                onClick={closeInsightModal}
+                            />
+                        </div>
+                        <div style={{ marginBottom: "20px", paddingLeft: "1rem", paddingRight: "1rem" }}>
+                        {isEditing ? (
+                        <textarea
+                                style={{
+                                    width: "100%",
+                                    height: "600px",
+                                    fontFamily: "monospace",
+                                    fontSize: "14px",
+                                    backgroundColor: "#f5f5f5",
+                                    padding: "20px",
+                                    borderRadius: "10px",
+                                    whiteSpace: "pre-wrap",
+                                    overflowY: "auto",
+                                }}
+                                value={editedCode}
+                                onChange={handleCodeChange}
+                            />
+                        ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "5px", fontFamily: "monospace", backgroundColor: "#f5f5f5", padding: "20px", borderRadius: "10px", whiteSpace: "pre-wrap", height: "600px", overflowY: "auto"}}>
+                            {pythonCode[selectedIndex].split("\n").map((point, index) => (
+                                <p key={index} style={{ fontSize: "14px", margin: "0", color: point.startsWith("#") ? "green" : "black" }}>
+                                {point.trim()}
+                                </p>
+                            ))}
+                            </div>
+                            )}
+                        </div>
+                        <div style={{ display: "flex", marginTop: "20px", paddingLeft: "1rem", paddingRight: "1rem", gap: "2rem" }}>
+                            <Button
+                                variant="outlined"
+                                style={{
+                                    flex: 1,
+                                    borderColor: "#1664D6",
+                                    color: "#1664D6",
+                                    marginRight: "1px",
+                                    height: "50px",
+                                    fontSize: "16px",
+                                    fontWeight: "500",
+                                    border: "1px solid #1664D6",
+                                }}
+                                onClick={handleEditClick}
+                            >
+                               {isEditing ? "Cancel" : "Edit Code"}
+                            </Button>
+                            <Button
+                                variant="filled"
+                                style={{
+                                    flex: 1,
+                                    backgroundColor: "#1664D6",
+                                    color: "#FFFFFF",
+                                    height: "50px",
+                                    fontSize: "16px",
+                                    fontWeight: "500",
+                                    marginLeft: "1px",
+                                }}
+                                onClick={handleRerunClick}
+                                disabled={!hasChanges}
+                            >
+                                Re-run Code
                             </Button>
                         </div>
                     </div>

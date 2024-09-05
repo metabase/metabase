@@ -7,9 +7,8 @@ import VisualizationResult from "metabase/query_builder/components/Visualization
 import { MonospaceErrorDisplay } from "../ErrorDetails/ErrorDetails.styled";
 import { Skeleton } from "metabase/ui";
 
-const ChatMessageList = ({ messages, isLoading, onFeedbackClick, approvalChangeButtons, onApproveClick, onDenyClick, card, defaultQuestion, result, openModal, insightsList, showError }) => {
+const ChatMessageList = ({ messages, isLoading, onFeedbackClick, approvalChangeButtons, onApproveClick, onDenyClick, card, defaultQuestion, result, openModal, insightsList, showError, openInsightModal }) => {
   const messageEndRef = useRef(null);
-
   useEffect(() => {
     if (messageEndRef.current) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -155,37 +154,72 @@ const ChatMessageList = ({ messages, isLoading, onFeedbackClick, approvalChangeB
           <h2 style={{ marginBottom: "1rem" }}>Insights</h2>
           {insightList.map((insight, index) => (
             <div key={index} style={{ marginBottom: "2rem" }}>
-              <div style={{ marginBottom: "1rem" }}>
-                <strong>Insight:</strong> {insight.insightExplanation}
-              </div>
-              <div
-                style={{
-                  padding: "16px",
-                  overflow: "hidden",
-                  height: "400px",
-                  width: "auto",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  border: "1px solid #E0E0E0",
-                  borderRadius: "8px",
-                  backgroundColor: "#F8FAFD",
-                }}
-              >
-                <VisualizationResult
-                  question={insight.defaultQuestion}
-                  isDirty={false}
-                  queryBuilderMode={"view"}
-                  result={insight.queryCard}
-                  className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
-                  rawSeries={[{ card: insight.card, data: insight.queryCard && insight.queryCard.data }]}
-                  isRunning={false}
-                  navigateToNewCardInsideQB={null}
-                  onNavigateBack={() => console.log('back')}
-                  timelineEvents={[]}
-                  selectedTimelineEventIds={[]}
-                />
-              </div>
+              {insight.insightExplanation && (
+                <div style={{ marginBottom: "1rem" }}>
+                  <strong>Insight:</strong> {insight.insightExplanation}
+                </div>
+              )}
+              {!insight.type ? (
+                <div
+                  style={{
+                    padding: "16px",
+                    overflow: "hidden",
+                    height: "400px",
+                    width: "auto",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    border: "1px solid #E0E0E0",
+                    borderRadius: "8px",
+                    backgroundColor: "#F8FAFD",
+                  }}
+                >
+                  <VisualizationResult
+                    question={insight.defaultQuestion}
+                    isDirty={false}
+                    queryBuilderMode={"view"}
+                    result={insight.queryCard}
+                    className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
+                    rawSeries={[{ card: insight.card, data: insight.queryCard && insight.queryCard.data }]}
+                    isRunning={false}
+                    navigateToNewCardInsideQB={null}
+                    onNavigateBack={() => console.log('back')}
+                    timelineEvents={[]}
+                    selectedTimelineEventIds={[]}
+                  />
+                </div> 
+              ) : (
+                <div>
+                  {insight.type === 'image' && insight.base64 && (
+                  <img
+                      src={`data:image/png;base64,${insight.base64}`}
+                      alt="Insight Visualization"
+                      style={{ maxHeight: '100%', maxWidth: '100%' }}
+                    />
+                    )}
+                    <Button
+                        variant="outlined"
+                        style={{
+                          width: "auto",
+                          cursor: "pointer",
+                          border: "1px solid #E0E0E0",
+                          borderRadius: "8px",
+                          marginBottom: "1rem",
+                          color: "#FFF",
+                          marginLeft: "auto",
+                          marginRight: 0,
+                          backgroundColor: "#8A64DF",
+                          display: "flex",
+                          alignItems: "center",
+                          padding: "0.5rem 1rem",
+                          lineHeight: "1",
+                        }}
+                        onClick={() => openInsightModal(index)}
+                        >
+                        <span style={{ fontSize: "18px", fontWeight: "lighter", verticalAlign: "top" }}>Verify Code</span>
+                      </Button>
+                  </div>
+              )}
             </div>
           ))}
         </div>
