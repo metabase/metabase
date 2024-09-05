@@ -189,6 +189,8 @@ You can preview appearance settings from your question or dashboard's [embedded 
 
 \* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
+For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+
 ## Allow people to download the results of an embedded question
 
 {% include plans-blockquote.html feature="Downloading results" %}
@@ -198,19 +200,6 @@ By default, Metabase will include a **Download** button on embedded questions. Y
 If the download button is missing when you expected it to be available, check that the URL in the `src` attribute for your iframe has the parameter `hide_download_button=false`.
 
 > Downloading results is available only for questions, not dashboards.
-
-## Setting locale on a static embed
-
-To display a static embed in a different language, you can set a locale for the embed. See a list of [supported locales](https://github.com/metabase/metabase/tree/master/locales).
-
-To set a locale, add `locale=[LOCALE]` to your iframe URL, e.g., `locale=de-DE`.
-Locale must come after the `?` in the URL and before the `#` (if you're including appearance settings). Like so:
-
-```javascript
-iframeUrl = urljoin(METABASE_SITE_URL, "/embed/dashboard/" + token + "?locale=de-DE#theme=night&background=false&bordered=true&titled=true&downloads=true")
-```
-
-Locale only affects UI elements; Metabase won't translate the text of your items (e.g., it won't translate the title of a question).
 
 ## Maximum request size
 

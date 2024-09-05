@@ -1,18 +1,15 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 
-import type { InteractiveQuestionProps } from "embedding-sdk/components/public/InteractiveQuestion";
 import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
 import { Box, Group, Overlay, Paper, Tabs } from "metabase/ui";
 
+import type { InteractiveQuestionProps } from "../../public/InteractiveQuestion";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
-export type QuestionEditorProps = {
-  isSaveEnabled?: boolean;
-};
-
-const QuestionEditorInner = ({ isSaveEnabled }: QuestionEditorProps) => {
-  const { queryResults, runQuestion } = useInteractiveQuestionContext();
+const QuestionEditorInner = () => {
+  const { queryResults, runQuestion, isSaveEnabled } =
+    useInteractiveQuestionContext();
 
   const [activeTab, setActiveTab] = useState<
     "notebook" | "visualization" | (string & unknown) | null
@@ -81,9 +78,17 @@ const QuestionEditorInner = ({ isSaveEnabled }: QuestionEditorProps) => {
 export const QuestionEditor = ({
   questionId,
   isSaveEnabled = true,
+  onBeforeSave,
+  onSave,
   plugins,
-}: InteractiveQuestionProps & QuestionEditorProps) => (
-  <InteractiveQuestion questionId={questionId} plugins={plugins}>
-    <QuestionEditorInner isSaveEnabled={isSaveEnabled} />
+}: InteractiveQuestionProps) => (
+  <InteractiveQuestion
+    questionId={questionId}
+    plugins={plugins}
+    onSave={onSave}
+    onBeforeSave={onBeforeSave}
+    isSaveEnabled={isSaveEnabled}
+  >
+    <QuestionEditorInner />
   </InteractiveQuestion>
 );
