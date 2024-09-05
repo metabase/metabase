@@ -1,5 +1,7 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  ALL_USERS_GROUP_ID,
   FIRST_COLLECTION_ID,
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -7,12 +9,16 @@ import {
   type StructuredQuestionDetails,
   assertIsEllipsified,
   createQuestion,
+  describeEE,
   getSidebarSectionTitle,
   main,
   navigationSidebar,
   popover,
   restore,
+  setTokenFeatures,
+  tooltip,
 } from "e2e/support/helpers";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -351,6 +357,40 @@ describe("scenarios > browse > metrics", () => {
         metricsTable().findByLabelText("Metric options").click();
         popover().findByText("Bookmark").should("be.visible");
       });
+    });
+  });
+
+  describe("scalar metric value", () => {
+    it("should render a scalar metric's value in the table", () => {
+      restore();
+      cy.signInAsAdmin();
+      createMetrics([ORDERS_SCALAR_METRIC]);
+      cy.visit("/browse/metrics");
+
+      metricsTable().findByText("18,760").should("be.visible");
+      metricsTable().findByText("18,760").realHover();
+      tooltip().should("contain", "Overall");
+    });
+  });
+
+  describeEE("scalar metric value", () => {
+    it("should not render a scalar metric's value when the user does not have permissions to see it", () => {
+      cy.signInAsAdmin();
+      createMetrics([ORDERS_SCALAR_METRIC]);
+
+      setTokenFeatures("all");
+      cy.updatePermissionsGraph({
+        [ALL_USERS_GROUP_ID]: {
+          [SAMPLE_DB_ID]: {
+            "view-data": DataPermissionValue.BLOCKED,
+          },
+        },
+      });
+
+      cy.signInAsNormalUser();
+      cy.visit("/browse/metrics");
+
+      metricsTable().findByText("18,760").should("not.exist");
     });
   });
 });
