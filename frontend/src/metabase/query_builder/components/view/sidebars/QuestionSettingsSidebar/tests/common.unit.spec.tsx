@@ -1,10 +1,5 @@
-import fetchMock from "fetch-mock";
-
 import { screen } from "__support__/ui";
-import {
-  createMockCard,
-  getMockModelCacheInfo,
-} from "metabase-types/api/mocks";
+import { createMockCard } from "metabase-types/api/mocks";
 
 import { setup } from "./setup";
 
@@ -25,31 +20,30 @@ describe("QuestionSettingsSidebar", () => {
   });
 
   describe("caching", () => {
-    it("should not allow to configure caching without cache token feature", async () => {
-      const card = createMockCard({
-        cache_ttl: 10,
-        description: "abc",
-      });
+    const model = createMockCard({
+      type: "model",
+      description: "abc",
+      persisted: true,
+    });
 
+    const card = createMockCard({
+      cache_ttl: 10,
+      description: "abc",
+    });
+
+    it("should not allow to configure caching without cache token feature", async () => {
       await setup({ card });
       expect(screen.queryByText("Caching policy")).not.toBeInTheDocument();
     });
 
-    it("should show model caching controls", async () => {
-      const model = createMockCard({
-        type: "model",
-        cache_ttl: 10,
-        description: "abc",
-        persisted: true,
-      });
-      const modelCacheInfo = getMockModelCacheInfo({
-        card_id: model.id,
-        card_name: model.name,
-      });
-
-      fetchMock.get(`path:/api/persist/card/${model.id}`, modelCacheInfo);
+    it("should not show granular model caching controls on OSS", async () => {
       await setup({ card: model });
+      expect(await screen.findByText(/Model last cached/)).toBeInTheDocument();
+      expect(screen.queryByText(/Persist model data/)).not.toBeInTheDocument();
+    });
 
+    it("should show model cache refresh controls on OSS", async () => {
+      await setup({ card: model });
       expect(await screen.findByText(/Model last cached/)).toBeInTheDocument();
     });
   });

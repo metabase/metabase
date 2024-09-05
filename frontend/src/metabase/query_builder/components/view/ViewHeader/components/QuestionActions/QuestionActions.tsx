@@ -13,7 +13,6 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import {
-  PLUGIN_MODEL_PERSISTENCE,
   PLUGIN_MODERATION,
   PLUGIN_QUERY_BUILDER_HEADER,
 } from "metabase/plugins";
@@ -29,10 +28,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import {
-  checkCanBeModel,
-  checkDatabaseCanPersistDatasets,
-} from "metabase-lib/v1/metadata/utils/models";
+import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import { UploadMode } from "metabase-types/store/upload";
 
@@ -48,7 +44,6 @@ const HEADER_ICON_SIZE = 16;
 const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 const MOVE_TESTID = "move-button";
 const TURN_INTO_DATASET_TESTID = "turn-into-dataset";
-const TOGGLE_MODEL_PERSISTENCE_TESTID = "toggle-persistence";
 const CLONE_TESTID = "clone-button";
 const ARCHIVE_TESTID = "archive-button";
 
@@ -79,7 +74,6 @@ export const QuestionActions = ({
   onSetQueryBuilderMode,
   onTurnModelIntoQuestion,
   onInfoClick,
-  onModelPersistenceChange,
 }: Props) => {
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
   const isMetabotEnabled = useSetting("is-metabot-enabled");
@@ -107,13 +101,6 @@ export const QuestionActions = ({
   const { isEditable: hasDataPermissions } = Lib.queryDisplayInfo(
     question.query(),
   );
-
-  const canPersistDataset =
-    PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
-    hasCollectionPermissions &&
-    isSaved &&
-    isModel &&
-    checkDatabaseCanPersistDatasets(question.database());
 
   const handleEditQuery = useCallback(() => {
     onSetQueryBuilderMode("dataset", {
@@ -180,16 +167,6 @@ export const QuestionActions = ({
     }
   }
 
-  if (canPersistDataset) {
-    extraButtons.push({
-      ...PLUGIN_MODEL_PERSISTENCE.getMenuItems(
-        question,
-        onModelPersistenceChange,
-      ),
-      testId: TOGGLE_MODEL_PERSISTENCE_TESTID,
-    });
-  }
-
   if (isQuestion || isMetric) {
     extraButtons.push({
       title: t`Add to dashboard`,
@@ -199,7 +176,7 @@ export const QuestionActions = ({
     });
   }
 
-  if (isModerator) {
+  if (isModerator && isSaved) {
     extraButtons.push({
       title: t`Edit settings`,
       icon: "gear",

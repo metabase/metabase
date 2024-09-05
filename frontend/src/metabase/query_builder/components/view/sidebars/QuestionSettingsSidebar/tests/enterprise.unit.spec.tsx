@@ -37,4 +37,45 @@ describe("QuestionSettingsSidebar", () => {
       expect(await screen.findByText("Caching policy")).toBeInTheDocument();
     });
   });
+
+  describe("model caching", () => {
+    const model = createMockCard({
+      type: "model",
+      persisted: true,
+      description: "abc",
+    });
+
+    it("should show caching controls with cache token feature", async () => {
+      await setupEnterprise(
+        { card: model },
+        {
+          cache_granular_controls: true,
+        },
+      );
+      expect(await screen.findByText("Persist model data")).toBeInTheDocument();
+      expect(await screen.findByLabelText("Persist model data")).toBeChecked();
+    });
+
+    it("should show cache status when caching is enabled", async () => {
+      await setupEnterprise(
+        { card: model },
+        {
+          cache_granular_controls: true,
+        },
+      );
+      expect(await screen.findByText("Persist model data")).toBeInTheDocument();
+      expect(await screen.findByText(/Model last cached/)).toBeInTheDocument();
+    });
+
+    it("should disable model cache toggle when DB does not support model caching", async () => {
+      await setupEnterprise(
+        { card: model, dbHasModelPersistence: false },
+        { cache_granular_controls: true },
+      );
+      expect(await screen.findByText("Persist model data")).toHaveAttribute(
+        "data-disabled",
+        "true",
+      );
+    });
+  });
 });

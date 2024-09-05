@@ -494,7 +494,7 @@ export const PLUGIN_MODEL_PERSISTENCE = {
     persistedModel,
     model,
   }: {
-    persistedModel: ModelCacheRefreshStatus;
+    persistedModel?: ModelCacheRefreshStatus;
     model: Question;
   }) => JSX.Element,
 };
