@@ -45,7 +45,7 @@ function fadeInNewAnimation(counter) {
   const srcPrefix = content[counter % content.length][0];
 
   animation.className = "animation";
-  animation.src = `app/instance-loading-page/img/${srcPrefix}.png`;
+  animation.src = `/app/instance-loading-page/img/${srcPrefix}.png`;
 }
 
 function updateHeading(counter) {
@@ -55,7 +55,7 @@ function updateHeading(counter) {
 
 function poll() {
   const req = new XMLHttpRequest();
-  req.open("GET", "api/health", true);
+  req.open("GET", "/api/health", true);
   req.onreadystatechange = function() {
     if (req.readyState === 4) {
       if (req.status === 200) {
