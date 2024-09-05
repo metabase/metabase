@@ -31,14 +31,14 @@ export interface FieldLabelProps {
 export const FieldLabel = styled.label<FieldLabelProps>`
   display: block;
   color: ${props => (props.hasError ? color("error") : color("text-medium"))};
-  font-size: 0.77rem;
-  font-weight: 900;
+  font-size: 0.75rem;
+  font-weight: 600;
 `;
 
 export const OptionalTag = styled.span`
   color: var(--mb-color-text-medium);
-  font-size: 0.77rem;
-  font-weight: 900;
+  font-size: 0.75rem;
+  font-weight: 600;
   margin-left: 0.25rem;
 `;
 
@@ -51,7 +51,7 @@ export const FieldLabelContainer = styled.div<FieldLabelContainerProps>`
   display: flex;
   align-items: center;
   margin-bottom: ${props =>
-    props.orientation === "vertical" || props.hasDescription ? "0.5em" : ""};
+    props.orientation === "vertical" || props.hasDescription ? "0em" : ""};
 `;
 
 export const FieldLabelError = styled.span`
@@ -107,7 +107,7 @@ export const FieldRoot = styled.div<FieldRootProps>`
 
 export const FieldTitleActions = styled.div`
   margin-left: auto;
-  font-size: 0.77rem;
-  font-weight: 900;
+  font-size: 0.57rem;
+  font-weight: 600;
   color: var(--mb-color-text-medium);
 `;

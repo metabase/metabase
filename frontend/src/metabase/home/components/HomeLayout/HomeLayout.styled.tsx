@@ -11,7 +11,10 @@ export const LayoutRoot = styled.div`
   position: relative;
   min-height: 100%;
   padding: 0.5rem;
-  background-color: var(--mb-color-bg-light);
+  background-image: url("app/img/omniloy_background.svg");
+  background-repeat: no-repeat;
+  background-position: 100% 100%;
+  background-size: 130rem auto;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -55,6 +58,7 @@ export const LayoutIllustration = styled.div<{
     isDefault && `hue-rotate(${hueRotate("brand")}deg)`};
   background-repeat: no-repeat;
   background-position: bottom;
+  background-color: #c4c4c4;
 `;
 
 export const LayoutEditButton = styled(Button)`

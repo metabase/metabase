@@ -34,13 +34,13 @@ export const HeaderSection = styled.div`
 
 export const HeaderTitle = styled.h2`
   font-size: 1rem;
-  text-align: center;
+  text-align: start;
   margin-bottom: ${space(0)};
 `;
 
-export const HeaderSubtitle = styled.h3`
+export const HeaderSubtitle = styled.h4`
   text-align: center;
-  color: var(--mb-color-text-medium);
+  color: #76797d;
 `;
 
 export const HeaderAvatar = styled(UserAvatar)`

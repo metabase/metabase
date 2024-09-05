@@ -70,6 +70,40 @@ import { BrowseCubes } from "./browse/components/BrowseCubes";
 import CubeFlow from "./components/Cube/CubeFlow";
 import { BrowseSemanticLayers } from "./browse/components/BrowseSemanticLayers";
 import { HomeLayout } from "./home/components/HomeLayout";
+import { CompanySettings } from "./browse/components/CompanySettings/CompanySettings.tsx"
+import { SettingsDatabases } from "./browse/components/CompanySettings/Databases.tsx"
+import { SettingsPeople } from "./browse/components/CompanySettings/People.tsx"
+import { SettingsPermissions } from "./browse/components/CompanySettings/Permissions.tsx"
+
+import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp";
+import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
+import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
+import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
+import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp";
+import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
+import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp";
+import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
+import UserPasswordResetModal from "metabase/admin/people/containers/UserPasswordResetModal";
+import UserSuccessModal from "metabase/admin/people/containers/UserSuccessModal";
+import { CollectionPermissionsPage } from "./admin/permissions/pages/CollectionPermissionsPage/CollectionPermissionsPage";
+import DataPermissionsPage from "./admin/permissions/pages/DataPermissionsPage";
+import DatabasesPermissionsPage from "./admin/permissions/pages/DatabasePermissionsPage/DatabasesPermissionsPage";
+import GroupsPermissionsPage from "./admin/permissions/pages/GroupDataPermissionsPage/GroupsPermissionsPage";
+
+import {
+  createAdminRouteGuard,
+} from "metabase/admin/utils";
+import {
+  PLUGIN_ADMIN_ROUTES,
+  PLUGIN_ADMIN_USER_MENU_ROUTES,
+  PLUGIN_ADMIN_TOOLS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES,
+  PLUGIN_APPLICATION_PERMISSIONS,
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES,
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
+} from "metabase/plugins";
+
 
 export const getRoutes = store => {
   const applicationName = getApplicationName(store.getState());
@@ -131,6 +165,59 @@ export const getRoutes = store => {
               }
             }}
           />
+          <Route path="/settings" title={t`Settings`} component={CompanySettings} />
+          <Route path="/settings/databases" title={t`Databases`} component={SettingsDatabases} />
+          <Route path="/settings/databases/:databaseId" component={DatabaseEditApp} />
+          <Route path="/settings/people" component={createAdminRouteGuard("people")}>
+
+            <IndexRoute component={PeopleListingApp} />
+
+            <Route path="" component={PeopleListingApp}>
+              <ModalRoute path="new" modal={NewUserModal} />
+            </Route>
+
+            <Route path=":userId" component={PeopleListingApp}>
+              <IndexRedirect to="/settings/people" />
+              <ModalRoute path="edit" modal={EditUserModal} />
+              <ModalRoute path="success" modal={UserSuccessModal} />
+              <ModalRoute path="reset" modal={UserPasswordResetModal} />
+              <ModalRoute path="deactivate" modal={UserActivationModal} />
+              <ModalRoute path="reactivate" modal={UserActivationModal} />
+              {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
+                <Fragment key={index}>{getRoutes(store)}</Fragment>
+              ))}
+            </Route>
+
+          </Route>
+          <Route path="/settings/permissions" title={t`Permissions`}>
+            <IndexRedirect to="data" />
+            <Route path="data" component={DataPermissionsPage}>
+              <IndexRedirect to="group" />
+
+              <Route
+                path="database(/:databaseId)(/schema/:schemaName)(/table/:tableId)"
+                component={DatabasesPermissionsPage}
+              >
+                {PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES}
+                {PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES}
+              </Route>
+
+              <Route
+                path="group(/:groupId)(/database/:databaseId)(/schema/:schemaName)"
+                component={GroupsPermissionsPage}
+              >
+                {PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES}
+                {PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES}
+              </Route>
+            </Route>
+
+            <Route path="collections" component={CollectionPermissionsPage}>
+              <Route path=":collectionId" />
+            </Route>
+
+            {PLUGIN_APPLICATION_PERMISSIONS.getRoutes()}
+          </Route>
+
 
           <Route path="search" title={t`Search`} component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}

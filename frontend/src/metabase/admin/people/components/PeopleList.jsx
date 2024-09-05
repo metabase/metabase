@@ -179,7 +179,7 @@ const PeopleList = ({
   };
 
   return (
-    <section className={CS.pb4}>
+    <section className={CS.pb4} style={{ paddingLeft: "2rem", paddingRight: "2rem" }}>
       <table
         data-testid="admin-people-list-table"
         className={cx(AdminS.ContentTable, CS.borderBottom)}

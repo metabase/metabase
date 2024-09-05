@@ -64,7 +64,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
     const [isInsightModalOpen, setIsInsightModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false); // Tracks whether in edit mode
     const [editedCode, setEditedCode] = useState(''); // Holds the current edited code
-    const [hasChanges, setHasChanges] = useState(false); 
+    const [hasChanges, setHasChanges] = useState(false);
     const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
     const databases = data?.data;
     useEffect(() => {
@@ -96,11 +96,11 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                     type: "text",
                     thread_id: selectedThreadId,
                 }));
-            
-                
+
+
                 for (let i = 0; i < messages.length; i++) {
                     if (messages[i].text.includes("It was executed successfully, ready for your next task")) {
-                        messages[i-1].sender = "server"
+                        messages[i - 1].sender = "server"
                         if (i > 0) {
                             messages[i - 1].showVisualization = true;
                             messages[i - 1].visualizationIdx = visualizationIdx;
@@ -109,14 +109,14 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                         }
                     }
                 }
-            
+
                 return messages;
             });
             setDefaultQuestion([]);
             setCard([]);
             setCardHash([]);
             setResult([])
-            if(chatType == "insights" && insights.length > 0) {
+            if (chatType == "insights" && insights.length > 0) {
                 setInsightsList([])
                 handleGetInsightsWithCards(insights)
             } else {
@@ -231,10 +231,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                     break;
                 case "logStderr":
                     await handleLogStderr(func);
-                    break;  
+                    break;
                 case "pythonCodeResult":
                     await handleRunPythonCode(func);
-                    break;     
+                    break;
                 case "calculationOptions":
                     await handleGetCalulationOptions(func);
                     break;
@@ -285,13 +285,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
             setCodeQuery(prevCodeQuery => {
                 const query = queryCard?.data?.native_form?.query ?? "Sorry for some reason the query was not retrieved properly";
                 if (query) {
-                  return Array.isArray(prevCodeQuery) ? [...prevCodeQuery, query] : [query];
+                    return Array.isArray(prevCodeQuery) ? [...prevCodeQuery, query] : [query];
                 }
                 return prevCodeQuery;
-              });
+            });
             setDefaultQuestion(prevDefaultQuestion => Array.isArray(prevDefaultQuestion) ? [...prevDefaultQuestion, newQuestion] : [newQuestion]);
             setCard(prevCard => Array.isArray(prevCard) ? [...prevCard, fetchedCard] : [fetchedCard]);
-            setCardHash(prevCardHash => Array.isArray(prevCardHash) ? [...prevCardHash, hash1] : [hash1]);              
+            setCardHash(prevCardHash => Array.isArray(prevCardHash) ? [...prevCardHash, hash1] : [hash1]);
         } catch (error) {
             console.error("Error fetching card content:", error);
             setShowError(true)
@@ -307,10 +307,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         try {
             const fetchedCards = await Promise.all(cardIds.map(cardId => CardApi.get({ cardId })));
             const queryCards = await Promise.all(cardIds.map(cardId => CardApi.query({ cardId })));
-    
+
             const newQuestions = [];
             const hashes = [];
-            
+
             fetchedCards.forEach((fetchedCard, index) => {
                 const getDatasetQuery = fetchedCard?.dataset_query;
                 const defaultQuestionTest = Question.create({
@@ -321,7 +321,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                     visualization_settings: {},
                     dataset_query: getDatasetQuery
                 });
-    
+
                 const itemtohash = {
                     dataset_query: {
                         database: getDatasetQuery.database,
@@ -332,20 +332,20 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                     visualization_settings: {},
                     type: "question"
                 };
-                
+
                 const newQuestion = defaultQuestionTest.setCard(fetchedCard);
                 newQuestions.push(newQuestion);
-    
+
                 const hash = adhocQuestionHash(itemtohash);
                 hashes.push(hash);
-    
+
                 setResult(prevResult => [...(prevResult || []), queryCards[index]]);
             });
-    
+
             setDefaultQuestion(newQuestions);
             setCard(fetchedCards);
             setCardHash(hashes);
-            
+
         } catch (error) {
             console.error("Error fetching card content:", error);
             setShowError(true)
@@ -355,14 +355,14 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
             removeLoadingMessage();
         }
     };
-    
+
 
     const handleGetInsights = async func => {
         const { insights } = func.arguments;
         try {
             const newInsightsList = [];
             const processedInsights = [];
-            if(!insights || insights.length < 1) {
+            if (!insights || insights.length < 1) {
                 console.warn('No insights provided.');
                 setShowError(true);
                 return;
@@ -378,31 +378,31 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                     }
                     const getDatasetQuery = fetchedCard?.dataset_query;
                     const defaultQuestionTest = Question.create({
-                    databaseId: 1,
-                    name: fetchedCard.name,
-                    type: "query",
-                    display: fetchedCard.display,
-                    visualization_settings: {},
-                    dataset_query: getDatasetQuery,
-                });
-                const newQuestion = defaultQuestionTest.setCard(fetchedCard);
+                        databaseId: 1,
+                        name: fetchedCard.name,
+                        type: "query",
+                        display: fetchedCard.display,
+                        visualization_settings: {},
+                        dataset_query: getDatasetQuery,
+                    });
+                    const newQuestion = defaultQuestionTest.setCard(fetchedCard);
 
-                processedInsights.push({
-                    insightExplanation: insight.insightExplanation,
-                    card: fetchedCard,
-                    queryCard: queryCard,
-                    defaultQuestion: newQuestion,
-                });
-              } catch (error) {
-                console.warn(`Error fetching data for card ID ${insight.cardId}:`, error);
-                continue;
-              }
+                    processedInsights.push({
+                        insightExplanation: insight.insightExplanation,
+                        card: fetchedCard,
+                        queryCard: queryCard,
+                        defaultQuestion: newQuestion,
+                    });
+                } catch (error) {
+                    console.warn(`Error fetching data for card ID ${insight.cardId}:`, error);
+                    continue;
+                }
             }
             if (processedInsights.length > 0) {
                 newInsightsList.push(processedInsights);
                 setInsightsList(prevInsights => [...prevInsights, ...newInsightsList]);
             } else {
-            setShowError(true)
+                setShowError(true)
             }
 
         } catch (error) {
@@ -414,10 +414,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         }
     };
 
-    const handleGetInsightsWithCards = async(insightsArray) => {
+    const handleGetInsightsWithCards = async (insightsArray) => {
         try {
             const newInsightsList = [];
-    
+
             for (const insights of insightsArray) {
                 const processedInsights = [];
                 for (const insight of insights) {
@@ -442,9 +442,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                 }
                 newInsightsList.push(processedInsights);
             }
-    
+
             setInsightsList(prevInsights => [...prevInsights, ...newInsightsList]);
-    
+
         } catch (error) {
             console.error("Error fetching card content:", error);
             setShowError(true);
@@ -454,7 +454,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
             removeLoadingMessage();
         }
     };
-    
+
     const handleGetPythonCode = async func => {
         const { pythonCode } = func.arguments;
         try {
@@ -480,7 +480,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
     const handleLogStdout = async func => {
         const { message } = func.arguments;
         try {
-            if(!message.includes('Loading data')) {
+            if (!message.includes('Loading data')) {
                 setLogStdout(prevLogStdout => [...prevLogStdout, message]);
             }
         } catch (error) {
@@ -547,17 +547,17 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         const hasError =
             data.message.toLowerCase().includes("error") ||
             data.message.toLowerCase().includes("failed");
-        if(data.type === "result" && !hasError) {
+        if (data.type === "result" && !hasError) {
             setVisualizationIndex((prevIndex) => {
                 const currentIndex = prevIndex + 1;
                 addServerMessageWithInfo(
-                  data.message || "Received a message from the server.",
-                  "text",
-                  true,
-                  currentIndex
+                    data.message || "Received a message from the server.",
+                    "text",
+                    true,
+                    currentIndex
                 );
                 return currentIndex;
-              });
+            });
         } else {
             addServerMessage(
                 data.message || "Received a message from the server.",
@@ -719,15 +719,15 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
     useEffect(() => {
         if (initialMessage.message) {
             setInputValue(initialMessage.message);
-    
+
             if (ws && isConnected) {
                 sendMessage();
             }
         }
     }, [initialMessage, ws, isConnected]);
 
-    useEffect(() => {   
-        if(initialDbName !== null && initialCompanyName !== '') {
+    useEffect(() => {
+        if (initialDbName !== null && initialCompanyName !== '') {
             setDBInputValue(initialDbName)
             setCompanyName(initialCompanyName)
         }
@@ -770,11 +770,11 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                             }}
                         >
 
-                    <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen}
-                        approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
-                        card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} insightsList={insightsList}
-                        showError={showError} openInsightModal={openInsightModal}
-                    />
+                            <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen}
+                                approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
+                                card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} insightsList={insightsList}
+                                showError={showError} openInsightModal={openInsightModal}
+                            />
                             <div
                                 style={{
                                     display: "flex",
@@ -824,7 +824,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                                     />
                                     <Button
                                         variant="filled"
-                                        disabled={!isConnected}
+                                        disabled={!isConnected || selectedThreadId}
                                         onClick={sendMessage}
                                         style={{
                                             position: "absolute",
@@ -852,8 +852,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
 
                         </div>
                     </>
-                ): (
-                <SemanticError/>
+                ) : (
+                    <SemanticError />
                 )}
             </Box>
 
@@ -1049,30 +1049,30 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                             />
                         </div>
                         <div style={{ marginBottom: "20px", paddingLeft: "1rem", paddingRight: "1rem" }}>
-                        {isEditing ? (
-                        <textarea
-                                style={{
-                                    width: "100%",
-                                    height: "600px",
-                                    fontFamily: "monospace",
-                                    fontSize: "14px",
-                                    backgroundColor: "#f5f5f5",
-                                    padding: "20px",
-                                    borderRadius: "10px",
-                                    whiteSpace: "pre-wrap",
-                                    overflowY: "auto",
-                                }}
-                                value={editedCode}
-                                onChange={handleCodeChange}
-                            />
-                        ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "5px", fontFamily: "monospace", backgroundColor: "#f5f5f5", padding: "20px", borderRadius: "10px", whiteSpace: "pre-wrap", height: "600px", overflowY: "auto"}}>
-                            {pythonCode[selectedIndex].split("\n").map((point, index) => (
-                                <p key={index} style={{ fontSize: "14px", margin: "0", color: point.startsWith("#") ? "green" : "black" }}>
-                                {point.trim()}
-                                </p>
-                            ))}
-                            </div>
+                            {isEditing ? (
+                                <textarea
+                                    style={{
+                                        width: "100%",
+                                        height: "600px",
+                                        fontFamily: "monospace",
+                                        fontSize: "14px",
+                                        backgroundColor: "#f5f5f5",
+                                        padding: "20px",
+                                        borderRadius: "10px",
+                                        whiteSpace: "pre-wrap",
+                                        overflowY: "auto",
+                                    }}
+                                    value={editedCode}
+                                    onChange={handleCodeChange}
+                                />
+                            ) : (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "5px", fontFamily: "monospace", backgroundColor: "#f5f5f5", padding: "20px", borderRadius: "10px", whiteSpace: "pre-wrap", height: "600px", overflowY: "auto" }}>
+                                    {pythonCode[selectedIndex].split("\n").map((point, index) => (
+                                        <p key={index} style={{ fontSize: "14px", margin: "0", color: point.startsWith("#") ? "green" : "black" }}>
+                                            {point.trim()}
+                                        </p>
+                                    ))}
+                                </div>
                             )}
                         </div>
                         <div style={{ display: "flex", marginTop: "20px", paddingLeft: "1rem", paddingRight: "1rem", gap: "2rem" }}>
@@ -1090,7 +1090,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                                 }}
                                 onClick={handleEditClick}
                             >
-                               {isEditing ? "Cancel" : "Edit Code"}
+                                {isEditing ? "Cancel" : "Edit Code"}
                             </Button>
                             <Button
                                 variant="filled"

@@ -202,7 +202,7 @@ const DatabaseFormFooter = ({
     return (
       <FormFooter>
         <FormErrorMessage inline />
-        <Button type="button" onClick={onCancel}>{t`Skip`}</Button>
+        {!custom && <Button type="button" onClick={onCancel}>{t`Skip`}</Button>}
         <FormSubmitButton title={t`Connect database`} primary />
       </FormFooter>
     );

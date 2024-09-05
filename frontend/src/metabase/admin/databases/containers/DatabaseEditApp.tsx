@@ -1,7 +1,7 @@
 import type { Location, LocationDescriptor } from "history";
 import { updateIn } from "icepick";
 import type { ComponentType } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
@@ -47,6 +47,7 @@ import {
   DatabaseEditMain,
   DatabaseEditRoot,
 } from "./DatabaseEditApp.styled";
+import { CompanyHeader } from "metabase/browse/components/CompanySettings/CompanyHeader";
 
 interface DatabaseEditAppProps {
   database: Database;
@@ -103,6 +104,7 @@ type DatabaseEditErrorType = {
 };
 
 function DatabaseEditApp(props: DatabaseEditAppProps) {
+  console.log("🚀 ~ DatabaseEditApp ~ props:", props);
   const {
     database,
     deleteDatabase,
@@ -123,7 +125,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
   const addingNewDatabase = !editingExistingDatabase;
 
   const [isDirty, setIsDirty] = useState(false);
-
+  const [dbName, setDbName] = useState("");
   /**
    * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
    * prop has a chance to re-compute on re-render
@@ -156,11 +158,20 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
 
   const autofocusFieldName = window.location.hash.slice(1);
 
+  useEffect(() => {
+    setDbName(database?.name);
+  }, [database]);
+
   return (
     <DatabaseEditRoot>
-      <Breadcrumbs className={CS.py4} crumbs={crumbs} />
+      {/* <Breadcrumbs className={CS.py4} crumbs={crumbs} /> */}
+      <CompanyHeader
+        title={dbName ? dbName : ""}
+        icon={"database"}
+        padding={true}
+      />
 
-      <DatabaseEditMain>
+      <DatabaseEditMain style={{ marginTop: "3rem" }}>
         <ErrorBoundary errorComponent={GenericError as ComponentType}>
           <div>
             <div className={CS.pt0}>
@@ -185,7 +196,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
           </div>
         </ErrorBoundary>
 
-        {editingExistingDatabase && (
+        {/* {editingExistingDatabase && (
           <Sidebar
             database={database}
             isAdmin={isAdmin}
@@ -194,7 +205,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
             deleteDatabase={deleteDatabase}
             dismissSyncSpinner={dismissSyncSpinner}
           />
-        )}
+        )} */}
       </DatabaseEditMain>
 
       <LeaveConfirmationModal

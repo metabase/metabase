@@ -313,6 +313,8 @@ import sendChat_component from "./sendChat.svg?component";
 import sendChat_source from "./sendChat.svg?source";
 import semantic_layer_component from "./semantic_layer.svg?component";
 import semantic_layer_source from "./semantic_layer.svg?source";
+import settings_image_component from "./settings_image.svg?component";
+import settings_image_source from "./settings_image.svg?source";
 import share_component from "./share.svg?component";
 import share_source from "./share.svg?source";
 import shield_component from "./shield.svg?component";
@@ -1066,6 +1068,10 @@ export const Icons = {
   semantic_layer: {
     component: semantic_layer_component,
     source: semantic_layer_source,
+  },
+  settings_image: {
+    component: settings_image_component,
+    source: settings_image_source,
   },
   shield: {
     component: shield_component,

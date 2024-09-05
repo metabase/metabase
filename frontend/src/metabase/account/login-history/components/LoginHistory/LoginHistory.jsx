@@ -13,6 +13,7 @@ import CS from "metabase/css/core/index.css";
 
 import {
   LoginActiveLabel,
+  LoginInactiveLabel,
   LoginGroup,
   LoginItemContent,
   LoginItemInfo,
@@ -21,7 +22,7 @@ import {
 const LoginHistoryItem = ({ item }) => (
   <Card
     className={cx(CS.my2, CS.py1)}
-    style={{ paddingLeft: 20, paddingRight: 20 }}
+    style={{ paddingLeft: 20, paddingRight: 20, boxShadow: "none" }}
   >
     <LoginItemContent>
       <div>
@@ -30,12 +31,15 @@ const LoginHistoryItem = ({ item }) => (
           <span className={CS.textMedium}>{item.ip_address}</span>
         </Label>
         <Text style={{ marginTop: -8 }}>{item.device_description}</Text>
+        <Text>{item.time}</Text>
       </div>
       <LoginItemInfo>
-        {item.active && (
-          <LoginActiveLabel className={CS.pr2}>{t`Active`}</LoginActiveLabel>
+        {item.active ? (
+          <LoginActiveLabel >{t`Active`}</LoginActiveLabel>
+        ) : (
+          <LoginInactiveLabel >{t`Inactive`}</LoginInactiveLabel>
         )}
-        <Label>{item.time}</Label>
+
       </LoginItemInfo>
     </LoginItemContent>
   </Card>
@@ -44,7 +48,7 @@ const LoginHistoryItem = ({ item }) => (
 const LoginHistoryGroup = ({ items, date }) => (
   <LoginGroup>
     <Label>{date}</Label>
-    <div>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem" }}>
       {items.map(item => (
         <LoginHistoryItem key={item.timestamp} item={item} />
       ))}
@@ -58,9 +62,8 @@ const formatItems = items =>
     return {
       ...item,
       date: parsedTimestamp.format("LL"),
-      time: `${parsedTimestamp.format("LT")} (${
-        item.timezone || parsedTimestamp.format("Z")
-      })`,
+      time: `${parsedTimestamp.format("LT")} (${item.timezone || parsedTimestamp.format("Z")
+        })`,
     };
   });
 

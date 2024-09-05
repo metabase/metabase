@@ -72,7 +72,13 @@ export const UserPasswordForm = ({
       onSubmit={handleSubmit}
     >
       <Form>
-        <Stack>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "1rem",
+          }}
+        >
           <FormTextInput
             name="old_password"
             type="password"
@@ -94,11 +100,19 @@ export const UserPasswordForm = ({
             placeholder={t`Shhh... but one more time so we get it right`}
             autoComplete="new-password"
           />
-          <Group>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginTop: "1rem",
+            }}
+          >
             <FormSubmitButton label={t`Save`} variant="filled" />
-          </Group>
+          </div>
+
           <FormErrorMessage />
-        </Stack>
+        </div>
       </Form>
     </FormProvider>
   );

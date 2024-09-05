@@ -3,11 +3,11 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import { Flex, Group, Icon, Text, Title } from "metabase/ui";
 
-import { BrowseHeader, BrowseSection } from "./BrowseContainer.styled";
+import { BrowseHeader, BrowseSection } from "./CompanyContainer.styled";
 
-export const BrowseDataHeader = () => {
+export const CompanyHeader = ({ title, icon, padding = false }: any) => {
   return (
-    <BrowseHeader>
+    <BrowseHeader style={{ padding: padding ? 0 : undefined }}>
       <BrowseSection>
         <Flex
           w="100%"
@@ -18,8 +18,8 @@ export const BrowseDataHeader = () => {
         >
           <Title order={1} color="text-dark">
             <Group spacing="sm">
-              <Icon size={24} color={"#587330"} name="pie" />
-              {t`Raw data`}
+              <Icon size={24} color={"#587330"} name={icon} />
+              {title}
             </Group>
           </Title>
         </Flex>

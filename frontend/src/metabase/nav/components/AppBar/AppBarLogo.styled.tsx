@@ -17,6 +17,6 @@ export const LogoLink = styled(Link)<{ isSmallAppBar: boolean }>`
   ${props =>
     !props.isSmallAppBar &&
     css`
-      margin-inline-end: 2rem;
+      margin-inline-end: 10rem;
     `}
 `;

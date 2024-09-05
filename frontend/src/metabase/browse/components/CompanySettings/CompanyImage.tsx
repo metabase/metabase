@@ -3,9 +3,9 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import { Flex, Group, Icon, Text, Title } from "metabase/ui";
 
-import { BrowseHeader, BrowseSection } from "./BrowseContainer.styled";
+import { BrowseHeader, BrowseSection } from "./CompanyContainer.styled";
 
-export const BrowseDataHeader = () => {
+export const CompanyImage = () => {
   return (
     <BrowseHeader>
       <BrowseSection>
@@ -16,10 +16,10 @@ export const BrowseDataHeader = () => {
           justify="space-between"
           align="center"
         >
-          <Title order={1} color="text-dark">
-            <Group spacing="sm">
-              <Icon size={24} color={"#587330"} name="pie" />
-              {t`Raw data`}
+          <Title order={5} color="text-dark">
+            <Group spacing="md">
+              <Icon size={88} color={"#587330"} name="settings_image" />
+              {t`Company name`}
             </Group>
           </Title>
         </Flex>

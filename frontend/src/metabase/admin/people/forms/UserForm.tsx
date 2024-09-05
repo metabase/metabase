@@ -70,11 +70,16 @@ export const UserForm = ({
           <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes />
           <FormFooter>
             <FormErrorMessage inline />
-            <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+            <Button
+              type="button"
+              onClick={onCancel}
+              style={{ width: "100%" }}
+            >{t`Cancel`}</Button>
             <FormSubmitButton
               label={submitText}
               disabled={!dirty}
               variant="filled"
+              style={{ width: "100%" }}
             />
           </FormFooter>
         </Form>

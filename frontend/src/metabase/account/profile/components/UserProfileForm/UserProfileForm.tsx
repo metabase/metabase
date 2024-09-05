@@ -7,7 +7,7 @@ import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import { Form, FormProvider } from "metabase/forms";
+import { Form, FormProvider, FormTextInput } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import type { LocaleData, User } from "metabase-types/api";
 
@@ -60,34 +60,42 @@ const UserProfileForm = ({
     >
       {({ dirty }) => (
         <Form disabled={!dirty}>
-          {!isSsoUser && (
-            <>
-              <FormInput
-                name="first_name"
-                title={t`First name`}
-                placeholder={t`Johnny`}
-                nullable
-              />
-              <FormInput
-                name="last_name"
-                title={t`Last name`}
-                placeholder={t`Appleseed`}
-                nullable
-              />
-              <FormInput
-                name="email"
-                type="email"
-                title={t`Email`}
-                placeholder="nicetoseeyou@email.com"
-              />
-            </>
-          )}
-          <FormSelect
-            name="locale"
-            title={t`Language`}
-            options={localeOptions}
-          />
-          <FormSubmitButton title={t`Update`} disabled={!dirty} primary />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "1rem",
+            }}
+          >
+            {!isSsoUser && (
+              <>
+                <FormInput
+                  name="first_name"
+                  title={t`First name`}
+                  placeholder={t`Johnny`}
+                  nullable
+                />
+                <FormInput
+                  name="last_name"
+                  title={t`Last name`}
+                  placeholder={t`Appleseed`}
+                  nullable
+                />
+                <FormInput
+                  name="email"
+                  type="email"
+                  title={t`Email`}
+                  placeholder="nicetoseeyou@email.com"
+                />
+              </>
+            )}
+            <FormSelect
+              name="locale"
+              title={t`Language`}
+              options={localeOptions}
+            />
+          </div>
+          {dirty && <FormSubmitButton title={t`Update`} primary />}
           <FormErrorMessage />
         </Form>
       )}

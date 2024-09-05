@@ -6,6 +6,7 @@ import CS from "metabase/css/core/index.css";
 
 import { Container, HeadingContainer } from "./AdminPaneLayout.styled";
 import type { AdminPaneProps } from "./types";
+import { Icon } from "metabase/ui";
 
 export const AdminPaneTitle = ({
   title,
@@ -18,7 +19,7 @@ export const AdminPaneTitle = ({
 }: AdminPaneProps) => {
   const buttonClassName = cx(CS.mlAuto, CS.flexNoShrink);
   return (
-    <Container>
+    <Container style={{ paddingLeft: "2rem", paddingRight: "2rem" }}>
       <HeadingContainer>
         {headingContent && <>{headingContent}</>}
         {title && (
@@ -28,7 +29,20 @@ export const AdminPaneTitle = ({
         )}
         {buttonText && buttonLink && (
           <Link to={buttonLink} className={buttonClassName}>
-            <Button primary>{buttonText}</Button>
+            <button
+              style={{
+                backgroundColor: "transparent",
+                border: "none",
+                display: "flex", // Use flexbox for alignment
+                alignItems: "center", // Center items vertically
+                gap: "0.5rem", // Add some spacing between the icon and text
+                cursor: "pointer",
+                padding: "0.5rem",
+              }}
+            >
+              <Icon name="add" size={14} />
+              <span style={{ fontSize: "14px" }}>{buttonText}</span>
+            </button>
           </Link>
         )}
         {buttonText && buttonAction && (

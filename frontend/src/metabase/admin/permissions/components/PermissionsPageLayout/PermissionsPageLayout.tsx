@@ -93,7 +93,7 @@ function PermissionsPageLayout({
   const dispatch = useDispatch();
 
   const navigateToTab = (tab: PermissionsPageTab) =>
-    dispatch(push(`/admin/permissions/${tab}`));
+    dispatch(push(`/settings/permissions/${tab}`));
   const clearSaveError = () => dispatch(clearPermissionsSaveError());
 
   const handleToggleHelpReference = useCallback(() => {

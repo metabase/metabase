@@ -74,7 +74,7 @@ export default class DatabaseList extends Component {
         <section className={cx(AdminS.PageHeader, CS.px2, CS.clearfix)}>
           {isAdmin && (
             <Link
-              to="/admin/databases/create"
+              to="/settings/databases/create"
               className={cx(
                 ButtonsS.Button,
                 ButtonsS.ButtonPrimary,
@@ -114,7 +114,7 @@ export default class DatabaseList extends Component {
                               <TableCellSpinner size={16} borderWidth={2} />
                             )}
                             <Link
-                              to={"/admin/databases/" + database.id}
+                              to={"/settings/databases/" + database.id}
                               className={cx(CS.textBold, CS.link)}
                             >
                               {database.name}
@@ -188,7 +188,7 @@ export default class DatabaseList extends Component {
                 <Button
                   component={Link}
                   variant="filled"
-                  to={`/admin/permissions/data/database/${createdDbId}`}
+                  to={`/settings/permissions/data/database/${createdDbId}`}
                 >{t`Configure permissions`}</Button>
               </Flex>
             </Modal.Body>

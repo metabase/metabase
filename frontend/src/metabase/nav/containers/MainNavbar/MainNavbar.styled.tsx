@@ -79,7 +79,7 @@ export const SidebarContentRoot = styled.div`
 `;
 
 export const SidebarSection = styled(Box)<BoxProps>`
-  margin-top: ${space(1)};
+  margin-top: ${space(2)};
   margin-bottom: ${space(2)};
   padding-inline-start: ${space(2)};
   padding-inline-end: ${space(2)};
