@@ -1,12 +1,12 @@
 import type React from "react";
 
 import CS from "metabase/css/core/index.css";
-import { type MantineStyleSystemProps, Paper, Stack, Title } from "metabase/ui";
+import { Paper, type PaperProps, Stack, Title } from "metabase/ui";
 
 type SidesheetCardProps = {
   title?: React.ReactNode;
   children: React.ReactNode;
-} & PaperProps
+} & PaperProps;
 
 export const SidesheetCard = ({
   title,
