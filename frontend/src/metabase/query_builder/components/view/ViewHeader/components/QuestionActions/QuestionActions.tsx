@@ -17,7 +17,10 @@ import {
   PLUGIN_MODERATION,
   PLUGIN_QUERY_BUILDER_HEADER,
 } from "metabase/plugins";
-import { softReloadCard } from "metabase/query_builder/actions";
+import {
+  onOpenQuestionSettings,
+  softReloadCard,
+} from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -86,6 +89,7 @@ export const QuestionActions = ({
   const dispatch = useDispatch();
 
   const dispatchSoftReloadCard = () => dispatch(softReloadCard());
+  const onOpenSettingsSidebar = () => dispatch(onOpenQuestionSettings());
 
   const infoButtonColor = isShowingQuestionInfoSidebar
     ? color("brand")
@@ -192,6 +196,15 @@ export const QuestionActions = ({
       icon: "add_to_dash",
       action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
       testId: ADD_TO_DASH_TESTID,
+    });
+  }
+
+  if (isModerator) {
+    extraButtons.push({
+      title: t`Edit settings`,
+      icon: "gear",
+      action: onOpenSettingsSidebar,
+      testId: "question-settings-button",
     });
   }
 

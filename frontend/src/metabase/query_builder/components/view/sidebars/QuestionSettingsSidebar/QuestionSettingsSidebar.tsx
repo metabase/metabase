@@ -1,0 +1,84 @@
+import { useMemo, useState } from "react";
+import { useMount } from "react-use";
+import { match } from "ts-pattern";
+import { t } from "ttag";
+
+import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
+import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_CACHING } from "metabase/plugins";
+import { onCloseQuestionSettings } from "metabase/query_builder/actions";
+import { Stack } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
+
+import { ModelCacheManagementSection } from "../ModelCacheManagementSection";
+
+const getTitle = (question: Question) => {
+  return match(question.type())
+    .with("model", () => t`Model settings`)
+    .with("metric", () => t`Metric settings`)
+    .otherwise(() => t`Question settings`);
+};
+
+export const QuestionSettingsSidebar = ({
+  question,
+}: {
+  question: Question;
+}) => {
+  const hasCacheSection =
+    PLUGIN_CACHING.hasQuestionCacheSection(question) &&
+    PLUGIN_CACHING.isGranularCachingEnabled();
+
+  const dispatch = useDispatch();
+  const handleClose = () => dispatch(onCloseQuestionSettings());
+
+  const [page, setPage] = useState<"default" | "caching">("default");
+  const [isOpen, setIsOpen] = useState(false);
+
+  useMount(() => {
+    // this component is not rendered until it is "open"
+    // but we want to set isOpen after it mounts to get
+    // pretty animations
+    setIsOpen(true);
+  });
+
+  const title = useMemo(() => getTitle(question), [question]);
+
+  if (page === "caching") {
+    return (
+      <PLUGIN_CACHING.SidebarCacheForm
+        item={question}
+        model="question"
+        onBack={() => setPage("default")}
+        onClose={handleClose}
+        pt="md"
+      />
+    );
+  }
+
+  return (
+    <Sidesheet
+      title={title}
+      onClose={handleClose}
+      isOpen={isOpen}
+      data-testid="question-settings-sidebar"
+    >
+      {question.type() === "model" && (
+        <SidesheetCard>
+          <ModelCacheManagementSection model={question} />
+        </SidesheetCard>
+      )}
+
+      {hasCacheSection && (
+        <SidesheetCard>
+          <Stack spacing="0.5rem">
+            <PLUGIN_CACHING.SidebarCacheSection
+              model="question"
+              item={question}
+              setPage={setPage}
+            />
+          </Stack>
+        </SidesheetCard>
+      )}
+    </Sidesheet>
+  );
+};
