@@ -67,6 +67,10 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        partition-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: bigquery-cloud-sdk
@@ -82,7 +86,10 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :exclude-tags [:mb/once]
+          :partition/total 2
+          :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -799,6 +806,10 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        partition-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: redshift
@@ -812,7 +823,10 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-redshift-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :exclude-tags [:mb/once]
+          :partition/total 2
+          :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -830,6 +844,10 @@ jobs:
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        partition-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: snowflake
@@ -850,7 +868,10 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-snowflake-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :exclude-tags [:mb/once]
+          :partition/total 2
+          :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
