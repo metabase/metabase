@@ -224,7 +224,7 @@ export function getPieChartOption(
 
       return {
         value: s.data.value,
-        name: s.data.key,
+        name: s.data.name,
         itemStyle: { color: s.data.color },
         label: {
           color: labelColor,

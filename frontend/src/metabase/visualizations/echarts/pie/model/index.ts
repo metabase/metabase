@@ -1,4 +1,5 @@
 import { pie } from "d3";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { findWithIndex } from "metabase/lib/arrays";
@@ -174,7 +175,7 @@ export function getPieChartModel(
     const visible = !hiddenSlices.includes(OTHER_SLICE_KEY);
     slices.push({
       key: OTHER_SLICE_KEY,
-      name: OTHER_SLICE_KEY,
+      name: t`Other`,
       value: otherTotal,
       displayValue: otherTotal,
       normalizedPercentage: visible ? otherTotal / total : 0,
@@ -201,7 +202,7 @@ export function getPieChartModel(
   if (slices.length === 0) {
     slices.push({
       key: OTHER_SLICE_KEY,
-      name: OTHER_SLICE_KEY,
+      name: t`Other`,
       value: 1,
       displayValue: 0,
       normalizedPercentage: 0,

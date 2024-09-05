@@ -103,7 +103,7 @@ export function PieChart(props: VisualizationProps) {
   const legendTitles = chartModel.slices
     .filter(s => s.data.includeInLegend)
     .map(s => {
-      const label = s.data.isOther ? s.data.key : s.data.name;
+      const label = s.data.name;
 
       // Hidden slices don't have a percentage
       if (s.data.normalizedPercentage === 0) {
