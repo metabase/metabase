@@ -952,7 +952,7 @@
       (tu/with-temporary-setting-values [enable-nested-queries false]
         (is (every? some? (:data (mt/user-http-request :lucky :get 200 "database?saved=true"))))))))
 
-(deftest ^:parallel fetch-databases-with-invalid-driver-test
+(deftest fetch-databases-with-invalid-driver-test
   (testing "GET /api/database"
     (testing "\nEndpoint should still work even if there is a Database saved with a invalid driver"
       (t2.with-temp/with-temp [Database {db-id :id} {:engine "my-invalid-driver"}]
