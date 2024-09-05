@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -13,6 +14,7 @@ import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import Questions from "metabase/entities/questions";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { CreateAlertModalContent } from "metabase/notifications/AlertModals";
+import * as Urls from "metabase/lib/urls";
 import type { UpdateQuestionOpts } from "metabase/query_builder/actions/core/updateQuestion";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
@@ -117,14 +119,31 @@ export function QueryModals({
     async (question: Question) => {
       await onCreate(question);
       const type = question.type();
+      const dashboardId = question.dashboardId();
+
       if (type === "model" || type === "metric") {
         onCloseModal();
         setQueryBuilderMode("view");
-      } else {
+      } else if (typeof dashboardId !== "number") {
         onOpenModal(MODAL_TYPES.SAVED);
+      } else if (typeof dashboardId === "number") {
+        const opts = {
+          editMode: true,
+          // TODO: problem, question.id is not available at this point for some reason...
+          // the question being used is not the one from the api response, need to do some work to get that value here
+          addCardWithId: question.id(),
+        };
+        const url = Urls.dashboard(
+          {
+            id: dashboardId,
+            name: "TODO: PLZ NO ONE LET ME MERGE THIS",
+          },
+          opts,
+        );
+        dispatch(push(url));
       }
     },
-    [onCloseModal, onCreate, onOpenModal, setQueryBuilderMode],
+    [dispatch, onCloseModal, onCreate, onOpenModal, setQueryBuilderMode],
   );
 
   switch (modal) {

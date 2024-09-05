@@ -24,8 +24,7 @@ import { useSelector } from "metabase/lib/redux";
 import { Button, Icon } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
-export interface FormCollectionPickerProps
-  extends HTMLAttributes<HTMLDivElement> {
+interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   name: string;
   title?: string;
   placeholder?: string;
@@ -34,6 +33,7 @@ export interface FormCollectionPickerProps
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   zIndex?: number;
+  allowSelectDashboard: boolean;
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
 }
 
@@ -59,9 +59,14 @@ function FormCollectionPicker({
   placeholder = t`Select a collection`,
   type = "collections",
   filterPersonalCollections,
+  allowSelectDashboard,
   collectionPickerModalProps,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
+
+  if (allowSelectDashboard) {
+    collectionPickerModalProps;
+  }
 
   const [{ value }, { error, touched }, { setValue }] = useField(name);
 

@@ -50,6 +50,7 @@ export type EntityPickerTab<
    * (they provide the same models as the other tabs combined).
    */
   model: Model | null;
+  additionalModels?: Model[];
   folderModels: Model[];
 };
 
