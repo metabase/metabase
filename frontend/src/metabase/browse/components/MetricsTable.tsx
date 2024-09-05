@@ -56,7 +56,12 @@ import {
   ValueTableCell,
   ValueWrapper,
 } from "./BrowseTable.styled";
-import { getMetricDescription, getMetricValue, sortCards } from "./utils";
+import {
+  getMetricDescription,
+  getMetricValue,
+  isMetricScalar,
+  sortCards,
+} from "./utils";
 
 type MetricsTableProps = {
   metrics?: MetricResult[];
@@ -463,23 +468,19 @@ function ValueCell({ metric }: { metric?: MetricResult }) {
   return (
     <ValueTableCell>
       <ValueWrapper>
-        <Questions.Loader
-          id={id}
-          loadingAndErrorWrapper={false}
-          entityQuery={{ context: "collection" }}
-        >
+        <Questions.Loader id={id} loadingAndErrorWrapper={false}>
           {({
             loading,
             question,
           }: {
             loading: boolean;
-            question: Question;
+            question?: Question;
           }) => {
-            if (loading) {
+            if (loading || !question) {
               return null;
             }
 
-            const isScalar = question.display() === "scalar";
+            const isScalar = isMetricScalar(question);
             if (!isScalar) {
               // only show scalar metrics for now
               return null;
