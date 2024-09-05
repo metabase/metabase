@@ -7,20 +7,20 @@ import { getTooltipModel } from "metabase/visualizations/visualizations/PieChart
 import { getTooltipBaseOption } from "../tooltip";
 
 import type { PieChartFormatters } from "./format";
-import type { PieChartModel, PieSlice } from "./model/types";
+import type { PieChartModel } from "./model/types";
 
 interface ChartItemTooltip {
   chartModel: PieChartModel;
   formatters: PieChartFormatters;
-  slice: PieSlice;
+  dataIndex: number;
 }
 
 const ChartItemTooltip = ({
   chartModel,
   formatters,
-  slice,
+  dataIndex,
 }: ChartItemTooltip) => {
-  const tooltipModel = getTooltipModel(slice, chartModel, formatters);
+  const tooltipModel = getTooltipModel(dataIndex, chartModel, formatters);
   return <EChartsTooltip {...tooltipModel} />;
 };
 
@@ -33,25 +33,16 @@ export const getTooltipOption = (
     ...getTooltipBaseOption(containerRef),
     trigger: "item",
     formatter: params => {
-      if (Array.isArray(params) || !params.name) {
+      if (Array.isArray(params) || typeof params.dataIndex !== "number") {
         return "";
       }
-
-      const slice =
-        chartModel.slices.find(slice => slice.data.key === params.name) ??
-        chartModel.otherSlices.find(slice => slice.data.key === params.name);
-
-      if (slice) {
-        return renderToString(
-          <ChartItemTooltip
-            formatters={formatters}
-            chartModel={chartModel}
-            slice={slice}
-          />,
-        );
-      } else {
-        return "";
-      }
+      return renderToString(
+        <ChartItemTooltip
+          formatters={formatters}
+          chartModel={chartModel}
+          dataIndex={params.dataIndex}
+        />,
+      );
     },
   };
 };
