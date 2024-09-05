@@ -181,7 +181,7 @@
          (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
          (when (or (instance? Throwable result)
                    (= (:status result) :failed))
-           (streaming-response/write-error! os result)))))))
+           (streaming-response/write-error! os result export-format)))))))
 
 (defmacro streaming-response
   "Return results of processing a query as a streaming response. This response implements the appropriate Ring/Compojure
