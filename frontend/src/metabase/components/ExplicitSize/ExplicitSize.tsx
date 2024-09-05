@@ -66,6 +66,7 @@ function ExplicitSize<T>({
       };
 
       timeoutId: ReturnType<typeof setTimeout> | null = null;
+      animationFrameId: number | null = null;
 
       _currentElement: Element | null = null;
 
@@ -121,6 +122,9 @@ function ExplicitSize<T>({
         this._teardownQueryMediaListener();
         if (this.timeoutId !== null) {
           clearTimeout(this.timeoutId);
+        }
+        if (this.animationFrameId !== null) {
+          cancelAnimationFrame(this.animationFrameId);
         }
       }
 
@@ -212,7 +216,11 @@ function ExplicitSize<T>({
           // This fixes the "ResizeObserver loop completed with undelivered notifications" error.
           // Refer to https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver#observation_errors
           if (this.state.width !== width || this.state.height !== height) {
-            requestAnimationFrame(() => {
+            if (this.animationFrameId !== null) {
+              cancelAnimationFrame(this.animationFrameId);
+            }
+
+            this.animationFrameId = requestAnimationFrame(() => {
               this.setState({ width, height }, () =>
                 this.props?.onUpdateSize?.(),
               );
