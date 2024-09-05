@@ -115,7 +115,8 @@
   [path :- :string
    opts :- [:map
             [:backfill? {:optional true} [:maybe :boolean]]
-            [:continue-on-error {:optional true} [:maybe :int]]]]
+            [:continue-on-error {:optional true} [:maybe :boolean]]
+            [:full-stacktrace {:optional true} [:maybe :boolean]]]]
   (let [timer    (u/start-timer)
         err      (atom nil)
         report   (try
@@ -135,9 +136,13 @@
                                              (count (:seen report)))
                             :error_count   (count (:errors report))
                             :success       (nil? @err)
-                            :error_message (some-> @err str)})
+                            :error_message (when @err
+                                             (->> (serdes/strip-error @err nil)
+                                                  (str/join "\n")))})
     (when @err
-      (serdes/log-stripped-error "Error during deserialization" @err)
+      (if (:full-stacktrace opts)
+        (log/error @err "Error during deserialization")
+        (serdes/log-stripped-error @err "Error during deserialization"))
       (throw (ex-info (ex-message @err) {:cmd/exit true})))
     imported))
 
@@ -268,9 +273,13 @@
                             :field_values    (boolean (:include-field-values opts))
                             :secrets         (boolean (:include-database-secrets opts))
                             :success         (nil? @err)
-                            :error_message   (some-> @err str)})
+                            :error_message   (when @err
+                                               (->> (serdes/strip-error @err nil)
+                                                    (str/join "\n")))})
     (when @err
-      (serdes/log-stripped-error "Error during serialization" @err)
+      (if (:full-stacktrace opts)
+        (log/error @err "Error during serialization")
+        (serdes/log-stripped-error @err "Error during serialization"))
       (throw (ex-info (ex-message @err) {:cmd/exit true})))
     (log/info (format "Export to '%s' complete!" path) (u/emoji "🚛💨 📦"))
     report))
