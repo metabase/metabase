@@ -50,19 +50,28 @@
 
 (defn- metadatas [cache uncached-provider metadata-type ids]
   (when (seq ids)
-    (log/debugf "Getting %s metadata with IDs %s" metadata-type (pr-str (sort ids)))
-    (let [existing-ids (set (keys (get @cache metadata-type)))
-          missing-ids  (set/difference (set ids) existing-ids)]
-      (log/debugf "Already fetched %s: %s" metadata-type (pr-str (sort (set/intersection (set ids) existing-ids))))
-      (when (seq missing-ids)
-        (log/debugf "Need to fetch %s: %s" metadata-type (pr-str (sort missing-ids)))
-        ;; TODO -- we should probably store `::nil` markers for things we tried to fetch that didn't exist
-        (doseq [instance (lib.metadata.protocols/metadatas uncached-provider metadata-type missing-ids)]
-          (store-in-cache! cache [metadata-type (:id instance)] instance))))
+    (log/tracef "Getting %s metadata with IDs %s" metadata-type (pr-str (sort ids)))
+    (let [metadata-cache (get @cache metadata-type)]
+      (when-not (every? #(contains? metadata-cache %) ids)
+        (let [existing-ids (set (keys metadata-cache))
+              missing-ids  (set/difference (set ids) existing-ids)]
+          (log/tracef "Already fetched %s: %s" metadata-type (pr-str (sort (set/intersection (set ids) existing-ids))))
+          (when (seq missing-ids)
+            (log/tracef "Need to fetch %s: %s" metadata-type (pr-str (sort missing-ids)))
+            (let [fetched-metadatas (lib.metadata.protocols/metadatas uncached-provider metadata-type missing-ids)
+                  fetched-ids       (map :id fetched-metadatas)
+                  unfetched-ids     (set/difference (set missing-ids) (set fetched-ids))]
+              (when (seq fetched-ids)
+                (log/tracef "Fetched %s: %s" metadata-type (pr-str (sort fetched-ids)))
+                (doseq [instance fetched-metadatas]
+                  (store-in-cache! cache [metadata-type (:id instance)] instance)))
+              (when (seq unfetched-ids)
+                (log/tracef "Failed to fetch %s: %s" metadata-type (pr-str (sort unfetched-ids)))
+                (doseq [unfetched-id unfetched-ids]
+                  (store-in-cache! cache [metadata-type unfetched-id] ::nil))))))))
     (into []
-          (comp (map (fn [id]
-                       (get-in-cache cache [metadata-type id])))
-                (filter some?))
+          (keep (fn [id]
+                  (get-in-cache cache [metadata-type id])))
           ids)))
 
 (defn- cached-metadatas [cache metadata-type metadata-ids]
