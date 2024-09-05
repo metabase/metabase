@@ -160,9 +160,9 @@
      headers
      (apply concat
             ;; construct each 'section' (determined by the unique values of the first pivot-row
-            (for [section-row-combos (vals (group-by first row-combos))]
+            (for [section-row-combos (sort-by ffirst (vals (group-by first row-combos)))]
               (concat
-               (for [row-combo section-row-combos]
+               (for [row-combo (sort-by first section-row-combos)]
                  (let [row-path row-combo]
                    (concat
                     (when-not (seq pivot-rows) (repeat (count pivot-measures) nil))
@@ -181,15 +181,14 @@
                  [(let [section (ffirst section-row-combos)]
                     ;; column totals
                     (concat
-                     (cons (format "Totals for %s" section) (repeat (dec (count pivot-rows)) nil))
+                     (cons (format "Totals for %s" (fmt (get ordered-formatters (first pivot-rows)) section)) (repeat (dec (count pivot-rows)) nil))
                      (for [col-combo   col-combos
                            measure-key pivot-measures]
                        (fmt (get ordered-formatters measure-key)
                             (get-in totals (concat
                                             [:column-totals section]
                                             col-combo
-                                            [measure-key]))))
-                     ;; section totals
+                                            [measure-key]))))                     ;; section totals
                      (when row-totals?
                        (for [measure-key pivot-measures]
                          (fmt (get ordered-formatters measure-key)

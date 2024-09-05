@@ -238,7 +238,7 @@
   [pulse-ids]
   (t2/select
    :model/Card
-   {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls :pc.format_rows
+   {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls :pc.format_rows :pc.pivot_results
                 :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings] [:p.id :pulse_id]] ;; :dc.parameter_mappings - how do you select this?
     :from      [[:pulse :p]]
     :join      [[:pulse_card :pc] [:= :p.id :pc.pulse_id]

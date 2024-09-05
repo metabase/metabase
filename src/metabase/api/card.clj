@@ -702,12 +702,12 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [card-id export-format :as {{:keys [parameters]}        :params
-                              {:keys [pivot format-rows]} :body}]
+  [card-id export-format :as {{:keys [parameters]} :params
+                              {:keys [pivot-results format-rows]} :body}]
   {card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
    format-rows   [:maybe :boolean]
-   pivot         [:maybe :boolean]
+   pivot-results [:maybe :boolean]
    export-format (into [:enum] api.dataset/export-formats)}
   (qp.card/process-query-for-card
    card-id export-format
@@ -718,7 +718,7 @@
                  :skip-results-metadata? true
                  :ignore-cached-results? true
                  :format-rows?           (or format-rows false)
-                 :pivot?                 (or pivot false)
+                 :pivot?                 (or pivot-results false)
                  :js-int-to-string?      false}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------

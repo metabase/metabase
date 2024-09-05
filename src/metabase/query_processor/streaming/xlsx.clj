@@ -429,73 +429,76 @@
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
   This is based on the equivalent function in Docjure, but adapted to support Metabase viz settings."
-  {:arglists '([sheet values cols col-settings cell-styles typed-cell-styles])}
-  (fn [sheet _values _cols _col-settings _cell-styles _typed-cell-styles]
+  {:arglists '([sheet values cols col-settings cell-styles typed-cell-styles]
+               [sheet row-num values cols col-settings cell-styles typed-cell-styles])}
+  (fn [sheet & _args]
     (class sheet)))
 
 (defmethod add-row! org.apache.poi.xssf.streaming.SXSSFSheet
-  [^SXSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
-  (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
+  ([^SXSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
+   (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                   0
-                  (inc (.getLastRowNum sheet)))
-        row     (.createRow sheet row-num)
-        ;; Using iterators here to efficiently go over multiple collections at once.
-        val-it (.iterator ^Iterable values)
-        col-it (.iterator ^Iterable cols)
-        sty-it (.iterator ^Iterable cell-styles)]
-    (loop [index 0]
-      (when (.hasNext val-it)
-        (let [value (.next val-it)
-              col (.next col-it)
-              styles (.next sty-it)
-              id-or-name   (or (:id col) (:name col))
-              settings     (or (get col-settings {::mb.viz/field-id id-or-name})
-                               (get col-settings {::mb.viz/column-name id-or-name})
-                               (get col-settings {::mb.viz/column-name (:name col)}))
-              scaled-val   (if (and value (::mb.viz/scale settings))
-                             (* value (::mb.viz/scale settings))
-                             value)
-              ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
-              ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
-              parsed-value (or
-                            (maybe-parse-temporal-value value col)
-                            (maybe-parse-coordinate-value value col)
-                            scaled-val)]
-          (set-cell! (.createCell ^SXSSFRow row index) parsed-value styles typed-cell-styles))
-        (recur (inc index))))
-    row))
+                  (inc (.getLastRowNum sheet)))]
+     (add-row! ^SXSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles)))
+  ([^SXSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles]
+   (let [row     (.createRow sheet ^Integer row-num)
+         ;; Using iterators here to efficiently go over multiple collections at once.
+         val-it (.iterator ^Iterable values)
+         col-it (.iterator ^Iterable cols)
+         sty-it (.iterator ^Iterable cell-styles)]
+     (loop [index 0]
+       (when (.hasNext val-it)
+         (let [value (.next val-it)
+               col (.next col-it)
+               styles (.next sty-it)
+               id-or-name   (or (:id col) (:name col))
+               settings     (or (get col-settings {::mb.viz/field-id id-or-name})
+                                (get col-settings {::mb.viz/column-name id-or-name}))
+               scaled-val   (if (and value (::mb.viz/scale settings))
+                              (* value (::mb.viz/scale settings))
+                              value)
+               ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
+               ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
+               parsed-value (or
+                             (maybe-parse-temporal-value value col)
+                             (maybe-parse-coordinate-value value col)
+                             scaled-val)]
+           (set-cell! (.createCell ^SXSSFRow row index) parsed-value styles typed-cell-styles))
+         (recur (inc index))))
+     row)))
 
 (defmethod add-row! org.apache.poi.xssf.usermodel.XSSFSheet
-  [^XSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
-  (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
+  ([^XSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
+   (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                   0
-                  (inc (.getLastRowNum sheet)))
-        row     (.createRow sheet row-num)
-        ;; Using iterators here to efficiently go over multiple collections at once.
-        val-it (.iterator ^Iterable values)
-        col-it (.iterator ^Iterable cols)
-        sty-it (.iterator ^Iterable cell-styles)]
-    (loop [index 0]
-      (when (.hasNext val-it)
-        (let [value (.next val-it)
-              col (.next col-it)
-              styles (.next sty-it)
-              id-or-name   (or (:id col) (:name col))
-              settings     (or (get col-settings {::mb.viz/field-id id-or-name})
-                               (get col-settings {::mb.viz/column-name id-or-name})
-                               (get col-settings {::mb.viz/column-name (:name col)}))
-              scaled-val   (if (and value (::mb.viz/scale settings))
-                             (* value (::mb.viz/scale settings))
-                             value)
-              ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
-              ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
-              parsed-value (or
-                            (maybe-parse-temporal-value value col)
-                            (maybe-parse-coordinate-value value col)
-                            scaled-val)]
-          (set-cell! (.createCell ^XSSFRow row index) parsed-value styles typed-cell-styles))
-        (recur (inc index))))
-    row))
+                  (inc (.getLastRowNum sheet)))]
+     (add-row! ^XSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles)))
+  ([^XSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles]
+   (let [row     (.createRow sheet ^Integer row-num)
+         ;; Using iterators here to efficiently go over multiple collections at once.
+         val-it (.iterator ^Iterable values)
+         col-it (.iterator ^Iterable cols)
+         sty-it (.iterator ^Iterable cell-styles)]
+     (loop [index 0]
+       (when (.hasNext val-it)
+         (let [value (.next val-it)
+               col (.next col-it)
+               styles (.next sty-it)
+               id-or-name   (or (:id col) (:name col))
+               settings     (or (get col-settings {::mb.viz/field-id id-or-name})
+                                (get col-settings {::mb.viz/column-name id-or-name}))
+               scaled-val   (if (and value (::mb.viz/scale settings))
+                              (* value (::mb.viz/scale settings))
+                              value)
+               ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
+               ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
+               parsed-value (or
+                             (maybe-parse-temporal-value value col)
+                             (maybe-parse-coordinate-value value col)
+                             scaled-val)]
+           (set-cell! (.createCell ^XSSFRow row index) parsed-value styles typed-cell-styles))
+         (recur (inc index))))
+     row)))
 
 (def ^:dynamic *auto-sizing-threshold*
   "The maximum number of rows we should use for auto-sizing. If this number is too large, exports
@@ -626,9 +629,11 @@
         typed-cell-styles  (volatile! nil)
         pivot-grouping-key (atom nil)]
     (reify qp.si/StreamingResultsWriter
-      (begin! [_ {{:keys [ordered-cols format-rows? pivot-export-options]} :data}
+      (begin! [_ {{:keys [ordered-cols format-rows? pivot? pivot-export-options]
+                   :or   {format-rows? true
+                          pivot?       false}} :data}
                {col-settings ::mb.viz/column-settings :as viz-settings}]
-        (let [opts (when pivot-export-options
+        (let [opts (when (and pivot? pivot-export-options)
                      (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                      :pivot-rows []}
                                                     pivot-export-options) ordered-cols))]
@@ -642,7 +647,7 @@
               (reset! pivot-grouping-key (:pivot-grouping-key opts)))
             (let [wb (init-workbook {:ordered-cols ordered-cols
                                      :col-settings col-settings
-                                     :format-rows? format-rows?})]
+                                     :format-rows? true})]
               (vreset! workbook-data wb)))
 
           (let [{:keys [workbook sheet]} @workbook-data
@@ -655,13 +660,13 @@
         (let [ordered-row        (if output-order
                                    (let [row-v (into [] row)]
                                      (for [i output-order] (row-v i)))
-                                        row)
+                                   row)
               col-settings       (::mb.viz/column-settings viz-settings)
               pivot-grouping-key @pivot-grouping-key
               group              (get row pivot-grouping-key)
               modified-row       (if pivot-grouping-key
-                                        (vec (m/remove-nth pivot-grouping-key ordered-row))
-                                        ordered-row)
+                                   (vec (m/remove-nth pivot-grouping-key ordered-row))
+                                   ordered-row)
               {:keys [sheet]}    @workbook-data]
           (when (or (not group)
                     (= group 0))
