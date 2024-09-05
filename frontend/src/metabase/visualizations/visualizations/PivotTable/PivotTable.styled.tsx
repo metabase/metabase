@@ -105,7 +105,7 @@ interface PivotTableRootProps {
   isDashboard?: boolean;
   isNightMode?: boolean;
   shouldOverflow?: boolean;
-  isEditing?: boolean;
+  shouldHideScrollbars?: boolean;
 }
 
 export const PivotTableRoot = styled.div<PivotTableRootProps>`
@@ -122,7 +122,7 @@ export const PivotTableRoot = styled.div<PivotTableRootProps>`
       : null}
 
   ${props =>
-    props.isEditing
+    props.shouldHideScrollbars
       ? css`
           & {
             user-select: none;
