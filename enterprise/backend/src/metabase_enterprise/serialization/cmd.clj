@@ -108,10 +108,6 @@
   (serdes/with-cache
     (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts)))
 
-(defn- stripped-error [e]
-  (let [m (ex-data e)]
-    (ex-info (ex-message e) m)))
-
 (mu/defn v2-load!
   "SerDes v2 load entry point.
 
@@ -125,9 +121,7 @@
         report   (try
                    (v2-load-internal! path opts :token-check? true)
                    (catch ExceptionInfo e
-                     (if (:error (ex-data e))
-                       (reset! err (stripped-error e))
-                       (reset! err e)))
+                     (reset! err e))
                    (catch Exception e
                      (reset! err e)))
         imported (into (sorted-set) (map (comp :model last)) (:seen report))]
@@ -143,7 +137,8 @@
                             :success       (nil? @err)
                             :error_message (some-> @err str)})
     (when @err
-      (throw @err))
+      (serdes/log-stripped-error "Error during deserialization" @err)
+      (throw (ex-info (ex-message @err) {:cmd/exit true})))
     imported))
 
 (defn- select-entities-in-collections
@@ -275,7 +270,8 @@
                             :success         (nil? @err)
                             :error_message   (some-> @err str)})
     (when @err
-      (throw @err))
+      (serdes/log-stripped-error "Error during serialization" @err)
+      (throw (ex-info (ex-message @err) {:cmd/exit true})))
     (log/info (format "Export to '%s' complete!" path) (u/emoji "🚛💨 📦"))
     report))
 

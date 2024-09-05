@@ -33,6 +33,12 @@ import {
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
+import {
+  WEBHOOK_TEST_DASHBOARD,
+  WEBHOOK_TEST_HOST,
+  WEBHOOK_TEST_SESSION_ID,
+} from "../../../support/helpers/e2e-notification-helpers";
+
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const { SMTP_PORT, WEB_PORT } = WEBMAIL_CONFIG;
 
@@ -1143,6 +1149,98 @@ describe("notifications", { tags: "@external" }, () => {
     restore();
     cy.signInAsAdmin();
   });
+
+  describe("Auth", () => {
+    afterEach(() => {
+      cy.request(
+        "DELETE",
+        `${WEBHOOK_TEST_HOST}/api/session/${WEBHOOK_TEST_SESSION_ID}/requests`,
+        { failOnStatusCode: false },
+      );
+    });
+
+    const COMMON_FIELDS = [
+      {
+        label: "Webhook URL",
+        value: WEBHOOK_TEST_URL,
+      },
+      {
+        label: "Give it a name",
+        value: "Awesome Hook",
+      },
+      {
+        label: "Description",
+        value: "The best hook ever",
+      },
+    ];
+
+    // 3 Auth methods that add to the request. Unfortunately the webhook tester docker image doesn't support
+    // query params at the moment. https://github.com/tarampampam/webhook-tester/issues/389
+    const AUTH_METHODS = [
+      {
+        display: "Basic",
+        name: "Basic",
+        populateFields: () => {
+          cy.findByLabelText("Username").type("test@metabase.com");
+          cy.findByLabelText("Password").type("password");
+        },
+        validate: () => {
+          cy.findByText("Authorization").should("exist");
+          cy.findByText("Basic dGVzdEBtZXRhYmFzZS5jb206cGFzc3dvcmQ=").should(
+            "exist",
+          );
+        },
+      },
+      {
+        display: "Bearer",
+        name: "Bearer",
+        populateFields: () => {
+          cy.findByLabelText("Bearer token").type("my-secret-token");
+        },
+        validate: () => {
+          cy.findByText("Authorization").should("exist");
+          cy.findByText("Bearer my-secret-token").should("exist");
+        },
+      },
+      {
+        display: "API Key - Header",
+        name: "API Key",
+        populateFields: () => {
+          cy.findByLabelText("Key").type("Mb_foo");
+          cy.findByLabelText("Value").type("mb-bar");
+        },
+        validate: () => {
+          cy.findByText("Mb_foo").should("exist");
+          cy.findByText("mb-bar").should("exist");
+        },
+      },
+    ];
+
+    AUTH_METHODS.forEach(auth => {
+      it(`${auth.display} Auth`, () => {
+        cy.visit("/admin/settings/notifications");
+        cy.findByRole("heading", { name: "Add a webhook" }).click();
+
+        modal().within(() => {
+          COMMON_FIELDS.forEach(field => {
+            cy.findByLabelText(field.label).type(field.value);
+          });
+
+          cy.findByRole("radio", { name: auth.name }).click({ force: true });
+
+          auth.populateFields();
+
+          cy.button("Create destination").click();
+        });
+
+        cy.visit(WEBHOOK_TEST_DASHBOARD);
+        cy.findByRole("heading", { name: /Requests 1/ }).should("exist");
+
+        auth.validate();
+      });
+    });
+  });
+
   it("Should allow you to create and edit Notifications", () => {
     cy.visit("/admin/settings/notifications");
 
