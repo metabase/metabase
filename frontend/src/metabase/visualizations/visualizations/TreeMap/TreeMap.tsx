@@ -6,7 +6,7 @@ import {
   getDefaultMetrics,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type {
-  type ComputedVisualizationSettings,
+  ComputedVisualizationSettings,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
@@ -58,6 +58,61 @@ Object.assign(TreeMap, {
   },
 });
 
+type Node = {
+  name: string;
+  value: number;
+  childrenMap: Map<string, Node>;
+};
+type ResultNode = {
+  name: string;
+  value: number;
+  children: Node[];
+};
+type Row = {
+  path: string[];
+  value: number;
+};
+
+function gen(data: Array<Row>): Array<Node> {
+  const root: Node = {
+    name: "_root",
+    value: 0,
+    childrenMap: new Map(),
+  };
+  let node: Node;
+  for (const row of data) {
+    node = root;
+    const value = row.value;
+    for (let i = 0; i < row.path.length; i++) {
+      const label = row.path[i];
+      node.value += value;
+      if (!node.childrenMap.has(label)) {
+        node.childrenMap.set(label, {
+          name: label,
+          value: value,
+          childrenMap: new Map(),
+        });
+      }
+      node = node.childrenMap.get(label);
+    }
+  }
+
+  function dfs(n: Node): ResultNode {
+    const newNode = {
+      name: n.name,
+      value: n.value,
+      children: [],
+    };
+    for (const cn of n.childrenMap.values()) {
+      newNode.children.push(dfs(cn));
+    }
+    return newNode;
+  }
+
+  const res = dfs(root);
+  return res.children;
+}
+
 function getTreeMapModel(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
@@ -70,27 +125,17 @@ function getTreeMapModel(
 
   const dimensions = settings[__DIMENSIONS];
   const measure = settings[__MEASURES];
+  const colNames = new Map(cols.map((v, i) => [v.name, i]));
+  const dimIndexes = dimensions.map(value => colNames.get(value));
+  const measIndex = colNames.get(measure);
 
-  const dimIndexes = cols
-    .map((value, index) => [value.name, index] as const)
-    .filter(value => dimensions.includes(value[0]))
-    .map(value => value[1]);
-
-  const [measIndex] = cols
-    .map((value, index) => [value.name, index] as const)
-    .filter(value => value[0] === measure)
-    .map(value => value[1]);
-
-  const onlyNeededCols = rows.map(value =>
-    dimIndexes.map(v => value[v]).concat([value[measIndex]]),
-  );
-
-  return onlyNeededCols.map(value => {
+  const modeled = rows.map(value => {
     return {
-      name: value[0],
-      value: value[value.length - 1],
+      path: dimIndexes.map(v => (value[v] || "").toString()),
+      value: Number(value[measIndex]),
     };
   });
+  return gen(modeled);
 }
 
 export function TreeMap(props: VisualizationProps) {
