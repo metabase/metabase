@@ -17,11 +17,13 @@ export function AggregateStep({
 }: NotebookStepProps) {
   const { question, stageIndex } = step;
   const isMetric = question.type() === "metric";
+  const isSaved = question.isSaved();
 
   const aggregations = useMemo(() => {
     return Lib.aggregations(query, stageIndex);
   }, [query, stageIndex]);
 
+  const isLastAdded = !readOnly && isMetric && !isSaved;
   const hasAddButton = !readOnly && (!isMetric || aggregations.length === 0);
   const hasRemoveButton = !readOnly && !isMetric;
 
@@ -52,6 +54,7 @@ export function AggregateStep({
       initialAddText={t`Pick the metric you want to see`}
       readOnly={readOnly}
       color={color}
+      isLastAdded={isLastAdded}
       isLastOpened={isLastOpened}
       hasAddButton={hasAddButton}
       hasRemoveButton={hasRemoveButton}
