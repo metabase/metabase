@@ -60,6 +60,7 @@ export const HorizontalScroll43215: Story = () => {
         <PivotTableTestWrapper
           data={PIVOT_3_ROWS_NO_COLUMNS.data}
           initialSettings={PIVOT_3_ROWS_NO_COLUMNS.initialSettings}
+          isEditing
         />
       </Box>
     </VisualizationWrapper>
@@ -75,6 +76,24 @@ export const OuterHorizontalScroll: Story = () => {
           initialSettings={PIVOT_3_ROWS_NO_COLUMNS.initialSettings}
           containerWidth
           containerHeight
+          isEditing
+        />
+      </Box>
+    </VisualizationWrapper>
+  );
+};
+
+export const NoOuterHorizontalScroll: Story = () => {
+  return (
+    <VisualizationWrapper>
+      <Box h="400px" w="320px">
+        <PivotTableTestWrapper
+          data={PIVOT_3_ROWS_NO_COLUMNS.data}
+          initialSettings={PIVOT_3_ROWS_NO_COLUMNS.initialSettings}
+          containerWidth
+          containerHeight
+          isEditing
+          isDashboard
         />
       </Box>
     </VisualizationWrapper>
