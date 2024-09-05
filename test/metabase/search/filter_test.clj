@@ -12,6 +12,7 @@
    :models             search.config/all-models
    :model-ancestors?   false
    :current-user-id    1
+   :is-superuser?      true
    :current-user-perms #{"/"}})
 
 (deftest ^:parallel ->applicable-models-test

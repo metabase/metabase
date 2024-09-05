@@ -106,6 +106,7 @@
    ;;
    [:archived?          [:maybe :boolean]]
    [:current-user-id    pos-int?]
+   [:is-superuser?      :boolean]
    [:current-user-perms [:set perms.u/PathSchema]]
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]

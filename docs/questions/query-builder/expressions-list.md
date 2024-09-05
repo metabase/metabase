@@ -13,8 +13,6 @@ For an introduction to expressions, check out the [overview of custom expression
   - [Average](#average)
   - [Count](#count)
   - [CountIf](./expressions/countif.md)
-  - [CumulativeCount](#cumulativecount)
-  - [CumulativeSum](#cumulativesum)
   - [Distinct](#distinct)
   - [Max](#max)
   - [Median](#median)
@@ -87,6 +85,8 @@ For an introduction to expressions, check out the [overview of custom expression
 
   - [Window functions](#window-functions)
     - [Offset](#offset)
+    - [CumulativeCount](#cumulativecount)
+    - [CumulativeSum](#cumulativesum)
 
 - [Limitations](#limitations)
   - [Database limitations](#database-limitations)
@@ -118,24 +118,6 @@ Only counts rows where the condition is true.
 Syntax: `CountIf(condition)`.
 
 Example: `CountIf([Subtotal] > 100)` would return the number of rows where the subtotal were greater than 100.
-
-### CumulativeCount
-
-The additive total of rows across a breakout.
-
-Syntax: `CumulativeCount`.
-
-Example: `CumulativeCount`.
-
-### CumulativeSum
-
-The rolling sum of a column across a breakout.
-
-Syntax: `CumulativeSum(column)`.
-
-Example: `CumulativeSum([Subtotal])`.
-
-Related: [Sum](#sum) and [SumIf](#sumif).
 
 ### Distinct
 
@@ -734,9 +716,35 @@ Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer,
 
 ## Window functions
 
+Window functions can only be used in the **Summarize** section. They cannot be used to create a custom column or a custom filter.
+
+### CumulativeCount
+
+For more info, check out our page on [`CumulativeCount`](./expressions/cumulative.md).
+
+The additive total of rows across a breakout.
+
+Syntax: `CumulativeCount`.
+
+Example: `CumulativeCount`.
+
+### CumulativeSum
+
+For more info, check out our page on [`CumulativeSum`](./expressions/cumulative.md).
+
+The rolling sum of a column across a breakout.
+
+Syntax: `CumulativeSum(column)`.
+
+Example: `CumulativeSum([Subtotal])`.
+
+Related: [Sum](#sum) and [SumIf](#sumif).
+
 ### Offset
 
 > ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB.
+
+For more info, check out our page on [`Offset`](./expressions/offset.md).
 
 Returns the value of an expression in a different row. `Offset` can only be used in the query builder's Summarize step (you cannot use `Offset` to create a custom column).
 
@@ -747,8 +755,6 @@ The `expression` is the value to get from a different row.
 The `rowOffset` is the number relative to the current row. For example, `-1` for the previous row, or `1` for the next row.
 
 Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the previous row.
-
-See [Offset](./expressions/offset.md).
 
 ## Limitations
 
