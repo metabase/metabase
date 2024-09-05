@@ -827,9 +827,9 @@
                                                  (log/debugf "*page-callback counting down: %d to go" pages)))]
             (mt/dataset test-data
                         ;; *page-size* is inexact - should be 300 but give it a wide margin.
-                        (is (< 10
-                               (count (mt/rows (mt/process-query (mt/query orders))))
-                               500)))))))))
+              (is (< 10
+                     (count (mt/rows (mt/process-query (mt/query orders))))
+                     500)))))))))
 
 (deftest later-page-fetch-throws-test
   (mt/test-driver :bigquery-cloud-sdk
