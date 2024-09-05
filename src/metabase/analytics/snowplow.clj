@@ -119,12 +119,10 @@
   :doc false)
 
 (defn- tracker-config
-  "Returns instance of a Snowplow tracker config"
   []
   (TrackerConfiguration. "sp" "metabase"))
 
 (defn- network-config
-  "Returns instance of a Snowplow network config"
   []
   (let [request-config (-> (RequestConfig/custom)
                            ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie
@@ -139,12 +137,10 @@
     (NetworkConfiguration. http-client-adapter)))
 
 (defn- emitter-config
-  "An instance of a Snowplow emitter config"
   []
   (-> (EmitterConfiguration.)
       (.batchSize 1)))
 
-;; "An instance of a Snowplow tracker"
 (defonce ^:private tracker
   (Snowplow/createTracker
    ^TrackerConfiguration (tracker-config)
