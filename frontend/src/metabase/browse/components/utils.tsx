@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { getCollectionPathAsString } from "metabase/collections/utils";
-import type { SearchResult } from "metabase-types/api";
+import type { RawSeries, SearchResult } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import type { MetricResult, ModelResult } from "../types";
@@ -100,3 +100,24 @@ export const getMaxRecentItemsCount = (
   }
   return 0;
 };
+
+export function getMetricValue(rawSeries: RawSeries) {
+  const data = rawSeries?.[0]?.data;
+  if (!data) {
+    return null;
+  }
+
+  const columnMetadata = data.results_metadata?.columns?.[0];
+
+  const lastRow = data.rows?.at(-1);
+  const columnValue = lastRow?.[0];
+
+  if (columnValue === undefined) {
+    return null;
+  }
+
+  return {
+    value: columnValue,
+    column: columnMetadata,
+  };
+}

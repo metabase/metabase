@@ -8,10 +8,6 @@ import {
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import Link from "metabase/core/components/Link";
 import { breakpoints } from "metabase/ui/theme";
-import {
-  ScalarRoot,
-  ScalarValueWrapper,
-} from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
 
 export const TableRow = styled.tr<{ skeleton?: boolean }>`
   :focus {
@@ -78,12 +74,18 @@ export const CollectionLink = styled(Link)`
 `;
 
 export const ValueTableCell = styled(Cell)`
-  ${ScalarRoot} {
-    align-items: flex-end;
+  td& {
+    padding: 0;
+    padding-inline: 0.5em 1em;
   }
+`;
 
-  ${ScalarValueWrapper} {
-    font-size: 1em;
-    font-weight: normal;
-  }
+export const ValueWrapper = styled.span`
+  display: flex;
+  justify-content: flex-end;
+`;
+
+export const Value = styled.span`
+  padding: 1em 0;
+  height: 100%;
 `;
