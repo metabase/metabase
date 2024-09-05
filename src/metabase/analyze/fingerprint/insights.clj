@@ -19,17 +19,19 @@
 (set! *warn-on-reflection* true)
 
 (defn- last-2 []
-  (fn
-    ([] [])
-    ([acc]
-     (let [cnt (count acc)]
-       (cond (= cnt 0) [nil nil]
-             (= cnt 1) [nil (nth acc 0)]
-             :else acc)))
-    ([acc x]
-     (if (< (count acc) 2)
-       (conj acc x)
-       [(nth acc 1) x]))))
+  (let [none (Object.)]
+    (fn
+      ([] (object-array [none none]))
+      ([^objects acc]
+       (let [a (aget acc 0)
+             b (aget acc 1)]
+         (cond (identical? b none) [nil nil]
+               (identical? a none) [nil b]
+               :else [a b])))
+      ([^objects acc, x]
+       (aset acc 0 (aget acc 1))
+       (aset acc 1 x)
+       acc))))
 
 (defn change
   "Relative difference between `x1` an `x2`."
