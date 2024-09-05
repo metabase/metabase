@@ -983,3 +983,39 @@ describe("issue 40660", () => {
     });
   });
 });
+
+describe("issue 47617", () => {
+  const questionDetails = {
+    name: "issue 47617",
+    native: {
+      query: 'SELECT * FROM VALUES (1, 2), (1, 3) AS X("Month", "Value")',
+    },
+    display: "bar",
+    visualization_settings: {
+      "graph.dimensions": ["Month"],
+      "graph.metrics": ["Value"],
+    },
+    enable_embedding: true,
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createNativeQuestion(questionDetails, { wrapId: true });
+  });
+
+  it("static embed question with warnings should render (metabase#47617)", () => {
+    visitQuestion("@questionId");
+
+    openStaticEmbeddingModal({
+      activeTab: "parameters",
+      previewMode: "preview",
+    });
+
+    getIframeBody().within(() => {
+      cy.findByText("Month").should("be.visible");
+      cy.findByText("Value").should("be.visible");
+    });
+  });
+});
