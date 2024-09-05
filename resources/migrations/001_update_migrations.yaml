@@ -69,6 +69,91 @@ databaseChangeLog:
             path: initialization/metabase_h2.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v51.2024-09-05T08:00:00
+      author: qnkhuat
+      comment: Create the notification table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification
+      changes:
+        - createTable:
+            tableName: notification
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: payload_type
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: false
+                  defaultValueBoolean: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:01
+      author: qnkhuat
+      comment: Create the notification_subscription table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_subscription
+      changes:
+        - createTable:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: notification_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: notification
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_subscription_notification_id
+                    deleteCascade: true
+              - column:
+                  name: type
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event_name
+                  type: varchar(64)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
 # Note on rollback: migrations for v45 onwards should always include a rollback key unless they are supported
 # by Liquibase Auto Rollback. Most common changes are supported. See docs here:
 #

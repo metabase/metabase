@@ -190,6 +190,15 @@
              :name       (u.random/random-name)
              :content    "1 = 1"}))
 
+   :model/Notification
+   (fn [_] (default-timestamped
+             {:payload_type :notification/system-event
+              :active       true}))
+
+   :model/NotificationSubscription
+   (fn [_] (default-created-at-timestamped
+             {}))
+
    :model/QueryExecution
    (fn [_] {:hash         (qp.util/query-hash {})
             :running_time 1

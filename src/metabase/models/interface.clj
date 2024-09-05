@@ -251,6 +251,28 @@
   {:in  json-in
    :out json-out-without-keywordization})
 
+(defn transform-validator
+  "Given a transform, returns a transform that call `assert-fn` on the value.
+
+  E.g: A keyword transfomer that throw an error if the value is not namespaced
+    (transform-validator
+      transform-keyword (fn [x]
+      (when-not (-> x namespace some?)
+        (throw (ex-info \"Value is not namespaced\")))))"
+  [tf assert-fn]
+  (-> tf
+      ;; deserialization
+      (update :out (fn [f]
+                     (fn [x]
+                       (let [out (f x)]
+                         (assert-fn out)
+                         out))))
+      ;; serialization
+      (update :in (fn [f]
+                    (fn [x]
+                      (assert-fn x)
+                      (f x))))))
+
 (def encrypted-json-in
   "Serialize encrypted json."
   (comp encryption/maybe-encrypt json-in))
