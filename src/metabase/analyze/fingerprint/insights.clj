@@ -73,8 +73,9 @@
 
 (defn- simple-linear-regression
   "Faster and more efficient implementation of `kixi.stats.estimate/simple-linear-regression`. Computes some of squares
-  on each step, and on the completing step returns `[offset slope]`."
-  [fx fy]
+  on each step, and on the completing step returns `[offset slope]`. Additionally accepts `x-link-fn` and `y-link-fn`
+  functions which should be double->double."
+  [fx, fy, ^clojure.lang.IFn$DD x-link-fn, ^clojure.lang.IFn$DD y-link-fn]
   (fn
     ([] (double-array 6))
     ([^doubles arr e]
@@ -82,8 +83,8 @@
            y (fy e)]
        (if (or (nil? x) (nil? y))
          arr
-         (let [x    (double x)
-               y    (double y)
+         (let [x    (.invokePrim x-link-fn (double x))
+               y    (.invokePrim y-link-fn (double y))
                c    (aget arr 0)
                mx   (aget arr 1)
                my   (aget arr 2)
@@ -120,34 +121,38 @@
             (math/abs (- (fy x) (fy-hat x))))))
    stats/mean))
 
+(defn- double-identity ^double [^double x] x)
+
+(defn- double-log ^double [^double x] (Math/log x))
+
 (def ^:private trendline-function-families
   ;; http://mathworld.wolfram.com/LeastSquaresFitting.html
-  [{:x-link-fn identity
-    :y-link-fn identity
+  [{:x-link-fn double-identity
+    :y-link-fn double-identity
     :model     (fn [offset slope]
                  (fn [x]
                    (+ offset (* slope x))))
     :formula   (fn [offset slope]
                  [:+ offset [:* slope :x]])}
    ;; http://mathworld.wolfram.com/LeastSquaresFittingExponential.html
-   {:x-link-fn identity
-    :y-link-fn math/log
+   {:x-link-fn double-identity
+    :y-link-fn double-log
     :model     (fn [offset slope]
                  (fn [x]
                    (* (math/exp offset) (math/exp (* slope x)))))
     :formula   (fn [offset slope]
                  [:* (math/exp offset) [:exp [:* slope :x]]])}
    ;; http://mathworld.wolfram.com/LeastSquaresFittingLogarithmic.html
-   {:x-link-fn math/log
-    :y-link-fn identity
+   {:x-link-fn double-log
+    :y-link-fn double-identity
     :model     (fn [offset slope]
                  (fn [x]
-                   (+ offset (* slope (math/log x)))))
+                   (+ offset (* slope (double-log x)))))
     :formula   (fn [offset slope]
                  [:+ offset [:* slope [:log :x]]])}
    ;; http://mathworld.wolfram.com/LeastSquaresFittingPowerLaw.html
-   {:x-link-fn math/log
-    :y-link-fn math/log
+   {:x-link-fn double-log
+    :y-link-fn double-log
     :model     (fn [offset slope]
                  (fn [x]
                    (* (math/exp offset) (math/pow x slope))))
@@ -165,8 +170,7 @@
    (fingerprinters/robust-fuse
     {:fits           (->> (for [{:keys [x-link-fn y-link-fn formula model]} trendline-function-families]
                             (redux/post-complete
-                             (simple-linear-regression #(some-> (fx %) x-link-fn)
-                                                       #(some-> (fy %) y-link-fn))
+                             (simple-linear-regression fx fy x-link-fn y-link-fn)
                              (fn [[offset slope]]
                                (when (every? u/real-number? [offset slope])
                                  {:model   (model offset slope)
@@ -253,7 +257,7 @@
              ((filter (comp u/real-number? yfn))
               (redux/juxt ((map yfn) (last-2))
                           ((map xfn) (last-2))
-                          (simple-linear-regression xfn yfn)
+                          (simple-linear-regression xfn yfn double-identity double-identity)
                           (best-fit xfn yfn))))
            (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit-equation]]
              (let [unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
