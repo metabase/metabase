@@ -68,25 +68,27 @@ const ChartTypeSidebar = ({
   query,
 }: ChartTypeSidebarProps) => {
   const [makesSense, nonSense]: [CardDisplayType[], CardDisplayType[]] =
-    useMemo(() => {
-      return _.partition(
-        _.union(
-          DEFAULT_ORDER,
-          Array.from(visualizations)
-            .map(([vizType]) => vizType)
-            .filter(isCardDisplayType),
-        ).filter(vizType => !visualizations?.get(vizType)?.hidden),
-        vizType => {
-          const visualization = visualizations.get(vizType);
-          return (
-            result &&
-            result.data &&
-            visualization?.isSensible &&
-            visualization?.isSensible(sanatizeResultData(result.data), query)
-          );
-        },
-      );
-    }, [result, query]);
+    useMemo(
+      () =>
+        _.partition(
+          _.union(
+            DEFAULT_ORDER,
+            Array.from(visualizations)
+              .map(([vizType]) => vizType)
+              .filter(isCardDisplayType),
+          ).filter(vizType => !visualizations?.get(vizType)?.hidden),
+          vizType => {
+            const visualization = visualizations.get(vizType);
+            return (
+              result &&
+              result.data &&
+              visualization?.isSensible &&
+              visualization?.isSensible(sanatizeResultData(result.data), query)
+            );
+          },
+        ),
+      [result, query],
+    );
 
   const openChartSettings = useCallback(
     (e: React.MouseEvent) => {

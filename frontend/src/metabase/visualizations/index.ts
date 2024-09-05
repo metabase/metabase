@@ -13,8 +13,13 @@ import type { Visualization } from "./types/visualization";
 
 const visualizations = new Map<VisualizationDisplay, Visualization>();
 const aliases = new Map<string, Visualization>();
-visualizations.get = key =>
-  Map.prototype.get.call(this, key) || aliases.get(key) || defaultVisualization;
+visualizations.get = function (key) {
+  return (
+    Map.prototype.get.call(this, key) ||
+    aliases.get(key) ||
+    defaultVisualization
+  );
+};
 
 export function getSensibleDisplays(data: DatasetData) {
   return Array.from(visualizations)
