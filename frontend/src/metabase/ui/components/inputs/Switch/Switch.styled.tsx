@@ -73,11 +73,9 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
           lineHeight: getSize({ size, sizes: LABEL_LINE_HEIGHT }),
           color: theme.fn.themeColor("text-dark"),
           cursor: "pointer",
-          "&[data-disabled]": {
-            "&:not([data-css-specificity-hack='😢'])": {
-              color: theme.fn.themeColor("text-light"),
-              cursor: "default",
-            },
+          "&[data-disabled]:not([data-css-specificity-hack='😢'])": {
+            color: theme.fn.themeColor("text-light"),
+            cursor: "default",
           },
         },
         description: {
