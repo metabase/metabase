@@ -498,9 +498,9 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     strategy:
+      fail-fast: false
       matrix:
         partition-index: [0, 1]
-        fail-fast: false
     env:
       CI: 'true'
       DRIVERS: mysql
