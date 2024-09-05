@@ -69,3 +69,14 @@
    (persistent! (reduce #(conj! %1 (f %2 %3 %4)) (transient [])  coll1 coll2 coll3)))
   ([f coll1 coll2 coll3 coll4]
    (persistent! (reduce #(conj! %1 (f %2 %3 %4 %5)) (transient []) coll1 coll2 coll3 coll4))))
+
+(defn juxt*
+  "Like `clojure.core/juxt`, but accepts a list of functions instead of varargs. Uses more efficient mapping."
+  [fns]
+  (let [fns (vec fns)]
+    (fn
+      ([] (mapv #(%) fns))
+      ([x] (mapv #(% x) fns))
+      ([x y] (mapv #(% x y) fns))
+      ([x y z] (mapv #(% x y z) fns))
+      ([x y z & args] (mapv #(apply % x y z args) fns)))))

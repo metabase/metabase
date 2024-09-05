@@ -54,6 +54,7 @@ import {
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
+import { MetricEmptyState } from "./MetricEmptyState";
 import { TabHintToast } from "./TabHintToast";
 import { EDITOR_TAB_INDEXES } from "./constants";
 
@@ -200,6 +201,7 @@ function DatasetEditor(props) {
     height,
     isDirty: isModelQueryDirty,
     isResultDirty,
+    isRunning,
     setQueryBuilderMode,
     runQuestionQuery,
     setDatasetEditorTab,
@@ -213,6 +215,7 @@ function DatasetEditor(props) {
   } = props;
 
   const isMetric = question.type() === "metric";
+  const isMetricEmptyState = isMetric && !result && !isRunning;
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const isDirty = isModelQueryDirty || isMetadataDirty;
   const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
@@ -456,11 +459,7 @@ function DatasetEditor(props) {
     ) {
       return t`You must run the query before you can save this model`;
     }
-
-    if (isMetric && Lib.aggregations(question.query(), -1).length === 0) {
-      return t`You must define how the measure is calculated to save this metric`;
-    }
-  }, [isNative, isMetric, isDirty, isResultDirty, question]);
+  }, [isNative, isDirty, isResultDirty, question]);
 
   const sidebar = getSidebar(
     { ...props, modelIndexes },
@@ -542,18 +541,25 @@ function DatasetEditor(props) {
           </QueryEditorContainer>
           <TableContainer isSidebarOpen={!!sidebar}>
             <DebouncedFrame className={cx(CS.flexFull)} enabled>
-              <QueryVisualization
-                {...props}
-                className={CS.spread}
-                noHeader
-                queryBuilderMode="dataset"
-                isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}
-                hasMetadataPopovers={false}
-                handleVisualizationClick={handleTableElementClick}
-                tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
-                renderTableHeaderWrapper={renderTableHeaderWrapper}
-                scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
-              />
+              {isMetricEmptyState ? (
+                <MetricEmptyState
+                  query={question.query()}
+                  runQuestionQuery={runQuestionQuery}
+                />
+              ) : (
+                <QueryVisualization
+                  {...props}
+                  className={CS.spread}
+                  noHeader
+                  queryBuilderMode="dataset"
+                  isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}
+                  hasMetadataPopovers={false}
+                  handleVisualizationClick={handleTableElementClick}
+                  tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
+                  renderTableHeaderWrapper={renderTableHeaderWrapper}
+                  scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
+                />
+              )}
             </DebouncedFrame>
             <TabHintToastContainer
               isVisible={isEditingMetadata && isTabHintVisible && !result.error}
