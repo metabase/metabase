@@ -346,7 +346,7 @@ function _PivotTable({
   return (
     <PivotTableRoot
       shouldOverflow={shouldOverflow}
-      isEditing={isEditing}
+      shouldHideScrollbars={isEditing && isDashboard}
       isDashboard={isDashboard}
       isNightMode={isNightMode}
       data-testid="pivot-table"

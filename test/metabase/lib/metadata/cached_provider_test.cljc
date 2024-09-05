@@ -10,15 +10,19 @@
 
 (deftest ^:parallel caching-test
   (let [fetch-count (atom 0)
+        missing-id  123
         provider    (lib.metadata.cached-provider/cached-metadata-provider
                      (reify
                        lib.metadata.protocols/MetadataProvider
                        (metadatas [_this metadata-type ids]
                          (case metadata-type
-                           :metadata/table (for [id ids]
-                                             (do
-                                               (swap! fetch-count inc)
-                                               (assoc (meta/table-metadata :venues) :id id)))))))]
+                           :metadata/table
+                           (->> (for [id ids]
+                                  (do
+                                    (swap! fetch-count inc)
+                                    (when (not= id missing-id)
+                                      (assoc (meta/table-metadata :venues) :id id))))
+                                (filter some?))))))]
     (testing "Initial fetch"
       (is (=? {:id 1}
               (lib.metadata.protocols/table provider 1)))
@@ -29,7 +33,7 @@
               (lib.metadata.protocols/table provider 1)))
       (is (= 1
              @fetch-count)))
-    (testing "Second fetch"
+    (testing "Third fetch"
       (is (=? {:id 1}
               (lib.metadata.protocols/table provider 1)))
       (is (= 1
@@ -50,6 +54,18 @@
                  {:id 2}]
                 (lib.metadata.protocols/metadatas provider :metadata/table #{1 2})))
         (is (= 2
+               @fetch-count)))
+      (testing "Fetch a missing id, first fetch should inc fetch count"
+        (let [results (lib.metadata.protocols/metadatas provider :metadata/table #{1 missing-id})]
+          (is (=? [{:id 1}]
+                  results)))
+        (is (= 3
+               @fetch-count)))
+      (testing "Fetch a missing id, second fetch should not inc fetch count"
+        (let [results (lib.metadata.protocols/metadatas provider :metadata/table #{1 missing-id})]
+          (is (=? [{:id 1}]
+                  results)))
+        (is (= 3
                @fetch-count))))))
 
 (deftest ^:parallel equality-test
