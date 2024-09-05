@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { useDispatch } from "metabase/lib/redux";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { PLUGIN_CACHING, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { onCloseQuestionSettings } from "metabase/query_builder/actions";
 import { Stack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -81,4 +81,20 @@ export const QuestionSettingsSidebar = ({
       )}
     </Sidesheet>
   );
+};
+
+export const shouldShowQuestionSettingsSidebar = (question: Question) => {
+  const isCacheableQuestion =
+    PLUGIN_CACHING.isGranularCachingEnabled() &&
+    PLUGIN_CACHING.hasQuestionCacheSection(question);
+
+  const isCacheableModel =
+    question.type() === "model" &&
+    PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
+    question.canWrite() &&
+    !question.isArchived();
+  // if the db has caching disabled, we still want to show the sidebar to surface that
+  // information to the user
+
+  return isCacheableQuestion || isCacheableModel;
 };

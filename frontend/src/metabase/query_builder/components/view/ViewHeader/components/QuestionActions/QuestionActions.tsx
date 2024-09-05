@@ -32,6 +32,7 @@ import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import { UploadMode } from "metabase-types/store/upload";
 
+import { shouldShowQuestionSettingsSidebar } from "../../../sidebars/QuestionSettingsSidebar";
 import { ViewHeaderIconButtonContainer } from "../../ViewTitleHeader.styled";
 
 import {
@@ -94,13 +95,13 @@ export const QuestionActions = ({
   const isMetric = question.type() === "metric";
   const isModelOrMetric = isModel || isMetric;
   const hasCollectionPermissions = question.canWrite();
-  const isSaved = question.isSaved();
   const database = question.database();
   const canAppend =
     hasCollectionPermissions && !!question._card.based_on_upload;
   const { isEditable: hasDataPermissions } = Lib.queryDisplayInfo(
     question.query(),
   );
+  const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
 
   const handleEditQuery = useCallback(() => {
     onSetQueryBuilderMode("dataset", {
@@ -176,7 +177,7 @@ export const QuestionActions = ({
     });
   }
 
-  if (isModerator && isSaved) {
+  if (enableSettingsSidebar) {
     extraButtons.push({
       title: t`Edit settings`,
       icon: "gear",
