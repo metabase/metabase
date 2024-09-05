@@ -42,6 +42,7 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
       ? details.collection_id
       : saveToCollectionId,
   );
+  const dashboardId = details.dashboard_id;
 
   const displayName = details.name.trim();
   const description = details.description ? details.description.trim() : null;
@@ -49,9 +50,10 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
   const newQuestion = question
     .setDisplayName(displayName)
     .setDescription(description)
-    .setCollectionId(collectionId);
+    .setCollectionId(collectionId)
+    .setDashboardId(dashboardId);
 
-  await onCreate(newQuestion);
+  /*const createdQuestion =*/ await onCreate(newQuestion);
 };
 
 export async function submitQuestion(options: SubmitQuestionOptions) {
@@ -105,6 +107,7 @@ export const getInitialValues = (
       question.collectionId() === undefined || isReadonly
         ? initialCollectionId
         : question.collectionId(),
+    dashboard_id: question.dashboardId(),
     saveType:
       originalQuestion &&
       originalQuestion.type() === "question" &&
