@@ -464,7 +464,7 @@
     (let [limit (apply max breakout-combination)
           selected (set breakout-combination)
           inserted (set (vals remap))]
-      (loop [index 0, offset 0, combination []]
+      (loop [index 0, offset 0, combination #{}]
         (if (> index limit)
           (-> combination sort vec)
           (let [offset (cond-> offset
