@@ -26,6 +26,7 @@ import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import Bookmarks from "metabase/entities/bookmarks";
 import Questions from "metabase/entities/questions";
+import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -40,7 +41,6 @@ import {
   Tooltip,
 } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
-import Visualization from "metabase/visualizations/components/Visualization";
 import type Question from "metabase-lib/v1/Question";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
@@ -52,7 +52,9 @@ import {
   CollectionTableCell,
   NameColumn,
   TableRow,
+  Value,
   ValueTableCell,
+  ValueWrapper,
 } from "./BrowseTable.styled";
 import { getMetricDescription, sortModelOrMetric } from "./utils";
 
@@ -456,39 +458,67 @@ function ValueCell({ metric }: { metric?: MetricResult }) {
 
   return (
     <ValueTableCell>
-      <Questions.Loader
-        id={id}
-        loadingAndErrorWrapper={false}
-        entityQuery={{ context: "collection" }}
-      >
-        {({ loading, question }: { loading: boolean; question: Question }) => {
-          if (loading) {
-            return null;
-          }
+      <ValueWrapper>
+        <Questions.Loader
+          id={id}
+          loadingAndErrorWrapper={false}
+          entityQuery={{ context: "collection" }}
+        >
+          {({
+            loading,
+            question,
+          }: {
+            loading: boolean;
+            question: Question;
+          }) => {
+            if (loading) {
+              return null;
+            }
 
-          const isScalar = question.display() === "scalar";
-          if (!isScalar) {
-            // only show scalar metrics for now
-            return null;
-          }
+            const isScalar = question.display() === "scalar";
+            if (!isScalar) {
+              // only show scalar metrics for now
+              return null;
+            }
 
-          return (
-            <QuestionResultLoader question={question}>
-              {({ loading, error, rawSeries }: QuestionResultLoaderProps) => {
-                if (loading || error || !rawSeries) {
-                  return null;
-                }
+            return (
+              <QuestionResultLoader question={question}>
+                {({ loading, error, rawSeries }: QuestionResultLoaderProps) => {
+                  if (loading || error || !rawSeries) {
+                    return null;
+                  }
 
-                return (
-                  <Tooltip label={<Text>{t`Overall`}</Text>}>
-                    <Visualization rawSeries={rawSeries} />
-                  </Tooltip>
-                );
-              }}
-            </QuestionResultLoader>
-          );
-        }}
-      </Questions.Loader>
+                  const data = rawSeries?.[0]?.data;
+                  if (!data) {
+                    return null;
+                  }
+
+                  const lastRow = data.rows?.at(-1);
+                  const firstColumnValue = lastRow?.[0];
+
+                  const firstColumnMetadata =
+                    data.results_metadata?.columns?.[0];
+
+                  if (!firstColumnValue) {
+                    return null;
+                  }
+
+                  return (
+                    <Tooltip label={<Text>{t`Overall`}</Text>}>
+                      <Value>
+                        {formatValue(firstColumnValue, {
+                          jsx: true,
+                          column: firstColumnMetadata,
+                        })}
+                      </Value>
+                    </Tooltip>
+                  );
+                }}
+              </QuestionResultLoader>
+            );
+          }}
+        </Questions.Loader>
+      </ValueWrapper>
     </ValueTableCell>
   );
 }
