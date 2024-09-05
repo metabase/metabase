@@ -500,6 +500,7 @@ jobs:
     strategy:
       matrix:
         partition-index: [0, 1]
+        fail-fast: false
     env:
       CI: 'true'
       DRIVERS: mysql
