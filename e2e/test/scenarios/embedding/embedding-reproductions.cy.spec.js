@@ -1005,7 +1005,7 @@ describe("issue 47617", () => {
     createNativeQuestion(questionDetails, { wrapId: true });
   });
 
-  it("static embed question should render with warnings (metabase#47617)", () => {
+  it("static embed question with warnings should render (metabase#47617)", () => {
     visitQuestion("@questionId");
 
     openStaticEmbeddingModal({
