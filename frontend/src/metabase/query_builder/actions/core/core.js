@@ -329,8 +329,12 @@ export const revertToRevision = createThunkAction(
 );
 
 async function reduxCreateQuestion(question, dispatch) {
-  const action = await dispatch(Questions.actions.create(question.card()));
-  return question.setCard(Questions.HACK_getObjectFromAction(action));
+  const card = question.card();
+  const result = Questions.actions.create(card);
+  const action = await dispatch(result);
+  const object = Questions.HACK_getObjectFromAction(action);
+  const newQuesiton = question.setCard(object);
+  return newQuesiton;
 }
 
 async function reduxUpdateQuestion(

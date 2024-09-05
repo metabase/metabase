@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import { getPlaceholder } from "metabase/components/SaveQuestionForm/util";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
@@ -62,10 +62,12 @@ export const SaveQuestionForm = ({
             title={t`Description`}
             placeholder={t`It's optional but oh, so helpful`}
           />
-          <FormCollectionPicker
-            name="collection_id"
-            title={t`Which collection should this go in?`}
+          <FormCollectionAndDashboardPicker
+            collectionIdFieldName="collection_id"
+            dashboardIdFieldName="dashboard_id"
+            title={t`Which collection or dashboard should this go in?`}
             zIndex={DEFAULT_MODAL_Z_INDEX + 1}
+            allowSelectDashboard
           />
         </div>
       )}

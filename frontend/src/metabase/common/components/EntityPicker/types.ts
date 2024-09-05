@@ -29,6 +29,7 @@ export type EntityTab<Model extends string> = {
   element: JSX.Element;
   icon: IconName;
   model: Model;
+  additionalModels?: Model[];
 };
 
 export type ListProps<
