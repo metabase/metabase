@@ -15,7 +15,13 @@ export function MetricEmptyState({
   const canRun = Lib.canRun(query, "metric");
 
   return (
-    <Flex direction="column" align="center" justify="center" mih="100%">
+    <Flex
+      direction="column"
+      align="center"
+      justify="center"
+      mih="100%"
+      data-testid="metric-empty-state"
+    >
       <Text mb="sm" fw="bold" fz="lg">
         {t`A metric is one of the key numbers you want to keep track of`}
       </Text>

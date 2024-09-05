@@ -253,6 +253,18 @@ describe("scenarios > metrics > editing", () => {
       });
       getActionButton("Summarize").should("not.exist");
     });
+
+    it("should allow to run the query from the metric empty state", () => {
+      startNewMetric();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.findByTestId("metric-empty-state").button("Visualize").click();
+      cy.wait("@dataset");
+      verifyScalarValue("18,760");
+    });
   });
 
   describe("joins", () => {
