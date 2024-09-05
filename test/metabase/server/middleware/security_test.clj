@@ -188,7 +188,6 @@
                                        embedding-app-origin nil]
       (is (= "http://localhost:8080" (get (mw.security/access-control-headers "http://localhost:8080") "Access-Control-Allow-Origin")))))
 
-
   (testing "Should disable CORS when embedding is disabled"
     (tu/with-temporary-setting-values [enable-embedding     false
                                        embedding-app-origin nil]
