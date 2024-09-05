@@ -267,6 +267,7 @@
 ;;; The Snowflake `VARIANT` type is allowed to be anything. See
 ;;; https://docs.snowflake.com/en/sql-reference/data-types-semistructured
 (derive :type/SnowflakeVariant :type/*)
+(derive :type/SnowflakeVariant :type/Large)
 
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
 ;;; filter options like starts with / contains
