@@ -24,7 +24,7 @@
 (defn- explicit-dox [schema]
   {:pre [(instance? malli.core.Schema schema)]}
   ;; TODO -- parse `:error/message` for Markdown-ness.
-  (or (when-let [x ((some-fn :doc/message :error/message)
+  (or (when-let [x ((some-fn :description :error/message)
                     (mc/properties schema))]
         (maybe-parse-markdown x))
       (when (symbol? (mc/form schema))
@@ -178,7 +178,7 @@
                                    [:i "Optional."])]
                                 [:td
                                  {:style "border: 1px solid black;"}
-                                 [:div (maybe-parse-markdown (:doc/message opts))]
+                                 [:div (maybe-parse-markdown (:description opts))]
                                  [:div this]]]]
        {:cache cache, :rows (conj rows row)}))
    {:cache cache, :rows []}
