@@ -132,6 +132,12 @@ describe("[EE, no token] embedding settings", () => {
         );
 
         expect(
+          screen.getByLabelText("Enable Embedding SDK for React"),
+        ).not.toBeChecked();
+        expect(
+          screen.getByLabelText("Enable Embedding SDK for React"),
+        ).toBeEnabled();
+        expect(
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
         ).toBeDisabled();
       });
@@ -228,6 +234,12 @@ describe("[EE, no token] embedding settings", () => {
           ).getByRole("button", { name: "Try it out" }),
         );
 
+        expect(
+          screen.getByLabelText("Enable Embedding SDK for React"),
+        ).toBeChecked();
+        expect(
+          screen.getByLabelText("Enable Embedding SDK for React"),
+        ).toBeEnabled();
         expect(
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
         ).toBeDisabled();
