@@ -106,6 +106,7 @@ function AggregationPopover({
       clause={clause}
       clauseIndex={clauseIndex}
       operators={operators}
+      allowCustomExpressions
       onQueryChange={onQueryChange}
       onClose={onClose}
     />

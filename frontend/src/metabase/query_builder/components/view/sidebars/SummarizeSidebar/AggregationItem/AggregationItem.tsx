@@ -54,7 +54,6 @@ export function AggregationItem({
           clause={aggregation}
           clauseIndex={aggregationIndex}
           operators={operators}
-          hasExpressionInput={false}
           onQueryChange={onQueryChange}
         />
       </Popover.Dropdown>
