@@ -21,9 +21,9 @@ export const isMetric = (item: SearchResult) => item.model === "metric";
 export const getMetricDescription = (item: SearchResult) => {
   if (item.collection && isMetric(item) && !item.description?.trim()) {
     return t`A metric`;
-  } else {
-    return item.description;
   }
+
+  return item.description;
 };
 
 const getValueForSorting = (
