@@ -99,7 +99,7 @@
   (testing "Snowplow events include a custom context that includes the schema, instance ID, version, token features
            and creation timestamp"
     (with-fake-snowplow-collector
-      (snowplow/track-event! ::account {:event :new-instance-created})
+      (snowplow/track-event! ::snowplow/account {:event :new-instance-created})
       (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-1-2",
               :data {:id                           (snowplow/analytics-uuid)
                      :version                      {:tag (:tag (public-settings/version))},
@@ -117,7 +117,7 @@
   (testing "IP address on Snowplow subject is overridden with a dummy value (127.0.0.1)"
     (with-fake-snowplow-collector
       (mt/with-test-user :rasta
-        (snowplow/track-event! ::snowplow/dashboard-created {:dashboard-id 1})
+        (snowplow/track-event! ::snowplow/dashboard {:dashboard-id 1})
         (is (partial= {:uid (str (mt/user->id :rasta)) :ip "127.0.0.1"}
                       (:subject (first @*snowplow-collector*))))))))
 
@@ -194,7 +194,7 @@
 
           (testing "Snowplow events are not sent when tracking is disabled"
             (mt/with-temporary-setting-values [anon-tracking-enabled false]
-              (snowplow/track-event! ::account {:event :new_instance_created} nil)
+              (snowplow/track-event! ::snowplow/account {:event :new_instance_created} nil)
               (is (= [] (pop-event-data-and-user-id!))))))))))
 
 (deftest instance-creation-test
