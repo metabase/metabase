@@ -2,7 +2,6 @@
   "There are more e2e tests in [[metabase.api.dashboard-test]]."
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
@@ -16,7 +15,7 @@
 (defn- run-query-for-dashcard [dashboard-id card-id dashcard-id & options]
   ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
   ;; stuff doesn't belong in the Dashboard QP namespace
-  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+  (mt/as-admin
     (apply qp.dashboard/process-query-for-dashcard
            :dashboard-id dashboard-id
            :card-id      card-id

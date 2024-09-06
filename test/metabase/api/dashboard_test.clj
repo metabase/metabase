@@ -351,7 +351,7 @@
 (deftest get-dashboard-test
   (mt/dataset test-data
     (mt/with-column-remappings [orders.user_id people.name]
-      (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (mt/as-admin
         (t2.with-temp/with-temp
           [Dashboard {dashboard-id :id} {:name             "Test Dashboard"
                                          :creator_id       (mt/user->id :crowberto)
@@ -422,7 +422,7 @@
 (deftest last-used-parameter-value-test
   (mt/dataset test-data
     (mt/with-column-remappings [orders.user_id people.name]
-      (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (mt/as-admin
         (t2.with-temp/with-temp
           [Dashboard {dashboard-a-id :id} {:name       "Test Dashboard"
                                            :creator_id (mt/user->id :crowberto)
@@ -451,7 +451,7 @@
                                               :card_id            card-id
                                               :dashboard_id       dashboard-b-id}]
           (testing "User's set parameter is saved and sent back in the dashboard response, unique per dashboard."
-            ;; api request mimicking a user setting a parameter value
+           ;; api request mimicking a user setting a parameter value
             (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
                                              {:parameters [{:id "a" :value ["initial value"]}]})))
             (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-b-id dashcard-b-id card-id)
@@ -463,7 +463,7 @@
                    {:dashboard-a (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))
                     :dashboard-b (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-b-id)))})))
           (testing "If a User unsets a parameter's value, the default is NOT used."
-            ;; api request mimicking a user clearing parameter value, and no default exists
+           ;; api request mimicking a user clearing parameter value, and no default exists
             (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
                                              {:parameters [{:id "a" :value nil}]})))
             (is (= {}
