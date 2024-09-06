@@ -1,4 +1,3 @@
-import { isSavedQuestionChanged } from "metabase/query_builder/utils/question";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -13,7 +12,7 @@ export const SaveButton = ({
 
   const canSave = question && Lib.canSave(question.query(), question.type());
   const isQuestionChanged = originalQuestion
-    ? isSavedQuestionChanged(question, originalQuestion)
+    ? question && question.isQueryDirtyComparedTo(originalQuestion)
     : true;
 
   return (
