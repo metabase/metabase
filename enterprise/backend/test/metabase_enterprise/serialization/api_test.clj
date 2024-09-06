@@ -136,6 +136,7 @@
         (is (= known-files
                (set (.list (io/file api.serialization/parent-dir)))))))))
 
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest export-import-test
   (testing "Serialization API e2e"
     (let [known-files (set (.list (io/file api.serialization/parent-dir)))]
@@ -224,7 +225,7 @@
                         (is (= #{"Card" "Database" "Collection"}
                                (log-types (str/split-lines log))))
                         (is (re-find #"Failed to read file for Collection DoesNotExist" log))
-                        (is (re-find #"Unable to ingest file" log)) ;; underlying error
+                        (is (re-find #"Cannot find file entry" log)) ;; underlying error
                         (is (= {:deps-chain #{[{:id "**ID**", :model "Card"}]},
                                 :error      :metabase-enterprise.serialization.v2.load/not-found,
                                 :model      "Collection",
@@ -239,7 +240,7 @@
                                  "duration_ms"   int?
                                  "count"         0
                                  "error_count"   0
-                                 "error_message" #"clojure.lang.ExceptionInfo: Failed to read file for Collection DoesNotExist.*"}
+                                 "error_message" #"(?s)Failed to read file for Collection DoesNotExist.*"}
                                 (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))))
 
                   (testing "Skipping errors /api/ee/serialization/import"
@@ -290,8 +291,19 @@
                              "field_values"    false
                              "secrets"         false
                              "success"         false
-                             "error_message"   #"clojure.lang.ExceptionInfo: Exception extracting Card.*"}
-                            (-> (snowplow-test/pop-event-data-and-user-id!) first :data)))))
+                             "error_message"   #"(?s)Exception extracting Card \d+ .*"}
+                            (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
+
+                  (testing "Full stacktrace"
+                    (binding [api.serialization/*additive-logging* false]
+                      (let [res (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
+                                                      :collection (:id coll) :data_model false :settings false
+                                                      :full_stacktrace true)
+                            log (slurp (io/input-stream res))]
+                        (is (< 200
+                               (count (str/split-lines log))))
+                        ;; pop out the error
+                        (snowplow-test/pop-event-data-and-user-id!)))))
 
                 (testing "Skipping errors /api/ee/serialization/export"
                   (let [res (-> (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
