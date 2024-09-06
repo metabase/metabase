@@ -1,5 +1,4 @@
-> **NOTE**: This SDK is actively being developed. You can expect some changes to the API. The SDK currently only works
-> with a specific version of Metabase.
+> **NOTE**: This SDK is actively being developed. You can expect some changes to the API. The SDK currently only works with a specific version of Metabase.
 
 # Metabase Embedding SDK for React
 
@@ -14,7 +13,7 @@ greater flexibility than using the current interactive embedding offering based 
 
 [Watch a 5-minute tour of the SDK's features.](https://www.loom.com/share/b6998692937c4ecaab1af097f2123c6f)
 
-Features currently supported:
+## Features currently supported
 
 - embedding questions - static
 - embedding questions - w/drill-down
@@ -24,25 +23,48 @@ Features currently supported:
 - ability for the user to modify existing questions
 - theming with CSS variables
 - plugins for custom actions, overriding dashboard card menu items
-- subscribing to events
-- editing dashboards - requires upgrade to metabase v50
-- creating dashboards
+- subscribing to user or system events
+- creating and editing dashboards
+- create new questions from scratch and modifying existing questions
 
-Features not yet supported:
+## Known limitations
 
-- letting users create new questions from scratch
+* The SDK is currently only compatible with Metabase v50
+* Some of the Pro/EE features are not exposed in the UI
+  * Verified content
+  * Official collections
+  * Subscriptions
+  * Alerts
+  * ...
+* The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
+  * If you are using a framework with SSR support such as Next.js or Remix, you have to ensure that the SDK components are rendered on the client side.
+  * For example, you can apply the `"use client"` directive on Next.js or use the `remix-utils/ClientOnly` component
+      on Remix.
+* Embedding multiple instances of interactive dashboards on the same page is not supported.
+  *  Please use static dashboards if you need to embed multiple dashboards on the same page.
 
 # Changelog
 
 [View changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+
+# Feedback
+
+For issues and feedback, there are two options:
+
+- Chat with the team directly on Slack: If you don't have access, please reach out to us
+  at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com) and we'll get you setup.
+- Email the team at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com). This will reach the development team
+  directly.
+
+For security issues, please follow the instructions for responsible
+disclosure [here](https://github.com/metabase/metabase/blob/master/SECURITY.md#reporting-a-vulnerability).
 
 # Prerequisites
 
 - You have an application using React. The SDK is tested to work with React 18. It may work in React 17, but cause some
   warnings or unexpected behaviors.
 - You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
-- You have a running Metabase instance using a compatible version of the enterprise binary. v1.50.x are the only
-  supported versions at this time.
+- You have a running Metabase instance using a compatible version of the enterprise binary. v1.50.x are the only supported versions at this time.
 
 # Getting started
 
@@ -69,12 +91,12 @@ You have the following options:
 Start the Metabase container:
 
 ```bash
-docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.6
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.24
 ```
 
 ### 2. Running the Jar file
 
-1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.6/metabase.jar
+1. Download the Jar file from https://downloads.metabase.com/enterprise/v1.50.24/metabase.jar
 2. Create a new directory and move the Metabase JAR into it.
 3. Change into your new Metabase directory and run the JAR.
 
@@ -1133,7 +1155,7 @@ prop:
 
  * @returns {Promise<{id: string, exp: number} | null>}
  */
-async function fetchRefreshToken(url) {
+async function fetchRequestToken(url) {
     const response = await fetch(url, {
         method: "GET",
         credentials: "include",
@@ -1144,30 +1166,8 @@ async function fetchRefreshToken(url) {
 
 // Pass this configuration to MetabaseProvider.
 // Wrap the fetchRequestToken function in useCallback if it has dependencies to prevent re-renders.
-const config = {fetchRefreshToken};
+const config = {fetchRequestToken};
 ```
-
-# Known limitations
-
-- The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
-    - If you are using a framework with SSR support such as Next.js or Remix, you have to ensure that the SDK components
-      are rendered on the client side.
-    - For example, you can apply the `"use client"` directive on Next.js or use the `remix-utils/ClientOnly` component
-      on Remix.
-- Embedding multiple instances of interactive dashboards on the same page are not supported.
-    - Please use static dashboards if you need to embed multiple dashboards on the same page.
-
-# Feedback
-
-For issues and feedback, there are two options:
-
-- Chat with the team directly on Slack: If you don't have access, please reach out to us
-  at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com) and we'll get you setup.
-- Email the team at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com). This will reach the development team
-  directly.
-
-For security issues, please follow the instructions for responsible
-disclosure [here](https://github.com/metabase/metabase/blob/master/SECURITY.md#reporting-a-vulnerability).
 
 # Development
 
