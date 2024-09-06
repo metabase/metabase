@@ -417,7 +417,6 @@
       (and
        (dashboard-internal-card? card)
        (or *updating-dashboard* (not (contains? changes :collection_id)))
-       (or *updating-dashboard* (not (contains? changes :archived)))
        (not (contains? changes :collection_position))
        (or (not (contains? changes :type))
            (contains? #{:question "question" nil} (:type changes))))))
