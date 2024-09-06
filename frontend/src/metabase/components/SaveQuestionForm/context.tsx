@@ -30,6 +30,23 @@ type SaveQuestionContextType = {
 export const SaveQuestionContext =
   createContext<SaveQuestionContextType | null>(null);
 
+/*
+ * Why are we using these useState calls?
+ *
+ * When we use SaveQuestionModal within the QueryModals, the 'opened' prop on the modal
+ * is always true. What this means is that the rendering of the modal is controlled by parent components,
+ * and when the modal component opens, the modified question is passed into the provider. When the provider is rendered,
+ * we calculate isSavedQuestionInitiallyChanged, the question and originalQuestion are different, so the form works as
+ * it should.
+ *
+ * When we use the Modal's props to control the modal itself (i.e. no outside component controlling
+ * the modal), the question and originalQuestion are the same when they are passed in to the provider
+ * so isSavedQuestionInitiallyChanged will calculate to false and then *never* change because it's saved
+ * as a state variable. This means that, to use this provider, we have to make sure that the question
+ * and the original question are different *at the time of the Provider rendering*.
+ *
+ * Thanks for coming to my TED talk.
+ * */
 export const SaveQuestionProvider = ({
   question,
   originalQuestion: latestOriginalQuestion,
