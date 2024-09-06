@@ -311,6 +311,7 @@
   (vec (sort (vals api-name->model))))
 
 (def ^:private ApiName (into [:enum] eid-api-names))
+
 (def ^:private ApiModel (into [:enum] eid-api-models))
 
 (def ^:private EntityId
