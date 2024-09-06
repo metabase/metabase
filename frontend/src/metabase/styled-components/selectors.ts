@@ -7,8 +7,8 @@ import { getSettings } from "metabase/selectors/settings";
 export const getFont = createSelector(
   [getSettings, getEmbedOptions],
   (settings, embedOptions) => {
-    if (embedOptions.font) {
-      return embedOptions.font;
+    if (embedOptions?.font) {
+      return embedOptions?.font;
     } else if (!_.isEmpty(settings["application-font-files"])) {
       return "Custom";
     } else {
