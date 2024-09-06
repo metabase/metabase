@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import { createMockMetadata } from "__support__/metadata";
-import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
+import { ChartTypeSidebar } from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar/ChartTypeSidebar";
 import registerVisualizations from "metabase/visualizations/register";
 import {
   SAMPLE_DB_ID,
@@ -26,12 +26,7 @@ const setup = props => {
     .setDisplay("gauge");
 
   render(
-    <ChartTypeSidebar
-      question={question}
-      query={question.legacyQuery({ useStructuredQuery: true })}
-      result={{ data: DATA }}
-      {...props}
-    />,
+    <ChartTypeSidebar question={question} result={{ data: DATA }} {...props} />,
   );
 };
 
