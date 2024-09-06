@@ -172,7 +172,8 @@
      export-format os
      (^:once fn* [rff]
        (let [result (try
-                      (f rff)
+                      (binding [qp.pipeline/*canceled-chan* canceled-chan]
+                        (f rff))
                       (catch Throwable e
                         e))]
          (assert (some? result) "QP unexpectedly returned nil.")
