@@ -44,6 +44,20 @@ You can specify a browser to execute Cypress tests in using the `--browser` flag
 
 Specifying a browser makes most sense when running Cypress in a _run_ mode. On the other hand, Cypress _open_ mode (GUI) allows one to easily switch between all available browsers on the system. However, some people prefer to specify a browser even in this scenario. If you do this, keep in mind that you are merely preselecting an initial browser for Cypress but you still have the option to choose a different one.
 
+## Testing with Snowplow
+Our end-to-end testing environment has been configured to run Snowplow Micro alongside the application.
+
+1. Use `describeWithSnowplow` (or `describeWithSnowplowEE` for EE edition) method to define tests that only run when a Snowplow instance is running, for instance, on CI or locally with `MB_SNOWPLOW_AVAILABLE` and `MB_SNOWPLOW_URL`. To run Cypresswith Snowplow you can run the following commands:
+```
+MB_SNOWPLOW_AVAILABLE=true
+MB_SNOWPLOW_URL=http://localhost:9090
+```
+2. Use `resetSnowplow()` test helper before each test to clear the queue of processed events.
+3. Use `expectGoodSnowplowEvents(count)` to assert that events have been sent and processed correctly. Use `expectGoodSnowPlowEvent({ ...payload})` to assert on the content of a snowplow event
+4. Use `expectNoBadSnowplowEvents()` after each test to assert that no invalid events have been sent.
+
+Cypress end-to-end tests is the only way we use to test Snowplow changes automatically
+
 ## Anatomy of the Test
 
 Cypress test files are structured like Mocha tests, where `describe` blocks are used to group related tests, and `it` blocks are the tests themselves.
