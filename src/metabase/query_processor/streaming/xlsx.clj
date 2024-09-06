@@ -437,8 +437,8 @@
 (defmethod add-row! org.apache.poi.xssf.streaming.SXSSFSheet
   ([^SXSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
    (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
-                  0
-                  (inc (.getLastRowNum sheet)))]
+                   0
+                   (inc (.getLastRowNum sheet)))]
      (add-row! ^SXSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles)))
   ([^SXSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles]
    (let [row     (.createRow sheet ^Integer row-num)
@@ -470,8 +470,8 @@
 (defmethod add-row! org.apache.poi.xssf.usermodel.XSSFSheet
   ([^XSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
    (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
-                  0
-                  (inc (.getLastRowNum sheet)))]
+                   0
+                   (inc (.getLastRowNum sheet)))]
      (add-row! ^XSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles)))
   ([^XSSFSheet sheet row-num values cols col-settings cell-styles typed-cell-styles]
    (let [row     (.createRow sheet ^Integer row-num)
@@ -678,9 +678,9 @@
         (let [{:keys [workbook sheet]} @workbook-data]
           (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
                 ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
-                (autosize-columns! sheet))
-              (try
-                (spreadsheet/save-workbook-into-stream! os workbook)
-                (finally
-                  (.dispose ^SXSSFWorkbook workbook)
-                  (.close os))))))))
+            (autosize-columns! sheet))
+          (try
+            (spreadsheet/save-workbook-into-stream! os workbook)
+            (finally
+              (.dispose ^SXSSFWorkbook workbook)
+              (.close os))))))))

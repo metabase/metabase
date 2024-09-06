@@ -112,7 +112,7 @@
                  (process-results export-format)))]
     (mt/with-temp [:model/Pulse {pulse-id :id
                                  :as      pulse} {:name "Test Alert"
-                                 :alert_condition "rows"}
+                                                  :alert_condition "rows"}
                    :model/PulseCard _ (merge
                                        (when (= :csv  export-format) {:include_csv true})
                                        (when (= :json export-format) {:include_json true})

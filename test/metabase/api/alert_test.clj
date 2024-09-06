@@ -32,11 +32,13 @@
 
 (defn- pulse-card-details [card]
   (-> card
-      (select-keys [:name :description :display])
+      (select-keys [:name :description :display :pivot_results])
       (update :display name)
       (update :collection_id boolean)
-      (assoc :id true, :include_csv false, :include_xls false, :format_rows true, :dashboard_card_id false,
-             :dashboard_id false, :parameter_mappings nil)))
+      (assoc :id true :include_csv false :include_xls false
+             :format_rows true :pivot_results false
+             :dashboard_card_id false
+             :dashboard_id false :parameter_mappings nil)))
 
 (defn- recipient-details [user-kwd]
   (-> user-kwd
