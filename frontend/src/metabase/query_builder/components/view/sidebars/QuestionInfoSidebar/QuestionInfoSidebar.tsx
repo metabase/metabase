@@ -12,13 +12,11 @@ import EditableText from "metabase/core/components/EditableText";
 import Link from "metabase/core/components/Link";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import { onCloseQuestionInfo } from "metabase/query_builder/actions";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
 import { Stack, Tabs } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-
-import ModelCacheManagementSection from "../ModelCacheManagementSection";
 
 import Styles from "./QuestionInfoSidebar.module.css";
 
@@ -33,10 +31,6 @@ export const QuestionInfoSidebar = ({
 }: QuestionInfoSidebarProps) => {
   const description = question.description();
   const canWrite = question.canWrite() && !question.isArchived();
-  const isPersisted = question.isPersisted();
-  const hasCacheSection =
-    PLUGIN_CACHING.hasQuestionCacheSection(question) &&
-    PLUGIN_CACHING.isGranularCachingEnabled();
 
   const handleSave = (description: string | null) => {
     if (question.description() !== description) {
@@ -47,7 +41,6 @@ export const QuestionInfoSidebar = ({
   const dispatch = useDispatch();
   const handleClose = () => dispatch(onCloseQuestionInfo());
 
-  const [page, setPage] = useState<"default" | "caching">("default");
   const [isOpen, setIsOpen] = useState(false);
 
   useMount(() => {
@@ -56,18 +49,6 @@ export const QuestionInfoSidebar = ({
     // pretty animations
     setIsOpen(true);
   });
-
-  if (page === "caching") {
-    return (
-      <PLUGIN_CACHING.SidebarCacheForm
-        item={question}
-        model="question"
-        onBack={() => setPage("default")}
-        onClose={handleClose}
-        pt="md"
-      />
-    );
-  }
 
   return (
     <Sidesheet
@@ -112,24 +93,6 @@ export const QuestionInfoSidebar = ({
                   >{t`See more about this model`}</Link>
                 )}
               </SidesheetCard>
-
-              {question.type() === "model" && isPersisted && (
-                <SidesheetCard>
-                  <ModelCacheManagementSection model={question} />
-                </SidesheetCard>
-              )}
-
-              {hasCacheSection && (
-                <SidesheetCard>
-                  <Stack spacing="0.5rem">
-                    <PLUGIN_CACHING.SidebarCacheSection
-                      model="question"
-                      item={question}
-                      setPage={setPage}
-                    />
-                  </Stack>
-                </SidesheetCard>
-              )}
             </Stack>
           </Tabs.Panel>
           <Tabs.Panel value="history">

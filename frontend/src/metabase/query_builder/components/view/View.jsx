@@ -49,6 +49,7 @@ import ViewSidebar from "./ViewSidebar";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
+import { QuestionSettingsSidebar } from "./sidebars/QuestionSettingsSidebar";
 import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
 
@@ -107,6 +108,7 @@ class View extends Component {
       isShowingSummarySidebar,
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
+      isShowingQuestionSettingsSidebar,
       updateQuestion,
       visibleTimelineEventIds,
       selectedTimelineEventIds,
@@ -167,6 +169,10 @@ class View extends Component {
       );
     }
 
+    if (isSaved && isShowingQuestionSettingsSidebar) {
+      return <QuestionSettingsSidebar question={question} />;
+    }
+
     return null;
   };
 
@@ -177,6 +183,7 @@ class View extends Component {
       isShowingSnippetSidebar,
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
+      isShowingQuestionSettingsSidebar,
       toggleTemplateTagsEditor,
       toggleDataReference,
       toggleSnippetSidebar,
@@ -231,6 +238,10 @@ class View extends Component {
           onClose={onCloseQuestionInfo}
         />
       );
+    }
+
+    if (isShowingQuestionSettingsSidebar) {
+      return <QuestionSettingsSidebar question={question} />;
     }
 
     return null;
@@ -398,6 +409,7 @@ class View extends Component {
       runQuestionQuery,
       setQueryBuilderMode,
       isShowingQuestionInfoSidebar,
+      isShowingQuestionSettingsSidebar,
     } = this.props;
 
     // if we don't have a question at all or no databases then we are initializing, so keep it simple
@@ -445,9 +457,11 @@ class View extends Component {
     const rightSidebarWidth = match({
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
+      isShowingQuestionSettingsSidebar,
     })
       .with({ isShowingTimelineSidebar: true }, () => SIDEBAR_SIZES.TIMELINE)
       .with({ isShowingQuestionInfoSidebar: true }, () => 0)
+      .with({ isShowingQuestionSettingsSidebar: true }, () => 0)
       .otherwise(() => SIDEBAR_SIZES.NORMAL);
 
     return (

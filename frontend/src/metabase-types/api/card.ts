@@ -43,6 +43,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   result_metadata: Field[];
   moderation_reviews?: ModerationReview[];
+  persisted?: boolean;
 
   query_average_duration?: number | null;
   last_query_start: string | null;

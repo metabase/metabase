@@ -59,6 +59,7 @@ import {
   onCloseChartSettings,
   onCloseChartType,
   onCloseQuestionInfo,
+  onCloseQuestionSettings,
   onCloseSidebars,
   onCloseSummary,
   onCloseTimelines,
@@ -66,6 +67,7 @@ import {
   onOpenChartSettings,
   onOpenChartType,
   onOpenQuestionInfo,
+  onOpenQuestionSettings,
   onOpenTimelines,
 } from "./actions";
 
@@ -294,6 +296,16 @@ export const uiControls = handleActions(
     [onCloseQuestionInfo]: state => ({
       ...state,
       isShowingQuestionInfoSidebar: false,
+    }),
+    [onOpenQuestionSettings]: state =>
+      setUIControls(state, {
+        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+        isShowingQuestionSettingsSidebar: true,
+        queryBuilderMode: "view",
+      }),
+    [onCloseQuestionSettings]: state => ({
+      ...state,
+      isShowingQuestionSettingsSidebar: false,
     }),
     [onOpenTimelines]: state => ({
       ...state,
