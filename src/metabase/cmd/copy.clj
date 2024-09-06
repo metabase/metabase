@@ -97,7 +97,10 @@
     :model/TablePrivileges
     :model/AuditLog
     :model/RecentViews
-    :model/UserParameterValue]
+    :model/UserParameterValue
+    ;; 49+
+    :model/Notification
+    :model/NotificationSubscription]
    (when config/ee-available?
      [:model/GroupTableAccessPolicy
       :model/ConnectionImpersonation])))

@@ -60,6 +60,8 @@
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"
+   "Notification"
+   "NotificationSubscription"
    "Permissions"
    "PermissionsGroup"
    "PermissionsGroupMembership"

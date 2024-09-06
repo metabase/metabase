@@ -69,91 +69,6 @@ databaseChangeLog:
             path: initialization/metabase_h2.sql
             relativeToChangelogFile: true
 
-  - changeSet:
-      id: v51.2024-09-05T08:00:00
-      author: qnkhuat
-      comment: Create the notification table
-      preConditions:
-        - not:
-          - tableExists:
-              tableName: notification
-      changes:
-        - createTable:
-            tableName: notification
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: payload_type
-                  type: varchar(64)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: active
-                  type: ${boolean.type}
-                  constraints:
-                    nullable: false
-                  defaultValueBoolean: true
-              - column:
-                  name: created_at
-                  type: ${timestamp_type}
-                  constraints:
-                    nullable: false
-              - column:
-                  name: updated_at
-                  type: ${timestamp_type}
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v51.2024-09-05T08:00:01
-      author: qnkhuat
-      comment: Create the notification_subscription table
-      preConditions:
-        - not:
-          - tableExists:
-              tableName: notification_subscription
-      changes:
-        - createTable:
-            tableName: notification_subscription
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: notification_id
-                  type: int
-                  constraints:
-                    nullable: false
-                    referencedTableName: notification
-                    referencedColumnNames: id
-                    foreignKeyName: fk_notification_subscription_notification_id
-                    deleteCascade: true
-              - column:
-                  name: type
-                  type: varchar(64)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: event_name
-                  type: varchar(64)
-                  constraints:
-                    nullable: true
-              - column:
-                  name: created_at
-                  type: ${timestamp_type}
-                  constraints:
-                    nullable: false
-
 # Note on rollback: migrations for v45 onwards should always include a rollback key unless they are supported
 # by Liquibase Auto Rollback. Most common changes are supported. See docs here:
 #
@@ -9354,6 +9269,101 @@ databaseChangeLog:
                   name: status
                   type: ${text.type}
                   remarks: running, failed, or completed
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:00
+      author: qnkhuat
+      comment: Create the notification table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification
+      changes:
+        - createTable:
+            tableName: notification
+            remarks: join table that connect notification subscriptions and notification destinations
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: payload_type
+                  remarks: the type of the payload
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  remarks: whether the notification is active
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: false
+                  defaultValueBoolean: true
+              - column:
+                  remarks: The timestamp of when the notification was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp of when the notification was updated
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:01
+      author: qnkhuat
+      comment: Create the notification_subscription table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_subscription
+      changes:
+        - createTable:
+            remarks: which type of trigger a notification is subscribed to
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: notification_id
+                  remarks: the notification that the subscription is connected to
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: notification
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_subscription_notification_id
+                    deleteCascade: true
+              - column:
+                  name: type
+                  remarks: the type of the subscription
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event_name
+                  remarks: the event name of subscriptions with type :notification-subscription/system-event
+                  type: varchar(64)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the subscription was created
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

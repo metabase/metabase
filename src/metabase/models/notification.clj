@@ -53,6 +53,7 @@
                           [:= :n.active true]
                           [:= :ns.event_name (u/qualified-name event-name)]
                           [:= :ns.type (u/qualified-name :notification-subscription/event)]]}))
+
 (defn create-notification!
   "Create a new notification with `subsciptions`.
   Return the created notification."
