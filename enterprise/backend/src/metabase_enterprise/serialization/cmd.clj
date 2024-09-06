@@ -108,10 +108,6 @@
   (serdes/with-cache
     (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts)))
 
-(defn- stripped-error [e]
-  (let [m (ex-data e)]
-    (ex-info (ex-message e) m)))
-
 (mu/defn v2-load!
   "SerDes v2 load entry point.
 
@@ -119,15 +115,14 @@
   [path :- :string
    opts :- [:map
             [:backfill? {:optional true} [:maybe :boolean]]
-            [:continue-on-error {:optional true} [:maybe :int]]]]
+            [:continue-on-error {:optional true} [:maybe :boolean]]
+            [:full-stacktrace {:optional true} [:maybe :boolean]]]]
   (let [timer    (u/start-timer)
         err      (atom nil)
         report   (try
                    (v2-load-internal! path opts :token-check? true)
                    (catch ExceptionInfo e
-                     (if (:error (ex-data e))
-                       (reset! err (stripped-error e))
-                       (reset! err e)))
+                     (reset! err e))
                    (catch Exception e
                      (reset! err e)))
         imported (into (sorted-set) (map (comp :model last)) (:seen report))]
@@ -141,9 +136,13 @@
                                              (count (:seen report)))
                             :error_count   (count (:errors report))
                             :success       (nil? @err)
-                            :error_message (some-> @err str)})
+                            :error_message (when @err
+                                             (serdes/strip-error @err nil))})
     (when @err
-      (throw @err))
+      (if (:full-stacktrace opts)
+        (log/error @err "Error during deserialization")
+        (log/error (serdes/strip-error @err "Error during deserialization")))
+      (throw (ex-info (ex-message @err) {:cmd/exit true})))
     imported))
 
 (defn- select-entities-in-collections
@@ -273,9 +272,13 @@
                             :field_values    (boolean (:include-field-values opts))
                             :secrets         (boolean (:include-database-secrets opts))
                             :success         (nil? @err)
-                            :error_message   (some-> @err str)})
+                            :error_message   (when @err
+                                               (serdes/strip-error @err nil))})
     (when @err
-      (throw @err))
+      (if (:full-stacktrace opts)
+        (log/error @err "Error during serialization")
+        (log/error (serdes/strip-error @err "Error during deserialization")))
+      (throw (ex-info (ex-message @err) {:cmd/exit true})))
     (log/info (format "Export to '%s' complete!" path) (u/emoji "🚛💨 📦"))
     report))
 

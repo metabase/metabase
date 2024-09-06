@@ -18,6 +18,7 @@ import type {
   TimelineEvent,
   TimelineEventId,
   TransformedSeries,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -90,6 +91,7 @@ export interface VisualizationProps {
   metadata: Metadata;
   rawSeries: RawSeries;
   settings: ComputedVisualizationSettings;
+  hiddenSeries?: Set<string>;
   headerIcon: IconProps;
   errorIcon: IconName;
   actionButtons: ReactNode;
@@ -137,6 +139,7 @@ export interface VisualizationProps {
   "graph.metrics"?: string[];
 
   canRemoveSeries?: (seriesIndex: number) => boolean;
+  canToggleSeriesVisibility?: boolean;
   onRemoveSeries?: (event: React.MouseEvent, seriesIndex: number) => void;
   onUpdateWarnings?: any;
 }
@@ -210,7 +213,7 @@ export type VisualizationDefinition = {
   name?: string;
   noun?: string;
   uiName: string;
-  identifier: string;
+  identifier: VisualizationDisplay;
   aliases?: string[];
   iconName: IconName;
 

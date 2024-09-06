@@ -4,6 +4,7 @@ import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type { Collection, CollectionId } from "./collection";
 import type { DashCardId, DashboardId } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
+import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Parameter } from "./parameters";
@@ -11,6 +12,7 @@ import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
 import type { Table } from "./table";
 import type { UserInfo } from "./user";
+import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
 
 export type CardType = "model" | "question" | "metric";
@@ -18,6 +20,7 @@ export type CardType = "model" | "question" | "metric";
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
   id: CardId;
+  entity_id: CardEntityId;
   created_at: string;
   updated_at: string;
   name: string;
@@ -62,10 +65,8 @@ export interface PublicCard {
   dataset_query: PublicDatasetQuery;
 }
 
-export type CardDisplayType = string;
-
 export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
-  display: CardDisplayType;
+  display: VisualizationDisplay;
   dataset_query: Q;
   parameters?: Parameter[];
   visualization_settings: VisualizationSettings;
@@ -228,6 +229,7 @@ export interface ModerationReview {
 }
 
 export type CardId = number;
+export type CardEntityId = BaseEntityId;
 export type ModerationReviewStatus = "verified" | null;
 
 export type CardFilterOption =

@@ -267,6 +267,7 @@ export function DashCardVisualization({
       error={error?.message}
       errorIcon={error?.icon}
       showTitle={withTitle}
+      canToggleSeriesVisibility={!isEditing}
       isAction={isAction}
       isDashboard
       isSlow={isSlow}

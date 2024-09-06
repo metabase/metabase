@@ -73,8 +73,17 @@
   (or ((some-fn :effective-type :base-type) opts)
       ::expression/type.unknown))
 
-(mbql-clause/define-tuple-mbql-clause :expression
-  #_expression-name ::common/non-blank-string)
+(mr/def ::expression.options
+  [:merge
+   ::common/options
+   [:map
+    [:temporal-unit                              {:optional true} [:ref ::temporal-bucketing/unit]]]])
+
+(mbql-clause/define-mbql-clause :expression
+  [:tuple
+   [:= {:decode/normalize common/normalize-keyword} :expression]
+   [:ref ::expression.options]
+   [:ref #_expression-name ::common/non-blank-string]])
 
 (defmethod expression/type-of-method :expression
   [[_tag opts _expression-name]]

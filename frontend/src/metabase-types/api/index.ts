@@ -10,6 +10,7 @@ export * from "./collection";
 export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
+export * from "./entity-id";
 export * from "./field";
 export * from "./group";
 export * from "./metabot";
@@ -38,6 +39,7 @@ export * from "./task";
 export * from "./timeline";
 export * from "./user";
 export * from "./util";
+export * from "./visualization";
 export * from "./visualization-settings";
 
 // ISO8601 timestamp

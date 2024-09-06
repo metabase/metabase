@@ -264,15 +264,10 @@
 (derive :type/DruidHyperUnique :type/*)
 (derive :type/DruidHyperUnique :type/field-values-unsupported)
 
-;;; The Snowflake `VARIANT` type is allowed to be anything, so just mark it as deriving from the core root types so
-;;; we're allowed to use any sort of filter with it (whether it makes sense or not). See
+;;; The Snowflake `VARIANT` type is allowed to be anything. See
 ;;; https://docs.snowflake.com/en/sql-reference/data-types-semistructured
-(doseq [t [:type/Number
-           :type/Text
-           :type/Temporal
-           :type/Boolean
-           :type/Collection]]
-  (derive :type/SnowflakeVariant t))
+(derive :type/SnowflakeVariant :type/*)
+(derive :type/SnowflakeVariant :type/Large)
 
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
 ;;; filter options like starts with / contains
