@@ -115,6 +115,10 @@ describe("[EE, no token] embedding settings", () => {
             /Interactive embedding with full, granular control./,
           ),
         ).toBeInTheDocument();
+        expect(
+          withinEmbeddingSdkCard.getByLabelText("Disabled"),
+        ).not.toBeChecked();
+        expect(withinEmbeddingSdkCard.getByLabelText("Disabled")).toBeEnabled();
       });
 
       it("should allow access to the embedding SDK settings page", async () => {
@@ -210,6 +214,8 @@ describe("[EE, no token] embedding settings", () => {
             /Interactive embedding with full, granular control./,
           ),
         ).toBeInTheDocument();
+        expect(withinEmbeddingSdkCard.getByLabelText("Enabled")).toBeChecked();
+        expect(withinEmbeddingSdkCard.getByLabelText("Enabled")).toBeEnabled();
       });
 
       it("should allow access to the embedding SDK settings page", async () => {
