@@ -56,6 +56,34 @@ describe("[EE, with token] embedding settings", () => {
       });
     });
 
+    describe("interactive embedding", () => {
+      it("should not allow going to interactive settings page", async () => {
+        expect(
+          within(
+            screen.getByRole("article", {
+              name: "Interactive embedding",
+            }),
+          ).getByRole("button", { name: "Configure" }),
+        ).toBeDisabled();
+
+        act(() => {
+          history.push(interactiveEmbeddingSettingsUrl);
+        });
+
+        expect(history.getCurrentLocation().pathname).toEqual(
+          embeddingSettingsUrl,
+        );
+      });
+    });
+  });
+
+  describe("when the embedding SDK is disabled", () => {
+    beforeEach(async () => {
+      await setupPremium({
+        settingValues: { "enable-embedding-sdk": false },
+      });
+    });
+
     describe("embedding SDK", () => {
       it("should show info about embedding SDK", async () => {
         const withinEmbeddingSdkCard = within(
@@ -88,27 +116,7 @@ describe("[EE, with token] embedding settings", () => {
 
         expect(
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
-        ).toBeEnabled();
-      });
-    });
-
-    describe("interactive embedding", () => {
-      it("should not allow going to interactive settings page", async () => {
-        expect(
-          within(
-            screen.getByRole("article", {
-              name: "Interactive embedding",
-            }),
-          ).getByRole("button", { name: "Configure" }),
         ).toBeDisabled();
-
-        act(() => {
-          history.push(interactiveEmbeddingSettingsUrl);
-        });
-
-        expect(history.getCurrentLocation().pathname).toEqual(
-          embeddingSettingsUrl,
-        );
       });
     });
   });
@@ -145,6 +153,21 @@ describe("[EE, with token] embedding settings", () => {
       expect(location.pathname).toEqual(staticEmbeddingSettingsUrl);
     });
 
+    it("should allow going to interactive embedding settings page", async () => {
+      await goToInteractiveEmbeddingSettings();
+
+      const location = history.getCurrentLocation();
+      expect(location.pathname).toEqual(interactiveEmbeddingSettingsUrl);
+    });
+  });
+
+  describe("when the embedding SDK is enabled", () => {
+    beforeEach(async () => {
+      await setupPremium({
+        settingValues: { "enable-embedding-sdk": true },
+      });
+    });
+
     describe("embedding SDK", () => {
       it("should show info about embedding SDK", async () => {
         const withinEmbeddingSdkCard = within(
@@ -179,13 +202,6 @@ describe("[EE, with token] embedding settings", () => {
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
         ).toBeEnabled();
       });
-    });
-
-    it("should allow going to interactive embedding settings page", async () => {
-      await goToInteractiveEmbeddingSettings();
-
-      const location = history.getCurrentLocation();
-      expect(location.pathname).toEqual(interactiveEmbeddingSettingsUrl);
     });
   });
 });
