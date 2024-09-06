@@ -10,6 +10,7 @@ import { isNullOrUndefined } from "metabase/lib/types";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import type {
   AdaptiveStrategy,
+  StrategyType as CacheStrategyType,
   CacheableModel,
   Config,
   ScheduleDayType,
@@ -17,7 +18,6 @@ import type {
   ScheduleSettings,
   ScheduleType,
   Strategy,
-  StrategyType,
 } from "metabase-types/api";
 
 import { defaultMinDurationMs, rootId } from "./constants/simple";
@@ -216,7 +216,7 @@ export const getFrequencyFromCron = (cron: string) => {
 
 export const isValidStrategyName = (
   strategy: string,
-): strategy is StrategyType => {
+): strategy is CacheStrategyType => {
   const { strategies } = PLUGIN_CACHING;
   const validStrategyNames = new Set(Object.keys(strategies));
   return validStrategyNames.has(strategy);
@@ -251,7 +251,7 @@ export const getStrategyValidationSchema = (strategyData: StrategyData) => {
   }
 };
 
-export const getFieldsForStrategyType = (strategyType: StrategyType) => {
+export const getFieldsForStrategyType = (strategyType: CacheStrategyType) => {
   const { strategies } = PLUGIN_CACHING;
   const strategyData = strategies[strategyType];
   const validationSchemaDescription = getStrategyValidationSchema(
@@ -300,3 +300,13 @@ export const translateConfigFromAPI = (config: Config): Config =>
 /** Translate a config from the frontend's format into the API's preferred format */
 export const translateConfigToAPI = (config: Config): Config =>
   translateConfig(config, "toAPI");
+
+export const getDefaultValueForField = (
+  strategyType: CacheStrategyType,
+  fieldName?: string,
+) => {
+  const schema = getStrategyValidationSchema(
+    PLUGIN_CACHING.strategies[strategyType],
+  );
+  return fieldName ? schema.cast({})[fieldName] : "";
+};

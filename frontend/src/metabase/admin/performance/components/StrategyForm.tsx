@@ -30,10 +30,10 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type {
+  Strategy as CacheStrategy,
   CacheableModel,
   ScheduleSettings,
   ScheduleStrategy,
-  Strategy,
   StrategyType,
 } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
@@ -43,8 +43,8 @@ import { rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
 import {
   cronToScheduleSettings,
+  getDefaultValueForField,
   getLabelString,
-  getStrategyValidationSchema,
   scheduleSettingsToCron,
 } from "../utils";
 
@@ -86,22 +86,27 @@ export const StrategyForm = ({
   targetModel: CacheableModel;
   targetName: string;
   setIsDirty: (isDirty: boolean) => void;
-  saveStrategy: (values: Strategy) => Promise<void>;
-  savedStrategy?: Strategy;
+  saveStrategy: (values: CacheStrategy) => Promise<void>;
+  savedStrategy?: CacheStrategy;
   shouldAllowInvalidation?: boolean;
   shouldShowName?: boolean;
   onReset?: () => void;
   buttonLabels?: ButtonLabels;
   isInSidebar?: boolean;
 }) => {
-  const defaultStrategy: Strategy = {
-    type: targetId === rootId ? "nocache" : "inherit",
-  };
+  const defaultStrategy: CacheStrategy = useMemo(
+    () => ({
+      type: targetId === rootId ? "nocache" : "inherit",
+    }),
+    [targetId],
+  );
+
+  const initialValues = savedStrategy ?? defaultStrategy;
 
   return (
-    <FormProvider<Strategy>
+    <FormProvider<CacheStrategy>
       key={targetId}
-      initialValues={savedStrategy ?? defaultStrategy}
+      initialValues={initialValues}
       validationSchema={strategyValidationSchema}
       onSubmit={saveStrategy}
       onReset={onReset}
@@ -116,9 +121,36 @@ export const StrategyForm = ({
         shouldShowName={shouldShowName}
         buttonLabels={buttonLabels}
         isInSidebar={isInSidebar}
+        strategyType={initialValues.type}
       />
     </FormProvider>
   );
+};
+
+/** Don't count the addition/deletion of a default value as a reason to consider the form dirty */
+const isFormDirty = (values: CacheStrategy, initialValues: CacheStrategy) => {
+  const fieldNames = [...Object.keys(values), ...Object.keys(initialValues)];
+  const defaultValues = _.object(
+    _.map(fieldNames, fieldName => [
+      fieldName,
+      getDefaultValueForField(values.type, fieldName),
+    ]),
+  );
+  const initialValuesWithDefaults = { ...defaultValues, ...initialValues };
+  const valuesWithDefaults = { ...defaultValues, ...values };
+  // If the default value is a number and the value is a string, coerce the value to a number
+  const coercedValuesWithDefaults = _.chain(valuesWithDefaults)
+    .pairs()
+    .map(([key, value]) => [
+      key,
+      typeof getDefaultValueForField(values.type, key) === "number" &&
+      typeof value === "string"
+        ? Number(value)
+        : value,
+    ])
+    .object()
+    .value();
+  return !_.isEqual(initialValuesWithDefaults, coercedValuesWithDefaults);
 };
 
 const StrategyFormBody = ({
@@ -134,13 +166,21 @@ const StrategyFormBody = ({
   targetId: number | null;
   targetModel: CacheableModel;
   targetName: string;
+  strategyType: CacheStrategyType;
   setIsDirty: (isDirty: boolean) => void;
   shouldAllowInvalidation: boolean;
   shouldShowName?: boolean;
   buttonLabels: ButtonLabels;
   isInSidebar?: boolean;
 }) => {
-  const { dirty, values, setFieldValue } = useFormikContext<Strategy>();
+  const { values, initialValues, setFieldValue } =
+    useFormikContext<CacheStrategy>();
+
+  const dirty = useMemo(
+    () => isFormDirty(values, initialValues),
+    [values, initialValues],
+  );
+
   const { setStatus } = useFormContext();
   const [wasDirty, setWasDirty] = useState(false);
 
@@ -237,6 +277,7 @@ const StrategyFormBody = ({
           shouldAllowInvalidation={shouldAllowInvalidation}
           buttonLabels={buttonLabels}
           isInSidebar={isInSidebar}
+          dirty={dirty}
         />
       </StyledForm>
     </FormWrapper>
@@ -267,6 +308,7 @@ type FormButtonsProps = {
   targetName?: string;
   buttonLabels: ButtonLabels;
   isInSidebar?: boolean;
+  dirty: boolean;
 };
 
 const FormButtons = ({
@@ -276,9 +318,8 @@ const FormButtons = ({
   targetName,
   buttonLabels,
   isInSidebar,
+  dirty,
 }: FormButtonsProps) => {
-  const { dirty } = useFormikContext<Strategy>();
-
   if (targetId === rootId) {
     shouldAllowInvalidation = false;
   }
@@ -397,7 +438,7 @@ const StrategySelector = ({
 }) => {
   const { strategies } = PLUGIN_CACHING;
 
-  const { values } = useFormikContext<Strategy>();
+  const { values } = useFormikContext<CacheStrategy>();
 
   const availableStrategies = useMemo(() => {
     return targetId === rootId ? _.omit(strategies, "inherit") : strategies;
@@ -502,16 +543,6 @@ const Field = ({
       </Stack>
     </label>
   );
-};
-
-const getDefaultValueForField = (
-  strategyType: StrategyType,
-  fieldName?: string,
-) => {
-  const schema = getStrategyValidationSchema(
-    PLUGIN_CACHING.strategies[strategyType],
-  );
-  return fieldName ? schema.cast({})[fieldName] : "";
 };
 
 const MultiplierFieldSubtitle = () => (
