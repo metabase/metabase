@@ -600,6 +600,68 @@ describe("scenarios > question > offset", () => {
       ]);
     });
   });
+
+  it("works with a breakout on a custom column, when CC is first in aggregation", () => {
+    const customColumnName = "CC Created At";
+    const query: StructuredQuery = {
+      "source-table": ORDERS_ID,
+      aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+      breakout: [["expression", customColumnName], PRODUCTS_CATEGORY_BREAKOUT],
+      expressions: {
+        [customColumnName]: [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      },
+      limit: 10,
+    };
+
+    createQuestion({ query }, { visitQuestion: true });
+
+    verifyNoQuestionError();
+    verifyTableContent([
+      ["April 2022", "Gadget", "52.76", ""],
+      ["May 2022", "Doohickey", "339.14", ""],
+      ["May 2022", "Gadget", "203.57", "52.76"],
+    ]);
+
+    openNotebook();
+    getNotebookStep("summarize").icon("play").should("be.visible");
+  });
+
+  it("works with a breakout on a custom column, when CC is not first in aggregation", () => {
+    const customColumnName = "CC Created At";
+    const query: StructuredQuery = {
+      "source-table": ORDERS_ID,
+      aggregation: [
+        ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
+        OFFSET_SUM_TOTAL_AGGREGATION,
+      ],
+      breakout: [PRODUCTS_CATEGORY_BREAKOUT, ["expression", customColumnName]],
+      expressions: {
+        [customColumnName]: [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "year" },
+        ],
+      },
+      limit: 100,
+      "order-by": [["asc", ["expression", customColumnName]]],
+    };
+
+    createQuestion({ query }, { visitQuestion: true });
+
+    verifyNoQuestionError();
+    verifyTableContent([
+      ["Doohickey", "2022", "9,031.56", ""],
+      ["Gadget", "2022", "10,672.63", "9,031.56"],
+      ["Gizmo", "2022", "9,929.32", "10,672.63"],
+    ]);
+
+    openNotebook();
+    getNotebookStep("summarize").icon("play").should("be.visible");
+  });
 });
 
 function addCustomAggregation({
