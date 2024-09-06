@@ -71,10 +71,9 @@ const isSensibleVisualization = ({
   );
 };
 
-export type GetSensibleVisualizationsProps = Pick<
-  IsSensibleVisualizationProps,
-  "result"
->;
+export type GetSensibleVisualizationsProps = {
+  result: Dataset | null;
+};
 
 export const getSensibleVisualizations = ({
   result,
