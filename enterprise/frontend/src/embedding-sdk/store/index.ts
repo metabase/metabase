@@ -20,6 +20,7 @@ export const sdkReducers = {
 
 export const store = getStore(sdkReducers, null, {
   embed: {
+    options: {},
     isEmbeddingSdk: true,
   },
   app: {
