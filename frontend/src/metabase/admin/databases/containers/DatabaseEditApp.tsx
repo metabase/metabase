@@ -141,13 +141,22 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
     [t`Databases`, "/admin/databases"],
     [addingNewDatabase ? t`Add Database` : database.name],
   ];
+
+  const getBasePath = () => {
+    return window.location.pathname.startsWith("/settings")
+      ? "/settings/databases"
+      : "/admin/databases";
+  };
+
+  const basePath = getBasePath();
+
   const handleSubmit = async (database: DatabaseData) => {
     try {
       const savedDB = await saveDatabase(database);
       if (addingNewDatabase) {
         scheduleCallback(() => {
           onChangeLocation(
-            `/admin/databases?created=true&createdDbId=${savedDB.id}`,
+            `${basePath}?created=true&createdDbId=${savedDB.id}`,
           );
         });
       }
@@ -196,7 +205,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
           </div>
         </ErrorBoundary>
 
-        {/* {editingExistingDatabase && (
+        {editingExistingDatabase && (
           <Sidebar
             database={database}
             isAdmin={isAdmin}
@@ -205,7 +214,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
             deleteDatabase={deleteDatabase}
             dismissSyncSpinner={dismissSyncSpinner}
           />
-        )} */}
+        )}
       </DatabaseEditMain>
 
       <LeaveConfirmationModal

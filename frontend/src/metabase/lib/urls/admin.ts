@@ -31,15 +31,23 @@ export function reactivateUser(userId: UserId) {
 }
 
 export function newDatabase() {
-  return `/settings/databases/create`;
+  if (window.location.pathname.startsWith("/settings")) {
+    return `/settings/databases/create`;
+  } else {
+    return `/admin/databases/create`;
+  }
 }
 
 export function editDatabase(databaseId: DatabaseId) {
-  return `/settings/databases/${databaseId}`;
+  if (window.location.pathname.startsWith("/settings")) {
+    return `/settings/databases/${databaseId}`;
+  } else {
+    return `/admin/databases/${databaseId}`;
+  }
 }
 
 export function dataModelDatabase(databaseId: DatabaseId) {
-  return `/settings/datamodel/database/${databaseId}`;
+  return `/admin/datamodel/database/${databaseId}`;
 }
 
 export function dataModelSchema(databaseId: DatabaseId, schemaId: SchemaId) {
