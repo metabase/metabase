@@ -20,6 +20,7 @@ import {
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";
+import { Stack } from "metabase/ui";
 
 export type ChartTypeSidebarProps = Pick<
   UseChartTypeVisualizationsProps,
@@ -53,7 +54,15 @@ export const ChartTypeSidebar = ({
     onUpdateQuestion,
   });
 
+  console.log({
+    selectedVisualization,
+    updateQuestionVisualization,
+    sensibleVisualizations,
+    nonSensibleVisualizations,
+  })
+
   const handleSelectVisualization = (display: CardDisplayType) => {
+    console.log(display, selectedVisualization)
     if (display === selectedVisualization) {
       dispatch(
         onOpenChartSettings({
@@ -72,12 +81,14 @@ export const ChartTypeSidebar = ({
       onDone={() => dispatch(onCloseChartType())}
       data-testid="chart-type-sidebar"
     >
-      <ChartTypeSettings
-        selectedVisualization={selectedVisualization}
-        onSelectVisualization={handleSelectVisualization}
-        sensibleVisualizations={sensibleVisualizations}
-        nonSensibleVisualizations={nonSensibleVisualizations}
-      />
+      <Stack spacing={0} m="lg">
+        <ChartTypeSettings
+          selectedVisualization={selectedVisualization}
+          onSelectVisualization={handleSelectVisualization}
+          sensibleVisualizations={sensibleVisualizations}
+          nonSensibleVisualizations={nonSensibleVisualizations}
+        />
+      </Stack>
     </SidebarContent>
   );
 };
