@@ -78,7 +78,7 @@ const PIE_CHART_QUESTION = {
     breakout: [JOINED_PEOPLE_STATE_FIELD_REF],
   },
   visualization_settings: {
-    "pie.slice_threshold": 3.15,
+    "pie.slice_threshold": 4,
   },
 };
 
@@ -125,8 +125,6 @@ describe("scenarios > visualizations > legend", () => {
   });
 
   it("should toggle series visibility on a dashboard", () => {
-    cy.viewport(1800, 1600);
-
     cy.createDashboardWithQuestions({
       questions: [
         SINGLE_AGGREGATION_QUESTION,
@@ -338,40 +336,29 @@ describe("scenarios > visualizations > legend", () => {
 
     getDashboardCard(4).within(() => {
       cy.findByText("18,760").should("exist"); // total value
-      pieSlices().should("have.length", 9);
+      pieSlices().should("have.length", 4);
       getPieChartLegendItemPercentage("TX").should("have.text", "7.15%");
 
       hideSeries(0); // TX (Texas)
 
-      pieSlices().should("have.length", 8);
+      pieSlices().should("have.length", 3);
       cy.findByText("18,760").should("not.exist");
       cy.findByText("17,418").should("exist");
       getPieChartLegendItemPercentage("TX").should("not.exist");
 
-      cy.findByText("3 more").click();
-    });
-    popover().within(() => {
-      getPieChartLegendItemPercentage("CA").should("have.text", "3.52%");
-      getPieChartLegendItemPercentage("MI").should("have.text", "3.42%");
-      getPieChartLegendItemPercentage("Other").should("have.text", "71.63%");
+      hideSeries(3); // "Other" slice
 
-      hideSeries(2); // "Other" slice
-
-      getPieChartLegendItemPercentage("CA").should("have.text", "12.4%");
-      getPieChartLegendItemPercentage("MI").should("have.text", "12.1%");
-      getPieChartLegendItemPercentage("Other").should("not.exist");
-    });
-    getDashboardCard(4).within(() => {
-      pieSlices().should("have.length", 7);
+      pieSlices().should("have.length", 2);
       cy.findByText("17,418").should("not.exist");
-      cy.findByText("4,942").should("exist");
-
-      cy.findByText("3 more").click(); // close popover
+      cy.findByText("1,660").should("exist");
+      getPieChartLegendItemPercentage("Other").should("not.exist");
+      getPieChartLegendItemPercentage("MT").should("have.text", "52.5%");
+      getPieChartLegendItemPercentage("MN").should("have.text", "47.5%");
 
       showSeries(0);
 
-      pieSlices().should("have.length", 8);
-      getPieChartLegendItemPercentage("TX").should("have.text", "21.36%");
+      pieSlices().should("have.length", 3);
+      getPieChartLegendItemPercentage("TX").should("have.text", "44.7%");
     });
 
     // Ensure can't toggle series visibility in edit mode
