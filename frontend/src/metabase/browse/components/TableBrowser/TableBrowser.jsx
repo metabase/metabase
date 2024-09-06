@@ -48,7 +48,7 @@ export const TableBrowser = ({
 }) => {
   return (
     <>
-      <BrowseHeaderContent>
+      {/* <BrowseHeaderContent>
         <BrowserCrumbs
           crumbs={[
             { title: t`Databases`, to: "/browse/databases" },
@@ -56,7 +56,7 @@ export const TableBrowser = ({
             showSchemaInHeader && { title: schemaName },
           ]}
         />
-      </BrowseHeaderContent>
+      </BrowseHeaderContent> */}
       <TableGrid>
         {tables.map(table => (
           <TableGridItem key={table.id}>

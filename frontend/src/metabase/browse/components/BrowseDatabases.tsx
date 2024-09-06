@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import { useListDatabasesQuery } from "metabase/api";
+import {
+  useListDatabaseSchemasQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
@@ -32,6 +35,7 @@ import { getEngineLogo } from "metabase/databases/utils/engine";
 export const BrowseDatabases = () => {
   const dispatch = useDispatch();
   const { data, isLoading, error } = useListDatabasesQuery();
+
   const databases = data?.data;
 
   if (error) {
@@ -42,6 +46,7 @@ export const BrowseDatabases = () => {
     return <LoadingAndErrorWrapper loading />;
   }
 
+  // Filter databases
   const filteredDatabases = databases?.filter(
     database => database.is_cube === false,
   );
@@ -103,18 +108,18 @@ export const BrowseDatabases = () => {
         <BrowseSection>
           <DatabaseGrid data-testid="database-browser">
             {filteredDatabases.map((database: any) => {
-              // Get the logo for each database engine
               const logo = getEngineLogo(database.engine);
-
               return (
                 <div key={database.id}>
                   <EngineCardRoot
                     role="option"
-                    id={`database-option-${database.id}`} // Provide a unique ID or use an appropriate function to generate this ID
+                    id={`database-option-${database.id}`}
                     isActive={false}
                     onClick={() => {
-                      // Use push method to navigate to the database URL
-                      dispatch(push(Urls.browseDatabase(database)));
+                      // Navigate to the route to display schemas
+                      dispatch(
+                        push(`/browse/databases/${database.id}/schemas`),
+                      );
                     }}
                   >
                     {logo ? (

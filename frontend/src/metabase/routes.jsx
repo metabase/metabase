@@ -89,7 +89,7 @@ import { CollectionPermissionsPage } from "./admin/permissions/pages/CollectionP
 import DataPermissionsPage from "./admin/permissions/pages/DataPermissionsPage";
 import DatabasesPermissionsPage from "./admin/permissions/pages/DatabasePermissionsPage/DatabasesPermissionsPage";
 import GroupsPermissionsPage from "./admin/permissions/pages/GroupDataPermissionsPage/GroupsPermissionsPage";
-
+import { BrowseDatabasesSchemas } from "./browse/components/BrowseDatabasesSchemas";
 import {
   createAdminRouteGuard,
 } from "metabase/admin/utils";
@@ -302,6 +302,7 @@ export const getRoutes = store => {
             <IndexRedirect to="/browse/models" />
             <Route path="models" component={BrowseModels} />
             <Route path="databases" component={BrowseDatabases} />
+            <Route path="databases/:slug/schemas" component={BrowseDatabasesSchemas} />
             <Route path="databases/connections" component={DatabasesConnections} />
             <Route path="semantic-layer" component={BrowseSemanticLayers} />
             <Route path="semantic-layer/:slug" component={BrowseSemanticLayerTable} />
