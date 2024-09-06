@@ -13,7 +13,6 @@ import { sanatizeResultData } from "metabase/visualizations/shared/utils/data";
 import type { Visualization } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type Query from "metabase-lib/v1/queries/Query";
 import { type CardDisplayType, isCardDisplayType } from "metabase-types/api";
 
 import {
@@ -55,7 +54,6 @@ interface ChartTypeSidebarProps {
   onCloseChartType: () => void;
   updateQuestion: (question: Question, props: UpdateQuestionOpts) => void;
   setUIControls: (props: { isShowingRawTable: boolean }) => void;
-  query: Query;
 }
 
 const ChartTypeSidebar = ({
@@ -65,7 +63,6 @@ const ChartTypeSidebar = ({
   onCloseChartType,
   updateQuestion,
   setUIControls,
-  query,
 }: ChartTypeSidebarProps) => {
   const [makesSense, nonSense]: [CardDisplayType[], CardDisplayType[]] =
     useMemo(
@@ -83,11 +80,11 @@ const ChartTypeSidebar = ({
               result &&
               result.data &&
               visualization?.isSensible &&
-              visualization?.isSensible(sanatizeResultData(result.data), query)
+              visualization?.isSensible(sanatizeResultData(result.data))
             );
           },
         ),
-      [result, query],
+      [result],
     );
 
   const openChartSettings = useCallback(

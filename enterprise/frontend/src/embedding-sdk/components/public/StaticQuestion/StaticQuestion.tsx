@@ -130,10 +130,6 @@ const StaticQuestionInner = ({
   const question = new Question(card, metadata);
   const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
 
-  const legacyQuery = question.legacyQuery({
-    useStructuredQuery: true,
-  });
-
   return (
     <Box
       className={cx(CS.flexFull, CS.fullWidth)}
@@ -148,7 +144,6 @@ const StaticQuestionInner = ({
               result={result}
               onOpenChartSettings={onOpenChartSettings}
               onCloseChartType={onCloseChartType}
-              query={legacyQuery}
               setUIControls={setUIControls}
               updateQuestion={changeVisualization}
             />
