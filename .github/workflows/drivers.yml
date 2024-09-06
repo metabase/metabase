@@ -345,10 +345,10 @@ jobs:
           --name metamongo
           metabase/qa-databases:mongo-sample-4.4
           mongod
-            --dbpath /data/db2/
-            --tlsMode requireTLS
-            --tlsCertificateKeyFile /etc/mongo/metamongo.pem
-            --tlsCAFile /etc/mongo/metaca.crt
+          --dbpath /data/db2/
+          --tlsMode requireTLS
+          --tlsCertificateKeyFile /etc/mongo/metamongo.pem
+          --tlsCAFile /etc/mongo/metaca.crt
 
       - uses: ./.github/actions/await-port
         with:
@@ -451,10 +451,10 @@ jobs:
           --name metamongo
           metabase/qa-databases:mongo-sample-5.0
           mongod
-            --dbpath /data/db2/
-            --tlsMode requireTLS
-            --tlsCertificateKeyFile /etc/mongo/metamongo.pem
-            --tlsCAFile /etc/mongo/metaca.crt
+          --dbpath /data/db2/
+          --tlsMode requireTLS
+          --tlsCertificateKeyFile /etc/mongo/metamongo.pem
+          --tlsCAFile /etc/mongo/metaca.crt
 
       - uses: ./.github/actions/await-port
         with:
