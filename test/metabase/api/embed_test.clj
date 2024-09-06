@@ -1056,8 +1056,8 @@
 
 (defn- do-with-embedding-enabled-and-temp-card-referencing {:style/indent 2} [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key
-    (t2.with-temp/with-temp [:mode/Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
-                                                    :enable_embedding true)]
+    (t2.with-temp/with-temp [:model/Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
+                                                     :enable_embedding true)]
       (f card))))
 
 (defmacro ^:private with-embedding-enabled-and-temp-card-referencing
