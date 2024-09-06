@@ -18,8 +18,7 @@
 
 (defsetting embedding-app-origins-sdk
   (deferred-tru "Allow this origin to embed Metabase SDK")
-  ;; TODO: Change this to `embedding-sdk` when the flag is added to the test token.
-  :feature    :embedding
+  :feature    :embedding-sdk
   :export?    false
   :visibility :public
   :encryption :never

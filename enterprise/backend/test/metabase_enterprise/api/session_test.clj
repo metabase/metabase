@@ -47,7 +47,7 @@
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
-            :embedding-sdk                  true
+            :embedding_sdk                  true
             :hosting                        true
             :llm_autodescription            true
             :official_collections           true

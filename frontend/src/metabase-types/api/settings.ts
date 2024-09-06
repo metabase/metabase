@@ -150,7 +150,7 @@ export const tokenFeatures = [
   "disable_password_login",
   "content_verification",
   "embedding",
-  "embedding-sdk",
+  "embedding_sdk",
   "hosting",
   "llm_autodescription",
   "official_collections",
