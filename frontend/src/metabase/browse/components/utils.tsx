@@ -8,8 +8,8 @@ import type { MetricResult, ModelResult } from "../types";
 
 export const isModel = (item: SearchResult) => item.model === "dataset";
 
-export const getModelDescription = (item: SearchResult) => {
-  if (item.collection && isModel(item) && !item.description?.trim()) {
+export const getModelDescription = (item: ModelResult) => {
+  if (item.collection && !item.description?.trim()) {
     return t`A model`;
   } else {
     return item.description;
@@ -18,8 +18,8 @@ export const getModelDescription = (item: SearchResult) => {
 
 export const isMetric = (item: SearchResult) => item.model === "metric";
 
-export const getMetricDescription = (item: SearchResult) => {
-  if (item.collection && isMetric(item) && !item.description?.trim()) {
+export const getMetricDescription = (item: MetricResult) => {
+  if (item.collection && !item.description?.trim()) {
     return t`A metric`;
   }
 
