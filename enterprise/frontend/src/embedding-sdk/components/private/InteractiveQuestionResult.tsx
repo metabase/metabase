@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { type ReactElement, type ReactNode, useState } from "react";
 import { t } from "ttag";
@@ -7,7 +8,7 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Group, Stack } from "metabase/ui";
+import { Box, Button, Flex, Group, Icon, Stack } from "metabase/ui";
 
 import { InteractiveQuestion } from "../public/InteractiveQuestion";
 
@@ -21,6 +22,46 @@ export interface InteractiveQuestionResultProps {
 }
 
 type QuestionView = "notebook" | "filter" | "summarize" | "visualization";
+
+const VisualizationResultView = () => {
+  const [isVisualizationSelectorOpen, { toggle: toggleVisualizationSelector }] =
+    useDisclosure();
+
+  return (
+    <Stack>
+      <Group m="sm">
+        <Button
+          compact={true}
+          radius="xl"
+          py="sm"
+          px="md"
+          variant="filled"
+          color="brand"
+          onClick={toggleVisualizationSelector}
+        >
+          <Group>
+            <Icon
+              name={isVisualizationSelectorOpen ? "arrow_left" : "arrow_right"}
+            />
+            <Icon name="eye" />
+          </Group>
+        </Button>
+      </Group>
+      <Group noWrap>
+        {isVisualizationSelectorOpen && (
+          <InteractiveQuestion.ChartTypeSelector />
+        )}
+        {/* 
+              A very hacky thing to force the visualization to resize.
+                there's definitely a better way to do this.
+                 */}
+        <InteractiveQuestion.QuestionVisualization
+          key={String(isVisualizationSelectorOpen)}
+        />
+      </Group>
+    </Stack>
+  );
+};
 
 const ResultView = ({
   questionView,
@@ -45,7 +86,7 @@ const ResultView = ({
     return <InteractiveQuestion.Notebook onApply={returnToVisualization} />;
   }
 
-  return <InteractiveQuestion.QuestionVisualization />;
+  return <VisualizationResultView />;
 };
 
 export const InteractiveQuestionResult = ({
