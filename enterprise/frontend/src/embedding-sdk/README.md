@@ -31,16 +31,16 @@ Live demo: https://embedded-analytics-sdk-demo.metabase.com/
 
 ## Known limitations
 
-* The SDK is currently only compatible with Metabase v50
-* Some of the Pro/EE features are not exposed in the UI
-  * Verified content
-  * Official collections
-  * Subscriptions
-  * Alerts
-  * ...
-* The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
-* Embedding multiple instances of interactive dashboards on the same page is not supported.
-  *  Please use static dashboards if you need to embed multiple dashboards on the same page.
+- The SDK is currently only compatible with Metabase v50
+- Some of the Pro/EE features are not exposed in the UI
+  - Verified content
+  - Official collections
+  - Subscriptions
+  - Alerts
+  - ...
+- The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
+- Embedding multiple instances of interactive dashboards on the same page is not supported.
+  - Please use static dashboards if you need to embed multiple dashboards on the same page.
 
 # Changelog
 
