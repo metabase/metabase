@@ -320,6 +320,7 @@
     metabase.metabot               #{metabase.metabot}
     metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
+    metabase.notification          #{metabase.notification.core}
     metabase.permissions           #{metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
     metabase.plugins               #{metabase.plugins
                                      metabase.plugins.classloader}                                  ; TODO -- not 100% sure the classloader belongs here
@@ -416,6 +417,7 @@
     metabase.metabot               :any
     metabase.models                :any
     metabase.moderation            :any
+    metabase.notification          :any
     metabase.permissions           :any
     metabase.plugins               :any
     metabase.public-settings       :any
@@ -498,6 +500,8 @@
     metabase-enterprise.test                                      met
     metabase.analytics.sdk                                        sdk
     metabase.analytics.stats                                      stats
+    metabase.analysis.native-query-analyzer                       nqa
+    metabase.analysis.native-query-analyzer.parameter-substitution nqa.sub
     metabase.analyze.query-results                                qr
     metabase.analyze.classifiers.category                         classifiers.category
     metabase.analyze.classifiers.core                             classifiers
@@ -614,6 +618,7 @@
     metabase.models.interface                                     mi
     metabase.models.moderation-review                             moderation-review
     metabase.models.native-query-snippet                          native-query-snippet
+    metabase.models.notification                                  models.notification
     metabase.models.params                                        params
     metabase.models.permissions                                   perms
     metabase.models.permissions-group                             perms-group
@@ -627,8 +632,7 @@
     metabase.models.setting.cache                                 setting.cache
     metabase.models.timeline                                      timeline
     metabase.models.timeline-event                                timeline-event
-    metabase.analysis.native-query-analyzer                       nqa
-    metabase.analysis.native-query-analyzer.parameter-substitution nqa.sub
+    metabase.notification.core                                    notification
     metabase.plugins.initialize                                   plugins.init
     metabase.public-settings                                      public-settings
     metabase.public-settings.premium-features                     premium-features

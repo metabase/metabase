@@ -1,26 +1,9 @@
 (ns metabase.models.notification-test
   (:require
-   [cheshire.core :as json]
-   [clojure.set :as set]
    [clojure.test :refer :all]
-   [java-time.api :as t]
-   [metabase.audit :as audit]
-   [metabase.config :as config]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.models.card :as card]
-   [metabase.models.interface :as mi]
-   [metabase.models.parameter-card :as parameter-card]
-   [metabase.models.revision :as revision]
-   [metabase.models.serialization :as serdes]
-   [metabase.query-processor.card-test :as qp.card-test]
-   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.models.notification :as models.notification]
    [metabase.test :as mt]
-   [metabase.test.util :as tu]
-   [metabase.util :as u]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Life cycle test                                            ;;
@@ -53,8 +36,6 @@
                                                                          :event_name     :event/card-create
                                                                          :notification_id noti-id}))))))
 
-
-
 (deftest notification-subscription-event-name-test
   (mt/with-temp [:model/Notification {noti-id :id} {}]
     (testing "success path"
@@ -64,7 +45,37 @@
         (is (some? (t2/select-one :model/NotificationSubscription sub-id)))))
 
     (testing "failed if type is invalid"
-      (is (thrown-with-msg? Exception #"Invalid value :event/not-existed\. Must be one of .*"
+      (is (thrown-with-msg? Exception #"Event name must be a namespaced keyword under :event"
                             (t2/insert! :model/NotificationSubscription {:type           :notification-subscription/event
-                                                                         :event_name     :event/not-existed
+                                                                         :event_name     :user-join
                                                                          :notification_id noti-id}))))))
+
+(def default-system-event-notification
+  {:payload_type :notification/system-event
+   :active       true})
+
+(def default-user-invited-subscription
+  {:type       :notification-subscription/event
+   :event_name :event/user-invited})
+
+(def default-card-created-subscription
+  {:type       :notification-subscription/event
+   :event_name :event/card-create})
+
+(deftest create-notification!-test
+  (mt/with-model-cleanup [:model/Notification]
+    (testing "create a notification with 2 subscriptions"
+      (let [noti (models.notification/create-notification!
+                    default-system-event-notification
+                    [default-user-invited-subscription
+                     default-card-created-subscription])]
+        (testing "return the created notification"
+          (is (= (t2/select-one :model/Notification (:id noti))
+                 noti)))
+
+        (testing "there are 2 subscriptions"
+          (is (= [default-card-created-subscription
+                  default-user-invited-subscription]
+                 (t2/select [:model/NotificationSubscription :type :event_name]
+                            :notification_id (:id noti)
+                            {:order-by [:event_name]}))))))))
