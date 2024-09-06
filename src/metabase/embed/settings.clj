@@ -50,7 +50,7 @@
   :type       :boolean
   :default    false
   :visibility :authenticated
-  :export?    true
+  :export?    false
   :audit      :getter)
 
 ;; settings for the embedding homepage

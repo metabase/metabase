@@ -18,6 +18,7 @@
                               :email-allow-list
                               :email-restrict-recipients
                               :embedding
+                              :embedding-sdk
                               :hosting
                               :llm-autodescription
                               :no-upsell
@@ -46,6 +47,7 @@
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
+            :embedding-sdk                  true
             :hosting                        true
             :llm_autodescription            true
             :official_collections           true
