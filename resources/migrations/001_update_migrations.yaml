@@ -10068,6 +10068,7 @@ databaseChangeLog:
       comment: Add `report_dashboardcard.dashboard_internal_card_id`
       changes:
         - sql:
+            # TODO: just add the column normally and adjust `before-insert` to set.
             sql: >-
               ALTER TABLE report_dashboardcard
               ADD COLUMN dashboard_internal_card_id INT GENERATED ALWAYS AS (CASE WHEN is_dashboard_internal_card THEN card_id ELSE NULL END) STORED;
