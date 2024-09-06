@@ -38,14 +38,16 @@
   [parameters]
   (let [to-insert (remove #(and (nil? (:value %)) (nil? (:default %))) parameters)]
     (t2/with-transaction [_conn]
-      (t2/delete! :model/UserParameterValue
-                  {:where (into [:or] (for [p parameters]
-                                        [:and
-                                         [:= :user_id (:user_id p)]
-                                         [:= :dashboard_id (:dashboard_id p)]
-                                         [:= :parameter_id (:parameter_id p)]]))})
-      (t2/insert! :model/UserParameterValue
-                  (map #(select-keys % [:user_id :dashboard_id :parameter_id :value]) to-insert)))))
+      (doseq [batch (partition-all 1000 parameters)]
+        (t2/delete! :model/UserParameterValue
+                    {:where (into [:or] (for [p batch]
+                                          [:and
+                                           [:= :user_id (:user_id p)]
+                                           [:= :dashboard_id (:dashboard_id p)]
+                                           [:= :parameter_id (:parameter_id p)]]))}))
+      (doseq [batch (partition-all 1000 to-insert)]
+        (t2/insert! :model/UserParameterValue
+                    (map #(select-keys % [:user_id :dashboard_id :parameter_id :value]) batch))))))
 
 (defonce ^:private user-parameter-value-queue
   (delay (grouper/start!
