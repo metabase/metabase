@@ -343,7 +343,7 @@
           ;; Run this query with full superuser perms. We don't want the various perms checks
           ;; failing because there are no current user perms; if this Dashcard is public
           ;; you're by definition allowed to run it without a perms check anyway
-          (binding [api/*current-user-permissions-set* (delay #{"/"})]
+          (mw.session/as-admin
             ;; Undo middleware string->keyword coercion
             (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
 
@@ -659,7 +659,7 @@
         ;; Run this query with full superuser perms. We don't want the various perms checks
         ;; failing because there are no current user perms; if this Dashcard is public
         ;; you're by definition allowed to run it without a perms check anyway
-        (binding [api/*current-user-permissions-set* (delay #{"/"})]
+        (mw.session/as-admin
           (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
             (snowplow/track-event! ::snowplow/action
                                    {:event     :action-executed
