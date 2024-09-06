@@ -88,15 +88,14 @@
                        (reset! err e)
                        (if full-stacktrace
                          (log/error e "Error during serialization")
-                         (serdes/log-stripped-error e "Error during serialization")))))]
+                         (log/error (serdes/strip-error e "Error during serialization"))))))]
     {:archive       (when (.exists dst)
                       dst)
      :log-file      (when (.exists log-file)
                       log-file)
      :report        report
      :error-message (when @err
-                      (->> (serdes/strip-error @err nil)
-                           (str/join "\n")))
+                      (serdes/strip-error @err nil))
      :callback      (fn []
                       (when (.exists path)
                         (run! io/delete-file (reverse (file-seq path))))
@@ -140,11 +139,10 @@
                        (reset! err e)
                        (if full-stacktrace
                          (log/error e "Error during serialization")
-                         (serdes/log-stripped-error e "Error during serialization")))))]
+                         (log/error (serdes/strip-error e "Error during serialization"))))))]
     {:log-file      log-file
      :error-message (when @err
-                      (->> (serdes/strip-error @err nil)
-                           (str/join "\n")))
+                      (serdes/strip-error @err nil))
      :report        report
      :callback      #(when (.exists dst)
                        (run! io/delete-file (reverse (file-seq dst))))}))
