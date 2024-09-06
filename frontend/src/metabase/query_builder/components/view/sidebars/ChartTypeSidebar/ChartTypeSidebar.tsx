@@ -17,10 +17,10 @@ import {
   type UseChartTypeVisualizationsProps,
   useChartTypeVisualizations,
 } from "metabase/query_builder/components/chart-type-selector";
+import { Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";
-import { Stack } from "metabase/ui";
 
 export type ChartTypeSidebarProps = Pick<
   UseChartTypeVisualizationsProps,
@@ -54,15 +54,7 @@ export const ChartTypeSidebar = ({
     onUpdateQuestion,
   });
 
-  console.log({
-    selectedVisualization,
-    updateQuestionVisualization,
-    sensibleVisualizations,
-    nonSensibleVisualizations,
-  })
-
   const handleSelectVisualization = (display: CardDisplayType) => {
-    console.log(display, selectedVisualization)
     if (display === selectedVisualization) {
       dispatch(
         onOpenChartSettings({

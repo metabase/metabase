@@ -14,45 +14,31 @@ export const ChartTypeSettings = ({
   onSelectVisualization,
   sensibleVisualizations,
   nonSensibleVisualizations,
-}: ChartTypeSettingsProps) => {
-  console.log("ChartTypeSEttings", {
-    selectedVisualization,
-    onSelectVisualization,
-    sensibleVisualizations,
-    nonSensibleVisualizations,
-  });
-  return (
-    <>
-      <ChartTypeList
-        data-testid="display-options-sensible"
-        visualizationList={sensibleVisualizations}
-        onSelectVisualization={display => {
-          console.log("charttypesettings sensible", display);
-          onSelectVisualization(display);
-        }}
-        selectedVisualization={selectedVisualization}
-      />
+}: ChartTypeSettingsProps) => (
+  <>
+    <ChartTypeList
+      data-testid="display-options-sensible"
+      visualizationList={sensibleVisualizations}
+      onSelectVisualization={onSelectVisualization}
+      selectedVisualization={selectedVisualization}
+    />
 
-      <Space h="xl" />
+    <Space h="xl" />
 
-      <Text
-        fw="bold"
-        color="text-medium"
-        tt="uppercase"
-        fz="sm"
-      >{t`Other charts`}</Text>
+    <Text
+      fw="bold"
+      color="text-medium"
+      tt="uppercase"
+      fz="sm"
+    >{t`Other charts`}</Text>
 
-      <Space h="sm" />
+    <Space h="sm" />
 
-      <ChartTypeList
-        data-testid="display-options-not-sensible"
-        visualizationList={nonSensibleVisualizations}
-        onSelectVisualization={display => {
-          console.log("charttypesettings", display);
-          onSelectVisualization(display);
-        }}
-        selectedVisualization={selectedVisualization}
-      />
-    </>
-  );
-};
+    <ChartTypeList
+      data-testid="display-options-not-sensible"
+      visualizationList={nonSensibleVisualizations}
+      onSelectVisualization={onSelectVisualization}
+      selectedVisualization={selectedVisualization}
+    />
+  </>
+);

@@ -1,6 +1,5 @@
 import cx from "classnames";
 
-import CS from "metabase/css/core/index.css";
 import { checkNotNull } from "metabase/lib/types";
 import { ActionIcon, Center, Icon, Stack, Text } from "metabase/ui";
 import visualizations from "metabase/visualizations";
@@ -19,14 +18,9 @@ export const ChartTypeOption = ({
   selectedVisualization,
   onSelectVisualization,
 }: ChartTypeOptionProps) => {
-  console.log("ChartTypeOption", {
-    visualizationType,
-    selectedVisualization,
-    onSelectVisualization,
-  });
-
   const visualization = checkNotNull(visualizations.get(visualizationType));
   const isSelected = selectedVisualization === visualizationType;
+
   return (
     <Center pos="relative" data-testid="chart-type-option">
       <Stack
@@ -40,10 +34,7 @@ export const ChartTypeOption = ({
           w="3.125rem"
           h="3.125rem"
           radius="xl"
-          onClick={() => {
-            console.log("regular icon");
-            onSelectVisualization(visualizationType);
-          }}
+          onClick={() => onSelectVisualization(visualizationType)}
           color="brand"
           data-is-selected={isSelected}
           variant={isSelected ? "filled" : "outline"}
@@ -73,10 +64,7 @@ export const ChartTypeOption = ({
               ChartTypeOptionS.BorderedButton,
               ChartTypeOptionS.SettingsButton,
             )}
-            onClick={() => {
-              console.log("settings icon");
-              onSelectVisualization(visualizationType);
-            }}
+            onClick={() => onSelectVisualization(visualizationType)}
           >
             <Icon name="gear" size={16} />
           </ActionIcon>
