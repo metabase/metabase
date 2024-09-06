@@ -205,7 +205,7 @@
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
         action (api/check-404 (action/select-action :id (:action_id dashcard)))]
-    (snowplow/track-event! ::action
+    (snowplow/track-event! ::snowplow/action
                            {:event     :action-executed
                             :source    :dashboard
                             :type      (:type action)

@@ -12,6 +12,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
    (com.snowplowanalytics.snowplow.tracker Snowplow Subject Tracker)
@@ -52,6 +53,10 @@
    ::llm_usage     "1-0-0"
    ::serialization "1-0-1"
    ::cleanup       "1-0-0"})
+
+(def ^:private SnowplowSchema
+  "Malli enum for valid Snowplow schemas"
+  (into [:enum] (keys schema->version)))
 
 (defsetting analytics-uuid
   (deferred-tru
@@ -202,13 +207,13 @@
   [tracker event]
   (.track ^Tracker tracker ^SelfDescribing event))
 
-(defn track-event!
+(mu/defn track-event!
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector
   is available."
-  ([schema data]
+  ([schema :- SnowplowSchema data]
    (track-event! schema data api/*current-user-id*))
 
-  ([schema data user-id]
+  ([schema :- SnowplowSchema data user-id]
    (when (snowplow-enabled)
      (try
        (let [^SelfDescribing$Builder2 builder (-> (. SelfDescribing builder)
