@@ -73,7 +73,7 @@
         (events/publish-event! :event/user-joined event)))
     (record-login-history! session-uuid (u/the-id user) device-info)
     (when-not (:last_login user)
-      (snowplow/track-event! ::snowplow/new-user-created (u/the-id user)))
+      (snowplow/track-event! ::snowplow/account {:event :new-user-created} (u/the-id user)))
     (assoc session :id session-uuid)))
 
 (mu/defmethod create-session! :password :- SessionSchema

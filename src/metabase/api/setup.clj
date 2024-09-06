@@ -77,8 +77,10 @@
       (u/prog1 (user/create-and-invite-user! user invitor true)
         (user/set-permissions-groups! <> [(perms-group/all-users) (perms-group/admin)])
         (events/publish-event! :event/user-invited {:object (assoc <> :invite_method "email")})
-        (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id (u/the-id <>)
-                                                                             :source          "setup"})))))
+        (snowplow/track-event! ::snowplow/invite
+                               {:event           :invite-sent
+                                :invited-user-id (u/the-id <>)
+                                :source          "setup"})))))
 
 (defn- setup-set-settings! [{:keys [email site-name site-locale]}]
   ;; set a couple preferences
@@ -135,7 +137,7 @@
       (events/publish-event! :event/user-login {:user-id user-id})
       (when-not (:last_login superuser)
         (events/publish-event! :event/user-joined {:user-id user-id}))
-      (snowplow/track-event! ::snowplow/new-user-created user-id)
+      (snowplow/track-event! ::snowplow/account {:event :new-user-created} user-id)
       ;; return response with session ID and set the cookie as well
       (mw.session/set-session-cookies request {:id session-id} session (t/zoned-date-time (t/zone-id "GMT"))))))
 
