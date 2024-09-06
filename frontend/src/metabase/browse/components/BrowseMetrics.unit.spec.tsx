@@ -235,11 +235,11 @@ describe("BrowseMetrics", () => {
     });
     expect(table).toBeInTheDocument();
     expect(
-      await within(table).findAllByTestId("path-for-collection: Our analytics"),
+      within(table).getAllByTestId("path-for-collection: Our analytics"),
     ).toHaveLength(2);
-    expect(await within(table).findByText("Metric 20")).toBeInTheDocument();
-    expect(await within(table).findByText("Metric 21")).toBeInTheDocument();
-    expect(await within(table).findByText("Metric 22")).toBeInTheDocument();
+    expect(within(table).getByText("Metric 20")).toBeInTheDocument();
+    expect(within(table).getByText("Metric 21")).toBeInTheDocument();
+    expect(within(table).getByText("Metric 22")).toBeInTheDocument();
   });
 
   it("displays collection breadcrumbs", async () => {
@@ -247,9 +247,9 @@ describe("BrowseMetrics", () => {
     const table = await screen.findByRole("table", {
       name: /Table of metrics/,
     });
-    expect(await within(table).findByText("Metric 1")).toBeInTheDocument();
+    expect(within(table).getByText("Metric 1")).toBeInTheDocument();
     expect(
-      await within(table).findAllByTestId("path-for-collection: Alpha"),
+      within(table).getAllByTestId("path-for-collection: Alpha"),
     ).toHaveLength(3);
   });
 });
