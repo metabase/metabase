@@ -1,26 +1,16 @@
 import { t } from "ttag";
-
-import NoResults from "assets/img/no_results.svg";
 import { useListDatabasesQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
-import * as Urls from "metabase/lib/urls";
-import { Box, Icon, Title, Button } from "metabase/ui";
+
 import { push } from "react-router-redux";
 import { useDispatch } from "metabase/lib/redux";
 import {
   BrowseContainer,
   BrowseMain,
   BrowseSection,
-  CenteredEmptyState,
 } from "./CompanyContainer.styled";
 import { CompanyHeader } from "./CompanyHeader";
-import {
-  DatabaseCard,
-  DatabaseCardLink,
-  DatabaseGrid,
-} from "./CompanyCards.styled";
+
 import {
   EngineCardIcon,
   EngineCardImage,
@@ -68,33 +58,6 @@ export const CompanySettings = () => {
 
   if (!databases && isLoading) {
     return <LoadingAndErrorWrapper loading />;
-  }
-
-  const filteredDatabases = databases?.filter(
-    database => database.is_cube === false,
-  );
-
-  if (!filteredDatabases?.length) {
-    return (
-      <CenteredEmptyState
-        title={<Box mb=".5rem">{t`No databases here yet`}</Box>}
-        illustrationElement={
-          <>
-            <Box mb=".5rem">
-              <img src={NoResults} />
-            </Box>
-            <Button
-              variant="filled"
-              onClick={() => {
-                dispatch(push("/browse/databases/connections"));
-              }}
-            >
-              {t`Add connection`}
-            </Button>
-          </>
-        }
-      />
-    );
   }
 
   return (
