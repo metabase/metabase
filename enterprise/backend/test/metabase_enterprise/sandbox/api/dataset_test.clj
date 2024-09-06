@@ -6,7 +6,7 @@
    [metabase.test :as mt]))
 
 (deftest dataset-parameter-test
-  (testing "POST /api/dataset/parameter/values should follow sandbox rules"
+  (testing "POST /api/dataset/parameter/values should respect sandboxing"
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (testing "with values_source_type=card"
         (mt/with-temp

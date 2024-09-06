@@ -2,13 +2,13 @@
 import type { Octokit } from "@octokit/rest";
 import dayjs from "dayjs";
 
+import { findMilestone, getMilestoneIssues } from "./github";
 import { getChannelTopic, sendPreReleaseStatus } from "./slack";
-import { getMilestoneIssues, findMilestone } from "./github";
 
 
 const DATE_FORMAT = "ddd, MMM DD";
-// if we're more than 3 days out from a release, don't spam slack
-const MIN_DAYS_TO_RELEASE = 3;
+// if we're more than x days out from a release, don't spam slack
+const MIN_DAYS_TO_RELEASE = 1;
 
 async function getReleaseInfo({
   channelName

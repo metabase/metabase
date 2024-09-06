@@ -408,14 +408,16 @@ function getPreviewParamsBySlug({
   );
 
   return Object.fromEntries(
-    lockedParameters.map(parameter => [
-      parameter.slug,
-      getParameterValue({
+    lockedParameters.map(parameter => {
+      const value = getParameterValue({
         parameter,
         values: parameterValues,
         defaultRequired: true,
-      }),
-    ]),
+      });
+      // metabase#47570
+      const valueWithDefaultLockedParameterValue = value === null ? [] : value;
+      return [parameter.slug, valueWithDefaultLockedParameterValue];
+    }),
   );
 }
 

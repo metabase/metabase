@@ -1,6 +1,7 @@
 import type { CardId } from "./card";
 import type { CollectionId } from "./collection";
 import type { DashCardId, DashboardId } from "./dashboard";
+import type { BaseEntityId } from "./entity-id";
 import type { Channel } from "./notifications";
 import type { Parameter } from "./parameters";
 import type { UserId, UserInfo } from "./user";
@@ -28,7 +29,7 @@ export interface Alert {
   can_write: boolean;
   archived: boolean;
 
-  entity_id: string;
+  entity_id: BaseEntityId;
 
   creator_id: UserId;
   creator: UserInfo;

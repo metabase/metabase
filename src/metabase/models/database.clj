@@ -449,11 +449,12 @@
                :cache_ttl]
    :transform {:created_at          (serdes/date)
                ;; details should be imported if available regardless of options
-               :details             {:export (fn [details]
-                                               (if (and include-database-secrets
-                                                        (not (:is_attached_dwh serdes/*current*)))
-                                                 details
-                                                 ::serdes/skip))
+               :details             {:export-with-context
+                                     (fn [current _ details]
+                                       (if (and include-database-secrets
+                                                (not (:is_attached_dwh current)))
+                                         details
+                                         ::serdes/skip))
                                      :import identity}
                :creator_id          (serdes/fk :model/User)
                :initial_sync_status {:export identity :import (constantly "complete")}}})

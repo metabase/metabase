@@ -89,7 +89,11 @@ const BaseInput = forwardRef(function Input(
         onChange={onChange}
       />
       {leftIcon && (
-        <Tooltip label={leftIconTooltip} position="left">
+        <Tooltip
+          disabled={!leftIconTooltip}
+          label={leftIconTooltip}
+          position="left"
+        >
           <InputLeftButton
             data-testid="input-left-icon-button"
             size={size}
@@ -101,7 +105,11 @@ const BaseInput = forwardRef(function Input(
         </Tooltip>
       )}
       {rightIcon && (
-        <Tooltip label={rightIconTooltip} position="right">
+        <Tooltip
+          disabled={!rightIconTooltip}
+          label={rightIconTooltip}
+          position="right"
+        >
           <InputRightButton
             data-testid="input-right-icon-button"
             size={size}
