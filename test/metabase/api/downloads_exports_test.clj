@@ -211,10 +211,6 @@
    [:field "D" {:base-type :type/Text}]
    [:field "MEASURE" {:base-type :type/Integer}]])
 
-;; The Pivot Table Download/export test can be a bit confusing. I've kept a 'see pivot result' function in a comment at the end of this ns
-;; If you eval/run that in your repl, you should be able to see the results (It's not too many rows so should print acceptably)
-;; If you need to add assertions or fix up this test, that may be a helpful function to run!
-
 (deftest simple-pivot-export-test
   (testing "Pivot table csv exports look pivoted"
     (mt/dataset test-data
@@ -266,6 +262,49 @@
                       ((fn [m] (update-vals m #(into #{} (mapv first %)))))
                       (apply concat)))))))))
 
+(deftest simple-pivot-export-row-col-totals-test
+  (testing "Pivot table csv exports respect row/column totals viz-settings"
+    (doseq [row-totals? [#_true false]
+            col-totals? [#_true false]]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card card
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:rows    [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                  :columns [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]
+                                                  :values  [[:aggregation 0]]}
+                                                 :pivot.show_row_totals    row-totals?
+                                                 :pivot.show_column_totals col-totals?
+                                                 :column_settings
+                                                 {"[\"name\",\"sum\"]" {:number_style       "currency"
+                                                                        :currency_in_header false}}}
+                        :dataset_query          {:database (mt/id)
+                                                 :type     :query
+                                                 :query
+                                                 {:source-table (mt/id :products)
+                                                  :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                  :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                                 [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+          (testing (format "formatted with row-totals: %s and col-totals: %s" row-totals? col-totals?)
+            (is (= [(keep
+                     (fn [row]
+                       (when row
+                         (if row-totals?
+                           row
+                           (vec (drop-last row)))))
+                     [["Category" "2016" "2017" "2018" "2019" "Row totals"]
+                      ["Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
+                      ["Gadget" "$679.83" "$1,059.11" "$844.51" "$435.75" "$3,019.20"]
+                      ["Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06" "$2,834.88"]
+                      ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
+                      (when col-totals? ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"])])
+                    #{:unsaved-card-download :card-download :dashcard-download
+                      :alert-attachment :subscription-attachment}]
+                   (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
+                        (group-by second)
+                        ((fn [m] (update-vals m #(into #{} (mapv first %)))))
+                        (apply concat))))))))))
+
 (deftest ^:parallel pivot-export-test
   []
   (mt/dataset test-data
@@ -281,7 +320,7 @@
                                 :display_name field-name
                                 :field_ref    [:field field-name {:base-type base-type}]
                                 :base_type    base-type}))}
-                   :model/Card {pivot-card-id :id}
+                   :model/Card pivot-card
                    {:display                :pivot
                     :visualization_settings {:pivot_table.column_split
                                              {:rows    [[:field "C" {:base-type :type/Text}]
@@ -299,10 +338,7 @@
                                                [:field "C" {:base-type :type/Text}]
                                                [:field "D" {:base-type :type/Text}]]
                                               :source-table (format "card__%s" pivot-data-card-id)}}}]
-      (let [result (->> (mt/user-http-request :crowberto :post 200
-                                              (format "card/%d/query/csv" pivot-card-id)
-                                              {:pivot-results true})
-                        csv/read-csv)]
+      (let [result (card-download pivot-card {:export-format :csv :pivot true})]
         (testing "Pivot CSV Exports look like a Pivoted Table"
           (testing "The Headers Properly indicate the pivot rows names."
             ;; Pivot Rows Header are Simply the Column names from the rows specified in

@@ -62,6 +62,19 @@
       (assoc :pivot-measures (pivot-measures pivot-spec))
       (assoc :pivot-grouping (pivot-grouping-key (:column-titles pivot-spec)))))
 
+(mu/defn add-totals-settings :- ::pivot-spec
+  "Given a pivot-spec map without the `:pivot-measures` key, determine what key(s) the measures will be and assoc that value into `:pivot-measures`."
+  [pivot-spec :- ::pivot-spec viz-settings]
+  (let [row-totals (if (contains? viz-settings :pivot.show_row_totals)
+                     (:pivot.show_row_totals viz-settings)
+                     true)
+        col-totals (if (contains? viz-settings :pivot.show_column_totals)
+                     (:pivot.show_column_totals viz-settings)
+                     true)]
+    (-> pivot-spec
+        (assoc :row-totals? row-totals)
+        (assoc :col-totals? col-totals))))
+
 (mu/defn init-pivot
   "Initiate the pivot data structure."
   [pivot-spec :- ::pivot-spec]
@@ -122,14 +135,16 @@
         {:keys [pivot-rows
                 pivot-cols
                 pivot-measures
-                column-titles]} config
+                column-titles
+                row-totals?
+                col-totals?]}   config
         row-formatters          (mapv #(get ordered-formatters %) pivot-rows)
         col-formatters          (mapv #(get ordered-formatters %) pivot-cols)
         fmt                     (fn fmt [formatter value] ((or formatter identity) (common/format-value value)))
         row-combos              (apply math.combo/cartesian-product (map row-values pivot-rows))
         col-combos              (apply math.combo/cartesian-product (map column-values pivot-cols))
-        row-totals?             (boolean (seq pivot-cols))
-        col-totals?             (boolean (seq pivot-rows))
+        row-totals?             (and row-totals? (boolean (seq pivot-cols)))
+        col-totals?             (and col-totals? (boolean (seq pivot-rows)))
         ;; Build the multi-level column headers
         column-headers          (concat
                                  (if (= 1 (count pivot-measures))
@@ -143,14 +158,14 @@
                                          (concat
                                           (when row-totals? ["Row totals"])
                                           (repeat (dec (count pivot-cols)) nil)
-                                          (when (and row-totals? (> (count pivot-measures) 1)) [nil]))))
+                                          (when (and (seq pivot-cols) (> (count pivot-measures) 1)) [nil]))))
         ;; Combine row keys with the new column headers
         headers                 (map (fn [h]
                                        (if (and (seq pivot-cols)
                                                 (not (seq pivot-rows)))
                                          (concat (map #(get column-titles %) pivot-cols) h)
                                          (concat (map #(get column-titles %) pivot-rows) h)))
-                                     (apply map vector column-headers))
+                                     (apply map vector (filter seq column-headers)))
         headers                 (if (seq headers)
                                   headers
                                   [(concat
@@ -188,22 +203,23 @@
                             (get-in totals (concat
                                             [:column-totals section]
                                             col-combo
-                                            [measure-key]))))                     ;; section totals
+                                            [measure-key])))) ;; section totals
                      (when row-totals?
                        (for [measure-key pivot-measures]
                          (fmt (get ordered-formatters measure-key)
                               (get-in totals [:section-totals section measure-key]))))))]))))
-     [(concat
-       (if (and (seq pivot-cols)
-                (not (seq pivot-rows)))
-         (cons "Grand totals" (repeat (dec (count pivot-cols)) nil))
-         (cons "Grand totals" (repeat (dec (count pivot-rows)) nil)))
-       (when row-totals?
-         (for [col-combo   col-combos
-               measure-key pivot-measures]
+     (when col-totals?
+       [(concat
+         (if (and (seq pivot-cols)
+                  (not (seq pivot-rows)))
+           (cons "Grand totals" (repeat (dec (count pivot-cols)) nil))
+           (cons "Grand totals" (repeat (dec (count pivot-rows)) nil)))
+         (when row-totals?
+           (for [col-combo   col-combos
+                 measure-key pivot-measures]
+             (fmt (get ordered-formatters measure-key)
+                  (get-in totals (concat col-combo [measure-key])))))
+         ;; grandest total
+         (for [measure-key pivot-measures]
            (fmt (get ordered-formatters measure-key)
-                (get-in totals (concat col-combo [measure-key])))))
-       ;; grandest total
-       (for [measure-key pivot-measures]
-         (fmt (get ordered-formatters measure-key)
-              (get-in totals [:grand-total measure-key]))))])))
+                (get-in totals [:grand-total measure-key]))))]))))

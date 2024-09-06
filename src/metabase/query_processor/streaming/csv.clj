@@ -83,6 +83,7 @@
                                                :pivot-cols []}
                                               pivot-export-options)
                                        (assoc :column-titles (mapv :display_name ordered-cols))
+                                       (qp.pivot.postprocess/add-totals-settings viz-settings)
                                        qp.pivot.postprocess/add-pivot-measures))
               ;; col-names are created later when exporting a pivot table, so only create them if there are no pivot options
               col-names          (when-not opts (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
