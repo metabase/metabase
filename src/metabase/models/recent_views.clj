@@ -79,8 +79,9 @@
 
 (def rv-models
   "These are models for which we will retrieve recency."
-  [:card :dataset ;; n.b.: `:card` and `:model` are stored in recent_views as "card", and a join with report_card is
-                  ;; needed to distinguish between them.
+  [:card :dataset :metric
+   ;; n.b.: `:card`, `metric` and `:model` are stored in recent_views as "card", and a join with report_card is
+   ;; needed to distinguish between them.
    :dashboard :table :collection])
 
 (mu/defn rv-model->model
@@ -129,19 +130,21 @@
 
 (mu/defn update-users-recent-views!
   "Updates the RecentViews table for a given user with a new view, and prunes old views."
-  [user-id :- [:maybe ms/PositiveInt]
-   model :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection]
-   model-id :- ms/PositiveInt
-   context :- [:enum :view :selection]]
-  (when user-id
-    (t2/with-transaction [_conn]
-      (t2/insert! :model/RecentViews {:user_id user-id
-                                      :model (u/lower-case-en (name model))
-                                      :model_id model-id
-                                      :context (name context)})
-      (let [prune-ids (ids-to-prune user-id context)]
-        (when (seq prune-ids)
-          (t2/delete! :model/RecentViews :id [:in prune-ids]))))))
+  ([user-id model model-id]
+   (update-users-recent-views! user-id model model-id :view))
+  ([user-id :- [:maybe ms/PositiveInt]
+    model :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection]
+    model-id :- ms/PositiveInt
+    context :- [:enum :view :selection]]
+   (when user-id
+     (t2/with-transaction [_conn]
+       (t2/insert! :model/RecentViews {:user_id user-id
+                                       :model (u/lower-case-en (name model))
+                                       :model_id model-id
+                                       :context (name context)})
+       (let [prune-ids (ids-to-prune user-id context)]
+         (when (seq prune-ids)
+           (t2/delete! :model/RecentViews :id [:in prune-ids])))))))
 
 (defn most-recently-viewed-dashboard-id
   "Returns ID of the most recently viewed dashboard for a given user within the last 24 hours, or `nil`."
@@ -205,6 +208,7 @@
   code (e.g. a collection's parent collection.)"
   (fn [{:keys [model #_model_id #_timestamp card_type]}]
     (or (get {"model" :dataset "question" :card} card_type)
+        (and card_type (keyword card_type))
         (keyword model))))
 
 (defmethod fill-recent-view-info :default [m] (throw (ex-info "Unknown model" {:model m})))
@@ -287,6 +291,20 @@
      ;; another table that doesn't differentiate between card and dataset :cry:
      :moderated_status (:moderated-status dataset)
      :parent_collection (fill-parent-coll dataset)}))
+
+(defmethod fill-recent-view-info :metric [{:keys [_model model_id timestamp model_object]}]
+  (when-let [metric (and
+                     (mi/can-read? model_object)
+                     (ellide-archived model_object))]
+    {:id model_id
+     :name (:name metric)
+     :description (:description metric)
+     :display (or (some-> metric :display name) "")
+     :model :metric
+     :can_write (mi/can-write? metric)
+     :timestamp (str timestamp)
+     :moderated_status (:moderated-status metric)
+     :parent_collection (fill-parent-coll metric)}))
 
 ;; == Recent Dashboards ==
 

@@ -1029,3 +1029,36 @@
                                            ;; icon
                                            pulse.test-util/png-attachment]})
                 (mt/summarize-multipart-email (re-pattern error-msg)))))))))
+
+(deftest exclude-archived-cards-test
+  (mt/with-temp
+    [:model/Card                {card :id}             {:name          "My Precious Card"
+                                                        :dataset_query (mt/mbql-query orders {:limit 1})}
+     :model/Card                {archived-card-id :id} {:name          "Archived Card"
+                                                        :dataset_query (mt/mbql-query orders {:limit 1})
+                                                        :archived      true}
+     :model/Dashboard           {dash-id :id}          {:name "Aviary KPIs"}
+     :model/DashboardCard       _                      {:dashboard_id dash-id
+                                                        :card_id      card}
+     :model/DashboardCard       _                      {:dashboard_id dash-id
+                                                        :card_id      archived-card-id}
+     :model/Pulse               {pulse-id :id}         {:name "Aviary KPIs"
+                                                        :dashboard_id dash-id}
+     :model/PulseCard            _                     {:pulse_id pulse-id
+                                                        :card_id   card
+                                                        :position 0}
+     :model/PulseCard            _                     {:pulse_id pulse-id
+                                                        :card_id   archived-card-id
+                                                        :position 1}
+     :model/PulseChannel        {pc-id :id}            {:pulse_id pulse-id
+                                                        :channel_type "email"}
+     :model/PulseChannelRecipient _                    {:user_id          (pulse.test-util/rasta-id)
+                                                        :pulse_channel_id pc-id}]
+    (testing "Archived cards are not included in the result #47649"
+      (pulse.test-util/email-test-setup
+       (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id))
+       (is (= (rasta-pulse-email {:body [{"My Precious Card" true
+                                          "Archived Card"    false}
+                                         ;; active card result
+                                         pulse.test-util/png-attachment]})
+              (mt/summarize-multipart-email #"My Precious Card" #"Archived Card")))))))
