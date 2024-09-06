@@ -31,10 +31,10 @@ import {
 } from "metabase/ui";
 import type {
   Strategy as CacheStrategy,
+  StrategyType as CacheStrategyType,
   CacheableModel,
   ScheduleSettings,
   ScheduleStrategy,
-  StrategyType,
 } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
