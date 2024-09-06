@@ -207,13 +207,29 @@
       false :metric   (-> lib.tu/venues-query
                           (lib/aggregate (lib/count))
                           (lib/aggregate (lib/sum (meta/field-metadata :venues :id))))
-      true  :metric   (-> lib.tu/venues-query
+      true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
-                          (lib/breakout (first (lib/breakoutable-columns lib.tu/venues-query))))
-      false  :metric   (-> lib.tu/venues-query
-                           (lib/aggregate (lib/count))
-                           (lib/append-stage)
-                           (lib/aggregate (lib/count))))))
+                          (lib/breakout (meta/field-metadata :people :birth-date)))
+      true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (meta/field-metadata :people :created-at)))
+      true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :year)))
+      true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :hour-of-day)))
+      false :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (meta/field-metadata :people :created-at))
+                          (lib/breakout (meta/field-metadata :people :birth-date)))
+      false :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (meta/field-metadata :people :name)))
+      false  :metric  (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count))
+                          (lib/append-stage)
+                          (lib/aggregate (lib/count))))))
 
 (deftest ^:parallel can-save-test
   (mu/disable-enforcement
@@ -226,16 +242,29 @@
       false :metric   lib.tu/venues-query
       true  :metric   (-> lib.tu/venues-query
                           (lib/aggregate (lib/count)))
-      false :metric   (-> lib.tu/venues-query
+      true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
-                          (lib/aggregate (lib/sum (meta/field-metadata :venues :id))))
-      true  :metric   (-> lib.tu/venues-query
+                          (lib/breakout (meta/field-metadata :people :birth-date)))
+      true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                           (lib/aggregate (lib/count))
-                          (lib/breakout (first (lib/breakoutable-columns lib.tu/venues-query))))
-      false  :metric   (-> lib.tu/venues-query
-                           (lib/aggregate (lib/count))
-                           (lib/append-stage)
-                           (lib/aggregate (lib/count))))))
+                          (lib/breakout (meta/field-metadata :people :created-at)))
+      true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :year)))
+      true  :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :people :birth-date) :hour-of-day)))
+      false :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (meta/field-metadata :people :created-at))
+                          (lib/breakout (meta/field-metadata :people :birth-date)))
+      false :metric   (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (meta/field-metadata :people :id)))
+      false  :metric  (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count))
+                          (lib/append-stage)
+                          (lib/aggregate (lib/count))))))
 
 (deftest ^:parallel can-preview-test
   (mu/disable-enforcement

@@ -18,9 +18,10 @@ export const DataStep = ({
   color,
   updateQuery,
 }: NotebookStepProps) => {
-  const { stageIndex } = step;
+  const { question, stageIndex } = step;
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
+  const isMetric = question.type() === "metric";
 
   const isRaw = useMemo(() => {
     return (
@@ -36,7 +37,12 @@ export const DataStep = ({
     metadataProvider: Lib.MetadataProvider,
   ) => {
     const newQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
-    await updateQuery(newQuery);
+    const newAggregations = Lib.aggregations(newQuery, stageIndex);
+    if (isMetric && newAggregations.length === 0) {
+      await updateQuery(Lib.aggregateByCount(newQuery, stageIndex));
+    } else {
+      await updateQuery(newQuery);
+    }
   };
 
   return (
