@@ -100,7 +100,7 @@ export default _.compose(
         userId: props.params.userId,
       }),
       isSsoEnabled: isSsoEnabled(state),
-      isPasswordLoginEnabled: getSetting(state, "password-login-enabled"),
+      isPasswordLoginEnabled: getSetting(state, "enable-password-login"),
     }),
     {
       onClose: () => push("/admin/people"),
