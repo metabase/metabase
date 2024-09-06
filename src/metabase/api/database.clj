@@ -822,17 +822,18 @@
                                        (when (some? auto_run_queries)
                                          {:auto_run_queries auto_run_queries})))))
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
-        (snowplow/track-event! ::snowplow/database-connection-successful
-                               api/*current-user-id*
-                               {:database     engine
+        (snowplow/track-event! ::snowplow/database
+                               {:event        :database-connection-successful
+                                :database     engine
                                 :database-id  (u/the-id <>)
                                 :source       connection_source
                                 :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
       ;; failed to connect, return error
       (do
-        (snowplow/track-event! ::snowplow/database-connection-failed
-                               api/*current-user-id*
-                               {:database engine :source connection_source})
+        (snowplow/track-event! ::snowplow/database
+                               {:event    :database-connection-failed
+                                :database engine
+                                :source   connection_source})
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 
