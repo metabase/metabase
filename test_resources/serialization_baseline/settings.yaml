@@ -15,6 +15,7 @@ custom-geojson-enabled: null
 default-maps-enabled: null
 embedding-homepage: null
 enable-embedding: null
+enable-embedding-sdk: null
 enable-nested-queries: null
 enable-sandboxes?: null
 enable-whitelabeling?: null

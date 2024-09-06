@@ -105,9 +105,9 @@
       ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding-sdk true]
-     (with-new-secret-key!
-       ~@body)))
+  `(mt/with-temporary-setting-values [~'enable-embedding true
+                                      ~'enable-embedding-sdk true]
+     (with-new-secret-key! ~@body)))
 
 (defn ^:deprecated test-query-results
   ([actual]
@@ -313,7 +313,7 @@
     (mt/test-helpers-set-global-values!
       (do-response-formats [response-format _request-options]
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding false]
+          (mt/with-temporary-setting-values [enable-embedding-sdk false]
             (with-new-secret-key!
               (with-temp-card [card]
                 (is (= "Embedding is not enabled."
@@ -579,7 +579,7 @@
                (client/client :get 400 (dashboard-url dash {:exp (buddy-util/to-timestamp yesterday)})))))))
 
 (deftest check-that-the-dashboard-endpoint-doesn-t-work-if-embedding-isn-t-enabled
-  (mt/with-temporary-setting-values [enable-embedding false]
+  (mt/with-temporary-setting-values [enable-embedding-sdk false]
     (with-new-secret-key!
       (t2.with-temp/with-temp [Dashboard dash]
         (is (= "Embedding is not enabled."
@@ -906,7 +906,7 @@
                (client/client :get 202 (dashcard-url dashcard))))))))
 
 (deftest check-that-the-dashcard-endpoint-doesn-t-work-if-embedding-isn-t-enabled
-  (mt/with-temporary-setting-values [enable-embedding false]
+  (mt/with-temporary-setting-values [enable-embedding-sdk false]
     (with-new-secret-key!
       (with-temp-dashcard [dashcard]
         (is (= "Embedding is not enabled."
@@ -1054,18 +1054,20 @@
    (u/the-id field-or-id)
    "/values"))
 
-(defn- do-with-embedding-enabled-and-temp-card-referencing! {:style/indent 2} [table-kw field-kw f]
+(defn- do-with-embedding-enabled-and-temp-card-referencing! [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key!
-    (t2.with-temp/with-temp [:mode/Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
-                                                    :enable_embedding true)]
+    (t2.with-temp/with-temp [:model/Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
+                                                     :enable_embedding true)]
       (f card))))
 
 (defmacro ^:private with-embedding-enabled-and-temp-card-referencing!
   {:style/indent 3}
   [table-kw field-kw [card-binding] & body]
-  `(do-with-embedding-enabled-and-temp-card-referencing! ~table-kw ~field-kw
-                                                        (fn [~(or card-binding '_)]
-                                                          ~@body)))
+  `(do-with-embedding-enabled-and-temp-card-referencing!
+    ~table-kw ~field-kw
+    (fn [~(or card-binding '_)]
+      ~@body)))
+
 
 ;; should be able to fetch values for a Field referenced by a public Card
 (deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
@@ -1091,7 +1093,7 @@
 (deftest endpoint-should-fail-if-embedding-is-disabled
   (is (= "Embedding is not enabled."
          (with-embedding-enabled-and-temp-card-referencing! :venues :name [card]
-           (mt/with-temporary-setting-values [enable-embedding false]
+           (mt/with-temporary-setting-values [enable-embedding-sdk false]
              (client/client :get 400 (field-values-url card (mt/id :venues :name))))))))
 
 (deftest embedding-not-enabled-message
@@ -1107,7 +1109,7 @@
           (dropdown [card param-key  & [entity-id]]
             (client/client :get 200 (format "embed/card/%s/params/%s/values"
                                             (card-token card nil entity-id) param-key)))]
-    (mt/with-temporary-setting-values [enable-embedding true]
+    (mt/with-temporary-setting-values [enable-embedding-sdk true]
       (with-new-secret-key!
         (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
           (t2/update! :model/Card (:id field-filter-card)
@@ -1223,7 +1225,7 @@
 (deftest field-values-endpoint-should-fail-if-embedding-is-disabled
   (is (= "Embedding is not enabled."
          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
-           (mt/with-temporary-setting-values [enable-embedding false]
+           (mt/with-temporary-setting-values [enable-embedding-sdk false]
              (client/client :get 400 (field-values-url dashboard (mt/id :venues :name))))))))
 
 ;; Endpoint should fail if embedding is disabled for the Dashboard
@@ -1259,7 +1261,7 @@
                                      :value "33 T"))))
 
              (testing "Endpoint should fail if embedding is disabled"
-               (mt/with-temporary-setting-values [enable-embedding false]
+               (mt/with-temporary-setting-values [enable-embedding-sdk false]
                  (is (= "Embedding is not enabled."
                         (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
                                        :value "33 T")))))
@@ -1304,7 +1306,7 @@
                                     :value "10"))))
 
             (testing " ...or if embedding is disabled"
-              (mt/with-temporary-setting-values [enable-embedding false]
+              (mt/with-temporary-setting-values [enable-embedding-sdk false]
                 (is (= "Embedding is not enabled."
                        (client/client :get 400 (field-remapping-url
                                                 object (mt/id :venues :id) (mt/id :venues :name) entity-id)
@@ -1564,7 +1566,7 @@
     (mt/dataset test-data
       (testing "GET /api/embed/pivot/card/:token/query"
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding false]
+          (mt/with-temporary-setting-values [enable-embedding-sdk false]
             (with-new-secret-key!
               (with-temp-card [card (api.pivots/pivot-card)]
                 (is (= "Embedding is not enabled."
@@ -1629,7 +1631,7 @@
 
 (deftest pivot-dashcard-embedding-disabled-test
   (mt/dataset test-data
-    (mt/with-temporary-setting-values [enable-embedding false]
+    (mt/with-temporary-setting-values [enable-embedding-sdk false]
       (with-new-secret-key!
         (with-temp-dashcard [dashcard {:dash     {:parameters []}
                                        :card     (api.pivots/pivot-card)
@@ -2003,7 +2005,7 @@
                :user              [core_user_eid]}))))))
 
 (deftest missing-entity-translations-test
-  (is (= {"abcdefghijklmnopqrstu" {:type :card, :status "not-found"}}
+  (is (= {"abcdefghijklmnopqrstu" {:type :card, :id nil, :status "not-found"}}
          (api.embed.common/model->entity-ids->ids {:card ["abcdefghijklmnopqrstu"]}))))
 
 (deftest wrong-format-entity-translations-test

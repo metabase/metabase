@@ -327,7 +327,7 @@
         eid->id (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))]
     (mapv (fn entity-id-info [entity-id]
             [entity-id (if-let [id (get eid->id entity-id)]
-                         {:id id :type api-name :status "success"}
+                         {:id id :type api-name :status "ok"}
                          ;; handle errors
                          (if (mc/validate EntityId entity-id)
                            {:type api-name
