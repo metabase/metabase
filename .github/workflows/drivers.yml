@@ -353,6 +353,7 @@ jobs:
       - uses: ./.github/actions/await-port
         with:
           port: 27017
+        timeout-minutes: 5
 
       - name: Make SSL certificates for Mongo available
         run: |
@@ -459,6 +460,7 @@ jobs:
       - uses: ./.github/actions/await-port
         with:
           port: 27017
+        timeout-minutes: 5
 
       - name: Make SSL certificates for Mongo available
         run: |
@@ -878,25 +880,39 @@ jobs:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
     steps:
       - uses: actions/checkout@v4
+
       - uses: ./.github/actions/await-port
         with:
           port: ${{ env.MB_PRESTO_JDBC_TEST_PORT }}
+        timeout-minutes: 15
+
       - name: Create temp cacerts file based on bundled JDK one
         run: cp $JAVA_HOME/lib/security/cacerts /tmp/cacerts-with-presto-ssl.jks
+
       - name: Capture Presto server self signed CA
         run: |
-            while [[ ! -s /tmp/presto-ssl-ca.pem ]];
-              do echo "Waiting to capture SSL CA" \
+            while [[ ! -s /tmp/presto-ssl-ca.pem ]]; do
+              echo "Waiting to capture SSL CA" \
                 && openssl s_client -connect localhost:8443 2>/dev/null </dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > /tmp/presto-ssl-ca.pem \
-                && sleep 1; done
+                && sleep 1;
+            done
+
       - name: Convert Presto CA from PEM to DER
         run: openssl x509 -outform der -in /tmp/presto-ssl-ca.pem -out /tmp/presto-ssl-ca.der
+
       - name: Add write permission on cacerts file
         run: chmod u+w /tmp/cacerts-with-presto-ssl.jks
+
       - name: Import Presto CA into temp cacerts file
-        run: |
-            keytool -noprompt -import -alias presto -keystore /tmp/cacerts-with-presto-ssl.jks \
-                    -storepass changeit -file /tmp/presto-ssl-ca.der -trustcacerts
+        run: >-
+            keytool
+            -noprompt -import
+            -alias presto
+            -keystore /tmp/cacerts-with-presto-ssl.jks
+            -storepass changeit
+            -file /tmp/presto-ssl-ca.der
+            -trustcacerts
+
       - name: Test Presto JDBC driver
         uses: ./.github/actions/test-driver
         with:
@@ -905,6 +921,7 @@ jobs:
             :exclude-tags [:mb/once]
             :partition/total 2
             :partition/index ${{ matrix.partition-index }}
+
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
