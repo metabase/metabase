@@ -609,11 +609,15 @@
                                            :model-id    (:id card)
                                            :stats       stats}})
 
-        (snowplow/track-event! ::snowplow/csv-upload-successful api/*current-user-id*
-                               (assoc stats :model-id (:id card)))
+        (snowplow/track-event! ::snowplow/csvupload
+                               (assoc stats
+                                      :event    :csv-upload-successful
+                                      :model-id (:id card)))
         card)
       (catch Throwable e
-        (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* (fail-stats filename file))
+        (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
+                                                           :event :csv-upload-failed))
+
         (throw e)))))
 
 ;;; +-----------------------------
@@ -792,11 +796,12 @@
                                              :table-name  (:name table)
                                              :stats       stats}})
 
-          (snowplow/track-event! ::snowplow/csv-append-successful api/*current-user-id* stats)
+          (snowplow/track-event! ::snowplow/csvupload (assoc stats :event :csv-append-successful))
 
           {:row-count row-count})))
     (catch Throwable e
-      (snowplow/track-event! ::snowplow/csv-append-failed api/*current-user-id* (fail-stats filename file))
+      (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
+                                                         :event :csv-append-failed))
       (throw e))))
 
 (defn- can-update-error

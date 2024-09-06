@@ -111,7 +111,7 @@
 
 (defn do-with-random-dump-dir [prefix f]
   (let [dump-dir (random-dump-dir (or prefix ""))]
-    (testing (format "\nDump dir = %s" (pr-str dump-dir))
+    (testing (format "\nDump dir = %s\n" (pr-str dump-dir))
       (try
         (f dump-dir)
         (finally

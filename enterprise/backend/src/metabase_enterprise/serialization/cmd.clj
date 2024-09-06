@@ -126,8 +126,9 @@
                    (catch Exception e
                      (reset! err e)))
         imported (into (sorted-set) (map (comp :model last)) (:seen report))]
-    (snowplow/track-event! ::snowplow/serialization nil
-                           {:direction     "import"
+    (snowplow/track-event! ::snowplow/serialization
+                           {:event         :serialization
+                            :direction     "import"
                             :source        "cli"
                             :duration_ms   (int (/ (- (System/nanoTime) timer) 1e6))
                             :models        (str/join "," imported)
@@ -259,8 +260,9 @@
                        (v2.storage/store! path)))
                  (catch Exception e
                    (reset! err e)))]
-    (snowplow/track-event! ::snowplow/serialization nil
-                           {:direction       "export"
+    (snowplow/track-event! ::snowplow/serialization
+                           {:event           :serialization
+                            :direction       "export"
                             :source          "cli"
                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
                             :count           (count (:seen report))

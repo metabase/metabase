@@ -375,8 +375,10 @@
                                  @api/*current-user*
                                  false))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
-      (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id new-user-id
-                                                                           :source          "admin"})
+      (snowplow/track-event! ::snowplow/invite
+                             {:event           :invite-sent
+                              :invited-user-id new-user-id
+                              :source          "admin"})
       (-> (fetch-user :id new-user-id)
           (t2/hydrate :user_group_memberships)))))
 

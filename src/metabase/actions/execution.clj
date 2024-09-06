@@ -205,9 +205,11 @@
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
         action (api/check-404 (action/select-action :id (:action_id dashcard)))]
-    (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :dashboard
-                                                                             :type      (:type action)
-                                                                             :action_id (:id action)})
+    (snowplow/track-event! ::snowplow/action
+                           {:event     :action-executed
+                            :source    :dashboard
+                            :type      (:type action)
+                            :action_id (:id action)})
     (execute-action! action request-parameters)))
 
 (defn- fetch-implicit-action-values
