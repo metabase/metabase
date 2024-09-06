@@ -55,6 +55,7 @@ export interface Database extends DatabaseData {
   uploads_schema_name: string | null;
   uploads_table_prefix: string | null;
   is_audit?: boolean;
+  is_attached_dwh?: boolean;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
@@ -65,7 +66,10 @@ export interface DatabaseData {
   id?: DatabaseId;
   name: string;
   engine: string | undefined;
-  details: Record<string, unknown>;
+  // If current user lacks write permission to database, `details` will be
+  // missing in responses from the backend, cf. implementation of
+  // [[metabase.models.interface/to-json]] for `:model/Database`:
+  details?: Record<string, unknown>;
   schedules: DatabaseSchedules;
   auto_run_queries: boolean | null;
   refingerprint: boolean | null;
