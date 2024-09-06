@@ -53,7 +53,7 @@ const Handle = forwardRef(function Handle(props, ref) {
   );
 });
 
-function DatasetNotebook({
+export function DatasetNotebook({
   question,
   isResizing,
   onResizeStop,
@@ -86,5 +86,3 @@ function DatasetNotebook({
 }
 
 DatasetNotebook.propTypes = propTypes;
-
-export default DatasetNotebook;

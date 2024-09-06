@@ -6,7 +6,7 @@ import { isReducedMotionPreferred } from "metabase/lib/dom";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import * as Lib from "metabase-lib";
 
-import DatasetNotebook from "./DatasetNotebook";
+import { DatasetNotebook } from "./DatasetNotebook";
 
 const QueryEditorContainer = styled.div`
   visibility: ${props => (props.isActive ? "visible" : "hidden")};
