@@ -1,11 +1,13 @@
-(ns metabase-enterprise.serialization.v2.models)
+(ns metabase-enterprise.serialization.v2.models
+  "See [[metabase.models.serialization]] for documentation.")
 
 (def data-model
   "Schema model types"
   ["Database"
    "Field"
    "Segment"
-   "Table"])
+   "Table"
+   "Channel"])
 
 (def content
   "Content model types"
@@ -52,9 +54,9 @@
    "GroupTableAccessPolicy"
    "HTTPAction"
    "ImplicitAction"
-   "LoginHistory"
    "LegacyMetric"
    "LegacyMetricImportantField"
+   "LoginHistory"
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"

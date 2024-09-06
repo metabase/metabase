@@ -11,6 +11,7 @@ import {
   getNotebookStep,
   hovercard,
   modal,
+  openNotebook,
   openQuestionActions,
   popover,
   queryBuilderHeader,
@@ -129,9 +130,9 @@ describe("scenarios > metrics > editing", () => {
       );
       openQuestionActions();
       popover().findByText("Edit metric definition").click();
-      addBreakout({ tableName: "Product", columnName: "Category" });
+      addBreakout({ tableName: "Product", columnName: "Created At" });
       updateMetric();
-      verifyLineAreaBarChart({ xAxis: "Product → Category", yAxis: "Count" });
+      verifyLineAreaBarChart({ xAxis: "Product → Created At", yAxis: "Count" });
     });
 
     it("should be able to change the query definition of a metric based on a model", () => {
@@ -140,9 +141,9 @@ describe("scenarios > metrics > editing", () => {
       );
       openQuestionActions();
       popover().findByText("Edit metric definition").click();
-      addBreakout({ tableName: "Product", columnName: "Category" });
+      addBreakout({ tableName: "Product", columnName: "Created At" });
       updateMetric();
-      verifyLineAreaBarChart({ xAxis: "Product → Category", yAxis: "Count" });
+      verifyLineAreaBarChart({ xAxis: "Created At", yAxis: "Count" });
     });
 
     it("should pin new metrics automatically", () => {
@@ -153,7 +154,6 @@ describe("scenarios > metrics > editing", () => {
         entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
-      addAggregation({ operatorName: "Count of rows" });
       saveMetric({ name: "New metric" });
 
       cy.findByTestId("head-crumbs-container")
@@ -179,7 +179,6 @@ describe("scenarios > metrics > editing", () => {
         columnName: "Category",
         values: ["Gadget"],
       });
-      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       verifyScalarValue("4,939");
     });
@@ -195,7 +194,6 @@ describe("scenarios > metrics > editing", () => {
         columnName: "Category",
         values: ["Gadget"],
       });
-      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       verifyScalarValue("4,939");
     });
@@ -212,7 +210,6 @@ describe("scenarios > metrics > editing", () => {
         minValue: 5,
         maxValue: 100,
       });
-      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       verifyScalarValue("5");
     });
@@ -228,7 +225,6 @@ describe("scenarios > metrics > editing", () => {
         columnName: "Category",
         values: ["Gadget"],
       });
-      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       verifyScalarValue("4,939");
     });
@@ -245,7 +241,6 @@ describe("scenarios > metrics > editing", () => {
         minValue: 5,
         maxValue: 100,
       });
-      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       verifyScalarValue("5");
     });
@@ -256,8 +251,19 @@ describe("scenarios > metrics > editing", () => {
         entityPickerModalTab("Models").click();
         cy.findByText("Orders Model").click();
       });
-      addAggregation({ operatorName: "Count of rows" });
       getActionButton("Summarize").should("not.exist");
+    });
+
+    it("should allow to run the query from the metric empty state", () => {
+      startNewMetric();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.findByTestId("metric-empty-state").button("Visualize").click();
+      cy.wait("@dataset");
+      verifyScalarValue("18,760");
     });
   });
 
@@ -280,7 +286,6 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("CA").click();
         cy.button("Add filter").click();
       });
-      addAggregation({ operatorName: "Count of rows" });
       saveMetric();
       verifyScalarValue("613");
     });
@@ -326,7 +331,11 @@ describe("scenarios > metrics > editing", () => {
         name: "Total2",
       });
       popover().button("Done").click();
-      addAggregation({ operatorName: "Sum of ...", columnName: "Total2" });
+      getNotebookStep("summarize").findByText("Count").click();
+      popover().within(() => {
+        cy.findByText("Sum of ...").click();
+        cy.findByText("Total2").click();
+      });
       saveMetric();
       verifyScalarValue("755,310.84");
     });
@@ -343,7 +352,11 @@ describe("scenarios > metrics > editing", () => {
         name: "Price2",
       });
       popover().button("Done").click();
-      addAggregation({ operatorName: "Average of ...", columnName: "Price2" });
+      getNotebookStep("summarize").findByText("Count").click();
+      popover().within(() => {
+        cy.findByText("Average of ...").click();
+        cy.findByText("Price2").click();
+      });
       saveMetric();
       verifyScalarValue("111.38");
     });
@@ -356,44 +369,27 @@ describe("scenarios > metrics > editing", () => {
         entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
-      addAggregation({ operatorName: "Sum of ...", columnName: "Total" });
+      getNotebookStep("summarize").findByText("Count").click();
+      popover().within(() => {
+        cy.findByText("Sum of ...").click();
+        cy.findByText("Total").click();
+      });
       addBreakout({ columnName: "Created At" });
       saveMetric();
       verifyLineAreaBarChart({ xAxis: "Created At", yAxis: "Sum of Total" });
     });
-
-    it("should create a geo metric with multiple breakouts", () => {
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("People").click();
-      });
-      addAggregation({ operatorName: "Count of rows" });
-      addBreakout({ columnName: "Latitude" });
-      addBreakout({ columnName: "Longitude" });
-      saveMetric();
-      verifyPinMap();
-    });
   });
 
   describe("aggregations", () => {
-    it("should not be possible to save a metric without an aggregation clause", () => {
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
-      });
-      cy.button("Save").should("be.disabled");
-      cy.findByTestId("run-button").should("not.be.visible");
-    });
-
     it("should create a metric with a custom aggregation expression based on 1 metric", () => {
       createQuestion(ORDERS_SCALAR_METRIC);
       startNewMetric();
+      cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
       entityPickerModal().within(() => {
         entityPickerModalTab("Metrics").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       });
+      cy.wait("@queryMetadata");
       getNotebookStep("summarize")
         .findByText(ORDERS_SCALAR_METRIC.name)
         .click();
@@ -404,6 +400,30 @@ describe("scenarios > metrics > editing", () => {
       popover().button("Update").click();
       saveMetric();
       verifyScalarValue("9,380");
+    });
+
+    it("should have metric-specific summarize step copy", () => {
+      createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
+        visitMetric(card.id),
+      );
+      openNotebook();
+
+      cy.log("regular screen");
+      getNotebookStep("summarize").within(() => {
+        cy.findByText("Formula").should("be.visible");
+        cy.findAllByText("Default time dimension")
+          .filter(":visible")
+          .should("have.length", 1);
+      });
+
+      cy.log("mobile screen");
+      cy.viewport(800, 600);
+      getNotebookStep("summarize").within(() => {
+        cy.findByText("Formula").should("be.visible");
+        cy.findAllByText("Default time dimension")
+          .filter(":visible")
+          .should("have.length", 1);
+      });
     });
   });
 
@@ -595,8 +615,4 @@ function verifyLineAreaBarChart({ xAxis, yAxis }) {
     cy.findByText(yAxis).should("be.visible");
     cy.findByText(xAxis).should("be.visible");
   });
-}
-
-function verifyPinMap() {
-  cy.get("[data-element-id=pin-map]").should("exist");
 }

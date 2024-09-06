@@ -1,12 +1,13 @@
 import type { UserId } from "metabase-types/api/user";
 
-import type { CardDisplayType, CardId } from "./card";
+import type { CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
+import type { CardDisplayType } from "./visualization";
 
 const ENABLED_SEARCH_MODELS = [
   "collection",
@@ -128,6 +129,7 @@ export type SearchRequest = {
   archived?: boolean;
   table_db_id?: DatabaseId;
   models?: SearchModel[];
+  ids?: SearchResultId[];
   filter_items_in_personal_collection?: "only" | "exclude";
   context?: SearchContext;
   created_at?: string | null;

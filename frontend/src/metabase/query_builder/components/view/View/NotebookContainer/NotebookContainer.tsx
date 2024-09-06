@@ -9,11 +9,12 @@ import {
   setNotebookNativePreviewSidebarWidth,
   setUIControls,
 } from "metabase/query_builder/actions";
-import Notebook, {
-  type NotebookProps,
-} from "metabase/query_builder/components/notebook/Notebook";
-import { NotebookNativePreview } from "metabase/query_builder/components/notebook/NotebookNativePreview";
 import { getUiControls } from "metabase/query_builder/selectors";
+import {
+  Notebook,
+  type NotebookProps,
+} from "metabase/querying/notebook/components/Notebook";
+import { NotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview";
 import { Box, Flex, rem } from "metabase/ui";
 
 // There must exist some transition time, no matter how short,

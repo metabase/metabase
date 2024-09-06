@@ -90,9 +90,7 @@ export function PieChart(props: VisualizationProps) {
   const legendTitles = chartModel.slices
     .filter(s => s.data.includeInLegend)
     .map(s => {
-      const label = s.data.isOther
-        ? s.data.key
-        : formatters.formatDimension(s.data.key);
+      const label = s.data.isOther ? s.data.key : s.data.name;
 
       const percent =
         settings["pie.percent_visibility"] === "legend" ||

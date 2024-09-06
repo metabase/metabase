@@ -909,11 +909,12 @@
   [driver db-id table-name column-names values]
   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
     (let [copy-manager (CopyManager. (.unwrap ^Connection (:connection conn) PgConnection))
-          [sql & _]    (sql/format {::copy       (keyword table-name)
-                                    :columns     (map keyword column-names)
-                                    ::from-stdin "''"}
-                                   :quoted true
-                                   :dialect (sql.qp/quote-style driver))
+          dialect      (sql.qp/quote-style driver)
+          [sql & _] (sql/format {::copy       (keyword table-name)
+                                 :columns     (sql-jdbc.common/quote-columns dialect column-names)
+                                 ::from-stdin "''"}
+                                :quoted true
+                                :dialect dialect)
           ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
           ;; little faster but not by much (3.63m), and 10,000 threw an error:
           ;;     PreparedStatement can have at most 65,535 parameters

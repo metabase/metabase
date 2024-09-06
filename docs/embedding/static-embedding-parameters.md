@@ -189,7 +189,9 @@ You can preview appearance settings from your question or dashboard's [embedded 
 
 \* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
-### Allow people to download the results of an embedded question
+For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+
+## Allow people to download the results of an embedded question
 
 {% include plans-blockquote.html feature="Downloading results" %}
 

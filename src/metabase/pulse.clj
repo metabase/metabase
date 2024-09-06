@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.serialization :as serdes]
+   [metabase.models.task-history :as task-history]
    [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.util :as pu]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -241,43 +242,71 @@
     true))
 
 (defn- get-notification-info
-  [pulse parts channel]
+  [pulse parts pulse-channel]
   (let [alert? (nil? (:dashboard_id pulse))]
-    (merge {:payload-type (if alert?
-                            :notification/alert
-                            :notification/dashboard-subscription)
-            :payload      (if alert? (first parts) parts)
-            :pulse        pulse
-            :channel      channel}
+    (merge {:payload-type  (if alert?
+                             :notification/alert
+                             :notification/dashboard-subscription)
+            :payload       (if alert? (first parts) parts)
+            :pulse         pulse
+            :pulse-channel pulse-channel}
            (if alert?
              {:card  (t2/select-one :model/Card (-> parts first :card :id))}
              {:dashboard (t2/select-one :model/Dashboard (:dashboard_id pulse))}))))
 
-(defn- channels-to-channel-recipients
-  [channel]
-  (if (= :slack (keyword (:channel_type channel)))
-    [(get-in channel [:details :channel])]
-    (for [recipient (:recipients channel)]
+(defn- channel-recipients
+  [pulse-channel]
+  (case (keyword (:channel_type pulse-channel))
+    :slack
+    [(get-in pulse-channel [:details :channel])]
+    :email
+    (for [recipient (:recipients pulse-channel)]
       (if-not (:id recipient)
         {:kind :external-email
          :email (:email recipient)}
         {:kind :user
-         :user recipient}))))
+         :user recipient}))
+    :http
+    []
+    (do
+      (log/warnf "Unknown channel type %s" (:channel_type pulse-channel))
+      [])))
 
-(defn- channel-send!
-  [& args]
-  (try
-    (apply channel/send! args)
-    (catch Exception e
-      ;; Token errors have already been logged and we should not retry.
-      (when-not (and (= :channel/slack (first args))
-                     (contains? (:errors (ex-data e)) :slack-token))
-        (throw e)))))
+(defn- should-retry-sending?
+  [exception channel-type]
+  (and (= :channel/slack channel-type)
+       (contains? (:errors (ex-data exception)) :slack-token)))
 
 (defn- send-retrying!
-  [& args]
+  [pulse-id channel message]
   (try
-    (apply (retry/decorate channel-send!) args)
+    (let [;; once we upgraded to retry 2.x, we can use (.. retry getMetrics getNumberOfTotalCalls) instead of tracking
+          ;; this manually
+          retry-config (retry/retry-configuration)
+          retry-errors (volatile! [])
+          retry-report (fn []
+                         {:attempted-retries (count @retry-errors)
+                          :retry-errors       @retry-errors})
+          send!        (fn []
+                         (try
+                           (channel/send! channel message)
+                           (catch Exception e
+                             (vswap! retry-errors conj e)
+                             ;; Token errors have already been logged and we should not retry.
+                             (when-not (should-retry-sending? e (:type channel))
+                               (throw e)))))]
+      (task-history/with-task-history {:task            "channel-send"
+                                       :on-success-info (fn [update-map _result]
+                                                          (cond-> update-map
+                                                            (seq @retry-errors)
+                                                            (update :task_details merge (retry-report))))
+                                       :on-fail-info    (fn [update-map _result]
+                                                          (update update-map :task_details #(merge % (retry-report))))
+                                       :task_details    {:retry-config retry-config
+                                                         :channel-type (:type channel)
+                                                         :channel-id   (:id channel)
+                                                         :pulse-id     pulse-id}}
+        ((retry/decorate send! (retry/random-exponential-backoff-retry (str (random-uuid)) retry-config)))))
     (catch Throwable e
       (log/error e "Error sending notification!"))))
 
@@ -294,6 +323,15 @@
           :when part]
       part)))
 
+(defn- pc->channel
+  "Given a pulse channel, return the channel object.
+
+  Only supports HTTP channels for now, returns a map with type key for slack and email"
+  [{channel-type :channel_type :as pulse-channel}]
+  (if (= :http (keyword channel-type))
+    (t2/select-one :model/Channel :id (:channel_id pulse-channel))
+    {:type (keyword "channel" (name channel-type))}))
+
 (defn- send-pulse!*
   [{:keys [channels channel-ids] pulse-id :id :as pulse} dashboard]
   (let [parts                  (execute-pulse pulse dashboard)
@@ -309,18 +347,25 @@
                                            :user-id (:creator_id pulse)
                                            :object  {:recipients (map :recipients (:channels pulse))
                                                      :filters    (:parameters pulse)}})
-        (u/prog1 (doseq [channel channels]
+        (u/prog1 (doseq [pulse-channel channels]
                    (try
-                     (let [channel-type (if (= :email (keyword (:channel_type channel)))
-                                          :channel/email
-                                          :channel/slack)
-                           messages     (channel/render-notification channel-type
-                                                                     (get-notification-info pulse parts channel)
-                                                                     (channels-to-channel-recipients channel))]
+                     (let [channel  (pc->channel pulse-channel)
+                           messages (channel/render-notification (:type channel)
+                                                                 (get-notification-info pulse parts pulse-channel)
+                                                                 (channel-recipients pulse-channel))]
+                       (log/debugf "Rendered %d messages for %s %d to channel %s"
+                                   (count messages)
+                                   (alert-or-pulse pulse)
+                                   (:id pulse)
+                                   (:type channel))
                        (doseq [message messages]
-                         (send-retrying! channel-type message)))
+                         (log/debugf "Sending %s %d to channel %s"
+                                     (alert-or-pulse pulse)
+                                     (:id pulse)
+                                     (:channel_type pulse-channel))
+                         (send-retrying! pulse-id channel message)))
                      (catch Exception e
-                       (log/errorf e "Error sending %s %d to channel %s" (alert-or-pulse pulse) (:id pulse) (:channel_type channel)))))
+                       (log/errorf e "Error sending %s %d to channel %s" (alert-or-pulse pulse) (:id pulse) (:channel_type pulse-channel)))))
           (when (:alert_first_only pulse)
             (t2/delete! Pulse :id pulse-id))))
       (log/infof "Skipping sending %s %d" (alert-or-pulse pulse) (:id pulse)))))

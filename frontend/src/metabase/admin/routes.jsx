@@ -47,7 +47,9 @@ import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_TOOLS,
+  PLUGIN_ADMIN_TROUBLESHOOTING,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
+  PLUGIN_CACHING,
 } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 
@@ -144,6 +146,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             />
           </Route>
           <Route path="logs" component={Logs} />
+          {PLUGIN_ADMIN_TROUBLESHOOTING.EXTRA_ROUTES}
         </Route>
       </Route>
       {/* SETTINGS */}
@@ -164,18 +167,16 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       >
         <Route title={t`Performance`}>
           <IndexRedirect to={PerformanceTabId.Databases} />
-          <Route
-            title={t`Database caching`}
-            path={PerformanceTabId.Databases}
-            component={() => (
-              <PerformanceApp tabId={PerformanceTabId.Databases} />
-            )}
-          />
-          <Route
-            title={t`Model persistence`}
-            path={PerformanceTabId.Models}
-            component={() => <PerformanceApp tabId={PerformanceTabId.Models} />}
-          />
+          {PLUGIN_CACHING.getTabMetadata().map(({ name, key, tabId }) => (
+            <Route
+              component={routeProps => (
+                <PerformanceApp {...routeProps} tabId={tabId} />
+              )}
+              title={name}
+              path={tabId}
+              key={key}
+            />
+          ))}
         </Route>
       </Route>
       <Route

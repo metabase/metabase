@@ -13,7 +13,7 @@ set -euo pipefail
 script_dir=`dirname "${BASH_SOURCE[0]}"`
 cd "$script_dir/.."
 
-if [ -v 1 ]; then
+if [ -n "${1:-}" ]; then
     diff_target="$1"
 else
     diff_target="HEAD"
@@ -21,14 +21,15 @@ fi
 
 echo "Linting Clojure source files that have changes compared to $diff_target..."
 
-UPDATED_FILES=$(git diff --name-only "$diff_target" -- '*.clj' '*.cljc' '*.cljs')
+# ignore files in the Kondo config directory and dev directory
+UPDATED_FILES=$(git diff --name-only "$diff_target" -- '*.clj' '*.cljc' '*.cljs' ':!/.clj-kondo' ':!/dev')
 
 if [ -z "$UPDATED_FILES" ]; then
     echo 'No updated Clojure source files.'
     exit 0
 fi
 
-command="clj-kondo --parallel --lint ${UPDATED_FILES[*]}"
+command="clojure -M:kondo --lint ${UPDATED_FILES[*]}"
 
 set -x
 

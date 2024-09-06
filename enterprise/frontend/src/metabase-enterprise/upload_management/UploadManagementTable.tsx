@@ -3,6 +3,7 @@ import { msgid, ngettext, t } from "ttag";
 
 import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 import { ClientSortableTable } from "metabase/common/components/Table";
+import { useLocale } from "metabase/common/hooks";
 import {
   BulkActionBar,
   BulkActionButton,
@@ -23,11 +24,11 @@ import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { getDateDisplay } from "./utils";
 
 const columns = [
-  { key: "checkbox", name: "" },
+  { key: "checkbox", name: "", sortable: false },
   { key: "name", name: t`Table name` },
   { key: "created_at", name: t`Created at` },
   { key: "schema", name: t`Schema` },
-  { key: "actions", name: "" },
+  { key: "actions", name: "", sortable: false },
 ];
 
 export function UploadManagementTable() {
@@ -35,6 +36,7 @@ export function UploadManagementTable() {
   const [deleteTableRequest] = useDeleteUploadTableMutation();
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const dispatch = useDispatch();
+  const locale = useLocale();
 
   // TODO: once we have uploads running through RTK Query, we can remove the force update
   // because we can properly invalidate the tables tag
@@ -154,6 +156,7 @@ export function UploadManagementTable() {
         columns={columns}
         rows={uploadTables}
         rowRenderer={row => renderRow(row)}
+        locale={locale}
       />
     </Box>
   );

@@ -576,14 +576,16 @@ export function getYAxesModels(
   const rightAxisSeriesKeys: string[] = [];
   const rightAxisSeriesNames: string[] = [];
 
-  seriesModels.forEach(({ dataKey, name }) => {
-    if (leftAxisSeriesKeysSet.has(dataKey)) {
-      leftAxisSeriesKeys.push(dataKey);
-      leftAxisSeriesNames.push(name);
-    }
-    if (rightAxisSeriesKeysSet.has(dataKey)) {
-      rightAxisSeriesKeys.push(dataKey);
-      rightAxisSeriesNames.push(name);
+  seriesModels.forEach(({ dataKey, visible, name }) => {
+    if (visible) {
+      if (leftAxisSeriesKeysSet.has(dataKey)) {
+        leftAxisSeriesKeys.push(dataKey);
+        leftAxisSeriesNames.push(name);
+      }
+      if (rightAxisSeriesKeysSet.has(dataKey)) {
+        rightAxisSeriesKeys.push(dataKey);
+        rightAxisSeriesNames.push(name);
+      }
     }
   });
 

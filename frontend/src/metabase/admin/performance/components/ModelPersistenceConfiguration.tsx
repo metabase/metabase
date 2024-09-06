@@ -3,11 +3,10 @@ import { useCallback, useEffect, useState } from "react";
 import { c, t } from "ttag";
 
 import { ModelCachingScheduleWidget } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/ModelCachingScheduleWidget";
-import { useSetting } from "metabase/common/hooks";
+import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import {
@@ -15,7 +14,9 @@ import {
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
 import { PersistedModelsApi } from "metabase/services";
-import { Stack, Switch, Text } from "metabase/ui";
+import { Box, Stack, Switch, Text } from "metabase/ui";
+
+import ModelPersistenceConfigurationS from "./ModelPersistenceConfiguration.module.css";
 
 const modelCachingOptions = [
   {
@@ -132,9 +133,15 @@ export const ModelPersistenceConfiguration = () => {
     [resolveWithToasts, setModelPersistenceEnabled, dispatch],
   );
 
+  const { url: docsUrl } = useDocsUrl("data-modeling/model-persistence");
+
   return (
     <Stack spacing="xl" maw="40rem">
-      <div>
+      <Box
+        mb="sm"
+        lh="1.5rem"
+        className={ModelPersistenceConfigurationS.Explanation}
+      >
         <p>
           {t`Enable model persistence to make your models (and the queries that use them) load faster.`}
         </p>
@@ -148,9 +155,7 @@ export const ModelPersistenceConfiguration = () => {
               {" "}
               <ExternalLink
                 key="model-caching-link"
-                href={MetabaseSettings.docsUrl(
-                  "data-modeling/model-persistence",
-                )}
+                href={docsUrl}
               >{t`Learn more`}</ExternalLink>
             </>
           )}
@@ -170,7 +175,7 @@ export const ModelPersistenceConfiguration = () => {
             checked={modelPersistenceEnabled}
           />
         </DelayedLoadingAndErrorWrapper>
-      </div>
+      </Box>
       {modelPersistenceEnabled && (
         <div>
           <ModelCachingScheduleWidget

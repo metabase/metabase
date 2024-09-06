@@ -63,6 +63,7 @@
                                                  :archived?          false
                                                  :models             search.config/all-models
                                                  :current-user-id    (mt/user->id :crowberto)
+                                                 :is-superuser?      true
                                                  :current-user-perms #{"/"}
                                                  :model-ancestors?   false
                                                  :limit-int          100}))]
@@ -137,6 +138,7 @@
                                                                   :models             search.config/all-models
                                                                   :created-at         created-at
                                                                   :current-user-id    (mt/user->id :crowberto)
+                                                                  :is-superuser?      true
                                                                   :current-user-perms @api/*current-user-permissions-set*}))
                                             :data
                                             (map (juxt :model :id))
@@ -222,6 +224,7 @@
                                                                   :models             search.config/all-models
                                                                   :last-edited-at     last-edited-at
                                                                   :current-user-id    (mt/user->id :crowberto)
+                                                                  :is-superuser?      true
                                                                   :current-user-perms @api/*current-user-permissions-set*}))
                                             :data
                                             (map (juxt :model :id))

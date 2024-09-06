@@ -9,6 +9,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.remove-replace :as lib.remove-replace]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]))
@@ -18,7 +19,7 @@
 (deftest ^:parallel remove-clause-order-bys-test
   (let [query (-> lib.tu/venues-query
                   (lib/order-by (meta/field-metadata :venues :name))
-                  (lib/order-by (meta/field-metadata :venues :name)))
+                  (lib/order-by (meta/field-metadata :venues :price)))
         order-bys (lib/order-bys query)]
     (is (= 2 (count order-bys)))
     (is (= 1 (-> query
@@ -344,20 +345,21 @@
                   (lib/remove-clause 0 expr-a)))))))
 
 (deftest ^:parallel replace-clause-order-by-test
-  (let [query (-> lib.tu/venues-query
-                  (lib/filter (lib/= "myvenue" (meta/field-metadata :venues :name)))
-                  (lib/order-by (meta/field-metadata :venues :name))
-                  (lib/order-by (meta/field-metadata :venues :name)))
-        order-bys (lib/order-bys query)]
-    (is (= 2 (count order-bys)))
-    (let [replaced (-> query
-                       (lib/replace-clause (first order-bys) (lib/order-by-clause (meta/field-metadata :venues :id))))
-          replaced-order-bys (lib/order-bys replaced)]
-      (is (not= order-bys replaced-order-bys))
-      (is (=? [:asc {} [:field {} (meta/id :venues :id)]]
-              (first replaced-order-bys)))
-      (is (= 2 (count replaced-order-bys)))
-      (is (= (second order-bys) (second replaced-order-bys))))))
+  (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+    (let [query (-> lib.tu/venues-query
+                    (lib/filter (lib/= "myvenue" (meta/field-metadata :venues :name)))
+                    (lib/order-by (meta/field-metadata :venues :name))
+                    (lib/order-by (meta/field-metadata :venues :price)))
+          order-bys (lib/order-bys query)]
+      (is (= 2 (count order-bys)))
+      (let [replaced (-> query
+                         (lib/replace-clause (first order-bys) (lib/order-by-clause (meta/field-metadata :venues :id))))
+            replaced-order-bys (lib/order-bys replaced)]
+        (is (not= order-bys replaced-order-bys))
+        (is (=? [:asc {} [:field {} (meta/id :venues :id)]]
+                (first replaced-order-bys)))
+        (is (= 2 (count replaced-order-bys)))
+        (is (= (second order-bys) (second replaced-order-bys)))))))
 
 (deftest ^:parallel replace-clause-filters-test
   (let [query (-> lib.tu/venues-query
@@ -504,22 +506,23 @@
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "sum"] 1))
                   (lib/replace-clause 0 (first aggregations) (lib/max (meta/field-metadata :venues :price)))))))
     (testing "replacing with dependent should cascade removing invalid parts"
-      (is (=? {:stages [{:aggregation [[:sum {} [:field {} (meta/id :products :id)]]
-                                       [:max {} [:field {} (meta/id :products :price)]]]}
-                        (fn [stage] (not-any? stage [:filters :expressions]))]}
-              (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
-                  (lib/aggregate (lib/sum (meta/field-metadata :products :id)))
-                  (lib/aggregate (lib/max (meta/field-metadata :products :created-at)))
-                  (lib/append-stage)
-                  (as-> <>
-                        (lib/expression <> "max month" (lib/get-month (lib/ref (m/find-first (comp #{"max"} :name)
-                                                                                             (lib/orderable-columns <>)))))
-                    (lib/filter <> (lib/= (lib/ref (m/find-first (comp #{"max month"} :name)
-                                                                 (lib/filterable-columns <>)))
-                                          1))
-                    (lib/replace-clause <> 0
-                                        (second (lib/aggregations <> 0))
-                                        (lib/max (meta/field-metadata :products :price))))))))))
+      (binding [lib.schema.expression/*suppress-expression-type-check?* false]
+        (is (=? {:stages [{:aggregation [[:sum {} [:field {} (meta/id :products :id)]]
+                                         [:max {} [:field {} (meta/id :products :price)]]]}
+                          (fn [stage] (not-any? stage [:filters :expressions]))]}
+                (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                    (lib/aggregate (lib/sum (meta/field-metadata :products :id)))
+                    (lib/aggregate (lib/max (meta/field-metadata :products :created-at)))
+                    (lib/append-stage)
+                    (as-> <>
+                          (lib/expression <> "max month" (lib/get-month (lib/ref (m/find-first (comp #{"max"} :name)
+                                                                                               (lib/orderable-columns <>)))))
+                      (lib/filter <> (lib/= (lib/ref (m/find-first (comp #{"max month"} :name)
+                                                                   (lib/filterable-columns <>)))
+                                            1))
+                      (lib/replace-clause <> 0
+                                          (second (lib/aggregations <> 0))
+                                          (lib/max (meta/field-metadata :products :price)))))))))))
 
 (deftest ^:parallel replace-metric-test
   (testing "replacing with metric should work"
@@ -1444,17 +1447,18 @@
                                     (lib/ref (meta/field-metadata :people :id))
                                     "id")))))
     (testing "removed when types conflict"
-      (let [query (lib/filter query 0 (lib/= (lib/get-week (lib/expression-ref query "created at") :iso) 3))]
-        (is (= 2 (count (lib/filters query 0))))
-        (is (=? {:stages [{:lib/type :mbql.stage/mbql
-                           :expressions [[:field {:effective-type :type/BigInteger, :lib/expression-name "id"}
-                                          (meta/id :people :id)]]
-                           :filters [[:not-null {} [:expression {:effective-type :type/BigInteger} "id"]]]}]}
-                (lib/replace-clause query 0
-                                    (first (lib/expressions query 0))
-                                    (lib/with-expression-name
-                                      (lib/ref (meta/field-metadata :people :id))
-                                      "id"))))))))
+      (binding [lib.schema.expression/*suppress-expression-type-check?* false]
+        (let [query (lib/filter query 0 (lib/= (lib/get-week (lib/expression-ref query "created at") :iso) 3))]
+          (is (= 2 (count (lib/filters query 0))))
+          (is (=? {:stages [{:lib/type :mbql.stage/mbql
+                             :expressions [[:field {:effective-type :type/BigInteger, :lib/expression-name "id"}
+                                            (meta/id :people :id)]]
+                             :filters [[:not-null {} [:expression {:effective-type :type/BigInteger} "id"]]]}]}
+                  (lib/replace-clause query 0
+                                      (first (lib/expressions query 0))
+                                      (lib/with-expression-name
+                                        (lib/ref (meta/field-metadata :people :id))
+                                        "id")))))))))
 
 (def ^:private join-query
   (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))

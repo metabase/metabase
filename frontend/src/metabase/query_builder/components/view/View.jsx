@@ -18,7 +18,7 @@ import {
   setArchivedQuestion,
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
-import { TimeseriesChrome } from "metabase/querying";
+import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
 import { Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -43,7 +43,7 @@ import {
   StyledDebouncedFrame,
   StyledSyncedParametersList,
 } from "./View.styled";
-import ViewFooter from "./ViewFooter";
+import { ViewFooter } from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
@@ -356,7 +356,7 @@ class View extends Component {
           updateQuestion={this.props.updateQuestion}
           className={CS.flexNoShrink}
         />
-        <ViewFooter {...this.props} className={CS.flexNoShrink} />
+        <ViewFooter className={CS.flexNoShrink} />
       </QueryBuilderMain>
     );
   };

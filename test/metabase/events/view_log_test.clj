@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.embed-test :as embed-test]
    [metabase.api.public-test :as public-test]
@@ -94,10 +93,12 @@
 
         (testing "If a user is bound, has_access is recorded in EE based on the user's current permissions"
           (mt/with-full-data-perms-for-all-users!
-            (binding [api/*current-user-id* (u/id user)]
+            (mt/with-current-user (u/id user)
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
-              (is (true? (:has_access (latest-view (u/id user) (u/id table)))))
+              (is (true? (:has_access (latest-view (u/id user) (u/id table))))))
 
+            ;; Bind the user again to flush the perms cache
+            (mt/with-current-user (u/id user)
               (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/create-queries :no)
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
               (is (false? (:has_access (latest-view (u/id user) (u/id table))))))))))))

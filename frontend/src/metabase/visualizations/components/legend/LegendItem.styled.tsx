@@ -6,7 +6,6 @@ export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
   display: flex;
   align-items: center;
   min-width: 0;
-  overflow: hidden;
 
   &:not(:first-of-type) {
     margin-top: ${({ isVertical }) => (isVertical ? "0.5rem" : "")};
@@ -17,9 +16,8 @@ export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
 export const LegendItemLabel = styled.div<{ isMuted: boolean }>`
   display: flex;
   align-items: center;
+  width: 100%;
   opacity: ${({ isMuted }) => (isMuted ? "0.4" : "1")};
-  cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
-  overflow: hidden;
   transition: opacity 0.25s linear;
 
   &:hover {
@@ -27,21 +25,23 @@ export const LegendItemLabel = styled.div<{ isMuted: boolean }>`
   }
 `;
 
-export const LegendItemDot = styled.div`
-  flex: 0 0 auto;
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: 50%;
-  background-color: ${({ color }) => color};
-  color-adjust: exact;
-`;
+const LEGEND_ITEM_DOT_SIZE = 12;
+const LEGEND_ITEM_TITLE_MARGIN = 4;
 
-export const LegendItemTitle = styled.div`
+export const LegendItemTitle = styled.div<{ isInsidePopover?: boolean }>`
   color: var(--mb-color-text-primary);
-  font-weight: bold;
   font-size: 0.85em;
-  margin-left: 4px;
+  margin-left: ${LEGEND_ITEM_TITLE_MARGIN}px;
   overflow: hidden;
+  cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
+  max-width: ${props =>
+    props.isInsidePopover
+      ? `calc(100% - ${LEGEND_ITEM_DOT_SIZE}px - ${LEGEND_ITEM_TITLE_MARGIN}px)`
+      : "unset"};
+
+  &:hover {
+    color: ${({ onClick }) => onClick && "var(--mb-color-brand)"};
+  }
 `;
 
 export const LegendItemRemoveIcon = styled(Icon)`

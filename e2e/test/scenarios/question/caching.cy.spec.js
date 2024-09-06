@@ -1,13 +1,14 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   describeEE,
+  modal,
   restore,
   rightSidebar,
   setTokenFeatures,
   visitQuestion,
 } from "e2e/support/helpers";
 
-import { interceptRoutes as interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
+import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
 import {
   adaptiveRadioButton,
   durationRadioButton,
@@ -52,6 +53,30 @@ describeEE("scenarios > question > caching", () => {
         "Check that the newly chosen cache invalidation policy - Adaptive - is now visible in the sidebar",
       );
       cy.findByLabelText(/Caching policy/).should("contain", "Adaptive");
+    });
+  });
+
+  it("can click 'Clear cache' for a question", () => {
+    interceptPerformanceRoutes();
+    visitQuestion(ORDERS_QUESTION_ID);
+
+    openSidebarCacheStrategyForm();
+
+    rightSidebar().within(() => {
+      cy.findByRole("heading", { name: /Caching settings/ }).should(
+        "be.visible",
+      );
+      cy.findByRole("button", {
+        name: /Clear cache for this question/,
+      }).click();
+    });
+    modal().within(() => {
+      cy.findByRole("button", { name: /Clear cache/ }).click();
+    });
+    cy.wait("@invalidateCache");
+
+    rightSidebar().within(() => {
+      cy.findByText("Cache cleared").should("be.visible");
     });
   });
 });

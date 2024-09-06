@@ -10,7 +10,11 @@ import _ from "underscore";
 import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
-import { strategies } from "metabase/admin/performance/constants/complex";
+import {
+  getPerformanceTabMetadata,
+  strategies,
+} from "metabase/admin/performance/constants/complex";
+import type { ModelWithClearableCache } from "metabase/admin/performance/types";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
   type DataPermission,
@@ -81,6 +85,11 @@ export const PLUGIN_ADMIN_TOOLS = {
   INDEX_ROUTE: "model-caching",
   EXTRA_ROUTES_INFO: [],
   EXTRA_ROUTES: [],
+};
+
+export const PLUGIN_ADMIN_TROUBLESHOOTING = {
+  EXTRA_ROUTES: [] as ReactNode[],
+  GET_EXTRA_NAV: (): ReactNode[] => [],
 };
 
 // functions that update the sections
@@ -373,7 +382,8 @@ export const PLUGIN_MODERATION = {
 
 export type InvalidateNowButtonProps = {
   targetId: number;
-  targetModel: CacheableModel;
+  /** The type of object that the target is */
+  targetModel: ModelWithClearableCache;
   targetName: string;
 };
 
@@ -403,6 +413,9 @@ export const PLUGIN_CACHING = {
   canOverrideRootStrategy: false,
   /** Metadata describing the different kinds of strategies */
   strategies: strategies,
+  DashboardAndQuestionCachingTab: PluginPlaceholder as any,
+  StrategyEditorForQuestionsAndDashboards: PluginPlaceholder as any,
+  getTabMetadata: getPerformanceTabMetadata,
 };
 
 export const PLUGIN_REDUCERS: {

@@ -58,7 +58,7 @@ import {
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 
-import { interceptRoutes as interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
+import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
 import {
   adaptiveRadioButton,
   durationRadioButton,
@@ -1284,6 +1284,30 @@ describeEE("scenarios > dashboard > caching", () => {
       cy.findByRole("button", { name: /Save/ }).click();
       cy.wait("@putCacheConfig");
       cy.findByLabelText(/Caching policy/).should("contain", "Adaptive");
+    });
+  });
+
+  it("can click 'Clear cache' for a dashboard", () => {
+    interceptPerformanceRoutes();
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
+    openSidebarCacheStrategyForm();
+
+    rightSidebar().within(() => {
+      cy.findByRole("heading", { name: /Caching settings/ }).should(
+        "be.visible",
+      );
+      cy.findByRole("button", {
+        name: /Clear cache for this dashboard/,
+      }).click();
+    });
+
+    modal().within(() => {
+      cy.findByRole("button", { name: /Clear cache/ }).click();
+    });
+    cy.wait("@invalidateCache");
+    rightSidebar().within(() => {
+      cy.findByText("Cache cleared").should("be.visible");
     });
   });
 });

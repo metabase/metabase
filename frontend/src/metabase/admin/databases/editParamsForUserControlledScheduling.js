@@ -4,7 +4,7 @@ export function editParamsForUserControlledScheduling(database) {
 }
 
 function editSyncParamsForUserControlledScheduling(database) {
-  if (database.details["let-user-control-scheduling"]) {
+  if (database.details?.["let-user-control-scheduling"]) {
     database.is_full_sync = false;
   }
 }
@@ -12,7 +12,7 @@ function editSyncParamsForUserControlledScheduling(database) {
 function editScheduleParamsForUserControlledScheduling(database) {
   const { details, schedules } = database;
 
-  if (details["let-user-control-scheduling"] && !schedules?.metadata_sync) {
+  if (details?.["let-user-control-scheduling"] && !schedules?.metadata_sync) {
     database.schedules.metadata_sync = {
       schedule_type: "daily",
     };

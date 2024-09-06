@@ -43,7 +43,7 @@ To qualify as a partner driver, the driver must:
 Current partner drivers:
 
 - [ClickHouse](https://github.com/ClickHouse/metabase-clickhouse-driver)
-- [DuckDB](https://github.com/MotherDuck-Open-Source/metabase_duckdb_driver)
+- [DuckDB](https://github.com/MotherDuck-Open-Source/metabase_duckdb_driver) (for now, only available for self-hosted Metabases)
 - [Exasol](https://github.com/exasol/metabase-driver)
 - [Firebolt](https://docs.firebolt.io/integrations/business-intelligence/connecting-to-metabase.html)
 - [Materialize](https://github.com/MaterializeInc/metabase-materialize-driver)
@@ -77,6 +77,7 @@ You install these drivers at your own risk. The plugins will run as part of your
 | [Teradata](https://github.com/swisscom-bigdata/metabase-teradata-driver)               | ![GitHub stars](https://img.shields.io/github/stars/swisscom-bigdata/metabase-teradata-driver)       | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/swisscom-bigdata/metabase-teradata-driver)       |
 | [Netsuite SuiteAnalytics Connect](https://github.com/ericcj/metabase-netsuite-driver)  | ![GitHub stars](https://img.shields.io/github/stars/ericcj/metabase-netsuite-driver)                 | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/ericcj/metabase-netsuite-driver)                 |
 | [Databend](https://github.com/databendcloud/metabase-databend-driver)                  | ![GitHub stars](https://img.shields.io/github/stars/databendcloud/metabase-databend-driver)          | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/databendcloud/metabase-databend-driver)          |
+| [Peaka](https://github.com/peakacom/metabase-driver)                                   | ![GitHub stars](https://img.shields.io/github/stars/peakacom/metabase-driver)                        | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/peakacom/metabase-driver)                        |
 
 If you don't see a driver for your database, then try looking in the comments of the [issue related to the database](https://github.com/metabase/metabase/labels/Database%2F). You might also find more by [searching on GitHub](https://github.com/search?q=metabase+driver).
 

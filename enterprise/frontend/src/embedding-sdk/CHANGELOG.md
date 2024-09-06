@@ -1,3 +1,37 @@
+## [0.1.34](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.33...embedding-sdk-0.1.34) (2024-09-02)
+
+
+### Features
+
+* **sdk:** improve license, mock server and post-install for embedding cli ([#47229](https://github.com/metabase/metabase/issues/47229)) ([d29aa55](https://github.com/metabase/metabase/commit/d29aa557eac6a9d7a72f3f8827d1a449617eb498))
+
+
+
+## [0.1.33](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.32...embedding-sdk-0.1.33) (2024-08-30)
+
+
+### Features
+
+* **sdk:** generate sample Express.js api and user switcher components via cli ([#47060](https://github.com/metabase/metabase/issues/47060)) ([41b7f32](https://github.com/metabase/metabase/commit/41b7f329aad7eb9dac2834068d970c2c32678769))
+* **sdk:** setup permissions and sandboxing for embedding cli ([#46857](https://github.com/metabase/metabase/issues/46857)) ([c574c09](https://github.com/metabase/metabase/commit/c574c09dd758cf95021e28c6d69f946a7bd85cad))
+
+
+
+## [0.1.32](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.31...embedding-sdk-0.1.32) (2024-08-23)
+
+
+### Bug Fixes
+
+* **sdk:** apply the default viz height only in visualization view ([#47169](https://github.com/metabase/metabase/issues/47169)) ([852ddc2](https://github.com/metabase/metabase/commit/852ddc274a7cc0986580a3b14a98cbb19d5221fd))
+
+
+### Features
+
+* **sdk:** Edit Question ([#46894](https://github.com/metabase/metabase/issues/46894)) ([0a6d0a1](https://github.com/metabase/metabase/commit/0a6d0a1928722839067d0ba8ca71a966b9c3ea37))
+* **sdk:** embedding cli opens the metabase store to get trial token and applies the license ([#46810](https://github.com/metabase/metabase/issues/46810)) ([4453abb](https://github.com/metabase/metabase/commit/4453abb13ad29f32876e0f19895e440bd5a72840))
+
+
+
 ## [0.1.31](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.30...embedding-sdk-0.1.31) (2024-08-16)
 
 

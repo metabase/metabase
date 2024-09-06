@@ -10,6 +10,7 @@ import {
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import { loadStaticQuestion } from "embedding-sdk/lib/load-static-question";
 import CS from "metabase/css/core/index.css";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
@@ -24,10 +25,10 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Group } from "metabase/ui";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Question from "metabase-lib/v1/Question";
-import type { Card, CardId, Dataset } from "metabase-types/api";
+import type { Card, CardEntityId, CardId, Dataset } from "metabase-types/api";
 
 export type StaticQuestionProps = {
-  questionId: CardId;
+  questionId: CardId | CardEntityId;
   showVisualizationSelector?: boolean;
   height?: string | number;
   parameterValues?: Record<string, string | number>;
@@ -40,12 +41,18 @@ type State = {
   error: GenericErrorResponse | null;
 };
 
-const _StaticQuestion = ({
-  questionId,
+const StaticQuestionInner = ({
+  questionId: initId,
   showVisualizationSelector,
   height,
   parameterValues,
 }: StaticQuestionProps): JSX.Element | null => {
+  const { isLoading: isValidatingEntityId, id: questionId } =
+    useValidatedEntityId({
+      type: "card",
+      id: initId,
+    });
+
   const metadata = useSelector(getMetadata);
 
   const [{ loading, card, result, error }, setState] = useState<State>({
@@ -61,6 +68,10 @@ const _StaticQuestion = ({
         ...prevState,
         loading: true,
       }));
+
+      if (!questionId) {
+        return;
+      }
 
       try {
         const { card, result } = await loadStaticQuestion({
@@ -102,7 +113,7 @@ const _StaticQuestion = ({
     });
   };
 
-  const isLoading = loading || (!result && !error);
+  const isLoading = loading || (!result && !error) || isValidatingEntityId;
 
   if (error) {
     return (
@@ -160,4 +171,4 @@ const _StaticQuestion = ({
   );
 };
 
-export const StaticQuestion = withPublicComponentWrapper(_StaticQuestion);
+export const StaticQuestion = withPublicComponentWrapper(StaticQuestionInner);

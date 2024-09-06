@@ -586,6 +586,7 @@ jobs:
             --assignee "jeff-bruemmer"
 
   trigger-cloud-issues:
+    if: ${{ !inputs.auto }}
     needs: push-tags
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -624,7 +625,7 @@ jobs:
               event_type: 'update-ee-extra-build',
               client_payload: {
                 version: enterpriseVersion,
-                auto: '${{ inputs.auto }}',
+                auto: 'true', // always auto-merge
               }
             });
 

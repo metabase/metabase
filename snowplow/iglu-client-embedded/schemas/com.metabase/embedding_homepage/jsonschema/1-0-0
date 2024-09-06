@@ -3,7 +3,7 @@
   "description": "User interactions with the embedding-homepage",
   "self": {
     "vendor": "com.metabase",
-    "name": "embedding-homepage",
+    "name": "embedding_homepage",
     "format": "jsonschema",
     "version": "1-0-0"
   },
@@ -19,7 +19,10 @@
       "description": "The type of event being recorded."
     },
     "dismiss_reason": {
-      "type": "string",
+      "type":  [
+        "string", 
+        "null"
+      ],
       "enum": [
         "dismissed-done",
         "dismissed-run-into-issues",
@@ -28,7 +31,10 @@
       "description": "The reason the user dismissed the homepage."
     },
     "initial_tab": {
-      "type": "string",
+      "type": [
+        "string", 
+        "null"
+      ],
       "enum": [
         "static",
         "interactive"

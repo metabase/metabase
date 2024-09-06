@@ -2,9 +2,19 @@ WITH root AS (
   select 'root' AS model,
          0      AS model_id,
          'ttl'  AS strategy,
-         json_object(
-           'multiplier' VALUE coalesce((select ceil(("VALUE"::varchar(15))::float)::int from setting where "KEY" = 'query-caching-ttl-ratio'), 10),
-           'min_duration_ms' VALUE coalesce((select ceil(("VALUE"::varchar(15))::float)::int from setting where "KEY" = 'query-caching-min-ttl'), 60000)
+        json_object(
+          'multiplier' VALUE coalesce((select ceil(CASE
+                                                     WHEN ("VALUE"::VARCHAR(21))::DECIMAL(20, 1) >= 2147483648
+                                                       THEN 2147483647.0
+                                                     ELSE ("VALUE"::VARCHAR(21))::DECIMAL(20, 1)
+                                                   END
+                                                   )::int from setting where "KEY" = 'query-caching-ttl-ratio'), 10),
+          'min_duration_ms' VALUE coalesce((select ceil(CASE
+                                                          WHEN ("VALUE"::VARCHAR(21))::DECIMAL(20, 1) >= 2147483648
+                                                            THEN 2147483647.0
+                                                          ELSE ("VALUE"::VARCHAR(21))::DECIMAL(20, 1)
+                                                        END
+                                                        )::int from setting where "KEY" = 'query-caching-min-ttl'), 60000)
          ) AS config
 ), database AS (
   select 'database' AS model,

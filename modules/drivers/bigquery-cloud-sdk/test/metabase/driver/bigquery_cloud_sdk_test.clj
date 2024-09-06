@@ -278,6 +278,52 @@
           (finally
             (drop-mv-if-exists! view-name)))))))
 
+(mt/defdataset nested-records
+  [["records"
+    [{:field-name     "name"
+      :base-type      :type/Text
+      :effective-type :type/Text}
+     {:field-name     "r"
+      :base-type      :type/Dictionary
+      :nested-fields  [{:field-name     "a"
+                        :base-type      :type/Integer}
+                       {:field-name     "b"
+                        :base-type      :type/Text}
+                       {:field-name     "rr"
+                        :base-type      :type/Dictionary
+                        :nested-fields  [{:field-name "aa"
+                                          :base-type :type/Integer}]}]}]
+    [["foo" {"a" 1 "b" "a" "rr" {"aa" 10}}]
+     ["bar" {"a" 2 "b" "b"}]
+     ["baz" {"a" 3 "b" "c"}]]]])
+
+(deftest sync-nested-fields-test
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (mt/dataset
+      nested-records
+      (is (= {:columns ["r.a" "r.b" "r.rr.aa"]
+              :rows [[1 "a" 10] [2 "b" nil] [3 "c" nil]]}
+             (mt/rows+column-names
+              (mt/run-mbql-query records
+                {:fields [(mt/id :records :r :a)
+                          (mt/id :records :r :b)
+                          (mt/id :records :r :rr :aa)]})))))))
+
+(deftest query-nested-fields-test
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (mt/dataset
+      nested-records
+      (is (= {:columns ["r.a" "r.b" "r.rr.aa" "r.rr"]
+              :rows [[1 "a" 10 {:aa 10}] [2 "b" nil nil] [3 "c" nil nil]]}
+             (mt/rows+column-names
+              (mt/run-mbql-query records
+                {:fields [(mt/id :records :r :a)
+                          (mt/id :records :r :b)
+                          (mt/id :records :r :rr :aa)
+                          (mt/id :records :r :rr)]})))))))
+
 (deftest sync-table-with-required-filter-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "tables that require a partition filters are synced correctly"
@@ -952,3 +998,29 @@
                   qp.compile/compile-with-inline-parameters
                   :query
                   pretty-sql-lines))))))
+
+(deftest fingerprint-and-bin-bigdecimal-test
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (mt/dataset
+      (mt/dataset-definition
+       "bigthings"
+       ["bigthings"
+        [{:field-name "bd" :base-type :type/Decimal}]
+        [[12345678901234567890.1234567890M]
+         [22345678901234567890.1234567890M]
+         [32345678901234567890.1234567890M]]])
+
+      ;; Must sync field values
+      (sync/sync-database! (mt/db))
+      (is (= "BIGNUMERIC"
+             (t2/select-one-fn :database_type :model/Field :id (mt/id :bigthings :bd))))
+      (is (= [[12000000000000000000M 1]
+              [21000000000000000000M 1]
+              [30000000000000000000M 1]]
+             (mt/rows
+              (mt/run-mbql-query bigthings
+                {:aggregation [[:count]]
+                 :breakout [[:field %bigthings.bd
+                             {:type :type/Decimal
+                              :binning {:strategy "default"}}]]})))))))

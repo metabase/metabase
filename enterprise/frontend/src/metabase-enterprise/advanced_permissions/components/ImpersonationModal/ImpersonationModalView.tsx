@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { useDocsUrl } from "metabase/common/hooks";
 import Alert from "metabase/core/components/Alert";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink/ExternalLink";
@@ -13,7 +14,6 @@ import Link from "metabase/core/components/Link/Link";
 import CS from "metabase/css/core/index.css";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import MetabaseSettings from "metabase/lib/settings";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UserAttribute } from "metabase-types/api";
 
@@ -72,10 +72,12 @@ export const ImpersonationModalView = ({
   // Does the "role" field need to first be filled out on the DB details page?
   const roleRequired =
     database.features?.includes("connection-impersonation-requires-role") &&
-    database.details["role"] == null;
+    (!database.details || database.details["role"] == null);
 
   // for redshift, we impersonate using users, not roles
   const impersonationUsesUsers = database.engine === "redshift";
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- Only shows for admins.
+  const { url: permsDocsUrl } = useDocsUrl("permissions/data");
 
   const modalTitle = impersonationUsesUsers
     ? // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
@@ -95,8 +97,7 @@ export const ImpersonationModalView = ({
         {modalMessage}{" "}
         <ExternalLink
           className={CS.link}
-          // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
-          href={MetabaseSettings.docsUrl("permissions/data")}
+          href={permsDocsUrl}
         >{t`Learn More`}</ExternalLink>
       </ImpersonationDescription>
       {roleRequired ? (
