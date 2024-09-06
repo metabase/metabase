@@ -35,10 +35,12 @@ import { Provider } from "react-redux";
 import { Router, useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
 
+import { RRWebDownloadButton } from "metabase/components/RRWebDownloadButton";
 import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
 import { captureConsoleErrors } from "metabase/lib/errors";
+import { initRRWebRecorder } from "metabase/lib/rrweb-recorder";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
@@ -68,6 +70,9 @@ function _init(reducers, getRoutes, callback) {
 
   initializeEmbedding(store);
 
+  // DO NOT RELEASE THIS IN PRODUCTION
+  const enableRRWeb = true;
+
   const root = createRoot(document.getElementById("root"));
 
   root.render(
@@ -77,6 +82,7 @@ function _init(reducers, getRoutes, callback) {
           <ThemeProvider>
             <GlobalStyles />
             <Router history={history}>{routes}</Router>
+            {enableRRWeb && <RRWebDownloadButton />}
           </ThemeProvider>
         </DragDropContextProvider>
       </EmotionCacheProvider>
@@ -84,6 +90,7 @@ function _init(reducers, getRoutes, callback) {
   );
 
   registerVisualizations();
+  enableRRWeb && initRRWebRecorder();
 
   store.dispatch(refreshSiteSettings());
 

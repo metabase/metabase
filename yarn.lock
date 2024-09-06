@@ -3056,6 +3056,26 @@
     redux-thunk "^3.1.0"
     reselect "^5.1.0"
 
+"@rrweb/record@^2.0.0-alpha.17":
+  version "2.0.0-alpha.17"
+  resolved "https://registry.yarnpkg.com/@rrweb/record/-/record-2.0.0-alpha.17.tgz#4f306a8dfcdbb56419b59bb1cb0f5cbea073cafc"
+  integrity sha512-Je+lzjeWMF8/I0IDoXFzkGPKT8j7AkaBup5YcwUHlkp18VhLVze416MvI6915teE27uUA2ScXMXzG0Yiu5VTIw==
+  dependencies:
+    "@rrweb/types" "^2.0.0-alpha.17"
+    rrweb "^2.0.0-alpha.17"
+
+"@rrweb/types@^2.0.0-alpha.17":
+  version "2.0.0-alpha.17"
+  resolved "https://registry.yarnpkg.com/@rrweb/types/-/types-2.0.0-alpha.17.tgz#bf4af026e767022674892919692d59e766e9368e"
+  integrity sha512-AfDTVUuCyCaIG0lTSqYtrZqJX39ZEYzs4fYKnexhQ+id+kbZIpIJtaut5cto6dWZbB3SEe4fW0o90Po3LvTmfg==
+  dependencies:
+    rrweb-snapshot "^2.0.0-alpha.17"
+
+"@rrweb/utils@^2.0.0-alpha.17":
+  version "2.0.0-alpha.17"
+  resolved "https://registry.yarnpkg.com/@rrweb/utils/-/utils-2.0.0-alpha.17.tgz#d13a7326af0311e0f54551e223ace987608eaed5"
+  integrity sha512-HCsasPERBwOS9/LQeOytO2ETKTCqRj1wORBuxiy3t41hKhmi225DdrUPiWnyDdTQm1GdVbOymMRknJVPnZaSXw==
+
 "@rspack/binding-darwin-arm64@1.0.0":
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/@rspack/binding-darwin-arm64/-/binding-darwin-arm64-1.0.0.tgz#9878929d1d86a59340495adb6d81ec814f8623ea"
@@ -4839,6 +4859,11 @@
   resolved "https://registry.yarnpkg.com/@types/crossfilter/-/crossfilter-0.0.34.tgz#beee1be2cd63b98be0eb06fccbc0c9b409f06fb0"
   integrity sha512-O5TMGZ3DvbB3cTIHlbp+shNI5y9C3+vuvyIkcQ6vuW3/cCtfi2FYikeG/KAwmmxhOi4mvL9Gw9+OpTtGBFzcIg==
 
+"@types/css-font-loading-module@0.0.7":
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/@types/css-font-loading-module/-/css-font-loading-module-0.0.7.tgz#2f98ede46acc0975de85c0b7b0ebe06041d24601"
+  integrity sha512-nl09VhutdjINdWyXxHWN/w9zlNCfr60JUqJbd24YXUuCwgeL0TpFSdElCwb6cxfB6ybE19Gjj4g0jsgkXxKv1Q==
+
 "@types/d3-array@*", "@types/d3-array@^3.2.1":
   version "3.2.1"
   resolved "https://registry.yarnpkg.com/@types/d3-array/-/d3-array-3.2.1.tgz#1f6658e3d2006c4fceac53fde464166859f8b8c5"
@@ -6600,6 +6625,11 @@
   resolved "https://registry.yarnpkg.com/@xobotyi/scrollbar-width/-/scrollbar-width-1.9.5.tgz#80224a6919272f405b87913ca13b92929bdf3c4d"
   integrity sha512-N8tkAACJx2ww8vFMneJmaAgmjAG1tnVBZJRLRcx061tmsLRZHSEZSLuGWnwPtunsSLvSqXQ2wfp7Mgqg1I+2dQ==
 
+"@xstate/fsm@^1.4.0":
+  version "1.6.5"
+  resolved "https://registry.yarnpkg.com/@xstate/fsm/-/fsm-1.6.5.tgz#f599e301997ad7e3c572a0b1ff0696898081bea5"
+  integrity sha512-b5o1I6aLNeYlU/3CPlj/Z91ybk1gUsKT+5NAJI+2W4UjvS5KLG28K9v5UvNoFVjHV8PajVZ00RH3vnjyQO7ZAw==
+
 "@xtuc/ieee754@^1.2.0":
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/@xtuc/ieee754/-/ieee754-1.2.0.tgz#eef014a3145ae477a1cbc00cd1e552336dceb790"
@@ -7626,7 +7656,7 @@ balanced-match@^2.0.0:
   resolved "https://registry.yarnpkg.com/balanced-match/-/balanced-match-2.0.0.tgz#dc70f920d78db8b858535795867bf48f820633d9"
   integrity sha512-1ugUSr8BHXRnK23KfuYS+gVMC3LB8QGH9W1iGtDPsNWoQbgtXSExkBu2aDR4epiGWZOjZsj6lDl/N/AqqTC3UA==
 
-base64-arraybuffer@^1.0.2:
+base64-arraybuffer@^1.0.1, base64-arraybuffer@^1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/base64-arraybuffer/-/base64-arraybuffer-1.0.2.tgz#1c37589a7c4b0746e34bd1feb951da2df01c1bdc"
   integrity sha512-I3yl4r9QB5ZRY3XuJVEPfc2XhZO6YweFPI+UovAzn+8/hb3oJ6lnysaFcjVpkCPfVWFUDvoZ8kmVDP7WyRtYtQ==
@@ -13707,6 +13737,11 @@ icss-utils@^5.0.0, icss-utils@^5.1.0:
   resolved "https://registry.yarnpkg.com/icss-utils/-/icss-utils-5.1.0.tgz#c6be6858abd013d768e98366ae47e25d5887b1ae"
   integrity sha512-soFhflCVWLfRNOPU3iv5Z9VUdT44xFRbzjLsEzSr5AQmgqPMTHdU3PMT1Cf1ssx8fLNJDA1juftYl+PUcv3MqA==
 
+idb@^8.0.0:
+  version "8.0.0"
+  resolved "https://registry.yarnpkg.com/idb/-/idb-8.0.0.tgz#33d7ed894ed36e23bcb542fb701ad579bfaad41f"
+  integrity sha512-l//qvlAKGmQO31Qn7xdzagVPPaHTxXx199MhrAFuVBTPqydcPYBWjkrbv4Y0ktB+GmWOiwHl237UUOrLmQxLvw==
+
 ieee754@1.1.13, ieee754@^1.1.4:
   version "1.1.13"
   resolved "https://registry.yarnpkg.com/ieee754/-/ieee754-1.1.13.tgz#ec168558e95aa181fd87d37f55c32bbcb6708b84"
@@ -17201,6 +17236,11 @@ mississippi@^3.0.0:
     stream-each "^1.1.0"
     through2 "^2.0.0"
 
+mitt@^3.0.0:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/mitt/-/mitt-3.0.1.tgz#ea36cf0cc30403601ae074c8f77b7092cdab36d1"
+  integrity sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw==
+
 mixin-deep@^1.2.0:
   version "1.3.2"
   resolved "https://registry.yarnpkg.com/mixin-deep/-/mixin-deep-1.3.2.tgz#1120b43dc359a785dce65b55b82e257ccf479566"
@@ -19260,6 +19300,15 @@ postcss@^8.2.15, postcss@^8.3.0, postcss@^8.4.19, postcss@^8.4.33:
     picocolors "^1.0.1"
     source-map-js "^1.2.0"
 
+postcss@^8.4.38:
+  version "8.4.45"
+  resolved "https://registry.yarnpkg.com/postcss/-/postcss-8.4.45.tgz#538d13d89a16ef71edbf75d895284ae06b79e603"
+  integrity sha512-7KTLTdzdZZYscUc65XmjFiB73vBhBfbPztCYdUNvlaso9PrzjzcmjqBPR0lNGkcVlcO4BjiO5rK/qNz+XAen1Q==
+  dependencies:
+    nanoid "^3.3.7"
+    picocolors "^1.0.1"
+    source-map-js "^1.2.0"
+
 postgres-array@~2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/postgres-array/-/postgres-array-2.0.0.tgz#48f8fce054fbc69671999329b8834b772652d82e"
@@ -20928,10 +20977,38 @@ rollup-pluginutils@^2.8.1:
   dependencies:
     estree-walker "^0.6.1"
 
+rrdom@^2.0.0-alpha.17:
+  version "2.0.0-alpha.17"
+  resolved "https://registry.yarnpkg.com/rrdom/-/rrdom-2.0.0-alpha.17.tgz#c200f21a63bab341caea7f3f2f88d760aa045c3a"
+  integrity sha512-b6caDiNcFO96Opp7TGdcVd4OLGSXu5dJe+A0IDiAu8mk7OmhqZCSDlgQdTKmdO5wMf4zPsUTgb8H/aNvR3kDHA==
+  dependencies:
+    rrweb-snapshot "^2.0.0-alpha.17"
+
 rrweb-cssom@^0.6.0:
   version "0.6.0"
   resolved "https://registry.yarnpkg.com/rrweb-cssom/-/rrweb-cssom-0.6.0.tgz#ed298055b97cbddcdeb278f904857629dec5e0e1"
   integrity sha512-APM0Gt1KoXBz0iIkkdB/kfvGOwC4UuJFeG/c+yV7wSc7q96cG/kJ0HiYCnzivD9SB53cLV1MlHFNfOuPaadYSw==
+
+rrweb-snapshot@^2.0.0-alpha.17:
+  version "2.0.0-alpha.17"
+  resolved "https://registry.yarnpkg.com/rrweb-snapshot/-/rrweb-snapshot-2.0.0-alpha.17.tgz#c4667cbca62530bcb98508e6c85c20f2b320f5ca"
+  integrity sha512-GBg5pV8LHOTbeVmH2VHLEFR0mc2QpQMzAvcoxEGfPNWgWHc8UvKCyq7pqN1vA+fDZ+yXXbixeO0kB2pzVvFCBw==
+  dependencies:
+    postcss "^8.4.38"
+
+rrweb@^2.0.0-alpha.17:
+  version "2.0.0-alpha.17"
+  resolved "https://registry.yarnpkg.com/rrweb/-/rrweb-2.0.0-alpha.17.tgz#de4d8bce18c0f184708b79edaa3c974a9f5b843f"
+  integrity sha512-GQxBkCC4r9XL2bwSdv7iIS49M3cEA8OtObVq0rrQ4GUT4+h7omucGQ4x7m5YN5Vq1oalStBaBlYqF7yRnfG3JA==
+  dependencies:
+    "@rrweb/types" "^2.0.0-alpha.17"
+    "@rrweb/utils" "^2.0.0-alpha.17"
+    "@types/css-font-loading-module" "0.0.7"
+    "@xstate/fsm" "^1.4.0"
+    base64-arraybuffer "^1.0.1"
+    mitt "^3.0.0"
+    rrdom "^2.0.0-alpha.17"
+    rrweb-snapshot "^2.0.0-alpha.17"
 
 rsvp@^4.8.4:
   version "4.8.5"
