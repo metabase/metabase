@@ -10,6 +10,6 @@
   (mc/validate schema (mc/decode schema value (mtx/string-transformer))))
 
 (defn validate-graph-api-groups
-  "Handles string->keyword transofmrations in DataPerms"
+  "Handles string->keyword transformations in DataPerms"
   [graph]
   (decode-and-validate graph-output-schema graph))
