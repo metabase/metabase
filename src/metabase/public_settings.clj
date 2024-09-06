@@ -192,6 +192,7 @@
   :visibility :public
   :export?    true
   :audit      :getter
+  :encryption :never
   :getter     (fn []
                 (let [value (setting/get-value-of-type :string :site-locale)]
                   (when (i18n/available-locale? value)
