@@ -13,4 +13,3 @@ runs:
         while ! nc -z localhost ${{ inputs.port }};
           do sleep 0.1;
         done
-      timeout-minutes: 15
