@@ -20,12 +20,18 @@ export function ModelCacheToggle({
 }) {
   const [persistModel] = usePersistModelMutation();
   const [unpersistModel] = useUnpersistModelMutation();
-  const { data: database, isLoading: isLoadingDb } = useGetDatabaseQuery(
+  const {
+    data: database,
+    isLoading: isLoadingDb,
+    error: dbError,
+  } = useGetDatabaseQuery(
     model.databaseId() ? { id: model.databaseId() as number } : skipToken,
   );
 
-  if (isLoadingDb) {
-    return <DelayedLoadingAndErrorWrapper loading error={null} />;
+  if (isLoadingDb || dbError) {
+    return (
+      <DelayedLoadingAndErrorWrapper loading={isLoadingDb} error={dbError} />
+    );
   }
 
   const isPersisted = persistedModel && persistedModel.state !== "off";

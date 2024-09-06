@@ -40,15 +40,15 @@ function getStatusMessage(job: ModelCacheRefreshStatus) {
 }
 
 export function ModelCacheManagementSection({ model }: Props) {
-  const {
-    data: persistedModel,
-    isLoading,
-    error,
-  } = useGetPersistedInfoByCardQuery(model.id());
+  const { data: persistedModel, isLoading } = useGetPersistedInfoByCardQuery(
+    model.id(),
+  );
   const [onRefresh] = useRefreshModelCacheMutation();
 
   if (isLoading) {
-    return <DelayedLoadingAndErrorWrapper loading error={error} />;
+    // we actually don't want to show the error here, because if the model has not been cached
+    // the api returns a 404 instead of an empty record
+    return <DelayedLoadingAndErrorWrapper loading error={null} />;
   }
 
   const shouldShowRefreshStatus =

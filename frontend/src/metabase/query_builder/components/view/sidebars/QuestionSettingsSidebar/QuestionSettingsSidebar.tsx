@@ -63,13 +63,13 @@ export const QuestionSettingsSidebar = ({
       data-testid="question-settings-sidebar"
     >
       {question.type() === "model" && (
-        <SidesheetCard>
+        <SidesheetCard title={t`Caching`}>
           <ModelCacheManagementSection model={question} />
         </SidesheetCard>
       )}
 
       {hasCacheSection && (
-        <SidesheetCard>
+        <SidesheetCard title={t`Caching`}>
           <Stack spacing="0.5rem">
             <PLUGIN_CACHING.SidebarCacheSection
               model="question"
