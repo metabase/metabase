@@ -11,7 +11,7 @@ import {
   isCardDisplayType,
 } from "metabase-types/api";
 
-import { DEFAULT_ORDER } from "./viz-order";
+import { DEFAULT_VIZ_ORDER } from "./viz-order";
 
 export type UseChartTypeVisualizationsProps = {
   question: Question;
@@ -27,14 +27,16 @@ export const useChartTypeVisualizations = ({
 
   const updateQuestionVisualization = useCallback(
     (display: CardDisplayType) => {
-      let newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
       const visualization = visualizations.get(display);
+
       if (visualization?.onDisplayUpdate) {
+        // prevent viz auto-selection
+        const newQuestion = question.setDisplay(display).lockDisplay();
         const updatedSettings = visualization.onDisplayUpdate(
           newQuestion.settings(),
         );
-        newQuestion = newQuestion.setSettings(updatedSettings);
-        onUpdateQuestion(question);
+
+        onUpdateQuestion(newQuestion.setSettings(updatedSettings));
       }
     },
     [onUpdateQuestion, question],
@@ -54,7 +56,7 @@ export const useChartTypeVisualizations = ({
 };
 
 type IsSensibleVisualizationProps = {
-  result: Dataset;
+  result: Dataset | null;
   vizType: VisualizationDisplay;
 };
 
@@ -83,7 +85,7 @@ export const getSensibleVisualizations = ({
     .map(([vizType]) => vizType)
     .filter(isCardDisplayType);
 
-  const orderedVizTypes = _.union(DEFAULT_ORDER, availableVizTypes);
+  const orderedVizTypes = _.union(DEFAULT_VIZ_ORDER, availableVizTypes);
 
   const [sensibleVisualizations, nonSensibleVisualizations] = _.partition(
     orderedVizTypes,

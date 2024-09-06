@@ -4,7 +4,7 @@ import { ChartTypeList, type ChartTypeListProps } from "../ChartTypeList";
 
 import { OptionLabel } from "./ChartTypeSettings.styled";
 
-type ChartTypeSettingsProps = {
+export type ChartTypeSettingsProps = {
   sensibleVisualizations: ChartTypeListProps["visualizationList"];
   nonSensibleVisualizations: ChartTypeListProps["visualizationList"];
 } & Pick<ChartTypeListProps, "selectedVisualization" | "onSelectVisualization">;

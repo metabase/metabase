@@ -44,7 +44,9 @@ export const ChartTypeOption = ({
           />
         )}
       </OptionIconContainer>
-      <OptionText>{visualization.uiName}</OptionText>
+      <OptionText data-testid="chart-type-option-label">
+        {visualization.uiName}
+      </OptionText>
     </OptionRoot>
   );
 };
