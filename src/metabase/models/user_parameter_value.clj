@@ -36,19 +36,16 @@
 (defn batched-upsert!
   "Delete param with nil value and upsert the rest."
   [parameters]
-  (let [{to-delete true
-         to-upsert false} (group-by #(and (nil? (:value %)) (nil? (:default %))) parameters)]
+  (let [to-insert (remove #(and (nil? (:value %)) (nil? (:default %))) parameters)]
     (t2/with-transaction [_conn]
-      (doseq [item to-upsert]
-        (or (pos? (t2/update! :model/UserParameterValue (select-keys item [:user_id :dashboard_id :parameter_id])
-                              {:value (:value item)}))
-            (t2/insert! :model/UserParameterValue (select-keys item [:user_id :dashboard_id :parameter_id :value]))))
-      (when (seq to-delete)
-        (t2/delete! :model/UserParameterValue {:where (into [:or] (for [p to-delete]
-                                                                    [:and
-                                                                     [:= :user_id (:user_id p)]
-                                                                     [:= :dashboard_id (:dashboard_id p)]
-                                                                     [:= :parameter_id (:parameter_id p)]]))})))))
+      (t2/delete! :model/UserParameterValue
+                  {:where (into [:or] (for [p parameters]
+                                        [:and
+                                         [:= :user_id (:user_id p)]
+                                         [:= :dashboard_id (:dashboard_id p)]
+                                         [:= :parameter_id (:parameter_id p)]]))})
+      (t2/insert! :model/UserParameterValue
+                  (map #(select-keys % [:user_id :dashboard_id :parameter_id :value]) to-insert)))))
 
 (defonce ^:private user-parameter-value-queue
   (delay (grouper/start!
@@ -67,7 +64,7 @@
               (catch Exception e
                 (log/error e "Error saving user parameters for a dashboard"))))
           :capacity 50
-          :interval 100)))
+          :interval 5000)))
 
 (mu/defn store!
   "Asynchronously delete params with a nil `value` and upsert the rest."
