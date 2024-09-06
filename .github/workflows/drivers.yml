@@ -206,7 +206,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mariadb-10-2-ee'
-        test-args: :partition/total 2 :partition/index ${{ matrix.partition-index }}
+        test-args: >-
+          :partition/total 2
+          :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -248,7 +250,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mariadb-latest-ee'
-        test-args: :partition/total 2 :partition/index ${{ matrix.partition-index }}
+        test-args: >-
+          :partition/total 2
+          :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -519,7 +523,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-8-0-ee'
-        test-args: :partition/total 2 :partition/index ${{ matrix.partition-index }}
+        test-args: >-
+          :partition/total 2
+          :partition/index ${{ matrix.partition-index }}
 
   be-tests-mysql-latest-ee:
     needs: files-changed
@@ -565,7 +571,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-latest-ee'
-        test-args: :partition/total 2 :partition/index ${{ matrix.partition-index }}
+        test-args: >-
+          :partition/total 2
+          :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -696,7 +704,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-ee'
-        test-args: :partition/total 2 :partition/index ${{ matrix.partition-index }}
+        test-args: >-
+          :partition/total 2
+          :partition/index ${{ matrix.partition-index }}
 
   be-tests-postgres-latest-ee:
     needs: files-changed
@@ -734,7 +744,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-latest-ee'
-        test-args: :partition/total 2 :partition/index ${{ matrix.partition-index }}
+        test-args: >-
+          :partition/total 2
+          :partition/index ${{ matrix.partition-index }}
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()

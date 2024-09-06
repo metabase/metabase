@@ -89,9 +89,10 @@
 
 (defn find-tests
   "Find all tests, in case you wish to run them yourself."
-  ([] (find-tests {}))
+  ([]
+   (find-tests {}))
   ([options]
-   (hawk/find-tests nil (merge (default-options) options))))
+   (hawk/find-tests-with-options (merge (default-options) options))))
 
 (defn find-and-run-tests-repl
   "Find and run tests from the REPL."

@@ -181,29 +181,29 @@
   {:node node})
 
 (comment
- (require '[clj-kondo.core :as clj-kondo])
- (def form (str '(defmacro a
-                   [x]
-                   `(fun-call x))))
+  (require '[clj-kondo.core :as clj-kondo])
+  (def form (str '(defmacro a
+                    [x]
+                    `(fun-call x))))
 
- (def form "(defmacro a
+  (def form "(defmacro a
            [x]
            `(some! ~x))")
 
- (def form "(defun f
+  (def form "(defun f
            [x]
            (let [g! (fn [] 1)]
            (g!)))")
 
- (str (hooks/parse-string form))
- (hooks/sexpr (hooks/parse-string form))
+  (str (hooks/parse-string form))
+  (hooks/sexpr (hooks/parse-string form))
 
- (binding [hooks/*reload* true]
-   (-> form
-       (with-in-str (clj-kondo/run! {:lint ["-"]}))
-       :findings))
+  (binding [hooks/*reload* true]
+    (-> form
+        (with-in-str (clj-kondo/run! {:lint ["-"]}))
+        :findings))
 
- (do (non-thread-safe-form-should-end-with-exclamation* (hooks/parse-string form)) nil))
+  (do (non-thread-safe-form-should-end-with-exclamation* (hooks/parse-string form)) nil))
 
 (defn- ns-form-node->require-node [ns-form-node]
   (some (fn [node]
