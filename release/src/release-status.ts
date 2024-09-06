@@ -7,7 +7,7 @@ import { getChannelTopic, sendPreReleaseStatus } from "./slack";
 
 
 const DATE_FORMAT = "ddd, MMM DD";
-// if we're more than 3 days out from a release, don't spam slack
+// if we're more than x days out from a release, don't spam slack
 const MIN_DAYS_TO_RELEASE = 1;
 
 async function getReleaseInfo({
