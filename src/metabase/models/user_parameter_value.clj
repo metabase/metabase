@@ -69,7 +69,7 @@
           :interval 100)))
 
 (mu/defn store!
-  "(async) Delete param with nil value and upsert the rest."
+  "Asynchronously delete params with a nil `value` and upsert the rest."
   [user-id         :- ms/PositiveInt
    dashboard-id    :- ms/PositiveInt
    parameters      :- [:sequential :map]]
