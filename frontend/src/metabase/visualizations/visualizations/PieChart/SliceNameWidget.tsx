@@ -18,7 +18,7 @@ export function SliceNameWidget({
 
   const row = pieRows.find(row => row.key === initialKey);
   if (row == null) {
-    throw Error(`Could not find pieRow with key ${initialKey}`);
+    return null;
   }
 
   return (
