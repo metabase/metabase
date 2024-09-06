@@ -6,7 +6,7 @@ import { isReducedMotionPreferred } from "metabase/lib/dom";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import * as Lib from "metabase-lib";
 
-import ResizableNotebook from "./ResizableNotebook";
+import { DatasetNotebook } from "./DatasetNotebook";
 
 const QueryEditorContainer = styled.div`
   visibility: ${props => (props.isActive ? "visible" : "hidden")};
@@ -83,7 +83,7 @@ function DatasetQueryEditor({
           onSetDatabaseId={onSetDatabaseId}
         />
       ) : (
-        <ResizableNotebook
+        <DatasetNotebook
           {...props}
           question={question}
           isResizing={isResizing}
