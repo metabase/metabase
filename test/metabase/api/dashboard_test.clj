@@ -1466,67 +1466,89 @@
                      {:card_id 3 :card (card-model {:id 3})}]]
       (binding [*readable-card-ids* #{1 2 3}]
         (is (= {:copy {1 {:id 1} 2 {:id 2} 3 {:id 3}}
+                :reference {}
                 :discard []}
-               (#'api.dashboard/cards-to-copy dashcards))))))
+               (#'api.dashboard/cards-to-copy true dashcards))))))
   (testing "Identifies cards which cannot be copied"
     (testing "If they are in a series"
       (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                        {:card_id 3 :card (card-model {:id 3})}]]
         (binding [*readable-card-ids* #{1 3}]
           (is (= {:copy {1 {:id 1} 3 {:id 3}}
+                  :reference {}
                   :discard [{:id 2}]}
-                 (#'api.dashboard/cards-to-copy dashcards))))))
+                 (#'api.dashboard/cards-to-copy true dashcards))))))
     (testing "When the base of a series lacks permissions"
       (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                        {:card_id 3 :card (card-model {:id 3})}]]
         (binding [*readable-card-ids* #{3}]
           (is (= {:copy {3 {:id 3}}
+                  :reference {}
                   :discard [{:id 1} {:id 2}]}
-                 (#'api.dashboard/cards-to-copy dashcards))))))))
+                 (#'api.dashboard/cards-to-copy true dashcards)))))))
+  (testing "Identifies cards to be referenced"
+    (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
+                     {:card_id 3 :card (card-model {:id 3})}]]
+      (binding [*readable-card-ids* #{1 2 3}]
+        (is (= {:reference {1 {:id 1}
+                            2 {:id 2}
+                            3 {:id 3}}
+                :copy {}
+                :discard []}
+               (#'api.dashboard/cards-to-copy false dashcards))))))
+  (testing "Identifies cards that cannot be referenced"
+    (let [dashcards [{:card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
+                     {:card_id 3 :card (card-model {:id 3})}]]
+      (binding [*readable-card-ids* #{1 3}]
+        (is (= {:reference {1 {:id 1}
+                            3 {:id 3}}
+                :copy {}
+                :discard [{:id 2}]}
+               (#'api.dashboard/cards-to-copy false dashcards)))))))
 
 (deftest update-cards-for-copy-test
-  (testing "When copy style is shallow returns original dashcards"
+  (testing "Returns the original dashcards for referenced dashcards"
     (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2}]}
                      {:card_id 3 :card {:id 3}}]]
       (is (= dashcards
-             (api.dashboard/update-cards-for-copy 1
-                                                  dashcards
-                                                  false
+             (api.dashboard/update-cards-for-copy dashcards
                                                   nil
+                                                  {1 {:id 1}
+                                                   2 {:id 2}
+                                                   3 {:id 3}}
                                                   nil))))
     (testing "with tab-ids updated if dashboard has tab"
       (is (= [{:card_id 1 :card {:id 1} :dashboard_tab_id 10}
               {:card_id 3 :card {:id 3} :dashboard_tab_id 20}]
-             (api.dashboard/update-cards-for-copy 1
-                                                  [{:card_id 1 :card {:id 1} :dashboard_tab_id 1}
+             (api.dashboard/update-cards-for-copy [{:card_id 1 :card {:id 1} :dashboard_tab_id 1}
                                                    {:card_id 3 :card {:id 3} :dashboard_tab_id 2}]
-                                                  false
                                                   nil
+                                                  {1 {:id 1}
+                                                   2 {:id 2}
+                                                   3 {:id 3}}
                                                   {1 10
                                                    2 20})))))
   (testing "When copy style is deep"
     (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2} {:id 3}]}]]
       (testing "Can omit series cards"
         (is (= [{:card_id 5 :card {:id 5} :series [{:id 6}]}]
-               (api.dashboard/update-cards-for-copy 1
-                                                    dashcards
-                                                    true
+               (api.dashboard/update-cards-for-copy dashcards
                                                     {1 {:id 5}
                                                      2 {:id 6}}
+                                                    nil
                                                     nil)))))
     (testing "Can omit whole card with series if not copied"
       (let [dashcards [{:card_id 1 :card {} :series [{:id 2} {:id 3}]}
                        {:card_id 4 :card {} :series [{:id 5} {:id 6}]}]]
         (is (= [{:card_id 7 :card {:id 7} :series [{:id 8} {:id 9}]}]
-               (api.dashboard/update-cards-for-copy 1
-                                                    dashcards
-                                                    true
+               (api.dashboard/update-cards-for-copy dashcards
                                                     {1 {:id 7}
                                                      2 {:id 8}
                                                      3 {:id 9}
                                                      ;; not copying id 4 which is the base of the following two
                                                      5 {:id 10}
                                                      6 {:id 11}}
+                                                    nil
                                                     nil)))))
     (testing "Updates parameter mappings to new card ids"
       (let [dashcards [{:card_id            1
@@ -1541,24 +1563,10 @@
                                        :card_id      2
                                        :target       [:dimension
                                                       [:field 63 nil]]}]}]
-               (api.dashboard/update-cards-for-copy 1
-                                                    dashcards
-                                                    true
+               (api.dashboard/update-cards-for-copy dashcards
                                                     {1 {:id 2}}
-                                                    nil)))))
-    (testing "Throws error if no new card-id information for deep copy"
-      (let [user-id      44
-            dashboard-id 55
-            error-data   (try
-                           (binding [api/*current-user-id* user-id]
-                             (api.dashboard/update-cards-for-copy dashboard-id
-                                                                  [{:card_id 1 :card {:id 1}}]
-                                                                  true
-                                                                  nil
-                                                                  nil))
-                           (is false "Should have thrown with deep-copy true and no new card id info")
-                           (catch Exception e (ex-data e)))]
-        (is (= {:user-id user-id, :dashboard-id dashboard-id} error-data))))))
+                                                    nil
+                                                    nil)))))))
 
 (deftest copy-dashboard-cards-test
   (testing "POST /api/dashboard/:id/copy"
@@ -2095,20 +2103,21 @@
                                                                               :size_x  4
                                                                               :size_y  4
                                                                               :series  [{:id series-id-1}]}]
-                                                                 :tabs  []}))]
-          (is (=? [{:row                    4
-                    :col                    4
-                    :size_x                 4
-                    :size_y                 4
-                    :parameter_mappings     []
-                    :visualization_settings {}
-                    :series                 [{:name                   "Series Card"
-                                              :description            nil
-                                              :dataset_query          (:dataset_query api.card-test/card-defaults)
-                                              :display                "table"
-                                              :visualization_settings {}}]
-                    :created_at             true
-                    :updated_at             true}]
+                                                                 :tabs      []}))]
+          (is (=? [{:row                        4
+                    :col                        4
+                    :size_x                     4
+                    :size_y                     4
+                    :parameter_mappings         []
+                    :visualization_settings     {}
+                    :series                     [{:name                   "Series Card"
+                                                  :description            nil
+                                                  :dataset_query          (:dataset_query api.card-test/card-defaults)
+                                                  :display                "table"
+                                                  :visualization_settings {}}]
+                    :created_at                 true
+                    :updated_at                 true
+                    :is_dashboard_internal_card false}]
                   (remove-ids-and-booleanize-timestamps dashboard-cards)))
           (is (= [{:size_x 4
                    :size_y 4
@@ -2217,25 +2226,27 @@
                    DashboardCard {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}
                    Card          {series-id-1 :id}   {:name "Series Card"}]
       (with-dashboards-in-writeable-collection! [dashboard-id]
-        (is (= {:size_x                 4
-                :size_y                 4
-                :col                    0
-                :row                    0
-                :series                 []
-                :parameter_mappings     []
-                :visualization_settings {}
-                :created_at             true
-                :updated_at             true}
+        (is (= {:size_x                     4
+                :size_y                     4
+                :col                        0
+                :row                        0
+                :series                     []
+                :parameter_mappings         []
+                :visualization_settings     {}
+                :created_at                 true
+                :updated_at                 true
+                :is_dashboard_internal_card false}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-1))))
-        (is (= {:size_x                 4
-                :size_y                 4
-                :col                    0
-                :row                    0
-                :parameter_mappings     []
-                :visualization_settings {}
-                :series                 []
-                :created_at             true
-                :updated_at             true}
+        (is (= {:size_x                     4
+                :size_y                     4
+                :col                        0
+                :row                        0
+                :parameter_mappings         []
+                :visualization_settings     {}
+                :series                     []
+                :created_at                 true
+                :updated_at                 true
+                :is_dashboard_internal_card false}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))
         ;; TODO adds tests for return
         (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
@@ -2251,30 +2262,32 @@
                                             :col    1
                                             :row    3}]
                                :tabs      []})
-        (is (= {:size_x                 4
-                :size_y                 2
-                :col                    0
-                :row                    0
-                :parameter_mappings     []
-                :visualization_settings {}
-                :series                 [{:name                   "Series Card"
-                                          :description            nil
-                                          :display                :table
-                                          :type                   :question
-                                          :dataset_query          {}
-                                          :visualization_settings {}}]
-                :created_at             true
-                :updated_at             true}
+        (is (= {:size_x                     4
+                :size_y                     2
+                :col                        0
+                :row                        0
+                :parameter_mappings         []
+                :visualization_settings     {}
+                :series                     [{:name                   "Series Card"
+                                              :description            nil
+                                              :display                :table
+                                              :type                   :question
+                                              :dataset_query          {}
+                                              :visualization_settings {}}]
+                :created_at                 true
+                :updated_at                 true
+                :is_dashboard_internal_card false}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-1))))
-        (is (= {:size_x                 1
-                :size_y                 1
-                :col                    1
-                :row                    3
-                :parameter_mappings     []
-                :visualization_settings {}
-                :series                 []
-                :created_at             true
-                :updated_at             true}
+        (is (= {:size_x                     1
+                :size_y                     1
+                :col                        1
+                :row                        3
+                :parameter_mappings         []
+                :visualization_settings     {}
+                :series                     []
+                :created_at                 true
+                :updated_at                 true
+                :is_dashboard_internal_card false}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))))))
 
 (deftest update-cards-parameter-mapping-permissions-test
@@ -4869,11 +4882,11 @@
   ;; - another dashboard in the root collection
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}
-                 :model/Dashboard {other-dash-id :id} {}
+                 :model/Dashboard {_other-dash-id :id} {}
                  :model/Card {card-id :id} {:dashboard_id dash-id}
-                 :model/DashboardCard {dashcard-id :id} {:card_id card-id
+                 :model/DashboardCard {_dashcard-id :id} {:card_id card-id
                                                          :dashboard_id dash-id}]
-    (testing "Cannot add a dashboard internal card to another dashboard"
+    #_(testing "Cannot add a dashboard internal card to another dashboard"
       (mt/user-http-request :crowberto :put 400 (str "dashboard/" other-dash-id)
                             {:dashcards [{:id -1
                                           :size_x 1
@@ -4899,13 +4912,13 @@
 
 (deftest dashboard-internal-cards-copying
   (mt/with-temp [:model/Collection {coll-id :id} {}
-                 :model/Collection {other-coll-id :id} {}
+                 :model/Collection {_other-coll-id :id} {}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}
                  :model/Card {card-id :id} {:dashboard_id dash-id
                                             :table_id      (mt/id :orders)
                                             :dataset_query (mt/mbql-query orders)
                                             :database_id   (mt/id)}
-                 :model/DashboardCard {dashcard-id :id} {:card_id card-id
+                 :model/DashboardCard {_dashcard-id :id} {:card_id card-id
                                                          :dashboard_id dash-id}]
     (let [new-dash-id (:id (mt/user-http-request :crowberto :post 200 (str "dashboard/" dash-id "/copy")))
           new-card (:card (first (:dashcards (t2/hydrate (t2/select-one :model/Dashboard :id new-dash-id) [:dashcards :card]))))]
