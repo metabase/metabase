@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { Box } from "metabase/ui";
+
 import { ChartTypeList, type ChartTypeListProps } from "../ChartTypeList";
 
 import { OptionLabel } from "./ChartTypeSettings.styled";
@@ -15,7 +17,7 @@ export const ChartTypeSettings = ({
   sensibleVisualizations,
   nonSensibleVisualizations,
 }: ChartTypeSettingsProps) => (
-  <>
+  <Box display="contents" data-testid="chart-type-settings">
     <ChartTypeList
       data-testid="display-options-sensible"
       visualizationList={sensibleVisualizations}
@@ -30,5 +32,5 @@ export const ChartTypeSettings = ({
       onSelectVisualization={onSelectVisualization}
       selectedVisualization={selectedVisualization}
     />
-  </>
+  </Box>
 );
