@@ -61,7 +61,7 @@ describe("DatasetNotebook", () => {
     );
   });
 
-  it("should render a metric docs link for non-metrics", () => {
+  it("should not render a metric docs link for non-metrics", () => {
     const question = new Question(createMockCard({ type: "question" }));
     setup({ question });
     expect(
