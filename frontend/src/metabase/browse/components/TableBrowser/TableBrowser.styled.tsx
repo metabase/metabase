@@ -32,12 +32,10 @@ export const TableActionLink = styled(Link)`
 export const TableCard = styled(Card)`
   padding-inline-start: ${space(1)};
   padding-inline-end: ${space(1)};
-
-  ${TableActionLink} {
-    visibility: hidden;
-  }
-
-  &:hover ${TableActionLink} {
-    visibility: visible;
+  border: 1px solid #587330;
+  box-shadow: none;
+  &:hover {
+    box-shadow: none;
+    background-color: #d5e3c3;
   }
 `;
