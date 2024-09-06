@@ -1238,8 +1238,8 @@
 (defn- field-search-url [card-or-dashboard field-or-id search-field-or-id & [entity-id]]
   (str "embed/"
        (condp mi/instance-of? card-or-dashboard
-         Card      (str "card/"      (card-token card-or-dashboard {} entity-id))
-         Dashboard (str "dashboard/" (dash-token card-or-dashboard {} entity-id)))
+         Card      (str "card/"      (card-token (or entity-id card-or-dashboard)))
+         Dashboard (str "dashboard/" (dash-token (or entity-id card-or-dashboard))))
        "/field/" (u/the-id field-or-id)
        "/search/" (u/the-id search-field-or-id)))
 
