@@ -1,8 +1,11 @@
 (ns metabase.models.user-parameter-value
   (:require
    [cheshire.core :as json]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.util.grouper :as grouper]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -30,31 +33,49 @@
   {:value {:in  mi/json-in
            :out json-out}})
 
-(mu/defn batched-upsert!
+(defn batched-upsert!
   "Delete param with nil value and upsert the rest."
+  [parameters]
+  (let [{to-delete true
+         to-upsert false} (group-by #(and (nil? (:value %)) (nil? (:default %))) parameters)]
+    (t2/with-transaction [_conn]
+      (doseq [item to-upsert]
+        (or (pos? (t2/update! :model/UserParameterValue (select-keys item [:user_id :dashboard_id :parameter_id])
+                              {:value (:value item)}))
+            (t2/insert! :model/UserParameterValue (select-keys item [:user_id :dashboard_id :parameter_id :value]))))
+      (when (seq to-delete)
+        (t2/delete! :model/UserParameterValue {:where (into [:or] (for [p to-delete]
+                                                                    [:and
+                                                                     [:= :user_id (:user_id p)]
+                                                                     [:= :dashboard_id (:dashboard_id p)]
+                                                                     [:= :parameter_id (:parameter_id p)]]))})))))
+
+(defonce ^:private user-parameter-value-queue
+  (delay (grouper/start!
+          (fn [inputs]
+            (try
+              (batched-upsert!
+               (->> (for [input     inputs
+                          parameter (:parameters input)]
+                      {:user_id      (:user-id input)
+                       :dashboard_id (:dashboard-id input)
+                       :parameter_id (:id parameter)
+                       :value        (:value parameter)
+                       :default      (:default parameter)})
+                    (m/distinct-by (juxt :user_id :dashboard_id :parameter_id))))
+              (catch Exception e
+                (log/error e "Error saving user parameters for a dashboard"))))
+          :capacity 50
+          :interval 100)))
+
+(mu/defn store!
+  "(async) Delete param with nil value and upsert the rest."
   [user-id         :- ms/PositiveInt
    dashboard-id    :- ms/PositiveInt
    parameters      :- [:sequential :map]]
-  (let [;; delete param with nil value and no default
-        to-delete-pred (fn [{:keys [value default]}]
-                         (and (nil? value) (nil? default)))
-        to-delete      (filter to-delete-pred parameters)
-        to-upsert      (filter (complement to-delete-pred) parameters)]
-    (t2/with-transaction [_conn]
-      (doseq [{:keys [id value]} to-upsert]
-        (or (pos? (t2/update! :model/UserParameterValue {:user_id      user-id
-                                                         :dashboard_id dashboard-id
-                                                         :parameter_id id}
-                              {:value value}))
-            (t2/insert! :model/UserParameterValue {:user_id      user-id
-                                                   :dashboard_id dashboard-id
-                                                   :parameter_id id
-                                                   :value        value})))
-      (when (seq to-delete)
-        (t2/delete! :model/UserParameterValue
-                    :user_id user-id
-                    :dashboard_id dashboard-id
-                    :parameter_id [:in (map :id to-delete)])))))
+  (grouper/submit! @user-parameter-value-queue {:user-id      user-id
+                                                :dashboard-id dashboard-id
+                                                :parameters   parameters}))
 
 ;; hydration
 
