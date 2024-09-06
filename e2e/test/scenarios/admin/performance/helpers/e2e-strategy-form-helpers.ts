@@ -1,4 +1,4 @@
-import { modal } from "e2e/support/helpers";
+import { modal, popover } from "e2e/support/helpers";
 import {
   type ScheduleComponentType,
   getScheduleComponentLabel,
@@ -78,10 +78,12 @@ export const getScheduleComponent = (componentType: ScheduleComponentType) =>
   cacheStrategyForm().findByLabelText(getScheduleComponentLabel(componentType));
 
 export const openSidebar = () => {
-  cy.findByLabelText("info icon").click();
+  cy.findByTestId("qb-header").icon("ellipsis").click();
+  popover().findByText("Edit settings").click();
 };
+
 export const closeSidebar = () => {
-  cy.findByLabelText("info icon").click();
+  cy.findByLabelText("Close").click();
 };
 
 /** Open the sidebar form that lets you set the caching strategy.
