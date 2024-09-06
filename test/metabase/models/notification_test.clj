@@ -21,7 +21,6 @@
       (is (thrown-with-msg? Exception #"Invalid value :notification/not-existed\. Must be one of .*"
                             (t2/insert! :model/Notification {:payload_type :notification/not-existed}))))))
 
-
 (deftest notification-subscription-type-test
   (mt/with-temp [:model/Notification {noti-id :id} {}]
     (testing "success path"
@@ -66,9 +65,9 @@
   (mt/with-model-cleanup [:model/Notification]
     (testing "create a notification with 2 subscriptions"
       (let [noti (models.notification/create-notification!
-                    default-system-event-notification
-                    [default-user-invited-subscription
-                     default-card-created-subscription])]
+                  default-system-event-notification
+                  [default-user-invited-subscription
+                   default-card-created-subscription])]
         (testing "return the created notification"
           (is (= (t2/select-one :model/Notification (:id noti))
                  noti)))
