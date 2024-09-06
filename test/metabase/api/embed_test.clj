@@ -105,7 +105,8 @@
       ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding true]
+  `(mt/with-temporary-setting-values [~'enable-embedding true
+                                      ~'enable-embedding-sdk true]
      (with-new-secret-key
        ~@body)))
 
@@ -1230,7 +1231,7 @@
 (deftest endpoint-should-fail-if-embedding-is-disabled-for-the-dashboard
   (is (= "Embedding is not enabled for this object."
          (with-embedding-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
-           (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding false})
+           (t2/update! :model/Dashboard (u/the-id dashboard) {:enable_embedding false})
            (client/client :get 400 (field-values-url dashboard (mt/id :venues :name)))))))
 
 ;;; --------------------------------------------- Field search endpoints ---------------------------------------------
