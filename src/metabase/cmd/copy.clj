@@ -98,7 +98,7 @@
     :model/AuditLog
     :model/RecentViews
     :model/UserParameterValue
-    ;; 49+
+    ;; 51+
     :model/Notification
     :model/NotificationSubscription]
    (when config/ee-available?
