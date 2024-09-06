@@ -1,0 +1,342 @@
+[
+  {
+    "card": {
+      "original_card_id": 521,
+      "can_delete": false,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-09-03T23:47:26.410352Z",
+      "parameters": [],
+      "metabase_version": "v0.50.24-SNAPSHOT (f7c10c3)",
+      "collection": {
+        "metabase.models.collection.root/is-root?": true,
+        "authority_level": null,
+        "name": "Our analytics",
+        "is_personal": false,
+        "id": "root",
+        "can_write": true
+      },
+      "visualization_settings": {
+        "graph.show_values": true,
+        "graph.series_order_dimension": "value_type",
+        "graph.metrics": ["value"],
+        "graph.show_stack_values": "all",
+        "graph.label_value_formatting": "auto",
+        "graph.series_order": [
+          {
+            "key": "a",
+            "color": "#88BF4D",
+            "enabled": true,
+            "name": "a"
+          },
+          {
+            "key": "d",
+            "color": "#F2A86F",
+            "enabled": true,
+            "name": "d"
+          },
+          {
+            "key": "4",
+            "color": "#F9D45C",
+            "enabled": true,
+            "name": "4"
+          }
+        ],
+        "column_settings": {
+          "[\"name\",\"value\"]": {
+            "scale": 0.5
+          }
+        },
+        "graph.dimensions": ["date", "value_type"],
+        "stackable.stack_type": "stacked"
+      },
+      "collection_preview": true,
+      "entity_id": "FTCgtumB_srUCbDkNncvw",
+      "archived_directly": false,
+      "display": "bar",
+      "parameter_mappings": [],
+      "id": 521,
+      "dataset_query": {
+        "database": 2,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "select '2024-06-23 00:00:00' as date,\t'a' as value_type,\t15080 as value\nunion all select '2024-06-27 00:00:00' as date,\t'd' as value_type,\t1 as value\nunion all select '2024-06-28 00:00:00' as date,\t'4' as value_type,\t1 as null\n"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-09-03T23:55:48.84329Z",
+      "moderation_reviews": [],
+      "can_restore": false,
+      "creator_id": 1,
+      "average_query_time": 31.6,
+      "type": "question",
+      "last_used_at": "2024-09-03T23:56:35.592319Z",
+      "dashboard_count": 0,
+      "last_query_start": "2024-09-03T23:56:35.565455Z",
+      "name": "hmmmmm",
+      "query_type": "native",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 2,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": [
+        {
+          "display_name": "date",
+          "field_ref": [
+            "field",
+            "date",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "name": "date",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 19
+              }
+            }
+          }
+        },
+        {
+          "display_name": "value_type",
+          "field_ref": [
+            "field",
+            "value_type",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "name": "value_type",
+          "semantic_type": "type/Category",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 1
+              }
+            }
+          }
+        },
+        {
+          "display_name": "value",
+          "field_ref": [
+            "field",
+            "value",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "name": "value",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 2,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 1,
+                "q3": 11691.07208428623,
+                "max": 15080,
+                "sd": 8705.864709110367,
+                "avg": 5027.333333333333
+              }
+            }
+          }
+        }
+      ],
+      "can_run_adhoc_query": true,
+      "table_id": null,
+      "source_card_id": null,
+      "collection_position": null,
+      "view_count": 5,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["2024-06-23 00:00:00", "a", 15080],
+        ["2024-06-27 00:00:00", "d", 1],
+        ["2024-06-28 00:00:00", "4", 1]
+      ],
+      "cols": [
+        {
+          "display_name": "date",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "date",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "date",
+          "base_type": "type/Text",
+          "database_type": "text",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "value_type",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "value_type",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "value_type",
+          "base_type": "type/Text",
+          "database_type": "text",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "value",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "value",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "value",
+          "base_type": "type/Integer",
+          "database_type": "int4",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "select '2024-06-23 00:00:00' as date,\t'a' as value_type,\t15080 as value\nunion all select '2024-06-27 00:00:00' as date,\t'd' as value_type,\t1 as value\nunion all select '2024-06-28 00:00:00' as date,\t'4' as value_type,\t1 as null"
+      },
+      "format-rows?": true,
+      "results_timezone": "Etc/GMT",
+      "requested_timezone": "Etc/GMT",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "date",
+            "field_ref": [
+              "field",
+              "date",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "name": "date",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 19
+                }
+              }
+            }
+          },
+          {
+            "display_name": "value_type",
+            "field_ref": [
+              "field",
+              "value_type",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "name": "value_type",
+            "semantic_type": "type/Category",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 1
+                }
+              }
+            }
+          },
+          {
+            "display_name": "value",
+            "field_ref": [
+              "field",
+              "value",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "name": "value",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 1,
+                  "q3": 11691.07208428623,
+                  "max": 15080,
+                  "sd": 8705.864709110367,
+                  "avg": 5027.333333333333
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

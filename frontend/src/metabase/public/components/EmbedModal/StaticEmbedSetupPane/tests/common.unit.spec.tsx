@@ -340,7 +340,7 @@ describe("Static Embed Setup phase", () => {
           ).toBeVisible();
 
           expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-            `params: { "${DATE_PARAMETER_MOCK.slug}": null }`,
+            `params: { "${DATE_PARAMETER_MOCK.slug}": [] }`,
           );
         });
 
@@ -621,7 +621,7 @@ describe("Static Embed Setup phase", () => {
 
     await userEvent.click(screen.getByText("Locked"));
 
-    const parametersChangedCode = `params: { "${DATE_PARAMETER_MOCK.slug}": null }`;
+    const parametersChangedCode = `params: { "${DATE_PARAMETER_MOCK.slug}": [] }`;
 
     expect(
       screen.getByTestId("text-editor-mock-highlighted-code"),
@@ -635,7 +635,7 @@ describe("Static Embed Setup phase", () => {
 
     expect(
       screen.getByTestId("text-editor-mock-highlighted-code"),
-    ).toHaveTextContent(`params: { "${DATE_PARAMETER_MOCK.slug}": null }`);
+    ).toHaveTextContent(`params: { "${DATE_PARAMETER_MOCK.slug}": [] }`);
 
     await userEvent.click(screen.getByText("Dark"));
 

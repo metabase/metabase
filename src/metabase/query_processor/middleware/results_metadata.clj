@@ -36,7 +36,8 @@
                card-id
                ;; don't want to update metadata when we use a Card as a source Card.
                (not (:qp/source-card-id query)))
-      (t2/update! :model/Card card-id {:result_metadata metadata}))
+      (t2/update! :model/Card card-id {:result_metadata metadata
+                                       :updated_at      :updated_at}))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e

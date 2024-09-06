@@ -14,6 +14,7 @@ import type { Visualization } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Query from "metabase-lib/v1/queries/Query";
+import { type CardDisplayType, isCardDisplayType } from "metabase-types/api";
 
 import {
   OptionIconContainer,
@@ -24,7 +25,7 @@ import {
   SettingsButton,
 } from "./ChartTypeSidebar.styled";
 
-const DEFAULT_ORDER = [
+const DEFAULT_ORDER: CardDisplayType[] = [
   "table",
   "bar",
   "line",
@@ -42,7 +43,7 @@ const DEFAULT_ORDER = [
   "map",
   "scatter",
   "waterfall",
-];
+] as const;
 
 interface ChartTypeSidebarProps {
   question: Question;
@@ -66,23 +67,28 @@ const ChartTypeSidebar = ({
   setUIControls,
   query,
 }: ChartTypeSidebarProps) => {
-  const [makesSense, nonSense] = useMemo(() => {
-    return _.partition(
-      _.union(
-        DEFAULT_ORDER,
-        Array.from(visualizations).map(([vizType]) => vizType),
-      ).filter(vizType => !visualizations?.get(vizType)?.hidden),
-      vizType => {
-        const visualization = visualizations.get(vizType);
-        return (
-          result &&
-          result.data &&
-          visualization?.isSensible &&
-          visualization?.isSensible(sanatizeResultData(result.data), query)
-        );
-      },
+  const [makesSense, nonSense]: [CardDisplayType[], CardDisplayType[]] =
+    useMemo(
+      () =>
+        _.partition(
+          _.union(
+            DEFAULT_ORDER,
+            Array.from(visualizations)
+              .map(([vizType]) => vizType)
+              .filter(isCardDisplayType),
+          ).filter(vizType => !visualizations?.get(vizType)?.hidden),
+          vizType => {
+            const visualization = visualizations.get(vizType);
+            return (
+              result &&
+              result.data &&
+              visualization?.isSensible &&
+              visualization?.isSensible(sanatizeResultData(result.data), query)
+            );
+          },
+        ),
+      [result, query],
     );
-  }, [result, query]);
 
   const openChartSettings = useCallback(
     (e: React.MouseEvent) => {
@@ -97,7 +103,7 @@ const ChartTypeSidebar = ({
   );
 
   const handleClick = useCallback(
-    (display: string, e: React.MouseEvent) => {
+    (display: CardDisplayType, e: React.MouseEvent) => {
       if (display === question.display()) {
         openChartSettings(e);
       } else {

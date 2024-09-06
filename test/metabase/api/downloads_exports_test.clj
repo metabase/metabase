@@ -14,8 +14,10 @@
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.formatter :as formatter]
    [metabase.public-settings :as public-settings]
    [metabase.pulse :as pulse]
    [metabase.pulse.test-util :as pulse.test-util]
@@ -884,3 +886,42 @@
           ;; the [$$] part will appear as $ when you open the Excel file in a spreadsheet app
           (is (= [["Discount"] ["[$$]6.42"]]
                  (-> (card-download card {:export-format :xlsx :format-rows true})))))))))
+
+(deftest clean-errors-test
+  (testing "Queries that error should not include visualization settings (metabase-private #233)"
+    (with-redefs [formatter/number-formatter (fn [& _args] (fn [_] (throw (Exception. "Test Exception"))))]
+      (mt/with-temp [:model/Card {card-id :id} {:display                :table
+                                                :type                   :model
+                                                :dataset_query          {:database (mt/id)
+                                                                         :type     :query
+                                                                         :query    {:source-table (mt/id :orders)
+                                                                                    :filter       [:not-null [:field (mt/id :orders :discount) {:base-type :type/Float}]]
+                                                                                    :limit        1}}
+                                                :visualization_settings {:table.columns
+                                                                         [{:name "ID" :enabled false}
+                                                                          {:name "USER_ID" :enabled false}
+                                                                          {:name "PRODUCT_ID" :enabled false}
+                                                                          {:name "SUBTOTAL" :enabled false}
+                                                                          {:name "TAX" :enabled false}
+                                                                          {:name "TOTAL" :enabled false}
+                                                                          {:name "DISCOUNT" :enabled true}
+                                                                          {:name "CREATED_AT" :enabled false}
+                                                                          {:name "QUANTITY" :enabled false}]
+                                                                         :table.cell_column "SUBTOTAL"
+                                                                         :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :discount))
+                                                                                             {:currency_in_header false}}}}]
+        (let [illegal-strings ["visualization-settings" ":viz-settings" "visualization_settings"]]
+          (doseq [export-format ["csv" "json" #_"xlsx"]]
+            ;; for now, don't try to read xlsx back in, it will not be correct since we end up writing
+            ;; a json blob to the output stream, it creates an invalid xlsx anyway.
+            ;; This is not new behaviour, we'll just fix it when a better solution to 'errors in downloaded files' comes along
+            (let [results (mt/user-http-request :rasta :post 200 (format "card/%d/query/%s" card-id export-format) {:format-rows true})
+                  results-string (if (= "xlsx" export-format)
+                                   (read-xlsx results)
+                                   (str results))]
+              (testing (format "Testing export format: %s" export-format)
+                (doseq [illegal illegal-strings]
+                  (is (false? (str/blank? results-string)))
+                  (is (true? (str/includes? results-string "Test Exception")))
+                  (testing (format "String \"%s\" is not in the error message." illegal)
+                    (is (false? (str/includes? results-string illegal)))))))))))))

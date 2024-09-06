@@ -12,13 +12,15 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- valid-now? [token :- premium-features/TokenStatus] :- :boolean
+(mu/defn- valid-now? :- :boolean
+  [token :- premium-features/TokenStatus]
   (t/before? (t/instant) (t/instant (:valid-thru token))))
 
 (defn- token? [token]
   (and token (str/starts-with? token "airgap_")))
 
-(mu/defn- pubkey-reader ^Reader [] :- [:maybe (ms/InstanceOfClass Reader)]
+(mu/defn- pubkey-reader :- [:maybe (ms/InstanceOfClass Reader)]
+  ^Reader []
   (when-let [pubkey-resource (io/resource "airgap/pubkey.pem")]
     (io/reader pubkey-resource)))
 

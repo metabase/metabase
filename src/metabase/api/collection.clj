@@ -1080,11 +1080,12 @@
                                 :sort-column    sort_column
                                 :sort-direction sort_direction})
 
-        snowplow-payload {:collection_id           (when-not (= :root id) id)
+        snowplow-payload {:event                   :stale-items-read
+                          :collection_id           (when-not (= :root id) id)
                           :total_stale_items_found total
                           ;; convert before-date to a date-time string before sending it.
                           :cutoff_date             (format "%sT00:00:00Z" (str before-date))}]
-    (snowplow/track-event! ::snowplow/stale-items-read api/*current-user-id* snowplow-payload)
+    (snowplow/track-event! ::snowplow/cleanup snowplow-payload)
     {:total  total
      :data   (api/present-items present-model-items rows)
      :limit  mw.offset-paging/*limit*

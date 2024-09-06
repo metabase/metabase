@@ -127,7 +127,7 @@ const renderAuthSection = (type: string) => {
             <FormTextInput
               name="auth-info-key"
               label={t`Key`}
-              placeholder={t`API Key`}
+              placeholder={t`X-API-KEY`}
               {...styles}
               mb="1.5rem"
             />

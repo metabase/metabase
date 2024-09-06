@@ -2,7 +2,7 @@ import Color from "color";
 import type { EChartsOption } from "echarts";
 
 import { getTextColorForBackground } from "metabase/lib/colors";
-import { truncateText } from "metabase/static-viz/lib/text";
+import { truncateText } from "metabase/visualizations/lib/text";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -52,17 +52,25 @@ function getTotalGraphicOption(
         weight: DIMENSIONS.total.fontWeight,
       }) > outerRadius; // innerRadius technically makes more sense, but looks too narrow in practice
 
+    const fontStyle = {
+      size: DIMENSIONS.total.valueFontSize,
+      weight: DIMENSIONS.total.fontWeight,
+      family: renderingContext.fontFamily,
+    };
+
     valueText = truncateText(
       formatters.formatMetric(sliceValueOrTotal, valueWillOverflow),
       outerRadius,
-      DIMENSIONS.total.valueFontSize,
+      renderingContext.measureText,
+      fontStyle,
     );
     labelText = truncateText(
       hoveredIndex != null
         ? chartModel.slices[hoveredIndex].data.name.toUpperCase()
         : TOTAL_TEXT,
       outerRadius,
-      DIMENSIONS.total.labelFontSize,
+      renderingContext.measureText,
+      fontStyle,
     );
   }
 

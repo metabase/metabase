@@ -13,7 +13,7 @@ export function setupTableEndpoints(
   fetchMock.post(`path:/api/table/${table.id}/rescan_values`, {});
   fetchMock.post(`path:/api/table/${table.id}/discard_values`, {});
   setupTableQueryMetadataEndpoint(table);
-  table.fields?.forEach(field => setupFieldEndpoints(field));
+  table.fields?.forEach(field => setupFieldEndpoints({ ...field, table }));
 }
 
 export function setupTableQueryMetadataEndpoint(table: Table) {

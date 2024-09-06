@@ -512,7 +512,7 @@ describe("issue 17514", () => {
   };
 
   const filter = {
-    name: "Date Filter",
+    name: "All Options",
     slug: "date_filter",
     id: "23ccbbf",
     type: "date/all-options",

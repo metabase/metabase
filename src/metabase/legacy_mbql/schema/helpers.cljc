@@ -66,7 +66,7 @@
             :error/message (str "valid instance of one of these MBQL clauses: " (str/join ", " (map first tags+schemas)))
             :doc/schema    (into
                             [:or
-                             {:doc/message "valid instance of one of these MBQL clauses:"}]
+                             {:description "valid instance of one of these MBQL clauses:"}]
                             (map second)
                             tags+schemas)}]
    (for [[tag schema] tags+schemas]
@@ -104,7 +104,7 @@
 
 (mr/def ::distinct
   [:fn
-   {:doc/message   "values must be distinct"
+   {:description   "values must be distinct"
     :error/message "distinct"}
    empty-or-distinct?])
 

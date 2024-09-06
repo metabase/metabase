@@ -4,8 +4,10 @@ import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
+import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
+import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import type { CardEntityId, CardId } from "metabase-types/api";
+import type Question from "metabase-lib/v1/Question";
 
 import type {
   InteractiveQuestionContextType,
@@ -31,13 +33,31 @@ export const InteractiveQuestionProvider = ({
   componentPlugins,
   onNavigateBack,
   children,
-}: Omit<InteractiveQuestionProviderProps, "cardId"> & {
-  cardId?: CardId | CardEntityId;
-}) => {
+  onBeforeSave,
+  onSave,
+  isSaveEnabled = true,
+}: InteractiveQuestionProviderProps) => {
   const { id: cardId, isLoading: isLoadingValidatedId } = useValidatedEntityId({
     type: "card",
     id: initId,
   });
+
+  const handleCreateQuestion = useCreateQuestion();
+  const handleSaveQuestion = useSaveQuestion();
+
+  const handleSave = async (question: Question) => {
+    if (isSaveEnabled) {
+      await onBeforeSave?.(question);
+      await handleSaveQuestion(question);
+      onSave?.(question);
+      await loadQuestion();
+    }
+  };
+
+  const handleCreate = async (question: Question) => {
+    await handleCreateQuestion(question);
+    await loadQuestion();
+  };
 
   const {
     question,
@@ -82,6 +102,9 @@ export const InteractiveQuestionProvider = ({
     originalQuestion,
     queryResults,
     mode,
+    onSave: handleSave,
+    onCreate: handleCreate,
+    isSaveEnabled,
   };
 
   useEffect(() => {
