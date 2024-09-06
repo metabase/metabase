@@ -488,6 +488,11 @@
    [:permission-level {:optional true} [:enum :read :write]]
    [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]])
 
+(def ^:private UserScope
+  [:map
+   [:current-user-id pos-int?]
+   [:is-superuser?   :boolean]])
+
 (def ^:private default-visibility-config
   {:include-archived-items :exclude
    :include-trash-collection? false
@@ -544,6 +549,12 @@
    (visible-collection-filter-clause collection-id-field {}))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
     visibility-config :- CollectionVisibilityConfig]
+   (visible-collection-filter-clause collection-id-field visibility-config
+                                     {:current-user-id api/*current-user-id*
+                                      :is-superuser?   api/*is-superuser?*}))
+  ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
+    visibility-config :- CollectionVisibilityConfig
+    {:keys [current-user-id is-superuser?]} :- UserScope]
    (let [visibility-config (merge default-visibility-config visibility-config)]
      ;; This giant query looks scary, but it's actually only moderately terrifying! Let's walk through it step by
      ;; step. What we're doing here is adding a filter clause to a surrounding query, to make sure that
@@ -569,27 +580,26 @@
         ;; the `FROM` clause is where we limit the collections to the ones we have permissions on. For a superuser,
         ;; that's all of them. For regular users, it's a) the collections they have permission in the DB for, and b)
         ;; their personal collection and its descendants.
-        :from [[{:union-all (if api/*is-superuser?*
-                              [{:select [:c.*]
-                                :from [[:collection :c]]}]
-                              [{:select [:c.*]
-                                :from [[:collection :c]]
-                                :join [[:permissions :p]
-                                       [:= :c.id :p.collection_id]
-                                       [:permissions_group :pg] [:= :pg.id :p.group_id]
-                                       [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
-                                :where [:and
-                                        [:= :pgm.user_id api/*current-user-id*]
-                                        [:= :p.perm_type "perms/collection-access"]
-                                        [:or
-                                         [:= :p.perm_value "read-and-write"]
-                                         (when (= :read (:permission-level visibility-config))
-                                           [:= :p.perm_value "read"])]]}
-                               (when-let [personal-collection-and-descendant-ids (user->personal-collection-and-descendant-ids api/*current-user-id*)]
+        :from [(if is-superuser?
+                 [:collection :c]
+                 [{:union-all [{:select [:c.*]
+                                :from   [[:collection :c]]
+                                :join   [[:permissions :p]
+                                         [:= :c.id :p.collection_id]
+                                         [:permissions_group :pg] [:= :pg.id :p.group_id]
+                                         [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
+                                :where  [:and
+                                         [:= :pgm.user_id current-user-id]
+                                         [:= :p.perm_type "perms/collection-access"]
+                                         [:or
+                                          [:= :p.perm_value "read-and-write"]
+                                          (when (= :read (:permission-level visibility-config))
+                                            [:= :p.perm_value "read"])]]}
+                               (when-let [personal-collection-and-descendant-ids (user->personal-collection-and-descendant-ids current-user-id)]
                                  {:select [:c.*]
-                                  :from [[:collection :c]]
-                                  :where [:in :id personal-collection-and-descendant-ids]})])}
-                :c]]
+                                  :from   [[:collection :c]]
+                                  :where  [:in :id personal-collection-and-descendant-ids]})]}
+                  :c])]
         ;; The `WHERE` clause is where we apply the other criteria we were given:
         :where [:and
                 ;; hiding the trash collection when desired...

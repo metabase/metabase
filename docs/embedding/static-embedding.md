@@ -113,23 +113,7 @@ You can find a list of all embedded questions and dashboards from **Admin settin
 
 ## Customizing the appearance of static embeds
 
-You can change the way an embedded question or dashboard looks in an iframe (which won't change how it looks in your Metabase instance).
-
-When setting up a static embed, click on the **Appearance** tab, and play around with the different appearance settings.
-
-Settings include:
-
-- Border
-- Title
-- Theme (light, dark, transparent)
-- Font\*
-- Download data (questions only)\*
-
-\* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
-When you make changes to the embed's appearance, Metabase will highlight the changes it made to the code.
-
-For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+See [Customizing appearance of static embeds](./static-embedding-parameters.md#customizing-the-appearance-of-a-static-embed)
 
 ## Auto-refreshing the results of an embedded dashboard
 

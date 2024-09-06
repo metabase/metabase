@@ -18,6 +18,7 @@ import type {
   TimelineEvent,
   TimelineEventId,
   TransformedSeries,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -212,7 +213,7 @@ export type VisualizationDefinition = {
   name?: string;
   noun?: string;
   uiName: string;
-  identifier: string;
+  identifier: VisualizationDisplay;
   aliases?: string[];
   iconName: IconName;
 
