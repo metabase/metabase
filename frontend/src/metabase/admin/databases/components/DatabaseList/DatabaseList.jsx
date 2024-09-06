@@ -54,7 +54,21 @@ export default class DatabaseList extends Component {
     isAdmin: PropTypes.bool,
   };
 
+
+  getBasePath() {
+    return window.location.pathname.startsWith("/settings")
+      ? "/settings/databases"
+      : "/admin/databases";
+  }
+
+  getPermissionsBasePath() {
+    return window.location.pathname.startsWith("/settings")
+      ? "/settings/permissions"
+      : "/admin/permissions";
+  }
+
   render() {
+
     const {
       databases,
       hasSampleDatabase,
@@ -68,13 +82,15 @@ export default class DatabaseList extends Component {
     const { isPermissionModalOpened } = this.state;
 
     const error = deletionError || addSampleDatabaseError;
+    const basePath = this.getBasePath();
+    const permissionsBasePath = this.getPermissionsBasePath();
 
     return (
       <div className={CS.wrapper} data-testid="database-list">
         <section className={cx(AdminS.PageHeader, CS.px2, CS.clearfix)}>
           {isAdmin && (
             <Link
-              to="/settings/databases/create"
+              to={`${basePath}/create`}
               className={cx(
                 ButtonsS.Button,
                 ButtonsS.ButtonPrimary,
@@ -114,7 +130,7 @@ export default class DatabaseList extends Component {
                               <TableCellSpinner size={16} borderWidth={2} />
                             )}
                             <Link
-                              to={"/settings/databases/" + database.id}
+                              to={`${basePath}/${database.id}`}
                               className={cx(CS.textBold, CS.link)}
                             >
                               {database.name}
@@ -188,7 +204,7 @@ export default class DatabaseList extends Component {
                 <Button
                   component={Link}
                   variant="filled"
-                  to={`/settings/permissions/data/database/${createdDbId}`}
+                  to={`${permissionsBasePath}/data/database/${createdDbId}`}
                 >{t`Configure permissions`}</Button>
               </Flex>
             </Modal.Body>
