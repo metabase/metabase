@@ -8,7 +8,7 @@ import { darken } from "metabase/lib/colors";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box, Flex, rem } from "metabase/ui";
 
-import { MetricSidebar } from "../MetricSidebar";
+import { MetricSidebar } from "./MetricSidebar";
 
 const propTypes = {
   question: PropTypes.object.isRequired,
@@ -53,7 +53,7 @@ const Handle = forwardRef(function Handle(props, ref) {
   );
 });
 
-function ResizableNotebook({
+function DatasetNotebook({
   question,
   isResizing,
   onResizeStop,
@@ -85,6 +85,6 @@ function ResizableNotebook({
   );
 }
 
-ResizableNotebook.propTypes = propTypes;
+DatasetNotebook.propTypes = propTypes;
 
-export default ResizableNotebook;
+export default DatasetNotebook;
