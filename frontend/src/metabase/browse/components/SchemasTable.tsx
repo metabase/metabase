@@ -12,12 +12,15 @@ import {
   TableContainer,
   TableHeaderCellContent,
 } from "metabase/visualizations/components/TableSimple/TableSimple.styled";
+import { push } from "react-router-redux";
+import { useDispatch } from "metabase/lib/redux";
 
 interface SchemasTableProps {
   schemas: any[];
 }
 
 export const SchemasTable = ({ schemas }: SchemasTableProps) => {
+  const dispatch = useDispatch();
   // State for sorting
   const [sortColumn, setSortColumn] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -97,8 +100,11 @@ export const SchemasTable = ({ schemas }: SchemasTableProps) => {
   const renderRow = (table: any, rowIndex: number) => (
     <tr
       key={table.id}
-      onClick={() => console.log("Clicked on table:", table)}
-      className="cursor-pointer"
+      onClick={() => {
+        // Use push method to navigate to the database URL
+        dispatch(push(Urls.browseTable(table)));
+      }}
+      style={{ cursor: "pointer" }}
       data-testid="table-row"
     >
       <td>{table.display_name}</td>
