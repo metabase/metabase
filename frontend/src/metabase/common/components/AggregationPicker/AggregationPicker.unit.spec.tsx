@@ -139,6 +139,7 @@ type SetupOpts = {
   metadata?: Metadata;
   query?: Lib.Query;
   allowCustomExpressions?: boolean;
+  allowTemporalComparisons?: boolean;
 };
 
 function setup({
@@ -153,6 +154,7 @@ function setup({
   metadata = createMetadata(),
   query = createQuery({ metadata }),
   allowCustomExpressions,
+  allowTemporalComparisons,
 }: SetupOpts = {}) {
   const stageIndex = 0;
   const clause = Lib.aggregations(query, stageIndex)[0];
@@ -171,6 +173,7 @@ function setup({
       stageIndex={stageIndex}
       operators={operators}
       allowCustomExpressions={allowCustomExpressions}
+      allowTemporalComparisons={allowTemporalComparisons}
       onQueryChange={onQueryChange}
     />,
     { storeInitialState: state },
@@ -413,7 +416,7 @@ describe("AggregationPicker", () => {
 
   describe("column compare shortcut", () => {
     it("does not display the shortcut if there are no aggregations", () => {
-      setup();
+      setup({ allowCustomExpressions: true, allowTemporalComparisons: true });
       expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
     });
 
@@ -421,23 +424,43 @@ describe("AggregationPicker", () => {
       setup({
         query: createQueryWithOpaqueBreakoutAndAggregation(),
         allowCustomExpressions: true,
+        allowTemporalComparisons: true,
+      });
+      expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
+    });
+
+    it("does not display the shortcut if `allowTemporalComparisons` is not set", () => {
+      setup({
+        query: createQueryWithCountAggregation(),
+        allowCustomExpressions: true,
+        allowTemporalComparisons: false,
       });
       expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
     });
 
     it("displays the shortcut with correct label if there is 1 aggregation", () => {
-      setup({ query: createQueryWithCountAggregation() });
+      setup({
+        query: createQueryWithCountAggregation(),
+        allowCustomExpressions: true,
+        allowTemporalComparisons: true,
+      });
       expect(screen.getByText("Compare to the past")).toBeInTheDocument();
     });
 
     it("displays the shortcut with correct label if there are multiple aggregation", () => {
-      setup({ query: createQueryWithCountAndSumAggregations() });
+      setup({
+        query: createQueryWithCountAndSumAggregations(),
+        allowCustomExpressions: true,
+        allowTemporalComparisons: true,
+      });
       expect(screen.getByText("Compare to the past")).toBeInTheDocument();
     });
 
     it("calls 'onQueryChange' on submit", async () => {
       const { onQueryChange } = setup({
         query: createQueryWithCountAggregation(),
+        allowCustomExpressions: true,
+        allowTemporalComparisons: true,
       });
 
       await userEvent.click(screen.getByText("Compare to the past"));

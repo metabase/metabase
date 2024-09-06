@@ -178,5 +178,30 @@ describe("AggregateStep", () => {
       expect(queryIcon("close")).not.toBeInTheDocument();
       expect(queryIcon("add")).not.toBeInTheDocument();
     });
+
+    it("should not allow to use temporal comparisons for metrics", async () => {
+      const query = createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+      });
+      const question = DEFAULT_QUESTION.setType("metric").setQuery(query);
+      const step = createMockNotebookStep({ question, query });
+      setup({ step });
+
+      await userEvent.click(screen.getByText("Count"));
+      expect(await screen.findByText("Average of ...")).toBeInTheDocument();
+      expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
+    });
+
+    it("should allow to use temporal comparisons for non-metrics", async () => {
+      const query = createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+      });
+      const question = DEFAULT_QUESTION.setType("question").setQuery(query);
+      const step = createMockNotebookStep({ question, query });
+      setup({ step });
+
+      await userEvent.click(screen.getByText("Count"));
+      expect(screen.getByText(/compare/i)).toBeInTheDocument();
+    });
   });
 });
