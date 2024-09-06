@@ -67,9 +67,11 @@
           :where  [:raw "search_vector @@ websearch_to_tsquery('" tsv-language "', " [:param :search-term] ")"]}
          {:params {:search-term search-term}}))))
 
+(def non-indexed-models (disj search.config/all-models "indexed-entity"))
+
 (defn- legacy-query
   "Use the source tables directly to search for records."
-  [search-term]
+  [search-term & {:keys [models]}]
   (map (juxt :id :model)
        (t2/query
         (search.impl/full-search-query
@@ -79,7 +81,7 @@
           :is-superuser?      true
           :current-user-perms #{"/"}
           :model-ancestors?   false
-          :models             (disj search.config/all-models "indexed-entity")
+          :models             (or models non-indexed-models)
           :search-string      search-term}))))
 
 (defn build-index!
@@ -98,7 +100,7 @@
                         :model_id (:model_id entry))
           (t2/insert! :model/SearchIndex entry)))))
 
-(defn search-results [search-term]
+(defn search-results [search-term & [double-filter?]]
   (-> (sql.helpers/with [:index-query
                          {:select [:model :model_id]
                           :from   [(t2/table-name :model/SearchIndex)]
@@ -115,20 +117,50 @@
                            :current-user-perms #{"/"}
 
                            :model-ancestors? false
-                           :models           search.config/all-models
+                           :models           non-indexed-models
+
+                           :search-string (when double-filter? search-term)})])
+      (sql.helpers/select :sq.*)
+      (sql.helpers/from [:source-query :sq])
+      ;; right-join doesn't help
+      (sql.helpers/join [:index-query :iq] [:and
+                                            [:= :sq.model :iq.model]
+                                            [:= :sq.id :iq.model_id]])
+      (sql/format {:params {:search-term search-term} :quoted true})
+      t2/query))
+
+(defn search-cards [search-term]
+  (-> (sql.helpers/with [:index-query
+                         {:select [:model :model_id]
+                          :from   [(t2/table-name :model/SearchIndex)]
+                          :where  [:raw "search_vector @@ websearch_to_tsquery('"
+                                   tsv-language "', "
+                                   [:param :search-term] ")"]}]
+                        [:source-query
+                         (search.impl/full-search-query
+                          {:archived? nil
+
+                             ;; TODO pass the actual user
+                           :current-user-id    1
+                           :is-superuser?      true
+                           :current-user-perms #{"/"}
+
+                           :model-ancestors? false
+                           :models           #{"card"}
 
                            :search-string nil})])
       (sql.helpers/select :sq.*)
-      (sql.helpers/from   [:source-query :sq])
-      (sql.helpers/right-join   [:index-query :iq] [:and
-                                                    [:= :sq.model :iq.model]
-                                                    [:= :sq.id :iq.model_id]])
+      (sql.helpers/from [:source-query :sq])
+      ;; right-join doesn't help
+      (sql.helpers/join [:index-query :iq] [:and
+                                            [:= :sq.model :iq.model]
+                                            [:= :sq.id :iq.model_id]])
       (sql/format {:params {:search-term search-term} :quoted true})
       t2/query))
 
 (defn legacy-results
   "To compare"
-  [search-term]
+  [search-term & {:keys [models]}]
   (t2/query
    (search.impl/full-search-query
     {:archived? nil
@@ -140,7 +172,7 @@
 
      :model-ancestors? false
      ;; this model needs dynamic vars
-     :models           (disj search.config/all-models "indexed-entity")
+     :models           (or models non-indexed-models)
 
      :search-string search-term})))
 
@@ -157,6 +189,14 @@
   (map (juxt :model :id :name) (legacy-results "user"))
   (map (juxt :model :id :name) (search-results "satisfaction"))
   (map (juxt :model :id :name) (legacy-results "satisfaction"))
+
+  (map (juxt :model :id :name) (search-results "satis:*"))
+  (map (juxt :model :id :name) (search-results "or"))
+  (map (juxt :model :id :name) (search-results "order"))
+  (map (juxt :model :id :name) (search-results "user -people"))
+  (map (juxt :model :id :name) (search-results "satisfaction or user"))
+  (map (juxt :model :id :name) (search-results "\"satisfaction per category\""))
+  (map (juxt :model :id :name) (search-results "category"))
 
 ;; cool, newer version return singular result
   (map (juxt :model :id :name) (search-results "satisfactions"))
@@ -180,14 +220,35 @@
   (time (dotimes [_ 100] (legacy-query "satisfaction")))
   (time (dotimes [_ 100] (search-query "venue")))
   (time (dotimes [_ 100] (legacy-query "venue")))
+  (time (dotimes [_ 100] (legacy-query nil)))
 
   ;; but joining to the "hydrated query" reverses the advantage
   (time
    (dotimes [_ 500]
+     ;; baseline
+     (mapv (juxt :model :id :name) (legacy-results nil))) )
+  (time
+   (dotimes [_ 500]
+     ;; no real speed-up filtering with index
      (mapv (juxt :model :id :name) (search-results "sample"))))
   (time
    (dotimes [_ 500]
-     (mapv (juxt :model :id :name) (legacy-results "sample"))))
+     ;; with like % there's a big speed-up
+     (mapv (juxt :model :id :name) (legacy-results "sample"))) )
+  (time
+   (dotimes [_ 500]
+     ;; doing both filters... still a little bit more overhead
+     (mapv (juxt :model :id :name) (search-results "sample" true))))
+
+
+  (time
+   (dotimes [_ 500]
+     ;; no real speed-up filtering with index
+     (mapv (juxt :model :id :name) (search-cards "satisfaction"))))
+  (time
+   (dotimes [_ 500]
+     ;; no real speed-up filtering with index
+     (mapv (juxt :model :id :name) (legacy-results "satisfaction" :models #{"card"}))))
 
 ;; consistent B-)
   (search-query "revenue")
