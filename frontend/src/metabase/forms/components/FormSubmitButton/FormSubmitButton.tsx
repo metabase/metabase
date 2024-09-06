@@ -1,5 +1,5 @@
 import type { ReactNode, Ref } from "react";
-import { forwardRef, useEffect } from "react";
+import { forwardRef } from "react";
 import { t } from "ttag";
 
 import type { ButtonProps } from "metabase/ui";
@@ -38,12 +38,6 @@ export const FormSubmitButton = forwardRef(function FormSubmitButton(
     failedLabel,
   });
   const submitColor = getSubmitButtonColor(status, { color });
-
-  useEffect(() => {
-    if (status === "fulfilled") {
-      onSuccess?.();
-    }
-  }, [onSuccess, status]);
 
   return (
     <Button
