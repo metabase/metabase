@@ -268,7 +268,7 @@
       include-tables?              add-tables
       true                         add-can-upload-to-dbs
       include-editable-data-model? filter-databases-by-data-model-perms
-      exclude-uneditable-details?  (#(filter mi/can-write? %))
+      exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
       filter-by-data-access?       (#(filter mi/can-read? %))
       include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
@@ -288,7 +288,12 @@
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.
 
-  * `include_only_uploadable` will only include DBs into which Metabase can insert new data."
+  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.
+
+  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
+  [[metabase.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
+  in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
+  database details."
   [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics]
   {include                       (mu/with-api-error-message
                                   [:maybe [:= "tables"]]
@@ -369,7 +374,12 @@
    Passing include_editable_data_model will only return tables for which the current user has data model editing
    permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
    In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
-   and tables, with no additional metadata."
+   and tables, with no additional metadata.
+
+   Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
+   [[metabase.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
+   in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
+   database details."
   [id include include_editable_data_model exclude_uneditable_details]
   {id      ms/PositiveInt
    include [:maybe [:enum "tables" "tables.fields"]]}
