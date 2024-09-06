@@ -60,6 +60,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: files-changed
@@ -92,6 +100,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-druid-ee:
     needs: files-changed
@@ -125,6 +141,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-druid-jdbc-ee:
     needs: files-changed
@@ -158,6 +182,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mariadb-10-2-ee:
     needs: files-changed
@@ -194,6 +226,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mariadb-latest-ee:
     needs: files-changed
@@ -230,6 +270,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mongo-4-4-ee:
     needs: files-changed
@@ -263,6 +311,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mongo-4-4-ssl-ee:
     needs: files-changed
@@ -320,6 +376,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mongo-5-0-ee:
     needs: files-changed
@@ -353,6 +417,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mongo-5-0-ssl-ee:
     needs: files-changed
@@ -411,6 +483,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mongo-latest-ee:
     needs: files-changed
@@ -447,6 +527,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
 
   be-tests-mongo-sharded-cluster-ee:
@@ -473,6 +561,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mysql-8-0-ee:
     needs: files-changed
@@ -557,6 +653,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-oracle-18-4-ee:
     needs: files-changed
@@ -594,6 +698,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-oracle-21-3-ee:
     needs: files-changed
@@ -640,6 +752,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-postgres-ee:
     needs: files-changed
@@ -720,6 +840,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-presto-jdbc-ee:
     needs: files-changed
@@ -780,6 +908,14 @@ jobs:
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-redshift-ee:
     needs: files-changed
