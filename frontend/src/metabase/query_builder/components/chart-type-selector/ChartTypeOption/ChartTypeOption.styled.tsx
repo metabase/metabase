@@ -82,17 +82,3 @@ export const OptionIconContainer = styled.div<OptionIconContainerProps>`
     }
   }
 `;
-
-export const OptionLabel = styled.h4`
-  color: var(--mb-color-text-medium);
-  font-weight: bold;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  margin: 1rem 0 1rem 1.5rem;
-`;
-
-export const OptionList = styled.div`
-  display: flex;
-  margin: 1rem 1rem 3rem 1rem;
-  flex-wrap: wrap;
-`;
