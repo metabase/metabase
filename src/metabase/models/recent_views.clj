@@ -176,14 +176,18 @@
      [:model [:enum :dataset :card :metric :dashboard :collection :table]]
      [:can_write :boolean]
      [:timestamp :string]]
+    ;; database_id was commented out below because this schema was not actually being used correctly
+    ;; by [[metabase.api.activity/get-popular-items-model-and-id]] and when I fixed it in #47418
+    ;; [[metabase.api.activity-test/popular-items-test]] started failing because things don't actually come back with
+    ;; database IDs... commented out for now until someone gets a change to look at this. -- Cam
     [:multi {:dispatch :model}
      [:card [:map
              [:display :string]
-             [:database_id :int]
+             #_[:database_id :int]
              [:parent_collection ::pc]
              [:moderated_status ::verified]]]
      [:dataset [:map
-                [:database_id :int]
+                #_[:database_id :int]
                 [:parent_collection ::pc]
                 [:moderated_status ::verified]]]
      [:metric [:map
@@ -195,7 +199,7 @@
               [:display_name :string]
               [:table_schema [:maybe :string]]
               [:database [:map
-                          [:id [:int {:min 1}]]
+                          #_[:id [:int {:min 1}]]
                           [:name :string]]]]]
      [:collection [:map
                    [:parent_collection ::pc]

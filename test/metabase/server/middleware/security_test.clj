@@ -181,3 +181,20 @@
 
   (testing "Should handle invalid origins"
     (is (true? (mw.security/approved-origin? "http://example.com" "  fpt://something http://example.com ://123  4")))))
+
+(deftest test-access-control-headers?
+  (testing "Should always allow localhost:*"
+    (tu/with-temporary-setting-values [enable-embedding     true
+                                       embedding-app-origin nil]
+      (is (= "http://localhost:8080" (get (mw.security/access-control-headers "http://localhost:8080") "Access-Control-Allow-Origin")))))
+
+  (testing "Should disable CORS when embedding is disabled"
+    (tu/with-temporary-setting-values [enable-embedding     false
+                                       embedding-app-origin nil]
+      (is (= nil (get (mw.security/access-control-headers "http://localhost:8080") "Access-Control-Allow-Origin")))))
+
+  (testing "Should work with embedding-app-origin"
+    (mt/with-premium-features #{:embedding}
+      (tu/with-temporary-setting-values [enable-embedding     true
+                                         embedding-app-origin "example.com"]
+        (is (= "https://example.com" (get (mw.security/access-control-headers "https://example.com") "Access-Control-Allow-Origin")))))))

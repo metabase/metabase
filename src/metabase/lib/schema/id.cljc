@@ -28,7 +28,7 @@
 (mr/def ::saved-questions-virtual-database
   [:=
    {:doc/title   "Saved Questions Virtual Database ID"
-    :doc/message (:doc (meta #'saved-questions-virtual-database-id))}
+    :description (:doc (meta #'saved-questions-virtual-database-id))}
    saved-questions-virtual-database-id])
 
 (mr/def ::table

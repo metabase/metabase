@@ -17,4 +17,10 @@ export type CsvUploadClickedEvent = ValidateEvent<{
   triggered_from: "left_nav";
 }>;
 
-export type SimpleEvent = CsvUploadClickedEvent;
+export type NewsletterToggleClickedEvent = ValidateEvent<{
+  event: "newsletter-toggle-clicked";
+  triggered_from: "setup";
+  event_detail: "opted-in" | "opted-out";
+}>;
+
+export type SimpleEvent = CsvUploadClickedEvent | NewsletterToggleClickedEvent;
