@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [crypto.random :as crypto-random]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.common :as api]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.util.embed :as embed]
@@ -74,9 +73,10 @@
                   (setting/set-value-of-type! :boolean :enable-embedding-sdk new-value)
                   (when (and new-value (str/blank? (embed/embedding-secret-key)))
                     (embed/embedding-secret-key! (crypto-random/hex 32)))
-                  (let [snowplow-payload {:embedding-app-origin-set   (boolean (embedding-app-origin))
+                  (snowplow/track-event! ::snowplow/embed_share
+                                         {:event                      (if new-value
+                                                                        :embedding-enabled
+                                                                        :embedding-disabled)
+                                          :embedding-app-origin-set   (boolean (embedding-app-origin))
                                           :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
-                                          :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}]
-                    (snowplow/track-event!
-                     (if new-value ::snowplow/embedding-enabled ::snowplow/embedding-disabled)
-                     api/*current-user-id* snowplow-payload)))))
+                                          :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))
