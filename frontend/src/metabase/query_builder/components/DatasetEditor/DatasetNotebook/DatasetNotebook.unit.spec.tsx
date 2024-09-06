@@ -49,7 +49,7 @@ function setup({
 }
 
 describe("DatasetNotebook", () => {
-  it("should render a metrics doc link for metrics", () => {
+  it("should render a metric docs link for metrics", () => {
     const question = new Question(createMockCard({ type: "metric" }));
     setup({ question });
     const link = screen.getByRole("link", { name: /Docs/ });
@@ -61,7 +61,7 @@ describe("DatasetNotebook", () => {
     );
   });
 
-  it("should render a metrics doc link for non-metrics", () => {
+  it("should render a metric docs link for non-metrics", () => {
     const question = new Question(createMockCard({ type: "question" }));
     setup({ question });
     expect(
