@@ -10,21 +10,27 @@ import {
   setUIControls,
   updateQuestion,
 } from "metabase/query_builder/actions";
-import { ChartTypeSettings } from "metabase/query_builder/components/ChartTypeSelector/ChartTypeSettings";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import {
+  ChartTypeSettings,
   type GetSensibleVisualizationsProps,
   type UseChartTypeVisualizationsProps,
   useChartTypeVisualizations,
-} from "metabase/query_builder/components/ChartTypeSelector/use-chart-type-visualizations";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+} from "metabase/query_builder/components/chart-type-selector";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";
 
+export type ChartTypeSidebarProps = Pick<
+  UseChartTypeVisualizationsProps,
+  "question"
+> &
+  GetSensibleVisualizationsProps;
+
 export const ChartTypeSidebar = ({
   question,
   result,
-}: UseChartTypeVisualizationsProps & GetSensibleVisualizationsProps) => {
+}: ChartTypeSidebarProps) => {
   const dispatch = useDispatch();
 
   const onUpdateQuestion = (newQuestion: Question) => {
@@ -44,7 +50,7 @@ export const ChartTypeSidebar = ({
   } = useChartTypeVisualizations({
     question,
     result,
-    onUpdateQuestion: onUpdateQuestion,
+    onUpdateQuestion,
   });
 
   const handleSelectVisualization = (display: CardDisplayType) => {

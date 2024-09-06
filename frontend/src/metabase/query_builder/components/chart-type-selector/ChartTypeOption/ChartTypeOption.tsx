@@ -1,19 +1,19 @@
 import { checkNotNull } from "metabase/lib/types";
 import { Icon } from "metabase/ui";
 import visualizations from "metabase/visualizations";
-import type { VisualizationDisplay } from "metabase-types/api";
+import type { CardDisplayType } from "metabase-types/api";
 
 import {
   OptionIconContainer,
   OptionRoot,
   OptionText,
   SettingsButton,
-} from "./ChartTypeSidebar.styled";
+} from "./ChartTypeOption.styled";
 
 export type ChartTypeOptionProps = {
-  onSelectVisualization: (display: VisualizationDisplay) => void;
-  visualizationType: VisualizationDisplay;
-  selectedVisualization: VisualizationDisplay;
+  onSelectVisualization: (display: CardDisplayType) => void;
+  visualizationType: CardDisplayType;
+  selectedVisualization: CardDisplayType;
 };
 
 export const ChartTypeOption = ({

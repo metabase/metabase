@@ -1,12 +1,24 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
-import { ChartTypeSidebar } from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar/ChartTypeSidebar";
+import { renderWithProviders } from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
 import registerVisualizations from "metabase/visualizations/register";
+import {
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+
+import {
+  ChartTypeSidebar,
+  type ChartTypeSidebarProps,
+} from "./ChartTypeSidebar";
 
 registerVisualizations();
 
@@ -14,19 +26,28 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
-const DATA = {
+const DATA = createMockDatasetData({
   rows: [[1]],
-  cols: [{ base_type: "type/Integer", name: "foo", display_name: "foo" }],
-};
+  cols: [
+    createMockColumn({
+      base_type: "type/Integer",
+      name: "foo",
+      display_name: "foo",
+    }),
+  ],
+});
 
-const setup = props => {
-  const question = metadata
-    .database(SAMPLE_DB_ID)
-    .question()
-    .setDisplay("gauge");
+const setup = (props: Partial<ChartTypeSidebarProps> = {}) => {
+  const question = checkNotNull(
+    metadata.database(SAMPLE_DB_ID)?.question().setDisplay("gauge"),
+  );
 
-  render(
-    <ChartTypeSidebar question={question} result={{ data: DATA }} {...props} />,
+  renderWithProviders(
+    <ChartTypeSidebar
+      question={question}
+      result={createMockDataset({ data: DATA })}
+      {...props}
+    />,
   );
 };
 
@@ -49,7 +70,7 @@ describe("ChartSettingsSidebar", () => {
       setUIControls,
     });
 
-    fireEvent.click(screen.getByTestId("Progress-button"));
+    userEvent.click(screen.getByTestId("Progress-button"));
 
     expect(setUIControls).toHaveBeenCalledWith({ isShowingRawTable: false });
     expect(updateQuestion).toHaveBeenCalled();
@@ -62,7 +83,7 @@ describe("ChartSettingsSidebar", () => {
       onOpenChartSettings,
     });
 
-    fireEvent.click(screen.getByTestId("Gauge-button"));
+    userEvent.click(screen.getByTestId("Gauge-button"));
 
     expect(onOpenChartSettings).toHaveBeenCalledWith({
       initialChartSettings: { section: "Data" },
@@ -82,7 +103,7 @@ describe("ChartSettingsSidebar", () => {
       }),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("img", { name: /gear/i }));
+    userEvent.click(screen.getByRole("img", { name: /gear/i }));
     expect(onOpenChartSettings).toHaveBeenCalledWith({
       initialChartSettings: { section: "Data" },
       showSidebarTitle: true,

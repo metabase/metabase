@@ -6,5 +6,7 @@
   "npm.autoDetect": "off",
   "eslint.options": {
     "rulePaths": ["frontend/lint/eslint-rules/"]
-  }
+  },
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "javascript.updateImportsOnFileMove.enabled": "always"
 }
