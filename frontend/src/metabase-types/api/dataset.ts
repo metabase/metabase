@@ -1,4 +1,7 @@
-import type { CacheStrategy, LocalFieldReference } from "metabase-types/api";
+import type {
+  Strategy as CacheStrategy,
+  LocalFieldReference,
+} from "metabase-types/api";
 
 import type { Card } from "./card";
 import type { DatabaseId } from "./database";
