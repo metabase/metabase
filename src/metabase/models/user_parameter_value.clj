@@ -62,7 +62,8 @@
                        :parameter_id (:id parameter)
                        :value        (:value parameter)
                        :default      (:default parameter)})
-                    (m/distinct-by (juxt :user_id :dashboard_id :parameter_id))))
+                    (m/index-by (juxt :user_id :dashboard_id :parameter_id))
+                    vals))
               (catch Exception e
                 (log/error e "Error saving user parameters for a dashboard"))))
           :capacity 50
