@@ -305,7 +305,7 @@ jobs:
         with:
           junit-name: 'be-tests-mongo-4-4-ee'
           test-args: >-
-            :exclude-tags [:mb/once :mongo-sharded-cluster-tests]
+            :exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'
             :partition/total 2
             :partition/index ${{ matrix.partition-index }}
       - name: Upload Test Results
@@ -370,7 +370,7 @@ jobs:
         with:
           junit-name: 'be-tests-mongo-4-4-ee'
           test-args: >-
-            :exclude-tags [:mb/once :mongo-sharded-cluster-tests]
+            :exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'
             :partition/total 2
             :partition/index ${{ matrix.partition-index }}
       - name: Upload Test Results
@@ -411,7 +411,7 @@ jobs:
         with:
           junit-name: 'be-tests-mongo-5-0-ee'
           test-args: >-
-            :exclude-tags [:mb/once :mongo-sharded-cluster-tests]
+            :exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'
             :partition/total 2
             :partition/index ${{ matrix.partition-index }}
       - name: Upload Test Results
@@ -476,7 +476,7 @@ jobs:
         with:
           junit-name: 'be-tests-mongo-5-0-ee'
           test-args: >-
-            :exclude-tags [:mb/once :mongo-sharded-cluster-tests]
+            :exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'
             :partition/total 2
             :partition/index ${{ matrix.partition-index }}
 
@@ -521,7 +521,7 @@ jobs:
         with:
           junit-name: 'be-tests-mongo-latest-ee'
           test-args: >-
-            :exclude-tags [:mb/once :mongo-sharded-cluster-tests]
+            :exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'
             :partition/total 2
             :partition/index ${{ matrix.partition-index }}
       - name: Upload Test Results
