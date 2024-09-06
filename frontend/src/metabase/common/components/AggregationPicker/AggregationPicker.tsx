@@ -40,6 +40,7 @@ interface AggregationPickerProps {
   clauseIndex?: number;
   operators: Lib.AggregationOperator[];
   allowCustomExpressions?: boolean;
+  allowTemporalComparisons?: boolean;
   onClose?: () => void;
   onQueryChange: (query: Lib.Query) => void;
 }
@@ -75,6 +76,7 @@ export function AggregationPicker({
   clauseIndex,
   operators,
   allowCustomExpressions = false,
+  allowTemporalComparisons = false,
   onClose,
   onQueryChange,
 }: AggregationPickerProps) {
@@ -161,7 +163,10 @@ export function AggregationPicker({
       });
     }
 
-    if (canAddTemporalCompareAggregation(query, stageIndex)) {
+    if (
+      allowTemporalComparisons &&
+      canAddTemporalCompareAggregation(query, stageIndex)
+    ) {
       sections.push({
         type: "action",
         key: "compare",
@@ -189,6 +194,7 @@ export function AggregationPicker({
     clauseIndex,
     operators,
     allowCustomExpressions,
+    allowTemporalComparisons,
   ]);
 
   const checkIsItemSelected = useCallback(

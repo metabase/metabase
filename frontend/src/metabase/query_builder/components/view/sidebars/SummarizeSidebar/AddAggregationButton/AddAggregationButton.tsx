@@ -52,6 +52,7 @@ export function AddAggregationButton({
           query={query}
           stageIndex={stageIndex}
           operators={operators}
+          allowTemporalComparisons
           onQueryChange={query => {
             onQueryChange(query);
             setIsOpened(false);
