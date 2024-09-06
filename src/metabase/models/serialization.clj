@@ -728,10 +728,10 @@
   [ingested maybe-local]
   (let [model-name (ingested-model ingested)
         adjusted   (xform-one model-name ingested)
-        instance (binding [mi/*deserializing?* true]
-                   (if (nil? maybe-local)
-                     (load-insert! model-name adjusted)
-                     (load-update! model-name adjusted maybe-local)))]
+        instance   (binding [mi/*deserializing?* true]
+                     (if (nil? maybe-local)
+                       (load-insert! model-name adjusted)
+                       (load-update! model-name adjusted maybe-local)))]
     (spec-nested! model-name ingested instance)
     instance))
 
@@ -1631,15 +1631,19 @@
 
 ;;; ## Utilities
 
-(defmacro log-stripped-error
-  "Log errors with no stacktrace"
-  [prefix e]
-  `(loop [prefix# ~prefix
-          e#      ~e]
-     (when e#
-       (log/errorf (str prefix# ": " (ex-message e#) " " (-> (ex-data e#)
-                                                             (dissoc :toucan2/context-trace))))
-       (recur "  caused by" (.getCause ^Exception e#)))))
+(defn strip-error
+  "Transforms the error in a list of strings to log"
+  [e prefix]
+  (->> (for [[e prefix] (map vector
+                             (take-while some? (iterate #(.getCause ^Exception %) e))
+                             (cons prefix (repeat "  caused by")))]
+         (str (when prefix (str prefix ": "))
+              (ex-message e)
+              (when-let [data (-> (ex-data e)
+                                  (dissoc :toucan2/context-trace)
+                                  not-empty)]
+                (str " " (pr-str data)))))
+       (str/join "\n")))
 
 ;;; ## Memoizing appdb lookups
 
