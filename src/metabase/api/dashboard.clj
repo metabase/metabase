@@ -324,48 +324,53 @@
   ((get-dashboard-fn *dashboard-load-id*) id))
 
 (defn- cards-to-copy
-  "Returns a map of which cards we need to copy and which are not to be copied. The `:copy` key is a map from id to
-  card. The `:discard` key is a vector of cards which were not copied due to permissions."
+  "Returns a map of which cards we need to copy, which cards we need to reference, and which are not to be copied. The
+  `:copy` and `:reference` keys are maps from id to card. The `:discard` key is a vector of cards which were not
+  copied due to permissions."
   [deep-copy? dashcards]
-  (letfn [(split-cards [{:keys [card series] :as db-card}]
+  (letfn [(card->cards [{:keys [card series]}] (into [card] series))
+          (readable? [card] (and (mi/model card) (mi/can-read? card)))
+          (card->decision [parent-card card]
             (cond
+              (not (readable? parent-card))
+              :discard
+
+              (not (readable? card))
+              :discard
+
               (and (not deep-copy?)
                    (not (:dashboard_id card)))
-              {}
+              :reference
 
-              (nil? (:card_id db-card)) ; text card
-              {}
-
-              ;; cards without permissions are just a map with an :id from [[hide-unreadable-card]]
-              (not (mi/model card))
-              {:retain nil, :discard (into [card] series)}
-
-              (mi/can-read? card)
-              (let [{writable true unwritable false} (group-by (comp boolean mi/can-read?)
-                                                               series)]
-                {:retain (into [card] writable), :discard unwritable})
-              ;; if you can't write the base, we don't have anywhere to put the series
-              :else
-              {:discard (into [card] series)}))]
+              (readable? card)
+              :retain))
+          (split-cards [{:keys [card] :as db-card}]
+            (let [cards (card->cards db-card)]
+              (group-by (partial card->decision card) cards)))]
     (reduce (fn [acc db-card]
-              (let [{:keys [retain discard]} (split-cards db-card)]
+              (let [{:keys [retain discard reference]} (split-cards db-card)]
                 (-> acc
+                    (update :reference merge (m/index-by :id reference))
                     (update :copy merge (m/index-by :id retain))
                     (update :discard concat discard))))
-            {:copy {}
+            {:reference {}
+             :copy {}
              :discard []}
             dashcards)))
 
 (defn- maybe-duplicate-cards
   "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries. Returns a map of
-  {:copied {old-card-id duplicated-card} :uncopied [card]} so that the new dashboard can adjust accordingly."
+  {:copied {old-card-id duplicated-card} :uncopied [card]} so that the new dashboard can adjust accordingly.
+
+  If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection? (= (:collection_id old-dashboard) dest-coll-id)
-        {:keys [copy discard]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
-    (reduce (fn [m [id card]]
+        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
+    (reduce (fn [m [[id card] copy-or-reference]]
               (assoc-in m
-                        [:copied id]
-                        (if (= (:type card) :model)
+                        [(case copy-or-reference :copy :copied :reference :referenced) id]
+                        (if (or (= copy-or-reference :reference)
+                                (= (:type card) :model))
                           card
                           (card/create-card!
                            (cond-> (assoc card :collection_id dest-coll-id)
@@ -378,8 +383,10 @@
                            ;; creating cards from a transaction. wait until tx complete to signal event
                            true))))
             {:copied {}
+             :referenced {}
              :uncopied discard}
-            copy)))
+            (concat (zipmap copy (repeat :copy))
+                    (zipmap reference (repeat :reference))))))
 
 (defn- duplicate-tabs
   [new-dashboard existing-tabs]
@@ -395,12 +402,8 @@
   If the dashboard has tabs, fix up the tab ids in dashcards to point to the new tabs.
   Then if shallow copy, return the cards. If deep copy, replace ids with id from the newly-copied cards.
   If there is no new id, it means user lacked curate permissions for the cards
-  collections and it is omitted. Dashboard-id is only needed for useful errors."
-  [dashboard-id dashcards deep? id->new-card id->new-tab-id]
-  (when (and deep? (nil? id->new-card))
-    (throw (ex-info (tru "No copied card information found")
-                    {:user-id api/*current-user-id*
-                     :dashboard-id dashboard-id})))
+  collections and it is omitted."
+  [dashcards id->new-card id->referenced-card id->new-tab-id]
   (let [dashcards (if (seq id->new-tab-id)
                     (map #(assoc % :dashboard_tab_id (id->new-tab-id (:dashboard_tab_id %)))
                          dashcards)
@@ -411,8 +414,12 @@
               (nil? (:card_id dashboard-card))
               dashboard-card
 
+              ;; referenced cards need no manipulation
+              (get id->referenced-card (:card_id dashboard-card))
+              dashboard-card
+
               ;; if we didn't duplicate, it doesn't go in the dashboard
-              (not (id->new-card (:card_id dashboard-card)))
+              (not (get id->new-card (:card_id dashboard-card)))
               nil
 
               :else
@@ -460,16 +467,17 @@
                          (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
                          (let [dash (first (t2/insert-returning-instances! :model/Dashboard dashboard-data))
-                               {id->new-card :copied uncopied :uncopied}
+                               {id->new-card :copied
+                                id->referenced-card :referenced
+                                uncopied :uncopied}
                                (maybe-duplicate-cards is_deep_copy dash existing-dashboard collection_id)
 
                                id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
                                                 (duplicate-tabs dash existing-tabs))]
                            (reset! new-cards (vals id->new-card))
-                           (when-let [dashcards (seq (update-cards-for-copy from-dashboard-id
-                                                                            (:dashcards existing-dashboard)
-                                                                            is_deep_copy
+                           (when-let [dashcards (seq (update-cards-for-copy (:dashcards existing-dashboard)
                                                                             id->new-card
+                                                                            id->referenced-card
                                                                             id->new-tab-id))]
                              (api/check-500 (dashboard/add-dashcards! dash dashcards)))
                            (cond-> dash
@@ -616,11 +624,13 @@
     dashboard-cards))
 
 (defn- assert-no-invalid-dashboard-internal-dashcards [dashboard to-create]
-  (api/check-400 (seq
-                  (->> to-create
-                       (map :card)
-                       (keep :dashboard_id)
-                       (remove #(= % (u/the-id dashboard)))))))
+  (api/check-400 (not
+                  (seq
+                   (->> to-create
+                        ;; FIXME: this isn't the right check, we don't have a `:card` on the new dashcards.
+                        (map :card)
+                        (keep :dashboard_id)
+                        (remove #(= % (u/the-id dashboard))))))))
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
