@@ -56,6 +56,8 @@
     :model/ModelIndex
     :model/ModelIndexValue
     :model/ModerationReview
+    :model/Notification
+    :model/NotificationSubscription
     :model/ParameterCard
     :model/Permissions
     :model/PermissionsGroup
