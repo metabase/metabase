@@ -4,11 +4,10 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { Icon } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 
 import LegendS from "./Legend.module.css";
 import { IconContainer } from "./LegendItem.styled";
@@ -86,12 +85,18 @@ export default class LegendItem extends Component {
           </IconContainer>
         )}
         {showDot && (
-          <Tooltip tooltip={title} isEnabled={showTooltip && showDotTooltip}>
-            <LegendItemDot
-              color={color}
-              isVisible={isVisible}
-              onClick={onToggleSeriesVisibility}
-            />
+          <Tooltip
+            label={title}
+            disabled={!showTooltip || !showDotTooltip}
+            arrowPosition="center"
+          >
+            <span>
+              <LegendItemDot
+                color={color}
+                isVisible={isVisible}
+                onClick={onToggleSeriesVisibility}
+              />
+            </span>
           </Tooltip>
         )}
         {showTitle && (
