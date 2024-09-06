@@ -185,18 +185,19 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
   const metadata = question.metadata();
   const { isNative } = Lib.queryDisplayInfo(query);
 
+  const table = !isNative
+    ? metadata.table(Lib.sourceTableOrCardId(query))
+    : question.legacyQuery().table();
+
   const database = metadata.database(Lib.databaseID(query));
   if (database) {
     parts.push({
       icon: !subHead ? "database" : undefined,
       name: database.displayName(),
-      href: database.id >= 0 && Urls.browseDatabase(database),
+      href: database.id >= 0 && Urls.browseSchema(table),
     });
   }
 
-  const table = !isNative
-    ? metadata.table(Lib.sourceTableOrCardId(query))
-    : question.legacyQuery().table();
   if (table && table.hasSchema()) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (!isBasedOnSavedQuestion) {

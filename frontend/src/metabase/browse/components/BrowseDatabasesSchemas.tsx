@@ -32,7 +32,6 @@ export const BrowseDatabasesSchemas = () => {
   } = useListDatabaseSchemasQuery({
     id: Number(id),
   });
-  console.log("🚀 ~ BrowseDatabasesSchemas ~ schemaData:", schemaData);
 
   if (error) {
     return <LoadingAndErrorWrapper error />;
