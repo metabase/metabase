@@ -2309,15 +2309,27 @@
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}
                  :model/Card {normal-card-id :id} {:collection_id coll-id}
-                 :model/Card _ {:dashboard_id dash-id}]
+                 :model/Card {dashboard-question-card-id :id} {:dashboard_id dash-id}]
     (testing "The dashboard appears and the normal card appears, but the dashboard-internal card does not"
       (is (= #{[normal-card-id "card"]
                [dash-id "dashboard"]}
-             (set (map (juxt :id :model) (:data (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items")))))))))
+             (set (map (juxt :id :model) (:data (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items"))))))))
+    (testing "If I specifically ask to see dashboard questions, they appear"
+      (is (= #{[normal-card-id "card"]
+               [dashboard-question-card-id "card"]
+               [dash-id "dashboard"]}
+             (set (map (juxt :id :model)
+                       (:data
+                        (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items?show_dashboard_questions=true")))))))))
   (mt/with-temp [:model/Collection {parent-id :id :as parent} {}
                  :model/Collection {coll-id :id} {:location (collection/children-location parent)}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}
                  :model/Card _ {:dashboard_id dash-id}]
     (testing "Here and below are correct (they don't say a collection has a card if it's internal)"
       (is (= ["dashboard"]
-             (:here (first (:data (mt/user-http-request :rasta :get 200 (str "collection/" parent-id "/items"))))))))))
+             (:here (first (:data (mt/user-http-request :rasta :get 200 (str "collection/" parent-id "/items")))))))
+      (testing "unless I ask to show dashboard questions!"
+        (is (= ["dashboard" "card"]
+               (:here
+                (first
+                 (:data (mt/user-http-request :rasta :get 200 (str "collection/" parent-id "/items?show_dashboard_questions=true")))))))))))
