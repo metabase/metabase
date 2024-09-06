@@ -3,7 +3,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { rootId } from "metabase/admin/performance/constants/simple";
-import { CacheDurationUnit } from "metabase-types/api";
+import { DurationUnit as CacheDurationUnit } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
