@@ -1,0 +1,15 @@
+name: Wait for localhost port to be ready
+
+inputs:
+  port:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Wait for port ${{ env.MB_PRESTO_JDBC_TEST_PORT }} to be ready
+      run: |
+        while ! nc -z localhost ${{ inputs.port }};
+          do sleep 0.1;
+        done
+      timeout-minutes: 15

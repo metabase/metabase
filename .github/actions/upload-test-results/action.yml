@@ -4,20 +4,25 @@ description: Uploads test results files to s3
 inputs:
   input-path:
     required: true
+    default: ./target/junit/
   output-name:
     required: true
-    default: test
+    default: ${{ github.job }}
   aws-access-key-id:
     required: true
+    default: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
   aws-secret-access-key:
     required: true
+    default: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
   aws-region:
     required: true
-    default: us-east-1
+    default: ${{ vars.AWS_REGION }}
   bucket:
     required: true
+    default: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
   trunk-api-token:
     required: true
+    default: ${{ secrets.TRUNK_API_TOKEN }}
 
 runs:
   using: "composite"
