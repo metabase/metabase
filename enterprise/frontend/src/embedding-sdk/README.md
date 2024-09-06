@@ -39,9 +39,6 @@ Live demo: https://embedded-analytics-sdk-demo.metabase.com/
   * Alerts
   * ...
 * The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
-  * If you are using a framework with SSR support such as Next.js or Remix, you have to ensure that the SDK components are rendered on the client side.
-  * For example, you can apply the `"use client"` directive on Next.js or use the `remix-utils/ClientOnly` component
-      on Remix.
 * Embedding multiple instances of interactive dashboards on the same page is not supported.
   *  Please use static dashboards if you need to embed multiple dashboards on the same page.
 
