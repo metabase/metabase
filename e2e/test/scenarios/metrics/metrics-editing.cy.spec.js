@@ -11,7 +11,6 @@ import {
   getNotebookStep,
   hovercard,
   modal,
-  openNotebook,
   openQuestionActions,
   popover,
   queryBuilderHeader,
@@ -406,7 +405,8 @@ describe("scenarios > metrics > editing", () => {
       createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
         visitMetric(card.id),
       );
-      openNotebook();
+      openQuestionActions();
+      popover().findByText("Edit metric definition").click();
 
       cy.log("regular screen");
       getNotebookStep("summarize").within(() => {
