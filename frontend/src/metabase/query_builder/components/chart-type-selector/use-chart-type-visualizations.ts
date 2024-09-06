@@ -27,17 +27,16 @@ export const useChartTypeVisualizations = ({
 
   const updateQuestionVisualization = useCallback(
     (display: CardDisplayType) => {
+      let newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
       const visualization = visualizations.get(display);
-
       if (visualization?.onDisplayUpdate) {
-        // prevent viz auto-selection
-        const newQuestion = question.setDisplay(display).lockDisplay();
         const updatedSettings = visualization.onDisplayUpdate(
           newQuestion.settings(),
         );
-
-        onUpdateQuestion(newQuestion.setSettings(updatedSettings));
+        newQuestion = newQuestion.setSettings(updatedSettings);
       }
+
+      onUpdateQuestion(newQuestion);
     },
     [onUpdateQuestion, question],
   );

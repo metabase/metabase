@@ -7,16 +7,20 @@ import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormFooter from "metabase/core/components/FormFooter";
 import FormInput from "metabase/core/components/FormInput";
 import FormRadio from "metabase/core/components/FormRadio";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormTextArea from "metabase/core/components/FormTextArea";
 import CS from "metabase/css/core/index.css";
-import { Form } from "metabase/forms";
+import { Form, FormSubmitButton } from "metabase/forms";
 import { DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 
 import { useSaveQuestionContext } from "./context";
-import type { SaveQuestionFormProps } from "./types";
 
-export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
+export const SaveQuestionForm = ({
+  onCancel,
+  onSaveSuccess,
+}: {
+  onCancel?: () => void;
+  onSaveSuccess?: () => void;
+}) => {
   const { question, originalQuestion, showSaveType, values } =
     useSaveQuestionContext();
 
@@ -61,9 +65,10 @@ export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
         <FormErrorMessage inline />
         <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
         <FormSubmitButton
-          title={t`Save`}
+          label={t`Save`}
           data-testid="save-question-button"
-          primary
+          variant="filled"
+          onSuccess={onSaveSuccess}
         />
       </FormFooter>
     </Form>
