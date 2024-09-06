@@ -2139,7 +2139,10 @@
                                                                                                              (mt/id :orders :id))
                                                                                                             {:column_title "IDENTIFIER"}}}}]
           (letfn [(col-names [card-id]
-                    (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/json" card-id)) first keys (map name) set))]
+                    (->> (mt/user-http-request :crowberto :post 200
+                                               (format "card/%d/query/json" card-id)
+                                               {:format-rows true})
+                         first keys (map name) set))]
             (testing "Renaming columns via viz settings is correctly applied to the CSV export"
               (is (= #{"THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"}
                      (col-names base-card-id))))

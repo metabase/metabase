@@ -43,7 +43,7 @@
   [export-format results]
   (when (seq results)
     (case export-format
-      :csv  (csv/read-csv results)
+      :csv  (try (csv/read-csv results) (catch Exception _ results))
       :xlsx (read-xlsx results))))
 
 (defn- card-download
@@ -62,11 +62,11 @@
                                                       (:visualization_settings card))
                              :query (json/generate-string
                                      (assoc (:dataset_query card)
-                                            :was-pivot true
+                                            :was-pivot (boolean pivot)
                                             :info {:visualization-settings (:visualization_settings card)}
                                             :middleware
                                             {:format-rows?    format-rows
-                                             :pivot?          pivot
+                                             :pivot?          (boolean pivot)
                                              :userland-query? true})))
        (process-results export-format)))
 
@@ -301,7 +301,7 @@
                                               :source-table (format "card__%s" pivot-data-card-id)}}}]
       (let [result (->> (mt/user-http-request :crowberto :post 200
                                               (format "card/%d/query/csv" pivot-card-id)
-                                              {:pivot true})
+                                              {:pivot-results true})
                         csv/read-csv)]
         (testing "Pivot CSV Exports look like a Pivoted Table"
           (testing "The Headers Properly indicate the pivot rows names."
@@ -391,8 +391,8 @@
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
         (let [result (->> (mt/user-http-request :crowberto :post 200
                                                 (format "card/%d/query/csv" pivot-card-id)
-                                                {:format-rows true
-                                                 :pivot       true})
+                                                {:format-rows   true
+                                                 :pivot-results true})
                           csv/read-csv)]
           (is (= [["Created At"
                    "Doohickey" "Doohickey"
@@ -427,15 +427,15 @@
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
         (let [result (->> (mt/user-http-request :crowberto :post 200
                                                 (format "card/%d/query/csv" pivot-card-id)
-                                                {:format-rows true
-                                                 :pivot       true})
+                                                {:format-rows   true
+                                                 :pivot-results true})
                           csv/read-csv)]
           (is (= [["Created At" "Category" "Sum of Price"]
-                  ["June, 2016" "Doohickey" "82.92"]
-                  ["June, 2016" "Gadget" "75.53"]
-                  ["June, 2016" "Gizmo" "83.26"]
-                  ["June, 2016" "Widget" ""]
-                  ["Totals for 2016-06-01T00:00:00Z" "" "241.71"]]
+                  ["April, 2016" "Doohickey" ""]
+                  ["April, 2016" "Gadget" "49.54"]
+                  ["April, 2016" "Gizmo" "87.29"]
+                  ["April, 2016" "Widget" ""]
+                  ["Totals for April, 2016" "" "136.83"]]
                  (take 6 result))))))))
 
 (deftest ^:parallel zero-row-pivot-tables-test
@@ -455,8 +455,8 @@
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
         (let [result (->> (mt/user-http-request :crowberto :post 200
                                                 (format "card/%d/query/csv" pivot-card-id)
-                                                {:format-rows false
-                                                 :pivot       true})
+                                                {:format-rows   false
+                                                 :pivot-results true})
                           csv/read-csv)]
           (is (= [["Category" "Doohickey" "Gadget" "Gizmo" "Widget" "Row totals"]
                   ["" "2185.89" "3019.2" "2834.88" "3109.31" ""]
