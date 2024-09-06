@@ -32,7 +32,7 @@ import {
   NameColumn,
   TableRow,
 } from "./BrowseTable.styled";
-import { getMetricDescription, sortCards } from "./utils";
+import { getMetricDescription, sortModelOrMetric } from "./utils";
 
 type MetricsTableProps = {
   metrics?: MetricResult[];
@@ -69,7 +69,7 @@ export function MetricsTable({
   );
 
   const locale = useLocale();
-  const sortedMetrics = sortCards(metrics, sortingOptions, locale);
+  const sortedMetrics = sortModelOrMetric(metrics, sortingOptions, locale);
 
   const handleSortingOptionsChange = skeleton ? undefined : setSortingOptions;
 

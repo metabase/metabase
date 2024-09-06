@@ -6,6 +6,8 @@ import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import type { MetricResult, ModelResult } from "../types";
 
+export type ModelOrMetricResult = ModelResult | MetricResult;
+
 export const isModel = (item: SearchResult) => item.model === "dataset";
 
 export const getModelDescription = (item: ModelResult) => {
@@ -49,8 +51,8 @@ export const getSecondarySortColumn = (
   return sort_column === "name" ? "collection" : "name";
 };
 
-export function sortCards<T extends ModelResult | MetricResult>(
-  metrics: T[],
+export function sortModelOrMetric<T extends ModelOrMetricResult>(
+  modelsOrMetrics: T[],
   sortingOptions: SortingOptions,
   localeCode: string = "en",
 ) {
@@ -58,21 +60,21 @@ export function sortCards<T extends ModelResult | MetricResult>(
 
   if (!isValidSortColumn(sort_column)) {
     console.error("Invalid sort column", sort_column);
-    return metrics;
+    return modelsOrMetrics;
   }
 
   const compare = (a: string, b: string) =>
     a.localeCompare(b, localeCode, { sensitivity: "base" });
 
-  return [...metrics].sort((metricA, metricB) => {
-    const a = getValueForSorting(metricA, sort_column);
-    const b = getValueForSorting(metricB, sort_column);
+  return [...modelsOrMetrics].sort((modelOrMetricA, modelOrMetricB) => {
+    const a = getValueForSorting(modelOrMetricA, sort_column);
+    const b = getValueForSorting(modelOrMetricB, sort_column);
 
     let result = compare(a, b);
     if (result === 0) {
       const sort_column2 = getSecondarySortColumn(sort_column);
-      const a2 = getValueForSorting(metricA, sort_column2);
-      const b2 = getValueForSorting(metricB, sort_column2);
+      const a2 = getValueForSorting(modelOrMetricA, sort_column2);
+      const b2 = getValueForSorting(modelOrMetricB, sort_column2);
       result = compare(a2, b2);
     }
 
