@@ -46,7 +46,7 @@ import {
 import { ViewFooter } from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
-import { ChartTypeSidebar } from "./sidebars/ChartTypeSidebar/ChartTypeSidebar";
+import { ChartTypeSidebar } from "./sidebars/ChartTypeSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";

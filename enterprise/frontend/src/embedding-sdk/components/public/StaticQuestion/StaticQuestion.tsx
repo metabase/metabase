@@ -20,7 +20,7 @@ import {
   setUIControls,
 } from "metabase/query_builder/actions";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar/ChartTypeSidebar";
+import { ChartTypeSidebar } from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Group } from "metabase/ui";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
