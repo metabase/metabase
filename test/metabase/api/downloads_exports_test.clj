@@ -72,6 +72,17 @@
                                              :userland-query? true})))
        (process-results export-format)))
 
+(defn public-question-download
+  [card {:keys [export-format format-rows pivot]}]
+  (let [public-uuid (str (random-uuid))
+        cleaned-card (dissoc card :id :entity_id)]
+    (mt/with-temp [:model/Card _ (assoc cleaned-card :public_uuid public-uuid)]
+      (->> (mt/user-http-request :crowberto :get 200
+                                 (format "public/card/%s/query/%s?format_rows=%s&pivot_results=%s"
+                                         public-uuid (name export-format)
+                                         format-rows pivot))
+           (process-results export-format)))))
+
 (defn- dashcard-download
   [card-or-dashcard {:keys [export-format format-rows pivot]}]
   (letfn [(dashcard-download* [{dashcard-id  :id
@@ -88,6 +99,25 @@
                      :model/DashboardCard dashcard {:dashboard_id dashboard-id
                                                     :card_id      (:id card-or-dashcard)}]
         (dashcard-download* dashcard)))))
+
+(defn- public-dashcard-download
+  [card-or-dashcard {:keys [export-format format-rows pivot]}]
+  (let [public-uuid (str (random-uuid))]
+    (letfn [(public-dashcard-download* [{dashcard-id  :id
+                                         card-id      :card_id}]
+              (->> (mt/user-http-request :crowberto :post 200
+                                         (format "public/dashboard/%s/dashcard/%d/card/%d/%s"
+                                                 public-uuid dashcard-id card-id (name export-format))
+                                         {:format-rows   format-rows
+                                          :pivot-results pivot})
+                   (process-results export-format)))]
+      (if (contains? card-or-dashcard :dashboard_id)
+        (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid public-uuid}]
+          (public-dashcard-download* (assoc card-or-dashcard :dashboard_id dashboard-id)))
+        (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid public-uuid}
+                       :model/DashboardCard dashcard {:dashboard_id dashboard-id
+                                                      :card_id      (:id card-or-dashcard)}]
+          (public-dashcard-download* dashcard))))))
 
 (defn- run-pulse-and-return-attached-csv-data!
   "Simulate sending the pulse email, get the attached text/csv content, and parse into a map of
@@ -182,19 +212,23 @@
   [card-or-dashcard opts]
   (merge
    (when-not (contains? card-or-dashcard :dashboard_id)
-     {:unsaved-card-download (unsaved-card-download card-or-dashcard opts)
-      :card-download         (card-download card-or-dashcard opts)})
-   {:dashcard-download       (card-download card-or-dashcard opts)}))
+     {:unsaved-card-download    (unsaved-card-download card-or-dashcard opts)
+      :card-download            (card-download card-or-dashcard opts)
+      :public-question-download (public-question-download card-or-dashcard opts)})
+   {:dashcard-download (card-download card-or-dashcard opts)
+    :public-dashcard-download (public-dashcard-download card-or-dashcard opts)}))
 
 (defn all-outputs!
   [card-or-dashcard opts]
   (merge
    (when-not (contains? card-or-dashcard :dashboard_id)
-     {:unsaved-card-download (unsaved-card-download card-or-dashcard opts)
-      :card-download         (card-download card-or-dashcard opts)
-      :alert-attachment      (alert-attachment! card-or-dashcard opts)})
-   {:dashcard-download       (card-download card-or-dashcard opts)
-    :subscription-attachment (subscription-attachment! card-or-dashcard opts)}))
+     {:unsaved-card-download    (unsaved-card-download card-or-dashcard opts)
+      :public-question-download (public-question-download card-or-dashcard opts)
+      :card-download            (card-download card-or-dashcard opts)
+      :alert-attachment         (alert-attachment! card-or-dashcard opts)})
+   {:dashcard-download        (card-download card-or-dashcard opts)
+    :public-dashcard-download (public-dashcard-download card-or-dashcard opts)
+    :subscription-attachment  (subscription-attachment! card-or-dashcard opts)}))
 
 (set! *warn-on-reflection* true)
 
@@ -240,7 +274,8 @@
                    ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
                    ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"]]
                   #{:unsaved-card-download :card-download :dashcard-download
-                    :alert-attachment :subscription-attachment}]
+                    :alert-attachment :subscription-attachment
+                    :public-question-download :public-dashcard-download}]
                  (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
                       (group-by second)
                       ((fn [m] (update-vals m #(into #{} (mapv first %)))))
@@ -258,7 +293,8 @@
                    ["Widget" "987.39" "1014.68" "912.2" "195.04" "3109.31"]
                    ["Grand totals" "2829.06" "4008.16" "3251.08" "1060.98" "11149.28"]]
                   #{:unsaved-card-download :card-download :dashcard-download
-                    :alert-attachment :subscription-attachment}]
+                    :alert-attachment :subscription-attachment
+                    :public-question-download :public-dashcard-download}]
                  (->> (all-outputs! card {:export-format :csv :format-rows false :pivot true})
                       (group-by second)
                       ((fn [m] (update-vals m #(into #{} (mapv first %)))))
@@ -301,7 +337,8 @@
                       ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
                       (when col-totals? ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"])])
                     #{:unsaved-card-download :card-download :dashcard-download
-                      :alert-attachment :subscription-attachment}]
+                      :alert-attachment :subscription-attachment
+                      :public-question-download :public-dashcard-download}]
                    (->> (all-outputs! card {:export-format :csv :format-rows true :pivot true})
                         (group-by second)
                         ((fn [m] (update-vals m #(into #{} (mapv first %)))))
@@ -779,11 +816,13 @@
                                                          :type     :native
                                                          :native   {:query "SELECT 1 as A FROM generate_series(1,1100000);"}}}]
           (let [results (all-outputs! card {:export-format :csv :format-rows true})]
-            (is (= {:card-download           1050001
-                    :unsaved-card-download   1050001
-                    :alert-attachment        1050001
-                    :dashcard-download       1050001
-                    :subscription-attachment 1050001}
+            (is (= {:card-download            1050001
+                    :unsaved-card-download    1050001
+                    :alert-attachment         1050001
+                    :dashcard-download        1050001
+                    :subscription-attachment  1050001
+                    :public-question-download 1050001
+                    :public-dashcard-download 1050001}
                    (update-vals results count))))))))
   (testing "Downloads row limit default works."
     (mt/dataset test-data
@@ -792,11 +831,13 @@
                                                        :type     :native
                                                        :native   {:query "SELECT 1 as A FROM generate_series(1,1100000);"}}}]
         (let [results (all-outputs! card {:export-format :csv :format-rows true})]
-          (is (= {:card-download           1048576
-                  :unsaved-card-download   1048576
-                  :alert-attachment        1048576
-                  :dashcard-download       1048576
-                  :subscription-attachment 1048576}
+          (is (= {:card-download            1048576
+                  :unsaved-card-download    1048576
+                  :alert-attachment         1048576
+                  :dashcard-download        1048576
+                  :subscription-attachment  1048576
+                  :public-question-download 1048576
+                  :public-dashcard-download 1048576}
                  (update-vals results count))))))))
 
 (deftest ^:parallel model-viz-settings-downloads-test

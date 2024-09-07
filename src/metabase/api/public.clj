@@ -188,7 +188,7 @@
 (api/defendpoint GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
   credentials. Public sharing must be enabled."
-  [uuid export-format :as {{:keys [parameters format_rows]} :params}]
+  [uuid export-format :as {{:keys [parameters format_rows pivot_results]} :params}]
   {uuid          ms/UUIDString
    export-format api.dataset/ExportFormat
    format_rows   [:maybe :boolean]
@@ -200,7 +200,8 @@
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
-                :format-rows?          format_rows}))
+                :format-rows?          format_rows
+                :pivot?                pivot_results}))
 
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
@@ -308,7 +309,7 @@
 (api/defendpoint POST ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
                        :export-format api.dataset/export-format-regex]
   "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the export formats. Does not require auth credentials. Public sharing must be enabled."
-  [uuid card-id dashcard-id parameters export-format]
+  [uuid card-id dashcard-id parameters export-format :as {{:keys [format-rows pivot-results]} :body}]
   {uuid          ms/UUIDString
    dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
@@ -322,7 +323,9 @@
               :card-id       card-id
               :dashcard-id   dashcard-id
               :export-format export-format
-              :parameters    parameters))))
+              :parameters    parameters
+              :middleware {:format-rows? format-rows
+                           :pivot?       pivot-results}))))
 
 (api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
