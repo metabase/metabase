@@ -1,6 +1,7 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing."
-  (:refer-clojure :exclude [reduce mapv]))
+  (:refer-clojure :exclude [reduce mapv])
+  (:import (clojure.lang LazilyPersistentVector RT)))
 
 (set! *warn-on-reflection* true)
 
@@ -59,16 +60,61 @@
                (recur res)))
            res))))))
 
+;; Special case for mapv. If the iterated collection has size <=32, it is more efficient to use object array as
+;; accumulator instead of transients, and then build a vector from it.
+
+(definterface ISmallTransient
+  (conj [x])
+  (persistent []))
+
+(deftype SmallTransientImpl [^objects arr, ^:unsynchronized-mutable ^long cnt]
+  ISmallTransient
+  (conj [this x]
+    (RT/aset arr (unchecked-int cnt) x)
+    (set! cnt (unchecked-inc cnt))
+    this)
+
+  (persistent [_]
+    (LazilyPersistentVector/createOwning arr)))
+
+(defn- small-transient [n]
+  (SmallTransientImpl. (object-array n) 0))
+
+(defn- small-conj!
+  {:inline (fn [st x] `(.conj ~(with-meta st {:tag `ISmallTransient}) ~x))}
+  [^ISmallTransient st x]
+  (.conj st x))
+
+(defn- small-persistent! [^ISmallTransient st]
+  (.persistent st))
+
+(defn- smallest-count
+  (^long [c1 c2] (min (count c1) (count c2)))
+  (^long [c1 c2 c3] (min (min (count c1) (count c2)) (count c3)))
+  (^long [c1 c2 c3 c4] (min (min (count c1) (count c2)) (min (count c3) (count c4)))))
+
 (defn mapv
-  "Like `clojure.core/mapv`, but iterates multiple collections more effectively and uses Java iterators under the hood."
+  "Like `clojure.core/mapv`, but iterates multiple collections more efficiently and uses Java iterators under the hood."
   ([f coll1]
-   (persistent! (reduce #(conj! %1 (f %2)) (transient []) coll1)))
+   (let [n (count coll1)]
+     (cond (= n 0) []
+           (<= n 32) (small-persistent! (reduce #(small-conj! %1 (f %2)) (small-transient n) coll1))
+           :else (persistent! (reduce #(conj! %1 (f %2)) (transient []) coll1)))))
   ([f coll1 coll2]
-   (persistent! (reduce #(conj! %1 (f %2 %3)) (transient []) coll1 coll2)))
+   (let [n (smallest-count coll1 coll2)]
+     (cond (= n 0) []
+           (<= n 32) (small-persistent! (reduce #(small-conj! %1 (f %2 %3)) (small-transient n) coll1 coll2))
+           :else (persistent! (reduce #(conj! %1 (f %2 %3)) (transient []) coll1 coll2)))))
   ([f coll1 coll2 coll3]
-   (persistent! (reduce #(conj! %1 (f %2 %3 %4)) (transient [])  coll1 coll2 coll3)))
+   (let [n (smallest-count coll1 coll2 coll3)]
+     (cond (= n 0) []
+           (<= n 32) (small-persistent! (reduce #(small-conj! %1 (f %2 %3 %4)) (small-transient n) coll1 coll2 coll3))
+           :else (persistent! (reduce #(conj! %1 (f %2 %3 %4)) (transient []) coll1 coll2 coll3)))))
   ([f coll1 coll2 coll3 coll4]
-   (persistent! (reduce #(conj! %1 (f %2 %3 %4 %5)) (transient []) coll1 coll2 coll3 coll4))))
+   (let [n (smallest-count coll1 coll2 coll3 coll4)]
+     (cond (= n 0) []
+           (<= n 32) (small-persistent! (reduce #(small-conj! %1 (f %2 %3 %4 %5)) (small-transient n) coll1 coll2 coll3 coll4))
+           :else (persistent! (reduce #(conj! %1 (f %2 %3 %4 %5)) (transient []) coll1 coll2 coll3 coll4))))))
 
 (defn juxt*
   "Like `clojure.core/juxt`, but accepts a list of functions instead of varargs. Uses more efficient mapping."

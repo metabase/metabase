@@ -589,7 +589,7 @@
                                          [:permissions_group :pg] [:= :pg.id :p.group_id]
                                          [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
                                 :where  [:and
-                                         [:= :pgm.user_id api/*current-user-id*]
+                                         [:= :pgm.user_id current-user-id]
                                          [:= :p.perm_type "perms/collection-access"]
                                          [:or
                                           [:= :p.perm_value "read-and-write"]

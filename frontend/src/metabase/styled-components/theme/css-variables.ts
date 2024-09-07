@@ -34,9 +34,10 @@ export function getMetabaseCssVariables(theme: MantineTheme) {
   `;
 }
 
-export function getMetabaseSdkCssVariables(theme: MantineTheme) {
+export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
   return css`
     :root {
+      --mb-default-font-family: ${font};
       ${getSdkDesignSystemCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}
     }
@@ -53,8 +54,6 @@ export function getMetabaseSdkCssVariables(theme: MantineTheme) {
  **/
 function getSdkDesignSystemCssVariables(theme: MantineTheme) {
   return css`
-    --mb-default-font-family: "${theme.fontFamily}";
-
     /* Semantic colors */
     /* Dynamic colors from SDK */
     ${Object.entries(SDK_TO_MAIN_APP_COLORS_MAPPING).flatMap(
