@@ -301,7 +301,6 @@ export const TOOLTIP_SETTINGS = {
     readDependencies: [
       "graph.metrics",
       "graph.dimensions",
-      "stackable.stack_type",
       "graph.tooltip_type",
     ],
   },
