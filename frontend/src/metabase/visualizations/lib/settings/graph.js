@@ -285,15 +285,6 @@ export const TOOLTIP_SETTINGS = {
       if (vizSettings["graph.tooltip_type"] === "default") {
         return true;
       }
-
-      const hasLines = getSeriesDisplays(rawSeries, vizSettings).some(
-        display => display === "line",
-      );
-      // We do not show additional columns on stacked charts
-      if (vizSettings["stackable.stack_type"] != null && !hasLines) {
-        return true;
-      }
-
       return getAvailableAdditionalColumns(rawSeries, vizSettings).length === 0;
     },
     getProps: (rawSeries, vizSettings) => {

@@ -407,7 +407,7 @@ export function getAvailableAdditionalColumns(
     .flatMap(singleSeries => {
       return singleSeries.data.cols;
     })
-    .filter(column => !alreadyIncludedColumns.has(column));
+    .filter(column => isMetric(column) && !alreadyIncludedColumns.has(column));
 }
 
 export function getComputedAdditionalColumnsValue(
