@@ -14,13 +14,11 @@ import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
-import {
-  onCloseChartType,
-  onOpenChartSettings,
-  setUIControls,
-} from "metabase/query_builder/actions";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
+import {
+  ChartTypeSettings,
+  useChartTypeVisualizations,
+} from "metabase/query_builder/components/chart-type-selector";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Group } from "metabase/ui";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
@@ -39,6 +37,40 @@ type State = {
   card: Card | null;
   result: Dataset | null;
   error: GenericErrorResponse | null;
+};
+
+type StaticQuestionVisualizationSelectorProps = {
+  question: Question;
+  result: Dataset | null;
+  onUpdateQuestion: (question: Question) => void;
+};
+
+const StaticQuestionVisualizationSelector = ({
+  question,
+  result,
+  onUpdateQuestion,
+}: StaticQuestionVisualizationSelectorProps) => {
+  const {
+    selectedVisualization,
+    updateQuestionVisualization,
+    sensibleVisualizations,
+    nonSensibleVisualizations,
+  } = useChartTypeVisualizations({
+    question,
+    result,
+    onUpdateQuestion,
+  });
+
+  return (
+    <Box w="355px">
+      <ChartTypeSettings
+        selectedVisualization={selectedVisualization}
+        onSelectVisualization={updateQuestionVisualization}
+        sensibleVisualizations={sensibleVisualizations}
+        nonSensibleVisualizations={nonSensibleVisualizations}
+      />
+    </Box>
+  );
 };
 
 const StaticQuestionInner = ({
@@ -130,10 +162,6 @@ const StaticQuestionInner = ({
   const question = new Question(card, metadata);
   const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
 
-  const legacyQuery = question.legacyQuery({
-    useStructuredQuery: true,
-  });
-
   return (
     <Box
       className={cx(CS.flexFull, CS.fullWidth)}
@@ -142,17 +170,11 @@ const StaticQuestionInner = ({
     >
       <Group h="100%" pos="relative" align="flex-start">
         {showVisualizationSelector && (
-          <Box w="355px">
-            <ChartTypeSidebar
-              question={question}
-              result={result}
-              onOpenChartSettings={onOpenChartSettings}
-              onCloseChartType={onCloseChartType}
-              query={legacyQuery}
-              setUIControls={setUIControls}
-              updateQuestion={changeVisualization}
-            />
-          </Box>
+          <StaticQuestionVisualizationSelector
+            question={question}
+            result={result}
+            onUpdateQuestion={changeVisualization}
+          />
         )}
         <QueryVisualization
           className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}

@@ -210,11 +210,11 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByText("Visualization").click();
 
     // Ensure the Map visualization is sensible
-    cy.findByTestId("Map-button").should(
-      "have.attr",
-      "data-is-sensible",
-      "true",
-    );
+    cy.findByTestId("display-options-sensible").as("sensibleOptions");
+
+    cy.get("@sensibleOptions").within(() => {
+      cy.findByTestId("Map-button").should("be.visible");
+    });
   });
 
   it("should apply brush filters by dragging map", () => {
