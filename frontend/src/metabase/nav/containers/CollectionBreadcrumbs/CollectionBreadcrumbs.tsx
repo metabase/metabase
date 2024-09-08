@@ -8,7 +8,7 @@ import {
 import { useSelector } from "metabase/lib/redux";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { getCollectionId } from "metabase/selectors/app";
-import type { CollectionId, DashboardId } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 import {
   CollectionBreadcrumbs as InnerCollectionBreadcrumbs,
@@ -16,9 +16,12 @@ import {
 } from "../../components/CollectionBreadcrumbs/CollectionBreadcrumbs";
 
 interface CollectionBreadcrumbsProps
-  extends Omit<InnerCollectionBreadcrumbsProps, "collection" | "dashboard"> {
-  dashboardId?: DashboardId | undefined;
-  collectionId: CollectionId;
+  extends Omit<
+    InnerCollectionBreadcrumbsProps,
+    "collection" | "dashboard" | "baseCollectionId"
+  > {
+  collectionId?: CollectionId;
+  baseCollectionId?: CollectionId | null;
 }
 
 export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
@@ -27,8 +30,7 @@ export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
 
   const { data: collection } = useGetCollectionQuery({ id: collectionId });
 
-  const statefulDashboardId = useSelector(getQuestion)?.dashboardId();
-  const dashboardId = props.dashboardId ?? statefulDashboardId;
+  const dashboardId = useSelector(getQuestion)?.dashboardId();
   const location = useLocation();
   const isQuestionPage = location.pathname?.startsWith("/question");
   const shouldShowDashboard = dashboardId && isQuestionPage;
@@ -43,6 +45,7 @@ export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
       {...props}
       collection={collection}
       dashboard={dashboard}
+      baseCollectionId={props.baseCollectionId ?? null}
     />
   );
 };

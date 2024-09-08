@@ -71,7 +71,7 @@ const setup = async (
     collectionEndpoints?: CollectionEndpoints;
   } = {},
 ) => {
-  const onCreateMock = jest.fn(() => Promise.resolve());
+  const onCreateMock = jest.fn(question => Promise.resolve(question));
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
 

@@ -4,7 +4,7 @@ import type { CollectionId, DashboardId } from "metabase-types/api";
 export type SaveQuestionProps = {
   question: Question;
   originalQuestion: Question | null;
-  onCreate: (question: Question) => Promise<void>;
+  onCreate: (question: Question) => Promise<Question>;
   onSave: (question: Question) => Promise<void>;
 
   closeOnSuccess?: boolean;
@@ -19,7 +19,12 @@ export type SaveQuestionProps = {
    * the question will be saved to this collection.
    **/
   saveToCollectionId?: CollectionId;
-};
+  initialDashboardId?: DashboardId | null;
+} & (
+  | { initialCollectionId?: null; initialDashboardId?: null }
+  | { initialCollectionId: CollectionId; initialDashboardId?: DashboardId }
+  | { initialCollectionId: CollectionId; initialDashboardId?: null }
+);
 
 export type FormValues = {
   saveType: "overwrite" | "create";

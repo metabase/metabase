@@ -116,6 +116,7 @@ const Questions = createEntity({
             { id: card.id },
             {
               collection_id: canonicalCollectionId(collection && collection.id),
+              dashboard_id: null,
               archived: isRootTrashCollection(collection),
             },
             undo(opts, getLabel(card), t`moved`),

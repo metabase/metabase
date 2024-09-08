@@ -8,13 +8,13 @@ import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/typ
 import { Flex, Modal, type ModalProps } from "metabase/ui";
 
 export const SaveQuestionModal = ({
-  initialCollectionId,
   multiStep,
   onCreate,
   onSave,
   originalQuestion,
   question,
   closeOnSuccess,
+  initialCollectionId,
   saveToCollectionId,
   ...modalProps
 }: SaveQuestionProps & Omit<ModalProps, "title">) => (

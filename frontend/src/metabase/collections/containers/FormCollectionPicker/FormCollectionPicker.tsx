@@ -33,7 +33,6 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   zIndex?: number;
-  allowSelectDashboard: boolean;
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
 }
 
@@ -59,14 +58,9 @@ function FormCollectionPicker({
   placeholder = t`Select a collection`,
   type = "collections",
   filterPersonalCollections,
-  allowSelectDashboard,
   collectionPickerModalProps,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
-
-  if (allowSelectDashboard) {
-    collectionPickerModalProps;
-  }
 
   const [{ value }, { error, touched }, { setValue }] = useField(name);
 
