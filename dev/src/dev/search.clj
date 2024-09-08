@@ -139,5 +139,4 @@
   ;; doing both filters... still a little bit more overhead with the join
   (mini-bench 100 :hybrid "sample" :double-filter? true)
   ;; oh! this monstrocity is actually 2x faaster than baseline B-)
-  (mini-bench 100 :hybrid-multi "sample")
-  )
+  (mini-bench 100 :hybrid-multi "sample"))
