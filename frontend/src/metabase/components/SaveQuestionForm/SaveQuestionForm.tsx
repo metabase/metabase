@@ -7,20 +7,25 @@ import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormFooter from "metabase/core/components/FormFooter";
 import FormInput from "metabase/core/components/FormInput";
 import FormRadio from "metabase/core/components/FormRadio";
+import FormSelect from "metabase/core/components/FormSelect";
 import FormTextArea from "metabase/core/components/FormTextArea";
-import CS from "metabase/css/core/index.css";
+import CoreStyles from "metabase/css/core/index.css";
 import { Form, FormSubmitButton } from "metabase/forms";
 import { isNullOrUndefined } from "metabase/lib/types";
 import { DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
+import type { Dashboard } from "metabase-types/api";
 
+import CS from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
 
 export const SaveQuestionForm = ({
   onCancel,
   onSaveSuccess,
+  saveToDashboard,
 }: {
   onCancel?: () => void;
   onSaveSuccess?: () => void;
+  saveToDashboard?: Dashboard | null | undefined;
 }) => {
   const {
     question,
@@ -59,7 +64,7 @@ export const SaveQuestionForm = ({
         />
       )}
       {values.saveType === "create" && (
-        <div className={CS.overflowHidden}>
+        <div className={CoreStyles.overflowHidden}>
           <FormInput
             name="name"
             title={t`Name`}
@@ -70,7 +75,7 @@ export const SaveQuestionForm = ({
             title={t`Description`}
             placeholder={t`It's optional but oh, so helpful`}
           />
-          {isCollectionPickerEnabled && (
+          {isCollectionPickerEnabled && !saveToDashboard && (
             <FormCollectionAndDashboardPicker
               collectionIdFieldName="collection_id"
               dashboardIdFieldName="dashboard_id"
@@ -78,6 +83,19 @@ export const SaveQuestionForm = ({
               zIndex={DEFAULT_MODAL_Z_INDEX + 1}
             />
           )}
+          {saveToDashboard &&
+            saveToDashboard.tabs &&
+            saveToDashboard.tabs.length > 1 && (
+              <FormSelect
+                name="tab_id"
+                title="Which tab should this go on?"
+                containerClassName={CS.dashboardTabSelectContainer}
+                options={saveToDashboard.tabs.map(tab => ({
+                  name: tab.name,
+                  value: tab.id,
+                }))}
+              />
+            )}
         </div>
       )}
       <FormFooter>
