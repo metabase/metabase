@@ -1,6 +1,7 @@
 import type React from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetDashboardQuery } from "metabase/api";
 import {
   AdHocLeftSideRoot,
   AdHocViewHeading,
@@ -9,6 +10,7 @@ import {
 } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -44,6 +46,11 @@ export function AdHocQuestionLeftSide(
     }
   };
 
+  const saveToDashboardId = question.dashboardId();
+  const { data: saveToDashboard } = useGetDashboardQuery(
+    saveToDashboardId ? { id: saveToDashboardId } : skipToken,
+  );
+
   return (
     <AdHocLeftSideRoot>
       <ViewHeaderMainLeftContentContainer>
@@ -69,6 +76,14 @@ export function AdHocQuestionLeftSide(
             isObjectDetail={isObjectDetail}
             subHead
           />
+        )}
+        {saveToDashboard && (
+          <Text size="sm" fw="bold" color="text-light">
+            <Flex align="center" gap="sm" color="text-light">
+              <Icon name="dashboard" size={12} />
+              {saveToDashboard?.name}
+            </Flex>
+          </Text>
         )}
       </ViewHeaderLeftSubHeading>
     </AdHocLeftSideRoot>
