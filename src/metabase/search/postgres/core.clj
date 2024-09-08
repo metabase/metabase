@@ -19,31 +19,34 @@
      :current-user-id    1
      :current-user-perms #{"/"}}))
 
+(defn- in-place-query [{:keys [models search-term archived?]}]
+  (search.impl/full-search-query
+   (merge
+    (user-params)
+    {:search-string      search-term
+     :models             (or models
+                             (if api/*current-user-id*
+                               search.config/all-models
+                               ;; For REPL convenience, skip these models as
+                               ;; they require the user to be initialized.
+                               (disj search.config/all-models "indexed-entity")))
+     :archived?          archived?
+     :model-ancestors?   true})))
+
 (defn hybrid
   "Use the index for appling the search string, but rely on the legacy code path for rendering
   the display data, applying permissions, additional filtering, etc.
 
   NOTE: this is less efficient than legacy search even. We plan to replace it with something
   less feature complete, but much faster."
-  [search-term & {:keys [models double-filter? archived?]}]
+  [search-term & {:keys [double-filter?] :as opts}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index does not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
   (-> (sql.helpers/with [:index-query search.index/search-query]
-                        [:source-query
-                         (search.impl/full-search-query
-                          (merge
-                           (user-params)
-                           {:search-string      (when double-filter?
-                                                  search-term)
-                            :models             (or models
-                                                    (if api/*current-user-id*
-                                                      search.config/all-models
-                                                      ;; For REPL convenience, skip these models as
-                                                      ;; they require the user to be initialized.
-                                                      (disj search.config/all-models "indexed-entities")))
-                            :archived?          archived?
-                            :model-ancestors?   true}))])
+                        [:source-query (in-place-query (cond-> opts
+                                                         double-filter?
+                                                         (assoc :search-term search-term)))])
       (sql.helpers/select :sq.*)
       (sql.helpers/from [:source-query :sq])
       (sql.helpers/join [:index-query :iq] [:and
@@ -51,6 +54,24 @@
                                             [:= :sq.id :iq.model_id]])
       (sql/format {:params {:search-term search-term} :quoted true})
       t2/query))
+
+(defn hybrid-multi
+  "Perform multiple legacy searches to see if its faster. Perverse!"
+  [search-term & {:as opts}]
+  (when-not @#'search.index/initialized?
+    (throw (ex-info "Search index does not initialized. Use [[init!]] to ensure it exists."
+                    {:search-engine :postgres})))
+  (->> {:params {:search-term search-term} :quoted true}
+       (sql/format search.index/search-query)
+       t2/query
+       (group-by :model)
+       (mapcat (fn [[model results]]
+                 (let [ids (map :model_id results)]
+                   ;; Something is very wrong here, this also returns items with other ids.
+                   (->> (assoc opts :models #{model} :ids ids)
+                        in-place-query
+                        t2/query
+                        (filter (comp (set ids) :id))))))))
 
 (defn init!
   "Ensure that the search index exists, and has been populated with all  entities."
