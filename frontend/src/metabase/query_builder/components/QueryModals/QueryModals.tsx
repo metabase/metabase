@@ -30,7 +30,13 @@ import MoveEventModal from "metabase/timelines/questions/containers/MoveEventMod
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Alert, Card, CollectionId, User } from "metabase-types/api";
+import type {
+  Alert,
+  Card,
+  CollectionId,
+  DashboardTabId,
+  User,
+} from "metabase-types/api";
 import type {
   QueryBuilderMode,
   QueryBuilderUIControls,
@@ -121,7 +127,7 @@ export function QueryModals({
   );
 
   const handleSaveModalCreate = useCallback(
-    async (question: Question) => {
+    async (question: Question, dashboardTabId?: DashboardTabId) => {
       const newQuestion = await onCreate(question);
       const type = question.type();
       const dashboardId = question.dashboardId();
@@ -133,7 +139,11 @@ export function QueryModals({
         onOpenModal(MODAL_TYPES.SAVED);
       } else if (typeof dashboardId === "number") {
         // TODO: try to figure out the name of the dashboard?
-        const opts = { editMode: true, addCardWithId: newQuestion.id() };
+        const opts = {
+          editMode: true,
+          addCardWithId: newQuestion.id(),
+          tabId: dashboardTabId,
+        };
         dispatch(push(Urls.dashboard({ id: dashboardId, name: "" }, opts)));
       }
 

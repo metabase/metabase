@@ -33,7 +33,7 @@ import DataReference from "../dataref/DataReference";
 import { SnippetSidebar } from "../template_tags/SnippetSidebar";
 import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
 
-import NewQuestionHeader from "./NewQuestionHeader";
+import { NewQuestionHeader } from "./NewQuestionHeader";
 import { NotebookContainer } from "./View/NotebookContainer";
 import {
   BorderedViewTitleHeader,
@@ -290,7 +290,13 @@ class View extends Component {
         />
         {/*This is used so that the New Question Header is unmounted after the animation*/}
         <Transition mounted={isNewQuestion} transition={fadeIn} duration={300}>
-          {style => <NewQuestionHeader className={CS.spread} style={style} />}
+          {style => (
+            <NewQuestionHeader
+              className={CS.spread}
+              style={style}
+              saveToDashboardId={card.dashboard_id}
+            />
+          )}
         </Transition>
       </QueryBuilderViewHeaderContainer>
     );

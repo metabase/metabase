@@ -553,7 +553,7 @@ export function getInitialSelectedTabId(
       const searchParams = new URLSearchParams(window.location.search);
       const tabParam = searchParams.get("tab");
       const tabId = tabParam ? parseInt(tabParam, 10) : null;
-      const hasTab = dashboard.tabs?.find?.(tab => tab.id === tabId);
+      const hasTab = dashboard.tabs?.some?.(tab => tab.id === tabId);
       if (hasTab) {
         return tabId;
       }

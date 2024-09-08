@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import type Question from "metabase-lib/v1/Question";
-import type { CardType } from "metabase-types/api";
+import type { CardType, DashboardTabId } from "metabase-types/api";
 
 import type { FormValues } from "./types";
 
@@ -27,7 +27,10 @@ const updateQuestion = async (
 export const createQuestion = async (
   details: FormValues,
   question: Question,
-  onCreate: (question: Question) => Promise<Question>,
+  onCreate: (
+    question: Question,
+    dashboardTabId?: DashboardTabId | undefined,
+  ) => Promise<Question>,
 ) => {
   if (details.saveType !== "create") {
     return;
@@ -44,9 +47,7 @@ export const createQuestion = async (
     .setCollectionId(collectionId)
     .setDashboardId(dashboardId);
 
-  const createdQuestion = await onCreate(newQuestion);
-
-  return createdQuestion;
+  return onCreate(newQuestion, details.tab_id || undefined);
 };
 
 export async function submitQuestion(
@@ -68,6 +69,7 @@ export const getInitialValues = (
   question: Question,
   initialCollectionId: FormValues["collection_id"],
   initialDashboardId: FormValues["dashboard_id"],
+  initialDashboardTabId: FormValues["tab_id"],
 ): FormValues => {
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
@@ -93,6 +95,7 @@ export const getInitialValues = (
       question.dashboardId() === undefined || isReadonly
         ? initialDashboardId
         : question.dashboardId(),
+    tab_id: initialDashboardTabId,
     saveType:
       originalQuestion &&
       originalQuestion.type() === "question" &&

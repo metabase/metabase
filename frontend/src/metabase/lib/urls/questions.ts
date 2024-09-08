@@ -23,7 +23,16 @@ export type QuestionUrlBuilderParams = {
 
 export function question(
   card: Partial<
-    Pick<Card, "id" | "name" | "type" | "card_id" | "model">
+    Pick<
+      Card,
+      | "id"
+      | "name"
+      | "type"
+      | "card_id"
+      | "model"
+      | "collection_id"
+      | "dashboard_id"
+    >
   > | null,
   {
     mode = "view",
@@ -100,7 +109,7 @@ export function newQuestion({
   creationType,
   objectId,
   ...options
-}: NewQuestionUrlBuilderParams = {}) {
+}: NewQuestionUrlBuilderParams) {
   const question = Question.create(options);
   const url = ML_Urls.getUrl(question, {
     creationType,
