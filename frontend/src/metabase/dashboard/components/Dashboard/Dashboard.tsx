@@ -15,6 +15,7 @@ import {
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { useHasDashboardScroll } from "metabase/dashboard/components/Dashboard/use-has-dashboard-scroll";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
+import { getInitialSelectedTabId } from "metabase/dashboard/selectors";
 import type {
   CancelledFetchDashboardResult,
   DashboardDisplayOptionControls,
@@ -288,10 +289,19 @@ function Dashboard(props: DashboardProps) {
           setEditingDashboard(dashboard);
         }
         if (addCardOnLoad != null) {
+          // TODO: this suck... but selectedTabId gets calculated after the dashboard has been loaded
+          // but this fn in responsible for loading the dashboard, so the value will not be available until
+          // the next render cycle :/
+          // need to fix
+          const tabId = getInitialSelectedTabId(
+            dashboard,
+            "http://localhost:3000",
+            true,
+          );
           addCardToDashboard({
             dashId: dashboardId,
             cardId: addCardOnLoad,
-            tabId: dashboard.tabs?.[0]?.id ?? null,
+            tabId,
           });
         }
       } catch (error) {
