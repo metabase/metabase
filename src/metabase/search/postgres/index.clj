@@ -1,5 +1,6 @@
 (ns metabase.search.postgres.index
   (:require
+   [clojure.string :as str]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [toucan2.core :as t2]))
@@ -51,7 +52,12 @@
              [:table_id :int]
              ;; filter related
              [:archived :boolean]])
-          t2/query))
+          t2/query)
+
+      (t2/query
+       (format "CREATE INDEX IF NOT EXISTS %s_tsvector_idx ON %s USING gin (search_vector)"
+               (str/replace (str (name active-table) "_" (random-uuid)) #"-" "_")
+               (name pending-table))))
     (reset! reindexing? true)))
 
 (defn activate-pending!
