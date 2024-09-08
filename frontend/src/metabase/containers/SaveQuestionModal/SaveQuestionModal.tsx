@@ -8,22 +8,20 @@ import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/typ
 import { Flex, Modal, type ModalProps } from "metabase/ui";
 
 export const SaveQuestionModal = ({
-  initialCollectionId,
   multiStep,
   onCreate,
   onSave,
   originalQuestion,
   question,
-  closeOnSuccess,
-  ...modalProps
-}: SaveQuestionProps & Omit<ModalProps, "title">) => (
+  ...initialValueProps
+}: SaveQuestionProps & SaveQuestionFormProps) => (
   <SaveQuestionProvider
     question={question}
     originalQuestion={originalQuestion}
     onCreate={onCreate}
     onSave={onSave}
     multiStep={multiStep}
-    initialCollectionId={initialCollectionId}
+    {...initialValueProps}
   >
     <Modal.Root padding="2.5rem" {...modalProps}>
       <Modal.Overlay />

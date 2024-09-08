@@ -67,7 +67,6 @@ export const SaveQuestionForm = ({
             dashboardIdFieldName="dashboard_id"
             title={t`Which collection or dashboard should this go in?`}
             zIndex={DEFAULT_MODAL_Z_INDEX + 1}
-            allowSelectDashboard
           />
         </div>
       )}

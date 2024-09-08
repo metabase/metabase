@@ -47,7 +47,7 @@ interface QueryModalsProps {
   setUIControls: (opts: Partial<QueryBuilderUIControls>) => void;
   originalQuestion: Question;
   card: Card;
-  onCreate: (question: Question) => Promise<void>;
+  onCreate: (question: Question) => Promise<Question>;
   onSave: (
     question: Question,
     config?: { rerunQuery: boolean },
@@ -113,15 +113,16 @@ export function QueryModals({
 
   const handleCreateAndClose = useCallback(
     async (question: Question) => {
-      await onCreate(question);
+      const newQuestion = await onCreate(question);
       onCloseModal();
+      return newQuestion;
     },
     [onCloseModal, onCreate],
   );
 
   const handleSaveModalCreate = useCallback(
     async (question: Question) => {
-      await onCreate(question);
+      const newQuestion = await onCreate(question);
       const type = question.type();
       const dashboardId = question.dashboardId();
 
@@ -131,21 +132,14 @@ export function QueryModals({
       } else if (typeof dashboardId !== "number") {
         onOpenModal(MODAL_TYPES.SAVED);
       } else if (typeof dashboardId === "number") {
-        const opts = {
-          editMode: true,
-          // TODO: problem, question.id is not available at this point for some reason...
-          // the question being used is not the one from the api response, need to do some work to get that value here
-          addCardWithId: question.id(),
-        };
-        const url = Urls.dashboard(
-          {
-            id: dashboardId,
-            name: "TODO: PLZ NO ONE LET ME MERGE THIS",
-          },
-          opts,
-        );
-        dispatch(push(url));
+        // TODO: try to figure out the name of the dashboard?
+        const opts = { editMode: true, addCardWithId: newQuestion.id() };
+        dispatch(push(Urls.dashboard({ id: dashboardId, name: "" }, opts)));
       }
+
+      // TODO: I think this maybe doesn't need to return a question...
+      // i think it just needs to be the onCreate fn in this scope
+      return newQuestion;
     },
     [dispatch, onCloseModal, onCreate, onOpenModal, setQueryBuilderMode],
   );
@@ -185,8 +179,9 @@ export function QueryModals({
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
           onCreate={async question => {
-            await onCreate(question);
+            const newQuestion = await onCreate(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
+            return newQuestion;
           }}
           onClose={onCloseModal}
           opened={true}
@@ -220,8 +215,9 @@ export function QueryModals({
             showAlertsAfterQuestionSaved();
           }}
           onCreate={async question => {
-            await onCreate(question);
+            const newQuestion = await onCreate(question);
             showAlertsAfterQuestionSaved();
+            return newQuestion;
           }}
           onClose={onCloseModal}
           opened={true}

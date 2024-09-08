@@ -27,7 +27,7 @@ const updateQuestion = async (
 export const createQuestion = async (
   details: FormValues,
   question: Question,
-  onCreate: (question: Question) => Promise<void>,
+  onCreate: (question: Question) => Promise<Question>,
 ) => {
   if (details.saveType !== "create") {
     return;
@@ -44,7 +44,9 @@ export const createQuestion = async (
     .setCollectionId(collectionId)
     .setDashboardId(dashboardId);
 
-  /*const createdQuestion =*/ await onCreate(newQuestion);
+  const createdQuestion = await onCreate(newQuestion);
+
+  return createdQuestion;
 };
 
 export async function submitQuestion(
@@ -52,12 +54,12 @@ export async function submitQuestion(
   details: FormValues,
   question: Question,
   onSave: (question: Question) => Promise<void>,
-  onCreate: (question: Question) => Promise<void>,
+  onCreate: (question: Question) => Promise<Question>,
 ) {
   if (details.saveType === "overwrite" && originalQuestion) {
     await updateQuestion(originalQuestion, question, onSave);
   } else {
-    await createQuestion(details, question, onCreate);
+    return await createQuestion(details, question, onCreate);
   }
 }
 
@@ -65,6 +67,7 @@ export const getInitialValues = (
   originalQuestion: Question | null,
   question: Question,
   initialCollectionId: FormValues["collection_id"],
+  initialDashboardId: FormValues["dashboard_id"],
 ): FormValues => {
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
@@ -86,7 +89,10 @@ export const getInitialValues = (
       question.collectionId() === undefined || isReadonly
         ? initialCollectionId
         : question.collectionId(),
-    dashboard_id: question.dashboardId(),
+    dashboard_id:
+      question.dashboardId() === undefined || isReadonly
+        ? initialDashboardId
+        : question.dashboardId(),
     saveType:
       originalQuestion &&
       originalQuestion.type() === "question" &&
