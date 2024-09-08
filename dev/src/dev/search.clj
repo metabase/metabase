@@ -85,7 +85,7 @@
   ;; doesn't work, need to drop to lower level postgres functions
   (basic-view (search.postgres/hybrid "satis:*"))
 
-  ;; nope, neither get it as the lexeme is not similar enought
+  ;; nope, neither get it as the lexeme is not similar enough
   (basic-view (search.postgres/hybrid "satisfactory"))
   (basic-view (legacy-results "satisfactory"))
 
@@ -98,10 +98,18 @@
   (basic-view (search.postgres/hybrid "venue"))
   (basic-view (legacy-results "venue"))
 
-;; consistent B-)
+  (basic-view (search.postgres/hybrid "example"))
+  (basic-view (search.postgres/hybrid-multi "example"))
+
+  ;; consistency checks
   (doseq [term ["e-commerce" "example" "rasta" "new" "collection" "revenue" #_"venue"]]
     (assert (= (set (search.index/search term))
                (set (legacy-query term)))
+            term))
+
+  (doseq [term ["e-commerce" "example" "rasta" "new" "collection" "revenue" #_"venue"]]
+    (assert (= (set (search.postgres/hybrid term))
+               (set (search.postgres/hybrid-multi term)))
             term))
 
   (defn- mini-bench [n engine search-term & args]
@@ -113,7 +121,8 @@
           :index-only search.index/search
           :legacy-index-only legacy-query
           :legacy legacy-results
-          :hybrid search.postgres/hybrid)
+          :hybrid search.postgres/hybrid
+          :hybrid-multi search.postgres/hybrid-multi)
         search-term
         args))))
 
@@ -123,9 +132,12 @@
   (mini-bench 500 :index-only "sample")
 
   ;; but joining to the "hydrated query" reverses the advantage
-  (mini-bench 500 :legacy nil)
-  (mini-bench 500 :legacy "sample")
+  (mini-bench 100 :legacy nil)
+  (mini-bench 100 :legacy "sample")
   ;; slower than fetching everything...
-  (mini-bench 500 :hybrid "sample")
+  (mini-bench 100 :hybrid "sample")
   ;; doing both filters... still a little bit more overhead with the join
-  (mini-bench 500 :hybrid "sample" :double-filter? true))
+  (mini-bench 100 :hybrid "sample" :double-filter? true)
+  ;; oh! this monstrocity is actually 2x faaster than baseline B-)
+  (mini-bench 100 :hybrid-multi "sample")
+  )
