@@ -2,18 +2,19 @@ import slugg from "slugg";
 
 import { stringifyHashOptions } from "metabase/lib/browser";
 import MetabaseSettings from "metabase/lib/settings";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, DashboardTabId } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
 
 type DashboardUrlBuilderOpts = {
   addCardWithId?: number;
   editMode?: boolean;
+  tabId?: DashboardTabId | undefined;
 };
 
 export function dashboard(
   dashboard: Pick<Dashboard, "id" | "name">,
-  { addCardWithId, editMode }: DashboardUrlBuilderOpts = {},
+  { addCardWithId, editMode, tabId }: DashboardUrlBuilderOpts = {},
 ) {
   const options = {
     ...(addCardWithId ? { add: addCardWithId } : {}),
@@ -21,13 +22,22 @@ export function dashboard(
   };
 
   const path = appendSlug(dashboard.id, slugg(dashboard.name));
-  const hash = stringifyHashOptions(options);
+
+  let query = tabId ? new URLSearchParams({ tab: `${tabId}` }).toString() : "";
+  if (query) {
+    query = `?${query}`;
+  }
+
+  let hash = stringifyHashOptions(options);
+  if (hash) {
+    hash = `#${hash}`;
+  }
 
   // x-ray dashboards have ids as urls
   if (typeof dashboard.id === "string") {
-    return hash ? `${dashboard.id}#${hash}` : dashboard.id;
+    return `${dashboard.id}${query}${hash}`;
   } else {
-    return hash ? `/dashboard/${path}#${hash}` : `/dashboard/${path}`;
+    return `/dashboard/${path}${query}${hash}`;
   }
 }
 

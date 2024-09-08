@@ -47,7 +47,13 @@ export const ViewHeaderContainer = props => {
       />
       {/*This is used so that the New Question Header is unmounted after the animation*/}
       <Transition mounted={isNewQuestion} transition={fadeIn} duration={300}>
-        {style => <NewQuestionHeader className={CS.spread} style={style} />}
+        {style => (
+          <NewQuestionHeader
+            className={CS.spread}
+            style={style}
+            saveToDashboardId={card.dashboard_id}
+          />
+        )}
       </Transition>
     </Box>
   );
