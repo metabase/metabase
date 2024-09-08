@@ -26,7 +26,6 @@ export const SdkSaveQuestionForm = ({ onClose }: SdkSaveQuestionFormProps) => {
       onCreate={onCreate}
       onSave={onSave}
       multiStep={false}
-      initialCollectionId={null}
     >
       <Stack p="md">
         <Title>
