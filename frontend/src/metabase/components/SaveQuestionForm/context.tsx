@@ -7,11 +7,12 @@ import {
   useState,
 } from "react";
 
+import { useListRecentsQuery } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { FormProvider } from "metabase/forms";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, RecentCollectionItem } from "metabase-types/api";
 
 import { SAVE_QUESTION_SCHEMA } from "./schema";
 import type { FormValues, SaveQuestionProps } from "./types";
@@ -64,9 +65,30 @@ export const SaveQuestionProvider = ({
     originalQuestion?.collectionId(),
   );
 
+  const { data: recentItems } = useListRecentsQuery(
+    { context: ["selections", "views"] },
+    { refetchOnMountOrArgChange: true },
+  );
+
+  const lastUsedDashboard = recentItems?.find(
+    item => item.model === "dashboard",
+  ) as RecentCollectionItem | undefined;
+  const lastUsedDashboardId = lastUsedDashboard?.id;
+  const lastUsedDashboardCollectionId = lastUsedDashboard?.parent_collection.id;
+
+  const initialCollectionId =
+    lastUsedDashboardCollectionId ?? defaultCollectionId;
+  const initialDashboardId = lastUsedDashboardId;
+
   const initialValues: FormValues = useMemo(
-    () => getInitialValues(originalQuestion, question, defaultCollectionId),
-    [originalQuestion, defaultCollectionId, question],
+    () =>
+      getInitialValues(
+        originalQuestion,
+        question,
+        initialCollectionId,
+        initialDashboardId,
+      ),
+    [originalQuestion, initialCollectionId, initialDashboardId, question],
   );
 
   const handleSubmit = useCallback(
