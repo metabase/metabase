@@ -41,7 +41,7 @@
   less feature complete, but much faster."
   [search-term & {:keys [double-filter?] :as opts}]
   (when-not @#'search.index/initialized?
-    (throw (ex-info "Search index does not initialized. Use [[init!]] to ensure it exists."
+    (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
   (-> (sql.helpers/with [:index-query search.index/search-query]
                         [:source-query (in-place-query (cond-> opts
@@ -59,7 +59,7 @@
   "Perform multiple legacy searches to see if its faster. Perverse!"
   [search-term & {:as opts}]
   (when-not @#'search.index/initialized?
-    (throw (ex-info "Search index does not initialized. Use [[init!]] to ensure it exists."
+    (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
   (->> {:params {:search-term search-term} :quoted true}
        (sql/format search.index/search-query)
