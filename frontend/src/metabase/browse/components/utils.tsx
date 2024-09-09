@@ -4,33 +4,45 @@ import { getCollectionPathAsString } from "metabase/collections/utils";
 import type { SearchResult } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
-import type { ModelResult } from "../types";
+import type { MetricResult, ModelResult } from "../types";
+
+export type ModelOrMetricResult = ModelResult | MetricResult;
 
 export const isModel = (item: SearchResult) => item.model === "dataset";
 
-export const getModelDescription = (item: SearchResult) => {
-  if (item.collection && isModel(item) && !item.description?.trim()) {
+export const getModelDescription = (item: ModelResult) => {
+  if (item.collection && !item.description?.trim()) {
     return t`A model`;
   } else {
     return item.description;
   }
 };
 
+export const isMetric = (item: SearchResult) => item.model === "metric";
+
+export const getMetricDescription = (item: MetricResult) => {
+  if (item.collection && !item.description?.trim()) {
+    return t`A metric`;
+  }
+
+  return item.description;
+};
+
 const getValueForSorting = (
-  model: ModelResult,
+  model: ModelResult | MetricResult,
   sort_column: keyof ModelResult,
 ): string => {
   if (sort_column === "collection") {
-    return getCollectionPathAsString(model.collection);
+    return getCollectionPathAsString(model.collection) ?? "";
   } else {
-    return model[sort_column];
+    return model[sort_column] ?? "";
   }
 };
 
 export const isValidSortColumn = (
   sort_column: string,
 ): sort_column is keyof ModelResult => {
-  return ["name", "collection"].includes(sort_column);
+  return ["name", "collection", "description"].includes(sort_column);
 };
 
 export const getSecondarySortColumn = (
@@ -39,36 +51,36 @@ export const getSecondarySortColumn = (
   return sort_column === "name" ? "collection" : "name";
 };
 
-export const sortModels = (
-  models: ModelResult[],
+export function sortModelOrMetric<T extends ModelOrMetricResult>(
+  modelsOrMetrics: T[],
   sortingOptions: SortingOptions,
   localeCode: string = "en",
-) => {
+) {
   const { sort_column, sort_direction } = sortingOptions;
 
   if (!isValidSortColumn(sort_column)) {
     console.error("Invalid sort column", sort_column);
-    return models;
+    return modelsOrMetrics;
   }
 
   const compare = (a: string, b: string) =>
     a.localeCompare(b, localeCode, { sensitivity: "base" });
 
-  return [...models].sort((modelA, modelB) => {
-    const a = getValueForSorting(modelA, sort_column);
-    const b = getValueForSorting(modelB, sort_column);
+  return [...modelsOrMetrics].sort((modelOrMetricA, modelOrMetricB) => {
+    const a = getValueForSorting(modelOrMetricA, sort_column);
+    const b = getValueForSorting(modelOrMetricB, sort_column);
 
     let result = compare(a, b);
     if (result === 0) {
       const sort_column2 = getSecondarySortColumn(sort_column);
-      const a2 = getValueForSorting(modelA, sort_column2);
-      const b2 = getValueForSorting(modelB, sort_column2);
+      const a2 = getValueForSorting(modelOrMetricA, sort_column2);
+      const b2 = getValueForSorting(modelOrMetricB, sort_column2);
       result = compare(a2, b2);
     }
 
     return sort_direction === SortDirection.Asc ? result : -result;
   });
-};
+}
 
 /** Find the maximum number of recently viewed models to show.
  * This is roughly proportional to the number of models the user

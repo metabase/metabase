@@ -4,7 +4,7 @@ import { SortDirection } from "metabase-types/api/sorting";
 import { createMockModelResult } from "../test-utils";
 import type { ModelResult } from "../types";
 
-import { getMaxRecentModelCount, sortModels } from "./utils";
+import { getMaxRecentModelCount, sortModelOrMetric } from "./utils";
 
 describe("sortModels", () => {
   let id = 0;
@@ -44,7 +44,7 @@ describe("sortModels", () => {
       sort_column: "name",
       sort_direction: SortDirection.Asc,
     } as const;
-    const sorted = sortModels(mockSearchResults, sortingOptions);
+    const sorted = sortModelOrMetric(mockSearchResults, sortingOptions);
     expect(sorted?.map(model => model.name)).toEqual(["A", "B", "C"]);
   });
 
@@ -53,7 +53,7 @@ describe("sortModels", () => {
       sort_column: "name",
       sort_direction: SortDirection.Desc,
     } as const;
-    const sorted = sortModels(mockSearchResults, sortingOptions);
+    const sorted = sortModelOrMetric(mockSearchResults, sortingOptions);
     expect(sorted?.map(model => model.name)).toEqual(["C", "B", "A"]);
   });
 
@@ -62,7 +62,7 @@ describe("sortModels", () => {
       sort_column: "collection",
       sort_direction: SortDirection.Asc,
     } as const;
-    const sorted = sortModels(mockSearchResults, sortingOptions);
+    const sorted = sortModelOrMetric(mockSearchResults, sortingOptions);
     expect(sorted?.map(model => model.name)).toEqual(["B", "A", "C"]);
   });
 
@@ -71,7 +71,7 @@ describe("sortModels", () => {
       sort_column: "collection",
       sort_direction: SortDirection.Desc,
     } as const;
-    const sorted = sortModels(mockSearchResults, sortingOptions);
+    const sorted = sortModelOrMetric(mockSearchResults, sortingOptions);
     expect(sorted?.map(model => model.name)).toEqual(["C", "A", "B"]);
   });
 
@@ -98,7 +98,7 @@ describe("sortModels", () => {
         sort_column: "collection",
         sort_direction: SortDirection.Asc,
       } as const;
-      const sorted = sortModels(mockSearchResults, sortingOptions);
+      const sorted = sortModelOrMetric(mockSearchResults, sortingOptions);
       expect(sorted).toEqual([
         modelMap["model named B, with collection path D / E / F"],
         modelMap["model named Bz, with collection path D / E / F"],
@@ -113,7 +113,7 @@ describe("sortModels", () => {
         sort_column: "collection",
         sort_direction: SortDirection.Desc,
       } as const;
-      const sorted = sortModels(mockSearchResults, sortingOptions);
+      const sorted = sortModelOrMetric(mockSearchResults, sortingOptions);
       expect(sorted).toEqual([
         modelMap["model named C, with collection path Z"],
         modelMap["model named C, with collection path Y"],
@@ -165,7 +165,7 @@ describe("sortModels", () => {
 
       // When sorting in Swedish, z comes before ä
       const swedishLocaleCode = "sv";
-      const sorted = sortModels(
+      const sorted = sortModelOrMetric(
         swedishResults,
         sortingOptions,
         swedishLocaleCode,
