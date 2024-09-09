@@ -16,17 +16,14 @@ import {
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { FixedSizeIcon, Flex, Icon, Skeleton } from "metabase/ui";
+import { FixedSizeIcon, Flex, Skeleton } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
-import { trackModelClick } from "../analytics";
-import type { ModelResult } from "../types";
-import { getIcon } from "../utils";
+import type { MetricResult } from "../types";
 
 import {
   Cell,
@@ -35,15 +32,23 @@ import {
   NameColumn,
   TableRow,
 } from "./BrowseTable.styled";
-import { getModelDescription, sortModelOrMetric } from "./utils";
+import { getMetricDescription, sortModelOrMetric } from "./utils";
 
-export interface ModelsTableProps {
-  models?: ModelResult[];
-  /** True if this component is just rendering a loading skeleton */
+type MetricsTableProps = {
+  metrics?: MetricResult[];
   skeleton?: boolean;
-}
+};
+
+const DEFAULT_SORTING_OPTIONS: SortingOptions = {
+  sort_column: "name",
+  sort_direction: SortDirection.Asc,
+};
 
 export const itemsTableContainerName = "ItemsTableContainer";
+
+const nameProps = {
+  containerName: itemsTableContainerName,
+};
 
 const descriptionProps: ResponsiveProps = {
   hideAtContainerBreakpoint: "sm",
@@ -55,37 +60,28 @@ const collectionProps: ResponsiveProps = {
   containerName: itemsTableContainerName,
 };
 
-const DEFAULT_SORTING_OPTIONS: SortingOptions = {
-  sort_column: "collection",
-  sort_direction: SortDirection.Asc,
-};
-
-export const ModelsTable = ({
-  models = [],
+export function MetricsTable({
   skeleton = false,
-}: ModelsTableProps) => {
+  metrics = [],
+}: MetricsTableProps) {
   const [sortingOptions, setSortingOptions] = useState<SortingOptions>(
     DEFAULT_SORTING_OPTIONS,
   );
 
   const locale = useLocale();
-  const sortedModels = sortModelOrMetric(models, sortingOptions, locale);
+  const sortedMetrics = sortModelOrMetric(metrics, sortingOptions, locale);
+
+  const handleSortingOptionsChange = skeleton ? undefined : setSortingOptions;
 
   /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
   const collectionWidth = 38.5;
   const descriptionWidth = 100 - collectionWidth;
 
-  const handleUpdateSortOptions = skeleton
-    ? undefined
-    : (newSortingOptions: SortingOptions) => {
-        setSortingOptions(newSortingOptions);
-      };
-
   return (
-    <Table aria-label={skeleton ? undefined : t`Table of models`}>
+    <Table aria-label={skeleton ? undefined : t`Table of metrics`}>
       <colgroup>
         {/* <col> for Name column */}
-        <NameColumn containerName={itemsTableContainerName} />
+        <NameColumn {...nameProps} />
 
         {/* <col> for Collection column */}
         <TableColumn {...collectionProps} width={`${collectionWidth}%`} />
@@ -100,7 +96,8 @@ export const ModelsTable = ({
           <SortableColumnHeader
             name="name"
             sortingOptions={sortingOptions}
-            onSortingOptionsChange={handleUpdateSortOptions}
+            onSortingOptionsChange={handleSortingOptionsChange}
+            {...nameProps}
             style={{ paddingInlineStart: ".625rem" }}
             columnHeaderProps={{
               style: { paddingInlineEnd: ".5rem" },
@@ -111,7 +108,7 @@ export const ModelsTable = ({
           <SortableColumnHeader
             name="collection"
             sortingOptions={sortingOptions}
-            onSortingOptionsChange={handleUpdateSortOptions}
+            onSortingOptionsChange={handleSortingOptionsChange}
             {...collectionProps}
             columnHeaderProps={{
               style: {
@@ -119,10 +116,12 @@ export const ModelsTable = ({
               },
             }}
           >
-            <Ellipsified>{t`Collection`}</Ellipsified>
+            {t`Collection`}
           </SortableColumnHeader>
           <SortableColumnHeader
             name="description"
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={handleSortingOptionsChange}
             {...descriptionProps}
             columnHeaderProps={{
               style: {
@@ -138,17 +137,62 @@ export const ModelsTable = ({
       <TBody>
         {skeleton ? (
           <Repeat times={7}>
-            <ModelRow />
+            <MetricRow />
           </Repeat>
         ) : (
-          sortedModels.map((model: ModelResult) => (
-            <ModelRow model={model} key={model.id} />
+          sortedMetrics.map((metric: MetricResult) => (
+            <MetricRow metric={metric} key={metric.id} />
           ))
         )}
       </TBody>
     </Table>
   );
-};
+}
+
+function MetricRow({ metric }: { metric?: MetricResult }) {
+  const dispatch = useDispatch();
+
+  const handleClick = useCallback(
+    (event: MouseEvent) => {
+      if (!metric) {
+        return;
+      }
+
+      // do not trigger click when selecting text
+      const selection = document.getSelection();
+      if (selection?.type === "Range") {
+        event.stopPropagation();
+        return;
+      }
+
+      const { id, name } = metric;
+      const url = Urls.metric({ id, name });
+      const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
+
+      // TODO: metabase/metabse#47713
+      // trackMetricClick(metric.id);
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if ((event.ctrlKey || event.metaKey) && event.button === 0) {
+        Urls.openInNewTab(subpathSafeUrl);
+      } else {
+        dispatch(push(url));
+      }
+    },
+    [metric, dispatch],
+  );
+
+  return (
+    <TableRow onClick={handleClick}>
+      <NameCell metric={metric} />
+      <CollectionCell metric={metric} />
+      <DescriptionCell metric={metric} />
+      <Columns.RightEdge.Cell />
+    </TableRow>
+  );
+}
 
 function SkeletonText() {
   return <Skeleton natural h="16.8px" />;
@@ -162,57 +206,19 @@ function preventDefault(event: MouseEvent) {
   event.preventDefault();
 }
 
-const ModelRow = ({ model }: { model?: ModelResult }) => {
-  const dispatch = useDispatch();
-
-  const handleClick = useCallback(
-    (event: MouseEvent) => {
-      if (!model) {
-        return;
-      }
-
-      // do not trigger click when selecting text
-      const selection = document.getSelection();
-      if (selection?.type === "Range") {
-        event.stopPropagation();
-        return;
-      }
-
-      const { id, name } = model;
-      const url = Urls.model({ id, name });
-      const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
-
-      trackModelClick(model.id);
-
-      event.preventDefault();
-      event.stopPropagation();
-
-      if ((event.ctrlKey || event.metaKey) && event.button === 0) {
-        Urls.openInNewTab(subpathSafeUrl);
-      } else {
-        dispatch(push(url));
-      }
-    },
-    [model, dispatch],
-  );
+function NameCell({ metric }: { metric?: MetricResult }) {
+  const headingId = `metric-${metric?.id ?? "dummy"}-heading`;
 
   return (
-    <TableRow onClick={handleClick}>
-      <NameCell model={model} />
-      <CollectionCell model={model} />
-      <DescriptionCell model={model} />
-      <Columns.RightEdge.Cell />
-    </TableRow>
-  );
-};
-
-function NameCell({ model }: { model?: ModelResult }) {
-  const headingId = `model-${model?.id || "dummy"}-heading`;
-  const icon = getIcon(model);
-  return (
-    <ItemNameCell data-testid="model-name" aria-labelledby={headingId}>
+    <ItemNameCell
+      data-testid="metric-name"
+      aria-labelledby={headingId}
+      {...nameProps}
+    >
       <MaybeItemLink
-        to={model ? Urls.model({ id: model.id, name: model.name }) : undefined}
+        to={
+          metric ? Urls.metric({ id: metric.id, name: metric.name }) : undefined
+        }
         style={{
           // To align the icons with "Name" in the <th>
           paddingInlineStart: "1.4rem",
@@ -220,35 +226,31 @@ function NameCell({ model }: { model?: ModelResult }) {
         }}
         onClick={preventDefault}
       >
-        <Icon
-          size={16}
-          {...icon}
-          color="var(--mb-color-icon-primary)"
-          style={{ flexShrink: 0 }}
-        />
-        {
+        {metric ? (
           <EntityItem.Name
-            name={model?.name || ""}
+            name={metric?.name || ""}
             variant="list"
             id={headingId}
           />
-        }
+        ) : (
+          <SkeletonText />
+        )}
       </MaybeItemLink>
     </ItemNameCell>
   );
 }
 
-function CollectionCell({ model }: { model?: ModelResult }) {
-  const collectionName = model?.collection
-    ? getCollectionName(model.collection)
+function CollectionCell({ metric }: { metric?: MetricResult }) {
+  const collectionName = metric?.collection
+    ? getCollectionName(metric.collection)
     : t`Untitled collection`;
 
   const content = (
     <Flex gap="sm">
       <FixedSizeIcon name="folder" />
 
-      {model ? (
-        <EllipsifiedCollectionPath collection={model.collection} />
+      {metric ? (
+        <EllipsifiedCollectionPath collection={metric.collection} />
       ) : (
         <SkeletonText />
       )}
@@ -260,9 +262,9 @@ function CollectionCell({ model }: { model?: ModelResult }) {
       data-testid={`path-for-collection: ${collectionName}`}
       {...collectionProps}
     >
-      {model?.collection ? (
+      {metric?.collection ? (
         <CollectionLink
-          to={Urls.collection(model.collection)}
+          to={Urls.collection(metric.collection)}
           onClick={stopPropagation}
         >
           {content}
@@ -274,16 +276,16 @@ function CollectionCell({ model }: { model?: ModelResult }) {
   );
 }
 
-function DescriptionCell({ model }: { model?: ModelResult }) {
+function DescriptionCell({ metric }: { metric?: MetricResult }) {
   return (
     <Cell {...descriptionProps}>
-      {model ? (
+      {metric ? (
         <MarkdownPreview
           lineClamp={12}
           allowedElements={["strong", "em"]}
           oneLine
         >
-          {getModelDescription(model) || ""}
+          {getMetricDescription(metric) || ""}
         </MarkdownPreview>
       ) : (
         <SkeletonText />
