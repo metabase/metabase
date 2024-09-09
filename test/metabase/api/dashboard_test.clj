@@ -2130,8 +2130,7 @@
                                                   :display                "table"
                                                   :visualization_settings {}}]
                     :created_at                 true
-                    :updated_at                 true
-                    :is_dashboard_internal_card false}]
+                    :updated_at                 true}]
                   (remove-ids-and-booleanize-timestamps dashboard-cards)))
           (is (= [{:size_x 4
                    :size_y 4
@@ -2248,8 +2247,7 @@
                 :parameter_mappings         []
                 :visualization_settings     {}
                 :created_at                 true
-                :updated_at                 true
-                :is_dashboard_internal_card false}
+                :updated_at                 true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-1))))
         (is (= {:size_x                     4
                 :size_y                     4
@@ -2259,8 +2257,7 @@
                 :visualization_settings     {}
                 :series                     []
                 :created_at                 true
-                :updated_at                 true
-                :is_dashboard_internal_card false}
+                :updated_at                 true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))
         ;; TODO adds tests for return
         (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
@@ -2289,8 +2286,7 @@
                                               :dataset_query          {}
                                               :visualization_settings {}}]
                 :created_at                 true
-                :updated_at                 true
-                :is_dashboard_internal_card false}
+                :updated_at                 true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-1))))
         (is (= {:size_x                     1
                 :size_y                     1
@@ -2300,8 +2296,7 @@
                 :visualization_settings     {}
                 :series                     []
                 :created_at                 true
-                :updated_at                 true
-                :is_dashboard_internal_card false}
+                :updated_at                 true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))))))
 
 (deftest update-cards-parameter-mapping-permissions-test
