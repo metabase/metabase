@@ -3,6 +3,7 @@ import { getIn } from "icepick";
 import type {
   Card,
   TableColumnOrderSetting,
+  VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -60,9 +61,9 @@ const mergeTableColumns = (
 };
 
 export function extendCardWithDashcardSettings(
-  card?: Card,
+  card: Card | VirtualCard,
   dashcardSettings?: VisualizationSettings,
-): Card {
+): Card | VirtualCard {
   return {
     ...card,
     visualization_settings: mergeSettings(

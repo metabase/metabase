@@ -1,7 +1,10 @@
-import { createMockTableColumnOrderSetting } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockTableColumnOrderSetting,
+} from "metabase-types/api/mocks";
 import { ORDERS } from "metabase-types/api/mocks/presets";
 
-import { mergeSettings } from "./typed-utils";
+import { extendCardWithDashcardSettings, mergeSettings } from "./typed-utils";
 
 describe("mergeSettings (metabase#14597)", () => {
   it("should merge with second overriding first", () => {
@@ -119,5 +122,32 @@ describe("mergeSettings (metabase#14597)", () => {
         ],
       });
     });
+  });
+});
+
+describe("extendCardWithDashcardSettings", () => {
+  it("should merge card settings with dashcard settings", () => {
+    const card = createMockCard({
+      visualization_settings: { foo: "bar", baz: "qux" },
+    });
+    const dashcardSettings = { foo: "updated", newSetting: "value" };
+
+    const result = extendCardWithDashcardSettings(card, dashcardSettings);
+
+    expect(result.visualization_settings).toEqual({
+      foo: "updated",
+      baz: "qux",
+      newSetting: "value",
+    });
+  });
+
+  it("should handle undefined dashcard settings", () => {
+    const card = createMockCard({
+      visualization_settings: { foo: "bar" },
+    });
+
+    const result = extendCardWithDashcardSettings(card, undefined);
+
+    expect(result.visualization_settings).toEqual({ foo: "bar" });
   });
 });
