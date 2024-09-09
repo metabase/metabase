@@ -1,3 +1,4 @@
+import classNames from "classnames";
 import type { ComponentProps, LegacyRef } from "react";
 
 import { useIsTruncated } from "metabase/hooks/use-is-truncated";
@@ -5,18 +6,26 @@ import { useIsTruncated } from "metabase/hooks/use-is-truncated";
 import Markdown from "../Markdown";
 import Tooltip from "../Tooltip";
 
+import C from "./MarkdownPreview.module.css";
+
 interface Props {
   children: string;
   className?: string;
   tooltipMaxWidth?: ComponentProps<typeof Tooltip>["maxWidth"];
+  lineClamp?: number;
+  allowedElements?: string[];
+  oneLine?: boolean;
 }
 
-const ALLOWED_ELEMENTS: string[] = [];
+const DEFAULT_ALLOWED_ELEMENTS: string[] = [];
 
 export const MarkdownPreview = ({
   children,
   className,
   tooltipMaxWidth,
+  lineClamp,
+  allowedElements = DEFAULT_ALLOWED_ELEMENTS,
+  oneLine,
 }: Props) => {
   const { isTruncated, ref } = useIsTruncated();
 
@@ -35,15 +44,15 @@ export const MarkdownPreview = ({
       placement="bottom"
       isEnabled={isTruncated}
       tooltip={
-        <Markdown dark disallowHeading unstyleLinks>
+        <Markdown dark disallowHeading unstyleLinks lineClamp={lineClamp}>
           {children}
         </Markdown>
       }
     >
       <div ref={setReactMarkdownRef}>
         <Markdown
-          allowedElements={ALLOWED_ELEMENTS}
-          className={className}
+          allowedElements={allowedElements}
+          className={classNames(C.preview, className, oneLine && C.oneLine)}
           unwrapDisallowed
           lineClamp={1}
         >

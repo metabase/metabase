@@ -28,9 +28,9 @@ import {
   popover,
   questionInfoButton,
   restore,
-  rightSidebar,
   saveDashboard,
   showDashboardCardActions,
+  sidesheet,
   startNewQuestion,
   summarize,
   tableHeaderClick,
@@ -708,11 +708,11 @@ describe("issue 17910", () => {
 
     questionInfoButton().click();
 
-    rightSidebar().within(() => {
+    sidesheet().within(() => {
       cy.findAllByPlaceholderText("Add description")
         .type("A description")
         .blur();
-      cy.findByText("History");
+      cy.findByRole("tab", { name: "History" }).click();
       cy.findByTestId("saved-question-history-list")
         .children()
         .should("have.length", 2);

@@ -83,6 +83,10 @@ export function leftSidebar() {
   return cy.findByTestId("sidebar-left");
 }
 
+export function sidesheet() {
+  return cy.findByTestId("sidesheet");
+}
+
 export function navigationSidebar() {
   return cy.findByTestId("main-navbar-root");
 }

@@ -1,7 +1,7 @@
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 
-import { getCollectionPermissions } from "./get-collection-permissions";
 import { getPermissionsForGroups } from "./get-permission-groups";
+import { getSandboxedCollectionPermissions } from "./get-sandboxed-collection-permissions";
 import { getTenancyIsolationSandboxes } from "./get-tenancy-isolation-sandboxes";
 
 const getMockTable = (id: number) =>
@@ -36,7 +36,7 @@ describe("permission graph generation for embedding cli", () => {
   });
 
   it("should generate valid permissions for collections", () => {
-    const groups = getCollectionPermissions({
+    const groups = getSandboxedCollectionPermissions({
       groupIds: [3, 4, 5],
       collectionIds: [9, 10, 11],
     });

@@ -1,10 +1,9 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   describeEE,
-  modal,
   restore,
-  rightSidebar,
   setTokenFeatures,
+  sidesheet,
   visitQuestion,
 } from "e2e/support/helpers";
 
@@ -30,12 +29,10 @@ describeEE("scenarios > question > caching", () => {
     interceptPerformanceRoutes();
     visitQuestion(ORDERS_QUESTION_ID);
 
-    openSidebarCacheStrategyForm();
+    openSidebarCacheStrategyForm("question");
 
-    rightSidebar().within(() => {
-      cy.findByRole("heading", { name: /Caching settings/ }).should(
-        "be.visible",
-      );
+    sidesheet().within(() => {
+      cy.findByText(/Caching settings/).should("be.visible");
       durationRadioButton().click();
       cy.findByLabelText("Cache results for this many hours").type("48");
       cy.findByRole("button", { name: /Save/ }).click();
@@ -60,23 +57,17 @@ describeEE("scenarios > question > caching", () => {
     interceptPerformanceRoutes();
     visitQuestion(ORDERS_QUESTION_ID);
 
-    openSidebarCacheStrategyForm();
+    openSidebarCacheStrategyForm("question");
 
-    rightSidebar().within(() => {
-      cy.findByRole("heading", { name: /Caching settings/ }).should(
-        "be.visible",
-      );
+    sidesheet().within(() => {
+      cy.findByText(/Caching settings/).should("be.visible");
       cy.findByRole("button", {
         name: /Clear cache for this question/,
       }).click();
     });
-    modal().within(() => {
-      cy.findByRole("button", { name: /Clear cache/ }).click();
-    });
+    cy.findByTestId("confirm-modal").button("Clear cache").click();
     cy.wait("@invalidateCache");
 
-    rightSidebar().within(() => {
-      cy.findByText("Cache cleared").should("be.visible");
-    });
+    sidesheet().findByText("Cache cleared").should("be.visible");
   });
 });
