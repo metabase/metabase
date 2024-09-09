@@ -437,18 +437,13 @@
        (or (not (contains? changes :type))
            (contains? #{:question "question" nil} (:type changes))))))
 
-(defn- handle-dashboard-internal-update [card changes]
-  (let [correct-collection-id (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard_id card))]
-    (assoc changes :collection_id correct-collection-id)))
-
-(defn- maybe-handle-dashboard-internal-update [changes card]
+(defn- assert-is-valid-dashboard-internal-update [changes card]
   (when-not (is-valid-dashboard-internal-card-for-update card changes)
     (throw (ex-info (tru "Invalid dashboard-internal card")
                     {:status-code 400
                      :changes changes
                      :card card})))
-  (cond-> changes
-    (dashboard-internal-card? card) (handle-dashboard-internal-update changes)))
+  changes)
 
 (defn- check-dashboard-internal-card-insert [card]
   (let [correct-collection-id (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard_id card))
@@ -928,11 +923,11 @@
                 ;; `collection_id` and `description` can be `nil` (in order to unset them).
                 ;; Other values should only be modified if they're passed in as non-nil
                 (-> (u/select-keys-when card-updates
-                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id}
+                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly }
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                :result_metadata :collection_preview :verified-result-metadata?})
-                    (maybe-handle-dashboard-internal-update card-before-update)))
+                    (assert-is-valid-dashboard-internal-update card-before-update)))
     ;; ok, now update dependent dashcard parameters
     (try
       (update-associated-parameters! card-before-update card-updates)
