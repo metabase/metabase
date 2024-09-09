@@ -28,18 +28,21 @@
             noti-1     (models.notification/create-notification!
                         {:payload_type :notification/system-event
                          :active       true}
-                        [{:type       :notification-subscription/event
-                          :event_name topic}])
+                        [{:type       :notification-subscription/system-event
+                          :event_name topic}]
+                        nil)
             noti-2     (models.notification/create-notification!
                         {:payload_type :notification/system-event
                          :active       true}
-                        [{:type       :notification-subscription/event
-                          :event_name topic}])
+                        [{:type       :notification-subscription/system-event
+                          :event_name topic}]
+                        nil)
             _inactive  (models.notification/create-notification!
                         {:payload_type :notification/system-event
                          :active       false}
-                        [{:type       :notification-subscription/event
-                          :event_name topic}])
+                        [{:type       :notification-subscription/system-event
+                          :event_name topic}]
+                        nil)
             sent-notis (atom #{})]
         (testing "publishing event will send all the actively subscribed notifciations"
           (with-redefs [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
@@ -57,8 +60,9 @@
         (models.notification/create-notification!
          {:payload_type :notification/system-event
           :active       true}
-         [{:type       :notification-subscription/event
-           :event_name topic}])
+         [{:type       :notification-subscription/system-event
+           :event_name topic}]
+         nil)
         (testing "publish an event that is not supported for notifications will not send any notifications"
           (with-redefs [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
                         events.notification/supported-topics #{}]

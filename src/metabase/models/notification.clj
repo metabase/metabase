@@ -119,7 +119,7 @@
               :where     [:and
                           [:= :n.active true]
                           [:= :ns.event_name (u/qualified-name event-name)]
-                          [:= :ns.type (u/qualified-name :notification-subscription/event)]]}))
+                          [:= :ns.type (u/qualified-name :notification-subscription/system-event)]]}))
 
 (mu/defn create-notification!
   "Create a new notification with `subsciptions`.
