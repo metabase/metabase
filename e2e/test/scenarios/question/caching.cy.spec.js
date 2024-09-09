@@ -29,7 +29,7 @@ describeEE("scenarios > question > caching", () => {
     interceptPerformanceRoutes();
     visitQuestion(ORDERS_QUESTION_ID);
 
-    openSidebarCacheStrategyForm();
+    openSidebarCacheStrategyForm("question");
 
     sidesheet().within(() => {
       cy.findByText(/Caching settings/).should("be.visible");
@@ -57,7 +57,7 @@ describeEE("scenarios > question > caching", () => {
     interceptPerformanceRoutes();
     visitQuestion(ORDERS_QUESTION_ID);
 
-    openSidebarCacheStrategyForm();
+    openSidebarCacheStrategyForm("question");
 
     sidesheet().within(() => {
       cy.findByText(/Caching settings/).should("be.visible");
