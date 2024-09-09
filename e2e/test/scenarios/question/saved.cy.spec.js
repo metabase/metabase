@@ -24,6 +24,7 @@ import {
   restore,
   rightSidebar,
   selectFilterOperator,
+  sidesheet,
   summarize,
   tableHeaderClick,
   visitQuestion,
@@ -194,24 +195,22 @@ describe("scenarios > question > saved", () => {
     visitQuestion(ORDERS_QUESTION_ID);
     questionInfoButton().click();
 
-    rightSidebar().within(() => {
-      cy.findByText("History");
-
+    sidesheet().within(() => {
       cy.findByPlaceholderText("Add description")
         .type("This is a question")
         .blur();
 
       cy.wait("@updateQuestion");
 
+      cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/added a description/i);
 
       cy.findByTestId("question-revert-button").click();
-    });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/reverted to an earlier version/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/This is a question/i).should("not.exist");
+      cy.findByRole("tab", { name: "History" }).click();
+      cy.findByText(/reverted to an earlier version/i);
+      cy.findByText(/This is a question/i).should("not.exist");
+    });
   });
 
   it("should show collection breadcrumbs for a saved question in the root collection", () => {

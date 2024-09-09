@@ -4,9 +4,10 @@ import type {
   CollectionEssentials,
   PaginationRequest,
   PaginationResponse,
+  VisualizationDisplay,
 } from "metabase-types/api";
 
-import type { CardDisplayType, CardType } from "./card";
+import type { CardType } from "./card";
 import type { DatabaseId } from "./database";
 import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
@@ -107,7 +108,7 @@ export interface CollectionItem {
   based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;
   collection_id: CollectionId | null; // parent collection id
-  display?: CardDisplayType;
+  display?: VisualizationDisplay;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
   moderated_status?: string;

@@ -284,19 +284,23 @@
       (with-last-editing-info "dashboard")))
 
 (defn- add-model-index-permissions-clause
-  [query _current-user-perms]
+  [query {:keys [current-user-id is-superuser?]}]
   (sql.helpers/where
    query
-   (collection/visible-collection-filter-clause)))
+   (collection/visible-collection-filter-clause
+    :collection_id
+    {}
+    {:current-user-id current-user-id
+     :is-superuser?   is-superuser?})))
 
 (defmethod search-query-for-model "indexed-entity"
-  [model {:keys [current-user-perms] :as search-ctx}]
+  [model search-ctx]
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/left-join [:model_index :model-index]
                              [:= :model-index.id :model-index-value.model_index_id])
       (sql.helpers/left-join [:report_card :model] [:= :model-index.model_id :model.id])
       (sql.helpers/left-join [:collection :collection] [:= :model.collection_id :collection.id])
-      (add-model-index-permissions-clause current-user-perms)))
+      (add-model-index-permissions-clause search-ctx)))
 
 (defmethod search-query-for-model "segment"
   [model search-ctx]
@@ -353,33 +357,26 @@
   [search-ctx instance]
   (if (:archived? search-ctx)
     (can-write? instance)
-    ;; We filter what we can (ie. everything that is in a collection) out already when querying
+    ;; We filter what we can (i.e., everything in a collection) out already when querying
     true))
 
 (defmethod check-permissions-for-model :table
   [search-ctx instance]
   ;; we've already filtered out tables w/o collection permissions in the query itself.
-  (and
-   (data-perms/user-has-permission-for-table?
-    (:current-user-id search-ctx)
-    :perms/view-data
-    :unrestricted
-    (database/table-id->database-id (:id instance))
-    (:id instance))
-   (data-perms/user-has-permission-for-table?
-    (:current-user-id search-ctx)
-    :perms/create-queries
-    :query-builder
-    (database/table-id->database-id (:id instance))
-    (:id instance))))
+  (let [instance-id (:id instance)
+        user-id     (:current-user-id search-ctx)
+        db-id       (database/table-id->database-id instance-id)]
+    (and
+     (data-perms/user-has-permission-for-table? user-id :perms/view-data :unrestricted db-id instance-id)
+     (data-perms/user-has-permission-for-table? user-id :perms/create-queries :query-builder db-id instance-id))))
 
 (defmethod check-permissions-for-model :indexed-entity
   [search-ctx instance]
-  (and
-   (= :query-builder-and-native
-      (data-perms/full-db-permission-for-user (:current-user-id search-ctx) :perms/create-queries (:database_id instance)))
-   (= :unrestricted
-      (data-perms/full-db-permission-for-user (:current-user-id search-ctx) :perms/view-data (:database_id instance)))))
+  (let [user-id (:current-user-id search-ctx)
+        db-id   (:database_id instance)]
+    (and
+     (= :query-builder-and-native (data-perms/full-db-permission-for-user user-id :perms/create-queries db-id))
+     (= :unrestricted (data-perms/full-db-permission-for-user user-id :perms/view-data db-id)))))
 
 (defmethod check-permissions-for-model :metric
   [search-ctx instance]
@@ -413,7 +410,7 @@
                   (map :model)
                   set))))
 
-(mu/defn- full-search-query
+(mu/defn full-search-query
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to trivial case of
   one model without errors. Therefore we degenerate it down for it"
   [search-ctx :- SearchContext]
@@ -437,7 +434,7 @@
        :limit    search.config/*db-max-results*})))
 
 (defn- hydrate-user-metadata
-  "Hydrate common-name for last_edited_by and created_by from result."
+  "Hydrate common-name for last_edited_by and created_by for each result."
   [results]
   (let [user-ids             (set (flatten (for [result results]
                                              (remove nil? ((juxt :last_editor_id :creator_id) result)))))
@@ -471,8 +468,8 @@
     (map annotate search-results)))
 
 (defn- add-collection-effective-location
-  "Batch-hydrates :effective_location and :effective_parent on collection search results. Keeps search results in
-  order."
+  "Batch-hydrates `:effective_location` and `:effective_parent` on collection search results.
+  Keeps search results in order."
   [search-results]
   (let [collections    (filter #(mi/instance-of? :model/Collection %) search-results)
         hydrated-colls (t2/hydrate collections :effective_parent)
@@ -509,7 +506,7 @@
                                    :name            collection_name
                                    :authority_level collection_authority_level
                                    :type            collection_type}
-                                  ;; for  non-root collections, override :collection with the values for its effective parent
+                                  ;; for non-root collections, override :collection with the values for its effective parent
                                   effective_parent
                                   (when collection_effective_ancestors
                                     {:effective_ancestors collection_effective_ancestors})))
@@ -565,8 +562,8 @@
                             (map #(cond-> %
                                     (t2/instance-of? :model/Collection %) (assoc :type (:collection_type %))))
                             (map #(cond-> % (t2/instance-of? :model/Collection %) collection/maybe-localize-trash-name))
-                            ;; MySQL returns booleans as `1` or `0` so convert those to boolean as
-                            ;; needed
+
+                            ;; MySQL returns booleans as `1` or `0` so convert those to boolean as needed
                             (map #(update % :bookmark bit->boolean))
                             (map #(update % :archived bit->boolean))
                             (map #(update % :archived_directly bit->boolean))

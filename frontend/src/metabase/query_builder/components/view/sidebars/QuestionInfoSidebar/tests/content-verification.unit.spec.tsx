@@ -26,7 +26,7 @@ describe("QuestionInfoSidebar", () => {
       moderation_reviews: [createMockModerationReview({ status: "verified" })],
     });
     await setupContentVerification({ card });
-    expect(screen.getByText(/verified this/)).toBeInTheDocument();
+    expect(await screen.findByText(/verified this/)).toBeInTheDocument();
   });
 
   it("should not show the verification badge if not verified", async () => {

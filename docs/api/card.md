@@ -148,7 +148,7 @@ Create a new `Card`. Card `type` can be `question`, `metric`, or `model`.
 
 -  **`name`** value must be a non-blank string.
 
--  **`type`** nullable :metabase.api.card/card-type.
+-  **`type`** nullable enum of :question, question, :metric, metric, :model, model.
 
 -  **`cache_ttl`** nullable value must be an integer greater than zero.
 
@@ -294,7 +294,7 @@ Update a `Card`.
 
 -  **`name`** nullable value must be a non-blank string.
 
--  **`type`** nullable :metabase.api.card/card-type.
+-  **`type`** nullable enum of :question, question, :metric, metric, :model, model.
 
 -  **`embedding_params`** nullable value must be a valid embedding params map.
 

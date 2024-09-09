@@ -12,6 +12,7 @@ import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
 import type { Table } from "./table";
 import type { UserInfo } from "./user";
+import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
 
 export type CardType = "model" | "question" | "metric";
@@ -42,6 +43,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   result_metadata: Field[];
   moderation_reviews?: ModerationReview[];
+  persisted?: boolean;
 
   query_average_duration?: number | null;
   last_query_start: string | null;
@@ -64,10 +66,8 @@ export interface PublicCard {
   dataset_query: PublicDatasetQuery;
 }
 
-export type CardDisplayType = string;
-
 export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
-  display: CardDisplayType;
+  display: VisualizationDisplay;
   dataset_query: Q;
   parameters?: Parameter[];
   visualization_settings: VisualizationSettings;
