@@ -10,6 +10,12 @@ on:
         required: true
   schedule:
     - cron: '45 * * * *' # hourly
+  workflow_call:
+    inputs:
+      version:
+        description: 'Major Metabase version (e.g. 45, 52, 68)'
+        type: number
+        required: true
 
 jobs:
   update-release-log:
@@ -31,13 +37,22 @@ jobs:
         run: yarn --cwd release --frozen-lockfile && npm i -g tsx
       - name: generate release Log
         run: cd release && tsx ./src/release-log.ts $VERSION > v$VERSION.html
+      - name: generate release channel log
+        run: cd release && tsx ./src/release-channel-log.ts > channels.html
       - name: upload release log to the web
         run: |
           aws s3 cp \
           release/v$VERSION.html \
           s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/v$VERSION.html
-      - name: Create cloudfront invalidation
+      - name: upload release channel log to the web
         run: |
-          aws cloudfront create-invalidation \
-          --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
-          --paths /release-log/v$VERSION.html
+          aws s3 cp \
+          release/channels.html \
+          s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/channels.html
+
+      # FIXME
+      # - name: Create cloudfront invalidation
+      #   run: |
+      #     aws cloudfront create-invalidation \
+      #     --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
+      #     --paths /release-log/v$VERSION.html
