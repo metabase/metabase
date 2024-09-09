@@ -345,8 +345,8 @@ describe("scenarios > collection defaults", () => {
 
       cy.findByTestId("qb-header").icon("ellipsis").click();
       popover().findByText("Move").click();
-      entityPickerModalItem(1, "Collection B").should("exist");
-      entityPickerModalItem(2, "Collection E").should("exist");
+      entityPickerModalItem("Collection B", { level: 1 }).should("exist");
+      entityPickerModalItem("Collection E", { level: 2 }).should("exist");
 
       entityPickerModal().should(
         "not.contain.text",
@@ -562,7 +562,7 @@ describe("scenarios > collection defaults", () => {
 
       entityPickerModal().within(() => {
         entityPickerModalTab("Collections").click();
-        entityPickerModalItem(0, "Our analytics").click();
+        entityPickerModalItem("Our analytics", { level: 0 }).click();
         cy.button("Move").click();
         cy.log("Entity picker should show an error message");
         cy.findByText("Ryan said no").should("exist");

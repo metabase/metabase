@@ -163,21 +163,21 @@ describe("scenarios > question > new", () => {
 
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").click();
-        assertDataPickerEntitySelected(0, "Our analytics");
+        assertDataPickerEntitySelected("Our analytics", { level: 0 });
         cy.findByText("First collection").should("exist");
         cy.findByText("Second collection").should("not.exist");
         cy.findByText("Third collection").should("not.exist");
 
         cy.findByText("First collection").click();
-        assertDataPickerEntitySelected(0, "Our analytics");
-        assertDataPickerEntitySelected(1, "First collection");
+        assertDataPickerEntitySelected("Our analytics", { level: 0 });
+        assertDataPickerEntitySelected("First collection", { level: 1 });
         cy.findByText("Second collection").should("exist");
         cy.findByText("Third collection").should("not.exist");
 
         cy.findByText("Second collection").click();
-        assertDataPickerEntitySelected(0, "Our analytics");
-        assertDataPickerEntitySelected(1, "First collection");
-        assertDataPickerEntitySelected(2, "Second collection");
+        assertDataPickerEntitySelected("Our analytics", { level: 0 });
+        assertDataPickerEntitySelected("First collection", { level: 1 });
+        assertDataPickerEntitySelected("Second collection", { level: 2 });
         cy.findByText("Third collection").should("not.exist");
       });
     });
@@ -489,7 +489,7 @@ describe(
         entityPickerModalTab("Models").should("not.exist");
         entityPickerModalTab("Tables").click();
 
-        entityPickerModalItem(2, "Products").click();
+        entityPickerModalItem("Products", { level: 2 }).click();
       });
 
       // strange: we get different behavior when we go to question/new
@@ -505,7 +505,7 @@ describe(
 
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").click();
-        entityPickerModalItem(1, "Orders").click();
+        entityPickerModalItem("Orders", { level: 1 }).click();
       });
 
       // strange: we get different behavior when we go to question/new
@@ -531,7 +531,7 @@ describe(
         entityPickerModalTab("Saved questions").should("be.visible");
         entityPickerModalTab("Models").should("be.visible");
         entityPickerModalTab("Tables").should("be.visible");
-        entityPickerModalItem(1, "Orders Model").click();
+        entityPickerModalItem("Orders Model", { level: 1 }).click();
       });
 
       cy.wait("@recents");
@@ -552,6 +552,10 @@ describe(
   },
 );
 
-function assertDataPickerEntitySelected(level, name) {
-  entityPickerModalItem(level, name).should("have.attr", "data-active", "true");
+function assertDataPickerEntitySelected(name, options) {
+  entityPickerModalItem(name, options).should(
+    "have.attr",
+    "data-active",
+    "true",
+  );
 }

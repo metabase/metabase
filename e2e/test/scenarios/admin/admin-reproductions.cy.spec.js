@@ -106,8 +106,8 @@ describe("issue 41765", { tags: ["@external"] }, () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      entityPickerModalItem(0, WRITABLE_DB_DISPLAY_NAME).click();
-      entityPickerModalItem(2, TEST_TABLE_DISPLAY_NAME).click();
+      entityPickerModalItem(WRITABLE_DB_DISPLAY_NAME, { level: 0 }).click();
+      entityPickerModalItem(TEST_TABLE_DISPLAY_NAME, { level: 2 }).click();
     });
   }
 

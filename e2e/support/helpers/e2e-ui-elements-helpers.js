@@ -36,13 +36,19 @@ export function entityPickerModal() {
   return cy.findByTestId("entity-picker-modal");
 }
 
-export function entityPickerModalLevel(level) {
-  return cy
-    .findByTestId("active-tab")
-    .findByTestId(`item-picker-level-${level}`);
+export function entityPickerActiveTab() {
+  return cy.findByTestId("active-tab");
 }
 
-export function entityPickerModalItem(level, name) {
+export function entityPickerModalLevel(level) {
+  return entityPickerActiveTab().findByTestId(`item-picker-level-${level}`);
+}
+
+export function entityPickerModalItem(name, { level } = {}) {
+  if (level != null) {
+    return entityPickerActiveTab().findByText(name).parents("button");
+  }
+
   return entityPickerModalLevel(level).findByText(name).parents("button");
 }
 

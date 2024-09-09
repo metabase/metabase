@@ -67,14 +67,14 @@ describe("scenarios > notebook > data source", () => {
           entityPickerModalLevel(2)
             .get("[data-index]")
             .should("have.length", 8);
-          assertDataPickerEntityNotSelected(2, "Accounts");
-          assertDataPickerEntityNotSelected(2, "Analytic Events");
-          assertDataPickerEntityNotSelected(2, "Feedback");
-          assertDataPickerEntityNotSelected(2, "Invoices");
-          assertDataPickerEntityNotSelected(2, "Orders");
-          assertDataPickerEntityNotSelected(2, "People");
-          assertDataPickerEntityNotSelected(2, "Products");
-          assertDataPickerEntityNotSelected(2, "Reviews");
+          assertDataPickerEntityNotSelected("Accounts", { level: 2 });
+          assertDataPickerEntityNotSelected("Analytic Events", { level: 2 });
+          assertDataPickerEntityNotSelected("Feedback", { level: 2 });
+          assertDataPickerEntityNotSelected("Invoices", { level: 2 });
+          assertDataPickerEntityNotSelected("Orders", { level: 2 });
+          assertDataPickerEntityNotSelected("People", { level: 2 });
+          assertDataPickerEntityNotSelected("Products", { level: 2 });
+          assertDataPickerEntityNotSelected("Reviews", { level: 2 });
         });
       },
     );
@@ -128,7 +128,7 @@ describe("scenarios > notebook > data source", () => {
         entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema
         entityPickerModalLevel(1).should("not.exist");
-        assertDataPickerEntitySelected(2, "Reviews");
+        assertDataPickerEntitySelected("Reviews", { level: 2 });
       });
     });
 
@@ -142,7 +142,7 @@ describe("scenarios > notebook > data source", () => {
         entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema
         entityPickerModalLevel(1).should("not.exist");
-        assertDataPickerEntitySelected(2, "Orders");
+        assertDataPickerEntitySelected("Orders", { level: 2 });
       });
     });
 
@@ -181,9 +181,9 @@ describe("scenarios > notebook > data source", () => {
         openNotebook();
         cy.findByTestId("data-step-cell").should("contain", tableName).click();
         entityPickerModal().within(() => {
-          assertDataPickerEntitySelected(0, dbName);
-          assertDataPickerEntitySelected(1, schemaName);
-          assertDataPickerEntitySelected(2, tableName);
+          assertDataPickerEntitySelected(dbName, { level: 0 });
+          assertDataPickerEntitySelected(schemaName, { level: 1 });
+          assertDataPickerEntitySelected(tableName, { level: 2 });
 
           entityPickerModalTab("Recents").click();
           cy.contains("button", "Animals")
@@ -233,7 +233,7 @@ describe("scenarios > notebook > data source", () => {
         entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema
         entityPickerModalLevel(1).should("not.exist");
-        assertDataPickerEntitySelected(2, "Orders");
+        assertDataPickerEntitySelected("Orders", { level: 2 });
       });
     });
   });
@@ -262,10 +262,12 @@ describe("scenarios > notebook > data source", () => {
       entityPickerModal().within(() => {
         shouldDisplayTabs(["Models", "Tables", "Saved questions"]);
 
-        assertDataPickerEntitySelected(0, "Our analytics");
-        assertDataPickerEntitySelected(1, "First collection");
-        assertDataPickerEntitySelected(2, "Second collection");
-        assertDataPickerEntitySelected(3, checkNotNull(modelDetails.name));
+        assertDataPickerEntitySelected("Our analytics", { level: 0 });
+        assertDataPickerEntitySelected("First collection", { level: 1 });
+        assertDataPickerEntitySelected("Second collection", { level: 2 });
+        assertDataPickerEntitySelected(checkNotNull(modelDetails.name), {
+          level: 3,
+        });
 
         cy.findByText(checkNotNull(modelDetails.name))
           .should("exist")
@@ -284,8 +286,8 @@ describe("scenarios > notebook > data source", () => {
           "aria-selected",
           "true",
         );
-        assertDataPickerEntitySelected(0, "Our analytics");
-        assertDataPickerEntitySelected(1, "Orders Model");
+        assertDataPickerEntitySelected("Our analytics", { level: 0 });
+        assertDataPickerEntitySelected("Orders Model", { level: 1 });
 
         cy.button("Close").click();
       });
@@ -299,9 +301,9 @@ describe("scenarios > notebook > data source", () => {
           "aria-selected",
           "true",
         );
-        assertDataPickerEntitySelected(0, "Our analytics");
-        assertDataPickerEntitySelected(1, "First collection");
-        assertDataPickerEntitySelected(2, "Orders Model");
+        assertDataPickerEntitySelected("Our analytics", { level: 0 });
+        assertDataPickerEntitySelected("First collection", { level: 1 });
+        assertDataPickerEntitySelected("Orders Model", { level: 2 });
       });
     });
 
@@ -334,8 +336,8 @@ describe("scenarios > notebook > data source", () => {
           "aria-selected",
           "true",
         );
-        assertDataPickerEntitySelected(0, "Our analytics");
-        assertDataPickerEntitySelected(1, sourceQuestionName);
+        assertDataPickerEntitySelected("Our analytics", { level: 0 });
+        assertDataPickerEntitySelected(sourceQuestionName, { level: 1 });
 
         cy.button("Close").click();
       });
@@ -356,9 +358,9 @@ describe("scenarios > notebook > data source", () => {
           "aria-selected",
           "true",
         );
-        assertDataPickerEntitySelected(0, "Our analytics");
-        assertDataPickerEntitySelected(1, "First collection");
-        assertDataPickerEntitySelected(2, sourceQuestionName);
+        assertDataPickerEntitySelected("Our analytics", { level: 0 });
+        assertDataPickerEntitySelected("First collection", { level: 1 });
+        assertDataPickerEntitySelected(sourceQuestionName), { level: 2 };
       });
     });
   });
@@ -444,7 +446,7 @@ describe("issue 28106", () => {
         }
 
         // assert scrolling worked and the last item is visible
-        entityPickerModalItem(1, "Public").should("be.visible");
+        entityPickerModalItem("Public", { level: 1 }).should("be.visible");
 
         // simulate scrolling up using mouse wheel 3 times
         for (let i = 0; i < 3; ++i) {
@@ -559,10 +561,20 @@ function openDataSelector() {
   cy.findByTestId("data-step-cell").click();
 }
 
-function assertDataPickerEntitySelected(level: number, name: string) {
-  entityPickerModalItem(level, name).should("have.attr", "data-active", "true");
+function assertDataPickerEntitySelected(
+  name: string,
+  options?: { level: number },
+) {
+  entityPickerModalItem(name, options).should(
+    "have.attr",
+    "data-active",
+    "true",
+  );
 }
 
-function assertDataPickerEntityNotSelected(level: number, name: string) {
-  entityPickerModalItem(level, name).should("not.have.attr", "data-active");
+function assertDataPickerEntityNotSelected(
+  name: string,
+  options?: { level: number },
+) {
+  entityPickerModalItem(name, options).should("not.have.attr", "data-active");
 }

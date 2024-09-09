@@ -196,7 +196,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
 
     entityPickerModal().within(() => {
       cy.findByText("Saved questions").should("not.exist");
-      entityPickerModalItem(2, "Orders").click();
+      entityPickerModalItem("Orders", { level: 2 }).click();
     });
 
     saveQuestion("Orders question");
@@ -205,7 +205,9 @@ describe("issue 25144", { tags: "@OSS" }, () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").should("be.visible").click();
-      entityPickerModalItem(1, "Orders question").should("be.visible");
+      entityPickerModalItem("Orders question", { level: 1 }).should(
+        "be.visible",
+      );
     });
   });
 
@@ -217,7 +219,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
       .findByText(/use the notebook/i)
       .click();
     entityPickerModal().within(() => {
-      entityPickerModalItem(2, "Orders").click();
+      entityPickerModalItem("Orders", { level: 2 }).click();
     });
 
     cy.findByTestId("dataset-edit-bar").button("Save").click();
@@ -232,7 +234,7 @@ describe("issue 25144", { tags: "@OSS" }, () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Models").should("be.visible").click();
-      entityPickerModalItem(1, "Orders model").should("be.visible");
+      entityPickerModalItem("Orders model", { level: 1 }).should("be.visible");
     });
   });
 });
