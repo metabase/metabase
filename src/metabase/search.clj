@@ -28,15 +28,12 @@
      (t2/with-connection [^java.sql.Connection conn]
        (.. conn getMetaData getDatabaseProductName))))
 
-(defn- engine []
-  (if (is-postgres?)
-    :postgres
-    :in-place))
-
 (mu/defn search
   "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- search.config/SearchContext]
-  (let [query-fn (case (engine)
-                   :postgres search.postgres/search
+  (let [query-fn (case (:search-engine search-ctx :in-place)
+                   :fulltext (do
+                               (assert (is-postgres?) "Only supported on PostgreSQL")
+                               search.postgres/search)
                    :in-place search.impl/in-place)]
     (search.impl/search query-fn search-ctx)))
