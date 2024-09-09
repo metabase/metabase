@@ -158,13 +158,51 @@
                 (lib/available-temporal-buckets query)
                 (mapv #(select-keys % [:unit :default])))))))
 
+(def ^:private query-with-temporal-expression
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/expression "NY created at"
+                      (lib/convert-timezone (meta/field-metadata :orders :created-at)
+                                            "America/New_York" "UTC"))))
+
 (deftest ^:parallel temporal-bucketing-options-expressions-test
-  (testing "There should be no bucketing options for expressions as they are not supported (#31367)"
-    (let [query (-> lib.tu/venues-query
-                    (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))]
-      (is (empty? (->> (lib/returned-columns query)
-                       (m/find-first (comp #{"myadd"} :name))
-                       (lib/available-temporal-buckets query)))))))
+  (testing "Temporal bucketing should be available for Date and DateTime-valued expressions"
+    ;; TODO: Why is the default :month for a Field and :day for an expression?
+    (is (=? [{:unit :minute}
+             {:unit :hour}
+             {:unit :day, :default true}
+             {:unit :week}
+             {:unit :month}
+             {:unit :quarter}
+             {:unit :year}
+             {:unit :minute-of-hour}
+             {:unit :hour-of-day}
+             {:unit :day-of-week}
+             {:unit :day-of-month}
+             {:unit :day-of-year}
+             {:unit :week-of-year}
+             {:unit :month-of-year}
+             {:unit :quarter-of-year}]
+            (->> (lib/returned-columns query-with-temporal-expression)
+                 (m/find-first (comp #{"NY created at"} :name))
+                 (lib/available-temporal-buckets query-with-temporal-expression))))))
+
+(deftest ^:parallel temporal-bucketing-get-and-set-expressions-test
+  (let [expr           (m/find-first (comp #{"NY created at"} :name)
+                                     (lib/returned-columns query-with-temporal-expression))
+        query          (-> query-with-temporal-expression
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (lib/with-temporal-bucket expr :week)))
+        [breakout-ref] (lib/breakouts query)
+        [breakout-col] (lib/returned-columns query)]
+    (testing `lib/temporal-bucket
+      (testing "on `:expression` refs"
+        (is (=? {:lib/type :option/temporal-bucketing
+                 :unit     :week}
+                (lib/temporal-bucket breakout-ref))))
+      (testing "on columns"
+        (is (=? {:lib/type :option/temporal-bucketing
+                 :unit     :week}
+                (lib/temporal-bucket breakout-col)))))))
 
 (deftest ^:parallel option-raw-temporal-bucket-test
   (let [option (m/find-first #(= (:unit %) :month)

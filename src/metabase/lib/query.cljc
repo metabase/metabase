@@ -17,6 +17,8 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
@@ -66,8 +68,18 @@
 (defmethod can-run-method :mbql.stage/mbql
   [query card-type]
   (or (not= card-type :metric)
-      (and (= (stage-count query) 1)
-           (= (-> (lib.util/query-stage query 0) :aggregation count) 1))))
+      (let [stage        (lib.util/query-stage query 0)
+            aggregations (:aggregation stage)
+            breakouts    (:breakout stage)]
+        (and (= (stage-count query) 1)
+             (= (count aggregations) 1)
+             (or (empty? breakouts)
+                 (and (= (count breakouts) 1)
+                      (-> (lib.metadata.calculation/metadata query (first breakouts))
+                          ;; extraction units change `:effective-type` to `:type/Integer`, so remove temporal bucketing
+                          ;; before doing type checks
+                          (lib.temporal-bucket/with-temporal-bucket nil)
+                          lib.types.isa/date-or-datetime?)))))))
 
 (mu/defn can-run :- :boolean
   "Returns whether the query is runnable. Manually validate schema for cljs."

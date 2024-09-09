@@ -239,9 +239,6 @@ export function getDefaultTab({
     id: tabId,
     dashboard_id: dashId,
     name,
-    entity_id: "",
-    created_at: "",
-    updated_at: "",
   };
 }
 

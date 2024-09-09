@@ -1173,13 +1173,28 @@
 ;; This interface contains several other sets of columns, like [[filterable-columns]] and [[expressionable-columns]];
 ;; these are subsets of [[visible-columns]] possibly with extra information added, such as the set of filter operators
 ;; which can be used with that column.
+;;
+;; Note: At the time of writing, `lib.ref/ref` would produce a broken ref for a column from [[returned-columns]] due to
+;; `:lib/source` differences compared to [[visible-columns]]. We cannot use such refs for for matching in
+;; [[find-matching-column]]. However, all other [[returned-columns]] properties are correct, and we can pass a column
+;; from [[visible-columns]] for the ref/needle and [[returned-columns]] for the haystack.
+;; Example - for a query with `source-card` and `:fields` clause, `:lib/source` for [[returned-columns]] would be
+;; `:source/fields` and `lib.ref/ref` would generate field id-based refs; while for [[visible-columns]] `:lib/source`
+;; would be `:source/card` and `lib.ref/ref` would generate `:lib/desired-column-alias`-based refs. As the card can
+;; contain multiple columns with the same ID (e.g. multiple breakouts of the same column, model metadata overrides) we
+;; could get exact dupliates with `lib.ref/ref` for [[returned-columns]].
+;; `(lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns)` cannot be used here because it
+;; would compute the refs for `ret-columns` and we want to do it the other way around.
 (defn- visible-columns*
   "Inner implementation for [[visible-columns]], which wraps this with caching."
   [a-query stage-number]
-  (let [stage          (lib.util/query-stage a-query stage-number)
-        vis-columns    (lib.metadata.calculation/visible-columns a-query stage-number stage)
-        ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)]
-    (to-array (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns))))
+  (let [stage       (lib.util/query-stage a-query stage-number)
+        vis-columns (lib.metadata.calculation/visible-columns a-query stage-number stage)
+        ret-columns (lib.metadata.calculation/returned-columns a-query stage-number stage)]
+    (->> (for [col vis-columns
+               :let [match (lib.equality/find-matching-column a-query stage-number col ret-columns)]]
+           (assoc col :selected? (some? match)))
+         to-array)))
 
 (defn ^:export visible-columns
   "Returns a JS array of all columns \"visible\" at the given stage of `a-query`.

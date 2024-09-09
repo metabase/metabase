@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.config :as config]
+   [metabase.db :as db]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.email :as email]
@@ -21,7 +22,6 @@
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.public-settings :as public-settings]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -65,19 +65,6 @@
     (<= 51 x 100)  "51-100"
     (<= 101 x 250) "101-250"
     (> x 250)      "250+"))
-
-(defn- bin-large-number
-  "Return large bin number. Assumes positive inputs."
-  [x]
-  (cond
-    (= 0 x)           "0"
-    (< x 1)           "< 1"
-    (<= 1 x 10)       "1-10"
-    (<= 11 x 50)      "11-50"
-    (<= 51 x 250)     "51-250"
-    (<= 251 x 1000)   "251-1000"
-    (<= 1001 x 10000) "1001-10000"
-    (> x 10000)       "10000+"))
 
 (defn- value-frequencies
   "Go through a bunch of maps and count the frequency a given key's values."
@@ -360,39 +347,75 @@
 
 ;;; Execution Metrics
 
-(def ^:private query-execution-window-days 30)
-
-(defn- summarize-executions
-  "Summarize `executions`, by incrementing approriate counts in a summary map."
-  ([]
-   (summarize-executions (t2/reducible-query {:select [:executor_id :running_time [[:case
-                                                                                    [:= :error nil] false
-                                                                                    [:= :error ""] false
-                                                                                    :else true] :has_error]]
-                                              :from   [:query_execution]
-                                              :where  [:> :started_at (t/minus (t/offset-date-time) (t/days query-execution-window-days))]})))
-  ([executions]
-   (reduce summarize-executions {:executions 0, :by_status {}, :num_per_user {}, :num_by_latency {}} executions))
-  ([summary execution]
-   (-> summary
-       (update :executions u/safe-inc)
-       ;; MYSQL is returning true as 1, false as 0! what!
-       (update-in [:by_status (if (#{1 true} (:has_error execution))
-                                "failed"
-                                "completed")] u/safe-inc)
-       (update-in [:num_per_user (:executor_id execution)] u/safe-inc)
-       (update-in [:num_by_latency (bin-large-number (/ (:running_time execution) 1000))] u/safe-inc))))
-
-(defn- summarize-executions-per-user
-  "Convert a map of `user-id->num-executions` to the histogram output format we expect."
-  [user-id->num-executions]
-  (frequencies (map bin-large-number (vals user-id->num-executions))))
+(defn- execution-metrics-sql []
+  (let [thirty-days-ago (case (db/db-type)
+                          :postgres "CURRENT_TIMESTAMP - INTERVAL '30 days'"
+                          :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP)"
+                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")]
+    (str/join
+     "\n"
+     ["WITH user_executions AS ("
+      "    SELECT executor_id, COUNT(*) AS num_executions"
+      "    FROM query_execution"
+      "    WHERE started_at > " thirty-days-ago
+      "    GROUP BY executor_id"
+      "),"
+      "query_stats_1 AS ("
+      "    SELECT"
+      "        COUNT(*) AS executions,"
+      "        SUM(CASE WHEN error IS NULL OR length(error) = 0 THEN 1 ELSE 0 END) AS by_status__completed,"
+      "        SUM(CASE WHEN error IS NOT NULL OR length(error) > 0 THEN 1 ELSE 0 END) AS by_status__failed,"
+      "        COALESCE(SUM(CASE WHEN running_time = 0 THEN 1 ELSE 0 END), 0) AS num_by_latency__0,"
+      "        COALESCE(SUM(CASE WHEN running_time > 0 AND running_time < 1000 THEN 1 ELSE 0 END), 0) AS num_by_latency__lt_1,"
+      "        COALESCE(SUM(CASE WHEN running_time >= 1000 AND running_time < 10000 THEN 1 ELSE 0 END), 0) AS num_by_latency__1_10,"
+      "        COALESCE(SUM(CASE WHEN running_time >= 10000 AND running_time < 50000 THEN 1 ELSE 0 END), 0) AS num_by_latency__11_50,"
+      "        COALESCE(SUM(CASE WHEN running_time >= 50000 AND running_time < 250000 THEN 1 ELSE 0 END), 0) AS num_by_latency__51_250,"
+      "        COALESCE(SUM(CASE WHEN running_time >= 250000 AND running_time < 1000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__251_1000,"
+      "        COALESCE(SUM(CASE WHEN running_time >= 1000000 AND running_time < 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__1001_10000,"
+      "        COALESCE(SUM(CASE WHEN running_time >= 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__10000_plus"
+      "    FROM query_execution"
+      "    WHERE started_at > " thirty-days-ago
+      "),"
+      "query_stats_2 AS ("
+      "    SELECT"
+      "        COALESCE(SUM(CASE WHEN num_executions = 0 THEN 1 ELSE 0 END), 0) AS num_per_user__0,"
+      "        COALESCE(SUM(CASE WHEN num_executions > 0 AND num_executions < 1 THEN 1 ELSE 0 END), 0) AS num_per_user__lt_1,"
+      "        COALESCE(SUM(CASE WHEN num_executions >= 1 AND num_executions < 10 THEN 1 ELSE 0 END), 0) AS num_per_user__1_10,"
+      "        COALESCE(SUM(CASE WHEN num_executions >= 10 AND num_executions < 50 THEN 1 ELSE 0 END), 0) AS num_per_user__11_50,"
+      "        COALESCE(SUM(CASE WHEN num_executions >= 50 AND num_executions < 250 THEN 1 ELSE 0 END), 0) AS num_per_user__51_250,"
+      "        COALESCE(SUM(CASE WHEN num_executions >= 250 AND num_executions < 1000 THEN 1 ELSE 0 END), 0) AS num_per_user__251_1000,"
+      "        COALESCE(SUM(CASE WHEN num_executions >= 1000 AND num_executions < 10000 THEN 1 ELSE 0 END), 0) AS num_per_user__1001_10000,"
+      "        COALESCE(SUM(CASE WHEN num_executions >= 10000 THEN 1 ELSE 0 END), 0) AS num_per_user__10000_plus"
+      "    FROM user_executions"
+      ")"
+      "SELECT q1.*, q2.* FROM query_stats_1 q1, query_stats_2 q2;"])))
 
 (defn- execution-metrics
   "Get metrics based on QueryExecutions."
   []
-  (-> (summarize-executions)
-      (update :num_per_user summarize-executions-per-user)))
+  (let [maybe-rename-bin (fn [x]
+                           ({"lt_1"       "< 1"
+                             "1_10"       "1-10"
+                             "11_50"      "11-50"
+                             "51_250"     "51-250"
+                             "251_1000"   "251-1000"
+                             "1001_10000" "1001-10000"
+                             "10000_plus" "10000+"} x x))
+        raw-results (-> (first (t2/query (execution-metrics-sql)))
+                        ;; cast numbers to int because some DBs output bigdecimals
+                        (update-vals #(some-> % int)))]
+    (reduce (fn [acc [k v]]
+              (let [[prefix bin] (str/split (name k) #"__")]
+                (if bin
+                  (cond-> acc
+                    (and (some? v) (pos? v))
+                    (update (keyword prefix) #(assoc % (maybe-rename-bin bin) v)))
+                  (assoc acc (keyword prefix) v))))
+            {:executions     0
+             :by_status      {}
+             :num_per_user   {}
+             :num_by_latency {}}
+            raw-results)))
 
 ;;; Cache Metrics
 

@@ -17,5 +17,6 @@ export const getLegendItems = (
     key: seriesModel.dataKey,
     name: seriesModel.name,
     color: seriesModel.color,
+    visible: seriesModel.visible,
   }));
 };

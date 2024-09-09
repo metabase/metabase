@@ -186,7 +186,7 @@
                            (csv->row-count attachment)))))))))))))
 
 (deftest csv-downloads-test
-  (testing "CSV/XLSX downloads should be sandboxed"
+  (testing "CSV/XLSX downloads attached to an email should be sandboxed"
     (met/with-gtaps! {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
                       :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
@@ -272,6 +272,6 @@
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]})
 
-;; Crowberto should now be removed as a recipient
+          ;; Crowberto should now be removed as a recipient
           (is (= [(mt/user->id :rasta)]
                  (->> (api.alert/email-channel (pulse/retrieve-alert pulse-id)) :recipients (map :id) sort))))))))

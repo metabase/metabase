@@ -474,16 +474,16 @@ describe("version-helpers", () => {
 
   describe('getLastReleaseFromTags', () => {
     it('should return the latest release tag for minor versions', () => {
-      const latest = getLastReleaseFromTags([
+      const latest = getLastReleaseFromTags({ tags: [
         { ref: 'refs/tags/v0.12.0' },
         { ref: 'refs/tags/v0.12.2' },
         { ref: 'refs/tags/v0.12.1' },
-      ] as Tag[]);
+      ] as Tag[]});
       expect(latest).toBe('v0.12.2');
     });
 
-    it('should not return the latest release tag for patch versions', () => {
-      const latest = getLastReleaseFromTags([
+    it('should return the latest release tag for patch versions', () => {
+      const latest = getLastReleaseFromTags({ tags: [
         { ref: 'refs/tags/v0.12.0' },
         { ref: 'refs/tags/v0.11.2' },
         { ref: 'refs/tags/v0.12.2' },
@@ -491,25 +491,38 @@ describe("version-helpers", () => {
         { ref: 'refs/tags/v0.12.2.0' },
         { ref: 'refs/tags/v0.12.2.3' },
         { ref: 'refs/tags/v0.12.2.2' },
-      ] as Tag[]);
+      ] as Tag[]});
+      expect(latest).toBe('v0.12.2.3');
+    });
+
+    it('should ignore patches when the ignorePatches flag is passed', () => {
+      const latest = getLastReleaseFromTags({ tags: [
+        { ref: 'refs/tags/v0.12.0' },
+        { ref: 'refs/tags/v0.11.2' },
+        { ref: 'refs/tags/v0.12.2' },
+        { ref: 'refs/tags/v0.12.1' },
+        { ref: 'refs/tags/v0.12.2.0' },
+        { ref: 'refs/tags/v0.12.2.3' },
+        { ref: 'refs/tags/v0.12.2.2' },
+      ] as Tag[], ignorePatches: true });
       expect(latest).toBe('v0.12.2');
     });
 
     it('should return the latest tag for major version', () => {
-      const latest = getLastReleaseFromTags([
+      const latest = getLastReleaseFromTags({ tags: [
         { ref: 'refs/tags/v0.12.9' },
         { ref: 'refs/tags/v0.12.8' },
         { ref: 'refs/tags/v0.13.0' },
-      ] as Tag[]);
+      ] as Tag[] });
       expect(latest).toBe('v0.13.0');
     });
 
     it('should ignore release candidates', () => {
-      const latest = getLastReleaseFromTags([
+      const latest = getLastReleaseFromTags({ tags: [
         { ref: 'refs/tags/v0.12.0' },
         { ref: 'refs/tags/v0.12.2-RC99' },
         { ref: 'refs/tags/v0.12.1' },
-      ] as Tag[]);
+      ] as Tag[]});
       expect(latest).toBe('v0.12.1');
     });
   });

@@ -143,6 +143,7 @@ export const computeStaticComboChartSettings = (
   const seriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,
+    [],
     settings,
     renderingContext,
   );

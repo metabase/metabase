@@ -46,7 +46,7 @@ import {
 import { ViewFooter } from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
-import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
+import { ChartTypeSidebar } from "./sidebars/ChartTypeSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
@@ -60,10 +60,11 @@ const fadeIn = {
 class View extends Component {
   getLeftSidebar = () => {
     const {
+      question,
+      result,
       isShowingChartSettingsSidebar,
       isShowingChartTypeSidebar,
       onCloseChartSettings,
-      onCloseChartType,
     } = this.props;
 
     if (isShowingChartSettingsSidebar) {
@@ -93,7 +94,7 @@ class View extends Component {
     }
 
     if (isShowingChartTypeSidebar) {
-      return <ChartTypeSidebar {...this.props} onClose={onCloseChartType} />;
+      return <ChartTypeSidebar question={question} result={result} />;
     }
 
     return null;
@@ -356,31 +357,7 @@ class View extends Component {
           updateQuestion={this.props.updateQuestion}
           className={CS.flexNoShrink}
         />
-        <ViewFooter
-          question={this.props.question}
-          result={this.props.result}
-          isShowingChartTypeSidebar={this.props.isShowingChartTypeSidebar}
-          isShowingChartSettingsSidebar={
-            this.props.isShowingChartSettingsSidebar
-          }
-          isShowingRawTable={this.props.isShowingRawTable}
-          onOpenChartType={this.props.onOpenChartType}
-          onOpenModal={this.props.onOpenModal}
-          onCloseChartType={this.props.onCloseChartType}
-          onOpenChartSettings={this.props.onOpenChartSettings}
-          onCloseChartSettings={this.props.onCloseChartSettings}
-          setUIControls={this.props.setUIControls}
-          isObjectDetail={this.props.isObjectDetail}
-          questionAlerts={this.props.questionAlerts}
-          visualizationSettings={this.props.visualizationSettings}
-          canManageSubscriptions={this.props.canManageSubscriptions}
-          isVisualized={this.props.isVisualized}
-          isTimeseries={this.props.isTimeseries}
-          isShowingTimelineSidebar={this.props.isShowingTimelineSidebar}
-          onOpenTimelines={this.props.onOpenTimelines}
-          onCloseTimelines={this.props.onCloseTimelines}
-          className={CS.flexNoShrink}
-        />
+        <ViewFooter className={CS.flexNoShrink} />
       </QueryBuilderMain>
     );
   };

@@ -1,6 +1,7 @@
 import type { Alert, AlertCard } from "../alert";
 import type { Channel } from "../notifications";
 
+import { createMockEntityId } from "./entity-id";
 import { createMockUserInfo } from "./user";
 
 export const createMockAlert = (opts?: Partial<Alert>): Alert => ({
@@ -22,7 +23,7 @@ export const createMockAlert = (opts?: Partial<Alert>): Alert => ({
   can_write: true,
   archived: false,
 
-  entity_id: "1",
+  entity_id: createMockEntityId(),
 
   creator_id: 1,
   creator: createMockUserInfo(),

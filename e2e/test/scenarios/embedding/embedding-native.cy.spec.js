@@ -2,6 +2,7 @@ import {
   assertEmbeddingParameter,
   clearFilterWidget,
   closeStaticEmbeddingModal,
+  createNativeQuestion,
   filterWidget,
   openStaticEmbeddingModal,
   popover,
@@ -10,11 +11,15 @@ import {
   setEmbeddingParameter,
   visitEmbeddedPage,
   visitIframe,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
 
-import { questionDetailsWithDefaults } from "./shared/embedding-dashboard";
+import {
+  questionDetails as questionDetails2,
+  questionDetailsWithDefaults,
+} from "./shared/embedding-dashboard";
 import { questionDetails } from "./shared/embedding-native";
 
 describe("scenarios > embedding > native questions", () => {
@@ -320,6 +325,58 @@ describe("scenarios > embedding > native questions", () => {
       });
     });
   });
+
+  describe("locked parameters", () => {
+    beforeEach(() => {
+      const nameParameter = questionDetails2.native["template-tags"]["name"];
+      const sourceParameter =
+        questionDetails2.native["template-tags"]["source"];
+
+      createNativeQuestion(questionDetails2, {
+        wrapId: true,
+      });
+
+      cy.get("@questionId").then(questionId => {
+        cy.request("PUT", `/api/card/${questionId}`, {
+          enable_embedding: true,
+          embedding_params: {
+            [nameParameter.name]: "enabled",
+            [sourceParameter.name]: "locked",
+          },
+        });
+      });
+    });
+
+    it("locked parameters require a value to be specified in the JWT", () => {
+      cy.get("@questionId").then(questionId => {
+        const payload = {
+          resource: { question: questionId },
+          params: { source: null },
+        };
+
+        visitEmbeddedPage(payload);
+      });
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("You must specify a value for :source in the JWT.").should(
+        "be.visible",
+      );
+    });
+
+    it("locked parameters should still render results in the preview by default (metabase#47570)", () => {
+      visitQuestion("@questionId");
+      openStaticEmbeddingModal({ activeTab: "parameters" });
+      visitIframe();
+
+      cy.log("should show card results by default");
+      cy.findByTestId("visualization-root")
+        .findByText("2,500")
+        .should("be.visible");
+      cy.findByTestId("visualization-root")
+        .findByText("test question")
+        .should("be.visible");
+    });
+  });
 });
 
 describe("scenarios > embedding > native questions with default parameters", () => {
@@ -361,22 +418,6 @@ describe("scenarios > embedding > native questions with default parameters", () 
     // The Source default ('Facebook') should not apply because the param is locked but the value is unset
     // If either the Name or Source default applied the result would be 0.
     cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
-  });
-
-  it("locked parameters require a value to be specified in the JWT", () => {
-    cy.get("@questionId").then(questionId => {
-      const payload = {
-        resource: { question: questionId },
-        params: { source: null },
-      };
-
-      visitEmbeddedPage(payload);
-    });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("You must specify a value for :source in the JWT.").should(
-      "be.visible",
-    );
   });
 });
 

@@ -151,6 +151,7 @@ const QUERY_TEMPORAL_EXPRESSION_BREAKOUT: StructuredQuery = {
       "Created At plus one month",
       {
         "base-type": "type/DateTime",
+        "temporal-unit": "month",
       },
     ],
   ],
@@ -633,7 +634,7 @@ describeWithSnowplow("scenarios > question > column compare", () => {
 
         verifySummarizeText(info);
 
-        tableHeaderClick("Created At plus one month");
+        tableHeaderClick("Created At plus one month: Month");
         verifyNoColumnCompareShortcut();
 
         verifyColumnDrillText(info);
@@ -668,7 +669,7 @@ describeWithSnowplow("scenarios > question > column compare", () => {
         ]);
 
         verifyBreakoutExistsAndIsFirst({
-          column: "Created At",
+          column: "Created At plus one month",
           bucket: "Month",
         });
 

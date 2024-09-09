@@ -120,6 +120,7 @@ const getDefaultSeriesName = (
 export const getCardsSeriesModels = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
+  hiddenSeries: string[],
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) => {
@@ -130,6 +131,7 @@ export const getCardsSeriesModels = (
     return getCardSeriesModels(
       cardDataset,
       cardColumns,
+      hiddenSeries,
       hasMultipleCards,
       index === 0,
       settings,
@@ -143,7 +145,7 @@ export const getCardsSeriesModels = (
  *
  * @param {SingleSeries} singleSeries - The single card and dataset.
  * @param {CartesianChartColumns} columns - The columns model for the card.
- * @param {number} datasetIndex - Index of a dataset.
+ * @param {string[]} hiddenSeries - The list of hidden series data keys.
  * @param {boolean} hasMultipleCards — Indicates whether the chart has multiple card combined.
  * @param {ComputedVisualizationSettings} settings — Computed visualization settings.
  * @param {RenderingContext} renderingContext - The rendering context.
@@ -152,6 +154,7 @@ export const getCardsSeriesModels = (
 export const getCardSeriesModels = (
   { card, data }: SingleSeries,
   columns: CartesianChartColumns,
+  hiddenSeries: string[],
   hasMultipleCards: boolean,
   isFirstCard: boolean,
   settings: ComputedVisualizationSettings,
@@ -190,14 +193,17 @@ export const getCardSeriesModels = (
 
       const color = settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey];
 
+      const dataKey = getDatasetKey(metric.column, cardId);
+
       return {
         name,
         tooltipName,
         color,
+        visible: !hiddenSeries.includes(dataKey),
         cardId,
         column: metric.column,
         columnIndex: metric.index,
-        dataKey: getDatasetKey(metric.column, cardId),
+        dataKey,
         vizSettingsKey,
         legacySeriesSettingsObjectKey,
         bubbleSizeDataKey:
@@ -247,16 +253,19 @@ export const getCardSeriesModels = (
 
     const color = settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey];
 
+    const dataKey = getDatasetKey(metric.column, cardId, breakoutValue);
+
     return {
       name,
       tooltipName,
       color,
+      visible: !hiddenSeries.includes(dataKey),
       cardId,
       column: metric.column,
       columnIndex: metric.index,
       vizSettingsKey,
       legacySeriesSettingsObjectKey,
-      dataKey: getDatasetKey(metric.column, cardId, breakoutValue),
+      dataKey,
       breakoutColumnIndex: breakout.index,
       breakoutColumn: breakout.column,
       breakoutValue,

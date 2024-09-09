@@ -565,11 +565,9 @@
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key!
-    (let [dashboard-url (str "embed/dashboard/" (sign {:resource {:dashboard "8"}
-                                                       :params   {}}))]
-      (is (contains?
-           #{"Dashboard id should be a positive integer."
-             "Invalid input: {:resource {:dashboard [\"value must be an integer greater than zero., got: \\\"8\\\"\" \"String must be a valid 21-character NanoID string., got: \\\"8\\\"\"]}}"}
+    (let [dashboard-url (str "embed/dashboard/" (sign {:resource {:dashboard "8"} :params   {}}))]
+      (is (re-matches
+           #"Invalid input: .+got.+8.+"
            (client/client :get 400 dashboard-url))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token-2
@@ -1937,7 +1935,7 @@
 (deftest entity-id-single-card-translations-test
   (mt/with-temp
     [:model/Card {id :id eid :entity_id} {}]
-    (is (= {eid   {:id id :type :card :status "ok"}}
+    (is (= {eid {:id id :type :card :status :ok}}
            (api.embed.common/model->entity-ids->ids {:card [eid]})))))
 
 (deftest entity-id-card-translations-test
@@ -1949,13 +1947,13 @@
      :model/Card {id-3 :id eid-3 :entity_id} {}
      :model/Card {id-4 :id eid-4 :entity_id} {}
      :model/Card {id-5 :id eid-5 :entity_id} {}]
-    (is (= {eid   {:id id   :type :card :status "ok"}
-            eid-0 {:id id-0 :type :card :status "ok"}
-            eid-1 {:id id-1 :type :card :status "ok"}
-            eid-2 {:id id-2 :type :card :status "ok"}
-            eid-3 {:id id-3 :type :card :status "ok"}
-            eid-4 {:id id-4 :type :card :status "ok"}
-            eid-5 {:id id-5 :type :card :status "ok"}}
+    (is (= {eid   {:id id   :type :card :status :ok}
+            eid-0 {:id id-0 :type :card :status :ok}
+            eid-1 {:id id-1 :type :card :status :ok}
+            eid-2 {:id id-2 :type :card :status :ok}
+            eid-3 {:id id-3 :type :card :status :ok}
+            eid-4 {:id id-4 :type :card :status :ok}
+            eid-5 {:id id-5 :type :card :status :ok}}
            (api.embed.common/model->entity-ids->ids {:card [eid eid-0 eid-1 eid-2 eid-3 eid-4 eid-5]})))))
 
 (deftest entity-id-mixed-translations-test
@@ -1984,21 +1982,21 @@
      :model/Timeline           {timeline_id             :id timeline_eid             :entity_id} {}]
     (let [core_user_eid (u/generate-nano-id)]
       (t2/update! :model/User core_user_id {:entity_id core_user_eid})
-      (is (= {action_eid               {:id action_id               :type :action            :status "ok"}
-              collection_eid           {:id collection_id           :type :collection        :status "ok"}
-              core_user_eid            {:id core_user_id            :type :user              :status "ok"}
-              dashboard_tab_eid        {:id dashboard_tab_id        :type :dashboard-tab     :status "ok"}
-              dimension_eid            {:id dimension_id            :type :dimension         :status "ok"}
-              native_query_snippet_eid {:id native_query_snippet_id :type :snippet           :status "ok"}
-              permissions_group_eid    {:id permissions_group_id    :type :permissions-group :status "ok"}
-              pulse_eid                {:id pulse_id                :type :pulse             :status "ok"}
-              pulse_card_eid           {:id pulse_card_id           :type :pulse-card        :status "ok"}
-              pulse_channel_eid        {:id pulse_channel_id        :type :pulse-channel     :status "ok"}
-              card_eid                 {:id card_id                 :type :card              :status "ok"}
-              dashboard_eid            {:id dashboard_id            :type :dashboard         :status "ok"}
-              dashboardcard_eid        {:id dashboardcard_id        :type :dashboard-card    :status "ok"}
-              segment_eid              {:id segment_id              :type :segment           :status "ok"}
-              timeline_eid             {:id timeline_id             :type :timeline          :status "ok"}}
+      (is (= {action_eid               {:id action_id               :type :action            :status :ok}
+              collection_eid           {:id collection_id           :type :collection        :status :ok}
+              core_user_eid            {:id core_user_id            :type :user              :status :ok}
+              dashboard_tab_eid        {:id dashboard_tab_id        :type :dashboard-tab     :status :ok}
+              dimension_eid            {:id dimension_id            :type :dimension         :status :ok}
+              native_query_snippet_eid {:id native_query_snippet_id :type :snippet           :status :ok}
+              permissions_group_eid    {:id permissions_group_id    :type :permissions-group :status :ok}
+              pulse_eid                {:id pulse_id                :type :pulse             :status :ok}
+              pulse_card_eid           {:id pulse_card_id           :type :pulse-card        :status :ok}
+              pulse_channel_eid        {:id pulse_channel_id        :type :pulse-channel     :status :ok}
+              card_eid                 {:id card_id                 :type :card              :status :ok}
+              dashboard_eid            {:id dashboard_id            :type :dashboard         :status :ok}
+              dashboardcard_eid        {:id dashboardcard_id        :type :dashboard-card    :status :ok}
+              segment_eid              {:id segment_id              :type :segment           :status :ok}
+              timeline_eid             {:id timeline_id             :type :timeline          :status :ok}}
              (api.embed.common/model->entity-ids->ids
               {:action            [action_eid]
                :card              [card_eid]
@@ -2017,12 +2015,12 @@
                :user              [core_user_eid]}))))))
 
 (deftest missing-entity-translations-test
-  (is (= {"abcdefghijklmnopqrstu" {:type :card, :status "not-found"}}
+  (is (= {"abcdefghijklmnopqrstu" {:type :card, :status :not-found}}
          (api.embed.common/model->entity-ids->ids {:card ["abcdefghijklmnopqrstu"]}))))
 
 (deftest wrong-format-entity-translations-test
   (is (= {"abcdefghijklmnopqrst"
           {:type :card,
-           :status "invalid-format",
+           :status :invalid-format,
            :reason ["\"abcdefghijklmnopqrst\" should be 21 characters long, but it is 20"]}}
          (api.embed.common/model->entity-ids->ids {:card ["abcdefghijklmnopqrst"]}))))

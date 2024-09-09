@@ -68,7 +68,7 @@ export const EChartsTooltip = ({
           })}
         </tbody>
         {footer != null && (
-          <tfoot>
+          <tfoot data-testid="echarts-tooltip-footer">
             <FooterRow
               {...footer}
               markerContent={hasMarkers ? <span /> : null}

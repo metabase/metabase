@@ -361,8 +361,10 @@
   (let [ref-tails (group-by ref-id-or-name refs)
         matches   (or (some->> column :lib/source-uuid (get ref-tails) not-empty)
                       (not-empty (get ref-tails (:id column)))
-                      (not-empty (get ref-tails (:lib/desired-column-alias column)))
-                      (get ref-tails (:name column))
+                      ;; columns from the previous stage have unique `:lib/desired-column-alias` but not `:name`.
+                      ;; we cannot fallback to `:name` when `:lib/desired-column-alias` is set
+                      (get ref-tails (or (:lib/desired-column-alias column)
+                                         (:name column)))
                       [])]
     (case (count matches)
       0 nil
