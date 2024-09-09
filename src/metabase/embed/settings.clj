@@ -16,6 +16,14 @@
   :feature    :embedding
   :type       :string
   :visibility :public
+  :audit      :getter
+  :deprecated "0.51.0")
+
+(defsetting embedding-app-origins-sdk
+  (deferred-tru "Used for authorized SDK hosts on production")
+  :type       :string
+  :visibility :public
+  :export?    true
   :audit      :getter)
 
 (defsetting enable-embedding
@@ -35,7 +43,7 @@
                                          {:event                      (if new-value
                                                                         :embedding-enabled
                                                                         :embedding-disabled)
-                                          :embedding-app-origin-set   (boolean (embedding-app-origin))
+                                          :embedding-app-origin-set   (boolean (embedding-app-origins-sdk))
                                           :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
                                           :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))
 

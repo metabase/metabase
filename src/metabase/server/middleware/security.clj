@@ -116,13 +116,13 @@
 
 (defn- embedding-app-origin
   []
-  (when (and (embed.settings/enable-embedding-sdk) (embed.settings/embedding-app-origin))
-    (embed.settings/embedding-app-origin)))
+  (when (and (embed.settings/enable-embedding-sdk) (embed.settings/embedding-app-origins-sdk))
+    (embed.settings/embedding-app-origins-sdk)))
 
-(defn- embedding-app-origin-sdk
+(defn- embedding-app-origins-sdk
   []
   (when (embed.settings/enable-embedding-sdk)
-    (str "localhost:* " (embed.settings/embedding-app-origin))))
+    (str "localhost:* " (embed.settings/embedding-app-origins-sdk))))
 
 (defn- content-security-policy-header-with-frame-ancestors
   [allow-iframes? nonce]
@@ -191,7 +191,7 @@
   [origin]
   (merge
    (when
-    (approved-origin? origin (embedding-app-origin-sdk))
+    (approved-origin? origin (embedding-app-origins-sdk))
      {"Access-Control-Allow-Origin" origin
       "Vary"                        "Origin"})
 
@@ -216,7 +216,7 @@
      (cache-prevention-headers))
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
-   (when (embedding-app-origin-sdk) (access-control-headers origin))
+   (when (embedding-app-origins-sdk) (access-control-headers origin))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 (if (embedding-app-origin)
