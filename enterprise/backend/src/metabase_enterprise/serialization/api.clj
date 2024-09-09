@@ -128,7 +128,7 @@
                      (let [cnt  (u.compress/untgz file dst)
                            path (find-serialization-dir dst)]
                        (when-not path
-                         (throw (ex-info "No source dir detected. Please make sure that serialization files at in the top level dir."
+                         (throw (ex-info "No source dir detected. Please make sure the serialization files are in the top level dir."
                                          {:dst   (.getPath dst)
                                           :count cnt
                                           :files (.listFiles dst)})))
