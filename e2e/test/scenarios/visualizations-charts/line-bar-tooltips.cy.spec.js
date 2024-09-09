@@ -279,7 +279,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       cy.findByTestId("viz-settings-button").click();
       leftSidebar().within(() => {
         cy.findByText("Display").click();
-        cy.findByPlaceholderText("Additional columns to show").click();
+        cy.findByPlaceholderText("Enter metric names").click();
       });
 
       // Select two additional metric columns to show in the tooltip
