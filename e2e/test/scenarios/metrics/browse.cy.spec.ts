@@ -301,14 +301,53 @@ describe("scenarios > browse > metrics", () => {
       metricsTable().findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
     });
 
-    it("should not be possible to trash a metric from the dot menu when the user does not have write access", () => {
-      createMetrics([ORDERS_SCALAR_METRIC]);
-      cy.signIn("readonly");
+    describe("when the user does not have write access", () => {
+      it("should not be possible to trash a metric from the dot menu when the user does not have write access", () => {
+        createMetrics([ORDERS_SCALAR_METRIC]);
+        cy.signIn("readonly");
 
-      cy.visit("/browse/metrics");
+        cy.visit("/browse/metrics");
 
-      metricsTable().findByLabelText("Metric options").click();
-      popover().findByText("Move to trash").should("not.exist");
+        metricsTable().findByLabelText("Metric options").click();
+        popover().findByText("Move to trash").should("not.exist");
+      });
+
+      it("should be possible to navigate to the collection from the dot menu", () => {
+        createMetrics([ORDERS_SCALAR_METRIC]);
+        cy.signIn("readonly");
+
+        cy.visit("/browse/metrics");
+
+        metricsTable().findByLabelText("Metric options").click();
+        popover().findByText("Open collection").should("be.visible").click();
+
+        cy.location("pathname").should("eq", "/collection/root");
+      });
+
+      it("should be possible to bookmark a metrics from the dot menu", () => {
+        createMetrics([ORDERS_SCALAR_METRIC]);
+        cy.signIn("readonly");
+
+        cy.visit("/browse/metrics");
+
+        shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+        metricsTable().findByLabelText("Metric options").click();
+        popover().findByText("Bookmark").should("be.visible").click();
+
+        shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+        metricsTable().findByLabelText("Metric options").click();
+        popover()
+          .findByText("Remove from bookmarks")
+          .should("be.visible")
+          .click();
+
+        shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+        metricsTable().findByLabelText("Metric options").click();
+        popover().findByText("Bookmark").should("be.visible");
+      });
     });
   });
 });
