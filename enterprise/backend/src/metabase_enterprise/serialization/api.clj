@@ -123,9 +123,10 @@
                      (let [cnt  (u.compress/untgz file dst)
                            path (find-serialization-dir dst)]
                        (when-not path
-                         (throw (ex-info "No source dir detected" {:dst   (.getPath dst)
-                                                                   :count cnt
-                                                                   :files (.listFiles dst)})))
+                         (throw (ex-info "No source dir detected. Please make sure the serialization files are in the top level dir."
+                                         {:dst   (.getPath dst)
+                                          :count cnt
+                                          :files (.listFiles dst)})))
                        (log/infof "In total %s entries unpacked, detected source dir: %s" cnt (.getName path))
                        (serdes/with-cache
                          (-> (v2.ingest/ingest-yaml (.getPath path))
