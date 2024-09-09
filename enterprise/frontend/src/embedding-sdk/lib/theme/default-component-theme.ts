@@ -138,5 +138,62 @@ export function getEmbeddingComponentOverrides(
         ...(theme?.popover?.zIndex && { zIndex: theme.popover.zIndex }),
       },
     },
+    // TODO: fix those, they're not all correct
+    ModalRoot: {
+      defaultProps: {
+        withinPortal: true,
+        // portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
+        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
+      }, // satisfies Partial<ModalRootProps>,
+    },
+    Popover: {
+      defaultProps: {
+        withinPortal: true,
+        portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
+        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
+      }, //satisfies Partial<PopoverProps>,
+    },
+    PopoverDropdown: {
+      defaultProps: {
+        withinPortal: true,
+        portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
+        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
+      },
+    },
+    Menu: {
+      defaultProps: {
+        withinPortal: true,
+        portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
+        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
+      },
+    },
+    MultiSelect: {
+      defaultProps: {
+        withinPortal: true,
+        portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
+        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
+      },
+    },
+    Select: {
+      defaultProps: {
+        withinPortal: true,
+        portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
+        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
+      },
+    },
+    Modal: {
+      defaultProps: {
+        withinPortal: true,
+        // portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
+        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
+      },
+    },
+    Tooltip: {
+      defaultProps: {
+        withinPortal: true,
+        portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
+        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
+      },
+    },
   };
 }

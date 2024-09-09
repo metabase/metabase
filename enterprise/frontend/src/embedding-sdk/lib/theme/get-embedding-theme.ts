@@ -21,7 +21,8 @@ import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "./embedding-color-palette";
 const getFontFamily = (theme: MetabaseTheme) =>
   theme.fontFamily ?? DEFAULT_FONT;
 
-const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE / 16}em`;
+// const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE / 16}em`;
+const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE}px`;
 
 /**
  * Transforms a public-facing Metabase theme configuration

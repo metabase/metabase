@@ -33,13 +33,13 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
 
   return (
     <ThemeProvider theme={themeOverride}>
-      <SDKGlobalStyles />
+      <GlobalSdkCssVariables />
       {children}
     </ThemeProvider>
   );
 };
 
-function SDKGlobalStyles() {
+function GlobalSdkCssVariables() {
   const theme = useMantineTheme();
   const font = useSelector(getFont);
 

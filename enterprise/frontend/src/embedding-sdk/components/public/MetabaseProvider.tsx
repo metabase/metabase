@@ -1,11 +1,14 @@
+import { Global, css } from "@emotion/react";
 import type { Action, Store } from "@reduxjs/toolkit";
-import { type JSX, type ReactNode, useEffect } from "react";
-import { memo } from "react";
-import { Provider } from "react-redux";
+import { type JSX, type ReactNode, memo, useEffect, useMemo } from "react";
+import { Provider, useSelector } from "react-redux";
 
-import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
-import { DEFAULT_FONT } from "embedding-sdk/config";
+import {
+  DEFAULT_FONT,
+  EMBEDDING_SDK_ROOT_ELEMENT_ID,
+} from "embedding-sdk/config";
+import { useInitData } from "embedding-sdk/hooks";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import { store } from "embedding-sdk/store";
@@ -19,8 +22,12 @@ import {
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import type { SDKConfig } from "embedding-sdk/types";
 import type { MetabaseTheme } from "embedding-sdk/types/theme";
+import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import { getFontFiles } from "metabase/styled-components/selectors";
+
+import { withPublicComponentWrapper } from "../private/PublicComponentWrapper";
 
 import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
@@ -48,6 +55,7 @@ export const MetabaseProviderInternal = ({
   className,
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily = DEFAULT_FONT } = theme ?? {};
+  useInitData({ config });
 
   useEffect(() => {
     if (fontFamily) {
@@ -76,20 +84,61 @@ export const MetabaseProviderInternal = ({
   }, [store, config.metabaseInstanceUrl]);
 
   return (
-    <Provider store={store}>
-      <EmotionCacheProvider>
-        <SdkThemeProvider theme={theme}>
-          <AppInitializeController className={className} config={config}>
-            {children}
-          </AppInitializeController>
-        </SdkThemeProvider>
-      </EmotionCacheProvider>
-    </Provider>
+    <EmotionCacheProvider>
+      <SdkThemeProvider theme={theme}>
+        <GlobalFontsStyles baseUrl={config.metabaseInstanceUrl} />
+        <div className={className}>
+          <PortalContainer />
+          {children}
+        </div>
+      </SdkThemeProvider>
+    </EmotionCacheProvider>
   );
 };
 
 export const MetabaseProvider = memo(function MetabaseProvider(
   props: MetabaseProviderProps,
 ) {
-  return <MetabaseProviderInternal store={store} {...props} />;
+  return (
+    <Provider store={store}>
+      <MetabaseProviderInternal store={store} {...props} />
+    </Provider>
+  );
 });
+
+// TODO: move to separate files
+
+/**
+ * This is the portal container used by popovers modals etc, it is wrapped with withPublicComponentWrapper
+ * so that it has our styles applied.
+ * Mantine components needs to have the defaultProps set to use `EMBEDDING_SDK_ROOT_ELEMENT_ID` as target for the portal
+ */
+const PortalContainer = withPublicComponentWrapper(() => (
+  <div id={EMBEDDING_SDK_ROOT_ELEMENT_ID}></div>
+));
+
+const GlobalFontsStyles = ({ baseUrl }: { baseUrl: string }) => {
+  const fontFiles = useSelector(getFontFiles);
+
+  const fontStyles = useMemo(
+    () =>
+      css`
+      ${defaultFontFiles({ baseUrl })}}
+
+      ${fontFiles?.map(
+        file => css`
+          @font-face {
+            font-family: "Custom";
+            src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
+            font-weight: ${file.fontWeight};
+            font-style: normal;
+            font-display: swap;
+          }
+        `,
+      )}
+    `,
+    [fontFiles, baseUrl],
+  );
+
+  return <Global styles={fontStyles} />;
+};
