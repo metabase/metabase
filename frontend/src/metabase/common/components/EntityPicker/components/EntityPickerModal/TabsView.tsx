@@ -33,7 +33,7 @@ export const TabsView = <
 }: Props<Id, Model, Item>) => {
   const [previouslyOpenedTabs, setPreviouslyOpenedTabs] = useState<
     EntityPickerTabId[]
-  >([]);
+  >([selectedTabId]);
 
   useEffect(() => {
     if (!previouslyOpenedTabs.includes(selectedTabId)) {
