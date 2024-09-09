@@ -374,7 +374,7 @@
 
 (defclause ^{:added "0.50.0"} offset
   opts [:ref ::lib.schema.common/options]
-  expr [:or [:ref ::FieldOrExpressionDef] [:ref ::UnnamedAggregation]]
+  expr [:or [:ref ::FieldOrExpressionDef] [:ref ::Aggregation]]
   n    ::lib.schema.expression.window/offset.n)
 
 ;;; -------------------------------------------------- Expressions ---------------------------------------------------
