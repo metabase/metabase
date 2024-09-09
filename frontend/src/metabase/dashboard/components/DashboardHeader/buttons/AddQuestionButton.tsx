@@ -20,12 +20,13 @@ export const AddQuestionButton = () => {
       : t`Add questions`;
 
   const onNewQuestion = () =>
+    dashboard &&
     dispatch(
       push(
         Urls.newQuestion({
           mode: "notebook",
           creationType: "custom_question",
-          collectionId: dashboard?.collection_id ?? null,
+          collectionId: dashboard.collection_id || undefined,
           cardType: "question",
           dashboardId: dashboard.id,
         }),
