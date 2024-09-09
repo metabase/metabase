@@ -3,6 +3,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -64,20 +65,27 @@ export const SaveQuestionProvider = ({
     originalQuestion?.collectionId(),
   );
 
-  const { data: recentItems } = useListRecentsQuery(
+  const [hasLoadedRecentItems, setHasLoadedRecentItems] = useState(false);
+  const { data: recentItems, isLoading } = useListRecentsQuery(
     { context: ["selections", "views"] },
-    { refetchOnMountOrArgChange: true },
+    { skip: hasLoadedRecentItems },
   );
+  // We need to stop refetching recent items as the user makes selections in the ui that could cause a refetch
+  // This causes new initial values getting calculated, which combined with Formik's `enableReinitialize`
+  // prop, results in a dirty form getting values replaced within initial state.
+  useEffect(() => {
+    if (!isLoading) {
+      setHasLoadedRecentItems(true);
+    }
+  }, [isLoading]);
 
   const lastUsedDashboard = recentItems?.find(
     item => item.model === "dashboard",
   ) as RecentCollectionItem | undefined;
-  const lastUsedDashboardId = lastUsedDashboard?.id;
-  const lastUsedDashboardCollectionId = lastUsedDashboard?.parent_collection.id;
 
   const initialCollectionId =
-    lastUsedDashboardCollectionId ?? defaultCollectionId;
-  const initialDashboardId = lastUsedDashboardId;
+    lastUsedDashboard?.parent_collection.id ?? defaultCollectionId;
+  const initialDashboardId = lastUsedDashboard?.id;
 
   const initialValues: FormValues = useMemo(
     () =>

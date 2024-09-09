@@ -2,6 +2,7 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 import { msgid, ngettext, t } from "ttag";
+import _ from "underscore";
 
 import ArchiveModal from "metabase/components/ArchiveModal";
 import { setArchivedQuestion } from "metabase/query_builder/actions";
@@ -14,10 +15,9 @@ const getLabels = question => {
   const type = question.type();
 
   if (type === "question") {
-    const message =
-      typeof question.dashboardId() === "number"
-        ? t`This question will be removed from its dashboard and any alerts using it.`
-        : t`This question will be removed from any dashboards or alerts using it.`;
+    const message = _.isNumber(question.dashboardId())
+      ? t`This question will be removed from its dashboard and any alerts using it.`
+      : t`This question will be removed from any dashboards or alerts using it.`;
 
     return {
       title: t`Move this question to trash?`,

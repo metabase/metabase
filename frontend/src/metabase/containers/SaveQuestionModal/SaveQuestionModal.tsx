@@ -28,7 +28,6 @@ export const SaveQuestionModal = ({
     saveToDashboardId ? { id: saveToDashboardId } : skipToken,
   );
 
-  // TODO: calculate this such that the default tab is the on that the user was on before the started the question creation flow...
   const initialDashboardTabId =
     _.first(saveToDashboard?.tabs || [])?.id ?? null;
 
