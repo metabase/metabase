@@ -46,7 +46,7 @@ import {
 import { ViewFooter } from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
-import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
+import { ChartTypeSidebar } from "./sidebars/ChartTypeSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
@@ -60,10 +60,11 @@ const fadeIn = {
 class View extends Component {
   getLeftSidebar = () => {
     const {
+      question,
+      result,
       isShowingChartSettingsSidebar,
       isShowingChartTypeSidebar,
       onCloseChartSettings,
-      onCloseChartType,
     } = this.props;
 
     if (isShowingChartSettingsSidebar) {
@@ -93,7 +94,7 @@ class View extends Component {
     }
 
     if (isShowingChartTypeSidebar) {
-      return <ChartTypeSidebar {...this.props} onClose={onCloseChartType} />;
+      return <ChartTypeSidebar question={question} result={result} />;
     }
 
     return null;

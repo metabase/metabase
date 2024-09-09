@@ -3,7 +3,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
    [metabase.models :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
@@ -20,7 +19,7 @@
   [card-id]
   ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
   ;; stuff doesn't belong in the Dashboard QP namespace
-  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+  (mt/as-admin
     (qp.card/process-query-for-card
      card-id :api
      :make-run (constantly
