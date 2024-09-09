@@ -44,6 +44,13 @@ export function entityPickerModalLevel(level) {
   return entityPickerActiveTab().findByTestId(`item-picker-level-${level}`);
 }
 
+/**
+ *
+ * @param {string} name
+ * @param {object} options
+ * @param {=number} options.level
+ * @returns
+ */
 export function entityPickerModalItem(name, { level } = {}) {
   if (level != null) {
     return entityPickerActiveTab().findByText(name).parents("button");

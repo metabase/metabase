@@ -563,7 +563,7 @@ function openDataSelector() {
 
 function assertDataPickerEntitySelected(
   name: string,
-  options?: { level: number },
+  options?: { level?: number },
 ) {
   entityPickerModalItem(name, options).should(
     "have.attr",
@@ -574,7 +574,7 @@ function assertDataPickerEntitySelected(
 
 function assertDataPickerEntityNotSelected(
   name: string,
-  options?: { level: number },
+  options?: { level?: number },
 ) {
   entityPickerModalItem(name, options).should("not.have.attr", "data-active");
 }
