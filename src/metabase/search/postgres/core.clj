@@ -74,7 +74,7 @@
                         (filter (comp (set ids) :id))))))))
 
 (defn init!
-  "Ensure that the search index exists, and has been populated with all  entities."
+  "Ensure that the search index exists, and has been populated with all the entities."
   [& [force-reset?]]
   (when (or force-reset? (not (#'search.index/exists? @#'search.index/active-table)))
     (search.index/reset-index!))
