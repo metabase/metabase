@@ -27,6 +27,8 @@ const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
 const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
 
+const isEmbeddingSdk = process.env.CYPRESS_IS_EMBEDDING_SDK === "true";
+
 // docs say that tsconfig paths should handle aliases, but they don't
 const assetsResolverPlugin = {
   name: "assetsResolver",
@@ -169,6 +171,7 @@ const defaultConfig = {
 
 const mainConfig = {
   ...defaultConfig,
+  chromeWebSecurity: isEmbeddingSdk,
   projectId: "ywjy9z",
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
   reporter: "cypress-multi-reporters",

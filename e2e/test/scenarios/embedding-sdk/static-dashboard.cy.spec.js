@@ -45,8 +45,6 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
       { wrapId: true },
     );
 
-    cy.signOut();
-
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
     cy.intercept("GET", "/api/user/current").as("getUser");
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
@@ -54,7 +52,37 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
     );
   });
 
+  it("should not render dashboard when embedding SDK is not enabled", () => {
+    cy.request("PUT", "/api/setting", {
+      "enable-embedding-sdk": false,
+    });
+    cy.signOut();
+
+    cy.get("@dashboardId").then(dashboardId => {
+      visitFullAppEmbeddingUrl({
+        url: EMBEDDING_SDK_STORY_HOST,
+        qs: { id: "embeddingsdk-staticdashboard--default", viewMode: "story" },
+        onBeforeLoad: window => {
+          window.JWT_SHARED_SECRET = JWT_SHARED_SECRET;
+          window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
+          window.DASHBOARD_ID = dashboardId;
+        },
+      });
+    });
+
+    cy.get("#metabase-sdk-root").within(() => {
+      cy.findByText("Error").should("be.visible");
+      cy.findByText(
+        "Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token",
+      ).should("be.visible");
+    });
+  });
+
   it("should show dashboard content", () => {
+    cy.request("PUT", "/api/setting", {
+      "enable-embedding-sdk": true,
+    });
+    cy.signOut();
     cy.get("@dashboardId").then(dashboardId => {
       visitFullAppEmbeddingUrl({
         url: EMBEDDING_SDK_STORY_HOST,
