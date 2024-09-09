@@ -51,7 +51,7 @@ const Handle = forwardRef(function Handle(props, ref) {
   );
 });
 
-export function ResizableNotebook({
+export function DatasetNotebook({
   isResizing,
   onResizeStop,
   resizableBoxProps,
@@ -75,4 +75,4 @@ export function ResizableNotebook({
   );
 }
 
-ResizableNotebook.propTypes = propTypes;
+DatasetNotebook.propTypes = propTypes;
