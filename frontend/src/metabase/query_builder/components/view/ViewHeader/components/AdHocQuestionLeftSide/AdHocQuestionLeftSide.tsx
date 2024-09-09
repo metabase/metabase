@@ -10,12 +10,12 @@ import {
 } from "metabase/query_builder/components/view/ViewHeader/ViewTitleHeader.styled";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import { Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { QuestionDataSource } from "../QuestionDataSource";
 import { QuestionDescription } from "../QuestionDescription";
+import { DashboardSaveLocation } from "../DashboardSaveLocation";
 
 interface AdHocQuestionLeftSideProps {
   question: Question;
@@ -78,12 +78,7 @@ export function AdHocQuestionLeftSide(
           />
         )}
         {saveToDashboard && (
-          <Text size="sm" fw="bold" color="text-light">
-            <Flex align="center" gap="sm" color="text-light">
-              <Icon name="dashboard" size={12} />
-              {saveToDashboard?.name}
-            </Flex>
-          </Text>
+          <DashboardSaveLocation dashboardName={saveToDashboard.name} />
         )}
       </ViewHeaderLeftSubHeading>
     </AdHocLeftSideRoot>

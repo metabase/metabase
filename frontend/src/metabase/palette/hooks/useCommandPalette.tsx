@@ -181,15 +181,6 @@ export const useCommandPalette = ({
           searchResults.data.map((result, index) => {
             const wrappedResult = Search.wrapEntity(result, dispatch);
             const icon = getIcon(wrappedResult);
-            const url =
-              wrappedResult.model === "card" &&
-              typeof wrappedResult.dashboard_id === "number"
-                ? Urls.modelToUrl({
-                    model: "dashboard",
-                    id: wrappedResult.dashboard_id,
-                    name: "",
-                  })
-                : wrappedResult.getUrl();
             return {
               id: `search-result-${result.model}-${result.id}`,
               name: result.name,
@@ -200,11 +191,10 @@ export const useCommandPalette = ({
               priority: Priority.NORMAL - index,
               perform: () => {
                 trackSearchClick("item", index, "command-palette");
-                dispatch(push(url));
               },
               extra: {
                 moderatedStatus: result.moderated_status,
-                href: url,
+                href: wrappedResult.getUrl(),
                 iconColor: icon.color,
                 subtext: getSearchResultSubtext(wrappedResult),
               },
@@ -246,20 +236,7 @@ export const useCommandPalette = ({
           name: getName(item),
           icon: icon.name,
           section: "recent",
-          perform: () => {
-            // Need to keep this logic here for when user selects via keyboard
-            const href =
-              item.model === "card" && typeof item.dashboard_id === "number"
-                ? Urls.modelToUrl({
-                    model: "dashboard",
-                    id: item.dashboard_id,
-                    name: "",
-                  })
-                : Urls.modelToUrl(item);
-            if (href) {
-              dispatch(push(href));
-            }
-          },
+          perform: () => {},
           extra: {
             moderatedStatus: isRecentCollectionItem(item)
               ? item.moderated_status

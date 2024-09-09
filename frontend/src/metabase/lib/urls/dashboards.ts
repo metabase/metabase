@@ -16,29 +16,22 @@ export function dashboard(
   dashboard: Pick<Dashboard, "id" | "name">,
   { addCardWithId, editMode, tabId }: DashboardUrlBuilderOpts = {},
 ) {
-  const options = {
+  // x-ray dashboards have ids as urls
+  const path =
+    typeof dashboard.id === "string"
+      ? `${dashboard.id}`
+      : `/dashboard/${appendSlug(dashboard.id, slugg(dashboard.name))}`;
+
+  const query = tabId
+    ? new URLSearchParams({ tab: `${tabId}` }).toString()
+    : "";
+
+  const hash = stringifyHashOptions({
     ...(addCardWithId ? { add: addCardWithId } : {}),
     ...(editMode ? { edit: editMode } : {}),
-  };
+  });
 
-  const path = appendSlug(dashboard.id, slugg(dashboard.name));
-
-  let query = tabId ? new URLSearchParams({ tab: `${tabId}` }).toString() : "";
-  if (query) {
-    query = `?${query}`;
-  }
-
-  let hash = stringifyHashOptions(options);
-  if (hash) {
-    hash = `#${hash}`;
-  }
-
-  // x-ray dashboards have ids as urls
-  if (typeof dashboard.id === "string") {
-    return `${dashboard.id}${query}${hash}`;
-  } else {
-    return `/dashboard/${path}${query}${hash}`;
-  }
+  return `${path}${query ? "?" + query : ""}${hash ? "#" + hash : ""}`;
 }
 
 export function publicDashboard(uuid: string) {

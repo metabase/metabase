@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
 import { skipToken, useGetDashboardQuery } from "metabase/api";
-import { Flex, Icon, Text } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
+import { DashboardSaveLocation } from "./ViewHeader/components/DashboardSaveLocation";
 import type { ViewSectionProps } from "./ViewSection";
 import ViewSection, { ViewHeading } from "./ViewSection";
 
@@ -24,15 +25,10 @@ export function NewQuestionHeader({
       {...props}
       style={{ borderBottom: "1px solid var(--mb-color-border)" }}
     >
-      <Flex direction="column" gap="sm">
+      <Flex direction="column" gap="xs">
         <ViewHeading>{t`Pick your starting data`}</ViewHeading>
         {saveToDashboard && (
-          <Text size="sm" fw="bold" color="text-light">
-            <Flex align="center" gap="sm" color="text-light">
-              <Icon name="dashboard" size={12} />
-              {saveToDashboard?.name}
-            </Flex>
-          </Text>
+          <DashboardSaveLocation dashboardName={saveToDashboard.name} />
         )}
       </Flex>
     </ViewSection>
