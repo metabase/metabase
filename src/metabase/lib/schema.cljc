@@ -99,8 +99,8 @@
 
 (defn- bad-ref-clause? [ref-type valid-ids x]
   (and (vector? x)
-       (= ref-type (first x))
-       (not (contains? valid-ids (get x 2)))))
+       (= ref-type (nth x 0 nil))
+       (not (contains? valid-ids (nth x 2 nil)))))
 
 (defn- stage-with-joins-and-namespaced-keys-removed
   "For ref validation purposes we should ignore `:joins` and any namespaced keys that might be used to record additional
@@ -112,14 +112,18 @@
                            (keys stage))))
 
 (defn- expression-ref-errors-for-stage [stage]
-  (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))]
-    (mbql.u/matching-locations (stage-with-joins-and-namespaced-keys-removed stage)
-                               #(bad-ref-clause? :expression expression-names %))))
+  (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))
+        pred #(bad-ref-clause? :expression expression-names %)
+        form (stage-with-joins-and-namespaced-keys-removed stage)]
+    (when (mbql.u/pred-matches-form? form pred)
+      (mbql.u/matching-locations form pred))))
 
 (defn- aggregation-ref-errors-for-stage [stage]
-  (let [uuids (into #{} (map (comp :lib/uuid second)) (:aggregation stage))]
-    (mbql.u/matching-locations (stage-with-joins-and-namespaced-keys-removed stage)
-                               #(bad-ref-clause? :aggregation uuids %))))
+  (let [uuids (into #{} (map (comp :lib/uuid second)) (:aggregation stage))
+        pred #(bad-ref-clause? :aggregation uuids %)
+        form (stage-with-joins-and-namespaced-keys-removed stage)]
+    (when (mbql.u/pred-matches-form? form pred)
+      (mbql.u/matching-locations form pred))))
 
 (defn ref-errors-for-stage
   "Return the locations and the clauses with dangling expression or aggregation references.
