@@ -45,7 +45,7 @@ export function MetricEditor({
 
   const handleCreateStart = async () => {
     await updateQuestion(question.setDefaultDisplay());
-    setModalType("save");
+    setModalType("create");
   };
 
   const handleCreate = async (question: Question) => {
@@ -83,7 +83,7 @@ export function MetricEditor({
         runQuestionQuery={runQuestionQuery}
         cancelQuery={cancelQuery}
       />
-      {modalType === "save" && (
+      {modalType === "create" && (
         <SaveQuestionModal
           question={question}
           originalQuestion={null}

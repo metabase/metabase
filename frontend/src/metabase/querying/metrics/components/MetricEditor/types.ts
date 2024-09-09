@@ -1,1 +1,1 @@
-export type MetricModalType = "save" | "leave";
+export type MetricModalType = "create" | "leave";
