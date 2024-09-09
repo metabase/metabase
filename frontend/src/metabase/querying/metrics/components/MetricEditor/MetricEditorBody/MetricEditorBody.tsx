@@ -2,6 +2,8 @@ import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box, Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
+import { MetricEditorSidebar } from "./MetricEditorSidebar";
+
 type MetricEditorBodyProps = {
   question: Question;
   reportTimezone: string;
@@ -38,6 +40,7 @@ export function MetricEditorBody({
           hasVisualizeButton={false}
         />
       </Box>
+      <MetricEditorSidebar />
     </Flex>
   );
 }

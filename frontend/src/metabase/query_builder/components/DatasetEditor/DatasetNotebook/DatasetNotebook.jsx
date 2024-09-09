@@ -8,7 +8,7 @@ import { darken } from "metabase/lib/colors";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box, Flex, rem } from "metabase/ui";
 
-import { MetricSidebar } from "./MetricSidebar";
+import { MetricEditorSidebar } from "../../../../querying/metrics/components/MetricEditor/MetricEditorBody/MetricEditorSidebar";
 
 const propTypes = {
   question: PropTypes.object.isRequired,
@@ -79,7 +79,7 @@ export function DatasetNotebook({
             hasVisualizeButton={false}
           />
         </Box>
-        {question.type() === "metric" && <MetricSidebar />}
+        {question.type() === "metric" && <MetricEditorSidebar />}
       </Flex>
     </ResizableBox>
   );

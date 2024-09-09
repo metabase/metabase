@@ -6,7 +6,7 @@ function setup(opts: SetupOpts = {}) {
   baseSetup({ hasEnterprisePlugins: true, ...opts });
 }
 
-describe("MetricSidebar (EE without a token)", () => {
+describe("MetricEditorSidebar (EE without a token)", () => {
   it("should render the metric docs link by default", () => {
     setup({ showMetabaseLinks: true });
     expect(screen.getByRole("link", { name: /Docs/ })).toBeInTheDocument();
