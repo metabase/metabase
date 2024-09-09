@@ -144,7 +144,6 @@
         row-combos              (apply math.combo/cartesian-product (map row-values pivot-rows))
         col-combos              (apply math.combo/cartesian-product (map column-values pivot-cols))
         row-totals?             (and row-totals? (boolean (seq pivot-cols)))
-        col-totals?             (and col-totals? (boolean (seq pivot-rows)))
         ;; Build the multi-level column headers
         column-headers          (concat
                                  (if (= 1 (count pivot-measures))
@@ -165,7 +164,9 @@
                                                 (not (seq pivot-rows)))
                                          (concat (map #(get column-titles %) pivot-cols) h)
                                          (concat (map #(get column-titles %) pivot-rows) h)))
-                                     (apply map vector (filter seq column-headers)))
+                                     (let [hs (filter seq column-headers)]
+                                       (when (seq hs)
+                                         (apply map vector hs))))
         headers                 (if (seq headers)
                                   headers
                                   [(concat

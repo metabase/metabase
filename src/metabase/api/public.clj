@@ -324,8 +324,10 @@
               :dashcard-id   dashcard-id
               :export-format export-format
               :parameters    parameters
-              :middleware {:format-rows? format-rows
-                           :pivot?       pivot-results}))))
+              :constraints   nil
+              :middleware    {:process-viz-settings? true
+                              :format-rows?          (boolean format-rows)
+                              :pivot?                (boolean pivot-results)}))))
 
 (api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
