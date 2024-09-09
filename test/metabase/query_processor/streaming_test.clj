@@ -318,7 +318,7 @@
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
           user              (or user :rasta)]
       (mt/with-temporary-setting-values [enable-public-sharing true
-                                         enable-embedding      true]
+                                         enable-embedding-sdk  true]
         (embed-test/with-new-secret-key!
           (t2.with-temp/with-temp [Card          card      (if viz-settings
                                                              (assoc card-defaults :visualization_settings viz-settings)

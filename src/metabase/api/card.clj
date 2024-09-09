@@ -495,7 +495,7 @@
   [id]
   {id [:maybe ms/PositiveInt]}
   (let [orig-card (api/read-check Card id)
-        new-name  (str (trs "Copy of ") (:name orig-card))
+        new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
     (-> (card/create-card! new-card @api/*current-user*)
         hydrate-card-details
@@ -516,7 +516,7 @@
   [card-before-updates card-updates]
   (when (or (api/column-will-change? :enable_embedding card-before-updates card-updates)
             (api/column-will-change? :embedding_params card-before-updates card-updates))
-    (validation/check-embedding-enabled)
+    (validation/check-embedding-sdk-enabled)
     (api/check-superuser)))
 
 (api/defendpoint PUT "/:id"
@@ -760,7 +760,7 @@
   and a signed JWT."
   []
   (validation/check-has-application-permission :setting)
-  (validation/check-embedding-enabled)
+  (validation/check-embedding-sdk-enabled)
   (t2/select [Card :name :id], :enable_embedding true, :archived false))
 
 (api/defendpoint POST "/pivot/:card-id/query"

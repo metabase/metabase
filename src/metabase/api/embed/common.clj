@@ -14,6 +14,7 @@
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.models.card :as card]
    [metabase.models.params :as params]
+   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.pulse.parameters :as pulse-params]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -21,7 +22,7 @@
    [metabase.util.embed :as embed]
    [metabase.util.i18n
     :as i18n
-    :refer [tru]]
+    :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -82,7 +83,7 @@
    (check-embedding-enabled-for-object (t2/select-one [entity :enable_embedding] :id id)))
 
   ([object]
-   (validation/check-embedding-enabled)
+   (validation/check-embedding-sdk-enabled)
    (api/check-404 object)
    (api/check-not-archived object)
    (api/check (:enable_embedding object)
@@ -302,10 +303,14 @@
     model-or-api-name
     (api-name->model model-or-api-name)))
 
-(def ^:private eid-api-models
+(def ^:private eid-api-names
   "Sorted vec of api models that have an entity_id column"
   (vec (sort (keys api-name->model))))
 
+(def ^:private eid-api-models
+  (vec (sort (vals api-name->model))))
+
+(def ^:private ApiName (into [:enum] eid-api-names))
 (def ^:private ApiModel (into [:enum] eid-api-models))
 
 (def ^:private EntityId
@@ -318,23 +323,62 @@
 
 (def ^:private ModelToEntityIds
   "A Malli schema for a map of model names to a sequence of entity ids."
-  (mc/schema [:map-of ApiModel [:sequential :string]]))
+  (mc/schema [:map-of ApiName [:sequential :string]]))
 
-(mu/defn- entity-ids->id-for-model
+(def ^:private EidTranslationStatus
+  [:enum :ok :not-found :invalid-format])
+
+;; -------------------- Entity Id Translation Analytics --------------------
+
+(def ^:private
+  default-eid-translation-counter
+  (zipmap (rest EidTranslationStatus) (repeat 0)))
+
+(defsetting entity-id-translation-counter
+  (deferred-tru "A counter for tracking the number of entity_id -> id translations. Whenever we call [[model->entity-ids->ids]], we increment this counter by the number of translations.")
+  :visibility :internal
+  :export?    false
+  :audit      :never
+  :type       :json
+  :default    default-eid-translation-counter)
+
+(defn- compute-result [processed-result current-count]
+  (merge-with + processed-result current-count))
+
+(mu/defn update-translation-count!
+  "Update the entity-id translation counter with the results of a batch of entity-id translations."
+  [results :- [:sequential EidTranslationStatus]]
+  (let [processed-result (frequencies results)]
+    (entity-id-translation-counter!
+     (compute-result processed-result (entity-id-translation-counter)))))
+
+(defn- add-total [counter]
+  (merge counter {:total (apply + (vals counter))}))
+
+(defn get-and-clear-translation-count!
+  "Get and clear the entity-id translation counter. This is meant to be called during the daily stats collection process."
+  []
+  (u/prog1 (add-total (entity-id-translation-counter))
+    (entity-id-translation-counter! default-eid-translation-counter)))
+
+(mu/defn- entity-ids->id-for-model :- [:sequential [:tuple
+                                                    ;; We want to pass incorrectly formatted entity-ids through here,
+                                                    ;; but this is assumed to be an entity-id:
+                                                    :string
+                                                    [:map [:status EidTranslationStatus]]]]
   "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
   [api-name eids]
   (let [model (->model api-name) ;; This lookup is safe because we've already validated the api-names
         eid->id (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))]
     (mapv (fn entity-id-info [entity-id]
             [entity-id (if-let [id (get eid->id entity-id)]
-                         {:id id :type api-name :status "success"}
+                         {:id id :type api-name :status :ok}
                          ;; handle errors
                          (if (mc/validate EntityId entity-id)
                            {:type api-name
-                            :id nil
-                            :status "not-found"}
+                            :status :not-found}
                            {:type api-name
-                            :status "invalid-format"
+                            :status :invalid-format
                             :reason (me/humanize (mc/explain EntityId entity-id))}))])
           eids)))
 
@@ -347,21 +391,23 @@
                                                        (mc/explain ModelToEntityIds model-key->entity-ids)))
                                        :allowed-models (sort (keys api-name->model))
                                        :status-code 400})))
-  (into {}
-        (mapcat
-         (fn [[model eids]] (entity-ids->id-for-model model eids))
-         model-key->entity-ids)))
+  (u/prog1 (into {}
+                 (mapcat
+                  (fn [[model eids]] (entity-ids->id-for-model model eids))
+                  model-key->entity-ids))
+    (update-translation-count! (map :status (vals <>)))))
 
 (mu/defn ->id :- :int
   "Translates a single entity_id -> id. This reuses the batched version: [[model->entity-ids->ids]].
    Please use that if you have to do man lookups at once."
-  [pre-model id :- [:or :int :string]]
+  [api-name-or-model :- [:or ApiName ApiModel] id :- [:or #_id :int #_entity-id :string]]
   (if (string? id)
-    (let [model (->model pre-model)
-          [[_ {:keys [status] :as info}]] (entity-ids->id-for-model model [id])]
-      (if-not (= "success" status)
+    (let [model (->model api-name-or-model)
+          [[_ {:keys [status] :as info}]] (entity-ids->id-for-model api-name-or-model [id])]
+      (update-translation-count! [status])
+      (if-not (= :ok status)
         (throw (ex-info "problem looking up id from entity_id"
-                        {:pre-model pre-model
+                        {:api-name-or-model api-name-or-model
                          :model model
                          :id id
                          :status status}))

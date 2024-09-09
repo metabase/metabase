@@ -1007,3 +1007,18 @@
                                                :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64,")])}
                           :type               "alert"}}
                   (first @requests))))))))
+
+(deftest do-not-send-alert-with-archived-card-test
+  (mt/with-temp
+    [:model/Card         {card-id :id}  {:archived      true
+                                         :dataset_query (mt/mbql-query orders {:limit 1})}
+     :model/Pulse        {pulse-id :id} {:name            "Test Pulse"
+                                         :alert_condition "rows"}
+     :model/PulseCard    _              {:pulse_id pulse-id
+                                         :card_id  card-id}
+     :model/PulseChannel _              {:pulse_id pulse-id
+                                         :channel_type "email"
+                                         :details      {:emails ["foo@metabase.com"]}}]
+    (is (empty? (-> (pulse.test-util/with-captured-channel-send-messages!
+                      (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id)))
+                    :channel/email)))))

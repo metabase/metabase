@@ -7,7 +7,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { Center, Icon, Menu, Stack, Text, Title } from "metabase/ui";
 
 export function EmbedMenuItem({ onClick }: { onClick: () => void }) {
-  const isEmbeddingEnabled = useSetting("enable-embedding");
+  const isEmbeddingEnabled = useSetting("enable-embedding-sdk");
   const isAdmin = useSelector(getUserIsAdmin);
 
   if (!isAdmin) {

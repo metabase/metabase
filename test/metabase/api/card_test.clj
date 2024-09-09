@@ -724,6 +724,11 @@
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(deftest ^:parallel docstring-test
+  (testing "Make sure generated docstring resolves Malli schemas in the registry correctly (#46799)"
+    (is (str/includes? (-> #'api.card/POST_ meta :doc)
+                       "-  **`type`** nullable enum of :question, question, :metric, metric, :model, model."))))
+
 (deftest create-a-card
   (testing "POST /api/card"
     (testing "Test that we can create a new Card"
@@ -875,9 +880,9 @@
 (deftest create-card-disallow-setting-enable-embedding-test
   (testing "POST /api/card"
     (testing "Ignore values of `enable_embedding` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
-      ;; should be ignored regardless of the value of the `enable-embedding` Setting.
+      ;; should be ignored regardless of the value of the `enable-embedding-sd` Setting.
       (doseq [enable-embedding? [true false]]
-        (mt/with-temporary-setting-values [enable-embedding enable-embedding?]
+        (mt/with-temporary-setting-values [enable-embedding-sdk enable-embedding?]
           (mt/with-model-cleanup [:model/Card]
             (is (=? {:enable_embedding false}
                     (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
@@ -1414,12 +1419,12 @@
   (testing "PUT /api/card/:id"
     (t2.with-temp/with-temp [:model/Card card]
       (testing "If embedding is disabled, even an admin should not be allowed to update embedding params"
-        (mt/with-temporary-setting-values [enable-embedding false]
+        (mt/with-temporary-setting-values [enable-embedding-sdk false]
           (is (= "Embedding is not enabled."
                  (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card))
                                        {:embedding_params {:abc "enabled"}})))))
 
-      (mt/with-temporary-setting-values [enable-embedding true]
+      (mt/with-temporary-setting-values [enable-embedding-sdk true]
         (testing "Non-admin should not be allowed to update Card's embedding parms"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
@@ -2846,7 +2851,7 @@
 
 (deftest test-that-we-can-fetch-a-list-of-embeddable-cards
   (testing "GET /api/card/embeddable"
-    (mt/with-temporary-setting-values [enable-embedding true]
+    (mt/with-temporary-setting-values [enable-embedding-sdk true]
       (t2.with-temp/with-temp [:model/Card _ {:enable_embedding true}]
         (is (= [{:name true, :id true}]
                (for [card (mt/user-http-request :crowberto :get 200 "card/embeddable")]

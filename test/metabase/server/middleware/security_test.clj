@@ -37,19 +37,19 @@
   (mt/with-premium-features #{:embedding}
     (testing "Frame ancestors from `embedding-app-origin` setting"
       (let [multiple-ancestors "https://*.metabase.com http://metabase.internal"]
-        (tu/with-temporary-setting-values [enable-embedding     true
+        (tu/with-temporary-setting-values [enable-embedding-sdk true
                                            embedding-app-origin multiple-ancestors]
           (is (= (str "frame-ancestors " multiple-ancestors)
                  (csp-directive "frame-ancestors"))))))
 
     (testing "Frame ancestors is 'none' for nil `embedding-app-origin`"
-      (tu/with-temporary-setting-values [enable-embedding     true
+      (tu/with-temporary-setting-values [enable-embedding-sdk true
                                          embedding-app-origin nil]
         (is (= "frame-ancestors 'none'"
                (csp-directive "frame-ancestors")))))
 
     (testing "Frame ancestors is 'none' if embedding is disabled"
-      (tu/with-temporary-setting-values [enable-embedding     false
+      (tu/with-temporary-setting-values [enable-embedding-sdk false
                                          embedding-app-origin "https: http:"]
         (is (= "frame-ancestors 'none'"
                (csp-directive "frame-ancestors")))))))
@@ -57,13 +57,13 @@
 (deftest xframeoptions-header-tests
   (mt/with-premium-features #{:embedding}
     (testing "`DENY` when embedding is disabled"
-      (tu/with-temporary-setting-values [enable-embedding     false
+      (tu/with-temporary-setting-values [enable-embedding-sdk false
                                          embedding-app-origin "https://somesite.metabase.com"]
         (is (= "DENY" (x-frame-options-header)))))
 
     (testing "Only the first of multiple embedding origins are used in `X-Frame-Options`"
       (let [embedding-app-origins ["https://site1.metabase.com" "https://our_metabase.internal"]]
-        (tu/with-temporary-setting-values [enable-embedding     true
+        (tu/with-temporary-setting-values [enable-embedding-sdk true
                                            embedding-app-origin (str/join " " embedding-app-origins)]
           (is (= (str "ALLOW-FROM " (first embedding-app-origins))
                  (x-frame-options-header))))))))
@@ -181,3 +181,20 @@
 
   (testing "Should handle invalid origins"
     (is (true? (mw.security/approved-origin? "http://example.com" "  fpt://something http://example.com ://123  4")))))
+
+(deftest test-access-control-headers?
+  (testing "Should always allow localhost:*"
+    (tu/with-temporary-setting-values [enable-embedding-sdk true
+                                       embedding-app-origin nil]
+      (is (= "http://localhost:8080" (get (mw.security/access-control-headers "http://localhost:8080") "Access-Control-Allow-Origin")))))
+
+  (testing "Should disable CORS when embedding is disabled"
+    (tu/with-temporary-setting-values [enable-embedding-sdk false
+                                       embedding-app-origin nil]
+      (is (= nil (get (mw.security/access-control-headers "http://localhost:8080") "Access-Control-Allow-Origin")))))
+
+  (testing "Should work with embedding-app-origin"
+    (mt/with-premium-features #{:embedding}
+      (tu/with-temporary-setting-values [enable-embedding-sdk true
+                                         embedding-app-origin "example.com"]
+        (is (= "https://example.com" (get (mw.security/access-control-headers "https://example.com") "Access-Control-Allow-Origin")))))))

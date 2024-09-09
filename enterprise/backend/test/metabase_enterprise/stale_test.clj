@@ -270,7 +270,7 @@
                                                                    :creator_id    (mt/user->id :rasta)})]
     (testing "If public sharing and embedding are disabled, everything is returned"
       (mt/with-temporary-setting-values [enable-public-sharing false
-                                         enable-embedding      false]
+                                         enable-embedding-sdk  false]
         (is (= {:rows  [{:id card-id1 :model :model/Card}
                         {:id dash-id1 :model :model/Dashboard}
                         {:id card-id2 :model :model/Card}
@@ -287,7 +287,7 @@
                  :sort-direction :asc})))))
     (testing "If they are enabled, publicy shared or embedded content is excluded"
       (mt/with-temporary-setting-values [enable-public-sharing true
-                                         enable-embedding      true]
+                                         enable-embedding-sdk  true]
         (is (= {:rows [{:id card-id3 :model :model/Card}
                        {:id dash-id3 :model :model/Dashboard}]
                 :total 2}

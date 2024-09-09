@@ -41,10 +41,10 @@ describe("SettingsEditor", () => {
   it("should not allow to configure the origin and SameSite cookie for interactive embedding", async () => {
     await setupEnterprise({
       settings: [
-        createMockSettingDefinition({ key: "enable-embedding" }),
+        createMockSettingDefinition({ key: "enable-embedding-sdk" }),
         createMockSettingDefinition({ key: "embedding-app-origin" }),
       ],
-      settingValues: createMockSettings({ "enable-embedding": true }),
+      settingValues: createMockSettings({ "enable-embedding-sdk": true }),
     });
 
     await userEvent.click(screen.getByText("Embedding"));

@@ -12,8 +12,10 @@ describe("SettingsEditor", () => {
   describe("full-app embedding", () => {
     it("should show info about interactive embedding", async () => {
       await setup({
-        settings: [createMockSettingDefinition({ key: "enable-embedding" })],
-        settingValues: createMockSettings({ "enable-embedding": true }),
+        settings: [
+          createMockSettingDefinition({ key: "enable-embedding-sdk" }),
+        ],
+        settingValues: createMockSettings({ "enable-embedding-sdk": true }),
       });
 
       await userEvent.click(screen.getByText("Embedding"));
@@ -26,8 +28,10 @@ describe("SettingsEditor", () => {
 
     it("should allow visiting the full-app embedding page even if embedding is not enabled", async () => {
       await setup({
-        settings: [createMockSettingDefinition({ key: "enable-embedding" })],
-        settingValues: createMockSettings({ "enable-embedding": false }),
+        settings: [
+          createMockSettingDefinition({ key: "enable-embedding-sdk" }),
+        ],
+        settingValues: createMockSettings({ "enable-embedding-sdk": false }),
         initialRoute: FULL_APP_EMBEDDING_URL,
       });
 

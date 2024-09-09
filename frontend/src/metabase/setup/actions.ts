@@ -229,7 +229,7 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
     const tokenFeatures = getSetting(getState(), "token-features");
     const adminSettings = getSettings(getState());
     const enableEmbeddingSetByEnv = adminSettings.find(
-      (setting: { key: string }) => setting.key === "enable-embedding",
+      (setting: { key: string }) => setting.key === "enable-embedding-sdk",
     )?.is_env_setting;
 
     const interestedInEmbedding =
@@ -243,7 +243,7 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
     }
 
     if (interestedInEmbedding && !enableEmbeddingSetByEnv) {
-      settingsToChange["enable-embedding"] = true;
+      settingsToChange["enable-embedding-sdk"] = true;
       settingsToChange["setup-embedding-autoenabled"] = true;
     }
 

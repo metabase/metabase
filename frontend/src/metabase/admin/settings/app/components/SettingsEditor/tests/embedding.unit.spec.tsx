@@ -24,12 +24,12 @@ describe("SettingsEditor", () => {
   it("should allow to configure the origin and SameSite cookie setting for interactive embedding", async () => {
     await setupEmbedding({
       settings: [
-        createMockSettingDefinition({ key: "enable-embedding" }),
+        createMockSettingDefinition({ key: "enable-embedding-sdk" }),
         createMockSettingDefinition({ key: "embedding-app-origin" }),
         createMockSettingDefinition({ key: "session-cookie-samesite" }),
       ],
       settingValues: createMockSettings({
-        "enable-embedding": true,
+        "enable-embedding-sdk": true,
         "session-cookie-samesite": "lax",
       }),
     });
@@ -51,13 +51,13 @@ describe("SettingsEditor", () => {
     it("should display a note if any authorized origins do not match the instance domain", async () => {
       await setupEmbedding({
         settings: [
-          createMockSettingDefinition({ key: "enable-embedding" }),
+          createMockSettingDefinition({ key: "enable-embedding-sdk" }),
           createMockSettingDefinition({ key: "embedding-app-origin" }),
           createMockSettingDefinition({ key: "session-cookie-samesite" }),
         ],
         settingValues: createMockSettings({
           "embedding-app-origin": "https://example.com",
-          "enable-embedding": true,
+          "enable-embedding-sdk": true,
           "session-cookie-samesite": "lax",
         }),
       });
@@ -71,13 +71,13 @@ describe("SettingsEditor", () => {
     it("should not display a note if all authorized origins match the instance domain", async () => {
       await setupEmbedding({
         settings: [
-          createMockSettingDefinition({ key: "enable-embedding" }),
+          createMockSettingDefinition({ key: "enable-embedding-sdk" }),
           createMockSettingDefinition({ key: "embedding-app-origin" }),
           createMockSettingDefinition({ key: "session-cookie-samesite" }),
         ],
         settingValues: createMockSettings({
           "embedding-app-origin": "",
-          "enable-embedding": true,
+          "enable-embedding-sdk": true,
           "session-cookie-samesite": "lax",
         }),
       });
@@ -93,13 +93,13 @@ describe("SettingsEditor", () => {
     it("should not display a note if SameSite cookie is set to 'none'", async () => {
       await setupEmbedding({
         settings: [
-          createMockSettingDefinition({ key: "enable-embedding" }),
+          createMockSettingDefinition({ key: "enable-embedding-sdk" }),
           createMockSettingDefinition({ key: "embedding-app-origin" }),
           createMockSettingDefinition({ key: "session-cookie-samesite" }),
         ],
         settingValues: createMockSettings({
           "embedding-app-origin": "https://example.com",
-          "enable-embedding": true,
+          "enable-embedding-sdk": true,
           "session-cookie-samesite": "none",
         }),
       });

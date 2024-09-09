@@ -145,7 +145,7 @@ describe("setup (OSS)", () => {
 
       expect(await getLastSettingsPutPayload()).toEqual({
         "embedding-homepage": "visible",
-        "enable-embedding": true,
+        "enable-embedding-sdk": true,
         "setup-embedding-autoenabled": true,
         "setup-license-active-at-setup": false,
       });
@@ -167,7 +167,7 @@ describe("setup (OSS)", () => {
       const flags = await getLastSettingsPutPayload();
 
       expect(flags["embedding-homepage"]).toBeUndefined();
-      expect(flags["enable-embedding"]).toBeUndefined();
+      expect(flags["enable-embedding-sdk"]).toBeUndefined();
       expect(flags["setup-embedding-autoenabled"]).toBeUndefined();
     });
 
@@ -175,7 +175,7 @@ describe("setup (OSS)", () => {
       await setup({
         settingOverrides: [
           createMockSettingDefinition({
-            key: "enable-embedding",
+            key: "enable-embedding-sdk",
             value: false,
             is_env_setting: true,
           }),

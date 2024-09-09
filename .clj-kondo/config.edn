@@ -837,6 +837,7 @@
    metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
+   metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
    metabase.api.embed-test/do-response-formats                                                                               hooks.common/with-two-bindings

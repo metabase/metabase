@@ -24,7 +24,7 @@ describe("[EE, with token] embedding settings", () => {
     describe("static embedding", () => {
       it("should not allow going to static embedding settings page", async () => {
         const { history } = await setupPremium({
-          settingValues: { "enable-embedding": false },
+          settingValues: { "enable-embedding-sdk": false },
         });
 
         expect(
@@ -42,7 +42,7 @@ describe("[EE, with token] embedding settings", () => {
 
       it("should not prompt to upgrade to remove the Powered by text", async () => {
         await setupPremium({
-          settingValues: { "enable-embedding": false },
+          settingValues: { "enable-embedding-sdk": false },
         });
 
         expect(
@@ -54,7 +54,7 @@ describe("[EE, with token] embedding settings", () => {
     describe("interactive embedding", () => {
       it("should not allow going to interactive settings page", async () => {
         const { history } = await setupPremium({
-          settingValues: { "enable-embedding": false },
+          settingValues: { "enable-embedding-sdk": false },
         });
 
         expect(
@@ -73,7 +73,7 @@ describe("[EE, with token] embedding settings", () => {
       it("should link to quickstart for interactive embedding", async () => {
         await setupPremium({
           settingValues: {
-            "enable-embedding": false,
+            "enable-embedding-sdk": false,
             version: { tag: "v1.49.3" },
           },
         });
@@ -88,7 +88,7 @@ describe("[EE, with token] embedding settings", () => {
   describe("when the embedding is enabled", () => {
     it("should allow going to static embedding settings page", async () => {
       const { history } = await setupPremium({
-        settingValues: { "enable-embedding": true },
+        settingValues: { "enable-embedding-sdk": true },
       });
 
       await goToStaticEmbeddingSettings();
@@ -99,7 +99,7 @@ describe("[EE, with token] embedding settings", () => {
 
     it("should allow going to interactive embedding settings page", async () => {
       const { history } = await setupPremium({
-        settingValues: { "enable-embedding": true },
+        settingValues: { "enable-embedding-sdk": true },
       });
 
       await goToInteractiveEmbeddingSettings();

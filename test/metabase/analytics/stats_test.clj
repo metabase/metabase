@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
+   [metabase.analytics.stats :as stats]
    [metabase.core :as mbc]
    [metabase.db :as mdb]
    [metabase.email :as email]
@@ -92,9 +92,9 @@
     (mt/with-temporary-setting-values [site-name          "Metabase"
                                        startup-time-millis 1234.0
                                        google-auth-enabled false
-                                       enable-embedding    false]
+                                       enable-embedding-sdk false]
       (mt/with-temp [:model/Database _ {:is_sample true}]
-        (let [stats (anonymous-usage-stats)]
+        (let [stats (stats/anonymous-usage-stats)]
           (is (partial= {:running_on                           :unknown
                          :check_for_updates                    true
                          :startup_time_millis                  1234.0
@@ -119,7 +119,7 @@
                          :appearance_chart_colors              false
                          :appearance_show_mb_links             false}
                         stats))
-          (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
+          (is (malli= [:map-of :string [:int {:min 1}]]
                       (-> stats :stats :database :dbms_versions))))))))
 
 (deftest anonymous-usage-stats-test-ee-with-values-changed
@@ -130,7 +130,7 @@
       (mt/with-temporary-setting-values [site-name                   "My Company Analytics"
                                          startup-time-millis          1234.0
                                          google-auth-enabled          false
-                                         enable-embedding             true
+                                         enable-embedding-sdk         true
                                          help-link                    :hidden
                                          application-logo-url         "http://example.com/logo.png"
                                          application-favicon-url      "http://example.com/favicon.ico"
@@ -143,7 +143,7 @@
                                          application-colors           {:brand "#123456"}
                                          show-metabase-links          false]
         (mt/with-temp [:model/Database _ {:is_sample true}]
-          (let [stats (anonymous-usage-stats)]
+          (let [stats (stats/anonymous-usage-stats)]
             (is (partial= {:running_on                           :unknown
                            :check_for_updates                    true
                            :startup_time_millis                  1234.0
@@ -152,7 +152,7 @@
                            :slack_configured                     false
                            :sso_configured                       false
                            :has_sample_data                      true
-                           :enable_embedding                     true
+                           :enable_embedding_sdk                 true
                            :embedding_app_origin_set             false
                            :appearance_site_name                 true
                            :appearance_help_link                 :hidden
@@ -173,7 +173,7 @@
 
 (deftest ^:parallel conversion-test
   (is (= #{true}
-         (let [system-stats (get-in (anonymous-usage-stats) [:stats :system])]
+         (let [system-stats (get-in (stats/anonymous-usage-stats) [:stats :system])]
            (into #{} (map #(contains? system-stats %) [:java_version :java_runtime_name :max_memory]))))
       "Spot checking a few system stats to ensure conversion from property names and presence in the anonymous-usage-stats"))
 

@@ -346,7 +346,7 @@
 (deftest jwt-token-test
   (testing "should return a session token when token=true"
     (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding true]
+      (mt/with-temporary-setting-values [enable-embedding-sdk true]
         (let [jwt-iat-time (buddy-util/now)
               jwt-exp-time (+ (buddy-util/now) 3600)
               jwt-payload  (jwt/sign {:email      "rasta@metabase.com"
@@ -367,7 +367,7 @@
 
   (testing "should not return a session token when embedding is disabled"
     (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding false]
+      (mt/with-temporary-setting-values [enable-embedding-sdk false]
         (let [jwt-iat-time (buddy-util/now)
               jwt-exp-time (+ (buddy-util/now) 3600)
               jwt-payload  (jwt/sign {:email      "rasta@metabase.com"
@@ -385,7 +385,7 @@
 
   (testing "should not return a session token when token=false"
     (with-jwt-default-setup!
-      (mt/with-temporary-setting-values [enable-embedding true]
+      (mt/with-temporary-setting-values [enable-embedding-sdk true]
         (let [jwt-iat-time (buddy-util/now)
               jwt-exp-time (+ (buddy-util/now) 3600)
               jwt-payload  (jwt/sign {:email      "rasta@metabase.com"

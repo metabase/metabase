@@ -127,6 +127,7 @@
    :instance_started                     (snowplow/instance-creation)
    :has_sample_data                      (t2/exists? Database, :is_sample true)
    :enable_embedding                     (embed.settings/enable-embedding)
+   :enable_embedding_sdk                 (embed.settings/enable-embedding-sdk)
    :embedding_app_origin_set             (boolean (embed.settings/embedding-app-origin))
    :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
    :appearance_help_link                 (public-settings/help-link)

@@ -73,7 +73,7 @@ export async function setup({
   });
 
   const settings = mockSettings({
-    "enable-embedding": true,
+    "enable-embedding-sdk": true,
     "embedding-secret-key": "my_super_secret_key",
     "token-features": tokenFeatures,
     "available-fonts": hasEnterprisePlugins ? FONTS_MOCK_VALUES : undefined,

@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [crypto.random :as crypto-random]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.common :as api]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.util.embed :as embed]
@@ -15,6 +14,7 @@
   (deferred-tru "Allow this origin to embed the full {0} application"
                 (public-settings/application-name-for-setting-descriptions))
   :feature    :embedding
+  :type       :string
   :visibility :public
   :audit      :getter)
 
@@ -25,17 +25,19 @@
   :visibility :authenticated
   :export?    true
   :audit      :getter
+  :deprecated "0.51.0"
   :setter     (fn [new-value]
                 (when (not= new-value (setting/get-value-of-type :boolean :enable-embedding))
                   (setting/set-value-of-type! :boolean :enable-embedding new-value)
                   (when (and new-value (str/blank? (embed/embedding-secret-key)))
                     (embed/embedding-secret-key! (crypto-random/hex 32)))
-                  (let [snowplow-payload {:embedding-app-origin-set   (boolean (embedding-app-origin))
+                  (snowplow/track-event! ::snowplow/embed_share
+                                         {:event                      (if new-value
+                                                                        :embedding-enabled
+                                                                        :embedding-disabled)
+                                          :embedding-app-origin-set   (boolean (embedding-app-origin))
                                           :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
-                                          :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}]
-                    (if new-value
-                      (snowplow/track-event! ::snowplow/embedding-enabled api/*current-user-id* snowplow-payload)
-                      (snowplow/track-event! ::snowplow/embedding-disabled api/*current-user-id* snowplow-payload))))))
+                                          :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))
 
 ;; settings for the embedding homepage
 (defsetting embedding-homepage
@@ -58,3 +60,23 @@
   :default    false
   :export?    true
   :visibility :admin)
+
+(defsetting enable-embedding-sdk
+  (deferred-tru "Used for enabling or disabling embedding SDK.")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    true
+  :audit      :getter
+  :setter     (fn [new-value]
+                (when (not= new-value (setting/get-value-of-type :boolean :enable-embedding-sdk))
+                  (setting/set-value-of-type! :boolean :enable-embedding-sdk new-value)
+                  (when (and new-value (str/blank? (embed/embedding-secret-key)))
+                    (embed/embedding-secret-key! (crypto-random/hex 32)))
+                  (snowplow/track-event! ::snowplow/embed_share
+                                         {:event                      (if new-value
+                                                                        :embedding-enabled
+                                                                        :embedding-disabled)
+                                          :embedding-app-origin-set   (boolean (embedding-app-origin))
+                                          :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
+                                          :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))

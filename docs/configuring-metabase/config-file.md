@@ -205,7 +205,7 @@ application-name
 settings-last-updated
 instance-creation
 enable-public-sharing
-enable-embedding
+enable-embedding-sdk
 embedding-secret-key
 jwt-group-sync
 anon-tracking-enabled

@@ -68,7 +68,7 @@ describe("setup (EE build, only `hosting` feature to simulate starter plan on cl
 
     expect(await getLastSettingsPutPayload()).toEqual({
       "embedding-homepage": "visible",
-      "enable-embedding": true,
+      "enable-embedding-sdk": true,
       "setup-embedding-autoenabled": true,
       "setup-license-active-at-setup": false,
     });

@@ -388,7 +388,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         key: "uploads-settings",
       },
     ],
-    getHidden: settings => settings["token-features"]?.attached_dwh === true,
   },
 
   "public-sharing": {
@@ -425,12 +424,12 @@ export const ADMIN_SETTINGS_SECTIONS = {
     ],
   },
   "embedding-in-other-applications": {
-    key: "enable-embedding",
+    key: "enable-embedding-sdk",
     name: t`Embedding`,
     order: 100,
     settings: [
       {
-        key: "enable-embedding",
+        key: "enable-embedding-sdk",
         display_name: t`Embedding`,
         description: null,
         widget: EmbeddingSwitchWidget,
@@ -469,7 +468,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`Embedding secret key`,
         description: t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`,
         widget: SecretKeyWidget,
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
+        getHidden: (_, derivedSettings) =>
+          !derivedSettings["enable-embedding-sdk"],
         props: {
           confirmation: {
             header: t`Regenerate embedding key?`,
@@ -483,14 +483,16 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`Manage embeds`,
 
         widget: EmbeddedResources,
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
+        getHidden: (_, derivedSettings) =>
+          !derivedSettings["enable-embedding-sdk"],
       },
       {
         key: "-redirect-widget",
         widget: () => (
           <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
-        getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
+        getHidden: (_, derivedSettings) =>
+          derivedSettings["enable-embedding-sdk"],
       },
     ],
   },
@@ -519,7 +521,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
           <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
         getHidden: (_, derivedSettings) =>
-          PLUGIN_EMBEDDING.isEnabled() && derivedSettings["enable-embedding"],
+          PLUGIN_EMBEDDING.isEnabled() &&
+          derivedSettings["enable-embedding-sdk"],
       },
     ],
   },
