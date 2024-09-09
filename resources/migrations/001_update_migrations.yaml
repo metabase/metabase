@@ -9368,6 +9368,18 @@ databaseChangeLog:
   - changeSet:
       id: v51.2024-09-05T08:00:03
       author: qnkhuat
+      comment: index on notification_subscription.notification_id
+      changes:
+        - createIndex:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: notification_id
+            indexName: idx_notification_subscription_notification_id
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:04
+      author: qnkhuat
       comment: Create the notification_handler table
       preConditions:
         - not:
@@ -9428,7 +9440,31 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v51.2024-09-05T08:00:04
+      id: v51.2024-09-05T08:00:05
+      author: qnkhuat
+      comment: index on notification_handler.notification_id
+      changes:
+        - createIndex:
+            tableName: notification_handler
+            columns:
+              - column:
+                  name: notification_id
+            indexName: idx_notification_handler_notification_id
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:06
+      author: qnkhuat
+      comment: index on notification_handler.channel_id
+      changes:
+        - createIndex:
+            tableName: notification_handler
+            columns:
+              - column:
+                  name: channel_id
+            indexName: idx_notification_handler_channel_id
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:07
       author: qnkhuat
       comment: Create the notification_recipient table
       preConditions:
@@ -9495,6 +9531,42 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:08
+      author: qnkhuat
+      comment: index on notification_recipient.notification_handler_id
+      changes:
+        - createIndex:
+            tableName: notification_recipient
+            columns:
+              - column:
+                  name: notification_handler_id
+            indexName: idx_notification_recipient_notification_handler_id
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:09
+      author: qnkhuat
+      comment: index on notification_recipient.user_id
+      changes:
+        - createIndex:
+            tableName: notification_recipient
+            columns:
+              - column:
+                  name: user_id
+            indexName: idx_notification_recipient_user_id
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:10
+      author: qnkhuat
+      comment: index on notification_recipient.permissions_group_id
+      changes:
+        - createIndex:
+            tableName: notification_recipient
+            columns:
+              - column:
+                  name: permissions_group_id
+            indexName: idx_notification_recipient_permissions_group_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
