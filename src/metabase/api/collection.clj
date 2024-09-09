@@ -471,14 +471,14 @@
   (card-query :question collection options))
 
 (defmethod post-process-collection-children :dataset
-  [_ _options collection rows]
+  [_ options collection rows]
   (let [queries-before (map :dataset_query rows)
         queries-parsed (map (comp mbql.normalize/normalize json/parse-string) queries-before)]
     ;; We need to normalize the dataset queries for hydration, but reset the field to avoid leaking that transform.
     (->> (map #(assoc %2 :dataset_query %1) queries-parsed rows)
          upload/model-hydrate-based-on-upload
          (map #(assoc %2 :dataset_query %1) queries-before)
-         (post-process-collection-children :card collection))))
+         (post-process-collection-children options :card collection))))
 
 (defn- fully-parameterized-text?
   "Decide if `text`, usually (a part of) a query, is fully parameterized given the parameter types
