@@ -37,7 +37,9 @@ export function entityPickerModal() {
 }
 
 export function entityPickerModalLevel(level) {
-  return cy.findByTestId(`item-picker-level-${level}`);
+  return cy
+    .findByTestId("active-tab")
+    .findByTestId(`item-picker-level-${level}`);
 }
 
 export function entityPickerModalItem(level, name) {

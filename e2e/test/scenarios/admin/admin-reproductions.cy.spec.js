@@ -2,6 +2,8 @@ import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   appBar,
   entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   getNotebookStep,
   popover,
   queryWritableDB,
@@ -103,9 +105,9 @@ describe("issue 41765", { tags: ["@external"] }, () => {
     popover().findByText("Question").click();
 
     entityPickerModal().within(() => {
-      cy.findByText("Tables").click();
-      cy.findByText(WRITABLE_DB_DISPLAY_NAME).click();
-      cy.findByText(TEST_TABLE_DISPLAY_NAME).click();
+      entityPickerModalTab("Tables").click();
+      entityPickerModalItem(0, WRITABLE_DB_DISPLAY_NAME).click();
+      entityPickerModalItem(2, TEST_TABLE_DISPLAY_NAME).click();
     });
   }
 
