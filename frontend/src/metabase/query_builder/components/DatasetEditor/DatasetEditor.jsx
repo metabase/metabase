@@ -77,7 +77,7 @@ const propTypes = {
   setMetadataDiff: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
   onCancelCreateNewModel: PropTypes.func.isRequired,
-  onCancelDatasetChanges: PropTypes.func.isRequired,
+  cancelQuestionChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
   updateQuestion: PropTypes.func.isRequired,
   runQuestionQuery: PropTypes.func.isRequired,
@@ -207,7 +207,7 @@ function DatasetEditor(props) {
     runQuestionQuery,
     setDatasetEditorTab,
     setMetadataDiff,
-    onCancelDatasetChanges,
+    cancelQuestionChanges,
     onCancelCreateNewModel,
     onSave,
     updateQuestion,
@@ -331,7 +331,7 @@ function DatasetEditor(props) {
 
   const handleCancelEdit = () => {
     setShowCancelEditWarning(false);
-    onCancelDatasetChanges();
+    cancelQuestionChanges();
     setQueryBuilderMode("view");
   };
 
