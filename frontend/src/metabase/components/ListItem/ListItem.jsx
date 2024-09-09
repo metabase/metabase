@@ -24,6 +24,7 @@ const ListItem = ({
     <Card
       hoverable
       className={cx(CS.mb2, CS.p3, CS.bgWhite, CS.rounded, CS.bordered)}
+      data-testid="data-reference-list-item"
     >
       <div className={cx(S.item)}>
         <div className={S.itemIcons}>
