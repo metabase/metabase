@@ -50,11 +50,13 @@ export const InteractiveQuestionProvider = ({
       await onBeforeSave?.(question);
       await handleSaveQuestion(question);
       onSave?.(question);
+      await loadQuestion();
     }
   };
 
   const handleCreate = async (question: Question) => {
     await handleCreateQuestion(question);
+    await loadQuestion();
   };
 
   const {

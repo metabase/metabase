@@ -36,6 +36,26 @@ describeWithSnowplow("scenarios > browse", () => {
     });
   });
 
+  it("can browse to a model in a new tab by meta-clicking", () => {
+    cy.on("window:before:load", win => {
+      // prevent Cypress opening in a new window/tab and spy on this method
+      cy.stub(win, "open").as("open");
+    });
+    cy.visit("/browse/models");
+    const macOSX = Cypress.platform === "darwin";
+    cy.findByRole("heading", { name: "Orders Model" }).click({
+      metaKey: macOSX,
+      ctrlKey: !macOSX,
+    });
+
+    cy.get("@open").should("have.been.calledOnce");
+    cy.get("@open").should(
+      "have.been.calledOnceWithExactly",
+      `/question/${ORDERS_MODEL_ID}-orders-model`,
+      "_blank",
+    );
+  });
+
   it("can browse to a table in a database", () => {
     cy.visit("/");
     browseDatabases().click();

@@ -149,7 +149,7 @@
               db-ids)
       api-graph)))
 
-(defn remove-empty-vals
+(defn- remove-empty-vals
   "Recursively walks a nested map from bottom-up, removing keys with nil or empty map values."
   [m]
   (if (map? m)

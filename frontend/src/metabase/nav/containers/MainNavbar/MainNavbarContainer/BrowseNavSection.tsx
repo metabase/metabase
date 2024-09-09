@@ -9,6 +9,7 @@ import { Flex, Skeleton } from "metabase/ui";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 import type { SelectedItem } from "../types";
+import { useHasMetrics } from "../utils";
 
 export const BrowseNavSection = ({
   nonEntityItem,
@@ -21,6 +22,7 @@ export const BrowseNavSection = ({
 }) => {
   const BROWSE_MODELS_URL = "/browse/models";
   const BROWSE_DATA_URL = "/browse/databases";
+  const BROWSE_METRICS_URL = "/browse/metrics";
 
   const {
     hasModels,
@@ -29,11 +31,18 @@ export const BrowseNavSection = ({
   } = useHasModels();
   const noModelsExist = hasModels === false;
 
+  const {
+    hasMetrics,
+    isLoading: areMetricsLoading,
+    error: metricsError,
+  } = useHasMetrics();
+  const noMetricsExist = hasMetrics === false;
+
   const [expandBrowse = true, setExpandBrowse] = useUserSetting(
     "expand-browse-in-nav",
   );
 
-  if (noModelsExist && !hasDataAccess) {
+  if (noModelsExist && noMetricsExist && !hasDataAccess) {
     return null;
   }
 
@@ -52,12 +61,7 @@ export const BrowseNavSection = ({
       <DelayedLoadingAndErrorWrapper
         loading={areModelsLoading}
         error={modelsError}
-        loader={
-          <Flex py="sm" px="md" h="32.67px" gap="sm" align="center">
-            <Skeleton radius="md" h="md" w="md" />
-            <Skeleton radius="xs" w="4rem" h="1.2rem" />
-          </Flex>
-        }
+        loader={<SidebarSkeleton />}
         delay={0}
       >
         {!noModelsExist && (
@@ -83,6 +87,34 @@ export const BrowseNavSection = ({
           {t`Databases`}
         </PaddedSidebarLink>
       )}
+
+      <DelayedLoadingAndErrorWrapper
+        loading={areMetricsLoading}
+        error={metricsError}
+        loader={<SidebarSkeleton />}
+        delay={0}
+      >
+        {!noMetricsExist && (
+          <PaddedSidebarLink
+            icon="metric"
+            url={BROWSE_METRICS_URL}
+            isSelected={nonEntityItem?.url?.startsWith(BROWSE_METRICS_URL)}
+            onClick={onItemSelect}
+            aria-label={t`Browse metrics`}
+          >
+            {t`Metrics`}
+          </PaddedSidebarLink>
+        )}
+      </DelayedLoadingAndErrorWrapper>
     </CollapseSection>
   );
 };
+
+function SidebarSkeleton() {
+  return (
+    <Flex py="sm" px="md" h="32.67px" gap="sm" align="center">
+      <Skeleton radius="md" h="md" w="md" />
+      <Skeleton radius="xs" w="4rem" h="1.2rem" />
+    </Flex>
+  );
+}

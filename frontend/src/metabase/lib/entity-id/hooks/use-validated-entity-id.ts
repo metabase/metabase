@@ -71,7 +71,7 @@ export const useValidatedEntityId = <
       return { id: null, isLoading: false, isError: true } as const;
     }
 
-    if (entity_ids && entity_ids[id]?.status === "success") {
+    if (entity_ids && entity_ids[id]?.status === "ok") {
       return {
         id: entity_ids[id].id as TReturnedId,
         isLoading: false,
