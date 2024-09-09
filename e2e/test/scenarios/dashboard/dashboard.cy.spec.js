@@ -1264,7 +1264,7 @@ describeEE("scenarios > dashboard > caching", () => {
     interceptPerformanceRoutes();
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    openSidebarCacheStrategyForm();
+    openSidebarCacheStrategyForm("dashboard");
 
     rightSidebar().within(() => {
       cy.findByRole("heading", { name: /Caching settings/ }).should(
@@ -1291,7 +1291,7 @@ describeEE("scenarios > dashboard > caching", () => {
     interceptPerformanceRoutes();
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    openSidebarCacheStrategyForm();
+    openSidebarCacheStrategyForm("dashboard");
 
     rightSidebar().within(() => {
       cy.findByRole("heading", { name: /Caching settings/ }).should(

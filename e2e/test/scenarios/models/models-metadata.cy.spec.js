@@ -13,7 +13,6 @@ import {
   questionInfoButton,
   renameColumn,
   restore,
-  rightSidebar,
   saveMetadataChanges,
   setColumnType,
   setModelMetadata,
@@ -280,8 +279,8 @@ describe("scenarios > models metadata", () => {
       cy.reload();
       questionInfoButton().click();
 
-      rightSidebar().within(() => {
-        cy.findByText("History");
+      cy.findByTestId("sidesheet").within(() => {
+        cy.findByRole("tab", { name: "History" }).click();
         cy.findAllByTestId("question-revert-button").first().click();
       });
 
