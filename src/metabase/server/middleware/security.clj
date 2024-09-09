@@ -121,7 +121,7 @@
 
 (defn- embedding-app-origin-sdk
   []
-  (when (embed.settings/enable-embedding)
+  (when (embed.settings/enable-embedding-sdk)
     (str "localhost:* " (embed.settings/embedding-app-origin))))
 
 (defn- content-security-policy-header-with-frame-ancestors

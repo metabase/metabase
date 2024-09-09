@@ -52,7 +52,7 @@ function EmbeddingOption({
 }
 
 export const StaticEmbeddingOptionCard = () => {
-  const enabled = useSetting("enable-embedding");
+  const enabled = useSetting("enable-embedding-sdk");
   const upgradeUrl = useSelector(state =>
     getUpgradeUrl(state, { utm_content: "embed-settings" }),
   );
@@ -92,7 +92,7 @@ export const InteractiveEmbeddingOptionCard = () => {
   const plan = useSelector(state =>
     getPlan(getSetting(state, "token-features")),
   );
-  const enabled = useSetting("enable-embedding");
+  const enabled = useSetting("enable-embedding-sdk");
   const quickStartUrl = useSelector(state =>
     getDocsUrl(state, {
       page: "embedding/interactive-embedding-quick-start-guide",

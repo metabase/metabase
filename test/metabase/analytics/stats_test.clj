@@ -92,7 +92,7 @@
     (mt/with-temporary-setting-values [site-name          "Metabase"
                                        startup-time-millis 1234.0
                                        google-auth-enabled false
-                                       enable-embedding    false]
+                                       enable-embedding-sdk false]
       (mt/with-temp [:model/Database _ {:is_sample true}]
         (let [stats (stats/anonymous-usage-stats)]
           (is (partial= {:running_on                           :unknown

@@ -34,7 +34,7 @@ if (hasPremiumFeature("embedding")) {
             placeholder: "https://*.example.com",
             type: "string",
             getHidden: (_, derivedSettings) =>
-              !derivedSettings["enable-embedding"],
+              !derivedSettings["enable-embedding-sdk"],
           },
           {
             key: "session-cookie-samesite",
@@ -62,7 +62,7 @@ if (hasPremiumFeature("embedding")) {
             defaultValue: "lax",
             widget: SameSiteSelectWidget,
             getHidden: (_, derivedSettings) =>
-              !derivedSettings["enable-embedding"],
+              !derivedSettings["enable-embedding-sdk"],
           },
         ],
       },

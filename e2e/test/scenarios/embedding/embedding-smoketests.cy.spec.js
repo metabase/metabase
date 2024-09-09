@@ -58,7 +58,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       });
 
       cy.location("pathname").should("eq", embeddingPage);
-      cy.findByTestId("enable-embedding-setting").within(() => {
+      cy.findByTestId("enable-embedding-sdk-setting").within(() => {
         cy.findByText(embeddingDescription);
 
         cy.findByLabelText("Enable Embedding").click({ force: true });
@@ -66,7 +66,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       // The URL should stay the same
       cy.location("pathname").should("eq", embeddingPage);
 
-      cy.findByTestId("enable-embedding-setting").within(() => {
+      cy.findByTestId("enable-embedding-sdk-setting").within(() => {
         cy.findByRole("checkbox").should("be.checked");
       });
 
@@ -310,7 +310,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 });
 
 function resetEmbedding() {
-  cy.request("PUT", "/api/setting/enable-embedding", { value: false });
+  cy.request("PUT", "/api/setting/enable-embedding-sdk", { value: false });
   cy.request("PUT", "/api/setting/embedding-secret-key", {
     value: null,
   });

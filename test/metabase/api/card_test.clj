@@ -880,9 +880,9 @@
 (deftest create-card-disallow-setting-enable-embedding-test
   (testing "POST /api/card"
     (testing "Ignore values of `enable_embedding` while creating a Card (this must be done via `PUT /api/card/:id` instead)"
-      ;; should be ignored regardless of the value of the `enable-embedding` Setting.
+      ;; should be ignored regardless of the value of the `enable-embedding-sd` Setting.
       (doseq [enable-embedding? [true false]]
-        (mt/with-temporary-setting-values [enable-embedding enable-embedding?]
+        (mt/with-temporary-setting-values [enable-embedding-sdk enable-embedding?]
           (mt/with-model-cleanup [:model/Card]
             (is (=? {:enable_embedding false}
                     (mt/user-http-request :crowberto :post 200 "card" {:name                   "My Card"
@@ -1419,7 +1419,7 @@
   (testing "PUT /api/card/:id"
     (t2.with-temp/with-temp [:model/Card card]
       (testing "If embedding is disabled, even an admin should not be allowed to update embedding params"
-        (mt/with-temporary-setting-values [enable-embedding false]
+        (mt/with-temporary-setting-values [enable-embedding-sdk false]
           (is (= "Embedding is not enabled."
                  (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card))
                                        {:embedding_params {:abc "enabled"}})))))

@@ -10,7 +10,7 @@
   (testing "A snowplow event is sent whenever embedding is enabled or disabled"
     (mt/with-test-user :crowberto
       (mt/with-premium-features #{:embedding}
-        (mt/with-temporary-setting-values [enable-embedding     false
+        (mt/with-temporary-setting-values [enable-embedding     false ;; We are testing the depricated setting
                                            embedding-app-origin "https://example.com"]
           (let [embedded-dash-count (t2/count :model/Dashboard :enable_embedding true)
                 embedded-card-count (t2/count :model/Card :enable_embedding true)

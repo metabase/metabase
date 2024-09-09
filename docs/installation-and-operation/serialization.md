@@ -108,6 +108,7 @@ application-font
 available-locales
 landing-page
 enable-embedding
+enable-embedding-sdk
 application-colors
 application-logo-url
 application-favicon-url
