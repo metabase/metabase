@@ -1,4 +1,5 @@
 import { useLocation } from "react-use";
+import _ from "underscore";
 
 import {
   skipToken,
@@ -31,7 +32,7 @@ export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
   const { data: collection } = useGetCollectionQuery({ id: collectionId });
 
   const dashboardId = useSelector(getQuestion)?.dashboardId();
-  const isDashboardQuestion = typeof dashboardId === "number";
+  const isDashboardQuestion = _.isNumber(dashboardId);
   const isQuestionPage = useLocation().pathname?.startsWith("/question");
   const shouldShowDashboard = isDashboardQuestion && isQuestionPage;
 

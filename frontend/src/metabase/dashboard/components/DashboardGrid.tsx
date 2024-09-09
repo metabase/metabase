@@ -483,7 +483,9 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   };
 
   onTrashDashboardQuestion = (dc: DashboardCard) => {
-    if (typeof dc.card.dashboard_id === "number") {
+    const isDashboardCard = _.isNumber(dc.card.dashboard_id);
+
+    if (isDashboardCard) {
       this.props.trashDashboardQuestion({
         dashcardId: dc.id,
         cardId: dc.card_id,

@@ -171,7 +171,7 @@ export function FormCollectionAndDashboardPicker({
         ref={formFieldRef}
       >
         <Button
-          data-testid="collection-picker-button"
+          data-testid="dashboard-and-collection-picker-button"
           id={id}
           onClick={() => setIsPickerOpen(true)}
           fullWidth

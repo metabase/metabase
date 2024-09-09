@@ -39,6 +39,13 @@ export const SaveQuestionForm = ({
     ? t`Save changes`
     : t`Replace original question, "${originalQuestion?.displayName()}"`;
 
+  const showPickerInput = values.saveType === "create" || !saveToDashboard;
+  const showTabSelect =
+    values.saveType === "overwrite" &&
+    saveToDashboard &&
+    saveToDashboard.tabs &&
+    saveToDashboard.tabs.length > 1;
+
   return (
     <Form>
       {showSaveType && (
@@ -67,7 +74,7 @@ export const SaveQuestionForm = ({
             title={t`Description`}
             placeholder={t`It's optional but oh, so helpful`}
           />
-          {!saveToDashboard && (
+          {showPickerInput && (
             <FormCollectionAndDashboardPicker
               collectionIdFieldName="collection_id"
               dashboardIdFieldName="dashboard_id"
@@ -75,19 +82,17 @@ export const SaveQuestionForm = ({
               zIndex={DEFAULT_MODAL_Z_INDEX + 1}
             />
           )}
-          {saveToDashboard &&
-            saveToDashboard.tabs &&
-            saveToDashboard.tabs.length > 1 && (
-              <FormSelect
-                name="tab_id"
-                title="Which tab should this go on?"
-                containerClassName={CS.dashboardTabSelectContainer}
-                options={saveToDashboard.tabs.map(tab => ({
-                  name: tab.name,
-                  value: tab.id,
-                }))}
-              />
-            )}
+          {showTabSelect && (
+            <FormSelect
+              name="tab_id"
+              title="Which tab should this go on?"
+              containerClassName={CS.dashboardTabSelectContainer}
+              options={saveToDashboard.tabs.map(tab => ({
+                name: tab.name,
+                value: tab.id,
+              }))}
+            />
+          )}
         </div>
       )}
       <FormFooter>

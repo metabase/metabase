@@ -157,15 +157,15 @@ export function QueryModals({
     ) => {
       const newQuestion = await onCreate(question);
       const type = question.type();
-      const dashboardId = question.dashboardId();
+      const isDashboardQuestion = _.isNumber(question.dashboardId());
 
       if (type === "model" || type === "metric") {
         onCloseModal();
         setQueryBuilderMode("view");
-      } else if (typeof dashboardId !== "number") {
-        onOpenModal(MODAL_TYPES.SAVED);
-      } else if (typeof dashboardId === "number") {
+      } else if (isDashboardQuestion) {
         nativeToDashboarQuestionDashboard(newQuestion, options?.dashboardTabId);
+      } else {
+        onOpenModal(MODAL_TYPES.SAVED);
       }
 
       return newQuestion;
@@ -181,7 +181,9 @@ export function QueryModals({
 
   const handleCopySaved = useCallback(
     (newQuestion: Question) => {
-      if (typeof newQuestion.dashboardId() === "number") {
+      const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
+
+      if (isDashboardQuestion) {
         nativeToDashboarQuestionDashboard(newQuestion);
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
