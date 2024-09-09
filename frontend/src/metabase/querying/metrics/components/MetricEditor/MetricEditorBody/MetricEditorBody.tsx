@@ -17,9 +17,8 @@ type MetricEditorBodyProps = {
   isDirty: boolean;
   isResultDirty: boolean;
   isRunnable: boolean;
-  updateQuestion: (question: Question) => Promise<void>;
-  runQuestionQuery: () => Promise<void>;
-  setQueryBuilderMode: (mode: string) => void;
+  onChange: (question: Question) => Promise<void>;
+  onRunQuery: () => Promise<void>;
 };
 
 export function MetricEditorBody({
@@ -28,9 +27,8 @@ export function MetricEditorBody({
   isDirty,
   isResultDirty,
   isRunnable,
-  updateQuestion,
-  runQuestionQuery,
-  setQueryBuilderMode,
+  onChange,
+  onRunQuery,
 }: MetricEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
 
@@ -52,9 +50,8 @@ export function MetricEditorBody({
             isDirty={isDirty}
             isRunnable={isRunnable}
             isResultDirty={isResultDirty}
-            updateQuestion={updateQuestion}
-            runQuestionQuery={runQuestionQuery}
-            setQueryBuilderMode={setQueryBuilderMode}
+            updateQuestion={onChange}
+            runQuestionQuery={onRunQuery}
             hasVisualizeButton={false}
           />
         </Box>

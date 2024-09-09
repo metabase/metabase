@@ -366,6 +366,8 @@ class View extends Component {
   render() {
     const {
       question,
+      result,
+      rawSeries,
       databases,
       isShowingNewbModal,
       isShowingTimelineSidebar,
@@ -379,11 +381,15 @@ class View extends Component {
       reportTimezone,
       readOnly,
       isDirty,
+      isRunning,
       isRunnable,
       isResultDirty,
       hasVisualizeButton,
       runQuestionQuery,
+      cancelQuery,
       setQueryBuilderMode,
+      onCreate,
+      onSave,
     } = this.props;
 
     // if we don't have a question at all or no databases then we are initializing, so keep it simple
@@ -402,7 +408,33 @@ class View extends Component {
       return (
         <>
           {isModel && <DatasetEditor {...this.props} />}
-          {isMetric && <MetricEditor {...this.props} />}
+          {isMetric && (
+            <MetricEditor
+              question={question}
+              result={result}
+              rawSeries={rawSeries}
+              reportTimezone={reportTimezone}
+              isDirty={isDirty}
+              isResultDirty={isResultDirty}
+              isRunning={isRunning}
+              onChange={updateQuestion}
+              onCreate={async question => {
+                await onCreate(question);
+                setQueryBuilderMode("view");
+              }}
+              onSave={async question => {
+                await onSave(question);
+                setQueryBuilderMode("view");
+              }}
+              onCancel={question => {
+                if (question.isSaved()) {
+                  setQueryBuilderMode("view");
+                }
+              }}
+              onRunQuery={runQuestionQuery}
+              onCancelQuery={cancelQuery}
+            />
+          )}
           <QueryModals
             questionAlerts={this.props.questionAlerts}
             user={this.props.user}

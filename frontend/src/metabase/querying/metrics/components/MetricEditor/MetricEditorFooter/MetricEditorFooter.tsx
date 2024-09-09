@@ -13,8 +13,8 @@ type MetricEditorFooterProps = {
   isRunnable: boolean;
   isRunning: boolean;
   isResultDirty: boolean;
-  runQuestionQuery: () => Promise<void>;
-  cancelQuery: () => void;
+  onRunQuery: () => Promise<void>;
+  onCancelQuery: () => void;
 };
 
 export function MetricEditorFooter({
@@ -24,7 +24,8 @@ export function MetricEditorFooter({
   isRunnable,
   isRunning,
   isResultDirty,
-  runQuestionQuery,
+  onRunQuery,
+  onCancelQuery,
 }: MetricEditorFooterProps) {
   return (
     <DebouncedFrame className={S.root}>
@@ -36,12 +37,13 @@ export function MetricEditorFooter({
           isRunnable={isRunnable}
           isRunning={isRunning}
           isResultDirty={isResultDirty}
-          runQuestionQuery={runQuestionQuery}
+          runQuestionQuery={onRunQuery}
+          cancelQuery={onCancelQuery}
         />
       ) : (
         <MetricEmptyState
           isRunnable={isRunnable}
-          runQuestionQuery={runQuestionQuery}
+          runQuestionQuery={onRunQuery}
         />
       )}
     </DebouncedFrame>

@@ -19,14 +19,14 @@ type MetricEditorProps = {
   rawSeries: RawSeries | null;
   reportTimezone: string;
   isDirty: boolean;
-  isRunning: boolean;
   isResultDirty: boolean;
+  isRunning: boolean;
+  onChange: (question: Question) => Promise<void>;
   onCreate: (question: Question) => Promise<void>;
   onSave: (question: Question) => Promise<void>;
-  updateQuestion: (question: Question) => Promise<void>;
-  runQuestionQuery: () => Promise<void>;
-  cancelQuery: () => void;
-  setQueryBuilderMode: (mode: string) => void;
+  onCancel: (question: Question) => void;
+  onRunQuery: () => Promise<void>;
+  onCancelQuery: () => void;
 };
 
 export function MetricEditor({
@@ -37,42 +37,26 @@ export function MetricEditor({
   isDirty,
   isRunning,
   isResultDirty,
+  onChange,
   onCreate,
   onSave,
-  updateQuestion,
-  runQuestionQuery,
-  cancelQuery,
-  setQueryBuilderMode,
+  onCancel,
+  onRunQuery,
+  onCancelQuery,
 }: MetricEditorProps) {
   const [modalType, setModalType] = useState<MetricModalType>();
   const isRunnable = Lib.canRun(question.query(), "metric");
 
-  const handleCreate = async (question: Question) => {
-    await onCreate(question);
-    setQueryBuilderMode("view");
-  };
-
-  const handleCreateStart = async () => {
-    await updateQuestion(question.setDefaultDisplay());
+  const handleCreate = async () => {
+    await onChange(question.setDefaultDisplay());
     setModalType("create");
   };
 
-  const handleSave = async (question: Question) => {
-    await onSave(question);
-    setQueryBuilderMode("view");
-  };
-
   const handleCancel = () => {
-    if (question.isSaved()) {
-      setQueryBuilderMode("view");
-    }
-  };
-
-  const handleCancelStart = () => {
     if (question.isSaved() && isDirty) {
       setModalType("leave");
     } else {
-      handleCancel();
+      onCancel(question);
     }
   };
 
@@ -86,9 +70,9 @@ export function MetricEditor({
         question={question}
         isDirty={isDirty}
         isRunnable={isRunnable}
-        onCreate={handleCreateStart}
-        onSave={handleSave}
-        onCancel={handleCancelStart}
+        onCreate={handleCreate}
+        onSave={onSave}
+        onCancel={handleCancel}
       />
       <MetricEditorBody
         question={question}
@@ -96,9 +80,8 @@ export function MetricEditor({
         isDirty={isDirty}
         isResultDirty={isResultDirty}
         isRunnable={isRunnable}
-        updateQuestion={updateQuestion}
-        runQuestionQuery={runQuestionQuery}
-        setQueryBuilderMode={setQueryBuilderMode}
+        onChange={onChange}
+        onRunQuery={onRunQuery}
       />
       <MetricEditorFooter
         question={question}
@@ -107,16 +90,16 @@ export function MetricEditor({
         isRunnable={isRunnable}
         isRunning={isRunning}
         isResultDirty={isResultDirty}
-        runQuestionQuery={runQuestionQuery}
-        cancelQuery={cancelQuery}
+        onRunQuery={onRunQuery}
+        onCancelQuery={onCancelQuery}
       />
       {modalType === "create" && (
         <SaveQuestionModal
           question={question}
           originalQuestion={null}
           opened
-          onCreate={handleCreate}
-          onSave={handleSave}
+          onCreate={onCreate}
+          onSave={onSave}
           onClose={handleModalClose}
         />
       )}
