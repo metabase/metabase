@@ -11,28 +11,43 @@ import S from "./MetricEditorHeader.module.css";
 
 type MetricEditorHeaderProps = {
   question: Question;
+  onCreate: (question: Question) => void;
+  onSave: (question: Question) => Promise<void>;
 };
 
-export function MetricEditorHeader({ question }: MetricEditorHeaderProps) {
+export function MetricEditorHeader({
+  question,
+  onCreate,
+  onSave,
+}: MetricEditorHeaderProps) {
+  const handleCreate = () => onCreate(question);
+  const handleSave = () => onSave(question);
+
   return (
     <EditBar
       className={S.bar}
       title={question.displayName() ?? t`New metric`}
       buttons={[
         <Button key="cancel" small>{t`Cancel`}</Button>,
-        <ActionButton
-          key="save"
-          actionFn={() => 0}
-          normalText={question.isSaved() ? t`Save changes` : t`Save`}
-          activeText={t`Saving…`}
-          failedText={t`Save failed`}
-          successText={t`Saved`}
-          className={cx(
-            ButtonsS.Button,
-            ButtonsS.ButtonPrimary,
-            ButtonsS.ButtonSmall,
-          )}
-        />,
+        !question.isSaved() ? (
+          <Button key="create" primary small onClick={handleCreate}>
+            {t`Save`}
+          </Button>
+        ) : (
+          <ActionButton
+            key="save"
+            actionFn={handleSave}
+            normalText={t`Save changes`}
+            activeText={t`Saving…`}
+            failedText={t`Save failed`}
+            successText={t`Saved`}
+            className={cx(
+              ButtonsS.Button,
+              ButtonsS.ButtonPrimary,
+              ButtonsS.ButtonSmall,
+            )}
+          />
+        ),
       ]}
     />
   );

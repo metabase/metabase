@@ -1,3 +1,6 @@
+import { useState } from "react";
+
+import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
@@ -5,6 +8,7 @@ import type { Dataset, RawSeries } from "metabase-types/api";
 import { MetricEditorBody } from "./MetricEditorBody";
 import { MetricEditorFooter } from "./MetricEditorFooter";
 import { MetricEditorHeader } from "./MetricEditorHeader";
+import type { MetricModalType } from "./types";
 
 type MetricEditorProps = {
   question: Question;
@@ -14,6 +18,8 @@ type MetricEditorProps = {
   isDirty: boolean;
   isRunning: boolean;
   isResultDirty: boolean;
+  onCreate: (question: Question) => Promise<void>;
+  onSave: (question: Question) => Promise<void>;
   updateQuestion: (question: Question) => Promise<void>;
   runQuestionQuery: () => Promise<void>;
   cancelQuery: () => void;
@@ -28,14 +34,37 @@ export function MetricEditor({
   isDirty,
   isRunning,
   isResultDirty,
+  onCreate,
+  onSave,
   updateQuestion,
   runQuestionQuery,
   cancelQuery,
   setQueryBuilderMode,
 }: MetricEditorProps) {
+  const [modalType, setModalType] = useState<MetricModalType>();
+
+  const handleCreateStart = async () => {
+    await updateQuestion(question.setDefaultDisplay());
+    setModalType("save");
+  };
+
+  const handleCreate = async (question: Question) => {
+    await onCreate(question);
+    setQueryBuilderMode("view");
+  };
+
+  const handleSave = async (question: Question) => {
+    await onSave(question);
+    setQueryBuilderMode("view");
+  };
+
   return (
     <Flex h="100%" direction="column">
-      <MetricEditorHeader question={question} />
+      <MetricEditorHeader
+        question={question}
+        onCreate={handleCreateStart}
+        onSave={handleSave}
+      />
       <MetricEditorBody
         question={question}
         reportTimezone={reportTimezone}
@@ -54,6 +83,16 @@ export function MetricEditor({
         runQuestionQuery={runQuestionQuery}
         cancelQuery={cancelQuery}
       />
+      {modalType === "save" && (
+        <SaveQuestionModal
+          question={question}
+          originalQuestion={null}
+          opened
+          onCreate={handleCreate}
+          onSave={handleSave}
+          onClose={() => setModalType(undefined)}
+        />
+      )}
     </Flex>
   );
 }
