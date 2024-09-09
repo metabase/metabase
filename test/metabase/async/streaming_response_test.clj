@@ -143,14 +143,13 @@
               ;; wait a little while for the query to start running -- this should usually happen fairly quickly
               (mt/wait-for-result start-chan (u/seconds->ms 15))
               (future-cancel futur)
-              ;; check every 50ms, up to 1000ms, whether `canceled?` is now `true`
+              ;; check every 10ms, up to 1000ms, whether `canceled?` is now `true`
               (is (loop [[wait & more] (repeat 10 100)]
                     (or @canceled?
-                        (if wait
+                        (when wait
                           (do
                             (Thread/sleep (long wait))
-                            (recur more))
-                          ::timed-out)))))))))))
+                            (recur more)))))))))))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 
