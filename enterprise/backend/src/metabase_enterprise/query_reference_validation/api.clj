@@ -49,13 +49,19 @@
                                                 [[:not= nil [:max :coll.name]] :is_child_collection]]
                               "created_by"     [:u.first_name :u.last_name :u.email]
                               "last_edited_at" [:c.updated_at])
-        order-by-clause     (condp = sort-column
-                              "collection" [[:is_child_collection sort-dir-kw]
-                                            [[:max :coll.name] sort-dir-kw]]
-                              "created_by" [[[:coalesce [:|| :u.first_name " " :u.last_name]
-                                              :u.first_name :u.last_name :u.email]
-                                             sort-dir-kw]]
-                              [(into sorting-selects [sort-dir-kw])])
+        order-by-clause     (concat
+                             (condp = sort-column
+                               "collection" [[:is_child_collection sort-dir-kw]
+                                             [[:max :coll.name] sort-dir-kw]]
+                               "created_by" [[[:coalesce [:|| :u.first_name " " :u.last_name]
+                                               :u.first_name :u.last_name :u.email]
+                                              sort-dir-kw]]
+                               [(into sorting-selects [sort-dir-kw])])
+                             ;; fallbacks to ensure deterministic sorting:
+                             ;; - sort by card name,
+                             ;; - if even that's the same, sort by the ID
+                             [[:c.name sort-dir-kw]
+                              [:c.id sort-dir-kw]])
         card-query          (query-analysis/cards-with-reference-errors
                              (m/assoc-some
                               ;; TODO this table has a lot of fields... we should whittle down to only the ones we need.

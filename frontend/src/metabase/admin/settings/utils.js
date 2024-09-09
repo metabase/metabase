@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import MetabaseSettings from "metabase/lib/settings";
+import { useDocsUrl } from "metabase/common/hooks";
 
 export const settingToFormField = setting => ({
   name: setting.key,
@@ -15,8 +15,8 @@ export const settingToFormField = setting => ({
 
 export const settingToFormFieldId = setting => `setting-${setting.key}`;
 
-export const getEnvVarDocsUrl = envName => {
-  return MetabaseSettings.docsUrl(
+export const useGetEnvVarDocsUrl = envName => {
+  return useDocsUrl(
     "configuring-metabase/environment-variables",
     envName?.toLowerCase(),
   );

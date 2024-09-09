@@ -4,7 +4,6 @@ import _ from "underscore";
 
 import { parseTimestamp } from "metabase/lib/time";
 import { compareVersions, numberToWord } from "metabase/lib/utils";
-import { getDocsUrlForVersion } from "metabase/selectors/settings";
 import type {
   PasswordComplexity,
   SettingKey,
@@ -272,13 +271,6 @@ class MetabaseSettings {
     } else {
       return t`never`;
     }
-  }
-
-  /**
-   * @deprecated use getDocsUrl
-   */
-  docsUrl(page = "", anchor = "") {
-    return getDocsUrlForVersion(this.get("version"), page, anchor);
   }
 
   /**

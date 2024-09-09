@@ -114,7 +114,13 @@ const expressionBreakoutQuestionDetails = {
         "day",
       ],
     },
-    breakout: [["expression", "Date", { "base-type": "type/DateTime" }]],
+    breakout: [
+      [
+        "expression",
+        "Date",
+        { "base-type": "type/DateTime", "temporal-unit": "day" },
+      ],
+    ],
   },
 };
 
@@ -313,8 +319,18 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       cy.log("breakout by expression");
       addQuestion(expressionBreakoutQuestionDetails.name);
       editParameter(parameterDetails.name);
-      getDashboardCard().findByText("No valid fields").should("be.visible");
-      dashboardParametersDoneButton().click();
+      getDashboardCard().findByText("Select…").click();
+      popover().findByText("Date").click();
+      saveDashboard();
+      filterWidget().click();
+      popover().findByText("Quarter").click();
+      getDashboardCard().within(() => {
+        cy.findByText("Date: Quarter").should("be.visible");
+        cy.findByText(expressionBreakoutQuestionDetails.name).click();
+      });
+      queryBuilderMain().findByText("Date: Quarter").should("be.visible");
+      backToDashboard();
+      editDashboard();
       removeQuestion();
 
       cy.log("breakout by a column with a binning strategy");

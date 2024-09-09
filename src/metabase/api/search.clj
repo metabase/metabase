@@ -28,6 +28,7 @@
                            :created-at                          created_at
                            :created-by                          (set (u/one-or-many created_by))
                            :current-user-id                     api/*current-user-id*
+                           :is-superuser?                       api/*is-superuser?*
                            :current-user-perms                  @api/*current-user-permissions-set*
                            :filter-items-in-personal-collection filter_items_in_personal_collection
                            :last-edited-at                      last_edited_at
@@ -85,6 +86,7 @@
        :created-at                          created_at
        :created-by                          (set created_by)
        :current-user-id                     api/*current-user-id*
+       :is-superuser?                       api/*is-superuser?*
        :current-user-perms                  @api/*current-user-permissions-set*
        :filter-items-in-personal-collection filter_items_in_personal_collection
        :last-edited-at                      last_edited_at

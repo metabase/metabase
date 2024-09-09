@@ -66,5 +66,5 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
 
   printSuccess(getGeneratedComponentFilesMessage(path));
 
-  return [{ type: "done" }, state];
+  return [{ type: "done" }, { ...state, reactComponentDir: path }];
 };

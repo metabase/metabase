@@ -998,3 +998,29 @@
                   qp.compile/compile-with-inline-parameters
                   :query
                   pretty-sql-lines))))))
+
+(deftest fingerprint-and-bin-bigdecimal-test
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (mt/dataset
+      (mt/dataset-definition
+       "bigthings"
+       ["bigthings"
+        [{:field-name "bd" :base-type :type/Decimal}]
+        [[12345678901234567890.1234567890M]
+         [22345678901234567890.1234567890M]
+         [32345678901234567890.1234567890M]]])
+
+      ;; Must sync field values
+      (sync/sync-database! (mt/db))
+      (is (= "BIGNUMERIC"
+             (t2/select-one-fn :database_type :model/Field :id (mt/id :bigthings :bd))))
+      (is (= [[12000000000000000000M 1]
+              [21000000000000000000M 1]
+              [30000000000000000000M 1]]
+             (mt/rows
+              (mt/run-mbql-query bigthings
+                {:aggregation [[:count]]
+                 :breakout [[:field %bigthings.bd
+                             {:type :type/Decimal
+                              :binning {:strategy "default"}}]]})))))))

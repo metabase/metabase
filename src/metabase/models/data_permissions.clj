@@ -158,8 +158,13 @@
              *sandboxes-for-user*   (delay (enforced-sandboxes-for-user ~user-id))]
      ~@body))
 
+(def ^:dynamic *use-perms-cache?*
+  "Bind to `false` to intentionally bypass the permissions cache and fetch data straight from the DB."
+  true)
+
 (defn- get-permissions [user-id perm-type db-id]
-  (if (= user-id api/*current-user-id*)
+  (if (or (= user-id api/*current-user-id*)
+          (not *use-perms-cache?*))
     ;; Use the cache if we can; if not, add perms to the cache for this DB
     (let [{:keys [db-ids perms]} @*permissions-for-user*]
       (if (db-ids db-id)

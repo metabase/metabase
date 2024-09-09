@@ -124,7 +124,7 @@ export const NotebookContainer = ({
           style={{ flex: 1, overflowY: "auto" }}
         >
           <Notebook
-            question={question}
+            question={question.setType("question")}
             isDirty={isDirty}
             isRunnable={isRunnable}
             isResultDirty={isResultDirty}

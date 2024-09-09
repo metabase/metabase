@@ -16,6 +16,7 @@ import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/comp
 import { useHasDashboardScroll } from "metabase/dashboard/components/Dashboard/use-has-dashboard-scroll";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import type {
+  CancelledFetchDashboardResult,
   DashboardDisplayOptionControls,
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
@@ -38,6 +39,7 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 import type {
   DashboardSidebarName,
   SelectedTabId,
@@ -258,8 +260,7 @@ function Dashboard(props: DashboardProps) {
       });
 
       if (!isSuccessfulFetchDashboardResult(result)) {
-        const payload = result.payload as { isCancelled?: boolean };
-        if (!payload.isCancelled) {
+        if (!isCancelledFetchDashboardResult(result)) {
           setErrorPage(result.payload);
         }
         return;
@@ -516,6 +517,12 @@ function isSuccessfulFetchDashboardResult(
 ): result is SuccessfulFetchDashboardResult {
   const hasError = "error" in result;
   return !hasError;
+}
+
+export function isCancelledFetchDashboardResult(
+  result: FetchDashboardResult,
+): result is CancelledFetchDashboardResult {
+  return isObject(result.payload) && Boolean(result.payload.isCancelled);
 }
 
 export { Dashboard };

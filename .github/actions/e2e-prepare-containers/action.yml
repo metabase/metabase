@@ -27,6 +27,10 @@ inputs:
     description: Mongo container
     required: true
     default: false
+  webhook:
+    description: Webhook tester container
+    required: false
+    default: false
 
 runs:
   using: "composite"

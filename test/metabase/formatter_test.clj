@@ -175,3 +175,14 @@
     (testing "We handle missing values"
       (is (= ""
              (formatter/format-geographic-coordinates :type/Longitude nil))))))
+
+(deftest ambiguous-column-types-test
+  (testing "Ambiguous column types (eg. `:type/SnowflakeVariant` pass through the formatter without error (#46981)"
+    (let [format (fn [value viz]
+                   (str ((formatter/number-formatter {:id 1
+                                                      :base_type :type/SnowflakeVariant}
+                                                     {::mb.viz/column-settings
+                                                      {{::mb.viz/field-id 1} viz}})
+                         value)))]
+      (is (= "variant works"
+             (format "variant works" {}))))))

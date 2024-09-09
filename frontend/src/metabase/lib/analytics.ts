@@ -22,7 +22,7 @@ const VERSIONS: Record<SchemaType, string> = {
   embed_flow: "1-0-2",
   embed_share: "1-0-0",
   embedding_homepage: "1-0-0",
-  event: "1-0-0",
+  simple_event: "1-0-0",
   invite: "1-0-1",
   metabot: "1-0-1",
   model: "1-0-0",
@@ -35,8 +35,8 @@ const VERSIONS: Record<SchemaType, string> = {
   upsell: "1-0-0",
 };
 
-export function trackEvent(event: SimpleEvent) {
-  trackSchemaEvent("event", event);
+export function trackSimpleEvent(event: SimpleEvent) {
+  trackSchemaEvent("simple_event", event);
 }
 
 export function trackSchemaEvent(schema: SchemaType, event: SchemaEvent): void {

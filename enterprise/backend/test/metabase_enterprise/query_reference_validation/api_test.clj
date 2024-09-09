@@ -234,35 +234,38 @@
                  (with-data-keys [:id :name :errors])))))))
 
 (deftest sorting-test
-  (testing "Lets you specify the sort key"
+  (testing "Lets you specify the sort key:\n"
     (with-test-setup!
-      (is (= {:total 4
-              :data
-              [{:id card-3}
-               {:id card-2}
-               {:id card-1}
-               {:id card-5}]}
-             (-> (get! {:sort_column "collection" :sort_direction "desc"})
-                 (select-keys [:total :data])
-                 (with-data-keys [:id]))))
-      (is (= {:total 4
-              :data
-              [{:id card-1}
-               {:id card-2}
-               {:id card-3}
-               {:id card-5}]}
-             (-> (get! {:sort_column "last_edited_at" :sort_direction "asc"})
-                 (select-keys [:total :data])
-                 (with-data-keys [:id]))))
-      (is (= {:total 4
-              :data
-              [{:id card-5}
-               {:id card-3}
-               {:id card-2}
-               {:id card-1}]}
-             (-> (get! {:sort_column "last_edited_at" :sort_direction "desc"})
-                 (select-keys [:total :data])
-                 (with-data-keys [:id]))))))
+      (testing "collection desc"
+        (is (= {:total 4
+                :data
+                [{:id card-3}
+                 {:id card-2}
+                 {:id card-5}
+                 {:id card-1}]}
+               (-> (get! {:sort_column "collection" :sort_direction "desc"})
+                   (select-keys [:total :data])
+                   (with-data-keys [:id])))))
+      (testing "last_edited_at asc"
+        (is (= {:total 4
+                :data
+                [{:id card-1}
+                 {:id card-2}
+                 {:id card-3}
+                 {:id card-5}]}
+               (-> (get! {:sort_column "last_edited_at" :sort_direction "asc"})
+                   (select-keys [:total :data])
+                   (with-data-keys [:id])))))
+      (testing "last_edited_at desc"
+        (is (= {:total 4
+                :data
+                [{:id card-5}
+                 {:id card-3}
+                 {:id card-2}
+                 {:id card-1}]}
+               (-> (get! {:sort_column "last_edited_at" :sort_direction "desc"})
+                   (select-keys [:total :data])
+                   (with-data-keys [:id])))))))
 
   (testing "Rejects bad keys"
     (with-test-setup!

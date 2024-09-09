@@ -42,17 +42,17 @@
   com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.4"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
   com.google.guava/guava                    {:mvn/version "33.1.0-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.fasterxml.jackson.core/jackson-databind
-                                            {:mvn/version "2.17.0"}             ; JSON processor used by snowplow-java-tracker
+  {:mvn/version "2.17.0"}             ; JSON processor used by snowplow-java-tracker
   com.fasterxml.woodstox/woodstox-core      {:mvn/version "6.6.1"}              ; trans dep of commons-codec
   com.h2database/h2                         {:mvn/version "2.1.214"}            ; embedded SQL database
   com.gfredericks/test.chuck                {:mvn/version "0.2.14"}             ; generating strings from regex
   com.snowplowanalytics/snowplow-java-tracker
-                                            {:mvn/version "1.0.1"               ; Snowplow analytics
-                                             :exclusions [com.fasterxml.jackson.core/jackson-databind]}
+  {:mvn/version "1.0.1"               ; Snowplow analytics
+   :exclusions [com.fasterxml.jackson.core/jackson-databind]}
   com.taoensso/nippy                        {:mvn/version "3.4.2"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
   com.vladsch.flexmark/flexmark-ext-autolink
-                                            {:mvn/version "0.64.8"}             ; Flexmark extension for auto-linking bare URLs
+  {:mvn/version "0.64.8"}             ; Flexmark extension for auto-linking bare URLs
   commons-fileupload/commons-fileupload     {:mvn/version "1.5"}                ; ring/ring-core 1.9.6 uses v1.4, but we want 1.5 due to a CVE. When we upgrade to the forthcoming ring/ring-core 1.10.0 we can remove this.
   commons-codec/commons-codec               {:mvn/version "1.16.1"}             ; Apache Commons -- useful codec util fns
   commons-io/commons-io                     {:mvn/version "2.15.1"}             ; Apache Commons -- useful IO util fns
@@ -77,9 +77,9 @@
   io.github.eerohele/pp                     {:git/tag "2024-01-04.60"           ; super fast pretty-printing library
                                              :git/sha "a428751"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.2.6"}              ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.2.10"}             ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
-  io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1" #_ "must be 1.7.1"} ; Support for retrying operations
+  io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1" #_"must be 1.7.1"} ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   io.prometheus/simpleclient_jetty          {:mvn/version "0.16.0"}             ; prometheus jetty collector
   javax.servlet/servlet-api                 {:mvn/version "2.5"}                ; used by ring's multipart-params (file upload)
@@ -89,7 +89,7 @@
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
   metabase/saml20-clj                       {:mvn/version "2.2.7.172"
-                                             :exclusions [                      ; EE SAML integration TODO: bump version when we release the library
+                                             :exclusions [; EE SAML integration TODO: bump version when we release the library
                                                           org.bouncycastle/bcpkix-jdk15on
                                                           org.bouncycastle/bcprov-jdk15on
                                                           org.bouncycastle/bcpkix-jdk18on
@@ -116,9 +116,9 @@
   org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.23.1"}             ; allows the commons-logging API to work with log4j 2
   org.apache.logging.log4j/log4j-jul        {:mvn/version "2.23.1"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-slf4j2-impl
-                                            {:mvn/version "2.23.1"}             ; allows the slf4j2 API to work with log4j 2
+  {:mvn/version "2.23.1"}             ; allows the slf4j2 API to work with log4j 2
   org.apache.logging.log4j/log4j-layout-template-json
-                                            {:mvn/version "2.23.1"}             ; allows the custom json logging format
+  {:mvn/version "2.23.1"}             ; allows the custom json logging format
   org.apache.poi/poi                        {:mvn/version "5.2.5"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.2.5"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
@@ -134,7 +134,7 @@
   org.clj-commons/hickory                   {:mvn/version "0.7.4"               ; Parse HTML into Clojure data structures
                                              :exclusions [org.jsoup/jsoup]}
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
-  org.clojure/clojure                       {:mvn/version "1.11.2"}
+  org.clojure/clojure                       {:mvn/version "1.12.0"}
   org.clojure/core.async                    {:mvn/version "1.6.681"
                                              :exclusions  [org.clojure/tools.reader]}
   org.clojure/core.logic                    {:mvn/version "1.1.0"}              ; optimized pattern matching library for Clojure
@@ -174,7 +174,10 @@
   potemkin/potemkin                         {:mvn/version "0.4.7"               ; utility macros & fns
                                              :exclusions  [riddley/riddley]}
   pretty/pretty                             {:mvn/version "1.0.5"}              ; protocol for defining how custom types should be pretty printed
-  redux/redux                               {:mvn/version "0.1.4"}              ; Utility functions for building and composing transducers
+  ;; Dependency below is our fork of redux - utility functions for building and composing transducers. The
+  ;; group/artifact name is the same as with the upstream so that it overrides the original dependency everywhere.
+  redux/redux                               {:git/url "https://github.com/metabase/redux"
+                                             :sha "4a37feaf817a2a6b5ef688c927f6fd4375964433"}
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
   ring/ring-core                            {:mvn/version "1.12.0"}             ; HTTP abstraction
   ring/ring-jetty-adapter                   {:mvn/version "1.12.0"              ; Jetty adapter
@@ -186,13 +189,10 @@
   user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere
   weavejester/dependency                    {:mvn/version "0.2.1"}}             ; Dependency graphs and topological sorting
 
-
-
- ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  ;; !!         PLEASE KEEP NEW DEPENDENCIES ABOVE ALPHABETICALLY ORGANIZED AND ADD COMMENTS EXPLAINING THEM.         !!
  ;; !!                            *PLEASE DO NOT* ADD NEW ONES TO THE BOTTOM OF THE LIST.                            !!
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 
  :paths
  ["src" "resources"]
@@ -214,8 +214,7 @@
   "opensaml" {:url "https://build.shibboleth.net/nexus/content/repositories/releases/"}}
 
  :aliases
- {
-;;; Local Dev & test profiles
+ {;;; Local Dev & test profiles
 
   ;; for local development: start a REPL with
   ;;
@@ -230,9 +229,9 @@
   :dev
   {:extra-deps
    {com.clojure-goes-fast/clj-async-profiler
-                                 {:mvn/version "1.2.0"}                     ; Enables local profiling and heat map generation
+    {:mvn/version "1.2.0"}                     ; Enables local profiling and heat map generation
     com.clojure-goes-fast/clj-memory-meter
-                                 {:mvn/version "0.3.0"}                     ; Enables easy memory measurement
+    {:mvn/version "0.3.0"}                     ; Enables easy memory measurement
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
     clj-kondo/clj-kondo          {:mvn/version "2024.08.01"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
@@ -241,8 +240,7 @@
     djblue/portal                {:mvn/version "0.56.0"}                    ; ui for inspecting values
     hashp/hashp                  {:mvn/version "0.2.2"}                     ; debugging/spying utility
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
-    io.github.metabase/hawk      {:git/url "https://github.com/metabase/hawk"
-                                  :git/sha "ac3c663b22114d99303b8da88d982248da391780"}
+    io.github.metabase/hawk      {:mvn/version "1.0.0"}
     jonase/eastwood              {:mvn/version "1.4.2"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
@@ -413,7 +411,7 @@
   ;; Use this to only run Kondo against specific files.
   :kondo
   {:replace-deps
-   {clj-kondo/clj-kondo {:mvn/version "2024.08.01"}}
+   {clj-kondo/clj-kondo {:mvn/version "2024.08.29"}}
 
    :main-opts
    ["-m" "clj-kondo.main"]}
@@ -511,7 +509,7 @@
                                  "modules/drivers/sqlite/src"
                                  "modules/drivers/sqlserver/src"
                                  "modules/drivers/vertica/src"]
-               :exclude-linters [ ;; Turn this off temporarily until we finish removing
+               :exclude-linters [;; Turn this off temporarily until we finish removing
                                  ;; self-deprecated functions & macros
                                  :deprecations
                                  ;; this has a fit in libs that use Potemkin `import-vars` such

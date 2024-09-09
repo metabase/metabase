@@ -19,7 +19,7 @@ const ORIGINAL_COLORS = [
   "yellow",
   "orange",
   "teal",
-];
+] as const;
 
 const CUSTOM_COLORS = [
   "bg-black",

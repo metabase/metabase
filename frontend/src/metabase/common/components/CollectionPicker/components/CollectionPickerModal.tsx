@@ -105,13 +105,11 @@ export const CollectionPickerModal = ({
       ]
     : [];
 
-  const tabs: [
-    EntityPickerTab<
-      CollectionPickerItem["id"],
-      CollectionPickerItem["model"],
-      CollectionPickerItem
-    >,
-  ] = [
+  const tabs: EntityPickerTab<
+    CollectionPickerItem["id"],
+    CollectionPickerItem["model"],
+    CollectionPickerItem
+  >[] = [
     {
       id: "collections-tab",
       displayName: t`Collections`,

@@ -619,6 +619,23 @@
                   (is (= [[0]]
                          (mt/rows (qp/process-query query)))))))))))))
 
+(deftest ^:parallel date-parameterized-sql-test
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (let [query {:database (mt/id)
+                 :type :native
+                 :native {:query "select * from (select date('2024-08-29') as y) as x where x.y = {{d}}"
+                          :template-tags {"d" {:name "d"
+                                               :display-name "Date"
+                                               :type :date}}}
+                 :parameters [{:type "date"
+                               :name "d"
+                               :target [:variable [:template-tag "d"]]
+                               :value "2024-08-29"}]}]
+      (is (= 1
+             (count
+              (mt/rows (qp/process-query query))))))))
+
 (deftest datetime-timezone-parameter-test
   (testing "Date Field Filter not includes Timezone (#43597)"
     (mt/test-driver

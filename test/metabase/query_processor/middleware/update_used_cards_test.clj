@@ -25,15 +25,22 @@
   [card-id]
   (t2/select-one-fn :last_used_at :model/Card card-id))
 
+(defn- card-updated-at
+  [card-id]
+  (t2/select-one-fn :updated_at :model/Card card-id))
+
 (defn do-test!
   "Check if `last_used_at` of `card-id` is nil, then execute `f`, then check that `last_used_at` is non nil."
   [card-id thunk]
   (assert (fn? thunk))
-  (let [original-last-used-at (card-last-used-at card-id)]
+  (let [original-last-used-at (card-last-used-at card-id)
+        original-updated-at   (card-updated-at card-id)]
     (mt/with-temporary-setting-values [synchronous-batch-updates true]
       (thunk))
     (testing "last_used_at should be updated after executing the query"
-      (is (not= original-last-used-at (card-last-used-at card-id))))))
+      (is (not= original-last-used-at (card-last-used-at card-id))))
+    (testing "updated_at should not be updated after executing the query"
+      (is (= original-updated-at (card-updated-at card-id))))))
 
 (deftest nested-cards-test
   (with-used-cards-setup!

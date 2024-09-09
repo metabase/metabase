@@ -3,7 +3,8 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
-   [malli.experimental.describe :as med]))
+   [malli.experimental.describe :as med]
+   [metabase.util.malli.registry :as mr]))
 
 (defn describe
   "Given a schema, returns a string explaining the required shape in English"
@@ -14,7 +15,11 @@
                         {::mc/walk-entry-vals true
                          ::med/definitions    (atom {})
                          ::med/describe       med/-describe})]
-     (str/trim (str (med/-describe ?schema options))))))
+     (-> ?schema
+         mr/resolve-schema
+         (med/-describe options)
+         str
+         str/trim))))
 
 ;;; This is a fix for upstream issue https://github.com/metosin/malli/issues/924 (the generated descriptions for
 ;;; `:min` and `:max` were backwards). We can remove this when that issue is fixed upstream.

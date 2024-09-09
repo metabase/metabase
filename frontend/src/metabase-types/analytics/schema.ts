@@ -33,7 +33,7 @@ export type SchemaEventMap = {
   embed_flow: EmbedFlowEvent;
   embed_share: EmbedShareEvent;
   embedding_homepage: EmbeddingHomepageEvent;
-  event: SimpleEvent;
+  simple_event: SimpleEvent;
   invite: InviteEvent;
   metabot: MetabotEvent;
   model: ModelEvent;

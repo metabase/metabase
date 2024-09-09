@@ -713,3 +713,18 @@
                           {}
                           [[1]
                            [2]]))))))
+
+(deftest ambiguous-column-types-dont-error
+  (testing "Ambiguous column types (eg. `:type/SnowflakeVariant` will not throw an exception. (#46981)"
+    (mt/dataset test-data
+      (is (= [["CREATED_AT"]
+              [1.0]
+              [2.0]]
+             (xlsx-export [{:id             0
+                            :unit           :month-of-year
+                            :name           "CREATED_AT"
+                            :effective_type :type/SnowflakeVariant
+                            :base_type      :type/SnowflakeVariant}]
+                          {}
+                          [[1]
+                           [2]]))))))

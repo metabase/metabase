@@ -1,5 +1,13 @@
 import type { EChartsType } from "echarts/core";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useSet } from "react-use";
 
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
@@ -26,6 +34,8 @@ function _CartesianChart(props: VisualizationProps) {
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
 
+  const [hiddenSeries, { toggle: toggleSeriesVisibility }] = useSet<string>();
+
   const {
     showAllLegendItems,
     rawSeries,
@@ -43,6 +53,7 @@ function _CartesianChart(props: VisualizationProps) {
     hovered,
     onChangeCardAndRun,
     onHoverChange,
+    canToggleSeriesVisibility,
     canRemoveSeries,
     onRemoveSeries,
   } = props;
@@ -57,6 +68,7 @@ function _CartesianChart(props: VisualizationProps) {
       ...props,
       width: chartSize.width,
       height: chartSize.height,
+      hiddenSeries,
       settings,
     },
     containerRef,
@@ -82,6 +94,19 @@ function _CartesianChart(props: VisualizationProps) {
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
   }, []);
+
+  const handleToggleSeriesVisibility = useCallback(
+    (event: MouseEvent, seriesIndex: number) => {
+      const seriesModel = chartModel.seriesModels[seriesIndex];
+      const willShowSeries = hiddenSeries.has(seriesModel.dataKey);
+      const hasMoreVisibleSeries =
+        chartModel.seriesModels.length - hiddenSeries.size > 1;
+      if (hasMoreVisibleSeries || willShowSeries) {
+        toggleSeriesVisibility(seriesModel.dataKey);
+      }
+    },
+    [chartModel, hiddenSeries, toggleSeriesVisibility],
+  );
 
   const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
     chartRef,
@@ -124,6 +149,9 @@ function _CartesianChart(props: VisualizationProps) {
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
         onSelectSeries={onSelectSeries}
+        onToggleSeriesVisibility={
+          canToggleSeriesVisibility && handleToggleSeriesVisibility
+        }
         canRemoveSeries={canRemoveSeries}
         onRemoveSeries={onRemoveSeries}
         onHoverChange={onHoverChange}

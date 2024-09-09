@@ -1,4 +1,5 @@
-(ns metabase-enterprise.serialization.v2.models)
+(ns metabase-enterprise.serialization.v2.models
+  "See [[metabase.models.serialization]] for documentation.")
 
 (def data-model
   "Schema model types"

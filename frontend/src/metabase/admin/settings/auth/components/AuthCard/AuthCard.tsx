@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { getEnvVarDocsUrl } from "metabase/admin/settings/utils";
+import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import { isNotNull } from "metabase/lib/types";
@@ -62,13 +62,12 @@ const AuthCard = ({
     handleClose();
   }, [onDeactivate, handleClose]);
 
+  const { url: docsUrl } = useGetEnvVarDocsUrl(setting.env_name);
+
   const footer = isEnvSetting ? (
     <Text>
       Set with env var{" "}
-      <Anchor
-        href={getEnvVarDocsUrl(setting.env_name)}
-        target="_blank"
-      >{`$${setting.env_name}`}</Anchor>
+      <Anchor href={docsUrl} target="_blank">{`$${setting.env_name}`}</Anchor>
     </Text>
   ) : null;
 

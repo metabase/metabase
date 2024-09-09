@@ -1,6 +1,10 @@
 import _ from "underscore";
 
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import {
+  SdkError,
+  SdkLoader,
+  withPublicComponentWrapper,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -9,6 +13,7 @@ import CS from "metabase/css/core/index.css";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { Box } from "metabase/ui";
@@ -74,6 +79,19 @@ export const StaticDashboardInner = ({
   );
 };
 
-const StaticDashboard = withPublicComponentWrapper(StaticDashboardInner);
+const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
+  ({ dashboardId, ...rest }) => {
+    const { isLoading, id } = useValidatedEntityId({
+      type: "dashboard",
+      id: dashboardId,
+    });
+
+    if (!id) {
+      return isLoading ? <SdkLoader /> : <SdkError message="ID not found" />;
+    }
+
+    return <StaticDashboardInner dashboardId={id} {...rest} />;
+  },
+);
 
 export { EmbedDisplayParams, StaticDashboard };

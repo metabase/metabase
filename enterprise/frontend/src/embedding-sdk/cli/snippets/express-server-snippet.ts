@@ -1,27 +1,41 @@
-import { HARDCODED_USERS } from "embedding-sdk/cli/constants/hardcoded-users";
+import { sample } from "underscore";
 
-import {
-  HARDCODED_JWT_SHARED_SECRET,
-  USER_ATTRIBUTE_CUSTOMER_ID,
-} from "../constants/config";
+import { HARDCODED_JWT_SHARED_SECRET } from "../constants/config";
+import { HARDCODED_USERS } from "../constants/hardcoded-users";
+import type { CliState } from "../types/cli";
 
-interface Options {
-  instanceUrl: string;
-  tenantIds: (number | string)[];
-}
+type Options = Pick<CliState, "instanceUrl" | "tenantIdsMap">;
 
 const DEFAULT_EXPRESS_SERVER_PORT = 4477;
 
 export const getExpressServerSnippet = (options: Options) => {
-  const users = HARDCODED_USERS.map((user, i) => ({
-    ...user,
+  const { tenantIdsMap, instanceUrl } = options;
+
+  const users = HARDCODED_USERS.map((user, i) => {
+    const tenancyAttributes: Record<string, string | number> = {};
 
     // Assign one of the tenant id in the user's database to their Metabase user attributes.
     // This is hard-coded for demonstration purposes.
-    ...(options.tenantIds[i] && {
-      [USER_ATTRIBUTE_CUSTOMER_ID]: options.tenantIds[i],
-    }),
-  }));
+    for (const tenancyColumnName in tenantIdsMap) {
+      const tenantIds = tenantIdsMap[tenancyColumnName];
+      let tenantId = tenantIds[i];
+
+      // If there isn't enough tenants, we sample a tenant.
+      if (tenantId === undefined) {
+        tenantId = sample(tenantIds) ?? 0;
+      }
+
+      tenancyAttributes[tenancyColumnName] = tenantId;
+    }
+
+    return { ...user, ...tenancyAttributes };
+  });
+
+  let tenancyAttributeMaps = "";
+
+  for (const tenancyColumnName in tenantIdsMap) {
+    tenancyAttributeMaps += `      ${tenancyColumnName}: user.${tenancyColumnName},\n`;
+  }
 
   return `
 const express = require("express");
@@ -32,7 +46,7 @@ const cors = require('cors')
 
 const PORT = process.env.PORT || ${DEFAULT_EXPRESS_SERVER_PORT}
 
-const METABASE_INSTANCE_URL = '${options.instanceUrl}'
+const METABASE_INSTANCE_URL = '${instanceUrl}'
 
 const METABASE_JWT_SHARED_SECRET =
   '${HARDCODED_JWT_SHARED_SECRET}'
@@ -57,8 +71,8 @@ async function metabaseAuthHandler(req, res) {
       first_name: user.firstName,
       last_name: user.lastName,
       groups: user.groups,
-      ${USER_ATTRIBUTE_CUSTOMER_ID}: user.${USER_ATTRIBUTE_CUSTOMER_ID},
       exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
+${tenancyAttributeMaps}
     },
     // This is the JWT signing secret in your Metabase JWT authentication setting
     METABASE_JWT_SHARED_SECRET,
