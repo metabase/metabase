@@ -41,8 +41,6 @@ import {
   getSortedModelFields,
 } from "metabase-lib/v1/metadata/utils/models";
 
-import { MetricEmptyState } from "../../../querying/metrics/components/MetricEditor/MetricEditorFooter/MetricEmptyState";
-
 import {
   DatasetEditBar,
   FieldTypeIcon,
@@ -202,7 +200,6 @@ function DatasetEditor(props) {
     height,
     isDirty: isModelQueryDirty,
     isResultDirty,
-    isRunning,
     setQueryBuilderMode,
     runQuestionQuery,
     setDatasetEditorTab,
@@ -215,8 +212,6 @@ function DatasetEditor(props) {
     onOpenModal,
   } = props;
 
-  const isMetric = question.type() === "metric";
-  const isMetricEmptyState = isMetric && !result && !isRunning;
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const isDirty = isModelQueryDirty || isMetadataDirty;
   const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
@@ -355,15 +350,12 @@ function DatasetEditor(props) {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
     const questionWithMetadata = question.setResultMetadataDiff(metadataDiff);
-    const questionWithDisplay = isMetric
-      ? questionWithMetadata.setDefaultDisplay()
-      : questionWithMetadata;
 
     if (canBeDataset && isBrandNewDataset) {
-      await updateQuestion(questionWithDisplay, { rerunQuery: false });
+      await updateQuestion(questionWithMetadata, { rerunQuery: false });
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
-      await onSave(questionWithDisplay, { rerunQuery: true });
+      await onSave(questionWithMetadata, { rerunQuery: true });
       await setQueryBuilderMode("view");
       runQuestionQuery();
     } else {
@@ -373,7 +365,6 @@ function DatasetEditor(props) {
   }, [
     question,
     metadataDiff,
-    isMetric,
     updateQuestion,
     onSave,
     setQueryBuilderMode,
@@ -481,16 +472,11 @@ function DatasetEditor(props) {
         data-testid="dataset-edit-bar"
         title={question.displayName()}
         center={
-          // Metadata tab is temporarily disabled for metrics.
-          // It should be enabled in #37993
-          // @see https://github.com/metabase/metabase/issues/37993
-          isMetric ? null : (
-            <EditorTabs
-              currentTab={datasetEditorTab}
-              disabledMetadata={!resultsMetadata}
-              onChange={onChangeEditorTab}
-            />
-          )
+          <EditorTabs
+            currentTab={datasetEditorTab}
+            disabledMetadata={!resultsMetadata}
+            onChange={onChangeEditorTab}
+          />
         }
         buttons={[
           <Button
@@ -542,25 +528,18 @@ function DatasetEditor(props) {
           </QueryEditorContainer>
           <TableContainer isSidebarOpen={!!sidebar}>
             <DebouncedFrame className={cx(CS.flexFull)} enabled>
-              {isMetricEmptyState ? (
-                <MetricEmptyState
-                  query={question.query()}
-                  runQuestionQuery={runQuestionQuery}
-                />
-              ) : (
-                <QueryVisualization
-                  {...props}
-                  className={CS.spread}
-                  noHeader
-                  queryBuilderMode="dataset"
-                  isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}
-                  hasMetadataPopovers={false}
-                  handleVisualizationClick={handleTableElementClick}
-                  tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
-                  renderTableHeaderWrapper={renderTableHeaderWrapper}
-                  scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
-                />
-              )}
+              <QueryVisualization
+                {...props}
+                className={CS.spread}
+                noHeader
+                queryBuilderMode="dataset"
+                isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}
+                hasMetadataPopovers={false}
+                handleVisualizationClick={handleTableElementClick}
+                tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
+                renderTableHeaderWrapper={renderTableHeaderWrapper}
+                scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
+              />
             </DebouncedFrame>
             <TabHintToastContainer
               isVisible={isEditingMetadata && isTabHintVisible && !result.error}
