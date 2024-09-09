@@ -17,7 +17,6 @@
      (t2/with-connection [^java.sql.Connection conn]
        (.. conn getMetaData getDatabaseProductName))))
 
-
 (def ^:private non-indexed-models
   (disj search.config/all-models "indexed-entity"))
 
