@@ -51,7 +51,7 @@ const setup = ({
         currentUser: createMockUser({ is_superuser: isAdmin }),
         settings: mockSettings({
           "enable-public-sharing": isPublicSharingEnabled,
-          "enable-embedding": isApplicationEmbeddingEnabled,
+          "enable-embedding-sdk": isApplicationEmbeddingEnabled,
         }),
       }),
       withRouter: true,

@@ -23,7 +23,7 @@ describe("[EE, no token] embedding settings", () => {
     describe("static embedding", () => {
       it("should not allow going to static embedding settings page", async () => {
         const { history } = await setupEnterprise({
-          settingValues: { "enable-embedding": false },
+          settingValues: { "enable-embedding-sdk": false },
         });
 
         expect(screen.getByRole("button", { name: "Manage" })).toBeDisabled();
@@ -39,7 +39,7 @@ describe("[EE, no token] embedding settings", () => {
 
       it("should prompt to upgrade to remove the Powered by text", async () => {
         await setupEnterprise({
-          settingValues: { "enable-embedding": false },
+          settingValues: { "enable-embedding-sdk": false },
         });
 
         expect(screen.getByText("upgrade to a paid plan")).toBeInTheDocument();
@@ -56,7 +56,7 @@ describe("[EE, no token] embedding settings", () => {
     describe("interactive embedding", () => {
       it("should not allow going to interactive settings page", async () => {
         const { history } = await setupEnterprise({
-          settingValues: { "enable-embedding": false },
+          settingValues: { "enable-embedding-sdk": false },
         });
 
         act(() => {
@@ -70,7 +70,7 @@ describe("[EE, no token] embedding settings", () => {
 
       it("should have a learn more button for interactive embedding", async () => {
         await setupEnterprise({
-          settingValues: { "enable-embedding": false },
+          settingValues: { "enable-embedding-sdk": false },
         });
         expect(
           screen.getByRole("link", { name: "Learn More" }),
@@ -84,7 +84,7 @@ describe("[EE, no token] embedding settings", () => {
       it("should link to quickstart for interactive embedding", async () => {
         await setupEnterprise({
           settingValues: {
-            "enable-embedding": false,
+            "enable-embedding-sdk": false,
             version: { tag: "v1.49.3" },
           },
         });
@@ -97,7 +97,7 @@ describe("[EE, no token] embedding settings", () => {
 
       it("should link to https://www.metabase.com/blog/why-full-app-embedding", async () => {
         await setupEnterprise({
-          settingValues: { "enable-embedding": false },
+          settingValues: { "enable-embedding-sdk": false },
         });
 
         expect(

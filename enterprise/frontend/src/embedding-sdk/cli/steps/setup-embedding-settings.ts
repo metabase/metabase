@@ -16,7 +16,7 @@ export const setupEmbeddingSettings: CliStepMethod = async state => {
 
   let settings: Record<string, string | boolean> = {
     "embedding-homepage": "visible",
-    "enable-embedding": true,
+    "enable-embedding-sdk": true,
     "setup-license-active-at-setup": false,
     "setup-embedding-autoenabled": true,
   };

@@ -17,7 +17,7 @@
   (api/check (public-settings/enable-public-sharing)
              [400 (tru "Public sharing is not enabled.")]))
 
-(defn check-embedding-enabled
+(defn check-embedding-sdk-enabled
   "Is embedding of Cards or Objects (secured access via `/api/embed` endpoints with a signed JWT enabled?"
   []
   (api/check (embed.settings/enable-embedding-sdk)
