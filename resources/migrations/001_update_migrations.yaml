@@ -9393,6 +9393,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: notification_handler
+            remarks: which channel to send the notification to
             columns:
               - column:
                   name: id
@@ -9405,11 +9406,13 @@ databaseChangeLog:
               - column:
                   name: channel_type
                   type: varchar(64)
+                  remarks: the type of the channel
                   constraints:
                     nullable: false
               - column:
                   name: notification_id
                   type: int
+                  remarks: the notification that the handler is connected to
                   constraints:
                     nullable: false
                     referencedTableName: notification
@@ -9419,6 +9422,7 @@ databaseChangeLog:
               - column:
                   name: channel_id
                   type: int
+                  remarks: the channel that the handler is connected to
                   constraints:
                     nullable: true # temporarily nullable, because we need to support email and slack channels as global configuration
                     referencedTableName: channel
@@ -9428,18 +9432,21 @@ databaseChangeLog:
               - column:
                   name: active
                   type: ${boolean.type}
+                  remarks: whether the handler is active
                   defaultValueBoolean: true
                   constraints:
                     nullable: false
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: The timestamp of when the handler was created
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
                   type: ${timestamp_type}
+                  remarks: The timestamp of when the handler was updated
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -9489,6 +9496,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: notification_recipient
+            remarks: who should receive the notification
             columns:
               - column:
                   name: id
@@ -9500,6 +9508,7 @@ databaseChangeLog:
               - column:
                   name: notification_handler_id
                   type: int
+                  remarks: the handler that the recipient is connected to
                   constraints:
                     nullable: false
                     referencedTableName: notification_handler
@@ -9509,11 +9518,13 @@ databaseChangeLog:
               - column:
                   name: type
                   type: varchar(64)
+                  remarks: the type of the recipient
                   constraints:
                     nullable: false
               - column:
                   name: user_id
                   type: int
+                  remarks: an user if the recipient has type user
                   constraints:
                     nullable: true
                     referencedTableName: core_user
@@ -9523,6 +9534,7 @@ databaseChangeLog:
               - column:
                   name: permissions_group_id
                   type: int
+                  remarks: a permissions group if the recipient has type permissions_group
                   constraints:
                     nullable: true
                     referencedTableName: permissions_group
@@ -9532,17 +9544,20 @@ databaseChangeLog:
               - column:
                   name: details
                   type: ${text.type}
+                  remarks: custom details for the recipient
                   constraints:
                     nullable: true
               - column:
                   name: created_at
                   type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was created
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
                   type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was updated
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
