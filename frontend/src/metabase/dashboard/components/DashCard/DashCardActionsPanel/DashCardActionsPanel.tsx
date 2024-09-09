@@ -1,6 +1,7 @@
 import type { MouseEvent } from "react";
 import { memo, useCallback, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import ConfirmContent from "metabase/components/ConfirmContent";
@@ -79,7 +80,7 @@ function DashCardActionsPanelInner({
     disableClickBehavior,
   } = getVisualizationRaw(series) ?? {};
 
-  const isDashboardCard = typeof dashcard?.card.dashboard_id === "number";
+  const isDashboardQuestion = _.isNumber(dashcard?.card.dashboard_id);
 
   const buttons = [];
 
@@ -206,7 +207,7 @@ function DashCardActionsPanelInner({
     !isLoading &&
     dashcard &&
     !isVirtualDashCard(dashcard) &&
-    !isDashboardCard
+    !isDashboardQuestion
   ) {
     buttons.push(
       <DashCardActionButton
@@ -276,7 +277,7 @@ function DashCardActionsPanelInner({
       >
         <DashCardActionButtonsContainer>
           {buttons}
-          {isDashboardCard ? (
+          {isDashboardQuestion ? (
             <DashCardActionButton
               onClick={handleConfirmMoveToTrash}
               tooltip={t`Move to trash`}
@@ -293,9 +294,9 @@ function DashCardActionsPanelInner({
           )}
         </DashCardActionButtonsContainer>
       </DashCardActionsPanelContainer>
-      {isDashboardCard && (
+      {isDashboardQuestion && (
         <Modal
-          isOpen={isDashboardCard && trashConfirmationModal.opened}
+          isOpen={isDashboardQuestion && trashConfirmationModal.opened}
           onClose={trashConfirmationModal.close}
           trapFocus
         >
