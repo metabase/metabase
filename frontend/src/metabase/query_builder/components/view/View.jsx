@@ -390,6 +390,7 @@ class View extends Component {
       setQueryBuilderMode,
       onCreate,
       onSave,
+      onChangeLocation,
     } = this.props;
 
     // if we don't have a question at all or no databases then we are initializing, so keep it simple
@@ -429,6 +430,8 @@ class View extends Component {
               onCancel={question => {
                 if (question.isSaved()) {
                   setQueryBuilderMode("view");
+                } else {
+                  onChangeLocation("/");
                 }
               }}
               onRunQuery={runQuestionQuery}
