@@ -15,7 +15,6 @@ import {
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { useHasDashboardScroll } from "metabase/dashboard/components/Dashboard/use-has-dashboard-scroll";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
-import { getInitialSelectedTabId } from "metabase/dashboard/selectors";
 import type {
   CancelledFetchDashboardResult,
   DashboardDisplayOptionControls,
@@ -179,7 +178,7 @@ function Dashboard(props: DashboardProps) {
     addCardToDashboard,
     cancelFetchDashboardCardData,
     closeNavbar,
-    dashboard: dashboardTemp,
+    dashboard,
     dashboardId,
     editingOnLoad,
     fetchDashboard,
@@ -200,20 +199,6 @@ function Dashboard(props: DashboardProps) {
     parameterQueryParams,
     downloadsEnabled = true,
   } = props;
-
-  const dashboard = useMemo(
-    () =>
-      dashboardTemp
-        ? {
-            ...dashboardTemp,
-            dashcards: dashboardTemp.dashcards.map((dashcard: any) => ({
-              ...dashcard,
-              card: { ...dashcard.card, dashboard_id: 12 },
-            })),
-          }
-        : null,
-    [dashboardTemp],
-  );
 
   const dispatch = useDispatch();
 
@@ -289,15 +274,10 @@ function Dashboard(props: DashboardProps) {
           setEditingDashboard(dashboard);
         }
         if (addCardOnLoad != null) {
-          // TODO: this suck... but selectedTabId gets calculated after the dashboard has been loaded
-          // but this fn in responsible for loading the dashboard, so the value will not be available until
-          // the next render cycle :/
-          // need to fix
-          const tabId = getInitialSelectedTabId(
-            dashboard,
-            "http://localhost:3000",
-            true,
-          );
+          const searchParams = new URLSearchParams(window.location.search);
+          const tabParam = searchParams.get("tab");
+          const tabId = tabParam ? parseInt(tabParam, 10) : null;
+
           addCardToDashboard({
             dashId: dashboardId,
             cardId: addCardOnLoad,

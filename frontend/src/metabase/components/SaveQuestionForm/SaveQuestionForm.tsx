@@ -71,7 +71,7 @@ export const SaveQuestionForm = ({
             <FormCollectionAndDashboardPicker
               collectionIdFieldName="collection_id"
               dashboardIdFieldName="dashboard_id"
-              title={t`Which collection or dashboard should this go in?`}
+              title={t`Where do you want to save this?`}
               zIndex={DEFAULT_MODAL_Z_INDEX + 1}
             />
           )}

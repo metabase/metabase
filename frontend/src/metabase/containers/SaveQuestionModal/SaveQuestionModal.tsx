@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import {
   LLMSuggestionQuestionInfo,
@@ -8,6 +10,9 @@ import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/conte
 import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
 import { Flex, Modal, type ModalProps } from "metabase/ui";
 
+type SaveQuestionModalProps = Omit<SaveQuestionProps, "initialDashboardTabId"> &
+  Omit<ModalProps, "title">;
+
 export const SaveQuestionModal = ({
   multiStep,
   onCreate,
@@ -16,22 +21,16 @@ export const SaveQuestionModal = ({
   question,
   closeOnSuccess,
   initialCollectionId,
-  initialDashboardId,
   ...modalProps
-}: SaveQuestionProps & Omit<ModalProps, "title">) => {
+}: SaveQuestionModalProps) => {
   const saveToDashboardId = question.dashboardId();
   const { data: saveToDashboard } = useGetDashboardQuery(
     saveToDashboardId ? { id: saveToDashboardId } : skipToken,
   );
 
+  // TODO: calculate this such that the default tab is the on that the user was on before the started the question creation flow...
   const initialDashboardTabId =
-    saveToDashboard?.tabs && saveToDashboard?.tabs.length > 1
-      ? saveToDashboard?.tabs[0].id
-      : null;
-
-  // TODO: i think the initialDashboardId thing isn't needed, we can just rely on the question having a dashboard_id
-  // TODO: maybe SaveQuestionProvider could do some lifting here as well..
-  //       seems like we could feed it some context do what is needed (i.e. are we saving a dashbaord question right now? could be available in the context)
+    _.first(saveToDashboard?.tabs || [])?.id ?? null;
 
   return (
     <SaveQuestionProvider

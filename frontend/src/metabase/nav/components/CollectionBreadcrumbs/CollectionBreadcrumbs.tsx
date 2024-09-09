@@ -25,39 +25,9 @@ export interface CollectionBreadcrumbsProps {
   baseCollectionId: CollectionId | null;
 }
 
-// TODO: clean up this... i don't like this it's called collection breadcrumbs when it also includes dashboard stuff
 export const CollectionBreadcrumbs = ({
   collection,
   dashboard,
-  onClick,
-  baseCollectionId = null,
-}: CollectionBreadcrumbsProps): JSX.Element | null => {
-  return (
-    <>
-      <InnerCollectionBreadcrumbs
-        onClick={onClick}
-        collection={collection}
-        baseCollectionId={baseCollectionId}
-      />
-      {dashboard && (
-        <>
-          <BreadcrumbsPathSeparator>/</BreadcrumbsPathSeparator>
-          <Badge
-            icon={{ name: "dashboard" }}
-            inactiveColor="text-light"
-            isSingleLine
-            to={Urls.dashboard(dashboard)}
-          >
-            {dashboard.name}
-          </Badge>
-        </>
-      )}
-    </>
-  );
-};
-
-export const InnerCollectionBreadcrumbs = ({
-  collection,
   onClick,
   baseCollectionId = null,
 }: CollectionBreadcrumbsProps): JSX.Element | null => {
@@ -106,14 +76,29 @@ export const InnerCollectionBreadcrumbs = ({
     );
 
   return (
-    <PathContainer>
-      {content}
-      <CollectionBadge
-        collectionId={collection.id}
-        isSingleLine
-        onClick={onClick ? () => onClick(collection) : undefined}
-      />
-    </PathContainer>
+    <>
+      <PathContainer>
+        {content}
+        <CollectionBadge
+          collectionId={collection.id}
+          isSingleLine
+          onClick={onClick ? () => onClick(collection) : undefined}
+        />
+      </PathContainer>
+      {dashboard && (
+        <>
+          {separator}
+          <Badge
+            icon={{ name: "dashboard" }}
+            inactiveColor="text-light"
+            isSingleLine
+            to={Urls.dashboard(dashboard)}
+          >
+            {dashboard.name}
+          </Badge>
+        </>
+      )}
+    </>
   );
 };
 

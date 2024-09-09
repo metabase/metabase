@@ -126,8 +126,29 @@ export function QueryModals({
     [onCloseModal, onCreate],
   );
 
+  const nativeToDashboarQuestionDashboard = useCallback(
+    (question: Question, tabId?: DashboardTabId) => {
+      dispatch(
+        push(
+          Urls.dashboard(
+            { id: question.dashboardId(), name: "" },
+            {
+              editMode: true,
+              addCardWithId: question.id(),
+              tabId,
+            },
+          ),
+        ),
+      );
+    },
+    [dispatch],
+  );
+
   const handleSaveModalCreate = useCallback(
-    async (question: Question, dashboardTabId?: DashboardTabId) => {
+    async (
+      question: Question,
+      options?: { dashboardTabId?: DashboardTabId },
+    ) => {
       const newQuestion = await onCreate(question);
       const type = question.type();
       const dashboardId = question.dashboardId();
@@ -138,20 +159,29 @@ export function QueryModals({
       } else if (typeof dashboardId !== "number") {
         onOpenModal(MODAL_TYPES.SAVED);
       } else if (typeof dashboardId === "number") {
-        // TODO: try to figure out the name of the dashboard?
-        const opts = {
-          editMode: true,
-          addCardWithId: newQuestion.id(),
-          tabId: dashboardTabId,
-        };
-        dispatch(push(Urls.dashboard({ id: dashboardId, name: "" }, opts)));
+        nativeToDashboarQuestionDashboard(newQuestion, options?.dashboardTabId);
       }
 
-      // TODO: I think this maybe doesn't need to return a question...
-      // i think it just needs to be the onCreate fn in this scope
       return newQuestion;
     },
-    [dispatch, onCloseModal, onCreate, onOpenModal, setQueryBuilderMode],
+    [
+      onCloseModal,
+      onCreate,
+      onOpenModal,
+      setQueryBuilderMode,
+      nativeToDashboarQuestionDashboard,
+    ],
+  );
+
+  const handleCopySaved = useCallback(
+    (newQuestion: Question) => {
+      if (typeof newQuestion.dashboardId() === "number") {
+        nativeToDashboarQuestionDashboard(entity);
+      } else {
+        onOpenModal(MODAL_TYPES.SAVED);
+      }
+    },
+    [onOpenModal, nativeToDashboarQuestionDashboard],
   );
 
   switch (modal) {
@@ -310,13 +340,14 @@ export function QueryModals({
                 questionWithParameters
                   .setDisplayName(formValues.name)
                   .setCollectionId(formValues.collection_id)
+                  .setDashboardId(formValues.dashboard_id)
                   .setDescription(formValues.description || null),
               );
 
-              return { payload: { object } };
+              return object;
             }}
             onClose={onCloseModal}
-            onSaved={() => onOpenModal(MODAL_TYPES.SAVED)}
+            onSaved={handleCopySaved}
           />
         </Modal>
       );

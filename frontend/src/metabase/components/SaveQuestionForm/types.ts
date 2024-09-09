@@ -10,18 +10,17 @@ export type SaveQuestionProps = {
   originalQuestion: Question | null;
   onCreate: (
     question: Question,
-    dashboardTabId?: DashboardTabId,
+    options?: {
+      dashboardTabId?: DashboardTabId;
+    },
   ) => Promise<Question>;
   onSave: (question: Question) => Promise<void>;
 
   closeOnSuccess?: boolean;
   multiStep?: boolean;
+  initialCollectionId?: CollectionId | null;
   initialDashboardTabId?: number | null | undefined;
-} & (
-  | { initialCollectionId?: null; initialDashboardId?: null }
-  | { initialCollectionId: CollectionId; initialDashboardId?: DashboardId }
-  | { initialCollectionId: CollectionId; initialDashboardId?: null }
-);
+};
 
 export type FormValues = {
   saveType: "overwrite" | "create";
