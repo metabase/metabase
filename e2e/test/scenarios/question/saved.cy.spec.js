@@ -12,6 +12,7 @@ import {
   appBar,
   collectionOnTheGoModal,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   getAlertChannel,
   modal,
@@ -317,7 +318,7 @@ describe("scenarios > question > saved", () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Products").click();
+      entityPickerModalItem("Products").click();
     });
 
     cy.findByTestId("dataset-edit-bar").button("Save").click();

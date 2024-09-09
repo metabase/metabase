@@ -12,6 +12,7 @@ import {
   describeWithSnowplow,
   enableTracking,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
@@ -351,7 +352,7 @@ describe("scenarios > home > custom homepage", () => {
       entityPickerModal().within(() => {
         entityPickerModalTab("Dashboards").click();
         //Ensure that personal collections have been removed
-        cy.findByText("First collection").should("exist");
+        entityPickerModalItem("First collection").should("be.visible");
         cy.findByText(/personal collection/).should("not.exist");
 
         //Ensure that child dashboards of personal collections do not

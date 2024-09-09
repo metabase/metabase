@@ -8,6 +8,8 @@ import {
   describeWithSnowplow,
   enableTracking,
   entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
   findDashCardAction,
@@ -267,12 +269,12 @@ function replaceQuestion(
   dashcardElement.realHover().findByLabelText("Replace").click();
   entityPickerModal().within(() => {
     if (tab) {
-      cy.findByRole("tablist").findByText(tab).click();
+      entityPickerModalTab(tab).click();
     }
     if (collectionName) {
-      cy.findByText(collectionName).click();
+      entityPickerModalItem(collectionName).click();
     }
-    cy.findByText(nextQuestionName).click();
+    entityPickerModalItem(nextQuestionName).click();
   });
   cy.wait("@cardQuery");
 }

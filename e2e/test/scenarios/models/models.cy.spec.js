@@ -9,6 +9,7 @@ import {
   echartsContainer,
   editDashboard,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   filter,
   filterField,
@@ -242,24 +243,24 @@ describe("scenarios > models", () => {
 
       entityPickerModal().within(() => {
         entityPickerModalTab("Models").click();
-        cy.findByText("Orders").should("exist");
-        cy.findByText("Orders Model").should("exist");
+        entityPickerModalItem("Orders").should("be.visible");
+        entityPickerModalItem("Orders Model").should("be.visible");
         cy.findByText("Orders, Count").should("not.exist");
 
         entityPickerModalTab("Saved questions").click();
         cy.findByText("Orders").should("not.exist");
         cy.findByText("Orders Model").should("not.exist");
-        cy.findByText("Orders, Count").should("exist");
-        cy.findByText("Orders, Count, Grouped by Created At (year)").should(
-          "exist",
-        );
-        cy.findByText("Products").should("exist");
+        entityPickerModalItem("Orders, Count").should("be.visible");
+        entityPickerModalItem(
+          "Orders, Count, Grouped by Created At (year)",
+        ).should("be.visible");
+        entityPickerModalItem("Products").should("be.visible");
 
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").should("exist");
-        cy.findByText("People").should("exist");
-        cy.findByText("Products").should("exist");
-        cy.findByText("Reviews").should("exist");
+        entityPickerModalItem("Orders").should("be.visible");
+        entityPickerModalItem("People").should("be.visible");
+        entityPickerModalItem("Products").should("be.visible");
+        entityPickerModalItem("Reviews").should("be.visible");
         cy.findByText("Orders, Count").should("not.exist");
 
         testDataPickerSearch({
@@ -277,16 +278,16 @@ describe("scenarios > models", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Models").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
 
       cy.icon("join_left_outer").click();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").should("exist");
-        cy.findByText("People").should("exist");
-        cy.findByText("Products").should("exist");
-        cy.findByText("Reviews").should("exist");
+        entityPickerModalItem("Orders").should("be.visible");
+        entityPickerModalItem("People").should("be.visible");
+        entityPickerModalItem("Products").should("be.visible");
+        entityPickerModalItem("Reviews").should("be.visible");
 
         cy.findByText("Products").click();
       });
@@ -330,10 +331,10 @@ describe("scenarios > models", () => {
       entityPickerModal().within(() => {
         cy.findAllByRole("tab").should("not.exist");
 
-        cy.findByText("Orders").should("exist");
-        cy.findByText("People").should("exist");
-        cy.findByText("Products").should("exist");
-        cy.findByText("Reviews").should("exist");
+        entityPickerModalItem("Orders").should("be.visible");
+        entityPickerModalItem("People").should("be.visible");
+        entityPickerModalItem("Products").should("be.visible");
+        entityPickerModalItem("Reviews").should("be.visible");
       });
     });
   });

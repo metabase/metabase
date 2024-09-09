@@ -12,6 +12,7 @@ import {
   createQuestion,
   enterCustomColumnDetails,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   filter,
   filterWidget,
@@ -283,8 +284,8 @@ describe("issue 20683", { tags: "@external" }, () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("QA Postgres12").click();
-      cy.findByText("Orders").click();
+      entityPickerModalItem("QA Postgres12").click();
+      entityPickerModalItem("Orders").click();
     });
 
     getNotebookStep("filter")
@@ -828,7 +829,7 @@ describe.skip("issue 29094", () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
+      entityPickerModalItem("Orders").click();
     });
 
     getNotebookStep("filter")
@@ -1253,8 +1254,8 @@ describe("45252", { tags: "@external" }, () => {
     cy.log("filter picker - new filter");
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Writable Postgres12").click();
-      cy.findByText("Many Data Types").click();
+      entityPickerModalItem("Writable Postgres12").click();
+      entityPickerModalItem("Many Data Types").click();
     });
     getNotebookStep("filter")
       .findByText("Add filters to narrow your answer")

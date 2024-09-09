@@ -7,6 +7,8 @@ import {
   createModerationReview,
   describeEE,
   entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   openCommandPalette,
   openPeopleTable,
   popover,
@@ -105,11 +107,11 @@ describe("Recently Viewed > Entity Picker", () => {
 
     entityPickerModal().within(() => {
       cy.findByText("Select a collection").click();
-      cy.findByRole("tab", { name: /Recents/ });
-      cy.findByRole("tab", { name: /Collections/ });
+      entityPickerModalTab("Recents").should("be.visible");
+      entityPickerModalTab("Collections").should("be.visible");
 
-      cy.findByText("Today");
-      cy.findByText("My Fresh Collection");
+      entityPickerModalItem("Today").should("be.visible");
+      entityPickerModalItem("My Fresh Collection").should("be.visible");
     });
   });
 
@@ -122,11 +124,12 @@ describe("Recently Viewed > Entity Picker", () => {
 
     entityPickerModal().within(() => {
       cy.findByText("Add this question to a dashboard").click();
-      cy.findByRole("tab", { name: /Recents/ });
-      cy.findByRole("tab", { name: /Dashboards/ });
 
-      cy.findByText("Today");
-      cy.findByText("Orders in a dashboard").click();
+      entityPickerModalTab("Recents").should("be.visible");
+      entityPickerModalTab("Dashboards").should("be.visible");
+
+      entityPickerModalItem("Today").should("be.visible");
+      entityPickerModalItem("Orders in a dashboard").click();
       cy.button("Select").click();
     });
 

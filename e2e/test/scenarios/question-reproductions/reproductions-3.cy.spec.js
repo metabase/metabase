@@ -12,6 +12,7 @@ import {
   echartsContainer,
   enterCustomColumnDetails,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   filter,
   getDashboardCard,
@@ -301,8 +302,8 @@ describe("issue 38354", { tags: "@external" }, () => {
     openNotebook();
     getNotebookStep("data").findByTestId("data-step-cell").click();
     entityPickerModal().within(() => {
-      cy.findByText("QA Postgres12").click();
-      cy.findByText("Orders").click();
+      entityPickerModalItem("QA Postgres12").click();
+      entityPickerModalItem("Orders").click();
     });
 
     // optimization: add a limit so that query runs faster
@@ -906,12 +907,12 @@ describe("issue 32020", () => {
     cy.log("create joined question manually");
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.findByText(question1Details.name).click();
+      entityPickerModalItem(question1Details.name).click();
     });
     join();
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.findByText(question2Details.name).click();
+      entityPickerModalItem(question2Details.name).click();
     });
     popover().findByText("ID").click();
     popover().findByText("ID").click();
@@ -960,8 +961,8 @@ describe("issue 44071", () => {
     newButton("Question").click();
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.findByText(/Personal Collection/).click();
-      cy.findByText(questionDetails.name).click();
+      entityPickerModalItem(/Personal Collection/).click();
+      entityPickerModalItem(questionDetails.name).click();
     });
     getNotebookStep("data")
       .findByText(questionDetails.name)

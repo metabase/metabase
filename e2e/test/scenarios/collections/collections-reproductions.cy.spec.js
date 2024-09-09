@@ -92,7 +92,7 @@ describe("issue 24660", () => {
     [ORDERS_COUNT_QUESTION_ID]: "Orders, Count",
   };
 
-  function createParentCollectionAndMoveQuestionToIt(questionId) {
+  function createParentCollectionAndMoveQuestionToIt(name, questionId) {
     return cy
       .createCollection({
         name: collectionName,

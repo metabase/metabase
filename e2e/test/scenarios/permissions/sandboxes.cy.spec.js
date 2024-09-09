@@ -8,6 +8,7 @@ import {
   chartPathWithFillColor,
   describeEE,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   filter,
   modal,
@@ -827,7 +828,7 @@ describeEE("formatting > sandboxes", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").click();
-        cy.findByText("14766_joined").click();
+        entityPickerModalItem("14766_joined").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick the metric you want to see").click();

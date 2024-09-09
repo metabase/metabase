@@ -3,6 +3,8 @@ import {
   createNativeQuestion,
   createQuestion,
   entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   focusNativeEditor,
   openNativeEditor,
   openQuestionActions,
@@ -79,8 +81,8 @@ describe("scenarios > question > native subquery", () => {
         openQuestionActions();
         cy.findByTestId("move-button").click();
         entityPickerModal().within(() => {
-          cy.findByRole("tab", { name: /Collections/ }).click();
-          cy.findByText("Bobby Tables's Personal Collection").click();
+          entityPickerModalTab("Collections").click();
+          entityPickerModalItem("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });
 

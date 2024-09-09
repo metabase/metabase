@@ -19,6 +19,7 @@ import {
   describeEE,
   editDashboard,
   entityPickerModal,
+  entityPickerModalItem,
   filterWidget,
   getDashboardCard,
   getDashboardCards,
@@ -386,7 +387,7 @@ describe("issue 16559", () => {
       dashboardHeader().icon("ellipsis").click();
       popover().findByText("Move").click();
       entityPickerModal().within(() => {
-        cy.findByText("First collection").click();
+        entityPickerModalItem("First collection").click();
         cy.button("Move").click();
       });
       cy.findByTestId("dashboard-history-list")

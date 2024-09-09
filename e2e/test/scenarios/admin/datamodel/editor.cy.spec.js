@@ -7,6 +7,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeEE,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   moveDnDKitElement,
   openOrdersTable,
@@ -66,8 +67,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("People").should("be.visible");
-        cy.findByText("New orders").should("be.visible");
+        entityPickerModalItem("People").should("be.visible");
+        entityPickerModalItem("New orders").should("be.visible");
       });
     });
 
@@ -113,7 +114,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("People").should("be.visible");
+        entityPickerModalItem("People").should("be.visible");
         cy.findByText("Orders").should("not.exist");
       });
 
@@ -127,8 +128,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("People").should("be.visible");
-        cy.findByText("Orders").should("be.visible");
+        entityPickerModalItem("People").should("be.visible");
+        entityPickerModalItem("Orders").should("be.visible");
       });
     });
 
@@ -239,7 +240,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.icon("join_left_outer").click();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Products").click();
+        entityPickerModalItem("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("User ID").should("be.visible");
@@ -422,7 +423,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.icon("join_left_outer").click();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Products").click();
+        entityPickerModalItem("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("User ID").should("be.visible");
@@ -469,8 +470,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("People").should("be.visible");
-        cy.findByText("New orders").should("be.visible");
+        entityPickerModalItem("People").should("be.visible");
+        entityPickerModalItem("New orders").should("be.visible");
       });
     });
 
@@ -538,7 +539,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.icon("join_left_outer").click();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Products").click();
+        entityPickerModalItem("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("User ID").should("be.visible");

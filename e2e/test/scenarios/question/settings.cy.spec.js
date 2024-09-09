@@ -3,6 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   browseDatabases,
   entityPickerModal,
+  entityPickerModalItem,
   modal,
   moveDnDKitElement,
   openNavigationSidebar,
@@ -469,8 +470,8 @@ describe("scenarios > question > settings", () => {
       cy.findByTestId("save-question-modal").findByText("Save").click();
       modal().findByText("Yes please!").click();
       entityPickerModal().within(() => {
-        cy.findByText("Orders in a dashboard").click();
-        cy.findByText("Cancel").click();
+        entityPickerModalItem("Orders in a dashboard").click();
+        cy.button("Cancel").click();
       });
 
       // create a new question to see if the "add to a dashboard" modal is still there

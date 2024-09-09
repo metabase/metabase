@@ -3,6 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   enterCustomColumnDetails,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   expressionEditorWidget,
   getTable,
@@ -37,7 +38,7 @@ describe("scenarios > visualizations > table", () => {
     cy.findByText("Join data").click();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText(table).click();
+      entityPickerModalItem(table).click();
     });
   }
 

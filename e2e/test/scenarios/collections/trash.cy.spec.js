@@ -9,6 +9,7 @@ import {
   createQuestion as _createQuestion,
   archiveQuestion,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   main,
   modal,
@@ -97,7 +98,7 @@ describe("scenarios > collections > trash", () => {
     popover().findByText("Question").click();
     entityPickerModal().within(() => {
       entityPickerModalTab("Models").click();
-      cy.findByText("Our analytics").should("exist");
+      entityPickerModalItem("Our analytics").should("be.visible");
       cy.findByText("Trash").should("not.exist");
       cy.button("Close").click();
     });
@@ -109,7 +110,7 @@ describe("scenarios > collections > trash", () => {
     popover().findByText("Dashboard").click();
     modal().findByText("Our analytics").click();
     entityPickerModal().within(() => {
-      cy.findByText("First collection").should("exist");
+      entityPickerModalItem("First collection").should("be.visible");
       cy.findByText("Trash").should("not.exist");
     });
 

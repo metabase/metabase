@@ -53,7 +53,7 @@ describe("scenarios > question > new", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Sample3").should("be.visible");
+        entityPickerModalItem("Sample3").should("be.visible");
       });
     });
 
@@ -96,7 +96,7 @@ describe("scenarios > question > new", () => {
         tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
 
         entityPickerModalTab("Saved questions").click();
-        cy.findByText("Orders, Count").click();
+        entityPickerModalItem("Orders, Count").click();
       });
 
       cy.log("toggle notebook button should be hidden for brand new questions");
@@ -118,8 +118,8 @@ describe("scenarios > question > new", () => {
           "aria-selected",
           "true",
         );
-        cy.findByText("Orders").should("exist");
-        cy.findByText("Orders, Count").should("exist");
+        entityPickerModalItem("Orders").should("be.visible");
+        entityPickerModalItem("Orders, Count").should("be.visible");
 
         entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
@@ -148,8 +148,8 @@ describe("scenarios > question > new", () => {
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").click();
         // Note: collection name's first letter is capitalized
-        cy.findByText(/foo:bar/i).click();
-        cy.findByText("Orders");
+        entityPickerModalItem(/foo:bar/i).click();
+        entityPickerModalItem("Orders").should("be.visible");
       });
     });
 
@@ -164,14 +164,14 @@ describe("scenarios > question > new", () => {
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").click();
         assertDataPickerEntitySelected("Our analytics", { level: 0 });
-        cy.findByText("First collection").should("exist");
+        entityPickerModalItem("First collection").should("be.visible");
         cy.findByText("Second collection").should("not.exist");
         cy.findByText("Third collection").should("not.exist");
 
         cy.findByText("First collection").click();
         assertDataPickerEntitySelected("Our analytics", { level: 0 });
         assertDataPickerEntitySelected("First collection", { level: 1 });
-        cy.findByText("Second collection").should("exist");
+        entityPickerModalItem("Second collection").should("be.visible");
         cy.findByText("Third collection").should("not.exist");
 
         cy.findByText("Second collection").click();
@@ -195,9 +195,11 @@ describe("scenarios > question > new", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").click();
-        cy.findByText("All personal collections").click();
-        cy.findByText(getPersonalCollectionName(USERS.nocollection)).click();
-        cy.findByText("Personal question").click();
+        entityPickerModalItem("All personal collections").click();
+        entityPickerModalItem(
+          getPersonalCollectionName(USERS.nocollection),
+        ).click();
+        entityPickerModalItem("Personal question").click();
       });
       visualize();
     });
@@ -271,7 +273,7 @@ describe("scenarios > question > new", () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
+      entityPickerModalItem("Orders").click();
     });
 
     cy.log(
@@ -309,7 +311,7 @@ describe("scenarios > question > new", () => {
       popover().findByText("Question").click();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       cy.findByTestId("qb-header").findByText("Save").click();
 
@@ -333,8 +335,8 @@ describe("scenarios > question > new", () => {
         cy.findByText("Create").click();
       });
       entityPickerModal().within(() => {
-        cy.findByText("Foo").click();
-        cy.findByText("Select").click();
+        entityPickerModalItem("Foo").click();
+        cy.button("Select").click();
       });
       cy.findByTestId("save-question-modal").within(() => {
         cy.findByText("Save new question");
@@ -401,7 +403,7 @@ describe("scenarios > question > new", () => {
     it("should hide public collections when selecting a dashboard for a question in a personal collection", () => {
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
 
       queryBuilderHeader().button("Save").click();
@@ -428,7 +430,7 @@ describe("scenarios > question > new", () => {
       entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
         entityPickerModalTab("Dashboards").click();
-        cy.findByText(/bobby tables's personal collection/i).should(
+        entityPickerModalItem(/bobby tables's personal collection/i).should(
           "be.visible",
         );
         cy.findByText(/our analytics/i).should("not.exist");
@@ -438,7 +440,7 @@ describe("scenarios > question > new", () => {
     it("should show all collections when selecting a dashboard for a question in a public collection", () => {
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
 
       queryBuilderHeader().button("Save").click();
@@ -456,12 +458,12 @@ describe("scenarios > question > new", () => {
       entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
 
-        cy.findByRole("tab", { name: /Dashboards/ }).click();
-        cy.findByText("Bobby Tables's Personal Collection").should(
+        entityPickerModalTab("Dashboards").click();
+        entityPickerModalItem("Bobby Tables's Personal Collection").should(
           "be.visible",
         );
-        cy.findByText(collectionInRoot.name).should("be.visible");
-        cy.findByText(dashboardInRoot.name).should("be.visible");
+        entityPickerModalItem(collectionInRoot.name).should("be.visible");
+        entityPickerModalItem(dashboardInRoot.name).should("be.visible");
         cy.findByText("Create a new dashboard").should("be.visible");
       });
     });

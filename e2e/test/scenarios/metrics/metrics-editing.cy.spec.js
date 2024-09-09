@@ -7,6 +7,7 @@ import {
   echartsContainer,
   enterCustomColumnDetails,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   getNotebookStep,
   hovercard,
@@ -98,7 +99,7 @@ describe("scenarios > metrics > editing", () => {
       popover().findByText("Metric").click();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric({ name: "my new metric" });
@@ -151,7 +152,7 @@ describe("scenarios > metrics > editing", () => {
       popover().findByText("Metric").click();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       saveMetric({ name: "New metric" });
 
@@ -171,7 +172,7 @@ describe("scenarios > metrics > editing", () => {
       startNewMetric();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       addStringCategoryFilter({
         tableName: "Product",
@@ -186,7 +187,7 @@ describe("scenarios > metrics > editing", () => {
       startNewMetric();
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       addStringCategoryFilter({
         tableName: "Product",
@@ -202,7 +203,7 @@ describe("scenarios > metrics > editing", () => {
       startNewMetric();
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").click();
-        cy.findByText(ORDERS_MULTI_STAGE_QUESTION.name).click();
+        entityPickerModalItem(ORDERS_MULTI_STAGE_QUESTION.name).click();
       });
       addNumberBetweenFilter({
         columnName: "Count",
@@ -217,7 +218,7 @@ describe("scenarios > metrics > editing", () => {
       startNewMetric();
       entityPickerModal().within(() => {
         entityPickerModalTab("Models").click();
-        cy.findByText("Orders Model").click();
+        entityPickerModalItem("Orders Model").click();
       });
       addStringCategoryFilter({
         tableName: "Product",
@@ -233,7 +234,7 @@ describe("scenarios > metrics > editing", () => {
       startNewMetric();
       entityPickerModal().within(() => {
         entityPickerModalTab("Models").click();
-        cy.findByText(ORDERS_MULTI_STAGE_QUESTION.name).click();
+        entityPickerModalItem(ORDERS_MULTI_STAGE_QUESTION.name).click();
       });
       addNumberBetweenFilter({
         columnName: "Count",
@@ -248,7 +249,7 @@ describe("scenarios > metrics > editing", () => {
       startNewMetric();
       entityPickerModal().within(() => {
         entityPickerModalTab("Models").click();
-        cy.findByText("Orders Model").click();
+        entityPickerModalItem("Orders Model").click();
       });
       getActionButton("Summarize").should("not.exist");
     });
@@ -257,7 +258,7 @@ describe("scenarios > metrics > editing", () => {
       startNewMetric();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.findByTestId("metric-empty-state").button("Visualize").click();
@@ -271,12 +272,12 @@ describe("scenarios > metrics > editing", () => {
       startNewMetric();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Products").click();
+        entityPickerModalItem("Products").click();
       });
       startNewJoin();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       startNewFilter();
       popover().within(() => {
@@ -294,7 +295,7 @@ describe("scenarios > metrics > editing", () => {
       startNewMetric();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       startNewJoin();
       entityPickerModal().within(() => {
@@ -308,7 +309,7 @@ describe("scenarios > metrics > editing", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Metrics").click();
-        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
+        entityPickerModalItem(ORDERS_SCALAR_METRIC.name).click();
       });
       getNotebookStep("data").within(() => {
         getActionButton("Custom column").should("be.visible");
@@ -322,7 +323,7 @@ describe("scenarios > metrics > editing", () => {
       startNewMetric();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       startNewCustomColumn();
       enterCustomColumnDetails({
@@ -343,7 +344,7 @@ describe("scenarios > metrics > editing", () => {
       startNewMetric();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       startNewCustomColumn();
       enterCustomColumnDetails({
@@ -366,7 +367,7 @@ describe("scenarios > metrics > editing", () => {
       startNewMetric();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       getNotebookStep("summarize").findByText("Count").click();
       popover().within(() => {
@@ -386,7 +387,7 @@ describe("scenarios > metrics > editing", () => {
       cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
       entityPickerModal().within(() => {
         entityPickerModalTab("Metrics").click();
-        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
+        entityPickerModalItem(ORDERS_SCALAR_METRIC.name).click();
       });
       cy.wait("@queryMetadata");
       getNotebookStep("summarize")
@@ -435,7 +436,7 @@ describe("scenarios > metrics > editing", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       startNewAggregation();
       popover().within(() => {
@@ -457,7 +458,7 @@ describe("scenarios > metrics > editing", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       startNewAggregation();
       popover().within(() => {
@@ -475,7 +476,7 @@ describe("scenarios > metrics > editing", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       startNewAggregation();
       popover().within(() => {

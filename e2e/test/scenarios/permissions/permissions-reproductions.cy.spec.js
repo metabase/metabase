@@ -9,6 +9,7 @@ import {
   commandPaletteSearch,
   describeEE,
   entityPickerModal,
+  entityPickerModalItem,
   filterWidget,
   getFullName,
   modal,
@@ -556,7 +557,7 @@ describe("issue 23981", () => {
     entityPickerModal().within(() => {
       cy.findByText("Our analytics").should("not.exist");
       cy.log('ensure that "Collections" is not selectable');
-      cy.findByText("Collections").should("be.visible").click();
+      entityPickerModalItem("Collections").should("be.visible").click();
       cy.button("Select").should("be.disabled");
     });
   });

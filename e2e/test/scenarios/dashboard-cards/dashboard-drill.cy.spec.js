@@ -14,6 +14,8 @@ import {
   echartsTooltip,
   editDashboard,
   entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   filterWidget,
   getDashboardCard,
   main,
@@ -253,8 +255,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("Dashboard").click());
     entityPickerModal().within(() => {
-      cy.findByRole("tab", { name: /Dashboards/ }).click();
-      cy.findByText("end dash").click();
+      entityPickerModalTab("Dashboards").click();
+      entityPickerModalItem("end dash").click();
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Available filters")

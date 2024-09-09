@@ -5,6 +5,7 @@ import {
   describeWithSnowplow,
   enableTracking,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
@@ -257,7 +258,7 @@ describe("#39152 sharing an unsaved question", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("People").click();
+      entityPickerModalItem("People").click();
     });
     visualize();
 

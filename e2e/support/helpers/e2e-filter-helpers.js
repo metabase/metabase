@@ -1,5 +1,6 @@
 import {
   entityPickerModal,
+  entityPickerModalItem,
   modal,
   popover,
 } from "e2e/support/helpers/e2e-ui-elements-helpers";
@@ -21,7 +22,7 @@ export function setFilterQuestionSource({ question, field }) {
   });
 
   entityPickerModal().within(() => {
-    cy.findByText(question).click();
+    entityPickerModalItem(question).click();
   });
 
   modal().within(() => {

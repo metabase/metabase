@@ -1,5 +1,6 @@
 import {
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   interceptIfNotPreviouslyDefined,
   modal,
@@ -110,6 +111,6 @@ export function startQuestionFromModel(modelName) {
   popover().findByText("Question").should("be.visible").click();
   entityPickerModal().within(() => {
     entityPickerModalTab("Models").click();
-    cy.findByText(modelName).click();
+    entityPickerModalItem(modelName).click();
   });
 }

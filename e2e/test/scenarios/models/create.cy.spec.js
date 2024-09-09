@@ -1,6 +1,7 @@
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   modal,
   restore,
@@ -75,7 +76,7 @@ describe("scenarios > models > create", () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
+      entityPickerModalItem("Orders").click();
     });
 
     cy.findByTestId("dataset-edit-bar").within(() => {

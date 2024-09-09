@@ -9,6 +9,7 @@ import {
   editDashboard,
   enterCustomColumnDetails,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   filter,
   filterWidget,
@@ -308,7 +309,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           startNewQuestion();
           entityPickerModal().within(() => {
             entityPickerModalTab("Tables").click();
-            cy.findByText(tableName).click();
+            entityPickerModalItem(tableName).click();
           });
           getNotebookStep("summarize")
             .findByText("Pick the metric you want to see")

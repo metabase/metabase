@@ -5,6 +5,7 @@ import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data.js
 import {
   appBar,
   entityPickerModal,
+  entityPickerModalItem,
   modal,
   navigationSidebar,
   openCollectionItemMenu,
@@ -450,8 +451,8 @@ function move(item) {
   entityPickerModal().within(() => {
     cy.findByText(`Move "${item}"?`);
     // Let's move it into a nested collection
-    cy.findByText("First collection").click();
-    cy.findByText("Second collection").click();
+    entityPickerModalItem("First collection").click();
+    entityPickerModalItem("Second collection").click();
     cy.button("Move").click();
   });
 

@@ -7,6 +7,7 @@ import {
   createQuestion,
   enterCustomColumnDetails,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   filter,
   filterField,
@@ -521,7 +522,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     join();
     entityPickerModal().within(() => {
       entityPickerModalTab("Models").click();
-      cy.findByText("Products model").click();
+      entityPickerModalItem("Products model").click();
     });
 
     visualize();
@@ -578,7 +579,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.findByText("Orders, Count").click();
+      entityPickerModalItem("Orders, Count").click();
     });
 
     visualize();
@@ -588,7 +589,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
+      entityPickerModalItem("Orders").click();
     });
 
     getNotebookStep("summarize")
@@ -695,7 +696,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
+      entityPickerModalItem("Orders").click();
     });
 
     cy.get("@dataStep").icon("play").should("be.visible");

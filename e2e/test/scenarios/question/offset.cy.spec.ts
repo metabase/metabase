@@ -5,6 +5,7 @@ import {
   echartsContainer,
   enterCustomColumnDetails,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   getNotebookStep,
   modal,
@@ -400,7 +401,7 @@ describe("scenarios > question > offset", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       addCustomAggregation({
         formula: "Offset(Sum([Total]), -1)",
@@ -444,7 +445,7 @@ describe("scenarios > question > offset", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+        entityPickerModalItem("Orders").click();
       });
       addCustomAggregation({
         formula: "Sum([Total])",

@@ -3,6 +3,7 @@ import {
   appBar,
   describeEE,
   entityPickerModal,
+  entityPickerModalItem,
   main,
   modal,
   popover,
@@ -482,7 +483,7 @@ describeEE("formatting > whitelabel", () => {
           popover().findByText("Dashboard").click();
           modal().findByTestId("collection-picker-button").click();
           entityPickerModal().within(() => {
-            cy.findByText(emptyCollectionName).click();
+            entityPickerModalItem(emptyCollectionName).click();
             cy.findByAltText("No results").should("not.exist");
 
             cy.log("test search not found illustration");

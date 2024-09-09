@@ -17,6 +17,7 @@ import {
   editDashboard,
   enterCustomColumnDetails,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   getNotebookStep,
   getPinnedSection,
@@ -452,12 +453,12 @@ describe.skip("issue 41785, issue 46756", () => {
     startNewModel();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Products").click();
+      entityPickerModalItem("Products").click();
     });
     join();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Products").click();
+      entityPickerModalItem("Products").click();
     });
     popover().findByText("ID").click();
     popover().findByText("ID").click();
@@ -512,7 +513,7 @@ describe.skip("issue 40635", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
+      entityPickerModalItem("Orders").click();
     });
 
     getNotebookStep("data").button("Pick columns").click();
@@ -522,7 +523,7 @@ describe.skip("issue 40635", () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Products").click();
+      entityPickerModalItem("Products").click();
     });
 
     getNotebookStep("join", { stage: 0, index: 0 })
@@ -537,7 +538,7 @@ describe.skip("issue 40635", () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Products").click();
+      entityPickerModalItem("Products").click();
     });
 
     getNotebookStep("join", { stage: 0, index: 1 })
@@ -855,7 +856,7 @@ describe("issue 33844", () => {
       .click();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
+      entityPickerModalItem("Orders").click();
     });
     cy.findByTestId("run-button").click();
     cy.wait("@dataset");
@@ -1086,7 +1087,7 @@ describe("issue 35840", () => {
   function checkColumnMapping(entityTab: string, entityName: string) {
     entityPickerModal().within(() => {
       entityPickerModalTab(entityTab).click();
-      cy.findByText(entityName).click();
+      entityPickerModalItem(entityName).click();
     });
     modal().findByText("Pick a column…").click();
     popover().findAllByText("Category").eq(0).click();
@@ -1141,7 +1142,7 @@ describe("issue 34514", () => {
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
       cy.wait("@fetchTables");
-      cy.findByText("Orders").click();
+      entityPickerModalItem("Orders").click();
     });
 
     cy.findByTestId("run-button").click();
@@ -1156,7 +1157,7 @@ describe("issue 34514", () => {
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
       cy.wait("@fetchTables");
-      cy.findByText("Orders").click();
+      entityPickerModalItem("Orders").click();
     });
 
     cy.findByTestId("run-button").click();

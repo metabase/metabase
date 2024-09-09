@@ -9,6 +9,7 @@ import {
   echartsContainer,
   enterCustomColumnDetails,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   filter,
   getDashboardCards,
@@ -210,8 +211,8 @@ describe("issue 15342", { tags: "@external" }, () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText(MYSQL_DB_NAME).click();
-      cy.findByText("People").click();
+      entityPickerModalItem(MYSQL_DB_NAME).click();
+      entityPickerModalItem("People").click();
     });
 
     cy.icon("join_left_outer").click();
@@ -260,7 +261,7 @@ describe("issue 15578", () => {
     cy.button("Join data").click();
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.findByText(JOINED_QUESTION_NAME).click();
+      entityPickerModalItem(JOINED_QUESTION_NAME).click();
     });
 
     visualize();
@@ -292,7 +293,7 @@ describe("issue 17710", () => {
     cy.button("Join data").click();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Products").click();
+      entityPickerModalItem("Products").click();
     });
 
     getNotebookStep("join").icon("add").click();
@@ -341,7 +342,7 @@ describe("issue 17767", () => {
     // Join "Previous results" with
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Reviews").click();
+      entityPickerModalItem("Reviews").click();
     });
 
     visualize(response => {
@@ -373,7 +374,7 @@ describe("issue 17968", () => {
     cy.findAllByTestId("action-buttons").last().button("Join data").click();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Products").click();
+      entityPickerModalItem("Products").click();
     });
     popover().findByText("Count").click();
 
@@ -500,7 +501,7 @@ describe("issue 18589", () => {
     cy.findByText("Join data").click();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText(table).click();
+      entityPickerModalItem(table).click();
     });
   }
 
@@ -772,7 +773,7 @@ describe("issue 22859 - multiple levels of nesting", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.findByText("22859-Q2").click();
+      entityPickerModalItem("22859-Q2").click();
     });
 
     visualize();
@@ -983,7 +984,7 @@ describe("issue 29795", () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.findByText(NATIVE_QUESTION).click();
+      entityPickerModalItem(NATIVE_QUESTION).click();
     });
 
     popover().within(() => {
@@ -1127,7 +1128,7 @@ describe("issue 39448", () => {
     cy.findByTestId("action-buttons").button("Join data").click();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Products").click();
+      entityPickerModalItem("Products").click();
     });
     getNotebookStep("join").within(() => {
       cy.findByLabelText("Right table").should("have.text", "Products");
@@ -1160,7 +1161,7 @@ describe.skip("issue 27521", () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
+      entityPickerModalItem("Orders").click();
     });
 
     popover().findByText("ID").click();
@@ -1187,7 +1188,7 @@ describe.skip("issue 27521", () => {
     newButton("Question").click();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("People").click();
+      entityPickerModalItem("People").click();
     });
 
     getNotebookStep("data").button("Pick columns").click();
@@ -1197,7 +1198,7 @@ describe.skip("issue 27521", () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.findByText("Q1").click();
+      entityPickerModalItem("Q1").click();
     });
 
     popover().findByText("ID").click();
@@ -1246,13 +1247,13 @@ describe("issue 42385", { tags: "@external" }, () => {
     join();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Reviews").click();
+      entityPickerModalItem("Reviews").click();
     });
 
     getNotebookStep("data").findByTestId("data-step-cell").click();
     entityPickerModal().within(() => {
-      cy.findByText("QA Postgres12").click();
-      cy.findByText("Reviews").click();
+      entityPickerModalItem("QA Postgres12").click();
+      entityPickerModalItem("Reviews").click();
     });
 
     getNotebookStep("join").within(() => {
@@ -1269,7 +1270,7 @@ describe("issue 42385", { tags: "@external" }, () => {
     join();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Products").click();
+      entityPickerModalItem("Products").click();
     });
 
     getNotebookStep("join")
@@ -1281,8 +1282,8 @@ describe("issue 42385", { tags: "@external" }, () => {
 
     getNotebookStep("data").findByTestId("data-step-cell").click();
     entityPickerModal().within(() => {
-      cy.findByText("QA Postgres12").click();
-      cy.findByText("Reviews").click();
+      entityPickerModalItem("QA Postgres12").click();
+      entityPickerModalItem("Reviews").click();
     });
 
     getNotebookStep("join").should("not.exist");

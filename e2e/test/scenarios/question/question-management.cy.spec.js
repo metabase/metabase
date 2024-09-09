@@ -11,6 +11,8 @@ import {
   describeWithSnowplow,
   enableTracking,
   entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
   getPersonalCollectionName,
@@ -123,10 +125,10 @@ describe(
                   cy.findByTestId("move-button").click();
                   entityPickerModal().within(() => {
                     if (user === "admin") {
-                      cy.findByRole("tab", { name: /Collections/ }).click();
+                      entityPickerModalTab("Collections").click();
                     }
-                    cy.findByText(/Personal Collection/).click();
-                    cy.findByText("Create a new collection").click();
+                    entityPickerModalItem(/Personal Collection/).click();
+                    cy.button("Create a new collection").click();
                   });
 
                   cy.findByTestId("create-collection-on-the-go").within(() => {
@@ -234,7 +236,7 @@ describe(
 
                     clickTabForUser(user, "Dashboards");
 
-                    cy.findByText(/'s personal collection/i).should(
+                    entityPickerModalItem(/'s personal collection/i).should(
                       "be.visible",
                     );
                     cy.findByText(/our analytics/i).should("not.exist");
@@ -482,8 +484,10 @@ function moveQuestionTo(newCollectionName, clickTab = false) {
   openQuestionActions();
   cy.findByTestId("move-button").click();
   entityPickerModal().within(() => {
-    clickTab && cy.findByRole("tab", { name: /Collections/ }).click();
-    cy.findByText(newCollectionName).click();
+    if (clickTab) {
+      entityPickerModalTab("Collections").click();
+    }
+    entityPickerModalItem(newCollectionName).click();
     cy.button("Move").click();
   });
 }

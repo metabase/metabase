@@ -10,6 +10,7 @@ import {
   echartsContainer,
   echartsTriggerBlur,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   openOrdersTable,
   pieSliceWithColor,
@@ -269,7 +270,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.contains("CA People").click();
+      entityPickerModalItem("CA People").click();
     });
 
     addSummaryField({ metric: "Count of rows" });

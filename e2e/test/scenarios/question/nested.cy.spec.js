@@ -5,6 +5,7 @@ import {
   chartPathWithFillColor,
   createNativeQuestion,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   filter,
   filterField,
@@ -406,7 +407,7 @@ describe("scenarios > question > nested", () => {
       cy.findByText("Question").should("be.visible").click();
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").click();
-        cy.findByText("15725").click();
+        entityPickerModalItem("15725").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick the metric you want to see").click();

@@ -593,7 +593,7 @@ describe("issue 36669", () => {
       entityPickerModalTab("Tables").click();
 
       cy.log("verify Tables are listed");
-      cy.findByRole("tabpanel").should("contain", "Orders");
+      entityPickerModalItem("Orders").should("be.visible");
     });
   });
 });
@@ -666,7 +666,7 @@ describe("issue 43216", () => {
     newButton("Question").click();
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.findByText("Source question").click();
+      entityPickerModalItem("Source question").click();
     });
     saveQuestion("Target question");
 
@@ -705,7 +705,7 @@ function createAdHocQuestion(questionName) {
   startNewQuestion();
   entityPickerModal().within(() => {
     entityPickerModalTab("Saved questions").click();
-    cy.findByText(questionName).click();
+    entityPickerModalItem(questionName).click();
   });
   cy.findByTestId("fields-picker").click();
   popover().within(() => {

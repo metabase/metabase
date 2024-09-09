@@ -6,6 +6,7 @@ import {
   appBar,
   collectionOnTheGoModal,
   entityPickerModal,
+  entityPickerModalItem,
   getDashboardCard,
   modal,
   navigationSidebar,
@@ -237,7 +238,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 cy.location("pathname").should("eq", `/dashboard/${id}/move`);
 
                 entityPickerModal().within(() => {
-                  cy.findByText("First collection").click();
+                  entityPickerModalItem("First collection").click();
                   cy.button("Move").click();
                 });
 

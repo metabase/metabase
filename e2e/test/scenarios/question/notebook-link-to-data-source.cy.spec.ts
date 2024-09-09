@@ -12,6 +12,7 @@ import {
   createQuestion,
   describeEE,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   getNotebookStep,
   openNotebook,
@@ -531,7 +532,7 @@ describe("scenarios > notebook > link to data source", () => {
         cy.findByTestId("action-buttons").button("Join data").click();
         entityPickerModal().within(() => {
           entityPickerModalTab("Tables").click();
-          cy.findByText("Orders").click();
+          entityPickerModalItem("Orders").click();
         });
 
         getNotebookStep("join")

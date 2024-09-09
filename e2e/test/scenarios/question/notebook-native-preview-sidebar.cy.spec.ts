@@ -11,6 +11,7 @@ import {
   describeWithSnowplow,
   enableTracking,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   expectGoodSnowplowEvent,
   expectGoodSnowplowEvents,
@@ -290,8 +291,8 @@ describe(
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText(MONGO_DB_NAME).click();
-        cy.findByText("Products").click();
+        entityPickerModalItem(MONGO_DB_NAME).click();
+        entityPickerModalItem("Products").click();
       });
 
       cy.log("Simple question");

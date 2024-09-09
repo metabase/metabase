@@ -11,6 +11,7 @@ import {
   editDashboard,
   enterCustomColumnDetails,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   expressionEditorWidget,
   filterWidget,
@@ -169,7 +170,7 @@ describe("issue 9027", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.findByText("Orders").should("exist");
+      entityPickerModalItem("Orders").should("be.visible");
       cy.button("Close").click();
     });
 
@@ -196,7 +197,11 @@ function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
   startNewQuestion();
   entityPickerModal().within(() => {
     entityPickerModalTab("Saved questions").click();
-    cy.findByText(questionName).should(exists ? "exist" : "not.exist");
+    if (exists) {
+      entityPickerModalItem(questionName).should("be.visible");
+    } else {
+      cy.findByText(questionName).should("not.exist");
+    }
     cy.button("Close").click();
   });
 }
@@ -626,7 +631,7 @@ describe("issue 17514", () => {
       cy.findByText("Join data").click();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Products").click();
+        entityPickerModalItem("Products").click();
       });
 
       cy.button("Visualize").click();
@@ -993,7 +998,7 @@ describe("issue 19341", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
-      cy.findByText("Orders").should("exist");
+      entityPickerModalItem("Orders").should("be.visible");
       cy.findAllByRole("tab").should("not.exist");
 
       // Ensure the search doesn't list saved questions
@@ -1043,7 +1048,7 @@ describe("issue 19742", () => {
     popover().findByText("Question").click();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").should("exist");
+      entityPickerModalItem("Orders").should("be.visible");
       cy.button("Close").click();
     });
 
@@ -1065,9 +1070,9 @@ describe("issue 19742", () => {
       entityPickerModalTab("Tables").click();
 
       cy.findByText("Orders").should("not.exist");
-      cy.findByText("Products").should("exist");
-      cy.findByText("Reviews").should("exist");
-      cy.findByText("People").should("exist");
+      entityPickerModalItem("Products").should("be.visible");
+      entityPickerModalItem("Reviews").should("be.visible");
+      entityPickerModalItem("People").should("be.visible");
     });
   });
 });
@@ -1214,7 +1219,7 @@ describe("issue 20627", () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText(newTableName).click();
+      entityPickerModalItem(newTableName).click();
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

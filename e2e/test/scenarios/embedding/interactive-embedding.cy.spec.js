@@ -10,6 +10,7 @@ import {
   dashboardGrid,
   describeEE,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   getDashboardCard,
   getDashboardCardMenu,
@@ -255,7 +256,7 @@ describeEE("scenarios > embedding > full app", () => {
         popover().findByText("Question").click();
         entityPickerModal().within(() => {
           entityPickerModalTab("Tables").click();
-          cy.findByText("Orders").click();
+          entityPickerModalItem("Orders").click();
         });
       });
 

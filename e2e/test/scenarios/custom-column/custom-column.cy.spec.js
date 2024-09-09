@@ -7,6 +7,7 @@ import {
   createQuestion,
   enterCustomColumnDetails,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   filter,
   getNotebookStep,
@@ -82,7 +83,7 @@ describe("scenarios > question > custom column", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.findByText(name).click();
+      entityPickerModalItem(name).click();
     });
     cy.button("Custom column").click();
     enterCustomColumnDetails({ formula: "[cre", blur: false });
@@ -275,7 +276,7 @@ describe("scenarios > question > custom column", () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Products").click();
+      entityPickerModalItem("Products").click();
     });
 
     // add custom column
@@ -778,8 +779,8 @@ describe("scenarios > question > custom column > data type", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("QA Postgres12").click();
-      cy.findByText("Orders").click();
+      entityPickerModalItem("QA Postgres12").click();
+      entityPickerModalItem("Orders").click();
     });
 
     addCustomColumns([

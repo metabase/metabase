@@ -6,6 +6,8 @@ import {
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   filter,
   filterField,
   openNativeEditor,
@@ -537,8 +539,8 @@ describe("scenarios > native question > data reference sidebar", () => {
     popover().findByTestId("move-button").click();
 
     entityPickerModal().within(() => {
-      cy.findByRole("tab", { name: /Collections/ }).click();
-      cy.findByText("Bobby Tables's Personal Collection").click();
+      entityPickerModalTab("Collections").click();
+      entityPickerModalItem("Bobby Tables's Personal Collection").click();
       cy.button("Move").click();
     });
 

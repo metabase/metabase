@@ -5,6 +5,7 @@ import {
   changeBinningForDimension,
   chartPathWithFillColor,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   getBinningButtonForDimension,
   getNotebookStep,
@@ -35,7 +36,7 @@ describe("binning related reproductions", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.findByText("16327").click();
+      entityPickerModalItem("16327").click();
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -107,7 +108,7 @@ describe("binning related reproductions", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.findByText("17975").click();
+      entityPickerModalItem("17975").click();
     });
 
     getNotebookStep("summarize")
@@ -147,7 +148,7 @@ describe("binning related reproductions", () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.findByText("18646").click();
+      entityPickerModalItem("18646").click();
     });
 
     popover().findByText("Product ID").click();
@@ -193,7 +194,7 @@ describe("binning related reproductions", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Saved questions").click();
-      cy.findByText("11439").click();
+      entityPickerModalItem("11439").click();
     });
 
     visualize();
@@ -382,7 +383,7 @@ function openSummarizeOptions(questionType) {
   startNewQuestion();
   entityPickerModal().within(() => {
     entityPickerModalTab("Saved questions").click();
-    cy.findByText("16379").click();
+    entityPickerModalItem("16379").click();
   });
 
   if (questionType === "Simple mode") {

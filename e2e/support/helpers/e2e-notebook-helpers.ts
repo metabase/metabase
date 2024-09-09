@@ -2,6 +2,7 @@ import type { CyHttpMessages } from "cypress/types/net-stubbing";
 
 import {
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   popover,
 } from "e2e/support/helpers/e2e-ui-elements-helpers";
@@ -155,7 +156,7 @@ export function joinTable(
 ) {
   entityPickerModal().within(() => {
     entityPickerModalTab("Tables").click();
-    cy.findByText(tableName).click();
+    entityPickerModalItem(tableName).click();
   });
 
   if (lhsColumnName && rhsColumnName) {
@@ -184,7 +185,7 @@ export function selectSavedQuestionsToJoin(
     entityPickerModalTab("Models").should("exist");
     entityPickerModalTab("Tables").should("exist");
     entityPickerModalTab("Saved questions").click();
-    cy.findByText(firstQuestionName).click();
+    entityPickerModalItem(firstQuestionName).click();
   });
 
   cy.wait("@joinedTableMetadata");
@@ -196,7 +197,7 @@ export function selectSavedQuestionsToJoin(
     entityPickerModalTab("Models").should("exist");
     entityPickerModalTab("Tables").should("exist");
     entityPickerModalTab("Saved questions").click();
-    cy.findByText(secondQuestionName).click();
+    entityPickerModalItem(secondQuestionName).click();
   });
 }
 

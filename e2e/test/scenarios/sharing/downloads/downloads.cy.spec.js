@@ -13,6 +13,7 @@ import {
   editDashboard,
   enableTracking,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
@@ -72,7 +73,7 @@ describe("scenarios > question > download", () => {
         startNewQuestion();
         entityPickerModal().within(() => {
           entityPickerModalTab("Saved questions").click();
-          cy.findByText("Orders, Count").click();
+          entityPickerModalItem("Orders, Count").click();
         });
 
         visualize();

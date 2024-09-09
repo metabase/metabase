@@ -7,6 +7,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   filter,
   getNotebookStep,
@@ -401,7 +402,7 @@ describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => 
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.contains("Products").should("exist");
+      entityPickerModalItem("Products").should("be.visible");
       cy.contains("Orders").should("not.exist");
     });
   });

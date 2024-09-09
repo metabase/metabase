@@ -18,6 +18,7 @@ import {
   editDashboard,
   enterCustomColumnDetails,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalLevel,
   entityPickerModalTab,
   filter,
@@ -113,8 +114,8 @@ describe("issue 19737", () => {
     popover().findByText("Move").click();
 
     entityPickerModal().within(() => {
-      cy.findByRole("tab", { name: /Collections/ }).click();
-      cy.findByText(collectionName).click();
+      entityPickerModalTab("Collections").click();
+      entityPickerModalItem(collectionName).click();
       cy.button("Move").click();
     });
   }
@@ -143,8 +144,8 @@ describe("issue 19737", () => {
 
     entityPickerModal().within(() => {
       entityPickerModalTab("Models").click();
-      cy.findByText(personalCollectionName).click();
-      cy.findByText(modelName);
+      entityPickerModalItem(personalCollectionName).click();
+      entityPickerModalItem(modelName).should("be.visible");
     });
   });
 
@@ -167,8 +168,8 @@ describe("issue 19737", () => {
     // Open question picker (this is crucial) so the collection list are loaded.
     entityPickerModal().within(() => {
       entityPickerModalTab("Models").click();
-      cy.findByText("First collection").click();
-      cy.findByText(modelName);
+      entityPickerModalItem("First collection").click();
+      entityPickerModalItem(modelName).should("be.visible");
     });
 
     // Use back button to so the state is kept
@@ -849,7 +850,7 @@ describe("issue 25537", () => {
     entityPickerModal().within(() => {
       cy.findByText(/Modelle/i).click();
       cy.wait("@getCollectionContent");
-      cy.findByText(questionDetails.name).should("exist");
+      entityPickerModalItem(questionDetails.name).should("be.visible");
     });
   });
 });
@@ -879,7 +880,7 @@ describe("issue 26091", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
+      entityPickerModalItem("Orders").click();
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
@@ -896,9 +897,9 @@ describe("issue 26091", () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Models").click();
-      cy.findByText("New model").should("be.visible");
-      cy.findByText("Old model").should("be.visible");
-      cy.findByText("Orders Model").should("be.visible");
+      entityPickerModalItem("New model").should("be.visible");
+      entityPickerModalItem("Old model").should("be.visible");
+      entityPickerModalItem("Orders Model").should("be.visible");
     });
   });
 });
@@ -969,7 +970,7 @@ describe("issue 28971", () => {
     cy.findByText("Use the notebook editor").click();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
+      entityPickerModalItem("Orders").click();
     });
     cy.button("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {
@@ -1008,7 +1009,7 @@ describe("issue 28971", () => {
     cy.findByText("Use the notebook editor").click();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
+      entityPickerModalItem("Orders").click();
     });
     cy.button("Save").click();
     cy.findByTestId("save-question-modal").within(modal => {

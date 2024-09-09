@@ -5,6 +5,7 @@ import {
   chartPathWithFillColor,
   echartsContainer,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   restore,
   startNewQuestion,
@@ -71,7 +72,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").click();
-        cy.findByText("QB Binning").click();
+        entityPickerModalItem("QB Binning").click();
       });
 
       visualize();
@@ -138,7 +139,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").click();
-        cy.findByText("QB Binning").click();
+        entityPickerModalItem("QB Binning").click();
       });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -211,7 +212,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").click();
-        cy.findByText("QB Binning").click();
+        entityPickerModalItem("QB Binning").click();
       });
 
       visualize();

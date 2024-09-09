@@ -477,9 +477,9 @@ describe("scenarios > collection defaults", () => {
       });
 
       entityPickerModal().within(() => {
-        cy.findByRole("tab", { name: /Collections/ }).click();
-        cy.findByText("Bobby Tables's Personal Collection").click();
-        cy.findByText(COLLECTION).click();
+        entityPickerModalTab("Collections").click();
+        entityPickerModalItem("Bobby Tables's Personal Collection").click();
+        entityPickerModalItem(COLLECTION).click();
         cy.button("Move").should("not.be.disabled");
       });
     });

@@ -10,6 +10,7 @@ import {
   createImplicitActions,
   createModelFromTableName,
   entityPickerModal,
+  entityPickerModalItem,
   fillActionQuery,
   modal,
   popover,
@@ -194,7 +195,7 @@ describe(
 
       modal().eq(1).findByText("Select a model").click();
       entityPickerModal().within(() => {
-        cy.findByText("Order").click();
+        entityPickerModalItem("Order").click();
       });
 
       cy.findByRole("button", { name: "Create" }).click();

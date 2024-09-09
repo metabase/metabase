@@ -171,9 +171,9 @@ describe("scenarios > notebook > data source", () => {
         startNewQuestion();
         entityPickerModal().within(() => {
           entityPickerModalTab("Tables").click();
-          cy.findByText(dbName).click();
-          cy.findByText(schemaName).click();
-          cy.findByText(tableName).click();
+          entityPickerModalItem(dbName).click();
+          entityPickerModalItem(schemaName).click();
+          entityPickerModalItem(tableName).click();
         });
         visualize();
         saveQuestion("Beasts");
@@ -186,23 +186,22 @@ describe("scenarios > notebook > data source", () => {
           assertDataPickerEntitySelected(tableName, { level: 2 });
 
           entityPickerModalTab("Recents").click();
-          cy.contains("button", "Animals")
-            .should("exist")
-            .and("contain.text", tableName)
+          entityPickerModalItem(tableName)
+            .should("be.visible")
             .and("have.attr", "aria-selected", "true");
 
           entityPickerModalTab("Tables").click();
-          cy.findByText(dbName).click();
-          cy.findByText(schemaName).click();
-          cy.findByText(tableName).click();
+          entityPickerModalItem(dbName).click();
+          entityPickerModalItem(schemaName).click();
+          entityPickerModalItem(tableName).click();
         });
 
         cy.log("select a table from the second schema");
         join();
         entityPickerModal().within(() => {
           entityPickerModalTab("Tables").click();
-          cy.findByText("Public").click();
-          cy.findByText("Many Data Types").click();
+          entityPickerModalItem("Public").click();
+          entityPickerModalItem("Many Data Types").click();
         });
         popover().findByText("Name").click();
         popover().findByText("Text").click();
@@ -211,8 +210,8 @@ describe("scenarios > notebook > data source", () => {
         join();
         entityPickerModal().within(() => {
           entityPickerModalTab("Tables").click();
-          cy.findByText("Domestic").click();
-          cy.findByText("Animals").click();
+          entityPickerModalItem("Domestic").click();
+          entityPickerModalItem("Animals").click();
         });
         popover().findByText("Name").click();
         popover().findByText("Name").click();
@@ -269,9 +268,9 @@ describe("scenarios > notebook > data source", () => {
           level: 3,
         });
 
-        cy.findByText(checkNotNull(modelDetails.name))
-          .should("exist")
-          .and("contain.text", checkNotNull(modelDetails.name));
+        entityPickerModalItem(checkNotNull(modelDetails.name)).should(
+          "be.visible",
+        );
       });
     });
 
@@ -400,8 +399,8 @@ describe("issue 34350", { tags: "@external" }, () => {
     openOrdersTable({ mode: "notebook" });
     openDataSelector();
     entityPickerModal().within(() => {
-      cy.findByText("QA Postgres12").click();
-      cy.findByText("Orders").click();
+      entityPickerModalItem("QA Postgres12").click();
+      entityPickerModalItem("Orders").click();
     });
 
     visualize();
@@ -431,7 +430,7 @@ describe("issue 28106", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
-        cy.findByText("Writable Postgres12").click();
+        entityPickerModalItem("Writable Postgres12").click();
 
         entityPickerModalLevel(1)
           .findByTestId("scroll-container")
@@ -491,7 +490,7 @@ describe("issue 32252", () => {
     entityPickerModal().within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Recents").should("not.exist");
-      cy.findByText("Saved questions").should("be.visible");
+      entityPickerModalTab("Saved questions").should("be.visible");
       cy.button("Close").click();
     });
 
@@ -509,7 +508,7 @@ describe("issue 32252", () => {
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Recents").should("not.exist");
       cy.findByText("Saved questions").should("not.exist");
-      cy.findByText("Orders").should("be.visible");
+      entityPickerModalItem("Orders").should("be.visible");
     });
   });
 
@@ -520,7 +519,7 @@ describe("issue 32252", () => {
     entityPickerModal().within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Recents").should("not.exist");
-      cy.findByText("Saved questions").should("be.visible");
+      entityPickerModalTab("Saved questions").should("be.visible");
       cy.button("Close").click();
     });
 
@@ -539,7 +538,7 @@ describe("issue 32252", () => {
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Recents").should("not.exist");
       cy.findByText("Saved questions").should("not.exist");
-      cy.findByText("Orders").should("be.visible");
+      entityPickerModalItem("Orders").should("be.visible");
     });
   });
 });
@@ -551,7 +550,7 @@ function moveToCollection(collection: string) {
   popover().findByTextEnsureVisible("Move").click();
 
   entityPickerModal().within(() => {
-    cy.findByText(collection).click();
+    entityPickerModalItem(collection).click();
     cy.button("Move").click();
     cy.wait("@updateCollectionTree");
   });

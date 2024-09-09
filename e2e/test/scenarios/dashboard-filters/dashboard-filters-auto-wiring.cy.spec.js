@@ -9,6 +9,8 @@ import {
   dashboardParametersContainer,
   editDashboard,
   entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   findDashCardAction,
   getDashboardCard,
   goToTab,
@@ -838,8 +840,8 @@ function addQuestionFromQueryBuilder({
   popover().findByText("Add to dashboard").click();
 
   entityPickerModal().within(() => {
-    modal().findByText("Dashboards").click();
-    modal().findByText("36275").click();
+    entityPickerModalTab("Dashboards").click();
+    entityPickerModalItem("36275").click();
     cy.button("Select").click();
   });
 

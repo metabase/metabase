@@ -24,6 +24,8 @@ import {
   editDashboard,
   enableTracking,
   entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
   filterWidget,
@@ -142,12 +144,12 @@ describe("scenarios > dashboard", () => {
       });
 
       entityPickerModal().within(() => {
-        cy.findByRole("tab", { name: /Dashboards/ }).click();
-        cy.findByText(dashboardName)
-          .closest("button")
-          .then($button => {
-            expect($button).to.have.attr("data-active", "true");
-          });
+        entityPickerModalTab("Dashboards").click();
+        entityPickerModalItem(dashboardName).should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
         cy.button("Select").click();
       });
 
@@ -202,7 +204,7 @@ describe("scenarios > dashboard", () => {
           cy.wait("@createCollection");
         });
         entityPickerModal().within(() => {
-          cy.findByText(NEW_COLLECTION).click();
+          entityPickerModalItem(NEW_COLLECTION).click();
           cy.button("Select").click();
         });
         modal().within(() => {
@@ -345,8 +347,8 @@ describe("scenarios > dashboard", () => {
         openDashboardMenu();
         popover().findByText("Move").click();
         entityPickerModal().within(() => {
-          cy.findByRole("tab", { name: /Collections/ }).click();
-          cy.findByText("Bobby Tables's Personal Collection").click();
+          entityPickerModalTab("Collections").click();
+          entityPickerModalItem("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });
 
@@ -364,8 +366,8 @@ describe("scenarios > dashboard", () => {
         openDashboardMenu();
         popover().findByText("Move").click();
         entityPickerModal().within(() => {
-          cy.findByRole("tab", { name: /Collections/ }).click();
-          cy.findByText("Our analytics").click();
+          entityPickerModalTab("Collections").click();
+          entityPickerModalItem("Our analytics").click();
           cy.button("Move").click();
         });
 

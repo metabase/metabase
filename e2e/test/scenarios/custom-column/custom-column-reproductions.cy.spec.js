@@ -8,6 +8,7 @@ import {
   editDashboard,
   enterCustomColumnDetails,
   entityPickerModal,
+  entityPickerModalItem,
   entityPickerModalTab,
   filter,
   filterWidget,
@@ -141,8 +142,8 @@ describe("issue 13751", { tags: "@external" }, () => {
     startNewQuestion();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText(PG_DB_NAME).should("be.visible").click();
-      cy.findByTextEnsureVisible("People").click();
+      entityPickerModalItem(PG_DB_NAME).should("be.visible").click();
+      entityPickerModalItem("People").click();
     });
   });
 
