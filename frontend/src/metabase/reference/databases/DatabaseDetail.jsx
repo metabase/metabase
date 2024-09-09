@@ -152,6 +152,7 @@ const DatabaseDetail = props => {
                     placeholder={t`No description yet`}
                     isEditing={isEditing}
                     field={getFormField("description")}
+                    isMarkdown
                   />
                 </li>
                 <li className={CS.relative}>
@@ -162,6 +163,7 @@ const DatabaseDetail = props => {
                     placeholder={t`Nothing interesting yet`}
                     isEditing={isEditing}
                     field={getFormField("points_of_interest")}
+                    isMarkdown
                   />
                 </li>
                 <li className={CS.relative}>
@@ -172,6 +174,7 @@ const DatabaseDetail = props => {
                     placeholder={t`Nothing to be aware of yet`}
                     isEditing={isEditing}
                     field={getFormField("caveats")}
+                    isMarkdown
                   />
                 </li>
               </List>
