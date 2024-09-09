@@ -14,13 +14,14 @@
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
   [q archived table-db-id created_at created_by last_edited_at last_edited_by
-   filter_items_in_personal_collection search_native_query verified]
+   filter_items_in_personal_collection search_engine search_native_query verified]
   {archived            [:maybe ms/BooleanValue]
    table-db-id         [:maybe ms/PositiveInt]
    created_at          [:maybe ms/NonBlankString]
    created_by          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at      [:maybe ms/PositiveInt]
    last_edited_by      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
+   search_engine       [:maybe string?]
    search_native_query [:maybe true?]
    verified            [:maybe true?]}
   (search/query-model-set
@@ -34,6 +35,7 @@
                            :last-edited-at                      last_edited_at
                            :last-edited-by                      (set (u/one-or-many last_edited_by))
                            :models                              search/all-models
+                           :search-engine                       search_engine
                            :search-native-query                 search_native_query
                            :search-string                       q
                            :table-db-id                         table-db-id
@@ -62,7 +64,8 @@
 
   A search query that has both filters applied will only return models and cards."
   [q archived created_at created_by table_db_id models last_edited_at last_edited_by
-   filter_items_in_personal_collection model_ancestors search_native_query verified ids]
+   filter_items_in_personal_collection model_ancestors search_engine search_native_query
+   verified ids]
   {q                                   [:maybe ms/NonBlankString]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
@@ -73,6 +76,7 @@
    last_edited_at                      [:maybe ms/NonBlankString]
    last_edited_by                      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    model_ancestors                     [:maybe :boolean]
+   search_engine                       [:maybe string?]
    search_native_query                 [:maybe true?]
    verified                            [:maybe true?]
    ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]}
@@ -95,6 +99,7 @@
        :model-ancestors?                    model_ancestors
        :models                              models-set
        :offset                              mw.offset-paging/*offset*
+       :search-engine                       search_engine
        :search-native-query                 search_native_query
        :search-string                       q
        :table-db-id                         table_db_id
