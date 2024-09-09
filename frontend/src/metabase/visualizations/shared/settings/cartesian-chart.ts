@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isNotNull } from "metabase/lib/types";
 import { getMaxDimensionsSupported } from "metabase/visualizations";
 import { getCardsColumns } from "metabase/visualizations/echarts/cartesian/model";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
@@ -390,6 +391,13 @@ export function getAvailableAdditionalColumns(
   settings: ComputedVisualizationSettings,
 ): DatasetColumn[] {
   const alreadyIncludedColumns = new Set<DatasetColumn>();
+
+  if (
+    _.isEmpty(settings["graph.dimensions"]?.filter(isNotNull)) ||
+    _.isEmpty(settings["graph.metrics"]?.filter(isNotNull))
+  ) {
+    return [];
+  }
 
   getCardsColumns(rawSeries, settings).forEach(cardColumns => {
     alreadyIncludedColumns.add(cardColumns.dimension.column);
