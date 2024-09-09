@@ -4,7 +4,6 @@
   - more than one subscriptions
   - more than one handlers where each handler has a channel, optionally a template, and more than one recpients."
   (:require
-   [clojure.string :as str]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -17,20 +16,6 @@
 (methodical/defmethod t2/table-name :model/NotificationSubscription [_model] :notification_subscription)
 (methodical/defmethod t2/table-name :model/NotificationHandler      [_model] :notification_handler)
 (methodical/defmethod t2/table-name :model/NotificationRecipient    [_model] :notification_recipient)
-
-(defn- assert-enum
-  [enum value]
-  (assert (set? enum) "enum but be a set")
-  (when-not (contains? enum value)
-    (throw (ex-info (format "Invalid value %s. Must be one of %s" value (str/join ", " enum)) {:status-code 400
-                                                                                               :value       value}))))
-
-(defn- assert-namespaced
-  [qualified-ns value]
-  (assert (string? qualified-ns) "namespace must be a string")
-  (when-not (= qualified-ns (-> value keyword namespace))
-    (throw (ex-info (format "Must be a namespaced keyword under :%s, got: %s" qualified-ns value) {:status-code 400
-                                                                                                   :value       value}))))
 
 (def notification-types
   "Set of valid notification types."
@@ -45,17 +30,17 @@
     :notification-recipient/external-email})
 
 (t2/deftransforms :model/Notification
-  {:payload_type (mi/transform-validator mi/transform-keyword (partial assert-enum notification-types))})
+  {:payload_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-types))})
 
 (t2/deftransforms :model/NotificationSubscription
-  {:type       (mi/transform-validator mi/transform-keyword (partial assert-enum subscription-types))
-   :event_name (mi/transform-validator mi/transform-keyword (partial assert-namespaced "event"))})
+  {:type       (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-types))
+   :event_name (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))})
 
 (t2/deftransforms :model/NotificationHandler
-  {:channel_type (mi/transform-validator mi/transform-keyword (partial assert-namespaced "channel"))})
+  {:channel_type (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))})
 
 (t2/deftransforms :model/NotificationRecipient
-  {:type (mi/transform-validator mi/transform-keyword (partial assert-enum notification-recipient-types))})
+  {:type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-recipient-types))})
 
 (doseq [model [:model/Notification
                :model/NotificationSubscription
@@ -98,6 +83,16 @@
    :channel_id
    {:default nil}))
 
+(methodical/defmethod t2/batched-hydrate [:model/NotificationHandler :template]
+  "Batch hydration ChannelTemplates for a list of NotificationHandlers"
+  [_model k notification-handlers]
+  (mi/instances-with-hydrated-data
+   notification-handlers k
+   #(t2/select-fn->fn :id identity :model/ChannelTemplate
+                      :id [:in (map :template_id notification-handlers)])
+   :template_id
+   {:default nil}))
+
 (methodical/defmethod t2/batched-hydrate [:model/NotificationHandler :recipients]
   "Batch hydration NotificationRecipients for a list of NotificationHandlers"
   [_model k notification-handlers]
@@ -108,6 +103,29 @@
               (t2/select :model/NotificationRecipient :notification_handler_id [:in (map :id notification-handlers)]))
    :id
    {:default []}))
+
+(defn- cross-check-channel-type-and-template-type
+  [notification-handler]
+  (when-let [template-id (:template_id notification-handler)]
+    (let [channel-type  (:channel_type notification-handler)
+          template-type (t2/select-one-fn :channel_type [:model/ChannelTemplate :channel_type] template-id)]
+      (when (not= channel-type template-type)
+        (throw (ex-info "Channel type and template type mismatch"
+                        {:status        400
+                         :channel-type  channel-type
+                         :template-type template-type}))))))
+
+(t2/define-before-insert :model/NotificationHandler
+ [instance]
+ (cross-check-channel-type-and-template-type instance)
+ instance)
+
+(t2/define-before-update :model/NotificationHandler
+  [instance]
+  (when (or (contains? (t2/changes instance) :channel_id)
+            (contains? (t2/changes instance) :template_id))
+    (cross-check-channel-type-and-template-type instance)
+    instance))
 
 (defn notifications-for-event
   "Find all notifications for a given event."

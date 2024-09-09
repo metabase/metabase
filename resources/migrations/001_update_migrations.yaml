@@ -9366,7 +9366,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v51.2024-09-05T08:00:03
+      id: v51.2024-09-05T08:00:02
       author: qnkhuat
       comment: index on notification_subscription.notification_id
       preConditions:
@@ -9383,9 +9383,67 @@ databaseChangeLog:
             indexName: idx_notification_subscription_notification_id
 
   - changeSet:
+      id: v51.2024-08-30T08:00:03
+      author: qnkhuat
+      comment: Create the channel_template table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: channel_template
+      changes:
+        - createTable:
+            tableName: channel_template
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(64)
+                  remarks: the name of the template
+                  constraints:
+                    nullable: false
+              - column:
+                  name: channel_type
+                  type: varchar(64)
+                  remarks: the channel type of the template
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: text
+                  remarks: the details of the template
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the template was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the template was last updated
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: false
+                    unique: true
+
+  - changeSet:
       id: v51.2024-09-05T08:00:04
       author: qnkhuat
       comment: Create the notification_handler table
+      validCheckSum: ANY
       preConditions:
         - not:
           - tableExists:
@@ -9430,6 +9488,12 @@ databaseChangeLog:
                     foreignKeyName: fk_notification_handler_channel_id
                     deleteCascade: true
               - column:
+                  name: template_id
+                  type: int
+                  remarks: the template that the handler is connected to
+                  constraints:
+                    nullable: true
+              - column:
                   name: active
                   type: ${boolean.type}
                   remarks: whether the handler is active
@@ -9450,9 +9514,21 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
-
   - changeSet:
       id: v51.2024-09-05T08:00:05
+      author: qnkhuat
+      comment: Add fk constraint to notification_handler.channel_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: notification_handler
+            baseColumnNames: template_id
+            referencedTableName: channel_template
+            referencedColumnNames: id
+            constraintName: fk_notification_handler_template_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:06
       author: qnkhuat
       comment: index on notification_handler.notification_id
       preConditions:
@@ -9469,7 +9545,7 @@ databaseChangeLog:
             indexName: idx_notification_handler_notification_id
 
   - changeSet:
-      id: v51.2024-09-05T08:00:06
+      id: v51.2024-09-05T08:00:07
       author: qnkhuat
       comment: index on notification_handler.channel_id
       preConditions:
@@ -9486,7 +9562,7 @@ databaseChangeLog:
             indexName: idx_notification_handler_channel_id
 
   - changeSet:
-      id: v51.2024-09-05T08:00:07
+      id: v51.2024-09-05T08:00:08
       author: qnkhuat
       comment: Create the notification_recipient table
       preConditions:
@@ -9563,7 +9639,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v51.2024-09-05T08:00:08
+      id: v51.2024-09-05T08:00:09
       author: qnkhuat
       comment: index on notification_recipient.notification_handler_id
       preConditions:
@@ -9580,7 +9656,7 @@ databaseChangeLog:
             indexName: idx_notification_recipient_notification_handler_id
 
   - changeSet:
-      id: v51.2024-09-05T08:00:09
+      id: v51.2024-09-05T08:00:10
       author: qnkhuat
       comment: index on notification_recipient.user_id
       preConditions:
@@ -9597,7 +9673,7 @@ databaseChangeLog:
             indexName: idx_notification_recipient_user_id
 
   - changeSet:
-      id: v51.2024-09-05T08:00:10
+      id: v51.2024-09-05T08:00:11
       author: qnkhuat
       comment: index on notification_recipient.permissions_group_id
       preConditions:

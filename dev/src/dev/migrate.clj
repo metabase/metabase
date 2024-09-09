@@ -164,4 +164,5 @@
 (comment
   (rollback! :count 1)
   (rollback! :id "v51.2024-08-30T08:00:03")
+  (migration-sql-by-id "v51.2024-09-05T08:00:04" :postgres)
   (migrate!))

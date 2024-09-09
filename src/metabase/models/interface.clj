@@ -5,6 +5,7 @@
    [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.error :as me]
@@ -250,6 +251,22 @@
   "Transform for json-no-keywordization"
   {:in  json-in
    :out json-out-without-keywordization})
+
+(defn assert-enum
+  "Assert that a value is one of the values in `enum`."
+  [enum value]
+  (assert (set? enum) "enum but be a set")
+  (when-not (contains? enum value)
+    (throw (ex-info (format "Invalid value %s. Must be one of %s" value (str/join ", " enum)) {:status-code 400
+                                                                                               :value       value}))))
+
+(defn assert-namespaced
+  "Assert that a value is a namespaced keyword under `qualified-ns`."
+  [qualified-ns value]
+  (assert (string? qualified-ns) "namespace must be a string")
+  (when-not (= qualified-ns (-> value keyword namespace))
+    (throw (ex-info (format "Must be a namespaced keyword under :%s, got: %s" qualified-ns value) {:status-code 400
+                                                                                                   :value       value}))))
 
 (defn transform-validator
   "Given a transform, returns a transform that call `assert-fn` on the value.

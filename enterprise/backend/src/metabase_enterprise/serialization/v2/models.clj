@@ -7,7 +7,8 @@
    "Field"
    "Segment"
    "Table"
-   "Channel"])
+   "Channel"
+   "ChannelTemplate"])
 
 (def content
   "Content model types"
