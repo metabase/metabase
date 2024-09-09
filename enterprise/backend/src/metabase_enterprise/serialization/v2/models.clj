@@ -62,6 +62,8 @@
    "ModerationReview"
    "Notification"
    "NotificationSubscription"
+   "NotificationHandler"
+   "NotificationRecipient"
    "Permissions"
    "PermissionsGroup"
    "PermissionsGroupMembership"

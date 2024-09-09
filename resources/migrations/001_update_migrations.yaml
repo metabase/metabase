@@ -9480,7 +9480,7 @@ databaseChangeLog:
                     deleteCascade: true
               - column:
                   name: details
-                  type: text
+                  type: ${text.type}
                   constraints:
                     nullable: true
               - column:

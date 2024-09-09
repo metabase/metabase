@@ -100,7 +100,9 @@
     :model/UserParameterValue
     ;; 51+
     :model/Notification
-    :model/NotificationSubscription]
+    :model/NotificationSubscription
+    :model/NotificationHandler
+    :model/NotificationRecipient]
    (when config/ee-available?
      [:model/GroupTableAccessPolicy
       :model/ConnectionImpersonation])))
