@@ -2127,6 +2127,102 @@ describe("issue 41612", () => {
   });
 });
 
+describe("issue 36027", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    const CONCRETE_CREATED_AT_FIELD_REF = [
+      "field",
+      ORDERS.CREATED_AT,
+      { "base-type": "type/DateTime", "temporal-unit": "month" },
+    ];
+
+    const CREATED_AT_FIELD_REF = [
+      "field",
+      "CREATED_AT",
+      { "base-type": "type/DateTime", "temporal-unit": "month" },
+    ];
+
+    const BASE_QUERY = {
+      aggregation: [["count"]],
+      breakout: [CONCRETE_CREATED_AT_FIELD_REF],
+      "source-table": ORDERS_ID,
+    };
+
+    createQuestion({ query: BASE_QUERY }, { wrapId: true }).then(
+      baseQuestionId => {
+        createQuestion(
+          {
+            display: "waterfall",
+            query: {
+              aggregation: [
+                ["sum", ["field", "count", { "base-type": "type/Integer" }]],
+              ],
+              breakout: [CREATED_AT_FIELD_REF],
+              joins: [
+                {
+                  alias: "Q1",
+                  strategy: "left-join",
+                  "source-table": `card__${baseQuestionId}`,
+                  condition: [
+                    "<=",
+                    CREATED_AT_FIELD_REF,
+                    CONCRETE_CREATED_AT_FIELD_REF,
+                  ],
+                },
+              ],
+              "source-query": BASE_QUERY,
+            },
+            visualization_settings: {
+              "graph.dimensions": ["CREATED_AT"],
+              "graph.metrics": ["sum"],
+            },
+          },
+          { visitQuestion: true },
+        );
+      },
+    );
+  });
+
+  it("should use default metrics/dimensions if they're missing after removing some query clauses (metabase#36027)", () => {
+    openNotebook();
+    getNotebookStep("summarize", { stage: 1 })
+      .findByLabelText("Remove step")
+      .click({ force: true });
+    getNotebookStep("join", { stage: 1 })
+      .findByLabelText("Remove step")
+      .click({ force: true });
+    visualize();
+
+    echartsContainer().within(() => {
+      cy.findByText("Created At").should("be.visible"); // x-axis
+      cy.findByText("Count").should("be.visible"); // y-axis
+
+      // x-axis values
+      ["January 2023", "January 2024", "January 2025", "January 2026"].forEach(
+        state => {
+          cy.findByText(state).should("be.visible");
+        },
+      );
+
+      // y-axis values
+      [
+        "0",
+        "3,000",
+        "6,000",
+        "9,000",
+        "12,000",
+        "15,000",
+        "18,000",
+        "21,000",
+      ].forEach(state => {
+        cy.findByText(state).should("be.visible");
+      });
+    });
+  });
+});
+
 function expectNoScrollbarContainer(element) {
   const hasScrollbarContainer =
     element.scrollHeight <= element.clientHeight &&

@@ -6,34 +6,45 @@ import {
   hideResponsively,
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
+import Link from "metabase/core/components/Link";
 import { breakpoints } from "metabase/ui/theme";
 
-export const ModelTableRow = styled.tr<{ skeleton?: boolean }>`
+export const TableRow = styled.tr<{ skeleton?: boolean }>`
   :focus {
     outline: 2px solid var(--mb-color-focus);
   }
   ${props =>
     props.skeleton
       ? `
-    :hover { background-color: unset ! important; }
-    td { cursor: unset ! important; }
-    `
+          :hover { background-color: unset ! important; }
+          td { cursor: unset ! important; }
+        `
       : `cursor: pointer;`}
 `;
 
-export const ModelNameLink = styled(ItemLink)`
+export const NameLink = styled(ItemLink)`
   padding-inline-start: 0.6rem;
   padding-block: 0.5rem;
 `;
 
-export const ModelCell = styled.td<ResponsiveProps>`
+export const Cell = styled.td<ResponsiveProps>`
   td& {
     padding: 0.25em 0.5rem 0.25em 0.5rem;
   }
+
+  &:focus-within,
+  &:focus {
+    outline: 2px solid var(--mb-color-focus);
+
+    a {
+      outline: none;
+    }
+  }
+
   ${hideResponsively}
 `;
 
-export const ModelNameColumn = styled(TableColumn)`
+export const NameColumn = styled(TableColumn)`
   width: 356px;
 
   @container ${props => props.containerName} (max-width: ${breakpoints.md}) {
@@ -42,5 +53,21 @@ export const ModelNameColumn = styled(TableColumn)`
 
   @container ${props => props.containerName} (max-width: ${breakpoints.sm}) {
     width: 200px;
+  }
+`;
+
+export const CollectionTableCell = styled(Cell)`
+  td& {
+    padding: 0;
+  }
+`;
+
+export const CollectionLink = styled(Link)`
+  display: block;
+  padding: 1em 0.5em;
+  box-sizing: border-box;
+
+  &:hover {
+    color: var(--mb-color-icon-primary) !important;
   }
 `;
