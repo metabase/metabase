@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
+import Modal from "metabase/components/Modal";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -45,14 +47,14 @@ export function MetricEditor({
   const [modalType, setModalType] = useState<MetricModalType>();
   const isRunnable = Lib.canRun(question.query(), "metric");
 
-  const handleCreateStart = async () => {
-    await updateQuestion(question.setDefaultDisplay());
-    setModalType("create");
-  };
-
   const handleCreate = async (question: Question) => {
     await onCreate(question);
     setQueryBuilderMode("view");
+  };
+
+  const handleCreateStart = async () => {
+    await updateQuestion(question.setDefaultDisplay());
+    setModalType("create");
   };
 
   const handleSave = async (question: Question) => {
@@ -62,12 +64,20 @@ export function MetricEditor({
 
   const handleCancel = () => {
     if (question.isSaved()) {
-      if (isDirty) {
-        setModalType("leave");
-      } else {
-        setQueryBuilderMode("view");
-      }
+      setQueryBuilderMode("view");
     }
+  };
+
+  const handleCancelStart = () => {
+    if (question.isSaved() && isDirty) {
+      setModalType("leave");
+    } else {
+      handleCancel();
+    }
+  };
+
+  const handleModalClose = () => {
+    setModalType(undefined);
   };
 
   return (
@@ -78,7 +88,7 @@ export function MetricEditor({
         isRunnable={isRunnable}
         onCreate={handleCreateStart}
         onSave={handleSave}
-        onCancel={handleCancel}
+        onCancel={handleCancelStart}
       />
       <MetricEditorBody
         question={question}
@@ -107,8 +117,16 @@ export function MetricEditor({
           opened
           onCreate={handleCreate}
           onSave={handleSave}
-          onClose={() => setModalType(undefined)}
+          onClose={handleModalClose}
         />
+      )}
+      {modalType === "leave" && (
+        <Modal isOpen>
+          <LeaveConfirmationModalContent
+            onAction={handleCancel}
+            onClose={handleModalClose}
+          />
+        </Modal>
       )}
     </Flex>
   );
