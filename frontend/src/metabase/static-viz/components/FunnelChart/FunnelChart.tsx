@@ -30,7 +30,7 @@ const layout = {
   stepTextOffset: 8,
   colors: {
     textMedium: "#949aab",
-    brand: "#509ee3",
+    brand: "#587330",
     border: "#f0f0f0",
   },
   paddingLeft: 10,

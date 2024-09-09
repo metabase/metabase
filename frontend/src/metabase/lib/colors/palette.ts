@@ -15,7 +15,7 @@ export const colors = {
   brand: "#587330",
   summarize: "#88BF4D",
   filter: "#587330",
-  accent0: "#509EE3",
+  accent0: "#587330",
   accent1: "#88BF4D",
   accent2: "#A989C5",
   accent3: "#EF8C8C",

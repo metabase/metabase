@@ -8,7 +8,7 @@ const DEFAULT_PROPS = {
     { name: "Count", value: "count" },
     { name: "Average of Total", value: "avg" },
   ],
-  colors: { avg: "#A989C5", count: "#509EE3" },
+  colors: { avg: "#A989C5", count: "#587330" },
   columnHasSettings: () => true,
   value: ["avg", "count"],
   addAnother: "Add another series",
