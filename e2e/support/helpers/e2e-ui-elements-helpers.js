@@ -37,7 +37,7 @@ export function entityPickerModal() {
 }
 
 export function entityPickerActiveTab() {
-  return cy.findByTestId("active-tab");
+  return cy.findByTestId("entity-picker-active-tab");
 }
 
 export function entityPickerModalLevel(level) {

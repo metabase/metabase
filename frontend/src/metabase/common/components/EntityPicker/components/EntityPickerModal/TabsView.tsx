@@ -81,7 +81,7 @@ export const TabsView = <
 
         return (
           <Tabs.Panel
-            data-testid={isOpen ? "active-tab" : undefined}
+            data-testid={isOpen ? "entity-picker-active-tab" : undefined}
             key={id}
             value={id}
             style={{
