@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -56,6 +57,23 @@ const defaultOptions: DashboardPickerOptions = {
   ...defaultDashboardPickerOptions,
 };
 
+const mergeOptions = (
+  options: Partial<DashboardPickerOptions>,
+  canSelectCollection: boolean,
+  selectedModel: DashboardPickerItem["model"] | null | undefined,
+) => ({
+  ...defaultOptions,
+  ...(canSelectCollection
+    ? {
+        confirmButtonText: match(selectedModel)
+          .with("dashboard", () => t`Save in this dashboard`)
+          .with("collection", () => t`Save in this collection`)
+          .otherwise(() => t`Save`),
+      }
+    : {}),
+  ...options,
+});
+
 export const DashboardPickerModal = ({
   title = t`Choose a dashboard`,
   onChange,
@@ -67,11 +85,11 @@ export const DashboardPickerModal = ({
   recentFilter,
   canSelectCollection = false,
 }: DashboardPickerModalProps) => {
-  options = { ...defaultOptions, ...options };
-
   const [selectedItem, setSelectedItem] = useState<DashboardPickerItem | null>(
     canSelectItem(value, canSelectCollection) ? value : null,
   );
+
+  options = mergeOptions(options, canSelectCollection, selectedItem?.model);
 
   const { tryLogRecentItem } = useLogRecentItem();
 
@@ -123,9 +141,7 @@ export const DashboardPickerModal = ({
 
   const tabs: EntityTab<CollectionPickerModel>[] = [
     {
-      displayName: canSelectCollection
-        ? t`Collections and Dashboards`
-        : t`Dashboards`,
+      displayName: t`Dashboards`,
       model: "dashboard",
       additionalModels: canSelectCollection ? ["collection"] : undefined,
       icon: "dashboard",

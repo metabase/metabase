@@ -23,6 +23,7 @@ import FormField from "metabase/core/components/FormField";
 import Collections from "metabase/entities/collections";
 import Dashboard from "metabase/entities/dashboards";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Flex, Icon } from "metabase/ui";
 import type { CollectionId, DashboardId } from "metabase-types/api";
@@ -39,7 +40,7 @@ function ItemName({
   if (dashboardId) {
     return (
       <Flex align="center" gap="sm">
-        <Icon name="dashboard" />
+        <Icon name="dashboard" color={color("brand")} />
         <Dashboard.Name id={dashboardId} />
       </Flex>
     );
@@ -47,7 +48,7 @@ function ItemName({
 
   return (
     <Flex align="center" gap="sm">
-      <Icon name="collection" />
+      <Icon name="collection" color={color("brand")} />
       {type === "snippet-collections" ? (
         <SnippetCollectionName id={collectionId} />
       ) : (
@@ -197,7 +198,7 @@ export function FormCollectionAndDashboardPicker({
       {isPickerOpen && (
         <>
           <DashboardPickerModal
-            title={t`Select a collection or dashboard`}
+            title={t`Save this question to a dashboard`}
             value={pickerValue}
             onChange={handleChange}
             onClose={() => setIsPickerOpen(false)}

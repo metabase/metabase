@@ -71,8 +71,9 @@ export const InteractiveQuestionProvider = ({
   };
 
   const handleCreate = async (question: Question) => {
-    await handleCreateQuestion(question);
+    const createdQuestion = await handleCreateQuestion(question);
     await loadQuestion();
+    return createdQuestion;
   };
 
   const {

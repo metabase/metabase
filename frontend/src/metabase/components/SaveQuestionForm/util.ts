@@ -29,7 +29,9 @@ export const createQuestion = async (
   question: Question,
   onCreate: (
     question: Question,
-    dashboardTabId?: DashboardTabId | undefined,
+    options?: {
+      dashboardTabId?: DashboardTabId | undefined;
+    },
   ) => Promise<Question>,
 ) => {
   if (details.saveType !== "create") {
@@ -47,7 +49,7 @@ export const createQuestion = async (
     .setCollectionId(collectionId)
     .setDashboardId(dashboardId);
 
-  return onCreate(newQuestion, details.tab_id || undefined);
+  return onCreate(newQuestion, { dashboardTabId: details.tab_id || undefined });
 };
 
 export async function submitQuestion(
@@ -55,7 +57,12 @@ export async function submitQuestion(
   details: FormValues,
   question: Question,
   onSave: (question: Question) => Promise<void>,
-  onCreate: (question: Question) => Promise<Question>,
+  onCreate: (
+    question: Question,
+    options?: {
+      dashboardTabId?: DashboardTabId | undefined;
+    },
+  ) => Promise<Question>,
 ) {
   if (details.saveType === "overwrite" && originalQuestion) {
     await updateQuestion(originalQuestion, question, onSave);
