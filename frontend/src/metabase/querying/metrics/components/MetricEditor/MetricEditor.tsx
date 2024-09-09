@@ -47,16 +47,27 @@ export function MetricEditor({
   const [modalType, setModalType] = useState<MetricModalType>();
   const isRunnable = Lib.canRun(question.query(), "metric");
 
-  const handleCreate = async () => {
-    await onChange(question.setDefaultDisplay());
+  const handleCreate = async (question: Question) => {
+    await onCreate(question.setDefaultDisplay());
+  };
+
+  const handleCreateStart = async () => {
     setModalType("create");
   };
 
+  const handleSave = async (question: Question) => {
+    await onSave(question.setDefaultDisplay());
+  };
+
   const handleCancel = () => {
+    onCancel(question);
+  };
+
+  const handleCancelStart = () => {
     if (question.isSaved() && isDirty) {
       setModalType("leave");
     } else {
-      onCancel(question);
+      handleCancel();
     }
   };
 
@@ -70,9 +81,9 @@ export function MetricEditor({
         question={question}
         isDirty={isDirty}
         isRunnable={isRunnable}
-        onCreate={handleCreate}
-        onSave={onSave}
-        onCancel={handleCancel}
+        onCreate={handleCreateStart}
+        onSave={handleSave}
+        onCancel={handleCancelStart}
       />
       <MetricEditorBody
         question={question}
@@ -98,7 +109,7 @@ export function MetricEditor({
           question={question}
           originalQuestion={null}
           opened
-          onCreate={onCreate}
+          onCreate={handleCreate}
           onSave={onSave}
           onClose={handleModalClose}
         />
