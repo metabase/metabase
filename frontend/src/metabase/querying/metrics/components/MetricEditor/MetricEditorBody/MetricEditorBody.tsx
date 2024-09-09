@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ResizableBox } from "react-resizable";
 
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
@@ -31,15 +32,19 @@ export function MetricEditorBody({
   runQuestionQuery,
   setQueryBuilderMode,
 }: MetricEditorBodyProps) {
+  const [isResizing, setIsResizing] = useState(false);
+
   return (
     <ResizableBox
       className={S.root}
       axis="y"
       height={NOTEBOOK_HEIGHT}
-      resizeHandles={["s"]}
       handle={<ResizableBoxHandle />}
+      resizeHandles={["s"]}
+      onResizeStart={() => setIsResizing(true)}
+      onResizeStop={() => setIsResizing(false)}
     >
-      <Flex className={S.content} w="100%">
+      <Flex w="100%" style={{ overflow: isResizing ? "hidden" : "scroll" }}>
         <Box w="100%">
           <Notebook
             question={question}
