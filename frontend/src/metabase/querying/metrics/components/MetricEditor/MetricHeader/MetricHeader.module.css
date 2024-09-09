@@ -1,0 +1,4 @@
+/* emotion specificity hack  */
+.bar.bar {
+  background-color: var(--mb-color-brand);
+}

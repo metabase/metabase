@@ -19,6 +19,7 @@ import {
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
+import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import { Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -394,13 +395,14 @@ class View extends Component {
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
     const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
-    const isModelOrMetric =
-      question.type() === "model" || question.type() === "metric";
+    const isModel = question.type() === "model";
+    const isMetric = question.type() === "metric";
 
-    if (isModelOrMetric && queryBuilderMode === "dataset") {
+    if ((isModel || isMetric) && queryBuilderMode === "dataset") {
       return (
         <>
-          <DatasetEditor {...this.props} />
+          {isModel && <DatasetEditor {...this.props} />}
+          {isMetric && <MetricEditor {...this.props} />}
           <QueryModals
             questionAlerts={this.props.questionAlerts}
             user={this.props.user}
