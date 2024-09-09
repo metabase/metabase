@@ -9366,7 +9366,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v51.2024-08-30T08:00:03
+      id: v51.2024-09-05T08:00:03
       author: qnkhuat
       comment: Create the notification_handler table
       preConditions:
@@ -9428,7 +9428,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v51.2024-08-30T08:00:04
+      id: v51.2024-09-05T08:00:04
       author: qnkhuat
       comment: Create the notification_recipient table
       preConditions:
