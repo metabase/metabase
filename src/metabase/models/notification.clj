@@ -22,7 +22,7 @@
   "Set of valid notification types."
   #{:notification/system-event})
 
-(def ^:private subscription-types #{:notification-subscription/event})
+(def ^:private subscription-types #{:notification-subscription/system-event})
 
 (t2/deftransforms :model/Notification
   {:payload_type (mi/transform-validator mi/transform-keyword (partial assert-enum notification-types))})
@@ -52,7 +52,7 @@
               :where     [:and
                           [:= :n.active true]
                           [:= :ns.event_name (u/qualified-name event-name)]
-                          [:= :ns.type (u/qualified-name :notification-subscription/event)]]}))
+                          [:= :ns.type (u/qualified-name :notification-subscription/system-event)]]}))
 
 (defn create-notification!
   "Create a new notification with `subsciptions`.

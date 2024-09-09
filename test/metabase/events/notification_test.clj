@@ -28,17 +28,17 @@
             noti-1     (models.notification/create-notification!
                         {:payload_type :notification/system-event
                          :active       true}
-                        [{:type       :notification-subscription/event
+                        [{:type       :notification-subscription/system-event
                           :event_name topic}])
             noti-2     (models.notification/create-notification!
                         {:payload_type :notification/system-event
                          :active       true}
-                        [{:type       :notification-subscription/event
+                        [{:type       :notification-subscription/system-event
                           :event_name topic}])
             _inactive  (models.notification/create-notification!
                         {:payload_type :notification/system-event
                          :active       false}
-                        [{:type       :notification-subscription/event
+                        [{:type       :notification-subscription/system-event
                           :event_name topic}])
             sent-notis (atom #{})]
         (testing "publishing event will send all the actively subscribed notifciations"
@@ -57,7 +57,7 @@
         (models.notification/create-notification!
          {:payload_type :notification/system-event
           :active       true}
-         [{:type       :notification-subscription/event
+         [{:type       :notification-subscription/system-event
            :event_name topic}])
         (testing "publish an event that is not supported for notifications will not send any notifications"
           (with-redefs [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))

@@ -24,7 +24,7 @@
 (deftest notification-subscription-type-test
   (mt/with-temp [:model/Notification {noti-id :id} {}]
     (testing "success path"
-      (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/event
+      (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/system-event
                                                                              :event_name      :event/card-create
                                                                              :notification_id noti-id})]
         (is (some? (t2/select-one :model/NotificationSubscription sub-id)))))
@@ -38,14 +38,14 @@
 (deftest notification-subscription-event-name-test
   (mt/with-temp [:model/Notification {noti-id :id} {}]
     (testing "success path"
-      (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/event
+      (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/system-event
                                                                              :event_name      (first (descendants :metabase/event))
                                                                              :notification_id noti-id})]
         (is (some? (t2/select-one :model/NotificationSubscription sub-id)))))
 
     (testing "failed if type is invalid"
       (is (thrown-with-msg? Exception #"Event name must be a namespaced keyword under :event"
-                            (t2/insert! :model/NotificationSubscription {:type           :notification-subscription/event
+                            (t2/insert! :model/NotificationSubscription {:type           :notification-subscription/system-event
                                                                          :event_name     :user-join
                                                                          :notification_id noti-id}))))))
 
@@ -54,11 +54,11 @@
    :active       true})
 
 (def default-user-invited-subscription
-  {:type       :notification-subscription/event
+  {:type       :notification-subscription/system-event
    :event_name :event/user-invited})
 
 (def default-card-created-subscription
-  {:type       :notification-subscription/event
+  {:type       :notification-subscription/system-event
    :event_name :event/card-create})
 
 (deftest create-notification!-test

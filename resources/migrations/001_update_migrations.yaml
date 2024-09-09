@@ -9365,6 +9365,18 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v51.2024-09-05T08:00:03
+      author: qnkhuat
+      comment: index on notification_subscription.notification_id
+      changes:
+        - createIndex:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: notification_id
+            indexName: idx_notification_subscription_notification_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
