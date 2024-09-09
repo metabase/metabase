@@ -51,7 +51,7 @@
   "A vector of colors used for coloring charts. Uses [[public-settings/application-colors]] for user choices."
   []
   (let [order [:brand :accent1 :accent2 :accent3 :accent4 :accent5 :accent6 :accent7]
-        colors-map (merge {:brand   "#509EE3"
+        colors-map (merge {:brand   "#587330"
                            :accent1 "#88BF4D"
                            :accent2 "#A989C5"
                            :accent3 "#EF8C8C"

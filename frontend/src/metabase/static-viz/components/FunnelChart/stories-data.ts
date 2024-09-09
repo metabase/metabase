@@ -20,7 +20,7 @@ export const DEFAULT: FunnelProps = {
     },
     colors: {
       textMedium: "#949aab",
-      brand: "#509ee3",
+      brand: "#587330",
       border: "#f0f0f0",
     },
     visualization_settings: {},
@@ -48,7 +48,7 @@ export const DUPLICATED_STEPS: FunnelProps = {
     },
     colors: {
       textMedium: "#949aab",
-      brand: "#509ee3",
+      brand: "#587330",
       border: "#f0f0f0",
     },
     visualization_settings: {},

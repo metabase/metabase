@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import ReactFlow, {
   useNodesState,
   useEdgesState,
@@ -13,12 +19,32 @@ import "reactflow/dist/style.css";
 import { Flex, Group, Title } from "metabase/ui";
 import { t } from "ttag";
 import NoResults from "assets/img/no_results.svg";
-import { createGraphData, createNewGraphData, CubeData, CubeFlowProps, extractCubeName, extractSQLInfo, extractTableName, FieldData, MapData, newExtractAllJoins } from "./utils";
+import {
+  createGraphData,
+  createNewGraphData,
+  CubeData,
+  CubeFlowProps,
+  extractCubeName,
+  extractSQLInfo,
+  extractTableName,
+  FieldData,
+  MapData,
+  newExtractAllJoins,
+} from "./utils";
 import CustomNode from "./CubeNode";
 import { getLayoutedElements } from "./LayoutedElements";
-import { skipToken, useGetCubeDataQuery, useListDatabasesQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCubeDataQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
 import LoadingAndErrorWrapper from "../LoadingAndErrorWrapper";
-import { BrowseContainer, BrowseHeader, BrowseSection, CenteredEmptyState } from "metabase/browse/components/BrowseContainer.styled";
+import {
+  BrowseContainer,
+  BrowseHeader,
+  BrowseSection,
+  CenteredEmptyState,
+} from "metabase/browse/components/BrowseContainer.styled";
 import { Box } from "@mantine/core";
 import { GetCubeDataRequest } from "metabase-types/api";
 
@@ -27,23 +53,29 @@ const nodeTypes = {
 };
 
 const CubeFlow = () => {
-  const { data: dbData, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
+  const {
+    data: dbData,
+    isLoading: dbLoading,
+    error: dbError,
+  } = useListDatabasesQuery();
   const databases = dbData?.data;
   const companyName = useMemo(() => {
     if (databases) {
-      const cubeDatabase = databases.find(database => database.is_cube === true);
-      return cubeDatabase ? cubeDatabase.company_name : '';
+      const cubeDatabase = databases.find(
+        database => database.is_cube === true,
+      );
+      return cubeDatabase ? cubeDatabase.company_name : "";
     }
-    return '';
+    return "";
   }, [databases]);
 
   const { data, isLoading, error } = useGetCubeDataQuery(
-    companyName ? { companyName } : skipToken
+    companyName ? { companyName } : skipToken,
   );
-  const [showDefinition, setShowDefinition] = useState<boolean>(false)
+  const [showDefinition, setShowDefinition] = useState<boolean>(false);
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
 
-  const cubes = data as { content: string }[]
+  const cubes = data as { content: string }[];
 
   const tableGroups: { [key: string]: FieldData[] } = {};
   if (error) {
@@ -70,7 +102,7 @@ const CubeFlow = () => {
   const cubesArr: any = cubes.map(cube => cube.content);
   let tableNameArr: string[] = [];
   let cubeNameArr: string[] = [];
-  cubes.forEach((cube) => {
+  cubes.forEach(cube => {
     const cubeName = extractCubeName(cube.content);
     const tableName = extractCubeName(cube.content);
     tableNameArr.push(tableName);
@@ -85,7 +117,7 @@ const CubeFlow = () => {
     const result = extractedValues.map((items: string[], index: number) => {
       const cubeName = extractedKeys[index];
       return items.map((item: string) => {
-        return item.replace('${CUBE}', `\${${cubeName}}`);
+        return item.replace("${CUBE}", `\${${cubeName}}`);
       });
     });
 
@@ -135,7 +167,7 @@ const CubeFlow = () => {
 
     tableNameArr.forEach(table => {
       if (!Object.values(resultMap).some(field => field.table === table)) {
-        addField(table, 'id');
+        addField(table, "id");
       }
     });
 
@@ -147,10 +179,21 @@ const CubeFlow = () => {
   const createData = (arr: any[]): MapData[] => {
     const resultMap: { [key: string]: MapData } = {};
 
-    const addField = (sourceCube: string, sourceField: string, targetTable: string, targetField: string) => {
+    const addField = (
+      sourceCube: string,
+      sourceField: string,
+      targetTable: string,
+      targetField: string,
+    ) => {
       const id = `${sourceCube}-${targetTable}`;
       if (!resultMap[id]) {
-        resultMap[id] = { id, sourceCube, sourceField, targetTable, targetField };
+        resultMap[id] = {
+          id,
+          sourceCube,
+          sourceField,
+          targetTable,
+          targetField,
+        };
       }
     };
     arr.forEach((items: string[], index: number) => {
@@ -165,7 +208,6 @@ const CubeFlow = () => {
           const [, targetCube, targetField] = targetMatch;
           const targetTableName = getTableName(targetCube);
 
-
           addField(sourceCube, sourceField, targetTableName, targetField);
         }
       });
@@ -174,9 +216,9 @@ const CubeFlow = () => {
     return Object.values(resultMap);
   };
 
-  const newField = createData(modifiedValues)
+  const newField = createData(modifiedValues);
 
-  extractField.forEach((field) => {
+  extractField.forEach(field => {
     if (!tableGroups[field.table]) {
       tableGroups[field.table] = [];
     }
@@ -185,18 +227,28 @@ const CubeFlow = () => {
 
   const cubeData: CubeData = {};
 
-  cubes.forEach((cube) => {
+  cubes.forEach(cube => {
     const cubeName = extractCubeName(cube.content);
     const cubeInfo = extractSQLInfo(cube.content);
 
     cubeData[cubeName] = {
-      fields: cubeInfo.fields
+      fields: cubeInfo.fields,
     };
   });
 
-
-  const oldGraphData = createGraphData(tableGroups, cubeData, tableNameArr, cubeNameArr)
-  const graphData = createNewGraphData(tableGroups, cubeData, tableNameArr, cubeNameArr, newField)
+  const oldGraphData = createGraphData(
+    tableGroups,
+    cubeData,
+    tableNameArr,
+    cubeNameArr,
+  );
+  const graphData = createNewGraphData(
+    tableGroups,
+    cubeData,
+    tableNameArr,
+    cubeNameArr,
+    newField,
+  );
   const [hoveredNode, setHoveredNode] = useState(null);
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     const nodes = graphData.nodes.map((node: any) => ({
@@ -209,7 +261,7 @@ const CubeFlow = () => {
           hasHandle: field.type === "source" || field.type === "target",
         })),
         cubeInfo: node.cubeInfo,
-        showDefinition: showDefinition
+        showDefinition: showDefinition,
       },
       position: { x: 0, y: 0 },
     }));
@@ -221,10 +273,10 @@ const CubeFlow = () => {
       targetHandle: edge.targetHandle,
       type: "default",
       animated: true,
-      style: { stroke: "#509EE3" },
+      style: { stroke: "#587330" },
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: "#509EE3",
+        color: "#587330",
       },
     }));
 
@@ -234,22 +286,22 @@ const CubeFlow = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const onConnect = useCallback(
     (params: any) =>
-      setEdges((eds) =>
+      setEdges(eds =>
         addEdge(
           {
             ...params,
             type: "default",
             animated: true,
-            style: { stroke: "#509EE3" },
+            style: { stroke: "#587330" },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: "#509EE3",
+              color: "#587330",
             },
           },
-          eds
-        )
+          eds,
+        ),
       ),
-    [setEdges]
+    [setEdges],
   );
   const onNodeMouseEnter = useCallback((event: any, node: any) => {
     setHoveredNode(node.id);
@@ -260,30 +312,31 @@ const CubeFlow = () => {
   const elementsToHighlight = useMemo(() => {
     if (!hoveredNode) return new Set();
     const connectedEdges = edges.filter(
-      (e) => e.source === hoveredNode || e.target === hoveredNode
+      e => e.source === hoveredNode || e.target === hoveredNode,
     );
     const connectedNodes = new Set(
-      connectedEdges.flatMap((e) => [e.source, e.target])
+      connectedEdges.flatMap(e => [e.source, e.target]),
     );
     return connectedNodes;
   }, [hoveredNode, edges]);
   const highlightedNodes = useMemo(
     () =>
-      nodes.map((node) => ({
+      nodes.map(node => ({
         ...node,
         data: {
           ...node.data,
           isConnected: elementsToHighlight.has(node.id),
         },
       })),
-    [nodes, elementsToHighlight]
+    [nodes, elementsToHighlight],
   );
   const highlightedEdges = useMemo(
     () =>
-      edges.map((edge) => {
-        const isHighlighted = edge.source === hoveredNode || edge.target === hoveredNode;
+      edges.map(edge => {
+        const isHighlighted =
+          edge.source === hoveredNode || edge.target === hoveredNode;
         const highlightColor = "#00FF00"; // Green
-        const defaultColor = "#509EE3";
+        const defaultColor = "#587330";
 
         return {
           ...edge,
@@ -297,24 +350,20 @@ const CubeFlow = () => {
           },
         } as Edge;
       }),
-    [edges, hoveredNode]
+    [edges, hoveredNode],
   );
 
   const handleDefinition = useCallback(() => {
-    setShowDefinition((prevShowDefinition) => !prevShowDefinition);
+    setShowDefinition(prevShowDefinition => !prevShowDefinition);
 
-    setNodes((prevNodes) => {
-      const updatedNodes = prevNodes.map((node) => ({
+    setNodes(prevNodes => {
+      const updatedNodes = prevNodes.map(node => ({
         ...node,
-        data: { ...node.data, showDefinition: !node.data.showDefinition }
+        data: { ...node.data, showDefinition: !node.data.showDefinition },
       }));
 
-      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-        updatedNodes,
-        edges,
-        "LR",
-        !showDefinition
-      );
+      const { nodes: layoutedNodes, edges: layoutedEdges } =
+        getLayoutedElements(updatedNodes, edges, "LR", !showDefinition);
 
       setEdges(layoutedEdges);
 
@@ -347,9 +396,7 @@ const CubeFlow = () => {
               gap="md"
             >
               <Title order={1} color="text-dark">
-                <Group spacing="sm">
-                  {t`Data Map`}
-                </Group>
+                <Group spacing="sm">{t`Data Map`}</Group>
               </Title>
             </Flex>
           </BrowseSection>
@@ -370,33 +417,40 @@ const CubeFlow = () => {
             defaultEdgeOptions={{
               type: "default",
               animated: true,
-              style: { stroke: "#509EE3" },
+              style: { stroke: "#587330" },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
-                color: "#509EE3",
+                color: "#587330",
               },
             }}
           >
             <Background color="#555" gap={16} />
             <Controls />
           </ReactFlow>
-          <div style={{
-            position: "absolute",
-            right: 60,
-            top: 210,
-            zIndex: 1000,
-            display: "flex",
-            flexDirection: "column",
-            gap: "10px"
-          }}>
-            <button style={{
-              padding: "10px",
-              backgroundColor: "#509EE3",
-              color: "white",
-              border: "none",
-              borderRadius: "10px",
-              cursor: "pointer"
-            }} onClick={handleDefinition}>{showDefinition ? "Hide" : "Show"} Definition</button>
+          <div
+            style={{
+              position: "absolute",
+              right: 60,
+              top: 210,
+              zIndex: 1000,
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+            }}
+          >
+            <button
+              style={{
+                padding: "10px",
+                backgroundColor: "#587330",
+                color: "white",
+                border: "none",
+                borderRadius: "10px",
+                cursor: "pointer",
+              }}
+              onClick={handleDefinition}
+            >
+              {showDefinition ? "Hide" : "Show"} Definition
+            </button>
           </div>
         </div>
       </BrowseContainer>
