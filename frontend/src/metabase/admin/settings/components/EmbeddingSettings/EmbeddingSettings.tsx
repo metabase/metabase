@@ -1,3 +1,4 @@
+import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
@@ -22,8 +23,12 @@ export function EmbeddingSettings({
     (setting: any) => setting.key === "enable-embedding",
   );
 
-  function onChangeEnableEmbedding(value: boolean) {
+  function handleChangeEnableEmbedding(value: boolean) {
     updateSetting({ key: "enable-embedding" }, value);
+  }
+
+  function handleToggleEmbeddingSdk(event: ChangeEvent<HTMLInputElement>) {
+    updateSetting({ key: "enable-embedding-sdk" }, event.target.checked);
   }
 
   return (
@@ -39,12 +44,12 @@ export function EmbeddingSettings({
           <SetByEnvVarWrapper setting={enableEmbeddingSetting}>
             <EmbeddingSwitchWidget
               setting={enableEmbeddingSetting}
-              onChange={onChangeEnableEmbedding}
+              onChange={handleChangeEnableEmbedding}
             />
           </SetByEnvVarWrapper>
         </Box>
         <StaticEmbeddingOptionCard />
-        <EmbeddingSdkOptionCard />
+        <EmbeddingSdkOptionCard onToggle={handleToggleEmbeddingSdk} />
         <InteractiveEmbeddingOptionCard />
       </Stack>
     </Box>

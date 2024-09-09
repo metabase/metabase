@@ -28,6 +28,7 @@ export const setupEmbedding = async ({
     settingValues: createMockSettings(settingValues),
     tokenFeatures: createMockTokenFeatures({
       embedding: hasEmbeddingFeature,
+      embedding_sdk: hasEmbeddingFeature,
     }),
     hasEnterprisePlugins,
   });

@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { ChangeEventHandler } from "react";
 import { Link } from "react-router";
 import { jt, t } from "ttag";
 
@@ -13,7 +14,15 @@ import {
   getSetting,
   getUpgradeUrl,
 } from "metabase/selectors/settings";
-import { Button, type ButtonProps, Flex, Icon, Text, Title } from "metabase/ui";
+import {
+  Button,
+  type ButtonProps,
+  Flex,
+  Icon,
+  Switch,
+  Text,
+  Title,
+} from "metabase/ui";
 
 import EmbeddingOptionStyle from "./EmbeddingOption.module.css";
 import { BoldExternalLink, Label, StyledCard } from "./EmbeddingOption.styled";
@@ -98,8 +107,13 @@ export const StaticEmbeddingOptionCard = () => {
   );
 };
 
-export function EmbeddingSdkOptionCard() {
-  const isEmbeddingEnabled = useSetting("enable-embedding");
+interface EmbeddingSdkOptionCardProps {
+  onToggle: ChangeEventHandler<HTMLInputElement>;
+}
+export function EmbeddingSdkOptionCard({
+  onToggle,
+}: EmbeddingSdkOptionCardProps) {
+  const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
   const isEE = PLUGIN_EMBEDDING.isEnabled();
 
   return (
@@ -107,7 +121,7 @@ export function EmbeddingSdkOptionCard() {
       icon={
         <SdkIcon
           className={cx(EmbeddingOptionStyle.icon, {
-            [EmbeddingOptionStyle.disabled]: !isEmbeddingEnabled,
+            [EmbeddingOptionStyle.disabled]: !isEmbeddingSdkEnabled,
           })}
         />
       }
@@ -115,9 +129,19 @@ export function EmbeddingSdkOptionCard() {
       label={t`PRO & ENTERPRISE`}
       description={t`Interactive embedding with full, granular control. Embed and style individual Metabase components in your app, and tailor the experience to each person. Allows for CSS styling, custom user flows, event subscriptions, and more. Only available with SSO via JWT.`}
     >
-      <LinkButton to={"/admin/settings/embedding-in-other-applications/sdk"}>
-        {!isEE ? t`Try it out` : t`Configure`}
-      </LinkButton>
+      <Flex align="center" w="100%">
+        <LinkButton to={"/admin/settings/embedding-in-other-applications/sdk"}>
+          {!isEE ? t`Try it out` : t`Configure`}
+        </LinkButton>
+        <Switch
+          size="sm"
+          label={isEmbeddingSdkEnabled ? t`Enabled` : t`Disabled`}
+          ml="auto"
+          labelPosition="left"
+          checked={isEmbeddingSdkEnabled}
+          onChange={onToggle}
+        />
+      </Flex>
     </EmbeddingOption>
   );
 }

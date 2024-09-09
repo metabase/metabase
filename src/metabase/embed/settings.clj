@@ -18,8 +18,7 @@
 
 (defsetting embedding-app-origins-sdk
   (deferred-tru "Allow this origin to embed Metabase SDK")
-  ;; TODO: Change this to `embedding-sdk` when the flag is added to the test token.
-  :feature    :embedding
+  :feature    :embedding-sdk
   :export?    false
   :visibility :public
   :encryption :never
@@ -44,6 +43,14 @@
                                           :embedding-app-origin-set   (boolean (embedding-app-origin))
                                           :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
                                           :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))
+
+(defsetting enable-embedding-sdk
+  (deferred-tru "Allow admins to set the enable embedding Metabase via the SDK?")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter)
 
 ;; settings for the embedding homepage
 (defsetting embedding-homepage

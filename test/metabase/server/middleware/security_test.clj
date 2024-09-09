@@ -184,17 +184,17 @@
 
 (deftest test-access-control-headers?
   (testing "Should always allow localhost:*"
-    (tu/with-temporary-setting-values [enable-embedding     true
-                                       embedding-app-origin nil]
+    (tu/with-temporary-setting-values [enable-embedding-sdk      true
+                                       embedding-app-origins-sdk nil]
       (is (= "http://localhost:8080" (get (mw.security/access-control-headers "http://localhost:8080") "Access-Control-Allow-Origin")))))
 
   (testing "Should disable CORS when embedding is disabled"
-    (tu/with-temporary-setting-values [enable-embedding     false
-                                       embedding-app-origin nil]
+    (tu/with-temporary-setting-values [enable-embedding-sdk      false
+                                       embedding-app-origins-sdk nil]
       (is (= nil (get (mw.security/access-control-headers "http://localhost:8080") "Access-Control-Allow-Origin")))))
 
   (testing "Should work with embedding-app-origin"
-    (mt/with-premium-features #{:embedding}
-      (tu/with-temporary-setting-values [enable-embedding     true
-                                         embedding-app-origin "example.com"]
+    (mt/with-premium-features #{:embedding-sdk}
+      (tu/with-temporary-setting-values [enable-embedding-sdk      true
+                                         embedding-app-origins-sdk "example.com"]
         (is (= "https://example.com" (get (mw.security/access-control-headers "https://example.com") "Access-Control-Allow-Origin")))))))

@@ -120,8 +120,8 @@
 
 (defn- embedding-app-origin-sdk
   []
-  (when (embed.settings/enable-embedding)
-    (str "localhost:* " (embed.settings/embedding-app-origin))))
+  (when (embed.settings/enable-embedding-sdk)
+    (str "localhost:* " (embed.settings/embedding-app-origins-sdk))))
 
 (defn- content-security-policy-header-with-frame-ancestors
   [allow-iframes? nonce]

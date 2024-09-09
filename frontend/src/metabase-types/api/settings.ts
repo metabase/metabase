@@ -150,6 +150,7 @@ export const tokenFeatures = [
   "disable_password_login",
   "content_verification",
   "embedding",
+  "embedding_sdk",
   "hosting",
   "llm_autodescription",
   "official_collections",
@@ -209,6 +210,7 @@ interface InstanceSettings {
   "email-smtp-username": string | null;
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
+  "enable-embedding-sdk": boolean;
   "enable-nested-queries": boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
