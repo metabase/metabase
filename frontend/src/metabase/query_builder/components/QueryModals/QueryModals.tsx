@@ -128,10 +128,16 @@ export function QueryModals({
 
   const nativeToDashboarQuestionDashboard = useCallback(
     (question: Question, tabId?: DashboardTabId) => {
+      const dashboardId = question.dashboardId();
+
+      if (!dashboardId) {
+        throw new Error("must provide a valid dashboard question");
+      }
+
       dispatch(
         push(
           Urls.dashboard(
-            { id: question.dashboardId(), name: "" },
+            { id: dashboardId, name: "" },
             {
               editMode: true,
               addCardWithId: question.id(),
@@ -176,7 +182,7 @@ export function QueryModals({
   const handleCopySaved = useCallback(
     (newQuestion: Question) => {
       if (typeof newQuestion.dashboardId() === "number") {
-        nativeToDashboarQuestionDashboard(entity);
+        nativeToDashboarQuestionDashboard(newQuestion);
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
