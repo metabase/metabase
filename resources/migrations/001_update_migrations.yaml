@@ -9369,6 +9369,7 @@ databaseChangeLog:
       id: v51.2024-09-05T08:00:03
       author: qnkhuat
       comment: index on notification_subscription.notification_id
+      rollback: # no need to rollback, will be removed with the table
       preConditions:
         - not:
             - indexExists:
