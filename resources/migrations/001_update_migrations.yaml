@@ -9365,6 +9365,137 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v51.2024-08-30T08:00:03
+      author: qnkhuat
+      comment: Create the notification_destination table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_destination
+      changes:
+        - createTable:
+            tableName: notification_destination
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              # TODO: can be removed once emails and slack configuration are fully migrated to be stored in channel table.
+              - column:
+                  name: channel_type
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: notification_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: notification
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_destination_notification_id
+                    deleteCascade: true
+              - column:
+                  name: channel_id
+                  type: int
+                  constraints:
+                    nullable: true # temporarily nullable, because we need to support email and slack channels as global configuration
+                    referencedTableName: channel
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_destination_channel_id
+                    deleteCascade: true
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-08-30T08:00:04
+      author: qnkhuat
+      comment: Create the notification_recipient table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_recipient
+      changes:
+        - createTable:
+            tableName: notification_recipient
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: notification_destination_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: notification_destination
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_recipient_notification_destination_id
+                    deleteCascade: true
+              - column:
+                  name: type
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_recipient_user_id
+                    deleteCascade: true
+              - column:
+                  name: permissions_group_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_recipient_permissions_group_id
+                    deleteCascade: true
+              - column:
+                  name: details
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
