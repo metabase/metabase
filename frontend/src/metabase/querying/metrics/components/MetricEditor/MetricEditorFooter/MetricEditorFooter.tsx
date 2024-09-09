@@ -1,6 +1,5 @@
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
 
@@ -11,6 +10,7 @@ type MetricEditorFooterProps = {
   question: Question;
   result: Dataset | null;
   rawSeries: RawSeries | null;
+  isRunnable: boolean;
   isRunning: boolean;
   isResultDirty: boolean;
   runQuestionQuery: () => Promise<void>;
@@ -21,12 +21,11 @@ export function MetricEditorFooter({
   question,
   result,
   rawSeries,
+  isRunnable,
   isRunning,
   isResultDirty,
   runQuestionQuery,
 }: MetricEditorFooterProps) {
-  const isRunnable = Lib.canRun(question.query(), "metric");
-
   return (
     <DebouncedFrame className={S.root}>
       {result != null || isRunning ? (

@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Flex } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
 
@@ -42,6 +43,7 @@ export function MetricEditor({
   setQueryBuilderMode,
 }: MetricEditorProps) {
   const [modalType, setModalType] = useState<MetricModalType>();
+  const isRunnable = Lib.canRun(question.query(), "metric");
 
   const handleCreateStart = async () => {
     await updateQuestion(question.setDefaultDisplay());
@@ -73,6 +75,7 @@ export function MetricEditor({
       <MetricEditorHeader
         question={question}
         isDirty={isDirty}
+        isRunnable={isRunnable}
         onCreate={handleCreateStart}
         onSave={handleSave}
         onCancel={handleCancel}
@@ -82,6 +85,7 @@ export function MetricEditor({
         reportTimezone={reportTimezone}
         isDirty={isDirty}
         isResultDirty={isResultDirty}
+        isRunnable={isRunnable}
         updateQuestion={updateQuestion}
         runQuestionQuery={runQuestionQuery}
         setQueryBuilderMode={setQueryBuilderMode}
@@ -90,6 +94,7 @@ export function MetricEditor({
         question={question}
         result={result}
         rawSeries={rawSeries}
+        isRunnable={isRunnable}
         isRunning={isRunning}
         isResultDirty={isResultDirty}
         runQuestionQuery={runQuestionQuery}

@@ -2,7 +2,6 @@ import { ResizableBox } from "react-resizable";
 
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box, Flex } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import S from "./MetricEditorBody.module.css";
@@ -15,6 +14,7 @@ type MetricEditorBodyProps = {
   reportTimezone: string;
   isDirty: boolean;
   isResultDirty: boolean;
+  isRunnable: boolean;
   updateQuestion: (question: Question) => Promise<void>;
   runQuestionQuery: () => Promise<void>;
   setQueryBuilderMode: (mode: string) => void;
@@ -25,12 +25,11 @@ export function MetricEditorBody({
   reportTimezone,
   isDirty,
   isResultDirty,
+  isRunnable,
   updateQuestion,
   runQuestionQuery,
   setQueryBuilderMode,
 }: MetricEditorBodyProps) {
-  const isRunnable = Lib.canRun(question.query(), "metric");
-
   return (
     <ResizableBox className={S.root} axis="y" height={NOTEBOOK_HEIGHT}>
       <Flex className={S.content} w="100%">

@@ -12,6 +12,7 @@ import S from "./MetricEditorHeader.module.css";
 type MetricEditorHeaderProps = {
   question: Question;
   isDirty: boolean;
+  isRunnable: boolean;
   onCreate: (question: Question) => void;
   onSave: (question: Question) => Promise<void>;
   onCancel: () => void;
@@ -20,6 +21,7 @@ type MetricEditorHeaderProps = {
 export function MetricEditorHeader({
   question,
   isDirty,
+  isRunnable,
   onCreate,
   onSave,
   onCancel,
@@ -41,7 +43,7 @@ export function MetricEditorHeader({
           <ActionButton
             key="save"
             actionFn={handleSave}
-            disabled={!isDirty}
+            disabled={!isRunnable || !isDirty}
             normalText={t`Save changes`}
             activeText={t`Saving…`}
             failedText={t`Save failed`}
