@@ -26,6 +26,16 @@ export const TableContainer = styled.div`
   overflow-y: hidden;
 `;
 
+export const TableContainerValidation = styled.div`
+  position: relative;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+`;
+
 const standardTableStyleReset = css`
   border-collapse: collapse;
   border-spacing: 0;
@@ -40,6 +50,10 @@ export const Table = styled.table`
 
   tr {
     border-bottom: 1px solid ${() => alpha(color("border"), 0.3)};
+    &:hover {
+      background-color: #e7eddf;
+      cursor: pointer;
+    }
   }
 
   th,

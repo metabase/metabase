@@ -81,7 +81,7 @@ const BROWSE_CHAT = "/browse/chat";
 const BROWSE_SEMANTIC_LAYER = "/browse/semantic-layer";
 const BROWSE_LIBRARY = "/collection/2-library";
 const BROWSE_INSIGHTS = "/browse/insights";
-const BROWSE_SETTINGS = "/admin/settings/setup";
+const BROWSE_VALIDATION = "/browse/validation";
 
 function MainNavbarView({
   isAdmin,
@@ -194,6 +194,15 @@ function MainNavbarView({
               aria-label={t`Library`}
             >
               {t`Library`}
+            </PaddedSidebarLink>
+            <PaddedSidebarLink
+              icon="check"
+              url={BROWSE_VALIDATION}
+              isSelected={nonEntityItem?.url?.startsWith(BROWSE_VALIDATION)}
+              onClick={onItemSelect}
+              aria-label={t`Validation`}
+            >
+              {t`Validation`}
             </PaddedSidebarLink>
             <PaddedSidebarLink
               icon="lightbulb"
