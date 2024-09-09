@@ -29,7 +29,7 @@
   [qualified-ns value]
   (assert (string? qualified-ns) "namespace must be a string")
   (when-not (= qualified-ns (-> value keyword namespace))
-    (throw (ex-info (format "Value %s must be a namespaced keyword under :%s" value qualified-ns) {:status-code 400
+    (throw (ex-info (format "Must be a namespaced keyword under :%s, got: %s" qualified-ns value) {:status-code 400
                                                                                                    :value       value}))))
 
 (def notification-types

@@ -46,7 +46,7 @@
         (is (some? (t2/select-one :model/NotificationSubscription sub-id)))))
 
     (testing "failed if type is invalid"
-      (is (thrown-with-msg? Exception #"Event name must be a namespaced keyword under :event"
+      (is (thrown-with-msg? Exception #"Must be a namespaced keyword under :event, got: :user-join"
                             (t2/insert! :model/NotificationSubscription {:type           :notification-subscription/system-event
                                                                          :event_name     :user-join
                                                                          :notification_id noti-id}))))))
