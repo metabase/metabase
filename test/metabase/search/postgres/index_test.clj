@@ -8,6 +8,16 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
+(defn is-postgres?
+  "Check whether we can create this index"
+  []
+  (= "PostgreSQL"
+     (t2/with-connection [^java.sql.Connection conn]
+       (.. conn getMetaData getDatabaseProductName))))
+
+
 (def ^:private non-indexed-models
   (disj search.config/all-models "indexed-entity"))
 
@@ -43,10 +53,11 @@
 (defmacro with-index
   "Ensure a clean, small index."
   [& body]
-  `(mt/dataset ~(symbol "test-data")
-     (search.index/reset-index!)
-     (search.ingestion/populate-index!)
-     ~@body))
+  `(when (is-postgres?)
+     (mt/dataset ~(symbol "test-data")
+       (search.index/reset-index!)
+       (search.ingestion/populate-index!)
+       ~@body)))
 
 (deftest consistent-subset-test
   (with-index
