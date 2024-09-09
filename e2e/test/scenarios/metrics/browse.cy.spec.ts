@@ -269,14 +269,17 @@ describe("scenarios > browse > metrics", () => {
     });
 
     it("should be possible to navigate to the collection from the dot menu", () => {
-      createMetrics([ORDERS_SCALAR_METRIC]);
+      createMetrics([ORDERS_SCALAR_MODEL_METRIC]);
 
       cy.visit("/browse/metrics");
 
       metricsTable().findByLabelText("Metric options").click();
       popover().findByText("Open collection").should("be.visible").click();
 
-      cy.location("pathname").should("eq", "/collection/root");
+      cy.location("pathname").should(
+        "match",
+        new RegExp(`^/collection/${FIRST_COLLECTION_ID}`),
+      );
     });
 
     it("should be possible to trash a metric from the dot menu when the user has write access", () => {
