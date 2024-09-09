@@ -90,13 +90,11 @@ export default class LegendItem extends Component {
             disabled={!showTooltip || !showDotTooltip}
             arrowPosition="center"
           >
-            <span>
-              <LegendItemDot
-                color={color}
-                isVisible={isVisible}
-                onClick={onToggleSeriesVisibility}
-              />
-            </span>
+            <LegendItemDot
+              color={color}
+              isVisible={isVisible}
+              onClick={onToggleSeriesVisibility}
+            />
           </Tooltip>
         )}
         {showTitle && (
