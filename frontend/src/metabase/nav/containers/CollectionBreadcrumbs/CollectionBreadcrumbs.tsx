@@ -11,13 +11,13 @@ import { getCollectionId } from "metabase/selectors/app";
 import type { CollectionId } from "metabase-types/api";
 
 import {
-  CollectionBreadcrumbs as InnerCollectionBreadcrumbs,
-  type CollectionBreadcrumbsProps as InnerCollectionBreadcrumbsProps,
+  CollectionBreadcrumbs as Breadcrumbs,
+  type CollectionBreadcrumbsProps as BreadcrumbsProps,
 } from "../../components/CollectionBreadcrumbs/CollectionBreadcrumbs";
 
 interface CollectionBreadcrumbsProps
   extends Omit<
-    InnerCollectionBreadcrumbsProps,
+    BreadcrumbsProps,
     "collection" | "dashboard" | "baseCollectionId"
   > {
   collectionId?: CollectionId;
@@ -31,9 +31,9 @@ export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
   const { data: collection } = useGetCollectionQuery({ id: collectionId });
 
   const dashboardId = useSelector(getQuestion)?.dashboardId();
-  const location = useLocation();
-  const isQuestionPage = location.pathname?.startsWith("/question");
-  const shouldShowDashboard = dashboardId && isQuestionPage;
+  const isDashboardQuestion = typeof dashboardId === "number";
+  const isQuestionPage = useLocation().pathname?.startsWith("/question");
+  const shouldShowDashboard = isDashboardQuestion && isQuestionPage;
 
   const dashboardReq = useGetDashboardQuery(
     shouldShowDashboard ? { id: dashboardId } : skipToken,
@@ -41,7 +41,7 @@ export const CollectionBreadcrumbs = (props: CollectionBreadcrumbsProps) => {
   const dashboard = shouldShowDashboard ? dashboardReq?.data : undefined;
 
   return (
-    <InnerCollectionBreadcrumbs
+    <Breadcrumbs
       {...props}
       collection={collection}
       dashboard={dashboard}

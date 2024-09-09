@@ -10,13 +10,16 @@ export type SaveQuestionProps = {
   originalQuestion: Question | null;
   onCreate: (
     question: Question,
-    dashboardTabId?: DashboardTabId,
+    options?: {
+      dashboardTabId?: DashboardTabId;
+    },
   ) => Promise<Question>;
   onSave: (question: Question) => Promise<void>;
 
   closeOnSuccess?: boolean;
   multiStep?: boolean;
   initialCollectionId?: CollectionId | null;
+  initialDashboardTabId?: number | null | undefined;
 
   /**
    * The target collection to save the question to.
@@ -26,13 +29,7 @@ export type SaveQuestionProps = {
    * the question will be saved to this collection.
    **/
   saveToCollectionId?: CollectionId;
-  initialDashboardId?: DashboardId | null;
-  initialDashboardTabId?: number | null | undefined;
-} & (
-  | { initialCollectionId?: null; initialDashboardId?: null }
-  | { initialCollectionId: CollectionId; initialDashboardId?: DashboardId }
-  | { initialCollectionId: CollectionId; initialDashboardId?: null }
-);
+};
 
 export type FormValues = {
   saveType: "overwrite" | "create";
@@ -52,7 +49,12 @@ export type UpdateQuestionOptions = {
 export type CreateQuestionOptions = {
   details: FormValues;
   question: Question;
-  onCreate: (question: Question) => Promise<void>;
+  onCreate: (
+    question: Question,
+    options?: {
+      dashboardTabId?: DashboardTabId | undefined;
+    },
+  ) => Promise<void>;
 } & Pick<SaveQuestionProps, "saveToCollectionId">;
 
 export type SubmitQuestionOptions = CreateQuestionOptions & {
