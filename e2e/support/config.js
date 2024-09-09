@@ -8,6 +8,7 @@ import {
   verifyDownloadTasks,
 } from "./commands/downloads/downloadUtils";
 import * as dbTasks from "./db_tasks";
+import { signJwt } from "./helpers/e2e-jwt-tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const {
@@ -106,6 +107,7 @@ const defaultConfig = {
       ...dbTasks,
       ...verifyDownloadTasks,
       removeDirectory,
+      signJwt,
     });
 
     // this is an official workaround to keep recordings of the failed specs only
@@ -171,7 +173,14 @@ const defaultConfig = {
 
 const mainConfig = {
   ...defaultConfig,
-  chromeWebSecurity: isEmbeddingSdk,
+  ...(isEmbeddingSdk
+    ? {
+        chromeWebSecurity: true,
+        hosts: {
+          "my-site.local": "127.0.0.1",
+        },
+      }
+    : {}),
   projectId: "ywjy9z",
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
   reporter: "cypress-multi-reporters",

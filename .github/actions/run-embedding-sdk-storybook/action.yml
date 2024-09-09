@@ -15,7 +15,7 @@ runs:
       shell: bash
 
     - name: Build Storybook
-      run: yarn build-storybook-embedding-sdk
+      run: yarn build-storybook-embedding-sdk-cypress
       shell: bash
 
     - name: Serve Storybook

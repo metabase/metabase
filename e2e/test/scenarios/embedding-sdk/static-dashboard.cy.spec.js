@@ -1,3 +1,4 @@
+import { USERS } from "e2e/support/cypress_data";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_QUESTION_ID,
@@ -50,6 +51,24 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
     );
+
+    cy.task("signJwt", {
+      payload: {
+        email: USERS.normal.email,
+        exp: Math.round(Date.now() / 1000) + 10 * 60, // 10 minute expiration
+      },
+      secret: JWT_SHARED_SECRET,
+    }).then(jwtToken => {
+      const ssoUrl = new URL("/auth/sso", Cypress.config().baseUrl);
+      ssoUrl.searchParams.set("jwt", jwtToken);
+      ssoUrl.searchParams.set("token", "true");
+      cy.request(ssoUrl.toString()).then(({ body }) => {
+        cy.wrap(body).as("metabaseSsoResponse");
+      });
+    });
+    cy.get("@metabaseSsoResponse").then(ssoResponse => {
+      cy.intercept("GET", "/sso/metabase", ssoResponse);
+    });
   });
 
   it("should not render dashboard when embedding SDK is not enabled", () => {
@@ -63,7 +82,6 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
         url: EMBEDDING_SDK_STORY_HOST,
         qs: { id: "embeddingsdk-staticdashboard--default", viewMode: "story" },
         onBeforeLoad: window => {
-          window.JWT_SHARED_SECRET = JWT_SHARED_SECRET;
           window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
           window.DASHBOARD_ID = dashboardId;
         },
@@ -88,7 +106,70 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
         url: EMBEDDING_SDK_STORY_HOST,
         qs: { id: "embeddingsdk-staticdashboard--default", viewMode: "story" },
         onBeforeLoad: window => {
-          window.JWT_SHARED_SECRET = JWT_SHARED_SECRET;
+          window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
+          window.DASHBOARD_ID = dashboardId;
+        },
+      });
+    });
+
+    cy.wait("@getUser").then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
+    });
+
+    cy.wait("@getDashboard").then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
+    });
+
+    cy.get("#metabase-sdk-root")
+      .should("be.visible")
+      .within(() => {
+        cy.findByText("Embedding Sdk Test Dashboard").should("be.visible"); // dashboard title
+
+        cy.findByText("Text text card").should("be.visible"); // text card content
+
+        cy.wait("@dashcardQuery");
+        cy.findByText("Test question card").should("be.visible"); // question card content
+      });
+  });
+
+  it("should not render the SDK on non localhost sites when embedding SDK origins is not set", () => {
+    cy.request("PUT", "/api/setting", {
+      "enable-embedding-sdk": true,
+    });
+    cy.signOut();
+    cy.get("@dashboardId").then(dashboardId => {
+      visitFullAppEmbeddingUrl({
+        url: "http://my-localhost.com:6006/iframe.html",
+        qs: {
+          id: "embeddingsdk-staticdashboard--default",
+          viewMode: "story",
+        },
+        onBeforeLoad: window => {
+          window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
+          window.DASHBOARD_ID = dashboardId;
+        },
+      });
+    });
+
+    cy.get("#metabase-sdk-root").within(() => {
+      cy.findByText("Error").should("be.visible");
+      cy.findByText(
+        "Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token",
+      ).should("be.visible");
+    });
+  });
+
+  it("should show dashboard content", () => {
+    cy.request("PUT", "/api/setting", {
+      "enable-embedding-sdk": true,
+      "embedding-app-origins-sdk": "my-site.local:6006",
+    });
+    cy.signOut();
+    cy.get("@dashboardId").then(dashboardId => {
+      visitFullAppEmbeddingUrl({
+        url: "http://my-site.local:6006/iframe.html",
+        qs: { id: "embeddingsdk-staticdashboard--default", viewMode: "story" },
+        onBeforeLoad: window => {
           window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
           window.DASHBOARD_ID = dashboardId;
         },
