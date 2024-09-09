@@ -1,6 +1,6 @@
 .root {
   display: flex;
-  flex: 1;
+  border-bottom: 1px solid var(--mb-color-border);
 }
 
 .content {

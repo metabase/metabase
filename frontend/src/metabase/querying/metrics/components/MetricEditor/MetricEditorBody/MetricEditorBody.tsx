@@ -6,6 +6,7 @@ import type Question from "metabase-lib/v1/Question";
 
 import S from "./MetricEditorBody.module.css";
 import { MetricEditorSidebar } from "./MetricEditorSidebar";
+import { ResizableBoxHandle } from "./ResizableBoxHandle";
 
 const NOTEBOOK_HEIGHT = 500;
 
@@ -31,7 +32,13 @@ export function MetricEditorBody({
   setQueryBuilderMode,
 }: MetricEditorBodyProps) {
   return (
-    <ResizableBox className={S.root} axis="y" height={NOTEBOOK_HEIGHT}>
+    <ResizableBox
+      className={S.root}
+      axis="y"
+      height={NOTEBOOK_HEIGHT}
+      resizeHandles={["s"]}
+      handle={<ResizableBoxHandle />}
+    >
       <Flex className={S.content} w="100%">
         <Box w="100%">
           <Notebook

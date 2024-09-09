@@ -71,7 +71,7 @@ export function MetricEditor({
   };
 
   return (
-    <Flex h="100%" direction="column">
+    <Flex h="100%" direction="column" bg="white">
       <MetricEditorHeader
         question={question}
         isDirty={isDirty}
