@@ -15,7 +15,7 @@ export function setupDatabaseEndpoints(db: Database) {
   fetchMock.post(`path:/api/database/${db.id}/discard_values`, {});
   setupSchemaEndpoints(db);
   setupDatabaseIdFieldsEndpoints(db);
-  db.tables?.forEach(table => setupTableEndpoints(table));
+  db.tables?.forEach(table => setupTableEndpoints({ ...table, db }));
 
   fetchMock.put(`path:/api/database/${db.id}`, async url => {
     const call = fetchMock.lastCall(url);

@@ -22,7 +22,7 @@ export const runQuestionOnLoadSdk =
     getState: GetState,
   ): Promise<SdkQuestionState & { originalQuestion?: Question }> => {
     const { card, originalCard } = await resolveCards({
-      cardId,
+      cardId: cardId ?? undefined,
       options,
       dispatch,
       getState,

@@ -1,0 +1,25 @@
+.SidesheetContent {
+  &:not([data-css-specificity-hack="🤷‍♀️"]) {
+    position: fixed;
+    height: 100dvh;
+    max-height: 100dvh;
+    inset-inline-end: 0;
+    border-radius: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+}
+
+/* if you set overflow: auto on a child of this container can have the child scroll
+ * rather than the parent: useful if you want tabs to scroll internally */
+.FlexScrollContainer {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column !important;
+  height: 0;
+}
+
+.OverflowAuto {
+  overflow: auto;
+}

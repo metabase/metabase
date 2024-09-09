@@ -4,6 +4,7 @@ import { color } from "metabase/lib/colors";
 import GaugeContainer from "metabase/static-viz/components/Gauge/GaugeContainer";
 import {
   DEFAULT,
+  TRUNCATED_LABELS,
   WITH_FORMATTING,
 } from "metabase/static-viz/components/Gauge/stories-data";
 
@@ -21,3 +22,6 @@ Default.args = { ...DEFAULT, getColor: color };
 
 export const WithFormatting = Template.bind({});
 WithFormatting.args = { ...WITH_FORMATTING, getColor: color };
+
+export const TruncatedLabels = Template.bind({});
+TruncatedLabels.args = { ...TRUNCATED_LABELS, getColor: color };

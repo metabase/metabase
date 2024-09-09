@@ -625,7 +625,7 @@ jobs:
               event_type: 'update-ee-extra-build',
               client_payload: {
                 version: enterpriseVersion,
-                auto: true, // always auto-merge
+                auto: 'true', // always auto-merge
               }
             });
 

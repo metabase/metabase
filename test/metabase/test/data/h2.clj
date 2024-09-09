@@ -29,6 +29,7 @@
                                    :type/Float          "FLOAT"
                                    :type/Integer        "INTEGER"
                                    :type/Text           "VARCHAR"
+                                   :type/UUID           "UUID"
                                    :type/Time           "TIME"}]
   (defmethod sql.tx/field-base-type->sql-type [:h2 base-type] [_ _] database-type))
 

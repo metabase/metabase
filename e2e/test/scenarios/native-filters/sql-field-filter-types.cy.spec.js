@@ -50,7 +50,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
         DateFilter.setRelativeDate(filterValue);
         break;
 
-      case "Date Filter":
+      case "All Options":
         DateFilter.setAdHocFilter(filterValue);
         break;
 

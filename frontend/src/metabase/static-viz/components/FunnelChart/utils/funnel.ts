@@ -1,8 +1,11 @@
 import type { PolygonProps } from "@visx/shape/lib/shapes/Polygon";
 
 import { isNotNull } from "metabase/lib/types";
+import { CHAR_SIZES_FONT_WEIGHT } from "metabase/static-viz/constants/char-sizes";
 import { formatNumber, formatPercent } from "metabase/static-viz/lib/numbers";
-import { truncateText } from "metabase/static-viz/lib/text";
+import { measureTextWidth } from "metabase/static-viz/lib/text";
+import { truncateText } from "metabase/visualizations/lib/text";
+import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 
 import type { FunnelDatum, FunnelSettings, FunnelStep, Step } from "../types";
 
@@ -63,10 +66,21 @@ export const getFormattedStep = (
     typeof step.step === "number"
       ? formatNumber(step.step, settings?.step?.format)
       : step.step;
+
+  const textMeasurer: TextWidthMeasurer = (text, style) =>
+    measureTextWidth(text, Number(style.size), Number(style.weight));
+
+  const fontStyle = {
+    size: stepFontSize,
+    weight: CHAR_SIZES_FONT_WEIGHT,
+    family: "Lato",
+  };
+
   const stepName = truncateText(
     formattedStepName,
     maxStepTextWidth,
-    stepFontSize,
+    textMeasurer,
+    fontStyle,
   );
 
   const formattedMeasure = formatNumber(
@@ -75,12 +89,19 @@ export const getFormattedStep = (
   );
   const measure = isFirst
     ? formattedMeasure
-    : truncateText(formattedMeasure, maxStepTextWidth, measureFontSize);
+    : truncateText(formattedMeasure, maxStepTextWidth, textMeasurer, {
+        ...fontStyle,
+        size: measureFontSize,
+      });
 
   const percent = truncateText(
     formatPercent(step.percent),
     maxStepTextWidth,
-    percentFontSize,
+    textMeasurer,
+    {
+      ...fontStyle,
+      size: percentFontSize,
+    },
   );
 
   return {

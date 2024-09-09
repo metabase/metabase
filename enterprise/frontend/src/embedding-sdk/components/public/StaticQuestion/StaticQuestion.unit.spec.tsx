@@ -133,19 +133,19 @@ describe("StaticQuestion", () => {
   it("should render a visualization selector if showVisualizationSelector is true", async () => {
     setup({ showVisualizationSelector: true });
     await waitForLoaderToBeRemoved();
-    expect(screen.getByTestId("chart-type-sidebar")).toBeInTheDocument();
+    expect(screen.getByTestId("chart-type-settings")).toBeInTheDocument();
   });
 
   it("should not render a visualization selector if showVisualizationSelector is false", async () => {
     setup();
     await waitForLoaderToBeRemoved();
-    expect(screen.queryByTestId("chart-type-sidebar")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("chart-type-settings")).not.toBeInTheDocument();
   });
 
   it("should change the visualization if a different visualization is selected", async () => {
     setup({ showVisualizationSelector: true });
     await waitForLoaderToBeRemoved();
-    expect(screen.getByTestId("chart-type-sidebar")).toBeInTheDocument();
+    expect(screen.getByTestId("chart-type-settings")).toBeInTheDocument();
 
     for (const visType of Object.keys(VISUALIZATION_TYPES)) {
       await userEvent.click(

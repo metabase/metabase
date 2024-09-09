@@ -227,11 +227,11 @@ class Question {
   /**
    * The visualization type of the question
    */
-  display(): string {
+  display(): CardDisplayType {
     return this._card && this._card.display;
   }
 
-  setDisplay(display) {
+  setDisplay(display: CardDisplayType) {
     return this.setCard(assoc(this.card(), "display", display));
   }
 

@@ -5,7 +5,7 @@ import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
 } from "metabase/visualizations";
-import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
@@ -122,7 +122,7 @@ export const GRAPH_DATA_SETTINGS = {
   },
   "graph.series_order": {
     section: t`Data`,
-    widget: ChartSettingOrderedSimple,
+    widget: ChartSettingSeriesOrder,
     marginBottom: "1rem",
 
     getValue: (series, settings) => {

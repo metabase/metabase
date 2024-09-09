@@ -65,7 +65,7 @@ describe("QueryBuilder", () => {
         ).toBeInTheDocument();
       });
 
-      it("doesn't render time series grouping widget for custom date field breakout (metabase#33504)", async () => {
+      it("renders time series grouping widget for custom date field breakout", async () => {
         await setup({
           card: TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
         });
@@ -75,13 +75,11 @@ describe("QueryBuilder", () => {
         );
         expect(timeSeriesModeFooter).toBeInTheDocument();
         expect(
-          within(timeSeriesModeFooter).queryByText("by"),
-        ).not.toBeInTheDocument();
+          within(timeSeriesModeFooter).getByText("by"),
+        ).toBeInTheDocument();
         expect(
-          within(timeSeriesModeFooter).queryByTestId(
-            "timeseries-bucket-button",
-          ),
-        ).not.toBeInTheDocument();
+          within(timeSeriesModeFooter).getByTestId("timeseries-bucket-button"),
+        ).toBeInTheDocument();
       });
     });
 

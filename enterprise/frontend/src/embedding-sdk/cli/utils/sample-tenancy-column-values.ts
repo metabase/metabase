@@ -1,7 +1,5 @@
 import type { Dataset, FieldReference, Table } from "metabase-types/api";
 
-import { HARDCODED_USERS } from "../constants/hardcoded-users";
-
 import { propagateErrorResponse } from "./propagate-error-response";
 
 interface Options {
@@ -24,6 +22,7 @@ interface SampleFromTableOptions {
 }
 
 type TenantId = string | number;
+type TenantIdsMap = Record<string, TenantId[]>;
 
 /**
  * Sample tenant IDs from multiple chosen tables.
@@ -31,29 +30,36 @@ type TenantId = string | number;
  */
 export async function sampleTenantIdsFromTables(
   options: SampleFromTableOptions,
-): Promise<TenantId[] | null> {
+) {
   const { chosenTables, databaseId, cookie, instanceUrl, tenancyColumnNames } =
     options;
 
+  const tenantIdsMap: TenantIdsMap = {};
+  const unsampledTableNames: string[] = [];
+
   // Get sample values for the tenancy column.
   for (const table of chosenTables) {
+    const columnName = tenancyColumnNames[table.id];
+
     const values = await sampleTenantIds({
       table,
       limit: 15,
       databaseId,
-      columnName: tenancyColumnNames[table.id],
+      columnName,
 
       cookie,
       instanceUrl,
     });
 
-    // Skip this column if it has fewer rows than our mock user.
-    if (values !== null && values.length >= HARDCODED_USERS.length) {
-      return values;
+    // Skip this table if it has no tenants.
+    if (values && values.length > 0) {
+      tenantIdsMap[columnName] = values;
+    } else {
+      unsampledTableNames.push(table.name);
     }
   }
 
-  return null;
+  return { tenantIdsMap, unsampledTableNames };
 }
 
 /**

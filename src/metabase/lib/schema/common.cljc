@@ -106,7 +106,7 @@
 
 (mr/def ::semantic-or-relation-type
   [:and
-   {:doc/message "valid semantic or relation type"}
+   {:description "valid semantic or relation type"}
    [:keyword
     {:decode/normalize normalize-keyword}]
    [:fn

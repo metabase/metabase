@@ -1,19 +1,28 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 
-import type { InteractiveQuestionProps } from "embedding-sdk/components/public/InteractiveQuestion";
 import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
-import { Box, Group, Overlay, Paper, Tabs } from "metabase/ui";
+import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
+import { Box, Group, Tabs } from "metabase/ui";
 
+import type { InteractiveQuestionProps } from "../../public/InteractiveQuestion";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
 const QuestionEditorInner = () => {
-  const { queryResults, runQuestion } = useInteractiveQuestionContext();
+  const {
+    queryResults,
+    runQuestion,
+    isSaveEnabled,
+    question,
+    originalQuestion,
+    onSave,
+    onCreate,
+  } = useInteractiveQuestionContext();
 
   const [activeTab, setActiveTab] = useState<
     "notebook" | "visualization" | (string & unknown) | null
   >("notebook");
-  const [isSaveFormOpen, { open: openSaveForm, close: closeSaveForm }] =
+  const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
 
   const onOpenVisualizationTab = async () => {
@@ -37,15 +46,17 @@ const QuestionEditorInner = () => {
               </Tabs.Tab>
             ) : null}
           </Group>
-          {!isSaveFormOpen && (
+          {!isSaveModalOpen && (
             <Group>
               <InteractiveQuestion.ResetButton
                 onClick={() => {
                   setActiveTab("notebook");
-                  closeSaveForm();
+                  closeSaveModal();
                 }}
               />
-              <InteractiveQuestion.SaveButton onClick={openSaveForm} />
+              {isSaveEnabled && (
+                <InteractiveQuestion.SaveButton onClick={openSaveModal} />
+              )}
             </Group>
           )}
         </Group>
@@ -61,12 +72,17 @@ const QuestionEditorInner = () => {
         </Tabs.Panel>
       </Tabs>
 
-      {isSaveFormOpen && (
-        <Overlay center>
-          <Paper>
-            <InteractiveQuestion.SaveQuestionForm onClose={closeSaveForm} />
-          </Paper>
-        </Overlay>
+      {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
+      {isSaveModalOpen && question && (
+        <SaveQuestionModal
+          question={question}
+          originalQuestion={originalQuestion ?? null}
+          opened={true}
+          closeOnSuccess={true}
+          onClose={closeSaveModal}
+          onCreate={onCreate}
+          onSave={onSave}
+        />
       )}
     </Box>
   );
@@ -74,9 +90,18 @@ const QuestionEditorInner = () => {
 
 export const QuestionEditor = ({
   questionId,
+  isSaveEnabled = true,
+  onBeforeSave,
+  onSave,
   plugins,
 }: InteractiveQuestionProps) => (
-  <InteractiveQuestion questionId={questionId} plugins={plugins}>
+  <InteractiveQuestion
+    questionId={questionId}
+    plugins={plugins}
+    onSave={onSave}
+    onBeforeSave={onBeforeSave}
+    isSaveEnabled={isSaveEnabled}
+  >
     <QuestionEditorInner />
   </InteractiveQuestion>
 );
