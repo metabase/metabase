@@ -10,7 +10,7 @@
     (mt/dataset test-data
       (search.postgres/init! true)
       (testing "consistent results between all searches for certain queries\n"
-        (doseq [term ["satisfaction" "e-commerce" "example" "rasta" "new" #_"collection" "revenue"]]
+        (doseq [term ["satisfaction" "e-commerce" "example" "rasta" "new" "revenue"]]
           (testing (str "consistent results, but not ordering" term)
             (is (= (legacy-results term)
                    (search.postgres/hybrid term))))))
@@ -25,7 +25,7 @@
     (mt/dataset test-data
       (search.postgres/init! true)
       (testing "consistent results between "
-        (doseq [term ["satisfaction" "e-commerce" "example" "rasta" "new" #_"collection" "revenue"]]
+        (doseq [term ["satisfaction" "e-commerce" "example" "rasta" "new" "revenue"]]
           (testing term
             (is (= (search.postgres/hybrid term)
                    (search.postgres/hybrid-multi term)))))
