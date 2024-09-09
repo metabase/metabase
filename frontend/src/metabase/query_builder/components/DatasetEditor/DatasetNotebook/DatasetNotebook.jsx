@@ -8,10 +8,7 @@ import { darken } from "metabase/lib/colors";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box, Flex, rem } from "metabase/ui";
 
-import { MetricEditorSidebar } from "../../../../querying/metrics/components/MetricEditor/MetricEditorBody/MetricEditorSidebar";
-
 const propTypes = {
-  question: PropTypes.object.isRequired,
   isResizing: PropTypes.bool.isRequired,
   resizableBoxProps: PropTypes.object.isRequired,
   onResizeStop: PropTypes.func.isRequired,
@@ -53,8 +50,7 @@ const Handle = forwardRef(function Handle(props, ref) {
   );
 });
 
-export function DatasetNotebook({
-  question,
+function ResizableNotebook({
   isResizing,
   onResizeStop,
   resizableBoxProps,
@@ -71,18 +67,13 @@ export function DatasetNotebook({
         onResizeStop(...args);
       }}
     >
-      <Flex w="100%" style={{ overflowY: getOverflow(isResizing) }}>
-        <Box w="100%">
-          <Notebook
-            {...notebookProps}
-            question={question}
-            hasVisualizeButton={false}
-          />
-        </Box>
-        {question.type() === "metric" && <MetricEditorSidebar />}
-      </Flex>
+      <Box w="100%" style={{ overflowY: getOverflow(isResizing) }}>
+        <Notebook {...notebookProps} hasVisualizeButton={false} />
+      </Box>
     </ResizableBox>
   );
 }
 
-DatasetNotebook.propTypes = propTypes;
+ResizableNotebook.propTypes = propTypes;
+
+export default ResizableNotebook;
