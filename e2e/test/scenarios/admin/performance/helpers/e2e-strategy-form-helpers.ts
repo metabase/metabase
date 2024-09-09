@@ -84,12 +84,13 @@ export const openStrategyFormForDatabaseOrDefaultPolicy = (
     ).click();
 
   if (databaseNameOrDefaultPolicy === "default policy") {
-    cy.get("body").then($body => {
-      if ($body.find('form[data-testid="strategy-form-for-root-0"]').length) {
-        // On OSS, the default policy form is open by default, so do nothing
-        return;
-      } else {
+    cy.contains("Select the cache invalidation policy").then($element => {
+      if (!$element || $element.length === 0) {
         clickLauncher();
+      } else {
+        // On OSS, the default policy form (which contains the text 'Select the
+        // cache invalidation policy') is open by default, so do nothing
+        return;
       }
     });
   } else {
