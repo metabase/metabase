@@ -540,6 +540,12 @@
     (not (zero? v))
     v))
 
+(defn- parse-engine [value]
+  (or (get search.config/search-engines value)
+      (when (and value (not= "" (name value)))
+        (log/warnf "Unknown value for :search-engine (%s)" value))
+      :in-place))
+
 (mr/def ::search-context.input
   [:map {:closed true}
    [:search-string                                        [:maybe ms/NonBlankString]]
@@ -556,6 +562,7 @@
    [:limit                               {:optional true} [:maybe ms/Int]]
    [:offset                              {:optional true} [:maybe ms/Int]]
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
+   [:search-engine                       {:optional true} [:maybe keyword?]]
    [:search-native-query                 {:optional true} [:maybe true?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
@@ -575,6 +582,7 @@
            models
            filter-items-in-personal-collection
            offset
+           search-engine
            search-string
            model-ancestors?
            table-db-id
@@ -603,6 +611,7 @@
                  (some? table-db-id)                         (assoc :table-db-id table-db-id)
                  (some? limit)                               (assoc :limit-int limit)
                  (some? offset)                              (assoc :offset-int offset)
+                 (some? search-engine)                       (assoc :search-engine (parse-engine search-engine))
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
                  (seq ids)                                   (assoc :ids ids))]

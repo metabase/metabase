@@ -85,3 +85,6 @@
   (when (or force-reset? (not (#'search.index/exists? @#'search.index/active-table)))
     (search.index/reset-index!))
   (search.ingestion/populate-index!))
+
+(comment
+  (init! true))

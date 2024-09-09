@@ -7,6 +7,7 @@
    [metabase.search.config :as search.config]
    [metabase.search.impl :as search.impl]
    [metabase.search.postgres.core :as search.postgres]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -28,12 +29,16 @@
      (t2/with-connection [^java.sql.Connection conn]
        (.. conn getMetaData getDatabaseProductName))))
 
+(defn- query-fn [search-engine]
+  (case search-engine
+    :fulltext (if (is-postgres?)
+                search.postgres/search
+                (do (log/warn ":fulltext search not supported for your AppDb, using :in-place")
+                    search.impl/in-place))
+    :in-place search.impl/in-place))
+
 (mu/defn search
   "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- search.config/SearchContext]
-  (let [query-fn (case (:search-engine search-ctx :in-place)
-                   :fulltext (do
-                               (assert (is-postgres?) "Only supported on PostgreSQL")
-                               search.postgres/search)
-                   :in-place search.impl/in-place)]
+  (let [query-fn (query-fn (:search-engine search-ctx :in-place))]
     (search.impl/search query-fn search-ctx)))

@@ -1,13 +1,40 @@
 (ns metabase.api.search
   (:require
    [compojure.core :refer [GET]]
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.search :as search]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private engine-cookie-name "metabase.SEARCH_ENGINE")
+
+(defn- cookie-expiry []
+  ;; 20 years should be long enough to trial an experimental search engine
+  (t/format :rfc-1123-date-time (t/plus (t/zoned-date-time) (t/years 20))))
+
+(defn- set-engine-cookie! [respond engine]
+  (fn [response]
+    (respond
+     (response/set-cookie response
+                          engine-cookie-name
+                          engine
+                          {:http-only true
+                           :path      "/"
+                           :expires   (cookie-expiry)}))))
+
+(defn- +engine-cookie [handler]
+  (fn [request respond raise]
+    (if-let [new-engine (get-in request [:params :search_engine])]
+      (handler request (set-engine-cookie! respond new-engine) raise)
+      (handler (->> (get-in request [:cookies engine-cookie-name :value])
+                    (assoc-in request [:params :search_engine]))
+               respond
+               raise))))
 
 ;; TODO maybe deprecate this and make it as a parameter in `GET /api/search/models`
 ;; so we don't have to keep the arguments between 2 API in sync
@@ -21,7 +48,7 @@
    created_by          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at      [:maybe ms/PositiveInt]
    last_edited_by      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
-   search_engine       [:maybe string?]
+   search_engine       [:maybe keyword?]
    search_native_query [:maybe true?]
    verified            [:maybe true?]}
   (search/query-model-set
@@ -34,8 +61,8 @@
                            :filter-items-in-personal-collection filter_items_in_personal_collection
                            :last-edited-at                      last_edited_at
                            :last-edited-by                      (set (u/one-or-many last_edited_by))
-                           :models                              search/all-models
                            :search-engine                       search_engine
+                           :models                              search/all-models
                            :search-native-query                 search_native_query
                            :search-string                       q
                            :table-db-id                         table-db-id
@@ -76,12 +103,12 @@
    last_edited_at                      [:maybe ms/NonBlankString]
    last_edited_by                      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    model_ancestors                     [:maybe :boolean]
-   search_engine                       [:maybe string?]
+   search_engine                       [:maybe keyword?]
    search_native_query                 [:maybe true?]
    verified                            [:maybe true?]
    ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
-  (let  [models-set           (if (seq models)
+  (let  [models-set (if (seq models)
                                 (set models)
                                 search/all-models)]
     (search/search
@@ -106,4 +133,4 @@
        :verified                            verified
        :ids                                 (set ids)}))))
 
-(api/define-routes)
+(api/define-routes +engine-cookie)
