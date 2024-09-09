@@ -1,34 +1,36 @@
 import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import { Box, Stack } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { Box, Stack, Text } from "metabase/ui";
 
-import { getSettings } from "../../selectors";
 import SettingHeader from "../SettingHeader";
-import { SetByEnvVarWrapper } from "../SettingsSetting";
 import {
   EmbeddingSdkOptionCard,
   InteractiveEmbeddingOptionCard,
   StaticEmbeddingOptionCard,
 } from "../widgets/EmbeddingOption";
-import { EmbeddingSwitchWidget } from "../widgets/EmbeddingSwitchWidget";
 
 import type { AdminSettingComponentProps } from "./types";
 
 export function EmbeddingSettings({
   updateSetting,
 }: AdminSettingComponentProps) {
-  const enableEmbeddingSetting = useSelector(getSettings).find(
-    (setting: any) => setting.key === "enable-embedding",
-  );
-
-  function handleChangeEnableEmbedding(value: boolean) {
-    updateSetting({ key: "enable-embedding" }, value);
+  function handleToggleStaticEmbedding(event: ChangeEvent<HTMLInputElement>) {
+    updateSetting({ key: "enable-embedding-static" }, event.target.checked);
   }
 
   function handleToggleEmbeddingSdk(event: ChangeEvent<HTMLInputElement>) {
     updateSetting({ key: "enable-embedding-sdk" }, event.target.checked);
+  }
+
+  function handleToggleInteractiveEmbedding(
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
+    updateSetting(
+      { key: "enable-embedding-interactive" },
+      event.target.checked,
+    );
   }
 
   return (
@@ -41,16 +43,17 @@ export function EmbeddingSettings({
               display_name: t`Embedding`,
             }}
           />
-          <SetByEnvVarWrapper setting={enableEmbeddingSetting}>
-            <EmbeddingSwitchWidget
-              setting={enableEmbeddingSetting}
-              onChange={handleChangeEnableEmbedding}
-            />
-          </SetByEnvVarWrapper>
+          <Stack spacing={"md"} className={CS.textMeasure}>
+            <Text lh={1.5}>
+              {t`Embed dashboards, questions, or the entire Metabase app into your application. Integrate with your server code to create a secure environment, limited to specific users or organizations.`}
+            </Text>
+          </Stack>
         </Box>
-        <StaticEmbeddingOptionCard />
+        <StaticEmbeddingOptionCard onToggle={handleToggleStaticEmbedding} />
         <EmbeddingSdkOptionCard onToggle={handleToggleEmbeddingSdk} />
-        <InteractiveEmbeddingOptionCard />
+        <InteractiveEmbeddingOptionCard
+          onToggle={handleToggleInteractiveEmbedding}
+        />
       </Stack>
     </Box>
   );

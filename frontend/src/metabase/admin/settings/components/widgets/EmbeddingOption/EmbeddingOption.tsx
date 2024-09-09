@@ -65,8 +65,13 @@ function EmbeddingOption({
   );
 }
 
-export const StaticEmbeddingOptionCard = () => {
-  const enabled = useSetting("enable-embedding");
+interface EmbeddingOptionCardProps {
+  onToggle: ChangeEventHandler<HTMLInputElement>;
+}
+export const StaticEmbeddingOptionCard = ({
+  onToggle,
+}: EmbeddingOptionCardProps) => {
+  const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
   const upgradeUrl = useSelector(state =>
     getUpgradeUrl(state, { utm_content: "embed-settings" }),
   );
@@ -83,7 +88,7 @@ export const StaticEmbeddingOptionCard = () => {
       icon={
         <StaticEmbedding
           className={cx(EmbeddingOptionStyle.icon, {
-            [EmbeddingOptionStyle.disabled]: !enabled,
+            [EmbeddingOptionStyle.disabled]: !isStaticEmbeddingEnabled,
           })}
         />
       }
@@ -96,23 +101,28 @@ export const StaticEmbeddingOptionCard = () => {
         )
       }`}
     >
-      <LinkButton
-        variant="default"
-        disabled={!enabled}
-        to={"/admin/settings/embedding-in-other-applications/standalone"}
-      >
-        {t`Manage`}
-      </LinkButton>
+      <Flex align="center" w="100%">
+        <LinkButton
+          variant="default"
+          disabled={!isStaticEmbeddingEnabled}
+          to={"/admin/settings/embedding-in-other-applications/standalone"}
+        >
+          {t`Manage`}
+        </LinkButton>
+        <Switch
+          size="sm"
+          label={isStaticEmbeddingEnabled ? t`Enabled` : t`Disabled`}
+          ml="auto"
+          labelPosition="left"
+          checked={isStaticEmbeddingEnabled}
+          onChange={onToggle}
+        />
+      </Flex>
     </EmbeddingOption>
   );
 };
 
-interface EmbeddingSdkOptionCardProps {
-  onToggle: ChangeEventHandler<HTMLInputElement>;
-}
-export function EmbeddingSdkOptionCard({
-  onToggle,
-}: EmbeddingSdkOptionCardProps) {
+export function EmbeddingSdkOptionCard({ onToggle }: EmbeddingOptionCardProps) {
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
   const isEE = PLUGIN_EMBEDDING.isEnabled();
 
@@ -146,12 +156,16 @@ export function EmbeddingSdkOptionCard({
   );
 }
 
-export const InteractiveEmbeddingOptionCard = () => {
+export const InteractiveEmbeddingOptionCard = ({
+  onToggle,
+}: EmbeddingOptionCardProps) => {
   const isEE = PLUGIN_EMBEDDING.isEnabled();
   const plan = useSelector(state =>
     getPlan(getSetting(state, "token-features")),
   );
-  const enabled = useSetting("enable-embedding");
+  const isInteractiveEmbeddingEnabled = useSetting(
+    "enable-embedding-interactive",
+  );
   const quickStartUrl = useSelector(state =>
     getDocsUrl(state, {
       page: "embedding/interactive-embedding-quick-start-guide",
@@ -163,7 +177,8 @@ export const InteractiveEmbeddingOptionCard = () => {
       icon={
         <InteractiveEmbedding
           className={cx(EmbeddingOptionStyle.icon, {
-            [EmbeddingOptionStyle.disabled]: isEE && !enabled,
+            [EmbeddingOptionStyle.disabled]:
+              isEE && !isInteractiveEmbeddingEnabled,
           })}
         />
       }
@@ -184,21 +199,31 @@ export const InteractiveEmbeddingOptionCard = () => {
         {t`Check out our Quick Start`}
         <Icon name="share" aria-hidden />
       </BoldExternalLink>
-      {isEE ? (
-        <LinkButton
-          to={"/admin/settings/embedding-in-other-applications/full-app"}
-          disabled={!enabled}
-        >
-          {t`Configure`}
-        </LinkButton>
-      ) : (
-        <Button
-          component={ExternalLink}
-          href={`https://www.metabase.com/product/embedded-analytics?utm_source=${plan}&utm_media=embed-settings`}
-        >
-          {t`Learn More`}
-        </Button>
-      )}
+      <Flex align="center" w="100%">
+        {isEE ? (
+          <LinkButton
+            to={"/admin/settings/embedding-in-other-applications/full-app"}
+            disabled={!isInteractiveEmbeddingEnabled}
+          >
+            {t`Configure`}
+          </LinkButton>
+        ) : (
+          <Button
+            component={ExternalLink}
+            href={`https://www.metabase.com/product/embedded-analytics?utm_source=${plan}&utm_media=embed-settings`}
+          >
+            {t`Learn More`}
+          </Button>
+        )}
+        <Switch
+          size="sm"
+          label={isInteractiveEmbeddingEnabled ? t`Enabled` : t`Disabled`}
+          ml="auto"
+          labelPosition="left"
+          checked={isInteractiveEmbeddingEnabled}
+          onChange={onToggle}
+        />
+      </Flex>
     </EmbeddingOption>
   );
 };
