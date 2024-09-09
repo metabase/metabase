@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { MetricEditorEmptyState } from "./MetricEditorEmptyState";
+import { MetricEmptyState } from "./MetricEmptyState";
 
 type SetupOpts = {
   isRunnable: boolean;
@@ -12,7 +12,7 @@ function setup({ isRunnable }: SetupOpts) {
   const runQuestionQuery = jest.fn();
 
   renderWithProviders(
-    <MetricEditorEmptyState
+    <MetricEmptyState
       isRunnable={isRunnable}
       runQuestionQuery={runQuestionQuery}
     />,
@@ -21,7 +21,7 @@ function setup({ isRunnable }: SetupOpts) {
   return { runQuestionQuery };
 }
 
-describe("MetricEditorEmptyState", () => {
+describe("MetricEmptyState", () => {
   it("should allow to run a valid metric query", async () => {
     const { runQuestionQuery } = setup({ isRunnable: true });
     await userEvent.click(screen.getByRole("button", { name: "Visualize" }));

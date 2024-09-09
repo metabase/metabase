@@ -2,15 +2,15 @@ import { t } from "ttag";
 
 import { Button, Flex, Text } from "metabase/ui";
 
-type MetricEditorEmptyStateProps = {
+type MetricEmptyStateProps = {
   isRunnable: boolean;
   runQuestionQuery: () => void;
 };
 
-export function MetricEditorEmptyState({
+export function MetricEmptyState({
   isRunnable,
   runQuestionQuery,
-}: MetricEditorEmptyStateProps) {
+}: MetricEmptyStateProps) {
   return (
     <Flex
       direction="column"

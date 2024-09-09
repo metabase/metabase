@@ -3,7 +3,7 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, RawSeries } from "metabase-types/api";
 
-import { MetricEditorEmptyState } from "./MetricEditorEmptyState";
+import { MetricEmptyState } from "./MetricEmptyState";
 
 type MetricEditorFooterProps = {
   question: Question;
@@ -27,7 +27,7 @@ export function MetricEditorFooter({
 
   if (!result && !isRunning) {
     return (
-      <MetricEditorEmptyState
+      <MetricEmptyState
         isRunnable={isRunnable}
         runQuestionQuery={runQuestionQuery}
       />
