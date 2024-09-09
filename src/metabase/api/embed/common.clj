@@ -83,7 +83,7 @@
    (check-embedding-enabled-for-object (t2/select-one [entity :enable_embedding] :id id)))
 
   ([object]
-   (validation/check-embedding-enabled)
+   (validation/check-embedding-sdk-enabled)
    (api/check-404 object)
    (api/check-not-archived object)
    (api/check (:enable_embedding object)

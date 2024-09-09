@@ -106,7 +106,7 @@
 
 (defn ^:private generate-response-token
   [session jwt-data]
-  (validation/check-embedding-enabled)
+  (validation/check-embedding-sdk-enabled)
   (response/response {:id  (:id session)
                       :exp (:exp jwt-data)
                       :iat (:iat jwt-data)}))

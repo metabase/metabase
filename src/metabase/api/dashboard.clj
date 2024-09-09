@@ -498,7 +498,7 @@
   [dash-before-update dash-updates]
   (when (or (api/column-will-change? :enable_embedding dash-before-update dash-updates)
             (api/column-will-change? :embedding_params dash-before-update dash-updates))
-    (validation/check-embedding-enabled)
+    (validation/check-embedding-sdk-enabled)
     (api/check-superuser)))
 
 (api/defendpoint DELETE "/:id"
@@ -962,7 +962,7 @@
   endpoints and a signed JWT."
   []
   (validation/check-has-application-permission :setting)
-  (validation/check-embedding-enabled)
+  (validation/check-embedding-sdk-enabled)
   (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
 
 (api/defendpoint GET "/:id/related"

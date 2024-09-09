@@ -19,7 +19,7 @@
 
 (defn- check-and-unsign [token]
   (api/check-superuser)
-  (validation/check-embedding-enabled)
+  (validation/check-embedding-sdk-enabled)
   (embed/unsign token))
 
 (api/defendpoint GET "/card/:token"
