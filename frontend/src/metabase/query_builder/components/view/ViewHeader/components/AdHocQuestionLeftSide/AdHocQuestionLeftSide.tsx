@@ -18,6 +18,7 @@ import { ViewHeading, ViewSubHeading } from "../../../ViewSection";
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 import { QuestionDataSource } from "../QuestionDataSource";
 import { QuestionDescription } from "../QuestionDescription";
+import { DashboardSaveLocation } from "../DashboardSaveLocation";
 
 import AdHocQuestionLeftSideS from "./AdHocQuestionLeftSide.module.css";
 
@@ -85,12 +86,7 @@ export function AdHocQuestionLeftSide(
           />
         )}
         {saveToDashboard && (
-          <Text size="sm" fw="bold" color="text-light">
-            <Flex align="center" gap="sm" color="text-light">
-              <Icon name="dashboard" size={12} />
-              {saveToDashboard?.name}
-            </Flex>
-          </Text>
+          <DashboardSaveLocation dashboardName={saveToDashboard.name} />
         )}
       </ViewSubHeading>
     </Box>

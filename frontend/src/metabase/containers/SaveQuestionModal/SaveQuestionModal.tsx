@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import {
   LLMSuggestionQuestionInfo,
@@ -7,6 +9,9 @@ import {
 import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/context";
 import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
 import { Flex, Modal, type ModalProps } from "metabase/ui";
+
+type SaveQuestionModalProps = Omit<SaveQuestionProps, "initialDashboardTabId"> &
+  Omit<ModalProps, "title">;
 
 export const SaveQuestionModal = ({
   multiStep,
@@ -18,16 +23,15 @@ export const SaveQuestionModal = ({
   initialCollectionId,
   saveToCollectionId,
   ...modalProps
-}: SaveQuestionProps & Omit<ModalProps, "title">) => {
+}: SaveQuestionModalProps) => {
   const saveToDashboardId = question.dashboardId();
   const { data: saveToDashboard } = useGetDashboardQuery(
     saveToDashboardId ? { id: saveToDashboardId } : skipToken,
   );
 
+  // TODO: calculate this such that the default tab is the on that the user was on before the started the question creation flow...
   const initialDashboardTabId =
-    saveToDashboard?.tabs && saveToDashboard?.tabs.length > 1
-      ? saveToDashboard?.tabs[0].id
-      : null;
+    _.first(saveToDashboard?.tabs || [])?.id ?? null;
 
   return (
     <SaveQuestionProvider

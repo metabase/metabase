@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -56,6 +57,23 @@ const defaultOptions: DashboardPickerOptions = {
   ...defaultDashboardPickerOptions,
 };
 
+const mergeOptions = (
+  options: Partial<DashboardPickerOptions>,
+  canSelectCollection: boolean,
+  selectedModel: DashboardPickerItem["model"] | null | undefined,
+) => ({
+  ...defaultOptions,
+  ...(canSelectCollection
+    ? {
+        confirmButtonText: match(selectedModel)
+          .with("dashboard", () => t`Save in this dashboard`)
+          .with("collection", () => t`Save in this collection`)
+          .otherwise(() => t`Save`),
+      }
+    : {}),
+  ...options,
+});
+
 export const DashboardPickerModal = ({
   title = t`Choose a dashboard`,
   onChange,
@@ -67,11 +85,11 @@ export const DashboardPickerModal = ({
   recentFilter,
   canSelectCollection = false,
 }: DashboardPickerModalProps) => {
-  options = { ...defaultOptions, ...options };
-
   const [selectedItem, setSelectedItem] = useState<DashboardPickerItem | null>(
     canSelectItem(value, canSelectCollection) ? value : null,
   );
+
+  options = mergeOptions(options, canSelectCollection, selectedItem?.model);
 
   const [dashboardsPath, setDashboardsPath] =
     useState<DashboardPickerStatePath>();
@@ -148,8 +166,8 @@ export const DashboardPickerModal = ({
         ? t`Collections and Dashboards`
         : t`Dashboards`,
       model: "dashboard" as const,
-      folderModels: ["collection" as const],
       additionalModels: canSelectCollection ? ["collection"] : undefined,
+      folderModels: ["collection" as const],
       icon: "dashboard",
       render: ({ onItemSelect }) => (
         <DashboardPicker

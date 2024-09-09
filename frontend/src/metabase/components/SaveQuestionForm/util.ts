@@ -53,7 +53,7 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
     .setCollectionId(collectionId)
     .setDashboardId(dashboardId);
 
-  return onCreate(newQuestion, details.tab_id || undefined);
+  return onCreate(newQuestion, { dashboardTabId: details.tab_id || undefined });
 };
 
 export async function submitQuestion(options: SubmitQuestionOptions) {

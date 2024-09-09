@@ -47,7 +47,6 @@ export type RecentCollectionItem = BaseRecentItem & {
   model: "collection" | "dashboard" | "card" | "dataset" | "metric";
   can_write: boolean;
   database_id?: DatabaseId; // for models and questions
-  dashboard_id?: number; // TODO: request BE folks add this
   parent_collection: {
     id: number | null;
     name: string;

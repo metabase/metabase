@@ -88,6 +88,7 @@ export const InteractiveQuestionProvider = ({
 
       // Set the latest saved question object to update the question title.
       replaceQuestion(createdQuestion);
+      return createdQuestion;
     }
   };
 
