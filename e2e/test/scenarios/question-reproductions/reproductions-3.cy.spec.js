@@ -38,6 +38,7 @@ import {
   rightSidebar,
   saveQuestion,
   setModelMetadata,
+  sidesheet,
   startNewQuestion,
   summarize,
   tableHeaderClick,
@@ -265,21 +266,22 @@ describe("issue 38176", () => {
     cy.findByTestId("query-builder-main").button("Get Answer").click();
 
     questionInfoButton().click();
-    rightSidebar().within(() => {
-      cy.findByText("History");
-
+    sidesheet().within(() => {
       cy.findByPlaceholderText("Add description")
         .type("This is a question")
         .blur();
 
       cy.wait("@updateQuestion");
+      cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/added a description/i);
       cy.findByTestId("question-revert-button").click();
 
+      cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/reverted to an earlier version/i).should("be.visible");
     });
 
-    cy.findAllByRole("gridcell").should("contain", "NL");
+    cy.findByLabelText("Close").click();
+    tableInteractive().should("contain", "NL");
   });
 });
 

@@ -64,6 +64,13 @@ export const onCloseQuestionInfo = createAction(
   "metabase/qb/CLOSE_QUESTION_INFO",
 );
 
+export const onOpenQuestionSettings = createAction(
+  "metabase/qb/OPEN_QUESTION_SETTINGS",
+);
+export const onCloseQuestionSettings = createAction(
+  "metabase/qb/CLOSE_QUESTION_SETTINGS",
+);
+
 export const onOpenTimelines = createAction("metabase/qb/OPEN_TIMELINES");
 export const onCloseTimelines = createAction("metabase/qb/CLOSE_TIMELINES");
 
