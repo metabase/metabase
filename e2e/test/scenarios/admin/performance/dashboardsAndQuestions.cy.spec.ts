@@ -9,7 +9,6 @@ import {
 import {
   TEST_TABLE,
   instanceDefault,
-  questionRuntime,
   sampleAdaptiveStrategy,
   sampleDashboard,
   sampleDatabase,
@@ -20,7 +19,6 @@ import {
   advanceServerClockBy,
   getExpectedCacheDuration,
   interceptPerformanceRoutes,
-  log,
   resetServerTime,
   setupDashboardTest,
   setupQuestionTest,
@@ -92,18 +90,22 @@ const testDoNotCachePolicy = ({
 
     // Don't try to disable caching on the root since it's disabled by default
     const shouldDisableCaching = inheritsStrategyFrom?.model !== "root";
-
     if (shouldDisableCaching) {
       cy.then(function () {
         disableCaching({ item: inheritsStrategyFrom ?? item });
         visitItem();
-        visitItem();
       });
     }
 
-    cy.then(function () {
-      log("Expect the last query to be slow");
-      expect(this.queryRuntime).to.be.approximately(questionRuntime, 250);
+    queryWritableDB(`UPDATE ${TEST_TABLE} SET my_text='Value 2';`).then(() => {
+      visitItem();
+      cy.findByTestId("visualization-root").findByText("Value 2");
+      queryWritableDB(`UPDATE ${TEST_TABLE} SET my_text='Value 3';`).then(
+        () => {
+          visitItem();
+          cy.findByTestId("visualization-root").findByText("Value 3");
+        },
+      );
     });
   });
 };
