@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Button, Icon, Textarea } from "metabase/ui";
+import { Box, Button, Icon} from "metabase/ui";
 import Input from "metabase/core/components/Input";
 import TextArea from "metabase/core/components/TextArea";
 import useWebSocket from "metabase/hooks/useWebSocket";
@@ -8,13 +8,9 @@ import ChatMessageList from "metabase/components/ChatMessageList/ChatMessageList
 import FeedbackDialog from "metabase/components/FeedbackDialog/FeedbackDialog";
 import { CardApi } from "metabase/services";
 import Question from "metabase-lib/v1/Question";
-import VisualizationResult from "metabase/query_builder/components/VisualizationResult";
-import { loadMetadataForCard } from "metabase/questions/actions";
 import { push } from "react-router-redux";
 import Modal from "metabase/components/Modal";
 import { Tabs } from "metabase/ui";
-import CS from "metabase/css/core/index.css";
-import cx from "classnames";
 import { generateRandomId } from "metabase/lib/utils";
 import {
     adhocQuestionHash
@@ -57,14 +53,12 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
     const [toolWaitingResponse, setToolWaitingResponse] = useState(null);
     const [approvalChangeButtons, setApprovalChangeButtons] = useState(false);
     const [visualizationIndex, setVisualizationIndex] = useState(-1);
-    const [pythonCode, setPythonCode] = useState([]);
-    const [logStdout, setLogStdout] = useState([]);
-    const [logStderr, setLogStderr] = useState([]);
-    const [insightsImages, setInsightsImages] = useState([]);
-    const [isInsightModalOpen, setIsInsightModalOpen] = useState(false);
-    const [isEditing, setIsEditing] = useState(false); // Tracks whether in edit mode
-    const [editedCode, setEditedCode] = useState(''); // Holds the current edited code
-    const [hasChanges, setHasChanges] = useState(false);
+    const [inisghtPlan, setInisghtPlan] = useState([]);
+    const [insightsText, setInsightsText] = useState([]);
+    const [insightsImg, setInsightsImg] = useState([]);
+    const [insightsCode, setInsightsCode] = useState([]);
+    const [codeIndex, setCodeIndex] = useState(-1);
+    const [insightTextIndex, setInsightTextIndex] = useState(-1);
     const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
     const databases = data?.data;
     useEffect(() => {
@@ -174,42 +168,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         setIsModalOpen(false);
     };
 
-    const openInsightModal = (insightIndex) => {
-        setSelectedIndex(insightIndex)
-        setEditedCode(pythonCode[insightIndex])
-        setIsInsightModalOpen(true);
-    };
-
-    const closeInsightModal = () => {
-        setSelectedIndex(null)
-        setIsInsightModalOpen(false);
-    };
-
-    // Handler for the "Edit Code" button
-    const handleEditClick = () => {
-        setIsEditing(!isEditing);
-    };
-
-    // Handler for the code editor
-    const handleCodeChange = (event) => {
-        const newCode = event.target.value;
-        setEditedCode(newCode);
-        setHasChanges(newCode !== pythonCode[selectedIndex]); // Check if there are changes
-    };
-
-    // Handler for the "Re-run" button
-    const handleRerunClick = () => {
-        if (hasChanges) {
-            // Logic to re-run the code goes here
-            console.log("Re-running code:", editedCode);
-            const response = {
-                type: "runPythonCode",
-                data: editedCode,
-                thread_id: threadId,
-            };
-            ws && ws.send(JSON.stringify(response));
-        }
-    };
 
     const handleFunctionalityMessages = async functions => {
         functions.forEach(async func => {
@@ -220,21 +178,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                 case "getInsights":
                     await handleGetInsights(func);
                     break;
-                case "getPythonCode":
-                    await handleGetPythonCode(func);
-                    break;
-                case "getInsightsImages":
-                    await handleGetInsightsImages(func);
-                    break;
-                case "logStdout":
-                    await handleLogStdout(func);
-                    break;
-                case "logStderr":
-                    await handleLogStderr(func);
-                    break;
-                case "pythonCodeResult":
-                    await handleRunPythonCode(func);
-                    break;
                 case "calculationOptions":
                     await handleGetCalulationOptions(func);
                     break;
@@ -243,6 +186,18 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                     break;
                 case "processInfo":
                     await handleProcessInfo(func);
+                    break;
+                case "planReview":
+                    await handlePlanReview(func);
+                    break;
+                case "getImage":
+                    await handleGetImage(func);
+                    break;
+                case "getText":
+                    await handleGetText(func);
+                    break;
+                case "getCode":
+                    await handleGetCode(func);
                     break;
                 default:
                     console.log(func);
@@ -455,50 +410,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         }
     };
 
-    const handleGetPythonCode = async func => {
-        const { pythonCode } = func.arguments;
-        try {
-            setPythonCode(prevPythonCode => [...prevPythonCode, pythonCode]);
-        } catch (error) {
-            console.error("Error getting python code:", error);
-            setError("There was an error fetching the python code. Please provide feedback if this issue persists.");
-        }
-    };
-
-    const handleGetInsightsImages = async func => {
-        const { insights } = func.arguments;
-        try {
-            const newInsightsList = [];
-            newInsightsList.push(insights);
-            setInsightsList(prevInsights => [...prevInsights, ...newInsightsList]);
-        } catch (error) {
-            console.error("Error getting insights:", error);
-            setError("There was an error fetching the insights");
-        }
-    };
-
-    const handleLogStdout = async func => {
-        const { message } = func.arguments;
-        try {
-            if (!message.includes('Loading data')) {
-                setLogStdout(prevLogStdout => [...prevLogStdout, message]);
-            }
-        } catch (error) {
-            console.error("Error getting log stdout:", error);
-            setError("There was an error fetching log stdout.");
-        }
-    };
-
-    const handleLogStderr = async func => {
-        const { message } = func.arguments;
-        try {
-            setLogStderr(prevLogStderr => [...prevLogStderr, message]);
-        } catch (error) {
-            console.error("Error getting log stderr:", error);
-            setError("There was an error fetching log stderr.");
-        }
-    };
-
     const handleGetCalulationOptions = async func => {
         const { calculationOptions } = func.arguments;
         console.log(calculationOptions)
@@ -521,10 +432,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         setApprovalChangeButtons(true);
     };
 
-    const handleRunPythonCode = async func => {
-        const { logs, results } = func.arguments;
-    };
-
     const handleProcessInfo = async func => {
         const { infoMessage } = func.arguments;
         //Only print infoMessage
@@ -535,6 +442,88 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         setIsLoading(false);
         removeLoadingMessage();
     };
+
+    const handlePlanReview = async func => {
+        const { planReview, plan } = func.arguments;
+        //Only print infoMessage
+            addServerMessageWithType(
+                planReview|| "Received a message from the server.",
+                "text",
+                "planReview"
+            );
+        setIsLoading(false);
+        setToolWaitingResponse("planReview");
+        setInisghtPlan(prevPlan => [...prevPlan, ...plan]);
+        removeLoadingMessage();
+    };
+    
+    const handleGetImage = async func => {
+        const { generatedImages } = func.arguments;
+        try {
+            if (generatedImages && generatedImages.type === "Buffer" && Array.isArray(generatedImages.data)) {
+                // Recreate the buffer using the data array (which is an array of numbers)
+                const buffer = Buffer.from(generatedImages.data);
+                // Convert the buffer to a Base64 string
+                const base64Image = `data:image/png;base64,${buffer.toString('base64')}`;
+    
+                setInsightsImg(prevInsightsImg => [...prevInsightsImg, base64Image]);
+            } else {
+                throw new Error('Invalid image buffer format');
+            }
+            setVisualizationIndex(prevIndex => {
+                const currentIndex = prevIndex + 1;
+                addServerMessageWithType(
+                    `Here is your visualization`,
+                    "text",
+                    "insightImg",
+                    currentIndex
+                );
+                return currentIndex;
+            });
+        } catch (error) {
+            console.error("Error getting image", error);
+        }
+    }
+
+    const handleGetText = async func => {
+        const { generatedTexts } = func.arguments;
+        try {
+                setInsightTextIndex(prevIndex => {
+                    const currentIndex = prevIndex + 1;
+                    addServerMessageWithType(
+                        "Current Step:",
+                        "text",
+                        "insightText",
+                        currentIndex
+                    );
+                    return currentIndex;
+                });
+                setInsightsText(prevInsightsText => [...prevInsightsText, generatedTexts.value]);
+                setIsLoading(false);
+                removeLoadingMessage();
+        } catch (error) {
+            console.error("Error getting text", error);
+        }
+    }
+
+    const handleGetCode = async func => {
+        const { generatedCodes } = func.arguments;
+        try {
+            setCodeIndex(prevIndex => {
+                const currentIndex = prevIndex + 1;
+                addServerMessageWithType(
+                    `The code is as follows:`,
+                    "text",
+                    "insightCode",
+                    currentIndex
+                );
+                return currentIndex;
+            });
+            setInsightsCode(prevCode => [...prevCode, generatedCodes]);
+        } catch (error) {
+            console.error("Error getting code", error);
+        }
+    }
 
     const handleDefaultMessage = data => {
         addServerMessage(
@@ -602,6 +591,20 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         ]);
     };
 
+    const addServerMessageWithType = (message, type, visualization, visualizationIdx) => {
+        setMessages(prevMessages => [
+            ...prevMessages,
+            {
+                id: Date.now() + Math.random(),
+                text: message,
+                sender: "server",
+                type: type,
+                showType: visualization,
+                visualizationIdx: visualizationIdx
+            }
+        ]);
+    };
+
     const sendMessage = () => {
         if (!inputValue.trim()) return;
 
@@ -616,6 +619,19 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                     thread_id: threadId,
                 }
             ]);
+            if(toolWaitingResponse === "planReview") {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    {
+                        id: Date.now() + Math.random(),
+                        text: "Please wait until we generate the visualization for you....",
+                        sender: "server",
+                        type: "text",
+                        // thread_id: threadId,
+                    }
+                ]);
+                setIsLoading(true)
+            }
             ws.send(
                 JSON.stringify({
                     type: "toolResponse",
@@ -673,7 +689,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
 
     const removeLoadingMessage = () => {
         setMessages(prevMessages => prevMessages.filter(
-            message => message.text !== "Please wait until we generate the response...."
+            message => message.text !== "Please wait until we generate the response...." && message.text !== "Please wait until we generate the visualization for you...."
         ));
     };
 
@@ -773,7 +789,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                             <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen}
                                 approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
                                 card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} insightsList={insightsList}
-                                showError={showError} openInsightModal={openInsightModal}
+                                showError={showError} insightsPlan={inisghtPlan}
+                                insightsText={insightsText} insightsImg={insightsImg} insightsCode={insightsCode}
                             />
                             <div
                                 style={{
@@ -1031,82 +1048,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                                 onClick={() => { redirect(); }}
                             >
                                 Go to builder & save
-                            </Button>
-                        </div>
-                    </div>
-                </Modal>
-            )}
-            {isInsightModalOpen && selectedIndex !== null && (
-                <Modal isOpen={isInsightModalOpen} onClose={closeInsightModal}>
-                    <div style={{ padding: "20px", position: "relative" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                            <h2 style={{ fontSize: "24px", fontWeight: "600", margin: 0, paddingLeft: "1rem" }}>Verify Code</h2>
-                            <Icon
-                                name="close"
-                                size={24}
-                                style={{ cursor: "pointer", color: "#76797D", paddingRight: "1rem" }}
-                                onClick={closeInsightModal}
-                            />
-                        </div>
-                        <div style={{ marginBottom: "20px", paddingLeft: "1rem", paddingRight: "1rem" }}>
-                            {isEditing ? (
-                                <textarea
-                                    style={{
-                                        width: "100%",
-                                        height: "600px",
-                                        fontFamily: "monospace",
-                                        fontSize: "14px",
-                                        backgroundColor: "#f5f5f5",
-                                        padding: "20px",
-                                        borderRadius: "10px",
-                                        whiteSpace: "pre-wrap",
-                                        overflowY: "auto",
-                                    }}
-                                    value={editedCode}
-                                    onChange={handleCodeChange}
-                                />
-                            ) : (
-                                <div style={{ display: "flex", flexDirection: "column", gap: "5px", fontFamily: "monospace", backgroundColor: "#f5f5f5", padding: "20px", borderRadius: "10px", whiteSpace: "pre-wrap", height: "600px", overflowY: "auto" }}>
-                                    {pythonCode[selectedIndex].split("\n").map((point, index) => (
-                                        <p key={index} style={{ fontSize: "14px", margin: "0", color: point.startsWith("#") ? "green" : "black" }}>
-                                            {point.trim()}
-                                        </p>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        <div style={{ display: "flex", marginTop: "20px", paddingLeft: "1rem", paddingRight: "1rem", gap: "2rem" }}>
-                            <Button
-                                variant="outlined"
-                                style={{
-                                    flex: 1,
-                                    borderColor: "#1664D6",
-                                    color: "#1664D6",
-                                    marginRight: "1px",
-                                    height: "50px",
-                                    fontSize: "16px",
-                                    fontWeight: "500",
-                                    border: "1px solid #1664D6",
-                                }}
-                                onClick={handleEditClick}
-                            >
-                                {isEditing ? "Cancel" : "Edit Code"}
-                            </Button>
-                            <Button
-                                variant="filled"
-                                style={{
-                                    flex: 1,
-                                    backgroundColor: "#1664D6",
-                                    color: "#FFFFFF",
-                                    height: "50px",
-                                    fontSize: "16px",
-                                    fontWeight: "500",
-                                    marginLeft: "1px",
-                                }}
-                                onClick={handleRerunClick}
-                                disabled={!hasChanges}
-                            >
-                                Re-run Code
                             </Button>
                         </div>
                     </div>
