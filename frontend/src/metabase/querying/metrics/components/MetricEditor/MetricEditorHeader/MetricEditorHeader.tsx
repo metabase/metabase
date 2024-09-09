@@ -11,14 +11,18 @@ import S from "./MetricEditorHeader.module.css";
 
 type MetricEditorHeaderProps = {
   question: Question;
+  isDirty: boolean;
   onCreate: (question: Question) => void;
   onSave: (question: Question) => Promise<void>;
+  onCancel: () => void;
 };
 
 export function MetricEditorHeader({
   question,
+  isDirty,
   onCreate,
   onSave,
+  onCancel,
 }: MetricEditorHeaderProps) {
   const handleCreate = () => onCreate(question);
   const handleSave = () => onSave(question);
@@ -28,7 +32,7 @@ export function MetricEditorHeader({
       className={S.bar}
       title={question.displayName() ?? t`New metric`}
       buttons={[
-        <Button key="cancel" small>{t`Cancel`}</Button>,
+        <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>,
         !question.isSaved() ? (
           <Button key="create" primary small onClick={handleCreate}>
             {t`Save`}
@@ -37,6 +41,7 @@ export function MetricEditorHeader({
           <ActionButton
             key="save"
             actionFn={handleSave}
+            disabled={!isDirty}
             normalText={t`Save changes`}
             activeText={t`Saving…`}
             failedText={t`Save failed`}

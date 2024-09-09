@@ -58,12 +58,24 @@ export function MetricEditor({
     setQueryBuilderMode("view");
   };
 
+  const handleCancel = () => {
+    if (question.isSaved()) {
+      if (isDirty) {
+        setModalType("leave");
+      } else {
+        setQueryBuilderMode("view");
+      }
+    }
+  };
+
   return (
     <Flex h="100%" direction="column">
       <MetricEditorHeader
         question={question}
+        isDirty={isDirty}
         onCreate={handleCreateStart}
         onSave={handleSave}
+        onCancel={handleCancel}
       />
       <MetricEditorBody
         question={question}
