@@ -52,7 +52,7 @@ export function entityPickerModalLevel(level) {
  * @returns
  */
 export function entityPickerModalItem(name, { level } = {}) {
-  if (level != null) {
+  if (level == null) {
     return entityPickerActiveTab().findByText(name).parents("button");
   }
 
