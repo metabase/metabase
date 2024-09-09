@@ -7,6 +7,7 @@ import {
   type StructuredQuestionDetails,
   assertIsEllipsified,
   createQuestion,
+  getSidebarSectionTitle,
   main,
   navigationSidebar,
   popover,
@@ -94,6 +95,16 @@ function findMetric(name: string) {
 
 function getMetricsTableItem(index: number) {
   return metricsTable().findAllByTestId("metric-name").eq(index);
+}
+
+function shouldHaveBookmark(name: string) {
+  getSidebarSectionTitle(/Bookmarks/).should("be.visible");
+  navigationSidebar().findByText(name).should("be.visible");
+}
+
+function shouldNotHaveBookmark(name: string) {
+  getSidebarSectionTitle(/Bookmarks/).should("not.exist");
+  navigationSidebar().findByText(name).should("not.exist");
 }
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -238,14 +249,20 @@ describe("scenarios > browse > metrics", () => {
 
       cy.visit("/browse/metrics");
 
+      shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
       metricsTable().findByLabelText("Metric options").click();
       popover().findByText("Bookmark").should("be.visible").click();
+
+      shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
 
       metricsTable().findByLabelText("Metric options").click();
       popover()
         .findByText("Remove from bookmarks")
         .should("be.visible")
         .click();
+
+      shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
 
       metricsTable().findByLabelText("Metric options").click();
       popover().findByText("Bookmark").should("be.visible");

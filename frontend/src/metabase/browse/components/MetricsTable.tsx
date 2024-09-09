@@ -22,6 +22,7 @@ import {
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
+import Bookmarks from "metabase/entities/bookmarks";
 import Questions from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -346,11 +347,13 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
         key: "remove-bookmark",
         title: t`Remove from bookmarks`,
         icon: "bookmark",
-        action() {
-          deleteBookmark({
+        async action() {
+          await deleteBookmark({
             id: metric.id,
             type: "card",
           });
+
+          dispatch(Bookmarks.actions.invalidateLists());
         },
       });
     } else {
@@ -358,11 +361,12 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
         key: "add-bookmark",
         title: c("Verb").t`Bookmark`,
         icon: "bookmark",
-        action() {
-          createBookmark({
+        async action() {
+          await createBookmark({
             id: metric.id,
             type: "card",
           });
+          dispatch(Bookmarks.actions.invalidateLists());
         },
       });
     }
