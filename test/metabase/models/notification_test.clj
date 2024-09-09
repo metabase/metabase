@@ -67,7 +67,7 @@
   (mt/with-model-cleanup [:model/Notification]
     (mt/with-temp [:model/Channel chn-1 (assoc api.channel-test/default-test-channel :name "Channel 1")
                    :model/Channel chn-2 (assoc api.channel-test/default-test-channel :name "Channel 2")]
-      (testing "create a notification with 2 subscriptions with 1 destination that has 2 recipients"
+      (testing "create a notification with 2 subscriptions with 2 handlers that has 2 recipients"
         (let [noti (models.notification/create-notification!
                     default-system-event-notification
                     [default-user-invited-subscription
@@ -89,7 +89,7 @@
                    :active        true
                    :subscriptions [default-user-invited-subscription
                                    default-card-created-subscription]
-                   :destinations  [{:channel_type (:type chn-1)
+                   :handlers      [{:channel_type (:type chn-1)
                                     :channel_id   (:id chn-1)
                                     :recipients   [{:type     :notification-recipient/user
                                                     :user_id  (mt/user->id :rasta)}
@@ -103,4 +103,4 @@
                                                     :permissions_group_id (:id (perms-group/admin))}]}]}
                   (t2/hydrate (t2/select-one :model/Notification (:id noti))
                               :subscriptions
-                              [:destinations :recipients :channel]))))))))
+                              [:handlers :recipients :channel]))))))))

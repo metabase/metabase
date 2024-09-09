@@ -9281,7 +9281,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: notification
-            remarks: join table that connect notification subscriptions and notification destinations
+            remarks: join table that connect notification subscriptions and notification handlers
             columns:
               - column:
                   name: id
@@ -9368,14 +9368,14 @@ databaseChangeLog:
   - changeSet:
       id: v51.2024-08-30T08:00:03
       author: qnkhuat
-      comment: Create the notification_destination table
+      comment: Create the notification_handler table
       preConditions:
         - not:
           - tableExists:
-              tableName: notification_destination
+              tableName: notification_handler
       changes:
         - createTable:
-            tableName: notification_destination
+            tableName: notification_handler
             columns:
               - column:
                   name: id
@@ -9397,7 +9397,7 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: notification
                     referencedColumnNames: id
-                    foreignKeyName: fk_notification_destination_notification_id
+                    foreignKeyName: fk_notification_handler_notification_id
                     deleteCascade: true
               - column:
                   name: channel_id
@@ -9406,7 +9406,7 @@ databaseChangeLog:
                     nullable: true # temporarily nullable, because we need to support email and slack channels as global configuration
                     referencedTableName: channel
                     referencedColumnNames: id
-                    foreignKeyName: fk_notification_destination_channel_id
+                    foreignKeyName: fk_notification_handler_channel_id
                     deleteCascade: true
               - column:
                   name: active
@@ -9447,13 +9447,13 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: notification_destination_id
+                  name: notification_handler_id
                   type: int
                   constraints:
                     nullable: false
-                    referencedTableName: notification_destination
+                    referencedTableName: notification_handler
                     referencedColumnNames: id
-                    foreignKeyName: fk_notification_recipient_notification_destination_id
+                    foreignKeyName: fk_notification_recipient_notification_handler_id
                     deleteCascade: true
               - column:
                   name: type

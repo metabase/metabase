@@ -1,4 +1,8 @@
 (ns metabase.models.notification
+  "A notification have:
+  - a payload
+  - more than one subscriptions
+  - more than one handlers where each handler has a channel, optionally a template, and more than one recpients."
   (:require
    [clojure.string :as str]
    [metabase.models.interface :as mi]
@@ -11,7 +15,7 @@
 
 (methodical/defmethod t2/table-name :model/Notification             [_model] :notification)
 (methodical/defmethod t2/table-name :model/NotificationSubscription [_model] :notification_subscription)
-(methodical/defmethod t2/table-name :model/NotificationDestination  [_model] :notification_destination)
+(methodical/defmethod t2/table-name :model/NotificationHandler      [_model] :notification_handler)
 (methodical/defmethod t2/table-name :model/NotificationRecipient    [_model] :notification_recipient)
 
 (defn- assert-enum
@@ -47,7 +51,7 @@
   {:type       (mi/transform-validator mi/transform-keyword (partial assert-enum subscription-types))
    :event_name (mi/transform-validator mi/transform-keyword (partial assert-namespaced "event"))})
 
-(t2/deftransforms :model/NotificationDestination
+(t2/deftransforms :model/NotificationHandler
   {:channel_type (mi/transform-validator mi/transform-keyword (partial assert-namespaced "channel"))})
 
 (t2/deftransforms :model/NotificationRecipient
@@ -55,7 +59,7 @@
 
 (doseq [model [:model/Notification
                :model/NotificationSubscription
-               :model/NotificationDestination
+               :model/NotificationHandler
                :model/NotificationRecipient]]
   (doto model
     (derive :metabase/model)
@@ -73,35 +77,35 @@
    :id
    {:default nil}))
 
-(methodical/defmethod t2/batched-hydrate [:model/Notification :destinations]
-  "Batch hydration NotificationDestinations for a list of Notifications"
+(methodical/defmethod t2/batched-hydrate [:model/Notification :handlers]
+  "Batch hydration NotificationHandlers for a list of Notifications"
   [_model k notifications]
   (mi/instances-with-hydrated-data
    notifications k
    #(group-by :notification_id
-              (t2/select :model/NotificationDestination :notification_id [:in (map :id notifications)]))
+              (t2/select :model/NotificationHandler :notification_id [:in (map :id notifications)]))
    :id
    {:default nil}))
 
-(methodical/defmethod t2/batched-hydrate [:model/NotificationDestination :channel]
-  "Batch hydration Channels for a list of NotificationDestinations."
-  [_model k notification-destinations]
+(methodical/defmethod t2/batched-hydrate [:model/NotificationHandler :channel]
+  "Batch hydration Channels for a list of NotificationHandlers"
+  [_model k notification-handlers]
   (mi/instances-with-hydrated-data
-   notification-destinations k
+   notification-handlers k
    #(t2/select-fn->fn :id identity :model/Channel
-                      :id [:in (map :channel_id notification-destinations)]
+                      :id [:in (map :channel_id notification-handlers)]
                       :active true)
    :channel_id
    {:default nil}))
 
-(methodical/defmethod t2/batched-hydrate [:model/NotificationDestination :recipients]
-  "Batch hydration NotificationRecipients for a list of NotificationDestinations."
-  [_model k notification-destinations]
+(methodical/defmethod t2/batched-hydrate [:model/NotificationHandler :recipients]
+  "Batch hydration NotificationRecipients for a list of NotificationHandlers"
+  [_model k notification-handlers]
   (mi/instances-with-hydrated-data
-   notification-destinations
+   notification-handlers
    k
-   #(group-by :notification_destination_id
-              (t2/select :model/NotificationRecipient :notification_destination_id [:in (map :id notification-destinations)]))
+   #(group-by :notification_handler_id
+              (t2/select :model/NotificationRecipient :notification_handler_id [:in (map :id notification-handlers)]))
    :id
    {:default []}))
 
@@ -120,16 +124,16 @@
 (mu/defn create-notification!
   "Create a new notification with `subsciptions`.
   Return the created notification."
-  [notification subcriptions destinations+recipients]
+  [notification subcriptions handlers+recipients]
   (t2/with-transaction [_conn]
     (let [noti (t2/insert-returning-instance! :model/Notification notification)
           noti-id      (:id noti)]
       (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id noti-id) subcriptions))
-      (doseq [dest destinations+recipients]
-        (let [recipients (:recipients dest)
-              dest       (-> dest
+      (doseq [handler handlers+recipients]
+        (let [recipients (:recipients handler)
+              handler    (-> handler
                              (dissoc :recipients)
                              (assoc :notification_id noti-id))
-              dest-id    (t2/insert-returning-pk! :model/NotificationDestination dest)]
-          (t2/insert! :model/NotificationRecipient (map #(assoc % :notification_destination_id dest-id) recipients))))
+              handler-id (t2/insert-returning-pk! :model/NotificationHandler handler)]
+          (t2/insert! :model/NotificationRecipient (map #(assoc % :notification_handler_id handler-id) recipients))))
       noti)))
