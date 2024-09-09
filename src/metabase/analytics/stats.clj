@@ -3,6 +3,7 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
@@ -16,12 +17,14 @@
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models
-    :refer [Card Collection Dashboard DashboardCard Database Field LegacyMetric
-            PermissionsGroup Pulse PulseCard PulseChannel QueryCache Segment
-            Table User]]
+    :refer [Card Collection Dashboard DashboardCard Database Field
+            LegacyMetric PermissionsGroup Pulse PulseCard PulseChannel
+            QueryCache Segment Table User]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
+   [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -470,16 +473,174 @@
                       :table      (table-metrics)
                       :user       (user-metrics)}}))
 
-(defn- send-stats!
-  "send stats to Metabase tracking server"
+(defn- send-stats-deprecated!
+  "Send stats to Metabase tracking server."
   [stats]
   (try
     (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
     (catch Throwable e
       (log/error e "Sending usage stats FAILED"))))
 
+(defn- in-docker?
+  "Is the current Metabase process running in a Docker container?"
+  []
+  (boolean
+   (or (.exists (io/file "/.dockerenv"))
+       (when (.exists (io/file "/proc/self/cgroup"))
+         (some #(re-find #"docker" %)
+               (line-seq (io/reader "/proc/self/cgroup")))))))
+
+(defn- deployment-model
+  []
+  (case
+    (premium-features/is-hosted?) "cloud"
+    (in-docker?) "docker"
+    :else "jar"))
+
+(def ^:private activation-days 3)
+
+(defn- sufficient-users?
+  "Returns a Boolean indicating whether the number of non-internal users created within `activation-days` is greater
+  than `num-users`"
+  [num-users]
+  (let [users-in-activation-period
+        (t2/count :model/User {:where [:and
+                                       [:not= :id config/internal-mb-user-id]
+                                       [:<=
+                                        :date_joined
+                                        (t/plus (t/offset-date-time (setting/get :instance-creation))
+                                                (t/days activation-days))]]
+                               :limit (inc num-users)})]
+    (> (count users-in-activation-period) num-users)))
+
+(defn- sufficient-queries?
+  "Returns a Boolean indicating whether the number of queries recorded over non-sample content is greater than
+  `num-queries`"
+  [num-queries]
+  (let [sample-db-id (t2/select-one-pk :model/Database :is_sample true)
+        queries      (t2/select-fn-set :id :model/QueryExecution
+                                       {:where [:not= :database_id sample-db-id]
+                                        :limit (inc num-queries)})]
+    (> (count queries) num-queries)))
+
+(defn- completed-activation-signals?
+  "If the current plan is Pro or Starter, returns a Boolean indicating whether the instance should be considered to have
+  completed activation signals. Returns nil for non-Pro or Starter plans."
+  []
+  (let [plan     (premium-features/plan-alias)
+        pro?     (str/starts-with? plan "pro")
+        starter? (str/starts-with? plan "starter")]
+    (cond
+      pro?
+      (or (sufficient-users? 3) (sufficient-queries? 200))
+
+      starter?
+      (or (sufficient-users? 1) (sufficient-queries? 100))
+
+      :else
+      nil)))
+
+(defn- snowplow-instance-attributes
+  [stats]
+  (let [system-stats (-> stats :stats :system)
+        instance-attributes
+        (merge
+         (dissoc system-stats :user_language)
+         {:metabase_plan                    (premium-features/plan-alias)
+          :metabase_version                 (-> stats :version)
+          :language                         (-> system-stats :user_language)
+          :report_timezone                  (-> stats :report_timezone)
+          :deployment_model                 (deployment-model)
+          :startup_time_millis              (-> stats :startup_time_millis)
+          :has_activation_signals_completed (completed-activation-signals?)})]
+    (mapv
+     (fn [[k v]] {:key k :value v})
+     instance-attributes)))
+
+(defn- whitelabeling-in-use?
+  "Are any whitelabeling settings set to values other than their default?"
+  []
+  (let [whitelabel-settings (filter
+                             (fn [setting] (= (:feature setting) :whitelabel))
+                             (vals @setting/registered-settings))]
+    (boolean
+     (some
+      (fn [setting]
+        (not= ((:getter setting))
+              (:default setting)))
+      whitelabel-settings))))
+
+(defenterprise enterprise-snowplow-features
+  "OSS values to use for features which require calling EE code to check whether they are available/enabled."
+  metabase-enterprise.snowplow
+  []
+  [{:key       :sso_jwt
+    :available false
+    :enabled   false}
+   {:key       :sso_saml
+    :available false
+    :enabled   false}
+   {:key       :scim
+    :available false
+    :enabled   false}])
+
+(defn- snowplow-features
+  [stats]
+  #_(def stats (anonymous-usage-stats))
+  (let [features
+        [{:name      :email
+          :available true
+          :enabled   (-> stats :email_configured)}
+         {:key       :slack
+          :available true
+          :enabled   (-> stats :slack_configured)}
+         {:key       :sso_google
+          :available (premium-features/enable-sso-google?)
+          :enabled   (google/google-auth-configured)}
+         {:key       :sso_ldap
+          :available (premium-features/enable-sso-ldap?)
+          :enabled   (public-settings/ldap-enabled?)}
+         {:key       :sample_data
+          :available true
+          :enabled   (-> stats :has_sample_data)}
+         {:key       :interactive_embedding
+          :available (premium-features/hide-embed-branding?)
+          :enabled   (and
+                      (embed.settings/enable-embedding)
+                      (boolean (embed.settings/embedding-app-origin))
+                      (public-settings/sso-enabled?))}
+         {:key       :static_embedding
+          :available true
+          :enabled   (and
+                      (embed.settings/enable-embedding)
+                      (or
+                       (t2/exists? :model/Dashboard :enable_embedding true)
+                       (t2/exists? :model/Card :enable_embedding true)))}
+         {:key       :public_sharing
+          :available true
+          :enabled   (and
+                      (public-settings/enable-public-sharing)
+                      (or
+                       (t2/exists? :model/Dashboard :public_uuid [:not= nil])
+                       (t2/exists? :model/Card :public_uuid [:not= nil])))}
+         {:key       :public_sharing
+          :available (premium-features/enable-whitelabeling?)
+          :enabled   (whitelabeling-in-use?)}]]
+      (concat features (enterprise-snowplow-features))))
+
+(defn- send-stats-via-snowplow!
+  "Send stats to Metabase's snowplow collector. Transforms stats into the format required by the Snowplow schema."
+  [stats]
+  (let [instance-attributes (snowplow-instance-attributes stats)
+        features            (snowplow-features stats)]
+    (snowplow/track-event! ::snowplow/instance_stats
+                           {:instance-attributes instance-attributes
+                            :features            features})))
+
 (defn phone-home-stats!
   "Collect usage stats and phone them home"
   []
   (when (public-settings/anon-tracking-enabled)
-    (send-stats! (anonymous-usage-stats))))
+    (let [stats (anonymous-usage-stats)]
+      (send-stats-deprecated! stats)
+      (send-stats-via-snowplow! stats))))
