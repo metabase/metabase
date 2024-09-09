@@ -811,8 +811,10 @@ describeEE("formatting > sandboxes", () => {
         .click();
 
       modal().findByText("Select a question").click();
+      entityPickerModal().within(() => {
+        entityPickerModalItem(QUESTION_NAME).click();
+      });
 
-      entityPickerModal().findByText(QUESTION_NAME).click();
       modal().button("Save").click();
       cy.wait("@sandboxTable").then(({ response }) => {
         expect(response.statusCode).to.eq(400);

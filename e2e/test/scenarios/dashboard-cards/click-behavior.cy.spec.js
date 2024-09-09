@@ -12,6 +12,8 @@ import {
   dashboardHeader,
   editDashboard,
   entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   filterWidget,
   getActionCardDetails,
   getDashboardCard,
@@ -2233,10 +2235,11 @@ const clickLineChartPoint = () => {
 const addDashboardDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Dashboard").click();
-  entityPickerModal()
-    .findByRole("tab", { name: /Dashboards/ })
-    .click();
-  entityPickerModal().findByText(TARGET_DASHBOARD.name).click();
+
+  entityPickerModal().within(() => {
+    entityPickerModalTab("Dashboards").click();
+    entityPickerModalItem(TARGET_DASHBOARD.name).click();
+  });
 };
 
 const addUrlDestination = () => {
@@ -2247,10 +2250,10 @@ const addUrlDestination = () => {
 const addSavedQuestionDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Saved question").click();
-  entityPickerModal()
-    .findByRole("tab", { name: /Questions/ })
-    .click();
-  entityPickerModal().findByText(TARGET_QUESTION.name).click();
+  entityPickerModal().within(() => {
+    entityPickerModalTab("Saved questions").click();
+    entityPickerModalItem(TARGET_QUESTION.name).click();
+  });
 };
 
 const addSavedQuestionCreatedAtParameter = () => {

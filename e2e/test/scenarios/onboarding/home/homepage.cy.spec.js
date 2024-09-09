@@ -261,7 +261,9 @@ describe("scenarios > home > custom homepage", () => {
         .findByRole("button")
         .click();
 
-      entityPickerModal().findByText("Orders in a dashboard").click();
+      entityPickerModal().within(() => {
+        entityPickerModalItem("Orders in a dashboard").click();
+      });
 
       undoToast().findByText("Changes saved").should("be.visible");
 
@@ -297,7 +299,9 @@ describe("scenarios > home > custom homepage", () => {
         .findByRole("button")
         .click();
 
-      entityPickerModal().findByText("Orders in a dashboard").click();
+      entityPickerModal().within(() => {
+        entityPickerModalItem("Orders in a dashboard").click();
+      });
 
       cy.findByTestId("custom-homepage-dashboard-setting").should(
         "contain",
@@ -566,7 +570,9 @@ describeWithSnowplow("scenarios > setup", () => {
       .findByRole("button")
       .click();
 
-    entityPickerModal().findByText("Orders in a dashboard").click();
+    entityPickerModal().within(() => {
+      entityPickerModalItem("Orders in a dashboard").click();
+    });
 
     undoToast().findByText("Changes saved").should("be.visible");
 
@@ -583,7 +589,9 @@ describeWithSnowplow("scenarios > setup", () => {
       .findByText(/Select a dashboard/i)
       .click();
 
-    entityPickerModal().findByText("Orders in a dashboard").click();
+    entityPickerModal().within(() => {
+      entityPickerModalItem("Orders in a dashboard").click();
+    });
     modal().findByText("Save").click();
     expectGoodSnowplowEvent({
       event: "homepage_dashboard_enabled",

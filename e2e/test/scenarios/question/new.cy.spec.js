@@ -186,7 +186,9 @@ describe("scenarios > question > new", () => {
       cy.signOut();
       cy.signIn("nocollection");
       startNewQuestion();
-      entityPickerModal().findByText("Orders").click();
+      entityPickerModal().within(() => {
+        entityPickerModalItem("Orders").click();
+      });
       visualize();
       saveQuestion("Personal question");
 

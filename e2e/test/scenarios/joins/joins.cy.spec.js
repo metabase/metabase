@@ -8,6 +8,7 @@ import {
   assertQueryBuilderRowCount,
   enterCustomColumnDetails,
   entityPickerModal,
+  entityPickerModalItem,
   filter,
   getNotebookStep,
   join,
@@ -353,7 +354,9 @@ describe("scenarios > question > joined questions", () => {
     );
 
     getNotebookStep("data").findByTestId("data-step-cell").click();
-    entityPickerModal().findByText("People").click();
+    entityPickerModal().within(() => {
+      entityPickerModalItem("People").click();
+    });
 
     getNotebookStep("join").should("not.exist");
 

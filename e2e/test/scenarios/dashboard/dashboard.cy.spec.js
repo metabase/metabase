@@ -240,10 +240,10 @@ describe("scenarios > dashboard", () => {
         cy.button("Yes please!").click();
       });
 
-      entityPickerModal()
-        .findByRole("tab", { name: /Dashboards/ })
-        .click();
-      entityPickerModal().findByText("Create a new dashboard").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Dashboards").click();
+        cy.button("Create a new dashboard").click();
+      });
       cy.findByTestId("create-dashboard-on-the-go").within(() => {
         cy.findByPlaceholderText("My new dashboard").type("Foo");
         cy.findByText("Create").click();

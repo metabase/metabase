@@ -216,12 +216,16 @@ describe("issue 15342", { tags: "@external" }, () => {
     });
 
     cy.icon("join_left_outer").click();
-    entityPickerModal().findByText("Orders").click();
+    entityPickerModal().within(() => {
+      entityPickerModalItem("Orders").click();
+    });
     getNotebookStep("join").findByLabelText("Right column").click();
     popover().findByText("Product ID").click();
 
     cy.icon("join_left_outer").last().click();
-    entityPickerModal().findByText("Products").click();
+    entityPickerModal().within(() => {
+      entityPickerModalItem("Products").click();
+    });
     getNotebookStep("join").icon("join_left_outer").click();
     popover().findByText("Inner join").click();
 
@@ -1278,7 +1282,9 @@ describe("issue 42385", { tags: "@external" }, () => {
       .findByText("Products")
       .click();
 
-    entityPickerModal().findByText("Reviews").click();
+    entityPickerModal().within(() => {
+      entityPickerModalItem("Reviews").click();
+    });
 
     getNotebookStep("data").findByTestId("data-step-cell").click();
     entityPickerModal().within(() => {
