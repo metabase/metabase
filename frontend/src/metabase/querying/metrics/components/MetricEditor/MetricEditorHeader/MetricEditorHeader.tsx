@@ -7,13 +7,13 @@ import Button from "metabase/core/components/Button";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import type Question from "metabase-lib/v1/Question";
 
-import S from "./MetricHeader.module.css";
+import S from "./MetricEditorHeader.module.css";
 
-type MetricHeaderProps = {
+type MetricEditorHeaderProps = {
   question: Question;
 };
 
-export function MetricHeader({ question }: MetricHeaderProps) {
+export function MetricEditorHeader({ question }: MetricEditorHeaderProps) {
   return (
     <EditBar
       className={S.bar}
