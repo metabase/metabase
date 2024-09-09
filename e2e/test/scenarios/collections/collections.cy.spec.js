@@ -506,20 +506,20 @@ describe("scenarios > collection defaults", () => {
 
       entityPickerModal().within(() => {
         cy.findByTestId("loading-indicator").should("not.exist");
-        cy.findByRole("tab", { name: /Collections/ }).click();
+        entityPickerModalTab("Collections").click();
         cy.wait([
           "@getCollectionItems",
           "@getCollectionItems",
           "@getCollectionItems",
         ]);
         // make sure the first collection (current parent) is selected
-        findPickerItem("First collection").should(
+        entityPickerModalItem("First collection").should(
           "have.attr",
           "data-active",
           "true",
         );
         // then click our analytics
-        cy.findByText("Our analytics").click();
+        entityPickerModalItem("Our analytics").click();
         cy.button("Move").click();
       });
 
@@ -565,7 +565,7 @@ describe("scenarios > collection defaults", () => {
         entityPickerModalItem("Our analytics", { level: 0 }).click();
         cy.button("Move").click();
         cy.log("Entity picker should show an error message");
-        cy.findByText("Ryan said no").should("exist");
+        entityPickerModalItem("Ryan said no").should("exist");
       });
     });
 
@@ -644,7 +644,7 @@ describe("scenarios > collection defaults", () => {
           cy.findByTestId("toast-card").button("Move").click();
 
           entityPickerModal().within(() => {
-            cy.findByText("First collection").click();
+            entityPickerModalItem("First collection").click();
             cy.button("Move").click();
           });
 
@@ -678,16 +678,19 @@ describe("scenarios > collection defaults", () => {
           popover().findByText("Move").click();
 
           entityPickerModal().within(() => {
-            cy.findByRole("tab", { name: /Collections/ }).click();
+            entityPickerModalTab("Collections").click();
             cy.log("parent collection should be selected");
-            findPickerItem("First collection").should(
+            entityPickerModalItem("First collection").should(
               "have.attr",
               "data-active",
               "true",
             );
 
             cy.log("moving collection should be visible but disabled");
-            findPickerItem("Second collection").should("have.attr", "disabled");
+            entityPickerModalItem("Second collection").should(
+              "have.attr",
+              "disabled",
+            );
             cy.findByText("Cancel").click();
           });
 
@@ -701,15 +704,18 @@ describe("scenarios > collection defaults", () => {
 
           entityPickerModal().within(() => {
             cy.log("parent collection should be selected");
-            cy.findByRole("tab", { name: /Collections/ }).click();
-            findPickerItem("Second collection").should(
+            entityPickerModalTab("Collections").click();
+            entityPickerModalItem("Second collection").should(
               "have.attr",
               "data-active",
               "true",
             );
 
             cy.log("moving collection should be visible but disabled");
-            findPickerItem("Third collection").should("have.attr", "disabled");
+            entityPickerModalItem("Third collection").should(
+              "have.attr",
+              "disabled",
+            );
             cy.findByText("Cancel").click();
           });
 
@@ -726,12 +732,15 @@ describe("scenarios > collection defaults", () => {
 
           entityPickerModal().within(() => {
             cy.log("should disable all moving collections");
-            findPickerItem("First collection").should("have.attr", "disabled");
-            findPickerItem("Another collection").should(
+            entityPickerModalItem("First collection").should(
               "have.attr",
               "disabled",
             );
-            findPickerItem("Our analytics").should(
+            entityPickerModalItem("Another collection").should(
+              "have.attr",
+              "disabled",
+            );
+            entityPickerModalItem("Our analytics").should(
               "have.attr",
               "data-active",
               "true",
@@ -1204,9 +1213,4 @@ function moveItemToCollection(itemName, collectionName) {
   function getCollectionItem(collection, itemName) {
     return collection.find(item => item.name === itemName);
   }
-}
-
-// the button element that gets attributes is 2 levels up from the text
-function findPickerItem(name) {
-  return cy.findByText(name).parent().parent();
 }
