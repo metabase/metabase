@@ -41,6 +41,8 @@ import {
   getSortedModelFields,
 } from "metabase-lib/v1/metadata/utils/models";
 
+import { MetricEditorEmptyState } from "../../../querying/metrics/components/MetricEditor/MetricEditorFooter/MetricEditorEmptyState";
+
 import {
   DatasetEditBar,
   FieldTypeIcon,
@@ -54,7 +56,6 @@ import {
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
-import { MetricEmptyState } from "./MetricEmptyState";
 import { TabHintToast } from "./TabHintToast";
 import { EDITOR_TAB_INDEXES } from "./constants";
 
@@ -542,7 +543,7 @@ function DatasetEditor(props) {
           <TableContainer isSidebarOpen={!!sidebar}>
             <DebouncedFrame className={cx(CS.flexFull)} enabled>
               {isMetricEmptyState ? (
-                <MetricEmptyState
+                <MetricEditorEmptyState
                   query={question.query()}
                   runQuestionQuery={runQuestionQuery}
                 />

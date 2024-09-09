@@ -8,8 +8,8 @@ import { MetricEditorHeader } from "./MetricEditorHeader";
 
 type MetricEditorProps = {
   question: Question;
-  result: Dataset;
-  rawSeries: RawSeries;
+  result: Dataset | null;
+  rawSeries: RawSeries | null;
   reportTimezone: string;
   isDirty: boolean;
   isRunning: boolean;

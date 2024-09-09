@@ -1,38 +1,35 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type * as Lib from "metabase-lib";
-import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 
-import { MetricEmptyState } from "./MetricEmptyState";
+import { MetricEditorEmptyState } from "./MetricEditorEmptyState";
 
 type SetupOpts = {
-  query: Lib.Query;
+  isRunnable: boolean;
 };
 
-function setup({ query }: SetupOpts) {
+function setup({ isRunnable }: SetupOpts) {
   const runQuestionQuery = jest.fn();
 
   renderWithProviders(
-    <MetricEmptyState query={query} runQuestionQuery={runQuestionQuery} />,
+    <MetricEditorEmptyState
+      isRunnable={isRunnable}
+      runQuestionQuery={runQuestionQuery}
+    />,
   );
 
   return { runQuestionQuery };
 }
 
-describe("MetricEmptyState", () => {
+describe("MetricEditorEmptyState", () => {
   it("should allow to run a valid metric query", async () => {
-    const query = createQueryWithClauses({
-      aggregations: [{ operatorName: "count" }],
-    });
-    const { runQuestionQuery } = setup({ query });
+    const { runQuestionQuery } = setup({ isRunnable: true });
     await userEvent.click(screen.getByRole("button", { name: "Visualize" }));
     expect(runQuestionQuery).toHaveBeenCalled();
   });
 
   it("should not allow to run an invalid metric query", () => {
-    const query = createQuery();
-    setup({ query });
+    setup({ isRunnable: false });
     expect(
       screen.queryByRole("button", { name: "Visualize" }),
     ).not.toBeInTheDocument();
