@@ -39,25 +39,23 @@
 
   NOTE: this is less efficient than legacy search even. We plan to replace it with something
   less feature complete, but much faster."
-  [search-term & {:keys [double-filter?] :as opts}]
+  [search-term & {:as search-ctx}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
   (-> (sql.helpers/with [:index-query search.index/search-query]
-                        [:source-query (in-place-query (cond-> opts
-                                                         double-filter?
-                                                         (assoc :search-term search-term)))])
+                        [:source-query (in-place-query search-ctx)])
       (sql.helpers/select :sq.*)
       (sql.helpers/from [:source-query :sq])
       (sql.helpers/join [:index-query :iq] [:and
                                             [:= :sq.model :iq.model]
                                             [:= :sq.id :iq.model_id]])
       (sql/format {:params {:search-term search-term} :quoted true})
-      t2/query))
+      t2/reducible-query))
 
 (defn hybrid-multi
   "Perform multiple legacy searches to see if its faster. Perverse!"
-  [search-term & {:as opts}]
+  [search-term & {:as search-ctx}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
@@ -68,10 +66,18 @@
        (mapcat (fn [[model results]]
                  (let [ids (map :model_id results)]
                    ;; Something is very wrong here, this also returns items with other ids.
-                   (->> (assoc opts :models #{model} :ids ids)
-                        in-place-query
-                        t2/query
-                        (filter (comp (set ids) :id))))))))
+                   (as-> search-ctx <>
+                     (assoc <> :models #{model} :ids ids)
+                     (dissoc <> :search-ctx)
+                     (in-place-query <>)
+                     (t2/query <>)
+                     (filter (comp (set ids) :id) <>)))))))
+
+(defn search
+  "Return a reducible-query corresponding to searching the entities via a tsvector."
+  [search-ctx]
+  (hybrid-multi (:search-string search-ctx)
+                (dissoc search-ctx :search-string)))
 
 (defn init!
   "Ensure that the search index exists, and has been populated with all the entities."

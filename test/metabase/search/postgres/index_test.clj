@@ -1,20 +1,12 @@
 (ns metabase.search.postgres.index-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.search :refer [is-postgres?]]
    [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
-
-(set! *warn-on-reflection* true)
-
-(defn is-postgres?
-  "Check whether we can create this index"
-  []
-  (= "PostgreSQL"
-     (t2/with-connection [^java.sql.Connection conn]
-       (.. conn getMetaData getDatabaseProductName))))
 
 (defn legacy-results
   "Use the source tables directly to search for records."
@@ -67,14 +59,14 @@
   (with-index
     (testing "legacy search does not understand stop words or logical operators"
       (is (= 1 (legacy-hits "satisfaction")))
-      (is (= 31 (legacy-hits "or")))
+      (is (= 27 (legacy-hits "or")))
       (is (= 33 (legacy-hits "its the satisfaction of it")))
-      (is (= 4 (legacy-hits "user")))
-      (is (= 32 (legacy-hits "satisfaction or user"))))
+      (is (= 3 (legacy-hits "user")))
+      (is (= 27 (legacy-hits "satisfaction or user"))))
 
     (testing "We get results for both terms"
       (is (= 1 (index-hits "satisfaction")))
-      (is (= 4 (index-hits "user"))))
+      (is (= 3 (index-hits "user"))))
     (testing "But stop words are skipped"
       (is (= 0 (index-hits "or")))
       (is (= 1 (index-hits "its the satisfaction of it"))))
@@ -86,15 +78,15 @@
 (deftest negation-test
   (with-index
     (testing "We can filter out results"
-      (is (= 4 (index-hits "user")))
-      (is (= 4 (index-hits "people")))
+      (is (= 3 (index-hits "user")))
+      (is (= 3 (index-hits "people")))
       (is (= 1 (index-hits "user and people")))
-      (is (= 3 (index-hits "user -people"))))))
+      (is (= 2 (index-hits "user -people"))))))
 
 (deftest phrase-test
   (with-index
-    (is (= 19 (index-hits "orders")))
-    (is (= 6 (index-hits "category")))
+    (is (= 18 (index-hits "orders")))
+    (is (= 5 (index-hits "category")))
     (is (= 0 (index-hits "by")))
     (testing "only sometimes do these occur sequentially in a phrase"
       (is (= 2 (index-hits "\"orders by category\""))))

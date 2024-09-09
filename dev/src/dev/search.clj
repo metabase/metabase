@@ -1,8 +1,8 @@
 (ns dev.search
   (:require
    [metabase.search.postgres.core :as search.postgres]
-   [metabase.search.postgres.core-test :refer [legacy-results]]
    [metabase.search.postgres.index :as search.index]
+   [metabase.search.postgres.index-test :refer [legacy-results]]
    [toucan2.core :as t2]))
 
 (defn- basic-view [xs]
@@ -35,18 +35,18 @@
     #_{:clj-kondo/ignore [:discouraged-var]}
     (time
      (dotimes [_ n]
-       (apply
-        (case engine
-          :index-only search.index/search
-          :legacy-index-only legacy-query
-          :legacy legacy-results
-          :hybrid search.postgres/hybrid
-          :hybrid-multi search.postgres/hybrid-multi)
-        search-term
-        args))))
+       (vec
+        (apply
+         (case engine
+           :index-only search.index/search
+           :legacy legacy-results
+           :hybrid search.postgres/hybrid
+           :hybrid-multi search.postgres/hybrid-multi)
+         search-term
+         args)))))
 
-  (mini-bench 500 :legacy-index-only nil)
-  (mini-bench 500 :legacy-index-only "sample")
+  (mini-bench 500 :legacy nil)
+  (mini-bench 500 :legacy "sample")
   ;; 30x speed-up for test-data on my machine
   (mini-bench 500 :index-only "sample")
 
@@ -56,6 +56,6 @@
   ;; slower than fetching everything...
   (mini-bench 100 :hybrid "sample")
   ;; doing both filters... still a little bit more overhead with the join
-  (mini-bench 100 :hybrid "sample" :double-filter? true)
+  (mini-bench 100 :hybrid "sample" {:search-string "sample"})
   ;; oh! this monstrocity is actually 2x faaster than baseline B-)
   (mini-bench 100 :hybrid-multi "sample"))
