@@ -9,6 +9,7 @@ import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box, Flex, rem } from "metabase/ui";
 
 const propTypes = {
+  question: PropTypes.object.isRequired,
   isResizing: PropTypes.bool.isRequired,
   resizableBoxProps: PropTypes.object.isRequired,
   onResizeStop: PropTypes.func.isRequired,
