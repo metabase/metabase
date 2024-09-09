@@ -5,6 +5,7 @@ import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import Markdown from "metabase/core/components/Markdown";
 import CS from "metabase/css/core/index.css";
 
 import S from "./Detail.module.css";
@@ -18,6 +19,7 @@ const Detail = ({
   icon,
   isEditing,
   field,
+  isMarkdown = false,
 }) => (
   <div className={cx(S.detail)}>
     <div className={isEditing ? cx(S.detailBody, CS.flexFull) : S.detailBody}>
@@ -38,9 +40,10 @@ const Detail = ({
             defaultValue={description}
           />
         ) : (
-          <span className={subtitleClass}>
+          isMarkdown ? (
+          <Markdown className={subtitleClass}>
             {description || placeholder || t`No description yet`}
-          </span>
+          </Markdown>) : (<span className={subtitleClass}>{description || placeholder || t`No description yet`}</span>)
         )}
         {isEditing && field.error && field.touched && (
           <span className={CS.textError}>{field.error}</span>
@@ -59,6 +62,7 @@ Detail.propTypes = {
   icon: PropTypes.string,
   isEditing: PropTypes.bool,
   field: PropTypes.object,
+  isMarkdown: PropTypes.bool,
 };
 
 export default memo(Detail);
