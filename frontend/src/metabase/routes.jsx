@@ -50,7 +50,7 @@ import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisi
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
-
+import { BrowseValidation } from "./browse/components/BrowseValidation";
 import { BrowseDatabases } from "./browse/components/BrowseDatabases";
 import { DatabasesConnections } from "./browse/components/DatabasesConnections";
 import { BrowseModels } from "./browse/components/BrowseModels";
@@ -72,14 +72,9 @@ import { BrowseSemanticLayers } from "./browse/components/BrowseSemanticLayers";
 import { HomeLayout } from "./home/components/HomeLayout";
 import { CompanySettings } from "./browse/components/CompanySettings/CompanySettings.tsx"
 import { SettingsDatabases } from "./browse/components/CompanySettings/Databases.tsx"
-import { SettingsPeople } from "./browse/components/CompanySettings/People.tsx"
-import { SettingsPermissions } from "./browse/components/CompanySettings/Permissions.tsx"
 
 import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp";
-import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
-import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
-import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp";
 import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp";
 import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
@@ -94,9 +89,7 @@ import {
   createAdminRouteGuard,
 } from "metabase/admin/utils";
 import {
-  PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
-  PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES,
   PLUGIN_APPLICATION_PERMISSIONS,
@@ -308,6 +301,7 @@ export const getRoutes = store => {
             <Route path="semantic-layer/:slug" component={BrowseSemanticLayerTable} />
             <Route path="semantic-layer/:slug/cubes/:cubeName" component={BrowseCubes} />
             <Route path="semantic-layer/:slug/data-map" component={CubeFlow} />
+            <Route path="validation" component={BrowseValidation} />
             <Route path="chat" component={BrowseChat} />
             <Route path="insights" component={HomeLayout} />
             <Route path="databases/:slug" component={BrowseSchemas} />
