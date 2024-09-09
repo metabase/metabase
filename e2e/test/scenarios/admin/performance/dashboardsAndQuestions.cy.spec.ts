@@ -130,7 +130,6 @@ describe(
         resetTestTable({ type: "postgres", table: TEST_TABLE });
         restore("postgres-writable");
         cy.signInAsAdmin();
-        // resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
         setTokenFeatures("all");
       });
 
@@ -266,7 +265,8 @@ describe(
       beforeEach(() => {
         resetServerTime();
         interceptPerformanceRoutes();
-        restore("postgres-12");
+        resetTestTable({ type: "postgres", table: TEST_TABLE });
+        restore("postgres-writable");
         cy.signInAsAdmin();
       });
 
