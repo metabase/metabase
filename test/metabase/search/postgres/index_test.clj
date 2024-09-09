@@ -1,8 +1,7 @@
 (ns metabase.search.postgres.index-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.search.config :as search.config]
-   [metabase.search.impl :as search.impl]
+   [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
    [metabase.test :as mt]
@@ -17,26 +16,10 @@
      (t2/with-connection [^java.sql.Connection conn]
        (.. conn getMetaData getDatabaseProductName))))
 
-(def ^:private non-indexed-models
-  (disj search.config/all-models "indexed-entity"))
-
 (defn legacy-results
   "Use the source tables directly to search for records."
-  [search-term & {:keys [models]}]
-  (t2/query
-   (search.impl/full-search-query
-    {:archived? nil
-
-     ;; TODO pass the actual user
-     :current-user-id    1
-     :is-superuser?      true
-     :current-user-perms #{"/"}
-
-     :model-ancestors? false
-     ;; this model needs dynamic vars
-     :models           (or models non-indexed-models)
-
-     :search-string search-term})))
+  [search-term & {:as opts}]
+  (t2/query (#'search.postgres/in-place-query (assoc opts :search-term search-term))))
 
 (def legacy-models
   "Just the identity of the matches"
