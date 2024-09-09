@@ -26,8 +26,6 @@ export const PublicComponentStylesWrapper = styled.div`
   // end of RESET
 
   font-style: normal;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 
   width: 100%;
   height: 100%;
