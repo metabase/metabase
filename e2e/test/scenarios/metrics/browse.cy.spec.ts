@@ -292,6 +292,13 @@ describe("scenarios > browse > metrics", () => {
           "Metrics help you summarize and analyze your data effortlessly.",
         )
         .should("be.visible");
+
+      navigationSidebar().findByText("Trash").should("be.visible").click();
+      cy.button("Actions").click();
+      popover().findByText("Restore").should("be.visible").click();
+
+      navigationSidebar().findByText("Metrics").should("be.visible").click();
+      metricsTable().findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
     });
 
     it("should not be possible to trash a metric from the dot menu when the user does not have write access", () => {
