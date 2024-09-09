@@ -102,7 +102,7 @@ export const QuestionPicker = ({
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
 
-  const onFolderSelect = useCallback(
+  const handleFolderSelect = useCallback(
     ({ folder }: { folder: QuestionPickerItem }) => {
       const newPath = getStateFromIdPath({
         idPath: getCollectionIdPath(folder, userPersonalCollectionId),
@@ -169,7 +169,7 @@ export const QuestionPicker = ({
     <NestedItemPicker
       isFolder={(item: QuestionPickerItem) => isFolder(item, models)}
       options={options}
-      onFolderSelect={onFolderSelect}
+      onFolderSelect={handleFolderSelect}
       onItemSelect={handleItemSelect}
       path={path}
       listResolver={CollectionItemPickerResolver}
