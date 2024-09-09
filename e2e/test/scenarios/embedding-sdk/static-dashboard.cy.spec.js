@@ -139,7 +139,7 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
     cy.signOut();
     cy.get("@dashboardId").then(dashboardId => {
       visitFullAppEmbeddingUrl({
-        url: "http://my-localhost.com:6006/iframe.html",
+        url: "http://my-site.local:6006/iframe.html",
         qs: {
           id: "embeddingsdk-staticdashboard--default",
           viewMode: "story",
