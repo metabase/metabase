@@ -16,6 +16,7 @@ export function MetricEmptyState({
       direction="column"
       align="center"
       justify="center"
+      mih="100%"
       data-testid="metric-empty-state"
     >
       <Text mb="sm" fw="bold" fz="lg">
