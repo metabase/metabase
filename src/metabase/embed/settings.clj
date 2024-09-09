@@ -44,8 +44,24 @@
                                           :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
                                           :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))
 
+(defsetting enable-embedding-static
+  (deferred-tru "Allow admins to embed Metabase via static embedding?")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter)
+
 (defsetting enable-embedding-sdk
-  (deferred-tru "Allow admins to set the enable embedding Metabase via the SDK?")
+  (deferred-tru "Allow admins to embed Metabase via the SDK?")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter)
+
+(defsetting enable-embedding-interactive
+  (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
   :type       :boolean
   :default    false
   :visibility :authenticated
