@@ -65,7 +65,7 @@
                     vals))
               (catch Exception e
                 (log/error e "Error saving user parameters for a dashboard"))))
-          :capacity 50
+          :capacity 5000
           :interval 5000)))
 
 (mu/defn store!
