@@ -1,0 +1,157 @@
+{
+    "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+    "description": "Schema for daily stats ping, tracking instance metrics and settings",
+    "self": {
+        "vendor": "com.metabase",
+        "name": "instance_stats",
+        "format": "jsonschema",
+        "version": "1-0-0"
+    },
+    "type": "object",
+    "properties": {
+        "anonymous_uuid": {
+            "description": "The anonymous UUID",
+            "type": "string",
+            "maxLength": 255
+        },
+        "instance_attributes": {
+            "description": "Key-value pairs of instance attributes",
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "metrics": {
+            "description": "Metrics",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "The unique name of the metric",
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "value": {
+                        "description": "The value of the metric",
+                        "type": "number"
+                    },
+                    "tags": {
+                        "description": "Tags that can be used flagging teams / features the metric belongs to",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "name",
+                    "value"
+                ],
+                "additionalProperties": false
+            }
+        },
+        "grouped_metrics": {
+            "description": "Grouped metrics",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "The unique name of the grouped metric",
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "values": {
+                        "description": "Values for the grouped metric",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "group": {
+                                    "description": "The group name",
+                                    "type": "string",
+                                    "maxLength": 255
+                                },
+                                "value": {
+                                    "description": "The value for the group",
+                                    "type": "number"
+                                }
+                            },
+                            "required": [
+                                "group",
+                                "value"
+                            ],
+                            "additionalProperties": false
+                        }
+                    },
+                    "tags": {
+                        "description": "Tags that can be used flagging teams / features the metric belongs to",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "name",
+                    "values"
+                ],
+                "additionalProperties": false
+            }
+        },
+        "settings": {
+            "description": "Settings",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "description": "The unique key of the setting",
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "value": {
+                        "description": "The value of the setting",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "key",
+                    "value"
+                ],
+                "additionalProperties": false
+            }
+        },
+        "features": {
+            "description": "Features",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "The unique name of the feature",
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "available": {
+                        "description": "Whether the feature is available, i.e. can it be enabled/disabled or is it always on",
+                        "type": "boolean"
+                    },
+                    "enabled": {
+                        "description": "Whether the feature is enabled, i.e. can it be used by the users/instance",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "name",
+                    "available",
+                    "enabled"
+                ],
+                "additionalProperties": true
+            }
+        }
+    },
+    "additionalProperties": false,
+    "required": []
+}
