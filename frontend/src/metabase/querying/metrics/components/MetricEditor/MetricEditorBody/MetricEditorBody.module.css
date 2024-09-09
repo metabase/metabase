@@ -1,0 +1,8 @@
+.root {
+  display: flex;
+  flex: 1;
+}
+
+.content {
+  overflow: scroll;
+}

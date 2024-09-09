@@ -1,9 +1,14 @@
+import { ResizableBox } from "react-resizable";
+
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
+import S from "./MetricEditorBody.module.css";
 import { MetricEditorSidebar } from "./MetricEditorSidebar";
+
+const NOTEBOOK_HEIGHT = 500;
 
 type MetricEditorBodyProps = {
   question: Question;
@@ -27,21 +32,23 @@ export function MetricEditorBody({
   const isRunnable = Lib.canRun(question.query(), "metric");
 
   return (
-    <Flex style={{ flex: 1 }}>
-      <Box w="100%">
-        <Notebook
-          question={question}
-          reportTimezone={reportTimezone}
-          isDirty={isDirty}
-          isRunnable={isRunnable}
-          isResultDirty={isResultDirty}
-          updateQuestion={updateQuestion}
-          runQuestionQuery={runQuestionQuery}
-          setQueryBuilderMode={setQueryBuilderMode}
-          hasVisualizeButton={false}
-        />
-      </Box>
-      <MetricEditorSidebar />
-    </Flex>
+    <ResizableBox className={S.root} axis="y" height={NOTEBOOK_HEIGHT}>
+      <Flex className={S.content} w="100%">
+        <Box w="100%">
+          <Notebook
+            question={question}
+            reportTimezone={reportTimezone}
+            isDirty={isDirty}
+            isRunnable={isRunnable}
+            isResultDirty={isResultDirty}
+            updateQuestion={updateQuestion}
+            runQuestionQuery={runQuestionQuery}
+            setQueryBuilderMode={setQueryBuilderMode}
+            hasVisualizeButton={false}
+          />
+        </Box>
+        <MetricEditorSidebar />
+      </Flex>
+    </ResizableBox>
   );
 }

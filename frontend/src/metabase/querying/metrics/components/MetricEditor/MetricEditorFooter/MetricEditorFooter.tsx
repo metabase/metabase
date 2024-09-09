@@ -28,7 +28,7 @@ export function MetricEditorFooter({
   const isRunnable = Lib.canRun(question.query(), "metric");
 
   return (
-    <DebouncedFrame className={S.frame}>
+    <DebouncedFrame className={S.root}>
       {result != null || isRunning ? (
         <QueryVisualization
           question={question}

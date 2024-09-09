@@ -29,7 +29,7 @@ export function MetricEditorHeader({
 
   return (
     <EditBar
-      className={S.bar}
+      className={S.root}
       title={question.displayName() ?? t`New metric`}
       buttons={[
         <Button key="cancel" small onClick={onCancel}>{t`Cancel`}</Button>,
