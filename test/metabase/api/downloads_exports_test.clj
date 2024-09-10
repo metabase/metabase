@@ -24,6 +24,7 @@
    [metabase.pulse.core :as pulse]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
+   [toucan2.core :as t2]
    [metabase.util.json :as json])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)
@@ -109,7 +110,7 @@
                                        :format_rows   format-rows
                                        :pivot_results pivot)
                  (process-results pivot export-format)))]
-    (if (contains? card-or-dashcard :dashboard_id)
+    (if (= (t2/model card-or-dashcard) :model/DashboardCard)
       (dashcard-download* card-or-dashcard)
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                      :model/DashboardCard dashcard {:dashboard_id dashboard-id
@@ -180,7 +181,7 @@
   (letfn [(subscription-attachment* [pulse]
             (->> (run-pulse-and-return-attached-csv-data! pulse export-format)
                  (process-results pivot export-format)))]
-    (if (contains? card-or-dashcard :dashboard_id)
+    (if (= :model/DashboardCard (t2/model card-or-dashcard))
       ;; dashcard
       (mt/with-temp [:model/Pulse {pulse-id :id
                                    :as      pulse} {:name         "Test Pulse"
@@ -224,7 +225,7 @@
 (defn all-downloads
   [card-or-dashcard opts]
   (merge
-   (when-not (contains? card-or-dashcard :dashboard_id)
+   (when-not (= (t2/model card-or-dashcard) :model/DashboardCard)
      {:unsaved-card-download    (unsaved-card-download card-or-dashcard opts)
       :card-download            (card-download card-or-dashcard opts)
       :public-question-download (public-question-download card-or-dashcard opts)})
@@ -234,7 +235,7 @@
 (defn all-outputs!
   [card-or-dashcard opts]
   (merge
-   (when-not (contains? card-or-dashcard :dashboard_id)
+   (when-not (= (t2/model card-or-dashcard) :model/DashboardCard)
      {:unsaved-card-download    (unsaved-card-download card-or-dashcard opts)
       :public-question-download (public-question-download card-or-dashcard opts)
       :card-download            (card-download card-or-dashcard opts)
