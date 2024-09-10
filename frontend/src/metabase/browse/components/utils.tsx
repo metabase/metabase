@@ -144,6 +144,7 @@ export function getMetricValueForScalarMetric(dataset: Dataset) {
     label: t`Overall`,
     value: formatValue(value, {
       jsx: true,
+      rich: true,
       column: valueColumn,
     }),
   };
@@ -168,10 +169,12 @@ export function getMetricValueForTemporalMetric(dataset: Dataset) {
   return {
     label: formatValue(label, {
       jsx: true,
+      rich: true,
       column: labelColumn,
     }),
     value: formatValue(value, {
       jsx: true,
+      rich: true,
       column: valueColumn,
     }),
   };
