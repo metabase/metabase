@@ -619,6 +619,7 @@
                 ;; - https://github.com/weavejester/cljfmt/pull/347
                 ;; - https://github.com/weavejester/cljfmt/pull/348
                 ;; - https://github.com/weavejester/cljfmt/pull/350
+                ;; - https://github.com/weavejester/cljfmt/pull/352
                 io.github.camsaul/cljfmt
                 {:git/sha "77ede1e49c8718c9e1c9ac35cb6f34d0b02a65f3"}}
    :ns-default cljfmt.tool
