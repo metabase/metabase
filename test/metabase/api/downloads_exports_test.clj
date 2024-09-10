@@ -22,7 +22,8 @@
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.streaming.csv :as qp.csv]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [toucan2.core :as t2])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)
    (org.apache.poi.xssf.usermodel XSSFSheet)))
@@ -71,7 +72,7 @@
             (->> (format "dashboard/%d/dashcard/%d/card/%d/query/%s?format_rows=%s" dashboard-id dashcard-id card-id (name export-format) format-rows?)
                  (mt/user-http-request :crowberto :post 200)
                  (process-results export-format)))]
-    (if (contains? card-or-dashcard :dashboard_id)
+    (if (= (t2/model card-or-dashcard) :model/DashboardCard)
       (dashcard-download* card-or-dashcard)
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                      :model/DashboardCard dashcard {:dashboard_id dashboard-id
@@ -122,8 +123,7 @@
   (letfn [(subscription-attachment* [pulse]
             (->> (run-pulse-and-return-attached-csv-data! pulse export-format)
                  (process-results export-format)))]
-    (if (contains? card-or-dashcard :dashboard_id)
-      ;; dashcard
+    (if (= :model/DashboardCard (t2/model card-or-dashcard))
       (mt/with-temp [:model/Pulse {pulse-id :id
                                    :as      pulse} {:name         "Test Pulse"
                                                     :dashboard_id (:dashboard_id card-or-dashcard)}
@@ -165,7 +165,7 @@
 (defn all-outputs!
   [card-or-dashcard export-format format-rows?]
   (merge
-   (when-not (contains? card-or-dashcard :dashboard_id)
+   (when-not (= (t2/model card-or-dashcard) :model/DashboardCard)
      {:card-download    (card-download card-or-dashcard export-format format-rows?)
       :alert-attachment (alert-attachment! card-or-dashcard export-format format-rows?)})
    {:dashcard-download       (card-download card-or-dashcard export-format format-rows?)
