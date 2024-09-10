@@ -1,5 +1,4 @@
 import { type ReactNode, useMemo } from "react";
-import { t } from "ttag";
 
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { useInitData } from "embedding-sdk/hooks";
@@ -9,6 +8,7 @@ import { getIsInitialized } from "embedding-sdk/store/selectors";
 import type { SDKConfig } from "embedding-sdk/types";
 import { Box } from "metabase/ui";
 
+import { SdkLoader } from "./PublicComponentWrapper";
 import { SdkGlobalStylesWrapper } from "./SdkGlobalStylesWrapper";
 import { SdkLicenseProblemBanner } from "./SdkLicenseProblemBanner";
 
@@ -30,7 +30,7 @@ export const AppInitializeController = ({
 
   const content = useMemo(() => {
     if (!isInitialized) {
-      return <div>{t`Loading…`}</div>;
+      return <SdkLoader />;
     }
 
     if (licenseProblem?.severity === "error") {

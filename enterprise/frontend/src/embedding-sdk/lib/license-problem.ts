@@ -45,16 +45,16 @@ export function getSdkLicenseProblem(
     .with({ isSSO: true, hasFeatureFlag: false }, () =>
       toError(PROBLEMS.SSO_WITHOUT_LICENSE),
     )
-    .with({ hasFeatureFlag: true, isApiKey: true, isLocalhost: true }, () =>
+    .with({ isLocalhost: true, isApiKey: true, hasFeatureFlag: true }, () =>
       toWarning(PROBLEMS.API_KEYS_WITH_LICENSE),
     )
-    .with({ hasFeatureFlag: false, isApiKey: true, isLocalhost: true }, () =>
+    .with({ isLocalhost: true, isApiKey: true, hasFeatureFlag: false }, () =>
       toWarning(PROBLEMS.API_KEYS_WITHOUT_LICENSE),
     )
-    .with({ hasFeatureFlag: true, isApiKey: true }, () =>
+    .with({ isApiKey: true, hasFeatureFlag: true }, () =>
       toError(PROBLEMS.API_KEYS_WITH_LICENSE),
     )
-    .with({ hasFeatureFlag: false, isApiKey: true }, () =>
+    .with({ isApiKey: true, hasFeatureFlag: false }, () =>
       toError(PROBLEMS.API_KEYS_WITHOUT_LICENSE),
     )
     .otherwise(() => null);
