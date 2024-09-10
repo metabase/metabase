@@ -21,7 +21,11 @@ import { ChunkyList, ResultItem } from "../ResultItem";
 
 const defaultSearchFilter = (results: SearchResult[]) => results;
 
-export function EntityPickerSearchInput({
+export function EntityPickerSearchInput<
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>({
   searchQuery,
   setSearchQuery,
   setSearchResults,
@@ -29,6 +33,7 @@ export function EntityPickerSearchInput({
   searchFilter = defaultSearchFilter,
   searchParams = {},
 }: {
+  folder: Item | undefined;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   setSearchResults: (results: SearchResult[] | null) => void;
