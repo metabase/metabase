@@ -291,16 +291,14 @@
             (if (pos? bytes-read)
               (do
                 (.handleData detector buffer 0 bytes-read)
-                (if (.isDone detector)
-                  (.getDetectedCharset detector)
+                (when-not (.isDone detector)
                   (recur)))
-              (do
-                (.dataEnd detector)
-                (.getDetectedCharset detector)))))))
+              (.dataEnd detector)))))
+      (.getDetectedCharset detector))
     (catch Exception _)))
 
 (defn- ->reader ^Reader [^File file]
-  ;; Just live with unrecognized characters
+  ;; If we can't detect the encoding, just live with unrecognized characters.
   (let [charset (or (detect-charset file) "UTF-8")]
     (-> (bom/bom-input-stream file)
         (InputStreamReader. charset))))
