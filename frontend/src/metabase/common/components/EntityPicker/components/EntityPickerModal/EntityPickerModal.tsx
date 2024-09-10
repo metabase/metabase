@@ -287,8 +287,8 @@ export function EntityPickerModal<
               <EntityPickerSearchInput
                 models={searchModels}
                 placeholder={getSearchInputPlaceholder(selectedFolder)}
-                searchQuery={searchQuery}
                 setSearchResults={setSearchResults}
+                searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 searchFilter={searchResultFilter}
                 searchParams={searchParams}
