@@ -108,18 +108,18 @@ export function getDatasetScalarValueForMetric(dataset: Dataset) {
     return null;
   }
 
-  const columnMetadata = dataset.data.results_metadata?.columns?.[0];
+  const { rows, cols } = dataset.data;
 
-  const lastRow = dataset.data.rows?.at(-1);
-  const columnValue = lastRow?.[0];
+  const column = cols.at(-1);
+  const value = rows?.at(-1)?.at(-1);
 
-  if (columnValue === undefined) {
+  if (value === undefined) {
     return null;
   }
 
   return {
     tooltip: t`Overall`,
-    value: columnValue,
-    column: columnMetadata,
+    value,
+    column,
   };
 }
