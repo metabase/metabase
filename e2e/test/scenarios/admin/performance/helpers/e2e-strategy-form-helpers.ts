@@ -179,8 +179,14 @@ export const selectCacheStrategy = ({
 
   saveCacheStrategyForm({ strategyType: strategy.type, model: item?.model });
 
-  if (item?.model === "dashboard" || item?.model === "question") {
-    closeSidebar();
+  if (item?.model === "question") {
+    cy.findByLabelText("Close").click();
+  }
+
+  // Once dashboard sidesheets is merged, we can change this to use the same
+  // approach that we use for questions.
+  if (item?.model === "dashboard") {
+    cy.findByLabelText("More info").click();
   }
 };
 
