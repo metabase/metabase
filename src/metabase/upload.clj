@@ -40,6 +40,7 @@
    [toucan2.core :as t2])
   (:import
    (java.io File Reader)
+   (java.nio ByteBuffer)
    (java.nio.charset Charset StandardCharsets)
    (org.apache.tika Tika)))
 
@@ -294,7 +295,7 @@
 (defn- valid-encoding? [bytes ^Charset charset]
   (try
     (let [decoded (.decode (.newDecoder charset)
-                           (java.nio.ByteBuffer/wrap bytes))]
+                           (ByteBuffer/wrap bytes))]
       (not (.contains (.toString decoded) "\uFFFD")))
     (catch Exception _ false)))
 
