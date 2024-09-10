@@ -425,7 +425,7 @@ describe("scenarios > admin > performance", () => {
             "No dashboards or questions have their own caching policies yet.",
           );
         visitQuestion(ORDERS_QUESTION_ID);
-        openSidebarCacheStrategyForm();
+        openSidebarCacheStrategyForm("question");
         durationRadioButton().click();
         cy.findByLabelText(/Cache results for this many hours/).type("99");
         saveCacheStrategyForm({ strategyType: "duration", model: "database" });
@@ -452,7 +452,7 @@ describe("scenarios > admin > performance", () => {
             "No dashboards or questions have their own caching policies yet.",
           );
         visitQuestion(ORDERS_QUESTION_ID);
-        openSidebarCacheStrategyForm();
+        openSidebarCacheStrategyForm("question");
         durationRadioButton().click();
         cy.findByLabelText(/Cache results for this many hours/).type("99");
         saveCacheStrategyForm({ strategyType: "duration", model: "database" });
@@ -466,7 +466,7 @@ describe("scenarios > admin > performance", () => {
         saveCacheStrategyForm({ strategyType: "ttl", model: "database" });
 
         visitQuestion(ORDERS_COUNT_QUESTION_ID);
-        openSidebarCacheStrategyForm();
+        openSidebarCacheStrategyForm("question");
         durationRadioButton().click();
         cy.findByLabelText(/Cache results for this many hours/).type("24");
         saveCacheStrategyForm({ strategyType: "duration", model: "database" });

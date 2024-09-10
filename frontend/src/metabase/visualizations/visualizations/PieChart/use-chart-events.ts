@@ -31,19 +31,21 @@ export const getTooltipModel = (
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
 ): EChartsTooltipModel => {
-  const hoveredIndex = dataIndexToHoveredIndex(dataIndex);
+  const hoveredIndex = dataIndexToHoveredIndex(dataIndex, chartModel);
   const hoveredOther =
     chartModel.slices[hoveredIndex].data.isOther &&
     chartModel.otherSlices.length > 1;
 
-  const rows = (hoveredOther ? chartModel.otherSlices : chartModel.slices).map(
-    slice => ({
-      name: slice.data.name,
-      value: slice.data.displayValue,
-      color: hoveredOther ? undefined : slice.data.color,
-      formatter: formatters.formatMetric,
-    }),
-  );
+  const slices = hoveredOther
+    ? chartModel.otherSlices
+    : chartModel.slices.filter(slice => slice.data.visible);
+
+  const rows = slices.map(slice => ({
+    name: slice.data.name,
+    value: slice.data.displayValue,
+    color: hoveredOther ? undefined : slice.data.color,
+    formatter: formatters.formatMetric,
+  }));
 
   const rowsTotal = getTotalValue(rows);
   const isShowingTotalSensible = rows.length > 1;
@@ -53,7 +55,7 @@ export const getTooltipModel = (
       ? getMarkerColorClass(row.color)
       : undefined;
     return {
-      isFocused: !hoveredOther && index === hoveredIndex,
+      isFocused: !hoveredOther && index === dataIndex - 1,
       markerColorClass,
       name: row.name,
       values: [
@@ -78,8 +80,21 @@ export const getTooltipModel = (
   };
 };
 
-const dataIndexToHoveredIndex = (index: number) => index - 1;
-const hoveredIndexToDataIndex = (index: number) => index + 1;
+const dataIndexToHoveredIndex = (index: number, chartModel: PieChartModel) => {
+  const visibleSlices = chartModel.slices.filter(slice => slice.data.visible);
+  const slice = visibleSlices[index - 1];
+  const innerIndex = chartModel.slices.findIndex(
+    s => s.data.key === slice.data.key && s.data.isOther === slice.data.isOther,
+  );
+  return innerIndex;
+};
+
+const hoveredIndexToDataIndex = (index: number, chartModel: PieChartModel) => {
+  const baseIndex = index + 1;
+  const slicesBefore = chartModel.slices.slice(0, index);
+  const hiddenSlicesBefore = slicesBefore.filter(slice => !slice.data.visible);
+  return baseIndex - hiddenSlicesBefore.length;
+};
 
 function getHoverData(
   event: EChartsSeriesMouseEvent,
@@ -88,7 +103,7 @@ function getHoverData(
   if (event.dataIndex == null) {
     return null;
   }
-  const index = dataIndexToHoveredIndex(event.dataIndex);
+  const index = dataIndexToHoveredIndex(event.dataIndex, chartModel);
 
   const indexOutOfBounds = chartModel.slices[index] == null;
   if (indexOutOfBounds || chartModel.slices[index].data.noHover) {
@@ -112,7 +127,8 @@ function handleClick(
   if (!event.dataIndex) {
     return;
   }
-  const slice = chartModel.slices[dataIndexToHoveredIndex(event.dataIndex)];
+  const index = dataIndexToHoveredIndex(event.dataIndex, chartModel);
+  const slice = chartModel.slices[index];
   const data =
     slice.data.rowIndex != null
       ? dataProp.rows[slice.data.rowIndex].map((value, index) => ({
@@ -163,19 +179,19 @@ export function useChartEvents(
 
       chart.dispatchAction({
         type: "highlight",
-        dataIndex: hoveredIndexToDataIndex(hoveredIndex),
+        dataIndex: hoveredIndexToDataIndex(hoveredIndex, chartModel),
         seriesIndex: 0,
       });
 
       return () => {
         chart.dispatchAction({
           type: "downplay",
-          dataIndex: hoveredIndexToDataIndex(hoveredIndex),
+          dataIndex: hoveredIndexToDataIndex(hoveredIndex, chartModel),
           seriesIndex: 0,
         });
       };
     },
-    [chart, hoveredIndex],
+    [chart, chartModel, hoveredIndex],
   );
 
   useClickedStateTooltipSync(chartRef.current, props.clicked);

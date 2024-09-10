@@ -113,6 +113,8 @@ describe("issue 35954", () => {
           cy.log("Revert the question to its original (GUI) version");
           cy.intercept("POST", "/api/revision/revert").as("revertQuestion");
           questionInfoButton().click();
+          cy.findByRole("tab", { name: "History" }).click();
+
           cy.findByTestId("saved-question-history-list")
             .find("li")
             .filter(":contains(You created this)")
@@ -120,6 +122,7 @@ describe("issue 35954", () => {
             .click();
           cy.wait("@revertQuestion");
           // Mid-test assertions to root out the flakiness
+          cy.findByRole("tab", { name: "History" }).click();
           cy.findByTestId("saved-question-history-list").should(
             "contain",
             "You edited this",
@@ -127,6 +130,8 @@ describe("issue 35954", () => {
           cy.findByTestId("saved-question-history-list")
             .findAllByTestId("question-revert-button")
             .should("have.length", 2);
+
+          cy.findByLabelText("Close").click();
 
           cy.findByLabelText(`Back to ${dashboardDetails.name}`).click();
 
@@ -179,6 +184,7 @@ describe("issue 35954", () => {
         visitQuestion(this.questionId);
 
         questionInfoButton().click();
+        cy.findByRole("tab", { name: "History" }).click();
         cy.findByTestId("saved-question-history-list")
           .find("li")
           .filter(":contains(You edited this)")

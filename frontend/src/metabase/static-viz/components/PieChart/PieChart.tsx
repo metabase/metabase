@@ -25,6 +25,7 @@ export function PieChart({
   const chartModel = getPieChartModel(
     rawSeries,
     computedVizSettings,
+    [],
     renderingContext,
   );
   const formatters = getPieChartFormatters(

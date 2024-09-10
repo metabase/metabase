@@ -16,11 +16,15 @@
           (perf/mapv #(if %2 (->string %1) %1) row field-mask)))
    rf))
 
-(defn- should-convert-to-string? [field]
-  (and (or (isa? (:semantic-type field) :type/PK)
-           (isa? (:semantic-type field) :type/FK))
-       (or (isa? (:base-type field) :type/Integer)
-           (isa? (:base-type field) :type/Number))))
+(defn- should-convert-to-string?
+  "Determines if values of the given column should be converted to strings for JavaScript safety.
+
+  PKs and FKs which are numbers need converting, lest they lose precision. JS numbers only guarantee 52 bits."
+  [{:keys [base-type semantic-type] :as _column-metadata}]
+  (and (or (isa? semantic-type :type/PK)
+           (isa? semantic-type :type/FK))
+       (or (isa? base-type     :type/Integer)
+           (isa? base-type     :type/Number))))
 
 (defn- field-index-mask
   "Return a mask of booleans for each field. If the mask for the field is true, it should be converted to string."
@@ -67,6 +71,7 @@
   ;; that can be accomplished.
   (let [rff' (when js-int-to-string?
                (when-let [mask (field-index-mask (:fields (:query query)))]
+                 (qp.store/store-miscellaneous-value! [::field-index-mask] mask)
                  (fn [metadata]
                    (result-int->string mask (rff metadata)))))]
     (or rff' rff)))

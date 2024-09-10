@@ -18,7 +18,9 @@ import { MAX_SERIES, columnsAreValid } from "metabase/visualizations/lib/utils";
 import {
   STACKABLE_SERIES_DISPLAY_TYPES,
   getAreDimensionsAndMetricsValid,
+  getAvailableAdditionalColumns,
   getAvailableXAxisScales,
+  getComputedAdditionalColumnsValue,
   getDefaultColumns,
   getDefaultDataLabelsFormatting,
   getDefaultDataLabelsFrequency,
@@ -46,6 +48,7 @@ import {
   isXAxisScaleValid,
   isYAxisUnpinFromZeroValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 export const getSeriesDisplays = (transformedSeries, settings) => {
@@ -283,6 +286,37 @@ export const TOOLTIP_SETTINGS = {
       return shouldShowComparisonTooltip ? "series_comparison" : "default";
     },
     hidden: true,
+  },
+  "graph.tooltip_columns": {
+    section: t`Display`,
+    title: t`Additional tooltip metrics`,
+    placeholder: t`Enter metric names`,
+    widget: "multiselect",
+    useRawSeries: true,
+    getValue: getComputedAdditionalColumnsValue,
+    getHidden: (rawSeries, vizSettings) => {
+      // Default tooltip shows all columns
+      if (vizSettings["graph.tooltip_type"] === "default") {
+        return true;
+      }
+      return getAvailableAdditionalColumns(rawSeries, vizSettings).length === 0;
+    },
+    getProps: (rawSeries, vizSettings) => {
+      const options = getAvailableAdditionalColumns(rawSeries, vizSettings).map(
+        col => ({
+          label: col.display_name,
+          value: getColumnKey(col),
+        }),
+      );
+      return {
+        options,
+      };
+    },
+    readDependencies: [
+      "graph.metrics",
+      "graph.dimensions",
+      "graph.tooltip_type",
+    ],
   },
 };
 

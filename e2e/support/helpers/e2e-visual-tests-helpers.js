@@ -202,3 +202,11 @@ export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
     echartsTriggerBlur();
   }
 }
+
+export function assertEChartsTooltipNotContain(rows) {
+  echartsTooltip().within(() => {
+    rows.forEach(row => {
+      cy.findByText(row).should("not.exist");
+    });
+  });
+}

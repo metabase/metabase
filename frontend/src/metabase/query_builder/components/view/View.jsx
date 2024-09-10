@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { connect } from "react-redux";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -48,6 +49,7 @@ import ViewSidebar from "./ViewSidebar";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import { ChartTypeSidebar } from "./sidebars/ChartTypeSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
+import { QuestionSettingsSidebar } from "./sidebars/QuestionSettingsSidebar";
 import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
 
@@ -107,6 +109,7 @@ class View extends Component {
       isShowingSummarySidebar,
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
+      isShowingQuestionSettingsSidebar,
       updateQuestion,
       visibleTimelineEventIds,
       selectedTimelineEventIds,
@@ -118,6 +121,7 @@ class View extends Component {
       onOpenModal,
       onCloseSummary,
       onCloseTimelines,
+      onCloseQuestionInfo,
       onSave,
     } = this.props;
 
@@ -157,7 +161,17 @@ class View extends Component {
     }
 
     if (isSaved && isShowingQuestionInfoSidebar) {
-      return <QuestionInfoSidebar question={question} onSave={onSave} />;
+      return (
+        <QuestionInfoSidebar
+          question={question}
+          onSave={onSave}
+          onClose={onCloseQuestionInfo}
+        />
+      );
+    }
+
+    if (isSaved && isShowingQuestionSettingsSidebar) {
+      return <QuestionSettingsSidebar question={question} />;
     }
 
     return null;
@@ -170,6 +184,7 @@ class View extends Component {
       isShowingSnippetSidebar,
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
+      isShowingQuestionSettingsSidebar,
       toggleTemplateTagsEditor,
       toggleDataReference,
       toggleSnippetSidebar,
@@ -179,6 +194,7 @@ class View extends Component {
       selectTimelineEvents,
       deselectTimelineEvents,
       onCloseTimelines,
+      onCloseQuestionInfo,
       onSave,
       question,
     } = this.props;
@@ -216,7 +232,17 @@ class View extends Component {
     }
 
     if (isShowingQuestionInfoSidebar) {
-      return <QuestionInfoSidebar question={question} onSave={onSave} />;
+      return (
+        <QuestionInfoSidebar
+          question={question}
+          onSave={onSave}
+          onClose={onCloseQuestionInfo}
+        />
+      );
+    }
+
+    if (isShowingQuestionSettingsSidebar) {
+      return <QuestionSettingsSidebar question={question} />;
     }
 
     return null;
@@ -383,6 +409,8 @@ class View extends Component {
       hasVisualizeButton,
       runQuestionQuery,
       setQueryBuilderMode,
+      isShowingQuestionInfoSidebar,
+      isShowingQuestionSettingsSidebar,
     } = this.props;
 
     // if we don't have a question at all or no databases then we are initializing, so keep it simple
@@ -426,9 +454,16 @@ class View extends Component {
 
     const leftSidebar = this.getLeftSidebar();
     const rightSidebar = this.getRightSidebar();
-    const rightSidebarWidth = isShowingTimelineSidebar
-      ? SIDEBAR_SIZES.TIMELINE
-      : SIDEBAR_SIZES.NORMAL;
+
+    const rightSidebarWidth = match({
+      isShowingTimelineSidebar,
+      isShowingQuestionInfoSidebar,
+      isShowingQuestionSettingsSidebar,
+    })
+      .with({ isShowingTimelineSidebar: true }, () => SIDEBAR_SIZES.TIMELINE)
+      .with({ isShowingQuestionInfoSidebar: true }, () => 0)
+      .with({ isShowingQuestionSettingsSidebar: true }, () => 0)
+      .otherwise(() => SIDEBAR_SIZES.NORMAL);
 
     return (
       <div className={CS.fullHeight}>
