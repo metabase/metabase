@@ -568,7 +568,9 @@
 (deftest create-from-csv-display-name-encodings-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-mysql-local-infile-on-and-off
-      (doseq [filename ["csv/iso-8859-1.csv" "csv/utf-8.csv"]]
+      (doseq [filename ["csv/iso-8859-1.csv"
+                        "csv/utf-8.csv"
+                        "csv/utf-16.csv"]]
         (testing (str "Filename: " filename "\n")
           (with-upload-table!
             [table (create-from-csv-and-sync-with-defaults!

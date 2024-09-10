@@ -39,7 +39,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.io File Reader)
+   (java.io File InputStreamReader Reader)
    (java.nio.charset StandardCharsets)
    (org.apache.tika Tika)
    (org.mozilla.universalchardet UniversalDetector)))
@@ -281,30 +281,29 @@
 (defn- file-mime-type [^File file]
   (.detect tika file))
 
-(defn- detect-charset [file]
-  (let [detector (UniversalDetector.)
-        buffer   (byte-array 8192)]
-    (with-open [input-stream (io/input-stream file)]
-      (loop []
-        (let [bytes-read (.read input-stream buffer)]
-          (if (pos? bytes-read)
-            (do
-              (.handleData detector buffer 0 bytes-read)
-              (if (.isDone detector)
-                (.getDetectedCharset detector)
-                (recur)))
-            (do
-              (.dataEnd detector)
-              (.getDetectedCharset detector))))))))
+(defn- detect-charset ^String [file]
+  (try
+    (let [detector (UniversalDetector.)
+          buffer   (byte-array 8192)]
+      (with-open [input-stream (io/input-stream file)]
+        (loop []
+          (let [bytes-read (.read input-stream buffer)]
+            (if (pos? bytes-read)
+              (do
+                (.handleData detector buffer 0 bytes-read)
+                (if (.isDone detector)
+                  (.getDetectedCharset detector)
+                  (recur)))
+              (do
+                (.dataEnd detector)
+                (.getDetectedCharset detector)))))))
+    (catch Exception _
+      ;; Just live with unrecognized characters
+      "UTF-8")))
 
-(defn- ->reader
-  (^Reader [readable]
-   ;; Basic path, in case we encounter errors related to charset detection.
-   (bom/bom-reader readable))
-  (^Reader [readable ^String charset]
-   (-> (io/input-stream readable)
-       (org.apache.commons.io.input.BOMInputStream.)
-       (java.io.InputStreamReader. charset))))
+(defn- ->reader ^Reader [^File file]
+   (-> (bom/bom-input-stream file)
+       (InputStreamReader. (detect-charset file))))
 
 (defn- assert-separator-chosen [s]
   (or s (throw (IllegalArgumentException. "Unable to determine separator"))))
@@ -370,7 +369,7 @@
    Returns the file size, number of rows, and number of columns."
   [driver db table-name filename ^File csv-file]
   (let [parse (infer-parser filename csv-file)]
-    (with-open [reader (->reader csv-file (detect-charset csv-file))]
+    (with-open [reader (->reader csv-file)]
       (let [auto-pk?          (auto-pk-column? driver db)
             [header & rows]   (cond-> (parse reader)
                                 auto-pk?
@@ -749,7 +748,7 @@
 (defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
   (try
     (let [parse (infer-parser filename file)]
-      (with-open [reader (->reader file (detect-charset file))]
+      (with-open [reader (->reader file)]
         (let [timer              (u/start-timer)
               driver             (driver.u/database->driver database)
               auto-pk?           (auto-pk-column? driver database)
