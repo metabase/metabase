@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
 
 import type { SDKConfig } from "embedding-sdk";
-import {
-  getSdkLicenseProblem,
-  printLicenseProblemToConsole,
-} from "embedding-sdk/lib/license-problem";
+import { getSdkLicenseProblem } from "embedding-sdk/lib/license-problem";
+import { printLicenseProblemToConsole } from "embedding-sdk/lib/print-license-problem";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getTokenFeature } from "metabase/setup/selectors";
