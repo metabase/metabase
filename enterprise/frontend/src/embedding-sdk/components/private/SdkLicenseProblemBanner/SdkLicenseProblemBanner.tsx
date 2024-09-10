@@ -31,6 +31,7 @@ export const SdkLicenseProblemBanner = ({ problem }: Props) => {
         <Flex
           onClick={() => setExpanded(!expanded)}
           className={cx(S.Banner, isError ? S.Error : S.Warning)}
+          data-testid="sdk-license-problem-banner"
         >
           <Flex bg="white" px="sm" py="xs" className={S.Logo}>
             <LogoIcon height={24} />
