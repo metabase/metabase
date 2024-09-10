@@ -127,7 +127,7 @@ describe("QuestionInfoSidebar", () => {
       });
       setup({ card });
 
-      expect(screen.getByLabelText("share icon")).toBeInTheDocument();
+      expect(screen.getByLabelText("globe icon")).toBeInTheDocument();
       expect(screen.getByText("Shared publicly")).toBeInTheDocument();
       expect(screen.getByLabelText("link icon")).toBeInTheDocument();
     });
@@ -139,7 +139,8 @@ describe("QuestionInfoSidebar", () => {
       });
       setup({ card });
 
-      expect(screen.getByText("Embedding enabled")).toBeInTheDocument();
+      expect(screen.getByLabelText("embed icon")).toBeInTheDocument();
+      expect(screen.getByText("Embedded")).toBeInTheDocument();
     });
   });
 
