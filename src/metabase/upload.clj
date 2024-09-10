@@ -753,7 +753,7 @@
   (try
     (let [parse (infer-parser filename file)]
       (with-open [reader (->reader file)]
-        (let [timer              (u/start-timer)
+        (let [timer              (start-timer)
               driver             (driver.u/database->driver database)
               auto-pk?           (auto-pk-column? driver database)
               [header & rows]    (cond-> (parse reader)
