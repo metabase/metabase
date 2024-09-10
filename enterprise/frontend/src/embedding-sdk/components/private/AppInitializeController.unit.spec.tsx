@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -7,11 +8,11 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { sdkReducers } from "embedding-sdk/store";
 import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
-import type { SDKConfigWithJWT } from "embedding-sdk/types";
+import type { SDKConfig } from "embedding-sdk/types";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -24,11 +25,11 @@ const TEST_USER = createMockUser();
 jest.mock("metabase/visualizations/register", () => jest.fn(() => {}));
 
 interface Options {
-  config?: Partial<SDKConfigWithJWT>;
+  config: SDKConfig;
   tokenFeatureEnabled?: boolean;
 }
 
-const setup = (options: Partial<Options>) => {
+const setup = (options: Options) => {
   fetchMock.get("http://TEST_URI/sso/metabase", {
     id: "TEST_JWT_TOKEN",
     exp: 1965805007,
@@ -59,13 +60,8 @@ const setup = (options: Partial<Options>) => {
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settingValuesWithToken);
 
-  const config = createMockJwtConfig({
-    jwtProviderUri: "http://TEST_URI/sso/metabase",
-    ...options.config,
-  });
-
   return renderWithProviders(<div>hello!</div>, {
-    sdkProviderProps: { config },
+    sdkProviderProps: { config: options.config },
     storeInitialState: state,
     customReducers: sdkReducers,
     mode: "sdk",
@@ -73,32 +69,42 @@ const setup = (options: Partial<Options>) => {
 };
 
 describe("AppInitializeController", () => {
-  it("should not show an error when JWT is provided", async () => {
-    setup({});
+  it("should not show an error when JWT is provided with a license", () => {
+    setup({ config: createMockJwtConfig(), tokenFeatureEnabled: true });
 
     expect(
-      screen.queryByTestId("sdk-license-problem-banner"),
+      screen.queryByTestId("sdk-license-problem-indicator"),
     ).not.toBeInTheDocument();
   });
 
-  it("should show an error when SSO is used when the token feature is disabled", async () => {
-    setup({ tokenFeatureEnabled: false });
+  it("shows an error when JWT is used without a license", async () => {
+    setup({ config: createMockJwtConfig(), tokenFeatureEnabled: false });
+
+    await userEvent.click(screen.getByTestId("sdk-license-problem-indicator"));
 
     expect(
-      screen.getByTestId("sdk-license-problem-banner"),
+      within(screen.getByTestId("sdk-license-problem-card")).getByText(
+        /Attempting to use this in other ways is in breach of our usage policy/,
+      ),
     ).toBeInTheDocument();
   });
 
   it("should show an error when both JWT and API keys are provided", async () => {
     setup({
+      // @ts-expect-error - we're intentionally passing both to simulate bad usage
       config: {
-        // @ts-expect-error - we're intentionally passing both!
         apiKey: "TEST_API_KEY",
+        metabaseInstanceUrl: "http://localhost",
         jwtProviderUri: "http://TEST_URI/sso/metabase",
       },
     });
 
-    const banner = screen.getByTestId("sdk-license-problem-banner");
-    expect(banner).toBeInTheDocument();
+    await userEvent.click(screen.getByTestId("sdk-license-problem-indicator"));
+
+    expect(
+      within(screen.getByTestId("sdk-license-problem-card")).getByText(
+        /cannot use both JWT and API key authentication at the same time/,
+      ),
+    ).toBeInTheDocument();
   });
 });

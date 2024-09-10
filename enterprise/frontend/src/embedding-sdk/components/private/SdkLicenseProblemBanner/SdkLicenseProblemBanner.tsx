@@ -30,8 +30,8 @@ export const SdkLicenseProblemBanner = ({ problem }: Props) => {
       <Popover.Target>
         <Flex
           onClick={() => setExpanded(!expanded)}
-          className={cx(S.Banner, isError ? S.Error : S.Warning)}
-          data-testid="sdk-license-problem-banner"
+          className={cx(S.Indicator, isError ? S.Error : S.Warning)}
+          data-testid="sdk-license-problem-indicator"
         >
           <Flex bg="white" px="sm" py="xs" className={S.Logo}>
             <LogoIcon height={24} />
@@ -58,7 +58,13 @@ export const SdkLicenseProblemBanner = ({ problem }: Props) => {
       </Popover.Target>
 
       <Popover.Dropdown className={S.PopoverDropdown}>
-        <Card p="md" radius="md" c="text-dark" maw="20rem">
+        <Card
+          p="md"
+          radius="md"
+          c="text-dark"
+          maw="20rem"
+          data-testid="sdk-license-problem-card"
+        >
           <Stack spacing="sm">
             <Flex w="100%" justify="space-between">
               <Text fw="bold" size="lg" transform="capitalize">

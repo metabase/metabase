@@ -2,33 +2,33 @@
   border: none;
 }
 
-.Banner {
+.Indicator {
   cursor: pointer;
   border-radius: 4px;
   box-shadow: 0 6px 24px 0 #0000001a;
 }
 
-.Banner.Warning {
+.Indicator.Warning {
   border: 1px solid #e8b923;
 }
 
-.Banner.Error {
+.Indicator.Error {
   border: 1px solid #f7a4a3;
 }
 
-.Banner .Content {
+.Indicator .Content {
   border-radius: 0 4px 4px 0;
   user-select: none;
 }
 
-.Banner .Logo {
+.Indicator .Logo {
   border-radius: 4px 0 0 4px;
 }
 
-.Banner.Warning .Content {
+.Indicator.Warning .Content {
   background: #fef3cf;
 }
 
-.Banner.Error .Content {
+.Indicator.Error .Content {
   background: #fdf0f0;
 }
