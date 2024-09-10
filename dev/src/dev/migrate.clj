@@ -74,14 +74,14 @@
 
     ;; rollback to \"v50.2024-03-18T16:00:00\" (inclusive)
     (rollback! :id \"v50.2024-03-18T16:00:00\")"
- [k :- [:enum :id :count "id" "count"]
-  target]
- (let [n (case (keyword k)
-           :id    (migration-since target)
-           :count (maybe-parse-long target))]
-  (rollback-n-migrations! n)
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration)))))
+  [k :- [:enum :id :count "id" "count"]
+   target]
+  (let [n (case (keyword k)
+            :id    (migration-since target)
+            :count (maybe-parse-long target))]
+    (rollback-n-migrations! n)
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration)))))
 
 (defn migration-status
   "Print the latest migration ID."
@@ -159,7 +159,6 @@
                                  (str x "\n" y)) acc data))
                  {}
                  (map #(change->sql % sql-generator-factory database) (.getChanges change-set))))))))
-
 
 (comment
   (rollback! :count 1)

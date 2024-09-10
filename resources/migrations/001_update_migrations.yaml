@@ -9369,6 +9369,7 @@ databaseChangeLog:
       id: v51.2024-09-05T08:00:02
       author: qnkhuat
       comment: index on notification_subscription.notification_id
+      rollback: # no need, will be dropped with the table
       preConditions:
         - not:
             - indexExists:
@@ -9531,6 +9532,7 @@ databaseChangeLog:
       id: v51.2024-09-05T08:00:06
       author: qnkhuat
       comment: index on notification_handler.notification_id
+      rollback: # not necessary, will be removed with the table
       preConditions:
         - not:
             - indexExists:
@@ -9548,6 +9550,7 @@ databaseChangeLog:
       id: v51.2024-09-05T08:00:07
       author: qnkhuat
       comment: index on notification_handler.channel_id
+      rollback: # not necessary, will be removed with the table
       preConditions:
         - not:
             - indexExists:
@@ -9642,6 +9645,7 @@ databaseChangeLog:
       id: v51.2024-09-05T08:00:09
       author: qnkhuat
       comment: index on notification_recipient.notification_handler_id
+      rollback: # not necessary, will be removed with the table
       preConditions:
         - not:
             - indexExists:
@@ -9659,6 +9663,7 @@ databaseChangeLog:
       id: v51.2024-09-05T08:00:10
       author: qnkhuat
       comment: index on notification_recipient.user_id
+      rollback: # not necessary, will be removed with the table
       preConditions:
         - not:
             - indexExists:
@@ -9676,6 +9681,7 @@ databaseChangeLog:
       id: v51.2024-09-05T08:00:11
       author: qnkhuat
       comment: index on notification_recipient.permissions_group_id
+      rollback: # not necessary, will be removed with the table
       preConditions:
         - not:
             - indexExists:
