@@ -616,13 +616,14 @@
 
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
-  (let [workbook          (SXSSFWorkbook.)
-        sheet             (spreadsheet/add-sheet! workbook (tru "Query result"))
-        _                 (set-no-style-custom-helper sheet)
-        data-format       (. workbook createDataFormat)
-        cell-styles       (volatile! nil)
-        typed-cell-styles (volatile! nil)
-        pivot-data!       (atom {:rows []})]
+  (let [workbook           (SXSSFWorkbook.)
+        sheet              (spreadsheet/add-sheet! workbook (tru "Query result"))
+        _                  (set-no-style-custom-helper sheet)
+        data-format        (. workbook createDataFormat)
+        cell-styles        (volatile! nil)
+        typed-cell-styles  (volatile! nil)
+        pivot-data!        (atom {:rows []})
+        pivot-grouping-idx (volatile! nil)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols format-rows? pivot-export-options]} :data}
                {col-settings ::mb.viz/column-settings :as viz-settings}]
@@ -631,7 +632,9 @@
                                                           :pivot-rows []}
                                                          pivot-export-options) ordered-cols))
               ;; col-names are created later when exporting a pivot table, so only create them if there are no pivot options
-              col-names (when-not opts (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))]
+              col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
+              pivot-grouping (qp.pivot.postprocess/pivot-grouping-key col-names)]
+          (when pivot-grouping (vreset! pivot-grouping-idx pivot-grouping))
           (vreset! cell-styles (compute-column-cell-styles workbook data-format viz-settings ordered-cols))
           (vreset! typed-cell-styles (compute-typed-cell-styles workbook data-format))
           ;; when pivot options exist, we want to save them to access later when processing the complete set of results for export.
@@ -642,11 +645,12 @@
                                      :viz-settings viz-settings}
                    :pivot-options opts))
 
-          (when col-names
+          (when opts
             (doseq [i (range (count ordered-cols))]
               (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
             (setup-header-row! sheet (count ordered-cols))
-            (spreadsheet/add-row! sheet (common/column-titles ordered-cols col-settings true)))))
+            (let [modified-row (m/remove-nth @pivot-grouping-idx (common/column-titles ordered-cols col-settings true))]
+              (spreadsheet/add-row! sheet modified-row)))))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
         (let [ordered-row             (if output-order
@@ -654,7 +658,8 @@
                                           (for [i output-order] (row-v i)))
                                         row)
               col-settings            (::mb.viz/column-settings viz-settings)
-              {:keys [pivot-options]} @pivot-data!]
+              {:keys [pivot-options]} @pivot-data!
+              pivot-grouping-key @pivot-grouping-idx]
           (if pivot-options
             (let [{:keys [pivot-grouping-key]} pivot-options
                   group                        (get row pivot-grouping-key)]
@@ -668,15 +673,18 @@
                                                   value
                                                   (str value)))))]
                   (swap! pivot-data! update :rows conj modified-row))))
-            (do
-              (add-row! sheet ordered-row ordered-cols col-settings @cell-styles @typed-cell-styles)
-              (when (= (inc row-num) *auto-sizing-threshold*)
-                (autosize-columns! sheet))))))
+            (let [group (get row pivot-grouping-key)
+                  modified-row (m/remove-nth pivot-grouping-key ordered-row)]
+              (when (= 0 group)
+                (add-row! sheet modified-row ordered-cols col-settings @cell-styles @typed-cell-styles)
+                (when (= (inc row-num) *auto-sizing-threshold*)
+                  (autosize-columns! sheet)))))))
 
       (finish! [_ {:keys [row_count]}]
-        (let [{:keys [pivot-options rows cell-style-data]} @pivot-data!]
+        (let [{:keys [pivot-options rows cell-style-data]} @pivot-data!
+              pivot-grouping-key @pivot-grouping-idx]
           (if pivot-options
-            (let [header (vec (m/remove-nth (:pivot-grouping-key pivot-options) (:column-titles pivot-options)))
+            (let [header (vec (m/remove-nth pivot-grouping-key (:column-titles pivot-options)))
                   wb     (native-pivot (concat [header] rows) pivot-options cell-style-data)]
               (try
                 (spreadsheet/save-workbook-into-stream! os wb)
