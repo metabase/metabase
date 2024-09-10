@@ -120,6 +120,7 @@
 (def ^:private describe-table-field-keys
   #{:column_name :column_default :comment :is_nullable :data_type})
 
+#_{:clj-kondo/ignore true}
 (defn- row-map->field-metadata
   [{:keys [column_name column_default comment is_nullable data_type]
     :as row-map}]
@@ -138,6 +139,7 @@
          (when comment
            {:comment comment})))
 
+#_{:clj-kondo/ignore true}
 (def ^:private table-fields-sql-str
   (str/join "\n"
             ["select *"
@@ -147,7 +149,7 @@
              "    AND table_schema = ?"
              "    AND table_name = ?"]))
 
-(defmethod sql-jdbc.sync/describe-table-fields :databricks-jdbc
+#_(defmethod sql-jdbc.sync/describe-table-fields :databricks-jdbc
   [driver ^Connection _conn table _db-name-or-nil]
   (let [catalog-name (get-in *database* [:details :catalog])
         schema-name  (get-in *database* [:details :schema])
@@ -194,7 +196,7 @@
      (try
        (.setReadOnly conn false)
        (catch Throwable e
-         (log/debug e "Error setting connection to readwrite")))
+         (log/debug e "Error setting readOnly false on connection")))
      ;; Method is re-implemented because `legacy_time_parser_policy` has to be set to pass the test suite.
      ;; https://docs.databricks.com/en/sql/language-manual/parameters/legacy_time_parser_policy.html
      (with-open [^Statement stmt (.createStatement conn)]
@@ -220,6 +222,7 @@
 ;; pleasure) are done in `wrap-value-literals` middleware.
 (defmethod sql-jdbc.execute/read-column-thunk [:databricks-jdbc java.sql.Types/TIMESTAMP]
   [_driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  ;; TIMESTAMP is returned also for TIMESTAMP_NTZ type!!! Hence only true branch is hit until this is fixed upstream.
   (let [database-type-name (.getColumnTypeName rsmeta i)]
     (assert (timestamp-database-type-names database-type-name))
     (if (= "TIMESTAMP" database-type-name)
