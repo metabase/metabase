@@ -88,6 +88,12 @@ export function renderWithProviders(
       { sdk: createMockSdkState(), ...initialState },
       ...sdkReducerNames,
     ) as SdkStoreState;
+
+    // Enable the embedding feature by default in SDK tests, unless explicitly disabled.
+    // Without this, SDK components will not render due to missing token features.
+    if (!storeInitialState.settings && initialState.settings) {
+      initialState.settings.values["token-features"].embedding = true;
+    }
   }
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,
