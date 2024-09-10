@@ -6,7 +6,7 @@ import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Box, Button, Icon } from "metabase/ui";
 
-export function MetricSidebar() {
+export function MetricEditorSidebar() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const docsUrl = useSelector(state =>
     getDocsUrl(state, {

@@ -1,19 +1,16 @@
 import { t } from "ttag";
 
 import { Button, Flex, Text } from "metabase/ui";
-import * as Lib from "metabase-lib";
 
 type MetricEmptyStateProps = {
-  query: Lib.Query;
+  isRunnable: boolean;
   runQuestionQuery: () => void;
 };
 
 export function MetricEmptyState({
-  query,
+  isRunnable,
   runQuestionQuery,
 }: MetricEmptyStateProps) {
-  const canRun = Lib.canRun(query, "metric");
-
   return (
     <Flex
       direction="column"
@@ -28,7 +25,7 @@ export function MetricEmptyState({
       <Text mb="lg" c="text-medium" maw="28.75rem" align="center">
         {t`To create one, you’ll need to define how its calculated, add any required filters, and optionally pick the main dimension for your metric.`}
       </Text>
-      {canRun && (
+      {isRunnable && (
         <Button variant="filled" onClick={() => runQuestionQuery()}>
           {t`Visualize`}
         </Button>

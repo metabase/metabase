@@ -36,6 +36,7 @@ export const Cell = styled.td<ResponsiveProps>`
   &:focus {
     outline: 2px solid var(--mb-color-focus);
 
+    button,
     a {
       outline: none;
     }

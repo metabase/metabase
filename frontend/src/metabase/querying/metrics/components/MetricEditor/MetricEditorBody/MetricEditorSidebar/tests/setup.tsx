@@ -5,7 +5,7 @@ import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { MetricSidebar } from "../MetricSidebar";
+import { MetricEditorSidebar } from "../MetricEditorSidebar";
 
 export type SetupOpts = {
   tokenFeatures?: Partial<TokenFeatures>;
@@ -29,5 +29,5 @@ export function setup({
     setupEnterprisePlugins();
   }
 
-  renderWithProviders(<MetricSidebar />, { storeInitialState: state });
+  renderWithProviders(<MetricEditorSidebar />, { storeInitialState: state });
 }

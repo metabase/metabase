@@ -564,6 +564,7 @@ describe("issue 36669", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+    cy.intercept("GET", "/api/search*").as("search");
   });
 
   it("should be able to change question data source to raw data after selecting saved question (metabase#36669)", () => {
@@ -581,6 +582,7 @@ describe("issue 36669", () => {
 
     entityPickerModal().within(() => {
       cy.findByPlaceholderText("Search…").type("Orders 36669");
+      cy.wait("@search");
 
       cy.findByRole("tabpanel").findByText("Orders 36669").click();
     });

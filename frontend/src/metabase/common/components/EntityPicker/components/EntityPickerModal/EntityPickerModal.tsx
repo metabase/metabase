@@ -1,5 +1,6 @@
 import { useWindowEvent } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -210,6 +211,7 @@ export function EntityPickerModal<
   );
   const [selectedTabId, setSelectedTabId] =
     useState<EntityPickerTabId>(initialTabId);
+  const previousTabId = usePreviousDistinct(selectedTabId);
   // we don't want to show bonus actions on recents or search tabs
   const showActionButtons = ![SEARCH_TAB_ID, RECENTS_TAB_ID].includes(
     selectedTabId,
@@ -235,14 +237,26 @@ export function EntityPickerModal<
     [folderModels, selectedTabId, onItemSelect],
   );
 
+  const handleQueryChange = useCallback(
+    (newSearchQuery: string) => {
+      setSearchQuery(newSearchQuery);
+
+      // automatically switch to search tab when it becomes available
+      if (!searchQuery && newSearchQuery) {
+        setSelectedTabId(SEARCH_TAB_ID);
+      }
+
+      // restore previous tab when clearing search while on search tab
+      if (searchQuery && !newSearchQuery && selectedTabId === SEARCH_TAB_ID) {
+        setSelectedTabId(previousTabId ?? initialTabId);
+      }
+    },
+    [searchQuery, selectedTabId, previousTabId, initialTabId],
+  );
+
   useEffect(() => {
-    // when the searchQuery changes, switch to the search tab
-    if (searchQuery) {
-      setSelectedTabId(SEARCH_TAB_ID);
-    } else {
-      setSelectedTabId(initialTabId);
-    }
-  }, [searchQuery, initialTabId]);
+    setSelectedTabId(initialTabId);
+  }, [initialTabId]);
 
   useWindowEvent(
     "keydown",
@@ -289,7 +303,7 @@ export function EntityPickerModal<
                 placeholder={getSearchInputPlaceholder(selectedFolder)}
                 setSearchResults={setSearchResults}
                 searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
+                setSearchQuery={handleQueryChange}
                 searchFilter={searchResultFilter}
                 searchParams={searchParams}
               />
