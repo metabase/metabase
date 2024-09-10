@@ -15,6 +15,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.util :as lib.util]
    [metabase.models :refer [Field Table]]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
@@ -349,6 +350,59 @@
       (is (=? (breakout-results :has-source-metadata? false :native-source? true)
               (run-native-query (str native-sub-query " -- small comment here\n")))
           "Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail"))))
+
+(defn- col-max-for-driver [driver]
+  ;; There is a default impl for driver/column-name-length-limit, but apparently not all drivers implement
+  ;; table-name-length, so calling column-name-length results in an exception for some drivers.
+  (try (driver/column-name-length-limit driver)
+       (catch Exception _ nil)))
+
+(deftest card-id-native-source-query-with-long-alias-test
+  (testing "nested card with native query and long column alias (metabase##47584)"
+    (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries)
+                                       (descendants driver/hierarchy :sql))
+      (let [coun-col-name      "coun"
+            long-col-full-name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+
+            ;; Truncate the long column to something the driver can actually execute.
+            long-col-name      (subs long-col-full-name
+                                     0
+                                     (if-let [col-max (col-max-for-driver driver/*driver*)]
+                                       (min col-max (count long-col-full-name))
+                                       (count long-col-full-name)))
+
+            ;; Disable truncate-alias when compiling the native query to ensure we don't further truncate the column.
+            ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
+            native-sub-query   (with-redefs [lib.util/truncate-alias
+                                             (fn mock-truncate-alias
+                                               ([ss] ss)
+                                               ([ss _] ss))]
+                                 (-> (mt/mbql-query people
+                                       {:source-table $$people
+                                        :aggregation  [[:aggregation-options [:count] {:name coun-col-name}]]
+                                        :breakout     [[:field %state {:name long-col-name}]]})
+                                     qp.compile/compile
+                                     :query))
+
+            query              (query-with-source-card 1 (mt/$ids people {:limit 5}))]
+        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                                          [(mt/native-query {:query native-sub-query})])
+          (mt/with-native-query-testing-context query
+            (let [coun-col-re (re-pattern (str "(?i)" coun-col-name))
+                  long-col-re (re-pattern (str "(?i)" long-col-name))]
+              (is (=? {:rows [["AK" 68] ["AL" 56] ["AR" 49] ["AZ" 20] ["CA" 90]],
+                       :cols
+                       [{:source       :fields
+                         :name         long-col-re
+                         :display_name long-col-re
+                         :field_ref    [:field long-col-re {}]}
+                        {:source       :fields
+                         :name         coun-col-re
+                         :display_name coun-col-re
+                         :field_ref    [:field coun-col-re {}]}]}
+                      (qp.test-util/rows-and-cols
+                       (mt/format-rows-by [str int]
+                                          (qp/process-query query))))))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::filter-by-field-literal-test]
   [_driver _feature _database]
