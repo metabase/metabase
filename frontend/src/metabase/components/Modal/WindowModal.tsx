@@ -48,7 +48,10 @@ export class WindowModal extends Component<WindowModalProps> {
     super(props);
 
     this._modalElement = document.createElement("div");
-    this._modalElement.className = ModalS.ModalContainer;
+    this._modalElement.className = cx(
+      ModalS.ModalContainer,
+      this.props.containerClassName,
+    );
 
     if (props.zIndex != null) {
       this._modalElement.style.zIndex = String(props.zIndex);

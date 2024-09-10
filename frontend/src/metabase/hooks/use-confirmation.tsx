@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import _ConfirmContent from "metabase/components/ConfirmContent";
-import _Modal from "metabase/components/Modal";
+import ConfirmContent from "metabase/components/ConfirmContent";
+import Modal from "metabase/components/Modal";
 import { DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
-
-const Modal = _Modal as any;
-const ConfirmContent = _ConfirmContent as any;
 
 export const CONFIRM_MODAL_Z_INDEX = DEFAULT_MODAL_Z_INDEX + 100;
 

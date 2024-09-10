@@ -7,7 +7,7 @@ import Styles from "./sidesheet.module.css";
 
 type Size = "xs" | "sm" | "md" | "lg" | "xl" | "auto";
 
-interface SidesheetProps {
+export interface SidesheetProps {
   title?: React.ReactNode;
   isOpen: boolean;
   onClose: () => void;
@@ -35,7 +35,13 @@ export function Sidesheet({
   removeBodyPadding,
 }: SidesheetProps) {
   return (
-    <Modal.Root opened={isOpen} onClose={onClose} h="100dvh">
+    <Modal.Root
+      opened={isOpen}
+      onClose={() => {
+        onClose();
+      }}
+      h="100dvh"
+    >
       <Modal.Overlay data-testid="modal-overlay" />
       <Modal.Content
         transitionProps={{ transition: "slide-left" }}
@@ -45,23 +51,18 @@ export function Sidesheet({
         data-testid="sidesheet"
         className={Styles.SidesheetContent}
       >
-        <Modal.Header bg="bg-light" px="xl">
+        <Modal.Header bg="bg-light" pt="md">
           {title && (
             <Modal.Title py="md" pr="sm">
               {title}
             </Modal.Title>
           )}
-          <Modal.CloseButton aria-label={t`Close`} />
+          <Modal.CloseButton
+            c="var(--mb-color-text-black)"
+            aria-label={t`Close`}
+          />
         </Modal.Header>
-        <Modal.Body
-          p={0}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            flex: "1 1 auto",
-            overflow: "hidden",
-          }}
-        >
+        <Modal.Body p={0} className={Styles.ModalBody}>
           <Stack
             spacing="lg"
             px={removeBodyPadding ? 0 : "xl"}

@@ -1,0 +1,22 @@
+.EditableDescription {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  position: relative;
+  inset-inline-start: -5px;
+}
+
+.DashboardHistory {
+  li:last-child {
+    margin-bottom: 0;
+  }
+
+  body & {
+    margin-bottom: 0;
+  }
+}
+
+.EntityIdInfoIcon {
+  position: relative;
+  top: -1px;
+  cursor: pointer;
+}

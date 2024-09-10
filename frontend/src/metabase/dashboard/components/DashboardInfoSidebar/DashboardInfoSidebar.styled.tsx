@@ -31,16 +31,10 @@ export const HistoryHeader = styled.h3`
 `;
 
 export const ContentSection = styled.div`
-  padding: 2rem 0;
-  border-bottom: 1px solid var(--mb-color-border);
-
-  &:first-of-type {
-    padding-top: 1.5rem;
-  }
-
-  &:last-of-type {
-    border-bottom: none;
-  }
+  padding: 1.5rem;
+  background-color: var(--mb-color-bg-white);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.5rem;
 
   ${EditableText.Root} {
     font-size: 1rem;

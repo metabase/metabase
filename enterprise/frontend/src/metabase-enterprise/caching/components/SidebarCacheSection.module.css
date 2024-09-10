@@ -1,0 +1,10 @@
+.FormLauncher {
+  height: 34px;
+
+  &:hover,
+  &:active {
+    .FormLauncherIcon {
+      opacity: 0.8;
+    }
+  }
+}

@@ -597,7 +597,7 @@ describe("issue 25473", () => {
 
     cy.location("search").should("eq", `?${dashboardFilter.slug}=e`);
     cy.findAllByText("xavier").should("not.exist");
-    cy.findAllByText("cameron.nitzsche").should("have.length", 2);
+    cy.findAllByText("cameron.nietzsche").should("have.length", 2);
   }
 
   beforeEach(() => {

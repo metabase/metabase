@@ -4,14 +4,16 @@ import _ from "underscore";
 
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
+import { SidesheetCard } from "metabase/common/components/Sidesheet";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type { SidebarCacheSectionProps } from "metabase/plugins";
-import { Flex } from "metabase/ui";
+import { Button, Flex, Icon, Loader } from "metabase/ui";
 
-import { FormLauncher } from "./SidebarCacheSection.styled";
+import Styles from "./SidebarCacheSection.module.css";
 import { getItemId } from "./utils";
 
-/** Displays the current cache invalidation strategy and provides a button that opens the cache configuration form */
+/** Displays the current cache invalidation strategy and provides a button that
+ * opens the cache configuration form */
 export const SidebarCacheSection = ({
   item,
   model,
@@ -36,17 +38,34 @@ export const SidebarCacheSection = ({
   const labelId = "question-caching-policy-label";
 
   return (
-    <DelayedLoadingAndErrorWrapper delay={0} loading={loading} error={error}>
-      <Flex align="center" justify="space-between">
-        <span id={labelId}>{t`Caching policy`}</span>
-        <FormLauncher
-          role="button"
-          onClick={() => setPage("caching")}
-          aria-labelledby={labelId}
+    <SidesheetCard title={<span id={labelId}>{t`Caching`}</span>} pb="md">
+      <Flex align="center" justify="space-between" mih={34}>
+        {t`When to get new results`}
+        <DelayedLoadingAndErrorWrapper
+          loading={loading}
+          error={error}
+          loader={<Loader h={24} size="md" />}
         >
-          {shortStrategyLabel}
-        </FormLauncher>
+          <Button
+            variant="subtle"
+            className={Styles.FormLauncher}
+            onClick={() => setPage("caching")}
+            aria-labelledby={labelId}
+            py="sm"
+            px={0}
+            fw="bold"
+          >
+            <Flex align="center" gap="xs">
+              {shortStrategyLabel}
+              <Icon
+                className={Styles.FormLauncherIcon}
+                color="var(--mb-color-text-dark)"
+                name="chevronright"
+              />
+            </Flex>
+          </Button>
+        </DelayedLoadingAndErrorWrapper>
       </Flex>
-    </DelayedLoadingAndErrorWrapper>
+    </SidesheetCard>
   );
 };

@@ -7,7 +7,10 @@ import { StrategyForm } from "metabase/admin/performance/components/StrategyForm
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
 import { useConfirmIfFormIsDirty } from "metabase/admin/performance/hooks/useConfirmIfFormIsDirty";
 import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrategy";
-import { SidesheetSubPage } from "metabase/common/components/Sidesheet";
+import {
+  SidesheetCard,
+  SidesheetSubPage,
+} from "metabase/common/components/Sidesheet";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type { SidebarCacheFormProps } from "metabase/plugins";
 import { Stack } from "metabase/ui";
@@ -71,19 +74,21 @@ const SidebarCacheForm_Base = ({
         {...groupProps}
       >
         <DelayedLoadingAndErrorWrapper loading={loading} error={error}>
-          <StrategyForm
-            targetId={id}
-            targetModel={model}
-            targetName={getItemName(model, item)}
-            setIsDirty={setIsStrategyFormDirty}
-            saveStrategy={saveAndBack}
-            savedStrategy={savedStrategy}
-            shouldAllowInvalidation
-            shouldShowName={false}
-            onReset={onBack}
-            buttonLabels={{ save: t`Save`, discard: t`Cancel` }}
-            isInSidebar
-          />
+          <SidesheetCard>
+            <StrategyForm
+              targetId={id}
+              targetModel={model}
+              targetName={getItemName(model, item)}
+              setIsDirty={setIsStrategyFormDirty}
+              saveStrategy={saveAndBack}
+              savedStrategy={savedStrategy}
+              shouldAllowInvalidation
+              shouldShowName={false}
+              onReset={onBack}
+              buttonLabels={{ save: t`Save`, discard: t`Cancel` }}
+              isInSidebar
+            />
+          </SidesheetCard>
         </DelayedLoadingAndErrorWrapper>
         {confirmationModal}
       </Stack>

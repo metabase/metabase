@@ -1,5 +1,6 @@
 .SidesheetContent {
   &:not([data-css-specificity-hack="🤷‍♀️"]) {
+    box-shadow: -5px 0 8px 0 rgba(var(--mb-color-bg-black), 0.15);
     position: fixed;
     height: 100dvh;
     max-height: 100dvh;
@@ -22,4 +23,11 @@
 
 .OverflowAuto {
   overflow: auto;
+}
+
+.ModalBody {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  overflow: hidden;
 }

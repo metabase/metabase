@@ -6,7 +6,7 @@ import {
 } from "metabase/admin/performance/components/StrategyForm.styled";
 import { Group } from "metabase/ui";
 
-export const DashboardStrategySidebarBody = styled(Group)`
+export const DashboardCachingStrategySidebarBody = styled(Group)`
   display: flex;
   flex-flow: column nowrap;
   height: 100%;

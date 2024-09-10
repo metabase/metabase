@@ -9,6 +9,7 @@ export type ModalSize = typeof modalSizes[number];
 export type BaseModalProps = {
   children?: React.ReactNode;
   className?: string;
+  containerClassName?: string;
   enableMouseEvents?: boolean;
   enableTransition?: boolean;
   closeOnClickOutside?: boolean;

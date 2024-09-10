@@ -7,7 +7,7 @@ import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CACHING, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import { onCloseQuestionSettings } from "metabase/query_builder/actions";
-import { Stack } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { ModelCacheManagementSection } from "../ModelCacheManagementSection";
@@ -57,7 +57,7 @@ export const QuestionSettingsSidebar = ({
 
   return (
     <Sidesheet
-      title={title}
+      title={<Flex px="md">{title}</Flex>}
       onClose={handleClose}
       isOpen={isOpen}
       data-testid="question-settings-sidebar"
@@ -69,15 +69,11 @@ export const QuestionSettingsSidebar = ({
       )}
 
       {hasCacheSection && (
-        <SidesheetCard title={t`Caching`}>
-          <Stack spacing="0.5rem">
-            <PLUGIN_CACHING.SidebarCacheSection
-              model="question"
-              item={question}
-              setPage={setPage}
-            />
-          </Stack>
-        </SidesheetCard>
+        <PLUGIN_CACHING.SidebarCacheSection
+          model="question"
+          item={question}
+          setPage={setPage}
+        />
       )}
     </Sidesheet>
   );

@@ -1,0 +1,4 @@
+.ConfirmationModal {
+  /* The modal must appear above the sidesheet and its overlay */
+  z-index: 201;
+}
