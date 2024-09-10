@@ -9,6 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import * as IsLocalhostModule from "embedding-sdk/lib/is-localhost";
 import { sdkReducers } from "embedding-sdk/store";
 import {
   createMockApiKeyConfig,
@@ -81,6 +82,8 @@ describe("AppInitializeController", () => {
   });
 
   it("shows a warning when API keys are used in localhost", async () => {
+    expect(window.location.origin).toBe("http://localhost");
+
     setup({ config: createMockApiKeyConfig(), tokenFeatureEnabled: true });
 
     await userEvent.click(screen.getByTestId("sdk-license-problem-indicator"));
@@ -93,6 +96,30 @@ describe("AppInitializeController", () => {
         /This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO./,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("shows an error when API keys are used in production", async () => {
+    const mock = jest
+      .spyOn(IsLocalhostModule, "getIsLocalhost")
+      .mockImplementation(() => false);
+
+    setup({
+      config: createMockApiKeyConfig(),
+      tokenFeatureEnabled: true,
+    });
+
+    await userEvent.click(screen.getByTestId("sdk-license-problem-indicator"));
+
+    const card = screen.getByTestId("sdk-license-problem-card");
+    expect(within(card).getByText("error")).toBeInTheDocument();
+
+    expect(
+      within(card).getByText(
+        /This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO./,
+      ),
+    ).toBeInTheDocument();
+
+    mock.mockRestore();
   });
 
   it("shows an error when JWT is used without a license", async () => {

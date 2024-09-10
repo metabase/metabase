@@ -4,6 +4,8 @@ import { t } from "ttag";
 import type { SDKConfig } from "embedding-sdk/types";
 import type { SdkLicenseProblem } from "embedding-sdk/types/license-problem";
 
+import { getIsLocalhost } from "./is-localhost";
+
 interface SdkProblemOptions {
   config: SDKConfig;
   hasFeatureFlag: boolean;
@@ -33,9 +35,7 @@ export function getSdkLicenseProblem(
 
   const isSSO = !!jwtProviderUri;
   const isApiKey = !!apiKey;
-
-  const { hostname } = window.location;
-  const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1";
+  const isLocalhost = getIsLocalhost();
 
   return match({ hasFeatureFlag, isSSO, isApiKey, isLocalhost })
     .with({ isSSO: true, isApiKey: true }, () =>
