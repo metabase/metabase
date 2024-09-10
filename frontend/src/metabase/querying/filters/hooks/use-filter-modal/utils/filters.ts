@@ -14,7 +14,7 @@ export function appendStageIfAggregated(query: Lib.Query) {
 
 function getStageIndexes(query: Lib.Query) {
   const stageCount = Lib.stageCount(query);
-  return Array.from({ length: stageCount }, (_, i) => i);
+  return Array.from({ length: stageCount }, (_, stageIndex) => stageIndex);
 }
 
 function getGroupName(
