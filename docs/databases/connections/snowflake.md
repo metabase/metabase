@@ -16,7 +16,9 @@ The display name for the database in the Metabase interface.
 
 ## Account or hostname
 
-You have the option of using the an account name or hostname. Your hostname is your database's IP address or its domain name (e.g., database.example.com).
+You have the option of using an account name or hostname. Your hostname is your database's IP address or its domain name (e.g., database.example.com).
+
+If your URL includes your database's region, you can connect using an account name, otherwise connect using a hostname.
 
 ### AWS
 
@@ -35,7 +37,9 @@ Not all regions require the cloud platform identifier. If you're in `us-west-2`,
 
 Connect with a host name.
 
-You can get your host name by going to Admin > Accounts. The Account name will be under Accounts. Click on the account you want to use, and click on the link icon to copy the host URL.
+You can get your host name by going to Admin > Accounts. The Account name will be under Accounts. Click on the account you want to use, and click on the link icon to copy the host URL: that's your host name. In the image below, Metabot is discreetly covering sensitive info. The "Copy account URL" link on the right is what you're looking for:
+
+![Snowflake copy account URL](../images/snowflake-copy-account-url.png)
 
 Learn more about [Account Identifiers in Snowflake](https://docs.snowflake.com/en/user-guide/admin-account-identifier).
 
