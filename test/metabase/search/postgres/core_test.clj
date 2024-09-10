@@ -13,22 +13,37 @@
 (def ^:private hybrid-multi
   #'search.postgres/hybrid-multi)
 
-(deftest ^:synchronized hybrid-test
-  (when (is-postgres?)
-    (mt/dataset test-data
-      (search.postgres/init! true)
-      (testing "consistent results between all searches for certain queries\n"
-        (doseq [term ["satisfaction" "e-commerce" "example" "rasta" "new" "revenue" "collection"]]
-          (testing (str "consistent results, but not ordering\n" term)
-            (is (= (set (legacy-results term))
-                   (set (hybrid term))))))))))
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defmacro with-setup [& body]
+  `(when (is-postgres?)
+     (mt/dataset ~'test-data
+       (search.postgres/init! true)
+       ~@body)))
 
-(deftest ^:synchronized hybrid-multi-test
-  (when (is-postgres?)
-    (mt/dataset test-data
-      (search.postgres/init! true)
-      (testing "consistent results between both hybrid implementations"
-        (doseq [term ["satisfaction" "e-commerce" "example" "rasta" "new" "revenue" "collection"]]
-          (testing term
-            (is (= (hybrid term)
-                   (hybrid-multi term)))))))))
+(deftest hybrid-test
+  (with-setup
+    (testing "consistent results between all searches for certain queries\n"
+      (doseq [term ["satisfaction" "e-commerce" "example" "rasta" "new" "revenue" "collection"]]
+        (testing (str "consistent results, but not ordering\n" term)
+          (is (= (set (legacy-results term))
+                 (set (hybrid term)))))))))
+
+(deftest permissions-test
+  (with-setup
+    ;; Lucky Pidgeon, Crowberto Corv, Rasta Toucan
+    ;; ... plus any additional ones that leaked in from dev or other tests
+    (is (<= 3 (count (hybrid "collection"))))
+    (testing "Rasta can only see his own collections"
+      (is (= ["Rasta Toucan's Personal Collection"]
+             (map :name (hybrid "collection"
+                                {:current-user-id    (mt/user->id :rasta)
+                                 :is-superuser?      false
+                                 :current-user-perms #{"/none/"}})))))))
+
+(deftest hybrid-multi-test
+  (with-setup
+    (testing "consistent results between both hybrid implementations"
+      (doseq [term ["satisfaction" "e-commerce" "example" "rasta" "new" "revenue" "collection"]]
+        (testing term
+          (is (= (hybrid term)
+                 (hybrid-multi term))))))))
