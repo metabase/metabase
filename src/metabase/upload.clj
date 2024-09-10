@@ -289,8 +289,7 @@
 
 (def ^:private common-charsets
   [StandardCharsets/UTF_8
-   StandardCharsets/ISO_8859_1
-   StandardCharsets/US_ASCII])
+   StandardCharsets/ISO_8859_1])
 
 (defn- valid-encoding? [bytes ^Charset charset]
   (try
@@ -306,7 +305,8 @@
                   (.read is buffer)
                   buffer))]
     (or (first (filter #(valid-encoding? bytes %) common-charsets))
-        (throw (Exception. "Unable to detect charset")))))
+        ;; Accept some replacement characters
+        StandardCharsets/UTF_8)))
 
 (defn- ->reader
   (^Reader [readable]
