@@ -315,8 +315,7 @@ describe("scenarios > question > offset", () => {
       );
     });
 
-    // TODO: add an issue
-    it.skip("does not preview sql without a breakout", () => {
+    it.skip("does not preview sql without a breakout (metabase#47819)", () => {
       cy.intercept("POST", "/api/dataset/native").as("sqlPreview");
 
       const query: StructuredQuery = {
@@ -617,7 +616,7 @@ describe("scenarios > question > offset", () => {
   });
 
   describe("explicit joins", () => {
-    it("column in the first place", () => {
+    it("offset expression not in the first place in aggregation", () => {
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         joins: [
@@ -657,7 +656,7 @@ describe("scenarios > question > offset", () => {
       getNotebookStep("summarize").icon("play").should("be.visible");
     });
 
-    it("column is not in the first place", () => {
+    it("offset expression is in the first place in aggregation", () => {
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
         joins: [
@@ -674,7 +673,7 @@ describe("scenarios > question > offset", () => {
             alias: "Products",
           },
         ],
-        aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+        aggregation: [OFFSET_SUM_TOTAL_AGGREGATION, SUM_TOTAL_AGGREGATION],
         breakout: [BREAKOUT_DATETIME, BREAKOUT_CATEGORY],
         "order-by": [["asc", BREAKOUT_DATETIME]],
       };
@@ -697,7 +696,7 @@ describe("scenarios > question > offset", () => {
       getNotebookStep("summarize").icon("play").should("be.visible");
     });
 
-    it("works with avg on custom column", () => {
+    it("offset and avg function applied to custom column", () => {
       const customColumnName = "CC Product Rating";
       const AVG_RATING_AGGREGATION: Aggregation = [
         "avg",
@@ -754,7 +753,7 @@ describe("scenarios > question > offset", () => {
   });
 
   describe("implicit joins", () => {
-    describe("when custom column in the first place of breakout", () => {
+    describe("when custom column is in the first place of breakout", () => {
       it("works with custom column that contains a function", () => {
         const customColumnName = "CC Product Category";
         const query: StructuredQuery = {
@@ -939,8 +938,8 @@ describe("scenarios > question > offset", () => {
     });
   });
 
-  describe("standard expression function with offset", () => {
-    it("uses standard function inside expression with offset - avg", () => {
+  describe("when expression contains a standard function with offset", () => {
+    it("works with avg", () => {
       const customColumnName = "CC Product Price";
       const query: StructuredQuery = {
         "source-table": ORDERS_ID,
