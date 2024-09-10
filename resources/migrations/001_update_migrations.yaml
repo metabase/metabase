@@ -9384,7 +9384,7 @@ databaseChangeLog:
             indexName: idx_notification_subscription_notification_id
 
   - changeSet:
-      id: v51.2024-08-30T08:00:03
+      id: v51.2024-09-05T08:00:03
       author: qnkhuat
       comment: Create the channel_template table
       preConditions:
@@ -9394,6 +9394,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: channel_template
+            remarks: custom template for the channel
             columns:
               - column:
                   name: id
@@ -9416,7 +9417,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: details
-                  type: text
+                  type: ${text.type}
                   remarks: the details of the template
                   constraints:
                     nullable: true
@@ -9518,7 +9519,12 @@ databaseChangeLog:
   - changeSet:
       id: v51.2024-09-05T08:00:05
       author: qnkhuat
-      comment: Add fk constraint to notification_handler.channel_id
+      comment: Add fk constraint to notification_handler.template_id
+      preConditions:
+        - not:
+          - foreignKeyConstraintExists:
+              foreignKeyName: fk_notification_handler_template_id
+              foreignKyeTableName: notification_handler
       changes:
         - addForeignKeyConstraint:
             baseTableName: notification_handler
