@@ -1,4 +1,4 @@
 export interface SdkLicenseProblem {
-  level: "warning" | "error";
+  severity: "warning" | "error";
   message: string;
 }

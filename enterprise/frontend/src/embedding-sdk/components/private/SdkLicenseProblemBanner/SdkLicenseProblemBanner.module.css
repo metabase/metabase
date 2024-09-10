@@ -1,0 +1,27 @@
+.Banner {
+  border-radius: 4px;
+}
+
+.Banner.Warning {
+  border: 1px solid #e8b923;
+}
+
+.Banner.Error {
+  border: 1px solid #f7a4a3;
+}
+
+.Banner .Content {
+  border-radius: 0 4px 4px 0;
+}
+
+.Banner .Logo {
+  border-radius: 4px 0 0 4px;
+}
+
+.Banner.Warning .Content {
+  background: #fef3cf;
+}
+
+.Banner.Error .Content {
+  background: #fdf0f0;
+}

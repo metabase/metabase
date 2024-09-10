@@ -28,8 +28,8 @@ export function getSdkLicenseProblem(
     config: { jwtProviderUri, apiKey },
   } = options;
 
-  const isSSO = jwtProviderUri !== null && jwtProviderUri !== "";
-  const isApiKey = apiKey !== null && apiKey !== "";
+  const isSSO = !!jwtProviderUri;
+  const isApiKey = !!apiKey;
 
   const { hostname } = window.location;
   const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1";
@@ -58,11 +58,11 @@ export function getSdkLicenseProblem(
 }
 
 const toError = (message: string): SdkLicenseProblem => ({
-  level: "error",
+  severity: "error",
   message,
 });
 
 const toWarning = (message: string): SdkLicenseProblem => ({
-  level: "warning",
+  severity: "warning",
   message,
 });

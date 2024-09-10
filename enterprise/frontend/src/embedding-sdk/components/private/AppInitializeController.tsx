@@ -48,7 +48,7 @@ export const AppInitializeController = ({
       return <div>{t`Loading…`}</div>;
     }
 
-    if (licenseProblem?.level === "error") {
+    if (licenseProblem?.severity === "error") {
       return null;
     }
 
