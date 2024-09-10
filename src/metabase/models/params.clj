@@ -17,6 +17,8 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.field-values :as field-values]
@@ -203,26 +205,103 @@
   [cards]
   (reduce set/union #{} (map card->template-tag-field-ids cards)))
 
+(defn- ensure-filterable-columns-for-card
+  [ctx card]
+  (if (get-in ctx [:card-id->filterable-columns (:id card)])
+    ctx
+    (assoc-in ctx [:card-id->filterable-columns (:id card)]
+              (let [dataset-query (:dataset_query card)
+                    query (lib/query (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
+                                     dataset-query)]
+                (lib/filterable-columns query)))))
+
+(defn- field-id-from-dashcards-filterable-columns
+  [ctx param-dashcard-info]
+  (let [param-target       (get-in param-dashcard-info [:parameter :target])
+        card-id            (get-in param-dashcard-info [:dashcard :card :id])
+        filterable-columns (get-in ctx [:card-id->filterable-columns card-id])]
+    (if-some [field-id (lib.util.match/match-one param-target
+                                                 [:field (field-name :guard string?) _]
+                                                 (->> filterable-columns
+                                                      (m/find-first #(= field-name (:name %)))
+                                                      :id))]
+      (update ctx :field-ids conj field-id)
+      ctx)))
+
+(def ^:dynamic *field-id-context*
+  "Conext for effective computation of field ids for parameters. Bound in
+  the [[metabase.api.dashboard/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to
+  re-use values of previous `filterable-columns` computations (hydration of `:param_fields` and `:param_values` at the
+  time of writing)."
+  (volatile! nil))
+
+(def empty-field-id-context
+  "Context for effective field id computation. See the [[field-id-into-context-rf]]'s docstring."
+  {:card-id->filterable-columns {}
+   :field-ids                   #{}})
+
+(mu/defn- field-id-into-context-rf
+  "Reducing function that generates _field id_ corresponding to `:parameter` of `param-dashcard-info` if possible,
+  and returns new _context_ (`ctx`) with the _field id_ added.
+
+  When used in `transduce`:
+    - 0-arity ensures re-use of existing [[*field-id-context*]] if available,
+    - 1-arity is used to return set of _field ids_ accumulated by transucing process instead of a _context_.
+
+  Then, 2-arity gets the _field id_ either from (1) target, (2) card's `:results_metadata`, or (3) filterable columns.
+  If computed, filterable columns are added to the context for re-use either in next reduction steps, or in next call
+  to this function by means of [[*field-id-context*]]."
+  ([]
+   (or
+    @*field-id-context*
+    empty-field-id-context))
+  ([ctx]
+   (when @*field-id-context*
+     (vswap! *field-id-context* update :card-id->filterable-columns
+             merge (:card-id->filterable-columns ctx)))
+   (:field-ids ctx))
+  ([ctx param-dashcard-info]
+   (if-not (:param-field-ref param-dashcard-info)
+     ctx
+     (let [param-target    (:target param-dashcard-info)
+           card            (get-in param-dashcard-info [:dashcard :card])]
+       (if-some [field-id (or
+                           ;; Get the field id from the field-clause if it contains it. This is the common case
+                           ;; for mbql queries.
+                           (lib.util.match/match-one param-target [:field (id :guard integer?) _] id)
+                           ;; Attempt to get the field clause from the model metadata corresponding to the field.
+                           ;; This is the common case for native queries in which mappings from original columns
+                           ;; have been performed using model metadata.
+                           (:id (qp.util/field->field-info param-target (:result_metadata card))))]
+         (update ctx :field-ids conj field-id)
+         ;; In case the card doesn't have the same result_metadata columns as filterable columns (a question that
+         ;; aggregates a native query model with a field that was mapped to a db field), we need to load metadata in
+         ;; [[ensure-filterable-columns-for-card]] to find the originating field. (#42829)
+         (-> ctx
+             (ensure-filterable-columns-for-card card)
+             (field-id-from-dashcards-filterable-columns param-dashcard-info)))))))
+
+(mu/defn dashcards->param-field-ids* :- [:set ms/PositiveInt]
+  "Return set of field ids referenced dashcards"
+  [dashcards]
+  (letfn [(dashcard->param-dashcard-info
+            [dashcard]
+            (map #(hash-map :parameter       %
+                            :dashcard        dashcard
+                            :param-field-ref (param-target->field-clause (:target %)
+                                                                         (:card dashcard)))
+                 (:parameter_mappings dashcard)))]
+    (transduce (mapcat dashcard->param-dashcard-info)
+               field-id-into-context-rf
+               dashcards)))
+
 (mu/defn dashcards->param-field-ids :- [:set ms/PositiveInt]
   "Return a set of Field IDs referenced by parameters in Cards in the given `dashcards`, or `nil` if none are referenced. This
   also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL template tag Field filters.
   `dashcards` must be hydrated with :card."
   [dashcards]
   (set/union
-   (set (for [{:keys [card] :as dashcard} dashcards
-              param    (:parameter_mappings dashcard)
-              :let     [field-clause (param-target->field-clause (:target param) (:card dashcard))]
-              :when    field-clause
-              :let     [field-id (or
-                                    ;; Get the field id from the field-clause if it contains it. This is the common case
-                                    ;; for mbql queries.
-                                  (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)
-                                    ;; Attempt to get the field clause from the model metadata corresponding to the field.
-                                    ;; This is the common case for native queries in which mappings from original columns
-                                    ;; have been performed using model metadata.
-                                  (:id (qp.util/field->field-info field-clause (:result_metadata card))))]
-              :when field-id]
-          field-id))
+   (dashcards->param-field-ids* dashcards)
    (cards->card-param-field-ids (map :card dashcards))))
 
 (defn get-linked-field-ids
