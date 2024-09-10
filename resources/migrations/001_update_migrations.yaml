@@ -10072,6 +10072,12 @@ databaseChangeLog:
       id: v52.2024-11-25T08:57:20
       author: johnswanson
       comment: Add `report_card.dashboard_id`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: report_card
+              columnName: dashboard_id
       changes:
         - addColumn:
             tableName: report_card
@@ -10141,6 +10147,11 @@ databaseChangeLog:
       id: v51.2024-12-06T07:49:24
       author: johnswanson
       comment: Make `report_card.dashboard_id` a foreign key
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - foreignKeyConstraintExists:
+            - foreignKeyName: fk_report_card_ref_dashboard_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_card
