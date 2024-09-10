@@ -297,13 +297,13 @@
               (do
                 (.dataEnd detector)
                 (.getDetectedCharset detector)))))))
-    (catch Exception _
-      ;; Just live with unrecognized characters
-      "UTF-8")))
+    (catch Exception _)))
 
 (defn- ->reader ^Reader [^File file]
-   (-> (bom/bom-input-stream file)
-       (InputStreamReader. (detect-charset file))))
+  ;; Just live with unrecognized characters
+  (let [charset (or (detect-charset file) "UTF-8")]
+    (-> (bom/bom-input-stream file)
+        (InputStreamReader. charset))))
 
 (defn- assert-separator-chosen [s]
   (or s (throw (IllegalArgumentException. "Unable to determine separator"))))
