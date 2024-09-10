@@ -41,8 +41,8 @@
   (:import
    (java.io File Reader)
    (java.nio.charset StandardCharsets)
-   (org.mozilla.universalchardet UniversalDetector)
-   (org.apache.tika Tika)))
+   (org.apache.tika Tika)
+   (org.mozilla.universalchardet UniversalDetector)))
 
 (set! *warn-on-reflection* true)
 
