@@ -130,19 +130,15 @@ export const getSearchInputPlaceholder = <
 >(
   folder: Item | undefined,
 ): string => {
-  if (!folder) {
-    return t`Search…`;
-  }
-
-  if (folder.model === "collection") {
+  if (folder?.model === "collection") {
     return t`Search this collection or everywhere…`;
   }
 
-  if (folder.model === "database") {
+  if (folder?.model === "database") {
     return t`Search this database or everywhere…`;
   }
 
-  if (folder.model === "schema") {
+  if (folder?.model === "schema") {
     return t`Search this schema or everywhere…`;
   }
 
