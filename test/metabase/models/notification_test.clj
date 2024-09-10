@@ -132,7 +132,6 @@
         (t2/delete! :model/ChannelTemplate (:id tmpl-1))
         (is (=? {:template_id nil} (t2/select-one :model/NotificationHandler :notification_id (:id noti))))))))
 
-
 (deftest cross-check-channel-type-and-template-type-test
   (testing "can't create a handler with a template that has different channel type"
     (mt/with-temp [:model/Channel         chn-1  {:type    :channel/slack}
