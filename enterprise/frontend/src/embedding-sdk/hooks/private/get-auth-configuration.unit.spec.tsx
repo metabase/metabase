@@ -1,6 +1,6 @@
 import type { SDKConfig } from "embedding-sdk";
 import { getAuthConfiguration } from "embedding-sdk/hooks";
-import { getErrorMessage } from "embedding-sdk/lib/user-warnings/constants";
+import { getErrorMessage } from "embedding-sdk/lib/user-warnings";
 import {
   createMockApiKeyConfig,
   createMockJwtConfig,
@@ -13,8 +13,8 @@ const NO_CONFIG = {};
 
 const setup = ({ config }: { config: SDKConfig }) => {
   const dispatch = jest.fn();
-  const appName = "Metabase";
-  return getAuthConfiguration(config, dispatch, appName);
+
+  return getAuthConfiguration(config, dispatch);
 };
 
 jest.mock("metabase/lib/api");

@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useState } from "react";
 
+import { SDK_SSO_DOCS_LINK } from "embedding-sdk/lib/license-problem";
 import type { SdkLicenseProblem } from "embedding-sdk/types/license-problem";
 import LogoIcon from "metabase/components/LogoIcon";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -21,8 +22,6 @@ import S from "./SdkLicenseProblemBanner.module.css";
 interface Props {
   problem: SdkLicenseProblem | null;
 }
-
-const SDK_DOCS_LINK = "https://npm.im/@metabase/embedding-sdk-react";
 
 export const SdkLicenseProblemBanner = ({ problem }: Props) => {
   const [expanded, setExpanded] = useState(false);
@@ -92,7 +91,7 @@ export const SdkLicenseProblemBanner = ({ problem }: Props) => {
                 Hide {severity}
               </Button>
 
-              <ExternalLink href={SDK_DOCS_LINK}>
+              <ExternalLink href={SDK_SSO_DOCS_LINK}>
                 <Button
                   fz="sm"
                   variant="outline"

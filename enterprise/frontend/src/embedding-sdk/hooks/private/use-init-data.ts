@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getAuthConfiguration } from "embedding-sdk/hooks/private/get-auth-configuration";
-import { getErrorMessage } from "embedding-sdk/lib/user-warnings/constants";
+import { getErrorMessage } from "embedding-sdk/lib/user-warnings";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   setFetchRefreshTokenFn,
@@ -12,10 +12,8 @@ import {
 import { getLoginStatus } from "embedding-sdk/store/selectors";
 import type { SDKConfig } from "embedding-sdk/types";
 import api from "metabase/lib/api";
-import { useSelector } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import registerVisualizations from "metabase/visualizations/register";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
@@ -26,9 +24,7 @@ interface InitDataLoaderParameters {
 
 export const useInitData = ({ config }: InitDataLoaderParameters) => {
   const dispatch = useSdkDispatch();
-
   const loginStatus = useSdkSelector(getLoginStatus);
-  const appName = useSelector(getApplicationName);
 
   useEffect(() => {
     registerVisualizationsOnce();
@@ -57,7 +53,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
 
     api.basename = config.metabaseInstanceUrl;
 
-    const authErrorMessage = getAuthConfiguration(config, dispatch, appName);
+    const authErrorMessage = getAuthConfiguration(config, dispatch);
 
     if (authErrorMessage) {
       dispatch(
@@ -67,7 +63,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
         }),
       );
     }
-  }, [appName, config, dispatch, loginStatus.status]);
+  }, [config, dispatch, loginStatus.status]);
 
   useEffect(() => {
     if (loginStatus.status === "validated") {

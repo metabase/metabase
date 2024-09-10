@@ -1,8 +1,7 @@
 import { P, match } from "ts-pattern";
 
 import type { EmbeddingSessionToken, SDKConfig } from "embedding-sdk";
-import { presentApiKeyUsageWarning } from "embedding-sdk/lib/user-warnings";
-import { getErrorMessage } from "embedding-sdk/lib/user-warnings/constants";
+import { getErrorMessage } from "embedding-sdk/lib/user-warnings";
 import {
   getOrRefreshSession,
   setLoginStatus,
@@ -36,11 +35,7 @@ const setupLocalApiKey = (
   dispatch(setLoginStatus({ status: "validated" }));
 };
 
-export const getAuthConfiguration = (
-  config: SDKConfig,
-  dispatch: Dispatch,
-  appName: string,
-) =>
+export const getAuthConfiguration = (config: SDKConfig, dispatch: Dispatch) =>
   match<[SDKConfig, string], string | void>([config, window.location.hostname])
     .with(
       [
@@ -52,11 +47,6 @@ export const getAuthConfiguration = (
       jwtProviderUri => setupJwtAuth(jwtProviderUri, dispatch),
     )
     .with([{ apiKey: P.select(P.nonNullable) }, "localhost"], apiKey => {
-      // TODO: move it where it belongs
-      presentApiKeyUsageWarning(appName);
       setupLocalApiKey(dispatch, apiKey);
     })
-    .with([{ apiKey: P.select(P.nonNullable) }, P.not("localhost")], () =>
-      getErrorMessage("PROD_API_KEY"),
-    )
     .otherwise(() => getErrorMessage("NO_AUTH_PROVIDED"));

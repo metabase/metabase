@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 const ERROR_MESSAGE_MAP = {
-  PROD_API_KEY: t`[TO REMOVE]`,
   COULD_NOT_AUTHENTICATE: t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`,
   NO_AUTH_PROVIDED: t`No JWT URI or API key provided.`,
 };

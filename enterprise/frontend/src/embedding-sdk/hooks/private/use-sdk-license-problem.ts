@@ -1,11 +1,18 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import type { SDKConfig } from "embedding-sdk";
-import { getSdkLicenseProblem } from "embedding-sdk/lib/user-warnings/license-problem";
+import {
+  getSdkLicenseProblem,
+  printLicenseProblemToConsole,
+} from "embedding-sdk/lib/license-problem";
 import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getTokenFeature } from "metabase/setup/selectors";
 
 export function useSdkLicenseProblem(config: SDKConfig) {
+  const hasLoggedRef = useRef(false);
+  const appName = useSelector(getApplicationName);
+
   const hasFeatureFlag = useSelector(state => {
     // When the settings endpoint has not been called, we assume that the feature is enabled.
     if (!state.settings.values?.["token-features"]) {
@@ -20,18 +27,13 @@ export function useSdkLicenseProblem(config: SDKConfig) {
     return getSdkLicenseProblem({ hasFeatureFlag, config });
   }, [hasFeatureFlag, config]);
 
-  const { severity, message } = licenseProblem ?? {};
-
-  // Log the problem to the console.
+  // Log the problem to the console once.
   useEffect(() => {
-    if (severity === "error") {
-      // eslint-disable-next-line no-console
-      console.error(message);
-    } else if (severity === "warning") {
-      // eslint-disable-next-line no-console
-      console.warn(message);
+    if (!hasLoggedRef.current) {
+      printLicenseProblemToConsole(licenseProblem, appName);
+      hasLoggedRef.current = true;
     }
-  }, [severity, message]);
+  }, [licenseProblem, appName]);
 
   return licenseProblem;
 }
