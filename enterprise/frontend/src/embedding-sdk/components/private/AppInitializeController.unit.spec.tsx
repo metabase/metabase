@@ -10,7 +10,10 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { sdkReducers } from "embedding-sdk/store";
-import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
+import {
+  createMockApiKeyConfig,
+  createMockJwtConfig,
+} from "embedding-sdk/test/mocks/config";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
 import type { SDKConfig } from "embedding-sdk/types";
 import {
@@ -77,13 +80,31 @@ describe("AppInitializeController", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows a warning when API keys are used in localhost", async () => {
+    setup({ config: createMockApiKeyConfig(), tokenFeatureEnabled: true });
+
+    await userEvent.click(screen.getByTestId("sdk-license-problem-indicator"));
+
+    const card = screen.getByTestId("sdk-license-problem-card");
+    expect(within(card).getByText("warning")).toBeInTheDocument();
+
+    expect(
+      within(card).getByText(
+        /This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO./,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("shows an error when JWT is used without a license", async () => {
     setup({ config: createMockJwtConfig(), tokenFeatureEnabled: false });
 
     await userEvent.click(screen.getByTestId("sdk-license-problem-indicator"));
 
+    const card = screen.getByTestId("sdk-license-problem-card");
+    expect(within(card).getByText("error")).toBeInTheDocument();
+
     expect(
-      within(screen.getByTestId("sdk-license-problem-card")).getByText(
+      within(card).getByText(
         /Attempting to use this in other ways is in breach of our usage policy/,
       ),
     ).toBeInTheDocument();
