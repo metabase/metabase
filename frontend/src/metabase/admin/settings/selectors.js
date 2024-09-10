@@ -22,8 +22,11 @@ import {
 import { CloudPanel } from "./components/CloudPanel";
 import { BccToggleWidget } from "./components/Email/BccToggleWidget";
 import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
-import { EmbeddingSettings } from "./components/EmbeddingSettings";
-import { EmbeddingSdkSettings } from "./components/EmbeddingSettings/EmbeddingSdkSettings";
+import {
+  EmbeddingSdkSettings,
+  EmbeddingSettings,
+  StaticEmbeddingSettings,
+} from "./components/EmbeddingSettings";
 import SettingsLicense from "./components/SettingsLicense";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import { UploadSettings } from "./components/UploadSettings";
@@ -31,13 +34,11 @@ import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
 import {
-  EmbeddedResources,
   PublicLinksActionListing,
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
 } from "./components/widgets/PublicLinksListing";
 import RedirectWidget from "./components/widgets/RedirectWidget";
-import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import { NotificationSettings } from "./notifications/NotificationSettings";
@@ -428,53 +429,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
     settings: [],
   },
   "embedding-in-other-applications/standalone": {
-    settings: [
-      {
-        key: "-breadcrumb",
-        widget: () => {
-          return (
-            <Breadcrumbs
-              size="large"
-              crumbs={[
-                [
-                  t`Embedding`,
-                  "/admin/settings/embedding-in-other-applications",
-                ],
-                [t`Static embedding`],
-              ]}
-            />
-          );
-        },
-      },
-      {
-        key: "embedding-secret-key",
-        display_name: t`Embedding secret key`,
-        description: t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`,
-        widget: SecretKeyWidget,
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-        props: {
-          confirmation: {
-            header: t`Regenerate embedding key?`,
-            dialog: t`This will cause existing embeds to stop working until they are updated with the new key.`,
-          },
-        },
-      },
-
-      {
-        key: "-embedded-resources",
-        display_name: t`Manage embeds`,
-
-        widget: EmbeddedResources,
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-      },
-      {
-        key: "-redirect-widget",
-        widget: () => (
-          <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
-        ),
-        getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
-      },
-    ],
+    component: StaticEmbeddingSettings,
+    settings: [],
   },
   "embedding-in-other-applications/sdk": {
     component: EmbeddingSdkSettings,

@@ -104,7 +104,6 @@ export const StaticEmbeddingOptionCard = ({
       <Flex align="center" w="100%">
         <LinkButton
           variant="default"
-          disabled={!isStaticEmbeddingEnabled}
           to={"/admin/settings/embedding-in-other-applications/standalone"}
         >
           {t`Manage`}
