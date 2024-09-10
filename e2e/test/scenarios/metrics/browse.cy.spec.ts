@@ -7,8 +7,10 @@ import {
   type StructuredQuestionDetails,
   assertIsEllipsified,
   createQuestion,
+  getSidebarSectionTitle,
   main,
   navigationSidebar,
+  popover,
   restore,
 } from "e2e/support/helpers";
 
@@ -93,6 +95,16 @@ function findMetric(name: string) {
 
 function getMetricsTableItem(index: number) {
   return metricsTable().findAllByTestId("metric-name").eq(index);
+}
+
+function shouldHaveBookmark(name: string) {
+  getSidebarSectionTitle(/Bookmarks/).should("be.visible");
+  navigationSidebar().findByText(name).should("be.visible");
+}
+
+function shouldNotHaveBookmark(name: string) {
+  getSidebarSectionTitle(/Bookmarks/).should("not.exist");
+  navigationSidebar().findByText(name).should("not.exist");
 }
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -228,6 +240,117 @@ describe("scenarios > browse > metrics", () => {
       getMetricsTableItem(1).should("contain", "Metric A");
       getMetricsTableItem(2).should("contain", "Metric C");
       getMetricsTableItem(3).should("contain", "Metric D");
+    });
+  });
+
+  describe("dot menu", () => {
+    it("should be possible to bookmark a metrics from the dot menu", () => {
+      createMetrics([ORDERS_SCALAR_METRIC]);
+
+      cy.visit("/browse/metrics");
+
+      shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+      metricsTable().findByLabelText("Metric options").click();
+      popover().findByText("Bookmark").should("be.visible").click();
+
+      shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+      metricsTable().findByLabelText("Metric options").click();
+      popover()
+        .findByText("Remove from bookmarks")
+        .should("be.visible")
+        .click();
+
+      shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+      metricsTable().findByLabelText("Metric options").click();
+      popover().findByText("Bookmark").should("be.visible");
+    });
+
+    it("should be possible to navigate to the collection from the dot menu", () => {
+      createMetrics([ORDERS_SCALAR_MODEL_METRIC]);
+
+      cy.visit("/browse/metrics");
+
+      metricsTable().findByLabelText("Metric options").click();
+      popover().findByText("Open collection").should("be.visible").click();
+
+      cy.location("pathname").should(
+        "match",
+        new RegExp(`^/collection/${FIRST_COLLECTION_ID}`),
+      );
+    });
+
+    it("should be possible to trash a metric from the dot menu when the user has write access", () => {
+      createMetrics([ORDERS_SCALAR_METRIC]);
+
+      cy.visit("/browse/metrics");
+
+      metricsTable().findByLabelText("Metric options").click();
+      popover().findByText("Move to trash").should("be.visible").click();
+
+      main()
+        .findByText(
+          "Metrics help you summarize and analyze your data effortlessly.",
+        )
+        .should("be.visible");
+
+      navigationSidebar().findByText("Trash").should("be.visible").click();
+      cy.button("Actions").click();
+      popover().findByText("Restore").should("be.visible").click();
+
+      navigationSidebar().findByText("Metrics").should("be.visible").click();
+      metricsTable().findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+    });
+
+    describe("when the user does not have write access", () => {
+      it("should not be possible to trash a metric from the dot menu when the user does not have write access", () => {
+        createMetrics([ORDERS_SCALAR_METRIC]);
+        cy.signIn("readonly");
+
+        cy.visit("/browse/metrics");
+
+        metricsTable().findByLabelText("Metric options").click();
+        popover().findByText("Move to trash").should("not.exist");
+      });
+
+      it("should be possible to navigate to the collection from the dot menu", () => {
+        createMetrics([ORDERS_SCALAR_METRIC]);
+        cy.signIn("readonly");
+
+        cy.visit("/browse/metrics");
+
+        metricsTable().findByLabelText("Metric options").click();
+        popover().findByText("Open collection").should("be.visible").click();
+
+        cy.location("pathname").should("eq", "/collection/root");
+      });
+
+      it("should be possible to bookmark a metrics from the dot menu", () => {
+        createMetrics([ORDERS_SCALAR_METRIC]);
+        cy.signIn("readonly");
+
+        cy.visit("/browse/metrics");
+
+        shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+        metricsTable().findByLabelText("Metric options").click();
+        popover().findByText("Bookmark").should("be.visible").click();
+
+        shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+        metricsTable().findByLabelText("Metric options").click();
+        popover()
+          .findByText("Remove from bookmarks")
+          .should("be.visible")
+          .click();
+
+        shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+        metricsTable().findByLabelText("Metric options").click();
+        popover().findByText("Bookmark").should("be.visible");
+      });
     });
   });
 });
