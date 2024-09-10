@@ -19,9 +19,9 @@
       (search.postgres/init! true)
       (testing "consistent results between all searches for certain queries\n"
         (doseq [term ["satisfaction" "e-commerce" "example" "rasta" "new" "revenue" "collection"]]
-          (testing (str "consistent results, but not ordering" term)
-            (is (= (legacy-results term)
-                   (hybrid term)))))))))
+          (testing (str "consistent results, but not ordering\n" term)
+            (is (= (set (legacy-results term))
+                   (set (hybrid term))))))))))
 
 (deftest ^:synchronized hybrid-multi-test
   (when (is-postgres?)
