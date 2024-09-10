@@ -1,5 +1,9 @@
+.PopoverDropdown.PopoverDropdown {
+  border: none;
+}
+
 .Banner {
-  border-radius: 4px;
+  cursor: pointer;
 }
 
 .Banner.Warning {
@@ -12,6 +16,7 @@
 
 .Banner .Content {
   border-radius: 0 4px 4px 0;
+  user-select: none;
 }
 
 .Banner .Logo {

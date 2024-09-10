@@ -64,7 +64,7 @@ export const AppInitializeController = ({
       {content}
 
       {licenseProblem && (
-        <Box pos="absolute" bottom="15px" left="15px">
+        <Box pos="fixed" bottom="15px" left="15px">
           <SdkLicenseProblemBanner problem={licenseProblem} />
         </Box>
       )}

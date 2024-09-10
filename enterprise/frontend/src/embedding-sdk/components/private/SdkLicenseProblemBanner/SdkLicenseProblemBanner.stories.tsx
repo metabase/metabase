@@ -12,10 +12,8 @@ export default {
 
 const Template: ComponentStory<typeof SdkLicenseProblemBanner> = args => {
   return (
-    <Box mih="400px">
-      <Box pos="absolute" bottom="15px" left="15px">
-        <SdkLicenseProblemBanner {...args} />
-      </Box>
+    <Box pos="absolute" bottom="15px" left="15px">
+      <SdkLicenseProblemBanner {...args} />
     </Box>
   );
 };
