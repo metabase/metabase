@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import {
+  skipToken,
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
   useGetCardQueryQuery,
@@ -453,10 +454,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
 
 function ValueCell({ metric }: { metric?: MetricResult }) {
   const { data, isLoading, error } = useGetCardQueryQuery(
-    { cardId: metric?.id ?? 0 },
-    {
-      skip: !metric?.id,
-    },
+    metric ? { cardId: metric.id } : skipToken,
   );
 
   const emptyCell = (
