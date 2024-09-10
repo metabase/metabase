@@ -4,13 +4,13 @@
   TODO: a lot of this stuff wouldn't need to be exposed if we moved more of the search stuff
   from [[metabase.api.search]] into the `metabase.search` module."
   (:require
+   [metabase.db]
    [metabase.search.config :as search.config]
    [metabase.search.impl :as search.impl]
    [metabase.search.postgres.core :as search.postgres]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [potemkin :as p]
-   [toucan2.core :as t2]))
+   [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,9 +25,7 @@
 (defn is-postgres?
   "Check whether we can create this index"
   []
-  (= "PostgreSQL"
-     (t2/with-connection [^java.sql.Connection conn]
-       (.. conn getMetaData getDatabaseProductName))))
+  (= :postgres (metabase.db/db-type)))
 
 (defn- query-fn [search-engine]
   (case search-engine
