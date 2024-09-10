@@ -9230,6 +9230,33 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v54.2024-09-10T12:00:00
+      author: jordigiam
+      comment: Create table company
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: company
+      changes:
+        - createTable:
+            tableName: company
+            remarks: Table to store company information
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: company_name
+                  type: text
+                  constraints:
+                    nullable: false
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
