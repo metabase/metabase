@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { useState } from "react";
 
 import { setupCollectionItemsEndpoint } from "__support__/server-mocks";
 import {
@@ -17,7 +18,7 @@ import {
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
-import type { CollectionPickerItem } from "../types";
+import type { CollectionPickerItem, CollectionPickerStatePath } from "../types";
 
 import { CollectionPicker } from "./CollectionPicker";
 
@@ -148,12 +149,20 @@ const setup = ({
 
   setupCollectionTreeMocks(collectionTree);
 
-  return renderWithProviders(
-    <CollectionPicker
-      onItemSelect={onItemSelect}
-      initialValue={initialValue}
-    />,
-  );
+  function TestComponent() {
+    const [path, setPath] = useState<CollectionPickerStatePath>();
+
+    return (
+      <CollectionPicker
+        initialValue={initialValue}
+        path={path}
+        onItemSelect={onItemSelect}
+        onPathChange={setPath}
+      />
+    );
+  }
+
+  return renderWithProviders(<TestComponent />);
 };
 
 describe("CollectionPicker", () => {
@@ -165,6 +174,7 @@ describe("CollectionPicker", () => {
     act(() => {
       setup();
     });
+
     expect(
       await screen.findByRole("button", { name: /Our Analytics/ }),
     ).toHaveAttribute("data-active", "true");
@@ -182,6 +192,7 @@ describe("CollectionPicker", () => {
     act(() => {
       setup({ initialValue: { id: 3, model: "collection" } });
     });
+    await screen.findByRole("button", { name: /Our Analytics/ });
     expect(
       await screen.findByRole("button", { name: /Our Analytics/ }),
     ).toHaveAttribute("data-active", "true");

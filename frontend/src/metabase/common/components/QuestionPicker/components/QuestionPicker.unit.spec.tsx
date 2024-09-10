@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import _ from "underscore";
+import { useState } from "react";
 
 import {
   setupCollectionItemsEndpoint,
@@ -21,7 +21,11 @@ import {
   createMockCollectionItem,
 } from "metabase-types/api/mocks";
 
-import type { QuestionPickerItem, QuestionPickerValueModel } from "../types";
+import type {
+  QuestionPickerItem,
+  QuestionPickerStatePath,
+  QuestionPickerValueModel,
+} from "../types";
 
 import { QuestionPicker, defaultOptions } from "./QuestionPicker";
 import { QuestionPickerModal } from "./QuestionPickerModal";
@@ -187,14 +191,22 @@ const setupPicker = async ({
 }: SetupOpts = {}) => {
   commonSetup();
 
-  renderWithProviders(
-    <QuestionPicker
-      onItemSelect={onChange}
-      initialValue={initialValue}
-      models={["card"]}
-      options={defaultOptions}
-    />,
-  );
+  function TestComponent() {
+    const [path, setPath] = useState<QuestionPickerStatePath>();
+
+    return (
+      <QuestionPicker
+        initialValue={initialValue}
+        models={["card"]}
+        options={defaultOptions}
+        path={path}
+        onItemSelect={onChange}
+        onPathChange={setPath}
+      />
+    );
+  }
+
+  renderWithProviders(<TestComponent />);
 
   await waitForLoaderToBeRemoved();
 };

@@ -77,3 +77,9 @@ export type DataPickerItem = DataPickerFolderItem | DataPickerValueItem;
 
 export type DataPickerModalOptions = EntityPickerModalOptions &
   QuestionPickerOptions;
+
+export type TablePickerStatePath = [
+  DatabaseId | undefined,
+  SchemaName | undefined,
+  TableId | undefined,
+];
