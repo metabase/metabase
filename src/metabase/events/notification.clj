@@ -21,7 +21,7 @@
   (when-let [notifications (notifications-for-topic topic)]
     (log/infof "Found %d notifications for event: %s" (count notifications) topic)
     (doseq [notification notifications]
-      (notification/send-notification! (assoc notification :event-info event-info)))))
+      (notification/*send-notification!* (assoc notification :event-info event-info)))))
 
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]

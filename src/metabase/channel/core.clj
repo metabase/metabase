@@ -3,11 +3,17 @@
 
   The API is still in development and subject to change."
   (:require
+   [metabase.channel.params :as channel.params]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
+
+(p/import-vars
+ [channel.params
+  substitute-params])
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Channels methods                                           ;;
@@ -34,8 +40,8 @@
   The message format is channel-specific, one requirement is that it should be the same format that
   the [[send!]] multimethod expects."
   {:added    "0.51.0"
-   :arglists '([channel-type notification-content recipients])}
-  (fn [channel-type notification-content _recipients]
+   :arglists '([channel-type notification-content template recipients])}
+  (fn [channel-type notification-content _template _recipients]
     [channel-type (:payload-type notification-content)]))
 
 (defmulti send!
