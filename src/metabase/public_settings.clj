@@ -899,6 +899,13 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :integer)
 
+(defsetting experimental-fulltext-search-enabled
+  (deferred-tru "Enables search engines which are still in the experimental stage")
+  :visibility :internal
+  :export?    false
+  :default    false
+  :type       :boolean)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

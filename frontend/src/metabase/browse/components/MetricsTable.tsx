@@ -3,8 +3,10 @@ import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
 import {
+  skipToken,
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
+  useGetCardQueryQuery,
 } from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
@@ -24,6 +26,7 @@ import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import Bookmarks from "metabase/entities/bookmarks";
 import Questions from "metabase/entities/questions";
+import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -34,6 +37,8 @@ import {
   type IconName,
   Menu,
   Skeleton,
+  Text,
+  Tooltip,
 } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
@@ -46,8 +51,15 @@ import {
   CollectionTableCell,
   NameColumn,
   TableRow,
+  Value,
+  ValueTableCell,
+  ValueWrapper,
 } from "./BrowseTable.styled";
-import { getMetricDescription, sortModelOrMetric } from "./utils";
+import {
+  getDatasetScalarValueForMetric,
+  getMetricDescription,
+  sortModelOrMetric,
+} from "./utils";
 
 type MetricsTableProps = {
   metrics?: MetricResult[];
@@ -61,22 +73,30 @@ const DEFAULT_SORTING_OPTIONS: SortingOptions = {
 
 export const itemsTableContainerName = "ItemsTableContainer";
 
-const nameProps = {
+const sharedProps = {
   containerName: itemsTableContainerName,
+};
+
+const nameProps = {
+  ...sharedProps,
 };
 
 const descriptionProps: ResponsiveProps = {
-  hideAtContainerBreakpoint: "sm",
-  containerName: itemsTableContainerName,
+  ...sharedProps,
+  hideAtContainerBreakpoint: "md",
 };
 
 const collectionProps: ResponsiveProps = {
-  hideAtContainerBreakpoint: "xs",
-  containerName: itemsTableContainerName,
+  ...sharedProps,
+  hideAtContainerBreakpoint: "sm",
+};
+
+const valueProps = {
+  ...sharedProps,
 };
 
 const menuProps = {
-  containerName: itemsTableContainerName,
+  ...sharedProps,
 };
 
 const DOTMENU_WIDTH = 34;
@@ -95,23 +115,19 @@ export function MetricsTable({
   const handleSortingOptionsChange = skeleton ? undefined : setSortingOptions;
 
   /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
-  const collectionWidth = 38.5;
-  const descriptionWidth = 100 - collectionWidth;
+  const valueWidth = 25;
+  const collectionWidth = 30;
+  const descriptionWidth = 100 - collectionWidth - valueWidth;
 
   return (
     <Table aria-label={skeleton ? undefined : t`Table of metrics`}>
       <colgroup>
         {/* <col> for Name column */}
         <NameColumn {...nameProps} />
-
-        {/* <col> for Collection column */}
+        <TableColumn {...valueProps} width={`${valueWidth}%`} />
         <TableColumn {...collectionProps} width={`${collectionWidth}%`} />
-
-        {/* <col> for Description column */}
         <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
-
         <TableColumn {...menuProps} width={DOTMENU_WIDTH} />
-
         <Columns.RightEdge.Col />
       </colgroup>
       <thead>
@@ -128,6 +144,11 @@ export function MetricsTable({
           >
             {t`Name`}
           </SortableColumnHeader>
+          <ColumnHeader
+            style={{
+              textAlign: "right",
+            }}
+          >{t`Value`}</ColumnHeader>
           <SortableColumnHeader
             name="collection"
             sortingOptions={sortingOptions}
@@ -215,6 +236,7 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
   return (
     <TableRow onClick={handleClick}>
       <NameCell metric={metric} />
+      <ValueCell metric={metric} />
       <CollectionCell metric={metric} />
       <DescriptionCell metric={metric} />
       <MenuCell metric={metric} />
@@ -427,5 +449,51 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
         </Menu.Dropdown>
       </Menu>
     </Cell>
+  );
+}
+
+function ValueCell({ metric }: { metric?: MetricResult }) {
+  const { data, isLoading, error } = useGetCardQueryQuery(
+    metric ? { cardId: metric.id } : skipToken,
+  );
+
+  const emptyCell = (
+    <ValueTableCell>
+      <ValueWrapper />
+    </ValueTableCell>
+  );
+
+  if (error) {
+    return emptyCell;
+  }
+
+  if (!metric || isLoading || !data) {
+    return (
+      <ValueTableCell>
+        <ValueWrapper>
+          <SkeletonText />
+        </ValueWrapper>
+      </ValueTableCell>
+    );
+  }
+
+  const value = getDatasetScalarValueForMetric(data);
+  if (!value) {
+    return emptyCell;
+  }
+
+  return (
+    <ValueTableCell>
+      <ValueWrapper>
+        <Tooltip label={<Text>{value.tooltip}</Text>}>
+          <Value>
+            {formatValue(value.value, {
+              jsx: true,
+              column: value.column,
+            })}
+          </Value>
+        </Tooltip>
+      </ValueWrapper>
+    </ValueTableCell>
   );
 }
