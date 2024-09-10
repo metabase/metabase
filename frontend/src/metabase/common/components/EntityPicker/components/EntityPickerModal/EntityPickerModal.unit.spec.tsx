@@ -211,7 +211,7 @@ describe("EntityPickerModal", () => {
       expect(onItemSelect).toHaveBeenCalledTimes(1);
     });
 
-    it("should return to previous tab when clearing the search input", async () => {
+    it("should return to previous tab when clearing the search input while search tab is open", async () => {
       setup({
         tabs: [TEST_CARD_TAB, TEST_TABLE_TAB],
       });
@@ -228,14 +228,40 @@ describe("EntityPickerModal", () => {
         await screen.findByRole("tab", { name: /All the bar/ }),
       ).toHaveAttribute("data-active", "true");
 
-      await userEvent.type(
-        await screen.findByPlaceholderText("Search…"),
-        "My ",
-        { delay: 50 },
+      await userEvent.type(await screen.findByPlaceholderText("Search…"), "M");
+
+      expect(
+        await screen.findByRole("tab", { name: /results for "M"/ }),
+      ).toHaveAttribute("data-active", "true");
+
+      await userEvent.clear(await screen.findByPlaceholderText("Search…"));
+
+      expect(
+        await screen.findByRole("tab", { name: /All the bar/ }),
+      ).toHaveAttribute("data-active", "true");
+    });
+
+    it("should not switch tab when clearing the search input while search tab is closed", async () => {
+      setup({
+        tabs: [TEST_CARD_TAB, TEST_TABLE_TAB],
+      });
+
+      await userEvent.type(await screen.findByPlaceholderText("Search…"), "M");
+
+      expect(
+        await screen.findByRole("tab", { name: /results for "M"/ }),
+      ).toHaveAttribute("data-active", "true");
+
+      await userEvent.click(
+        await screen.findByRole("tab", { name: /All the foo/ }),
+      );
+
+      await userEvent.click(
+        await screen.findByRole("tab", { name: /All the bar/ }),
       );
 
       expect(
-        await screen.findByRole("tab", { name: /2 results for "My"/ }),
+        await screen.findByRole("tab", { name: /All the bar/ }),
       ).toHaveAttribute("data-active", "true");
 
       await userEvent.clear(await screen.findByPlaceholderText("Search…"));
