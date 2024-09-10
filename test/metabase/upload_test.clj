@@ -565,6 +565,19 @@
               (is (= 2
                      (count (rows-for-table table)))))))))))
 
+(deftest create-from-csv-display-name-encodings-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (with-mysql-local-infile-on-and-off
+      (doseq [filename ["csv/iso-8859-1.csv" "csv/utf-8.csv"]]
+        (testing (str "Filename: " filename "\n")
+          (with-upload-table!
+            [table (create-from-csv-and-sync-with-defaults!
+                    :file (io/file (io/resource filename))
+                    :auxiliary-sync-steps :synchronous)]
+            (testing "Headers are displayed correctly"
+              (is (= (header-with-auto-pk ["Dirección" "País"])
+                     (column-display-names-for-table table))))))))))
+
 (deftest infer-separator-catch-exception-test
   (testing "errors in [[upload/infer-separator]] should not prevent the upload (#44034)"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)

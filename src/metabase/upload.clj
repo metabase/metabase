@@ -280,6 +280,13 @@
 (defn- file-mime-type [^File file]
   (.detect tika file))
 
+;; Very basic charset detection - unfortunately Tika does not detect iso-8559-1 files!
+;; If we encounter files where this is insufficient we can evaluate taking an extra dependency.
+;;
+;; Some promising options:
+;; - juniversalchardet
+;; - icu4j
+
 (def ^:private common-charsets
   [StandardCharsets/UTF_8
    StandardCharsets/ISO_8859_1
@@ -293,7 +300,7 @@
     (catch Exception _ false)))
 
 (defn- detect-charset [^File file]
-  (let [sample-size 1000
+  (let [sample-size 10000
         bytes (with-open [is (io/input-stream file)]
                 (let [buffer (byte-array sample-size)]
                   (.read is buffer)
@@ -301,16 +308,17 @@
     (or (first (filter #(valid-encoding? bytes %) common-charsets))
         (throw (Exception. "Unable to detect charset")))))
 
-(defn- assert-separator-chosen [s]
-  (or s (throw (IllegalArgumentException. "Unable to determine separator"))))
-
 (defn- ->reader
   (^Reader [readable]
+   ;; Basic path, in case we encounter errors related to charset detection.
    (bom/bom-reader readable))
   (^Reader [readable ^Charset charset]
    (-> (io/input-stream readable)
        (org.apache.commons.io.input.BOMInputStream.)
        (java.io.InputStreamReader. charset))))
+
+(defn- assert-separator-chosen [s]
+  (or s (throw (IllegalArgumentException. "Unable to determine separator"))))
 
 (defn- infer-separator
   "Guess at what symbol is being used as a separator in the given CSV-like file.
