@@ -502,7 +502,7 @@ export const PositiveNumberInput = ({
   strategyType,
   ...props
 }: {
-  strategyType: StrategyType;
+  strategyType: CacheStrategyType;
 } & Partial<FormTextInputProps>) => {
   return (
     <FormTextInput
