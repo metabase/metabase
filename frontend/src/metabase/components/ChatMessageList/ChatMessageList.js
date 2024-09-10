@@ -2,10 +2,14 @@ import { useEffect, useRef } from "react";
 import Message from "./Message";
 import CS from "metabase/css/core/index.css";
 import cx from "classnames";
-import { Box, Button, Icon, Textarea, Loader, Flex } from "metabase/ui";
+import { Button, Icon, Loader } from "metabase/ui";
 import VisualizationResult from "metabase/query_builder/components/VisualizationResult";
 import { MonospaceErrorDisplay } from "../ErrorDetails/ErrorDetails.styled";
 import { Skeleton } from "metabase/ui";
+import { PlanDisplay } from "metabase/components/Insight/InsightPlan";
+import { InsightText } from "metabase/components/Insight/InsightText";
+import { InsightImg } from "metabase/components/Insight/InsightImg";
+import { InsightCode } from "metabase/components/Insight/InsightCode";
 
 const ChatMessageList = ({
   messages,
@@ -20,7 +24,10 @@ const ChatMessageList = ({
   openModal,
   insightsList,
   showError,
-  openInsightModal,
+  insightsPlan,
+  insightsText,
+  insightsImg,
+  insightsCode
 }) => {
   const messageEndRef = useRef(null);
   useEffect(() => {
@@ -45,7 +52,7 @@ const ChatMessageList = ({
             isLoading={
               isLoading &&
               message.sender === "server" &&
-              message.text === "Please wait until we generate the response...."
+              message.text === "Please wait until we generate the response...." || message.text === "Please wait until we generate the visualization for you...."
             }
             onFeedbackClick={onFeedbackClick}
             approvalChangeButtons={
@@ -56,6 +63,42 @@ const ChatMessageList = ({
             onApproveClick={onApproveClick}
             onDenyClick={onDenyClick}
           />
+
+           {/* Loop over insightsPlan and display matching items */}
+          {insightsPlan.map((planItem, index) => (
+              message.showType == "planReview" && (
+                <div key={`plan-${index}`} style={{ padding: '10px' }}>
+                  <PlanDisplay plan={planItem} />
+                </div>
+              )
+            ))}
+
+            {/* Loop over insightsText and display matching items */}
+            {insightsText.map((insightText, index) => (
+              message.showType == "insightText" && message.visualizationIdx === index && (
+                <div key={`insightText-${index}`} style={{ padding: '10px' }}>
+                  <InsightText index={index} insightText={insightText} />
+                </div>
+              )
+            ))}
+
+            {/* Loop over insightsImg and display matching items */}
+            {insightsImg.map((insightImg, index) => (
+              message.showType == "insightImg" && message.visualizationIdx === index && (
+                <div key={`insightImg-${index}`} style={{ padding: '10px' }}>
+                  <InsightImg index={index} insightImg={insightImg} />
+                </div>
+              )
+            ))}
+
+            {/* Loop over insightsCode and display matching items */}
+            {insightsCode.map((insightCode, index) => (
+              message.showType == "insightCode" && message.visualizationIdx === index && (
+                <div key={`insightCode-${index}`} style={{ padding: '10px' }}>
+                  <InsightCode index={index} insightCode={insightCode} />
+                </div>
+              )
+            ))}
 
           {/* Conditionally render visualization under the specific message */}
           {message.showVisualization && card && defaultQuestion && result && (
@@ -283,9 +326,7 @@ const ChatMessageList = ({
                                               padding: "0.5rem 1rem",
                                               lineHeight: "1",
                                             }}
-                                            onClick={() =>
-                                              openInsightModal(index)
-                                            }
+                                            onClick={() => {}}
                                           >
                                             <span
                                               style={{
