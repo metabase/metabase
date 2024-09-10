@@ -21,25 +21,22 @@ import { ChunkyList, ResultItem } from "../ResultItem";
 
 const defaultSearchFilter = (results: SearchResult[]) => results;
 
-export function EntityPickerSearchInput<
-  Id extends SearchResultId,
-  Model extends string,
-  Item extends TypeWithModel<Id, Model>,
->({
+export function EntityPickerSearchInput({
+  models,
+  placeholder,
+  searchFilter = defaultSearchFilter,
+  searchParams = {},
   searchQuery,
   setSearchQuery,
   setSearchResults,
-  models,
-  searchFilter = defaultSearchFilter,
-  searchParams = {},
 }: {
-  folder: Item | undefined;
+  models: SearchModel[];
+  placeholder: string;
+  searchFilter?: (results: SearchResult[]) => SearchResult[];
+  searchParams?: Partial<SearchRequest>;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   setSearchResults: (results: SearchResult[] | null) => void;
-  models: SearchModel[];
-  searchFilter?: (results: SearchResult[]) => SearchResult[];
-  searchParams?: Partial<SearchRequest>;
 }) {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
@@ -72,7 +69,7 @@ export function EntityPickerSearchInput<
       mr="2rem"
       value={searchQuery}
       onChange={e => setSearchQuery(e.target.value ?? "")}
-      placeholder={t`Search…`}
+      placeholder={placeholder}
     />
   );
 }

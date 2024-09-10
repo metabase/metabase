@@ -216,7 +216,7 @@ export function EntityPickerModal<
   const [tabFolderState, setTabFolderState] = useState<
     TabFolderState<Id, Model, Item>
   >({});
-  const selectedFolder = tabFolderState[selectedTabId]; // TODO: use me
+  const _selectedFolder = tabFolderState[selectedTabId]; // TODO: use me
 
   const handleSelectItem = useCallback(
     (item: Item) => {
@@ -284,7 +284,7 @@ export function EntityPickerModal<
             <Modal.Title lh="2.5rem">{title}</Modal.Title>
             {hydratedOptions.showSearch && (
               <EntityPickerSearchInput
-                folder={selectedFolder}
+                placeholder={t`Search…`}
                 models={searchModels}
                 setSearchResults={setSearchResults}
                 searchQuery={searchQuery}
