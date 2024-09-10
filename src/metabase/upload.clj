@@ -40,8 +40,8 @@
    [toucan2.core :as t2])
   (:import
    (java.io File Reader)
-   (java.nio ByteBuffer)
-   (java.nio.charset Charset StandardCharsets)
+   (java.nio.charset StandardCharsets)
+   (org.mozilla.universalchardet UniversalDetector)
    (org.apache.tika Tika)))
 
 (set! *warn-on-reflection* true)
@@ -281,39 +281,27 @@
 (defn- file-mime-type [^File file]
   (.detect tika file))
 
-;; Very basic charset detection - unfortunately Tika does not detect iso-8559-1 files!
-;; If we encounter files where this is insufficient we can evaluate taking an extra dependency.
-;;
-;; Some promising options:
-;; - juniversalchardet
-;; - icu4j
-
-(def ^:private common-charsets
-  [StandardCharsets/UTF_8
-   StandardCharsets/ISO_8859_1])
-
-(defn- valid-encoding? [bytes ^Charset charset]
-  (try
-    (let [decoded (.decode (.newDecoder charset)
-                           (ByteBuffer/wrap bytes))]
-      (not (.contains (.toString decoded) "\uFFFD")))
-    (catch Exception _ false)))
-
-(defn- detect-charset [^File file]
-  (let [sample-size 10000
-        bytes (with-open [is (io/input-stream file)]
-                (let [buffer (byte-array sample-size)]
-                  (.read is buffer)
-                  buffer))]
-    (or (first (filter #(valid-encoding? bytes %) common-charsets))
-        ;; Accept some replacement characters
-        StandardCharsets/UTF_8)))
+(defn- detect-charset [file]
+  (let [detector (UniversalDetector.)
+        buffer   (byte-array 8192)]
+    (with-open [input-stream (io/input-stream file)]
+      (loop []
+        (let [bytes-read (.read input-stream buffer)]
+          (if (pos? bytes-read)
+            (do
+              (.handleData detector buffer 0 bytes-read)
+              (if (.isDone detector)
+                (.getDetectedCharset detector)
+                (recur)))
+            (do
+              (.dataEnd detector)
+              (.getDetectedCharset detector))))))))
 
 (defn- ->reader
   (^Reader [readable]
    ;; Basic path, in case we encounter errors related to charset detection.
    (bom/bom-reader readable))
-  (^Reader [readable ^Charset charset]
+  (^Reader [readable ^String charset]
    (-> (io/input-stream readable)
        (org.apache.commons.io.input.BOMInputStream.)
        (java.io.InputStreamReader. charset))))
