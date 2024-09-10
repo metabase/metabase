@@ -22,7 +22,7 @@ To create a progress bar you'll need:
 
 - A query that returns a single number, like "Sum of order quantity". Progress bar doesn't work with breakouts.
 
-- A goal value. The goal value should be non-negative. Currently, Metabase only supports setting a static goal (you can't set a goal based on another query).
+- A goal value. The goal value should be a positive number. Currently, Metabase only supports setting a static goal (you can't set a goal based on another query).
 
   The goal is set in the [chart options](#progress-bar-options).
 
@@ -48,7 +48,7 @@ To open the chart options, click on the gear icon at the bottom left of the scre
 
 - **Goal**
 
-  The goal value that the query results will be compared to. The goal should be a non-negative number.
+  The goal value that the query results will be compared to. The goal should be a positive number.
 
 - **Color**
 
@@ -92,7 +92,7 @@ You can set up an alert whenever the result of a question reaches the goal set i
 
 ## Limitations and alternatives
 
-- Progress on the progress bar will always be displayed from left to right, which might not be appropriate for metrics where the goal is to reduce a value (for example, number of unanswered support tickets). Consider using the [gauge chart](gauge.md) for those use cases.
+- Progress bar assumes that your objective is to increase a metric. It might not be appropriate for metrics where the objective is to reduce a value (for example, number of unanswered support tickets). Consider using the [gauge chart](gauge.md) for those use cases.
 
 - Progress bar does not support breakouts. If you'd like to display progress of a metric towards a goal across a breakout, consider using a [bar or line chart with a goal line](line-bar-and-area-charts.md#goal-lines).
 
