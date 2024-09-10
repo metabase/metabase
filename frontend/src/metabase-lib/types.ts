@@ -207,9 +207,7 @@ export type DateTimeFingerprintDisplayInfo = {
   latest: string;
 };
 
-export type ColumnGroupDisplayInfo = TableDisplayInfo & {
-  fkReferenceName?: string;
-};
+export type ColumnGroupDisplayInfo = TableDisplayInfo;
 
 export type SegmentDisplayInfo = {
   name: string;

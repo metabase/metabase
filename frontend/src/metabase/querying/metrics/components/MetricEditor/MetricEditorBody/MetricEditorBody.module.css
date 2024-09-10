@@ -1,0 +1,4 @@
+.root {
+  display: flex;
+  border-bottom: 1px solid var(--mb-color-border);
+}

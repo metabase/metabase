@@ -10,7 +10,7 @@ function setup(opts: SetupOpts = {}) {
   });
 }
 
-describe("MetricSidebar (EE with a whitelabel token)", () => {
+describe("MetricEditorSidebar (EE with a whitelabel token)", () => {
   it("should render the metric docs link by default", () => {
     setup({ showMetabaseLinks: true });
     expect(screen.getByRole("link", { name: /Docs/ })).toBeInTheDocument();
