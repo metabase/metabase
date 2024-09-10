@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { getCollectionPathAsString } from "metabase/collections/utils";
-import type { SearchResult } from "metabase-types/api";
+import type { Dataset, SearchResult } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import type { MetricResult, ModelResult } from "../types";
@@ -97,3 +97,29 @@ export const getMaxRecentModelCount = (
   }
   return 0;
 };
+
+export function isDatasetScalar(dataset: Dataset) {
+  return dataset.data.cols.length === 1 && dataset.data.rows.length === 1;
+}
+
+export function getDatasetScalarValueForMetric(dataset: Dataset) {
+  const isScalar = isDatasetScalar(dataset);
+  if (!isScalar) {
+    return null;
+  }
+
+  const { rows, cols } = dataset.data;
+
+  const column = cols.at(-1);
+  const value = rows?.at(-1)?.at(-1);
+
+  if (value === undefined) {
+    return null;
+  }
+
+  return {
+    tooltip: t`Overall`,
+    value,
+    column,
+  };
+}
