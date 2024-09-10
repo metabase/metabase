@@ -10,6 +10,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
 (def ^:private GroupType
@@ -74,7 +75,7 @@
         (lib.metadata.calculation/display-info query stage-number card))
       ;; multi-stage queries (#30108)
       (when (next (:stages query))
-        {:display-name "Summaries"})
+        {:display-name (i18n/tru "Summaries")})
       ;; if this is a native query or something else that doesn't have a source Table or source Card then use the
       ;; stage display name.
       {:display-name (lib.metadata.calculation/display-name query stage-number stage)}))
