@@ -25,14 +25,13 @@ export const BrowseValidation = () => {
   const [sortColumn, setSortColumn] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
+  // Update total whenever data changes
   useEffect(() => {
     resetPage();
     setTotal(data?.length || 0);
   }, [data, resetPage]);
 
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error loading questions</div>;
-
+  // Memoized questions
   const questions = useMemo(
     () =>
       data?.map(item => ({
@@ -46,11 +45,13 @@ export const BrowseValidation = () => {
     [data],
   );
 
+  // Paginate the questions
   const paginatedQuestions = useMemo(() => {
     const start = page * pageSize;
     return questions.slice(start, start + pageSize);
   }, [questions, page, pageSize]);
 
+  // Columns definition
   const columns = useMemo(
     () => [
       { name: "name", display_name: t`Title` },
@@ -64,6 +65,7 @@ export const BrowseValidation = () => {
     [],
   );
 
+  // Sort the rows based on user input
   const sortedRows = useMemo(() => {
     let sortedQuestions = [...paginatedQuestions];
     if (sortColumn !== null) {
@@ -79,8 +81,9 @@ export const BrowseValidation = () => {
     return sortedQuestions;
   }, [paginatedQuestions, sortColumn, sortDirection, columns]);
 
+  // Handle sorting of columns
   const handleSort = useCallback(
-    (colIndex: number) => {
+    (colIndex: any) => {
       if (sortColumn === colIndex) {
         setSortDirection(prev => (prev === "asc" ? "desc" : "asc"));
       } else {
@@ -91,10 +94,8 @@ export const BrowseValidation = () => {
     [sortColumn],
   );
 
-  const renderColumnHeader = (
-    col: { name: string; display_name: string },
-    colIndex: number,
-  ) => {
+  // Render each column header
+  const renderColumnHeader = (col: any, colIndex: any) => {
     const iconName = sortDirection === "desc" ? "chevrondown" : "chevronup";
     return (
       <th key={colIndex} onClick={() => handleSort(colIndex)}>
@@ -109,7 +110,8 @@ export const BrowseValidation = () => {
     );
   };
 
-  const renderRow = (question: any, rowIndex: number) => (
+  // Render each row
+  const renderRow = (question: any, rowIndex: any) => (
     <tr key={question.id}>
       <td>{question.name}</td>
       <td>{question.team}</td>
@@ -132,10 +134,14 @@ export const BrowseValidation = () => {
     </tr>
   );
 
-  const handleItemsPerPageChange = (newPageSize: number) => {
+  // Handle changes in items per page
+  const handleItemsPerPageChange = (newPageSize: any) => {
     setPageSize(newPageSize);
     setPage(0);
   };
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error loading questions</div>;
 
   return (
     <div
