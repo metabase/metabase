@@ -46,6 +46,13 @@ describe("[OSS] embedding settings", () => {
         expect(
           withinStaticEmbeddingCard.getByText(/Use static embedding when/),
         ).toBeInTheDocument();
+
+        expect(
+          withinStaticEmbeddingCard.getByLabelText("Disabled"),
+        ).not.toBeChecked();
+        expect(
+          withinStaticEmbeddingCard.getByLabelText("Disabled"),
+        ).toBeEnabled();
       });
 
       it("should prompt to upgrade to remove the Powered by text", async () => {
@@ -250,6 +257,13 @@ describe("[OSS] embedding settings", () => {
         expect(
           withinStaticEmbeddingCard.getByText(/Use static embedding when/),
         ).toBeInTheDocument();
+
+        expect(
+          withinStaticEmbeddingCard.getByLabelText("Enabled"),
+        ).toBeChecked();
+        expect(
+          withinStaticEmbeddingCard.getByLabelText("Enabled"),
+        ).toBeEnabled();
       });
 
       it("should prompt to upgrade to remove the Powered by text", async () => {
