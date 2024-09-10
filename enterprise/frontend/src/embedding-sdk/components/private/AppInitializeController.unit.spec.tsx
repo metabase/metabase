@@ -1,9 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
-  setupCurrentUserEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -34,35 +32,22 @@ interface Options {
 }
 
 const setup = (options: Options) => {
-  fetchMock.get("http://TEST_URI/sso/metabase", {
-    id: "TEST_JWT_TOKEN",
-    exp: 1965805007,
-    iat: 1965805007,
-  });
-
-  setupCurrentUserEndpoint(TEST_USER);
-
-  const settingValues = createMockSettings();
-
   const tokenFeatures = createMockTokenFeatures({
     // TODO: change to "embedding_sdk" once the token feature PR landed.
     embedding: options.tokenFeatureEnabled ?? true,
   });
 
-  const settingValuesWithToken = {
-    ...settingValues,
-    "token-features": tokenFeatures,
-  };
+  const settingValues = createMockSettings({ "token-features": tokenFeatures });
 
   const state = createMockState({
-    settings: mockSettings(settingValuesWithToken),
+    settings: mockSettings(settingValues),
     currentUser: TEST_USER,
     sdk: createMockSdkState(),
   });
 
   setupEnterprisePlugins();
   setupSettingsEndpoints([]);
-  setupPropertiesEndpoints(settingValuesWithToken);
+  setupPropertiesEndpoints(settingValues);
 
   return renderWithProviders(<div>hello!</div>, {
     sdkProviderProps: { config: options.config },
