@@ -7,10 +7,12 @@ import { getSdkLicenseProblem } from "embedding-sdk/lib/user-warnings/license-pr
 import { useSdkSelector } from "embedding-sdk/store";
 import { getIsInitialized } from "embedding-sdk/store/selectors";
 import type { SDKConfig } from "embedding-sdk/types";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useSelector } from "metabase/lib/redux";
+import { getTokenFeature } from "metabase/setup/selectors";
+import { Box } from "metabase/ui";
 
 import { SdkGlobalStylesWrapper } from "./SdkGlobalStylesWrapper";
-import { SdkLicenseWarningBanner } from "./SdkLicenseWarningBanner";
+import { SdkLicenseProblemBanner } from "./SdkLicenseProblemBanner";
 
 interface AppInitializeControllerProps {
   children: ReactNode;
@@ -27,8 +29,15 @@ export const AppInitializeController = ({
 
   const isInitialized = useSdkSelector(getIsInitialized);
 
-  // TODO: replace this with "embedding-sdk" once the token feature PR landed.
-  const hasFeatureFlag = useHasTokenFeature("embedding");
+  const hasFeatureFlag = useSelector(state => {
+    // When the settings endpoint has not been called, we assume that the feature is enabled.
+    if (!state.settings.values?.["token-features"]) {
+      return true;
+    }
+
+    // TODO: replace this with "embedding-sdk" once the token feature PR landed.
+    return getTokenFeature(state, "embedding");
+  });
 
   const licenseProblem = useMemo(() => {
     return getSdkLicenseProblem({ hasFeatureFlag, config });
@@ -54,7 +63,11 @@ export const AppInitializeController = ({
     >
       {content}
 
-      <SdkLicenseWarningBanner warning={licenseProblem} />
+      {licenseProblem && (
+        <Box pos="absolute" bottom="15px" left="15px">
+          <SdkLicenseProblemBanner problem={licenseProblem} />
+        </Box>
+      )}
     </SdkGlobalStylesWrapper>
   );
 };

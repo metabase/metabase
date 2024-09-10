@@ -35,7 +35,7 @@ export function getSdkLicenseProblem(
   const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1";
 
   return match({ hasFeatureFlag, isSSO, isApiKey, isLocalhost })
-    .with({ isSSO: true, isAPIKey: true }, () =>
+    .with({ isSSO: true, isApiKey: true }, () =>
       toError(PROBLEMS.CONFLICTING_AUTH_METHODS),
     )
     .with({ isSSO: true, hasFeatureFlag: true }, () => null)
