@@ -1,7 +1,6 @@
 (ns metabase.search.postgres.index
   (:require
    [clojure.string :as str]
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [toucan2.core :as t2]))
 
@@ -96,23 +95,21 @@
     (when @reindexing?
       (t2/insert! pending-table entry))))
 
-(def ^:private ts-query
-  [:raw
-   "search_vector @@ websearch_to_tsquery('"
-   tsv-language "', "
-   [:param :search-term] ")"])
-
-(def search-query
+(defn search-query
   "Query fragment for all models corresponding to a query paramter `:search-term`."
+  [search-term]
   {:select [:model_id :model]
    :from   [active-table]
-   :where  ts-query})
+   :where  [:raw
+            "search_vector @@ websearch_to_tsquery('"
+            tsv-language "', "
+            [:lift search-term] ")"]})
 
 (defn search
   "Use the index table to search for records."
   [search-term]
   (map (juxt :model_id :model)
-       (t2/query (sql/format search-query {:params {:search-term search-term}}))))
+       (t2/query (search-query search-term))))
 
 (defn reset-index!
   "Ensure we have a blank slate, in case the table schema or stored data format has changed."

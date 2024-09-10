@@ -9,20 +9,26 @@
    [metabase.search.postgres.ingestion :as search.ingestion]
    [toucan2.core :as t2]))
 
-(defn- user-params []
-  (if api/*current-user-id*
+(defn- user-params [search-ctx]
+  (cond
+    (:current-user-id search-ctx)
+    (select-keys search-ctx [:is-superuser? :current-user-id :current-user-perms])
+
+    api/*current-user-id*
     {:is-superuser?      api/*is-superuser?*
      :current-user-id    api/*current-user-id*
      :current-user-perms @api/*current-user-permissions-set*}
+
+    :else
     {:is-superuser?      true
      ;; this does not matter, we won't use it.
      :current-user-id    1
      :current-user-perms #{"/"}}))
 
-(defn- in-place-query [{:keys [models search-term archived?]}]
+(defn- in-place-query [{:keys [models search-term archived?] :as search-ctx}]
   (search.impl/full-search-query
    (merge
-    (user-params)
+    (user-params search-ctx)
     {:search-string      search-term
      :models             (or models
                              (if api/*current-user-id*
@@ -43,14 +49,14 @@
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
-  (-> (sql.helpers/with [:index-query search.index/search-query]
+  (-> (sql.helpers/with [:index-query (search.index/search-query search-term)]
                         [:source-query (in-place-query search-ctx)])
       (sql.helpers/select :sq.*)
       (sql.helpers/from [:source-query :sq])
       (sql.helpers/join [:index-query :iq] [:and
                                             [:= :sq.model :iq.model]
                                             [:= :sq.id :iq.model_id]])
-      (sql/format {:params {:search-term search-term} :quoted true})
+      (sql/format {:quoted true})
       t2/reducible-query))
 
 (defn hybrid-multi
@@ -59,8 +65,7 @@
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
-  (->> {:params {:search-term search-term} :quoted true}
-       (sql/format search.index/search-query)
+  (->> (search.index/search-query search-term)
        t2/query
        (group-by :model)
        (mapcat (fn [[model results]]
@@ -68,7 +73,7 @@
                    ;; Something is very wrong here, this also returns items with other ids.
                    (as-> search-ctx <>
                      (assoc <> :models #{model} :ids ids)
-                     (dissoc <> :search-ctx)
+                     (dissoc <> :search-string)
                      (in-place-query <>)
                      (t2/query <>)
                      (filter (comp (set ids) :id) <>)))))))

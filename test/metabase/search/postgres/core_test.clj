@@ -11,7 +11,7 @@
   (comp t2.realize/realize search.postgres/hybrid))
 
 (def ^:private hybrid-multi
-  search.postgres/hybrid-multi)
+  #'search.postgres/hybrid-multi)
 
 (deftest ^:synchronized hybrid-test
   (when (is-postgres?)
