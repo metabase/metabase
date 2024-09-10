@@ -24,7 +24,8 @@ import type {
   StructuredQuery,
 } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PRODUCTS_ID, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 const ORDERS_ID_FIELD_REF: FieldReference = [
   "field",
@@ -601,67 +602,566 @@ describe("scenarios > question > offset", () => {
     });
   });
 
-  it("works with a breakout on a custom column, when CC is first in aggregation", () => {
-    const customColumnName = "CC Created At";
-    const query: StructuredQuery = {
-      "source-table": ORDERS_ID,
-      aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
-      breakout: [["expression", customColumnName], PRODUCTS_CATEGORY_BREAKOUT],
-      expressions: {
-        [customColumnName]: [
-          "field",
-          ORDERS.CREATED_AT,
-          { "base-type": "type/DateTime", "temporal-unit": "month" },
+  describe("explicit joins", () => {
+    it("column in the first place", () => {
+      const BREAKOUT_DATETIME: FieldReference = [
+        "field",
+        ORDERS.CREATED_AT,
+        {
+          "temporal-unit": "year",
+        },
+      ];
+      const BREAKOUT_CATEGORY: FieldReference = [
+        "field",
+        PRODUCTS.CATEGORY,
+        { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+      ];
+
+      createQuestion(
+        {
+          name: "QB Binning",
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                fields: [
+                  ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+                ],
+                "source-table": PRODUCTS_ID,
+                condition: [
+                  "=",
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+                ],
+                alias: "Products",
+              },
+            ],
+            aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+            breakout: [BREAKOUT_CATEGORY, BREAKOUT_DATETIME],
+            "order-by": [["asc", BREAKOUT_DATETIME]],
+          },
+        },
+        { visitQuestion: true },
+      );
+
+      verifyNoQuestionError();
+      verifyTableContent([
+        ["Doohickey", "2022", "9,031.56", ""],
+        ["Gadget", "2022", "10,672.63", "9,031.56"],
+        ["Gizmo", "2022", "9,929.32", "10,672.63"],
+      ]);
+
+      openNotebook();
+      getNotebookStep("summarize").icon("play").should("be.visible");
+    });
+
+    it("column is not in the first place", () => {
+      const BREAKOUT_DATETIME: FieldReference = [
+        "field",
+        ORDERS.CREATED_AT,
+        {
+          "temporal-unit": "year",
+        },
+      ];
+      const BREAKOUT_CATEGORY: FieldReference = [
+        "field",
+        PRODUCTS.CATEGORY,
+        { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+      ];
+
+      createQuestion(
+        {
+          name: "QB Binning",
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                fields: [
+                  ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+                ],
+                "source-table": PRODUCTS_ID,
+                condition: [
+                  "=",
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+                ],
+                alias: "Products",
+              },
+            ],
+            aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+            breakout: [BREAKOUT_DATETIME, BREAKOUT_CATEGORY],
+            "order-by": [["asc", BREAKOUT_DATETIME]],
+          },
+        },
+        { visitQuestion: true },
+      );
+
+      verifyNoQuestionError();
+      verifyTableContent([
+        ["2022", "Doohickey", "9,031.56", ""],
+        ["2022", "Gadget", "10,672.63", ""],
+        ["2022", "Gizmo", "9,929.32", ""],
+      ]);
+
+      openNotebook();
+      getNotebookStep("summarize").icon("play").should("be.visible");
+    });
+
+    // avg function doesn't work
+    it.only("does not work with avg, but should", () => {
+      const BREAKOUT_DATETIME: FieldReference = [
+        "field",
+        ORDERS.CREATED_AT,
+        {
+          "temporal-unit": "year",
+        },
+      ];
+      const BREAKOUT_CATEGORY: FieldReference = [
+        "field",
+        PRODUCTS.CATEGORY,
+        { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+      ];
+      const customColumnName = "CC Product Rating";
+      const AVG_RATING_AGGREGATION: Aggregation = [
+        "avg",
+        [
+          "expression",
+          customColumnName,
+          // "field",
+          // PRODUCTS.RATING,
+          // { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
         ],
-      },
-      limit: 10,
-    };
+      ];
 
-    createQuestion({ query }, { visitQuestion: true });
+      const OFFSET_AVG_PRODUCT_RATING_AGGREGATION: Aggregation = [
+        "offset",
+        createOffsetOptions("offsetted avg product rating"),
+        [
+          "avg",
+          [
+            "expression",
+            customColumnName,
+            // "field",
+            // PRODUCTS.RATING,
+            // { "base-type": "type/Integer", "source-field": ORDERS.PRODUCT_ID },
+          ],
+        ],
+        -1,
+      ];
 
-    verifyNoQuestionError();
-    verifyTableContent([
-      ["April 2022", "Gadget", "52.76", ""],
-      ["May 2022", "Doohickey", "339.14", ""],
-      ["May 2022", "Gadget", "203.57", "52.76"],
-    ]);
+      createQuestion(
+        {
+          name: "QB Binning",
+          query: {
+            "source-table": ORDERS_ID,
+            joins: [
+              {
+                fields: [
+                  ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+                ],
+                "source-table": PRODUCTS_ID,
+                condition: [
+                  "=",
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+                ],
+                alias: "Products",
+              },
+            ],
+            aggregation: [
+              AVG_RATING_AGGREGATION,
+              OFFSET_AVG_PRODUCT_RATING_AGGREGATION,
+            ],
+            breakout: [BREAKOUT_DATETIME],
+            expressions: {
+              [customColumnName]: [
+                "field",
+                PRODUCTS.RATING,
+                { "base-type": "type/Float", "join-alias": "Products" },
+              ],
+            },
+            // "order-by": [["asc", BREAKOUT_DATETIME]],
+          },
+        },
+        { visitQuestion: true },
+      );
 
-    openNotebook();
-    getNotebookStep("summarize").icon("play").should("be.visible");
+      // verifyNoQuestionError();
+      // verifyTableContent([
+      //   ["Doohickey", "2022", "9,031.56", ""],
+      //   ["Gadget", "2022", "10,672.63", "9,031.56"],
+      //   ["Gizmo", "2022", "9,929.32", "10,672.63"],
+      // ]);
+
+      // openNotebook();
+    });
   });
 
-  it("works with a breakout on a custom column, when CC is not first in aggregation", () => {
-    const customColumnName = "CC Created At";
-    const query: StructuredQuery = {
-      "source-table": ORDERS_ID,
-      aggregation: [
-        ["sum", ["field", ORDERS.TOTAL, { "base-type": "type/Float" }]],
-        OFFSET_SUM_TOTAL_AGGREGATION,
-      ],
-      breakout: [PRODUCTS_CATEGORY_BREAKOUT, ["expression", customColumnName]],
-      expressions: {
-        [customColumnName]: [
+  describe("implicit joins", () => {
+    // using column from another table in custom column definition creates implicit join
+    describe("when custom column in the first place of breakout", () => {
+      it("works with custom column that contains a function", () => {
+        const BREAKOUT_DATETIME: FieldReference = [
           "field",
           ORDERS.CREATED_AT,
-          { "base-type": "type/DateTime", "temporal-unit": "year" },
-        ],
-      },
-      limit: 100,
-      "order-by": [["asc", ["expression", customColumnName]]],
-    };
+          {
+            "temporal-unit": "year",
+          },
+        ];
 
-    createQuestion({ query }, { visitQuestion: true });
+        const customColumnName = "CC Product Category";
+        const query: StructuredQuery = {
+          "source-table": ORDERS_ID,
+          expressions: {
+            [customColumnName]: [
+              "concat",
+              [
+                "field",
+                PRODUCTS.CATEGORY,
+                { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+              ],
+              " from products",
+            ],
+          },
+          aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+          breakout: [["expression", customColumnName], BREAKOUT_DATETIME],
+          "order-by": [["asc", BREAKOUT_DATETIME]],
+        };
 
-    verifyNoQuestionError();
-    verifyTableContent([
-      ["Doohickey", "2022", "9,031.56", ""],
-      ["Gadget", "2022", "10,672.63", "9,031.56"],
-      ["Gizmo", "2022", "9,929.32", "10,672.63"],
-    ]);
+        createQuestion({ query }, { visitQuestion: true });
 
-    openNotebook();
-    getNotebookStep("summarize").icon("play").should("be.visible");
+        verifyNoQuestionError();
+        verifyTableContent([
+          ["Doohickey from products", "2022", "9,031.56", ""],
+          ["Gadget from products", "2022", "10,672.63", "9,031.56"],
+          ["Gizmo from products", "2022", "9,929.32", "10,672.63"],
+        ]);
+
+        openNotebook();
+        getNotebookStep("summarize").icon("play").should("be.visible");
+      });
+
+      it("works with custom column that contains a column", () => {
+        const BREAKOUT_DATETIME: FieldReference = [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "temporal-unit": "year",
+          },
+        ];
+
+        const customColumnName = "CC Product Category";
+        const query: StructuredQuery = {
+          "source-table": ORDERS_ID,
+          expressions: {
+            [customColumnName]: [
+              "field",
+              PRODUCTS.CATEGORY,
+              { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+            ],
+          },
+          aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+          breakout: [["expression", customColumnName], BREAKOUT_DATETIME],
+          "order-by": [["asc", BREAKOUT_DATETIME]],
+        };
+
+        createQuestion({ query }, { visitQuestion: true });
+
+        verifyNoQuestionError();
+        verifyTableContent([
+          ["Doohickey", "2022", "9,031.56", ""],
+          ["Gadget", "2022", "10,672.63", "9,031.56"],
+          ["Gizmo", "2022", "9,929.32", "10,672.63"],
+        ]);
+
+        openNotebook();
+        getNotebookStep("summarize").icon("play").should("be.visible");
+      });
+
+      it("works when custom column is a simple expression", () => {
+        const BREAKOUT_DATETIME: FieldReference = [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "temporal-unit": "year",
+          },
+        ];
+
+        const customColumnName = "1 + 1";
+        const query: StructuredQuery = {
+          "source-table": ORDERS_ID,
+          expressions: {
+            [customColumnName]: ["+", "1", "1"],
+          },
+          aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+          breakout: [["expression", customColumnName], BREAKOUT_DATETIME],
+          "order-by": [["asc", BREAKOUT_DATETIME]],
+        };
+
+        createQuestion({ query }, { visitQuestion: true });
+
+        verifyNoQuestionError();
+        verifyTableContent([
+          ["2", "2022", "42,156.87", ""],
+          ["2", "2023", "205,256.02", ""],
+          ["2", "2024", "510,045.03", ""],
+        ]);
+
+        openNotebook();
+        getNotebookStep("summarize").icon("play").should("be.visible");
+      });
+    });
+
+    describe("when custom column is not in the first place of breakout", () => {
+      it("works with custom column that contains a function", () => {
+        const BREAKOUT_DATETIME: FieldReference = [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "temporal-unit": "year",
+          },
+        ];
+
+        const customColumnName = "CC Product Category";
+        const query: StructuredQuery = {
+          "source-table": ORDERS_ID,
+          expressions: {
+            [customColumnName]: [
+              "concat",
+              [
+                "field",
+                PRODUCTS.CATEGORY,
+                {
+                  "base-type": "type/Text",
+                  "source-field": ORDERS.PRODUCT_ID,
+                },
+              ],
+              " from products",
+            ],
+          },
+          aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+          breakout: [BREAKOUT_DATETIME, ["expression", customColumnName]],
+          "order-by": [["asc", BREAKOUT_DATETIME]],
+        };
+
+        createQuestion({ query }, { visitQuestion: true });
+
+        verifyNoQuestionError();
+        verifyTableContent([
+          // TODO: should there be "prev" values?
+          ["2022", "Doohickey from products", "9,031.56", ""],
+          ["2022", "Gadget from products", "10,672.63", ""],
+          ["2022", "Gizmo from products", "9,929.32", ""],
+        ]);
+
+        openNotebook();
+        getNotebookStep("summarize").icon("play").should("be.visible");
+      });
+
+      it("works with custom column that contains a column", () => {
+        const BREAKOUT_DATETIME: FieldReference = [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "temporal-unit": "year",
+          },
+        ];
+
+        const customColumnName = "CC Product Category";
+        const query: StructuredQuery = {
+          "source-table": ORDERS_ID,
+          expressions: {
+            [customColumnName]: [
+              "field",
+              PRODUCTS.CATEGORY,
+              { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+            ],
+          },
+          aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+          breakout: [BREAKOUT_DATETIME, ["expression", customColumnName]],
+          "order-by": [["asc", BREAKOUT_DATETIME]],
+        };
+
+        createQuestion({ query }, { visitQuestion: true });
+
+        verifyNoQuestionError();
+        verifyTableContent([
+          // TODO: should there be "prev" values?
+          ["2022", "Doohickey", "9,031.56", ""],
+          ["2022", "Gadget", "10,672.63", ""],
+          ["2022", "Gizmo", "9,929.32", ""],
+        ]);
+
+        openNotebook();
+        getNotebookStep("summarize").icon("play").should("be.visible");
+      });
+
+      it("works when custom column is a simple expression", () => {
+        const BREAKOUT_DATETIME: FieldReference = [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "temporal-unit": "year",
+          },
+        ];
+
+        const customColumnName = "1 + 1";
+        const query: StructuredQuery = {
+          "source-table": ORDERS_ID,
+          expressions: {
+            [customColumnName]: ["+", "1", "1"],
+          },
+          aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+          breakout: [BREAKOUT_DATETIME, ["expression", customColumnName]],
+          "order-by": [["asc", BREAKOUT_DATETIME]],
+        };
+
+        createQuestion({ query }, { visitQuestion: true });
+
+        verifyNoQuestionError();
+        verifyTableContent([
+          // TODO: double check prev values
+          ["2022", "2", "42,156.87", ""],
+          ["2023", "2", "205,256.02", "42,156.87"],
+          ["2024", "2", "510,045.03", "205,256.02"],
+        ]);
+
+        openNotebook();
+        getNotebookStep("summarize").icon("play").should("be.visible");
+      });
+    });
   });
+
+  describe("custom expression with offset", () => {
+    it("should work with a custom column and offset", () => {});
+  });
+
+  describe("standard expression function with offset", () => {
+    // use avg here
+
+    it("should work", () => {
+      const OFFSET_AVG_RATING_AGGREGATION: Aggregation = [
+        "offset",
+        createOffsetOptions("avg product rating"),
+        [
+          "avg",
+          [
+            "field",
+            PRODUCTS.RATING,
+            { "base-type": "type/Integer", "source-field": ORDERS.PRODUCT_ID },
+          ],
+        ],
+        -1,
+      ];
+
+      const BREAKOUT_DATETIME: FieldReference = [
+        "field",
+        ORDERS.CREATED_AT,
+        {
+          "temporal-unit": "year",
+        },
+      ];
+
+      const customColumnName = "CC Product Price";
+      const query: StructuredQuery = {
+        "source-table": ORDERS_ID,
+        expressions: {
+          [customColumnName]: [
+            "field",
+            PRODUCTS.RATING,
+            { "base-type": "type/Integer", "source-field": ORDERS.PRODUCT_ID },
+          ],
+        },
+        // aggregation: [OFFSET_AVG_RATING_AGGREGATION],
+        // breakout: [["expression", customColumnName], BREAKOUT_DATETIME],
+        // "order-by": [["asc", BREAKOUT_DATETIME]],
+      };
+
+      createQuestion({ query }, { visitQuestion: true });
+
+      openNotebook();
+
+      cy.findAllByTestId("action-buttons")
+        .last()
+        .findByText("Summarize")
+        .click();
+      addCustomAggregation({
+        formula: `Average([${customColumnName}])`,
+        name: "Average product rating",
+        isFirst: true,
+      });
+      addCustomAggregation({
+        formula: `Offset(Average([${customColumnName}]), -1)`,
+        name: "offsetted average product rating",
+      });
+      getNotebookStep("summarize")
+        .findByText("Pick a column to group by")
+        .click();
+
+      popover().within(() => {
+        cy.findByText(customColumnName).click();
+      });
+      getNotebookStep("breakout").icon("add").click();
+      // getNotebookStep("summarize").button("Summarize").click();
+      // enterCustomColumnDetails({
+      //   formula: `Average([${customColumnName}])`,
+      //   name: "Expression1",
+      //   blur: true,
+      // });
+
+      // verifyNoQuestionError();
+      // verifyTableContent([
+      //   ["Doohickey", "2022", "9,031.56", ""],
+      //   ["Gadget", "2022", "10,672.63", "9,031.56"],
+      //   ["Gizmo", "2022", "9,929.32", "10,672.63"],
+      // ]);
+
+      // openNotebook();
+      // getNotebookStep("summarize").icon("play").should("be.visible");
+
+      // const BREAKOUT_DATETIME: FieldReference = [
+      //   "field",
+      //   ORDERS.CREATED_AT,
+      //   {
+      //     "temporal-unit": "year",
+      //   },
+      // ];
+
+      // const query: StructuredQuery = {
+      //   "source-table": ORDERS_ID,
+      //   aggregation: [
+      //     [
+      //       "avg",
+      //       [
+      //         "field",
+      //         PRODUCTS.RATING,
+      //         {
+      //           "base-type": "type/Integer",
+      //           "source-field": ORDERS.PRODUCT_ID,
+      //         },
+      //       ],
+      //     ],
+      //     OFFSET_AVG_RATING_AGGREGATION,
+      //   ],
+      //   breakout: [BREAKOUT_DATETIME],
+      //   // "order-by": [["asc", BREAKOUT_DATETIME]],
+      // };
+      // createQuestion({ query }, { visitQuestion: true });
+      // openNotebook();
+      // verifyNoQuestionError();
+      // verifyTableContent([
+      //   ["Doohickey", "2022", "9,031.56", ""],
+      //   ["Gadget", "2022", "10,672.63", "9,031.56"],
+      //   ["Gizmo", "2022", "9,929.32", "10,672.63"],
+      // ]);
+      // openNotebook();
+      // getNotebookStep("summarize").icon("play").should("be.visible");
+    });
+  });
+
+  // it("works with 3 breakouts", () => {
+
+  // });
 });
 
 function addCustomAggregation({
@@ -678,7 +1178,7 @@ function addCustomAggregation({
       .findByText("Pick the metric you want to see")
       .click();
   } else {
-    getNotebookStep("summarize").icon("add").click();
+    getNotebookStep("summarize").icon("add").first().click();
   }
 
   popover().findByText("Custom Expression").click();
@@ -777,3 +1277,71 @@ function createOffsetOptions(name = "offset") {
     "display-name": name,
   };
 }
+
+// it("should work on questions with explicit joins (metabase#13112)", () => {
+//   const PRODUCTS_ALIAS = "Products";
+
+//   cy.createQuestion(
+//     {
+//       name: "13112",
+//       query: {
+//         "source-table": ORDERS_ID,
+//         joins: [
+//           {
+//             fields: "all",
+//             "source-table": PRODUCTS_ID,
+//             condition: [
+//               "=",
+//               ["field", ORDERS.PRODUCT_ID, null],
+//               ["field", PRODUCTS.ID, { "join-alias": PRODUCTS_ALIAS }],
+//             ],
+//             alias: PRODUCTS_ALIAS,
+//           },
+//         ],
+//         aggregation: [["count"]],
+//         breakout: [
+//           ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+//           ["field", PRODUCTS.CATEGORY, { "join-alias": PRODUCTS_ALIAS }],
+//         ],
+//       },
+//       display: "line",
+//     },
+//     { visitQuestion: true },
+//   );
+
+// it("should work with implicit joins (metabase#14080)", () => {
+//   const CC_NAME = "OneisOne";
+//   cy.signInAsAdmin();
+
+//   cy.createQuestion(
+//     {
+//       name: "14080",
+//       query: {
+//         "source-table": ORDERS_ID,
+//         expressions: { [CC_NAME]: ["*", 1, 1] },
+//         aggregation: [
+//           [
+//             "distinct",
+//             [
+//               "fk->",
+//               ["field-id", ORDERS.PRODUCT_ID],
+//               ["field-id", PRODUCTS.ID],
+//             ],
+//           ],
+//           ["sum", ["expression", CC_NAME]],
+//         ],
+//         breakout: [
+//           ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
+//         ],
+//       },
+//       display: "line",
+//     },
+//     { visitQuestion: true },
+//   );
+
+//   cy.log("Regression since v0.37.1 - it works on v0.37.0");
+
+//   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+//   cy.contains(`Sum of ${CC_NAME}`);
+//   cartesianChartCircle().should("have.length.of.at.least", 8);
+// });

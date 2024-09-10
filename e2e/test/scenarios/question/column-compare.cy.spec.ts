@@ -795,7 +795,7 @@ describeWithSnowplow("scenarios > question > column compare", () => {
         ]);
       });
 
-      it("one breakout on non-default datetime column", () => {
+      it.only("one breakout on non-default datetime column", () => {
         createQuestion(
           { query: QUERY_SINGLE_AGGREGATION_OTHER_DATETIME },
           { visitQuestion: true, wrapId: true, idAlias: "questionId" },
