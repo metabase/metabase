@@ -2,7 +2,9 @@ import type {
   Card,
   CardId,
   CardQueryMetadata,
+  CardQueryRequest,
   CreateCardRequest,
+  Dataset,
   GetCardRequest,
   ListCardsRequest,
   UpdateCardRequest,
@@ -44,6 +46,14 @@ export const cardApi = Api.injectEndpoints({
       }),
       providesTags: (metadata, error, id) =>
         metadata ? provideCardQueryMetadataTags(id, metadata) : [],
+    }),
+    getCardQuery: builder.query<Dataset, CardQueryRequest>({
+      query: ({ cardId, ...body }) => ({
+        method: "POST",
+        url: `/api/card/${cardId}/query`,
+        body,
+      }),
+      providesTags: (_data, _error, { cardId }) => [idTag("card", cardId)],
     }),
     createCard: builder.mutation<Card, CreateCardRequest>({
       query: body => ({
@@ -104,6 +114,7 @@ export const {
   useListCardsQuery,
   useGetCardQuery,
   useGetCardQueryMetadataQuery,
+  useGetCardQueryQuery,
   useCreateCardMutation,
   useUpdateCardMutation,
   useDeleteCardMutation,
