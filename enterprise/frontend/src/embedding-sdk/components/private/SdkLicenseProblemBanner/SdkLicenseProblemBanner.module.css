@@ -4,6 +4,8 @@
 
 .Banner {
   cursor: pointer;
+  border-radius: 4px;
+  box-shadow: 0 6px 24px 0 #0000001a;
 }
 
 .Banner.Warning {

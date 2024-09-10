@@ -6,16 +6,7 @@ import { SDK_SSO_DOCS_LINK } from "embedding-sdk/lib/license-problem";
 import type { SdkLicenseProblem } from "embedding-sdk/types/license-problem";
 import LogoIcon from "metabase/components/LogoIcon";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import {
-  Button,
-  Card,
-  Flex,
-  Icon,
-  Paper,
-  Popover,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Button, Card, Flex, Icon, Popover, Stack, Text } from "metabase/ui";
 
 import S from "./SdkLicenseProblemBanner.module.css";
 
@@ -37,35 +28,32 @@ export const SdkLicenseProblemBanner = ({ problem }: Props) => {
   return (
     <Popover position="top-start" opened={expanded} onChange={setExpanded}>
       <Popover.Target>
-        <Paper
-          radius="4px"
+        <Flex
           onClick={() => setExpanded(!expanded)}
           className={cx(S.Banner, isError ? S.Error : S.Warning)}
         >
-          <Flex>
-            <Flex bg="white" px="sm" py="xs" className={S.Logo}>
-              <LogoIcon height={24} />
-            </Flex>
-
-            <Flex
-              justify="center"
-              align="center"
-              px="9px"
-              columnGap="sm"
-              className={S.Content}
-            >
-              <Icon
-                name={isError ? "warning_round_filled" : "warning"}
-                size={14}
-                fill="var(--mb-color-text-dark)"
-              />
-
-              <Text transform="capitalize" c="text-medium">
-                {severity}
-              </Text>
-            </Flex>
+          <Flex bg="white" px="sm" py="xs" className={S.Logo}>
+            <LogoIcon height={24} />
           </Flex>
-        </Paper>
+
+          <Flex
+            justify="center"
+            align="center"
+            px="9px"
+            columnGap="sm"
+            className={S.Content}
+          >
+            <Icon
+              name={isError ? "warning_round_filled" : "warning"}
+              size={14}
+              fill="var(--mb-color-text-dark)"
+            />
+
+            <Text transform="capitalize" c="text-medium">
+              {severity}
+            </Text>
+          </Flex>
+        </Flex>
       </Popover.Target>
 
       <Popover.Dropdown className={S.PopoverDropdown}>
