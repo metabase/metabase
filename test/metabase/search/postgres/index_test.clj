@@ -1,20 +1,12 @@
 (ns metabase.search.postgres.index-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.search :refer [is-postgres?]]
    [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
-
-(set! *warn-on-reflection* true)
-
-(defn is-postgres?
-  "Check whether we can create this index"
-  []
-  (= "PostgreSQL"
-     (t2/with-connection [^java.sql.Connection conn]
-       (.. conn getMetaData getDatabaseProductName))))
 
 (defn legacy-results
   "Use the source tables directly to search for records."
@@ -37,9 +29,14 @@
   [& body]
   `(when (is-postgres?)
      (mt/dataset ~(symbol "test-data")
-       (search.index/reset-index!)
-       (search.ingestion/populate-index!)
-       ~@body)))
+       (mt/with-temp [:model/Card {} {:name "Customer Satisfaction" :collection_id 1}
+                      :model/Card {} {:name "The Latest Revenue Projections" :collection_id 1}
+                      :model/Card {} {:name "Projected Revenue" :collection_id 1}
+                      :model/Card {} {:name "Employee Satisfaction" :collection_id 1}
+                      :model/Card {} {:name "Projected Satisfaction" :collection_id 1}]
+         (search.index/reset-index!)
+         (search.ingestion/populate-index!)
+         ~@body))))
 
 (deftest consistent-subset-test
   (with-index
@@ -58,7 +55,7 @@
              (legacy-hits "venue"))))
 
     (testing "Unless their lexemes are matching"
-      (doseq [[a b] [["example" "examples"]
+      (doseq [[a b] [["revenue" "revenues"]
                      ["collect" "collection"]]]
         (is (= (search.index/search a)
                (search.index/search b)))))))
@@ -66,18 +63,19 @@
 (deftest either-test
   (with-index
     (testing "legacy search does not understand stop words or logical operators"
-      (is (= 1 (legacy-hits "satisfaction")))
-      (is (= 31 (legacy-hits "or")))
-      (is (= 33 (legacy-hits "its the satisfaction of it")))
-      (is (= 4 (legacy-hits "user")))
-      (is (= 32 (legacy-hits "satisfaction or user"))))
+      (is (= 3 (legacy-hits "satisfaction")))
+      ;; Add some slack because things are leaking into this "test" database :-(
+      (is (<= 2 (legacy-hits "or")))
+      (is (<= 4 (legacy-hits "its the satisfaction of it")))
+      (is (<= 1 (legacy-hits "user")))
+      (is (<= 6 (legacy-hits "satisfaction or user"))))
 
     (testing "We get results for both terms"
-      (is (= 1 (index-hits "satisfaction")))
-      (is (= 4 (index-hits "user"))))
+      (is (= 3 (index-hits "satisfaction")))
+      (is (<= 1 (index-hits "user"))))
     (testing "But stop words are skipped"
       (is (= 0 (index-hits "or")))
-      (is (= 1 (index-hits "its the satisfaction of it"))))
+      (is (= 3 (index-hits "its the satisfaction of it"))))
     (testing "We can combine the individual results"
       (is (= (+ (index-hits "satisfaction")
                 (index-hits "user"))
@@ -86,18 +84,18 @@
 (deftest negation-test
   (with-index
     (testing "We can filter out results"
-      (is (= 4 (index-hits "user")))
-      (is (= 4 (index-hits "people")))
-      (is (= 1 (index-hits "user and people")))
-      (is (= 3 (index-hits "user -people"))))))
+      (is (= 3 (index-hits "satisfaction")))
+      (is (= 1 (index-hits "customer")))
+      (is (= 1 (index-hits "satisfaction and customer")))
+      (is (= 2 (index-hits "satisfaction -customer"))))))
 
 (deftest phrase-test
   (with-index
-    (is (= 19 (index-hits "orders")))
-    (is (= 6 (index-hits "category")))
-    (is (= 0 (index-hits "by")))
+    (is (= 3 (index-hits "projected")))
+    (is (= 2 (index-hits "revenue")))
+    (is (= 2 (index-hits "projected revenue")))
     (testing "only sometimes do these occur sequentially in a phrase"
-      (is (= 2 (index-hits "\"orders by category\""))))
+      (is (= 1 (index-hits "\"projected revenue\""))))
     (testing "legacy search has a bunch of results"
-      ;; strangely enough this is not the same as "or"
-      (is (= 11 (legacy-hits "\"orders by category\""))))))
+      (is (= 3 (legacy-hits "projected revenue")))
+      (is (= 0 (legacy-hits "\"projected revenue\""))))))
