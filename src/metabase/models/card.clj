@@ -608,6 +608,7 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
+  (assert-is-valid-dashboard-internal-update (t2/changes card) card)
   ;; remove all the unchanged keys from the map, except for `:id`, so the functions below can do the right thing since
   ;; they were written pre-Toucan 2 and don't know about [[t2/changes]]...
   ;;
@@ -834,14 +835,13 @@
                                          :text                (tru "Unverified due to edit")}))
     ;; ok, now save the Card
     (t2/update! Card (:id card-before-update)
-                (-> (u/select-keys-when card-updates
-                                        ;; `collection_id` and `description` can be `nil` (in order to unset them).
-                                        ;; Other values should only be modified if they're passed in as non-nil
-                                        :present #{:collection_id :collection_position :description :cache_ttl :archived_directly}
-                                        :non-nil #{:dataset_query :display :name :visualization_settings :archived
-                                                   :enable_embedding :type :parameters :parameter_mappings :embedding_params
-                                                   :result_metadata :collection_preview :verified-result-metadata?})
-                    (assert-is-valid-dashboard-internal-update card-before-update))))
+                (u/select-keys-when card-updates
+                                    ;; `collection_id` and `description` can be `nil` (in order to unset them).
+                                    ;; Other values should only be modified if they're passed in as non-nil
+                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly}
+                                    :non-nil #{:dataset_query :display :name :visualization_settings :archived
+                                               :enable_embedding :type :parameters :parameter_mappings :embedding_params
+                                               :result_metadata :collection_preview :verified-result-metadata?})))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one Card :id (:id card-before-update))]
     (delete-alerts-if-needed! :old-card card-before-update, :new-card card, :actor actor)
