@@ -7,7 +7,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Wait for port ${{ env.MB_PRESTO_JDBC_TEST_PORT }} to be ready
+    - name: Wait for port ${{ inputs.port }} to be ready
       shell: bash
       run: |
         while ! nc -z localhost ${{ inputs.port }}; do
