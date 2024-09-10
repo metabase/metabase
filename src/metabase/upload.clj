@@ -3,6 +3,7 @@
    [clj-bom.core :as bom]
    [clojure.data :as data]
    [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
@@ -38,8 +39,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.io File)
-   (java.nio.charset StandardCharsets)
+   (java.io File Reader)
+   (java.nio.charset Charset StandardCharsets)
    (org.apache.tika Tika)))
 
 (set! *warn-on-reflection* true)
@@ -279,8 +280,37 @@
 (defn- file-mime-type [^File file]
   (.detect tika file))
 
+(def ^:private common-charsets
+  [StandardCharsets/UTF_8
+   StandardCharsets/ISO_8859_1
+   StandardCharsets/US_ASCII])
+
+(defn- valid-encoding? [bytes ^Charset charset]
+  (try
+    (let [decoded (.decode (.newDecoder charset)
+                           (java.nio.ByteBuffer/wrap bytes))]
+      (not (.contains (.toString decoded) "\uFFFD")))
+    (catch Exception _ false)))
+
+(defn- detect-charset [^File file]
+  (let [sample-size 1000
+        bytes (with-open [is (io/input-stream file)]
+                (let [buffer (byte-array sample-size)]
+                  (.read is buffer)
+                  buffer))]
+    (or (first (filter #(valid-encoding? bytes %) common-charsets))
+        (throw (Exception. "Unable to detect charset")))))
+
 (defn- assert-separator-chosen [s]
   (or s (throw (IllegalArgumentException. "Unable to determine separator"))))
+
+(defn- ->reader
+  (^Reader [readable]
+   (bom/bom-reader readable))
+  (^Reader [readable ^Charset charset]
+   (-> (io/input-stream readable)
+       (org.apache.commons.io.input.BOMInputStream.)
+       (java.io.InputStreamReader. charset))))
 
 (defn- infer-separator
   "Guess at what symbol is being used as a separator in the given CSV-like file.
@@ -289,7 +319,7 @@
   [readable]
   (let [count-columns (fn [s]
                         ;; Create a separate reader per separator, as the line-breaking behavior depends on the parser.
-                        (with-open [reader (bom/bom-reader readable)]
+                        (with-open [reader (->reader readable)]
                           (try (into []
                                      (comp (take max-inferred-lines)
                                            (map count))
@@ -343,7 +373,7 @@
    Returns the file size, number of rows, and number of columns."
   [driver db table-name filename ^File csv-file]
   (let [parse (infer-parser filename csv-file)]
-    (with-open [reader (bom/bom-reader csv-file)]
+    (with-open [reader (->reader csv-file (detect-charset csv-file))]
       (let [auto-pk?          (auto-pk-column? driver db)
             [header & rows]   (cond-> (parse reader)
                                 auto-pk?
@@ -483,7 +513,7 @@
   It may involve redundantly reading the file, or even failing again if the file is unreadable."
   [filename ^File file]
   (let [parse (infer-parser filename file)]
-    (with-open [reader (bom/bom-reader file)]
+    (with-open [reader (->reader file)]
       (let [rows (parse reader)]
         {:size-mb           (file-size-mb file)
          :num-columns       (count (first rows))
@@ -722,7 +752,7 @@
 (defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
   (try
     (let [parse (infer-parser filename file)]
-      (with-open [reader (bom/bom-reader file)]
+      (with-open [reader (->reader file (detect-charset file))]
         (let [timer              (u/start-timer)
               driver             (driver.u/database->driver database)
               auto-pk?           (auto-pk-column? driver database)
