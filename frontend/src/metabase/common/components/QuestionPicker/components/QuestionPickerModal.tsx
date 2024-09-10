@@ -11,6 +11,7 @@ import type {
   QuestionPickerItem,
   QuestionPickerModel,
   QuestionPickerOptions,
+  QuestionPickerStatePath,
   QuestionPickerValue,
   QuestionPickerValueItem,
 } from "../types";
@@ -85,6 +86,10 @@ export const QuestionPickerModal = ({
     }
   };
 
+  const [modelsPath, setModelsPath] = useState<QuestionPickerStatePath>();
+  const [metricsPath, setMetricsPath] = useState<QuestionPickerStatePath>();
+  const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
+
   const tabs: EntityPickerTab<
     QuestionPickerItem["id"],
     QuestionPickerItem["model"],
@@ -98,10 +103,12 @@ export const QuestionPickerModal = ({
       icon: "table",
       render: ({ onItemSelect }) => (
         <QuestionPicker
-          onItemSelect={onItemSelect}
           initialValue={value}
-          options={options}
           models={["card"]}
+          options={options}
+          path={questionsPath}
+          onItemSelect={onItemSelect}
+          onPathChange={setQuestionsPath}
         />
       ),
     },
@@ -113,10 +120,12 @@ export const QuestionPickerModal = ({
       icon: "model",
       render: ({ onItemSelect }) => (
         <QuestionPicker
-          onItemSelect={onItemSelect}
           initialValue={value}
-          options={options}
           models={["dataset"]}
+          options={options}
+          path={modelsPath}
+          onItemSelect={onItemSelect}
+          onPathChange={setModelsPath}
         />
       ),
     },
@@ -128,10 +137,12 @@ export const QuestionPickerModal = ({
       icon: "metric",
       render: ({ onItemSelect }) => (
         <QuestionPicker
-          onItemSelect={onItemSelect}
           initialValue={value}
-          options={options}
           models={["metric"]}
+          options={options}
+          path={metricsPath}
+          onItemSelect={onItemSelect}
+          onPathChange={setMetricsPath}
         />
       ),
     },
