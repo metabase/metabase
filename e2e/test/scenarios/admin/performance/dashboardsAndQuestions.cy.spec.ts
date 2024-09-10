@@ -37,6 +37,7 @@ const testCacheStrategy = ({
   inheritsStrategyFrom,
   description,
   it = itFunction,
+  oss = false,
 }: CacheTestParameters) => {
   it(description, () => {
     const { visitItem } =
@@ -50,6 +51,7 @@ const testCacheStrategy = ({
       selectCacheStrategy({
         item: itemToConfigure,
         strategy,
+        oss,
       });
     });
 
@@ -278,6 +280,7 @@ describe(
             strategy: sampleAdaptiveStrategy,
             item: sampleQuestion,
             inheritsStrategyFrom: instanceDefault,
+            oss: true,
           },
           {
             description:
@@ -285,6 +288,7 @@ describe(
             strategy: sampleAdaptiveStrategy,
             item: sampleDashboard,
             inheritsStrategyFrom: instanceDefault,
+            oss: true,
           },
         ] as CacheTestParameters[]
       ).forEach(testCacheStrategy);

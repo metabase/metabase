@@ -13,7 +13,7 @@ import type {
 } from "metabase-types/api";
 
 import { databaseCachingPage, log } from "./e2e-performance-helpers";
-import type { SelectCacheStrategyOptions } from "./types";
+import type { SelectCacheStrategyOptions, StrategyBearer } from "./types";
 
 /** Save the cache strategy form and wait for a response from the relevant endpoint */
 export const saveCacheStrategyForm = (options?: {
@@ -75,27 +75,11 @@ export const openStrategyFormForDatabaseOrDefaultPolicy = (
   cy.visit("/admin/performance");
   cy.findByRole("tablist").get("[aria-selected]").contains("Database caching");
   cy.log(`Open strategy form for ${databaseNameOrDefaultPolicy}`);
-
-  const clickLauncher = () =>
-    formLauncher(
-      databaseNameOrDefaultPolicy,
-      "currently",
-      currentStrategyLabel,
-    ).click();
-
-  if (databaseNameOrDefaultPolicy === "default policy") {
-    cy.contains("Select the cache invalidation policy").then($element => {
-      if (!$element || $element.length === 0) {
-        clickLauncher();
-      } else {
-        // On OSS, the default policy form (which contains the text 'Select the
-        // cache invalidation policy') is open by default, so do nothing
-        return;
-      }
-    });
-  } else {
-    clickLauncher();
-  }
+  formLauncher(
+    databaseNameOrDefaultPolicy,
+    "currently",
+    currentStrategyLabel,
+  ).click();
 };
 
 export const getScheduleComponent = (componentType: ScheduleComponentType) =>
@@ -154,23 +138,16 @@ export const getRadioButtonForStrategyType = (
 export const selectCacheStrategy = ({
   item,
   strategy,
+  oss = false,
 }: SelectCacheStrategyOptions) => {
   log(`Selecting ${strategy.type} strategy for ${item.model}`);
 
-  match(item)
-    .with({ model: "database" }, ({ name }) => {
-      openStrategyFormForDatabaseOrDefaultPolicy(name);
-    })
-    .with({ model: "root" }, () => {
-      openStrategyFormForDatabaseOrDefaultPolicy("default policy");
-    })
-    .with({ model: "question" }, () => {
-      openSidebarCacheStrategyForm("question");
-    })
-    .with({ model: "dashboard" }, () => {
-      openSidebarCacheStrategyForm("dashboard");
-    })
-    .exhaustive();
+  // On OSS, you can only set the root policy, so there's no need to open a
+  // specific strategy form
+  if (!oss) {
+    openStrategyFormFor(item);
+  }
+
   getRadioButtonForStrategyType(strategy.type).click();
 
   if ("multiplier" in strategy && strategy.multiplier) {
@@ -220,3 +197,20 @@ export const useDefaultCacheStrategy = (
     ...options,
     strategy: { type: "inherit" },
   });
+
+const openStrategyFormFor = (item: StrategyBearer) => {
+  return match(item)
+    .with({ model: "database" }, ({ name }) => {
+      openStrategyFormForDatabaseOrDefaultPolicy(name);
+    })
+    .with({ model: "root" }, () => {
+      openStrategyFormForDatabaseOrDefaultPolicy("default policy");
+    })
+    .with({ model: "question" }, () => {
+      openSidebarCacheStrategyForm("question");
+    })
+    .with({ model: "dashboard" }, () => {
+      openSidebarCacheStrategyForm("dashboard");
+    })
+    .exhaustive();
+};

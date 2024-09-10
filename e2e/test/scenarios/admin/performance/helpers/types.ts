@@ -20,6 +20,8 @@ export type SelectCacheStrategyOptions<Strategy = CacheStrategy> = {
   /** The item to be configured */
   item: StrategyBearer;
   strategy: Strategy;
+  /** Whether the test is being run in OSS */
+  oss?: boolean;
 };
 
 export type DashboardDetails = {
