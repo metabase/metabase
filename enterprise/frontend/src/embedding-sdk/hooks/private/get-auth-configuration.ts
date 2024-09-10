@@ -52,6 +52,7 @@ export const getAuthConfiguration = (
       jwtProviderUri => setupJwtAuth(jwtProviderUri, dispatch),
     )
     .with([{ apiKey: P.select(P.nonNullable) }, "localhost"], apiKey => {
+      // TODO: move it where it belongs
       presentApiKeyUsageWarning(appName);
       setupLocalApiKey(dispatch, apiKey);
     })
