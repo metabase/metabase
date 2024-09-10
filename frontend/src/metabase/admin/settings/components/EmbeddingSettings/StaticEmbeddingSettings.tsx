@@ -1,19 +1,17 @@
-import { type ChangeEvent, useMemo } from "react";
+import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { useSelector } from "metabase/lib/redux";
 import { Box, Stack, Switch } from "metabase/ui";
-import type { SettingKey } from "metabase-types/api";
 
-import { getSettings } from "../../selectors";
 import SettingHeader from "../SettingHeader";
 import { SettingTitle } from "../SettingHeader/SettingHeader.styled";
 import { SetByEnvVarWrapper } from "../SettingsSetting";
 import { EmbeddedResources } from "../widgets/PublicLinksListing";
 import SecretKeyWidget from "../widgets/SecretKeyWidget";
 
+import { useMergeSetting } from "./hooks";
 import type { AdminSettingComponentProps } from "./types";
 
 const EMBEDDING_SECRET_KEY_SETTING = {
@@ -32,7 +30,7 @@ export function StaticEmbeddingSettings({
   const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
 
   function handleChangeEmbeddingSecretKey(value: string | null) {
-    updateSetting({ key: EMBEDDING_SECRET_KEY_SETTING.key }, value);
+    updateSetting({ key: embeddingSecretKeySetting.key }, value);
   }
 
   function handleToggleStaticEmbedding(event: ChangeEvent<HTMLInputElement>) {
@@ -79,19 +77,4 @@ export function StaticEmbeddingSettings({
       </Stack>
     </Box>
   );
-}
-
-type DisplaySetting = { key: SettingKey };
-function useMergeSetting(displaySetting: DisplaySetting) {
-  const apiSetting = useSelector(getSettings).find(
-    (setting: any) => setting.key === displaySetting.key,
-  );
-  const mergedSetting = useMemo(() => {
-    return {
-      ...apiSetting,
-      ...displaySetting,
-    };
-  }, [apiSetting, displaySetting]);
-
-  return mergedSetting;
 }

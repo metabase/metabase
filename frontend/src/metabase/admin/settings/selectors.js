@@ -3,13 +3,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import MetabaseSettings from "metabase/lib/settings";
 import {
+  PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
-  PLUGIN_EMBEDDING,
   PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
 import { refreshCurrentUser } from "metabase/redux/user";
@@ -38,7 +37,6 @@ import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
 } from "./components/widgets/PublicLinksListing";
-import RedirectWidget from "./components/widgets/RedirectWidget";
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import { NotificationSettings } from "./notifications/NotificationSettings";
@@ -437,33 +435,12 @@ export const ADMIN_SETTINGS_SECTIONS = {
     settings: [],
   },
   "embedding-in-other-applications/full-app": {
-    settings: [
-      {
-        key: "-breadcrumbs",
-        widget: () => {
-          return (
-            <Breadcrumbs
-              size="large"
-              crumbs={[
-                [
-                  t`Embedding`,
-                  "/admin/settings/embedding-in-other-applications",
-                ],
-                [t`Interactive embedding`],
-              ]}
-            />
-          );
-        },
-      },
-      {
-        key: "-redirect-widget",
-        widget: () => (
-          <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
-        ),
-        getHidden: (_, derivedSettings) =>
-          PLUGIN_EMBEDDING.isEnabled() && derivedSettings["enable-embedding"],
-      },
-    ],
+    component: ({ updateSetting }) => (
+      <PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings
+        updateSetting={updateSetting}
+      />
+    ),
+    settings: [],
   },
   license: {
     name: t`License`,

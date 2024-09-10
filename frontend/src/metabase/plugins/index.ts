@@ -23,6 +23,7 @@ import {
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
+import { InteractiveEmbeddingSettings } from "metabase/admin/settings/components/EmbeddingSettings/InteractiveEmbeddingSettings";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
   ActualModelFilters,
@@ -91,6 +92,10 @@ export const PLUGIN_ADMIN_TOOLS = {
 export const PLUGIN_ADMIN_TROUBLESHOOTING = {
   EXTRA_ROUTES: [] as ReactNode[],
   GET_EXTRA_NAV: (): ReactNode[] => [],
+};
+
+export const PLUGIN_ADMIN_SETTINGS = {
+  InteractiveEmbeddingSettings: InteractiveEmbeddingSettings,
 };
 
 // functions that update the sections

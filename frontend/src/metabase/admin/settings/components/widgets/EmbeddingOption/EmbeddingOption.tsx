@@ -202,7 +202,6 @@ export const InteractiveEmbeddingOptionCard = ({
         {isEE ? (
           <LinkButton
             to={"/admin/settings/embedding-in-other-applications/full-app"}
-            disabled={!isInteractiveEmbeddingEnabled}
           >
             {t`Configure`}
           </LinkButton>
