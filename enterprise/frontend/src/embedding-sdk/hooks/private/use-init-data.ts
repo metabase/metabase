@@ -23,6 +23,8 @@ interface InitDataLoaderParameters {
 }
 
 export const useInitData = ({ config }: InitDataLoaderParameters) => {
+  const { allowConsoleLog = true } = config;
+
   const dispatch = useSdkDispatch();
   const loginStatus = useSdkSelector(getLoginStatus);
 
@@ -35,12 +37,14 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
       version: EMBEDDING_SDK_VERSION,
     };
 
-    // eslint-disable-next-line no-console
-    console.log(
-      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-      `Using Metabase Embedding SDK, version ${EMBEDDING_SDK_VERSION}`,
-    );
-  }, []);
+    if (allowConsoleLog) {
+      // eslint-disable-next-line no-console
+      console.log(
+        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        `Using Metabase Embedding SDK, version ${EMBEDDING_SDK_VERSION}`,
+      );
+    }
+  }, [allowConsoleLog]);
 
   useEffect(() => {
     dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));

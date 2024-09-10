@@ -8,6 +8,8 @@ import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getTokenFeature } from "metabase/setup/selectors";
 
 export function useSdkLicenseProblem(config: SDKConfig) {
+  const { allowConsoleLog = true } = config;
+
   const hasLoggedRef = useRef(false);
   const appName = useSelector(getApplicationName);
 
@@ -27,11 +29,11 @@ export function useSdkLicenseProblem(config: SDKConfig) {
 
   // Log the problem to the console once.
   useEffect(() => {
-    if (!hasLoggedRef.current) {
+    if (!hasLoggedRef.current && allowConsoleLog) {
       printLicenseProblemToConsole(licenseProblem, appName);
       hasLoggedRef.current = true;
     }
-  }, [licenseProblem, appName]);
+  }, [licenseProblem, appName, allowConsoleLog]);
 
   return licenseProblem;
 }
