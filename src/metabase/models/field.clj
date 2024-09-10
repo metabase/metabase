@@ -353,41 +353,34 @@
 
 ;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
 ;; a trio of strings with schema maybe nil.
-(defmethod serdes/generate-path "Field" [_ {table_id :table_id field :name}]
-  (let [table (when (number? table_id)
-                (t2/select-one 'Table :id table_id))
-        db    (when table
-                (t2/select-one-fn :name 'Database :id (:db_id table)))
-        [db schema table] (if (number? table_id)
-                            [db (:schema table) (:name table)]
-                            ;; If table_id is not a number, it's already been exported as a [db schema table] triple.
-                            table_id)]
-    (filterv some? [{:model "Database" :id db}
-                    (when schema {:model "Schema" :id schema})
-                    {:model "Table"    :id table}
-                    {:model "Field"    :id field}])))
+(defmethod serdes/generate-path "Field" [_ field #_{table_id :table_id parent :parent_id field :name}]
+  (let [[db schema table & fields] (serdes/*export-field-fk* (:id field))]
+    (->> (into (serdes/table->path [db schema table])
+               (map (fn [n] {:model "Field" :id n}) fields))
+         (filterv some?))))
 
 (defmethod serdes/entity-id "Field" [_ {:keys [name]}]
   name)
 
 (defmethod serdes/load-find-local "Field"
   [path]
-  (let [table (serdes/load-find-local (pop path))]
-    (t2/select-one Field :name (-> path last :id) :table_id (:id table))))
+  (let [field-id (cond->> (map :id path)
+                   (not= "Schema" (:model (second path))) (m/insert-nth 1 nil))]
+    (t2/select-one :model/Field (serdes/*import-field-fk* field-id))))
 
 (defmethod serdes/dependencies "Field" [field]
   ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.
   ;; Take the path, but drop the Field section to get the parent Table's path instead.
   (let [this  (serdes/path field)
-        table (pop this)
+        table (remove #(= "Field" (:model %)) this)
         fks   (some->> field :fk_target_field_id serdes/field->path)
         human (->> (:dimensions field)
                    (keep :human_readable_field_id)
                    (map serdes/field->path)
                    set)]
     (cond-> (set/union #{table} human)
-      fks   (set/union #{fks})
-      true  (disj this))))
+      fks  (set/union #{fks})
+      true (disj this))))
 
 (defmethod serdes/make-spec "Field" [_model-name opts]
   {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_indexed
@@ -403,7 +396,6 @@
                :dimensions         (serdes/nested :model/Dimension :field_id opts)}})
 
 (defmethod serdes/storage-path "Field" [field _]
-  (-> (serdes/path field)
-      drop-last
-      serdes/storage-table-path-prefix
-      (concat ["fields" (:name field)])))
+  (let [[path fields] (split-with #(not= "Field" (:model %)) (serdes/path field))]
+    (concat (serdes/storage-path-prefixes path)
+            ["fields" (str/join "." (map :id fields))])))
