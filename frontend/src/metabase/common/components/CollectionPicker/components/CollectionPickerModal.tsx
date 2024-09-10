@@ -11,6 +11,7 @@ import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
   CollectionPickerItem,
   CollectionPickerOptions,
+  CollectionPickerPath,
   CollectionPickerValueItem,
 } from "../types";
 
@@ -105,6 +106,9 @@ export const CollectionPickerModal = ({
       ]
     : [];
 
+  const [collectionsPath, setCollectionsPath] =
+    useState<CollectionPickerPath>();
+
   const tabs: EntityPickerTab<
     CollectionPickerItem["id"],
     CollectionPickerItem["model"],
@@ -118,11 +122,13 @@ export const CollectionPickerModal = ({
       icon: "folder",
       render: ({ onItemSelect }) => (
         <CollectionPicker
-          onItemSelect={onItemSelect}
-          shouldDisableItem={shouldDisableItem}
           initialValue={value}
           options={options}
+          path={collectionsPath}
           ref={pickerRef}
+          shouldDisableItem={shouldDisableItem}
+          onItemSelect={onItemSelect}
+          onPathChange={setCollectionsPath}
         />
       ),
     },

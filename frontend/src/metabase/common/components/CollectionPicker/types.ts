@@ -10,6 +10,7 @@ import type {
 import type {
   EntityPickerModalOptions,
   ListProps,
+  PickerState,
   TypeWithModel,
 } from "../EntityPicker";
 
@@ -59,4 +60,9 @@ export type CollectionItemListProps = ListProps<
   CollectionPickerItem,
   ListCollectionItemsRequest,
   CollectionPickerOptions
+>;
+
+export type CollectionPickerPath = PickerState<
+  CollectionPickerItem,
+  ListCollectionItemsRequest
 >;

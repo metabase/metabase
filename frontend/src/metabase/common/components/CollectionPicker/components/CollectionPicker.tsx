@@ -1,5 +1,5 @@
 import type { Ref } from "react";
-import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useMemo } from "react";
 import { useDeepCompareEffect } from "react-use";
 
 import { isValidCollectionId } from "metabase/collections/utils";
@@ -7,17 +7,14 @@ import { useCollectionQuery } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import type {
-  Collection,
-  ListCollectionItemsRequest,
-} from "metabase-types/api";
+import type { Collection } from "metabase-types/api";
 
-import {
-  LoadingSpinner,
-  NestedItemPicker,
-  type PickerState,
-} from "../../EntityPicker";
-import type { CollectionPickerItem, CollectionPickerOptions } from "../types";
+import { LoadingSpinner, NestedItemPicker } from "../../EntityPicker";
+import type {
+  CollectionPickerItem,
+  CollectionPickerOptions,
+  CollectionPickerPath,
+} from "../types";
 import {
   getCollectionIdPath,
   getParentCollectionId,
@@ -34,29 +31,32 @@ const defaultOptions: CollectionPickerOptions = {
 };
 
 interface CollectionPickerProps {
-  onItemSelect: (item: CollectionPickerItem) => void;
   initialValue?: Partial<CollectionPickerItem>;
   options?: CollectionPickerOptions;
+  path: CollectionPickerPath | undefined;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
+  onItemSelect: (item: CollectionPickerItem) => void;
+  onPathChange: (path: CollectionPickerPath) => void;
 }
 
 export const CollectionPickerInner = (
   {
-    onItemSelect,
     initialValue,
     options = defaultOptions,
+    path: pathProp,
     shouldDisableItem,
+    onItemSelect,
+    onPathChange,
   }: CollectionPickerProps,
   ref: Ref<unknown>,
 ) => {
-  const [path, setPath] = useState<
-    PickerState<CollectionPickerItem, ListCollectionItemsRequest>
-  >(() =>
-    getStateFromIdPath({
+  const defaultPath = useMemo(() => {
+    return getStateFromIdPath({
       idPath: ["root"],
       namespace: options.namespace,
-    }),
-  );
+    });
+  }, [options.namespace]);
+  const path = pathProp ?? defaultPath;
 
   const {
     data: currentCollection,
@@ -83,10 +83,16 @@ export const CollectionPickerInner = (
         ),
         namespace: options.namespace,
       });
-      setPath(newPath);
       onItemSelect(folder);
+      onPathChange(newPath);
     },
-    [setPath, onItemSelect, options.namespace, userPersonalCollectionId, path],
+    [
+      onItemSelect,
+      onPathChange,
+      options.namespace,
+      userPersonalCollectionId,
+      path,
+    ],
   );
 
   const handleItemSelect = useCallback(
@@ -100,10 +106,10 @@ export const CollectionPickerInner = (
       const newPath = path.slice(0, pathLevel + 1);
       newPath[newPath.length - 1].selectedItem = item;
 
-      setPath(newPath);
       onItemSelect(item);
+      onPathChange(newPath);
     },
-    [path, onItemSelect, setPath, userPersonalCollectionId],
+    [path, onItemSelect, onPathChange, userPersonalCollectionId],
   );
 
   const handleNewCollection = useCallback(
@@ -121,8 +127,9 @@ export const CollectionPickerInner = (
       if (selectedItem) {
         // if the currently selected item is not a folder, it will be once we create a new collection within it
         // so we need to select it
-        setPath(oldPath => [
-          ...oldPath,
+
+        const newPath: CollectionPickerPath = [
+          ...path,
           {
             query: {
               id: parentCollectionId,
@@ -131,14 +138,15 @@ export const CollectionPickerInner = (
             },
             selectedItem: newCollectionItem,
           },
-        ]);
+        ];
         onItemSelect(newCollectionItem);
+        onPathChange(newPath);
         return;
       }
 
       handleItemSelect(newCollectionItem);
     },
-    [path, handleItemSelect, onItemSelect, setPath, options.namespace],
+    [path, handleItemSelect, onItemSelect, onPathChange, options.namespace],
   );
 
   // Exposing onNewCollection so that parent can select newly created
@@ -165,7 +173,7 @@ export const CollectionPickerInner = (
           ),
           namespace: options.namespace,
         });
-        setPath(newPath);
+        onPathChange(newPath);
 
         if (currentCollection.can_write) {
           // start with the current item selected if we can
