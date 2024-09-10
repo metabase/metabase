@@ -42,7 +42,7 @@ export function MetricEditorBody({
       onResizeStart={() => setIsResizing(true)}
       onResizeStop={() => setIsResizing(false)}
     >
-      <Flex w="100%" style={{ overflow: isResizing ? "hidden" : "scroll" }}>
+      <Flex w="100%" style={{ overflowY: isResizing ? "hidden" : "auto" }}>
         <Box w="100%">
           <Notebook
             question={question}

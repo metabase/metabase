@@ -22,7 +22,7 @@ const propTypes = {
  * Setting the overflow to "hidden" while resizing fixes that behavior.
  * @link Demo: https://github.com/metabase/metabase/pull/19103#issuecomment-981935878
  */
-const getOverflow = isResizing => (isResizing ? "hidden" : "scroll");
+const getOverflow = isResizing => (isResizing ? "hidden" : "auto");
 
 const Handle = forwardRef(function Handle(props, ref) {
   return (
