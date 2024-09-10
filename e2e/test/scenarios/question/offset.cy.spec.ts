@@ -70,6 +70,12 @@ const BREAKOUT_DATETIME: FieldReference = [
   },
 ];
 
+const BREAKOUT_CATEGORY: FieldReference = [
+  "field",
+  PRODUCTS.CATEGORY,
+  { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+];
+
 describe("scenarios > question > offset", () => {
   beforeEach(() => {
     restore();
@@ -612,35 +618,30 @@ describe("scenarios > question > offset", () => {
 
   describe("explicit joins", () => {
     it("column in the first place", () => {
-      const BREAKOUT_CATEGORY: FieldReference = [
-        "field",
-        PRODUCTS.CATEGORY,
-        { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
-      ];
+      const query: StructuredQuery = {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: [
+              ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+            ],
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+            ],
+            alias: "Products",
+          },
+        ],
+        aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+        breakout: [BREAKOUT_CATEGORY, BREAKOUT_DATETIME],
+        "order-by": [["asc", BREAKOUT_DATETIME]],
+      };
 
       createQuestion(
         {
-          name: "QB Binning",
-          query: {
-            "source-table": ORDERS_ID,
-            joins: [
-              {
-                fields: [
-                  ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
-                ],
-                "source-table": PRODUCTS_ID,
-                condition: [
-                  "=",
-                  ["field", ORDERS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-                ],
-                alias: "Products",
-              },
-            ],
-            aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
-            breakout: [BREAKOUT_CATEGORY, BREAKOUT_DATETIME],
-            "order-by": [["asc", BREAKOUT_DATETIME]],
-          },
+          query,
         },
         { visitQuestion: true },
       );
@@ -657,35 +658,30 @@ describe("scenarios > question > offset", () => {
     });
 
     it("column is not in the first place", () => {
-      const BREAKOUT_CATEGORY: FieldReference = [
-        "field",
-        PRODUCTS.CATEGORY,
-        { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
-      ];
+      const query: StructuredQuery = {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: [
+              ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+            ],
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+            ],
+            alias: "Products",
+          },
+        ],
+        aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+        breakout: [BREAKOUT_DATETIME, BREAKOUT_CATEGORY],
+        "order-by": [["asc", BREAKOUT_DATETIME]],
+      };
 
       createQuestion(
         {
-          name: "QB Binning",
-          query: {
-            "source-table": ORDERS_ID,
-            joins: [
-              {
-                fields: [
-                  ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
-                ],
-                "source-table": PRODUCTS_ID,
-                condition: [
-                  "=",
-                  ["field", ORDERS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-                ],
-                alias: "Products",
-              },
-            ],
-            aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
-            breakout: [BREAKOUT_DATETIME, BREAKOUT_CATEGORY],
-            "order-by": [["asc", BREAKOUT_DATETIME]],
-          },
+          query,
         },
         { visitQuestion: true },
       );
@@ -715,42 +711,38 @@ describe("scenarios > question > offset", () => {
         -1,
       ];
 
-      createQuestion(
-        {
-          name: "QB Binning",
-          query: {
-            "source-table": ORDERS_ID,
-            joins: [
-              {
-                fields: [
-                  ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
-                ],
-                "source-table": PRODUCTS_ID,
-                condition: [
-                  "=",
-                  ["field", ORDERS.PRODUCT_ID, null],
-                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-                ],
-                alias: "Products",
-              },
+      const query: StructuredQuery = {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: [
+              ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
             ],
-            aggregation: [
-              AVG_RATING_AGGREGATION,
-              OFFSET_AVG_PRODUCT_RATING_AGGREGATION,
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
             ],
-            breakout: [BREAKOUT_DATETIME, ["expression", customColumnName]],
-            expressions: {
-              [customColumnName]: [
-                "field",
-                PRODUCTS.RATING,
-                { "base-type": "type/Float", "join-alias": "Products" },
-              ],
-            },
-            "order-by": [["desc", ["expression", customColumnName]]],
+            alias: "Products",
           },
+        ],
+        aggregation: [
+          AVG_RATING_AGGREGATION,
+          OFFSET_AVG_PRODUCT_RATING_AGGREGATION,
+        ],
+        breakout: [BREAKOUT_DATETIME, ["expression", customColumnName]],
+        expressions: {
+          [customColumnName]: [
+            "field",
+            PRODUCTS.RATING,
+            { "base-type": "type/Float", "join-alias": "Products" },
+          ],
         },
-        { visitQuestion: true },
-      );
+        "order-by": [["desc", ["expression", customColumnName]]],
+      };
+
+      createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -762,17 +754,8 @@ describe("scenarios > question > offset", () => {
   });
 
   describe("implicit joins", () => {
-    // using column from another table in custom column definition creates implicit join
     describe("when custom column in the first place of breakout", () => {
       it("works with custom column that contains a function", () => {
-        const BREAKOUT_DATETIME: FieldReference = [
-          "field",
-          ORDERS.CREATED_AT,
-          {
-            "temporal-unit": "year",
-          },
-        ];
-
         const customColumnName = "CC Product Category";
         const query: StructuredQuery = {
           "source-table": ORDERS_ID,
@@ -806,14 +789,6 @@ describe("scenarios > question > offset", () => {
       });
 
       it("works with custom column that contains a column", () => {
-        const BREAKOUT_DATETIME: FieldReference = [
-          "field",
-          ORDERS.CREATED_AT,
-          {
-            "temporal-unit": "year",
-          },
-        ];
-
         const customColumnName = "CC Product Category";
         const query: StructuredQuery = {
           "source-table": ORDERS_ID,
@@ -843,14 +818,6 @@ describe("scenarios > question > offset", () => {
       });
 
       it("works when custom column is a simple expression", () => {
-        const BREAKOUT_DATETIME: FieldReference = [
-          "field",
-          ORDERS.CREATED_AT,
-          {
-            "temporal-unit": "year",
-          },
-        ];
-
         const customColumnName = "1 + 1";
         const query: StructuredQuery = {
           "source-table": ORDERS_ID,
@@ -878,14 +845,6 @@ describe("scenarios > question > offset", () => {
 
     describe("when custom column is not in the first place of breakout", () => {
       it("works with custom column that contains a function", () => {
-        const BREAKOUT_DATETIME: FieldReference = [
-          "field",
-          ORDERS.CREATED_AT,
-          {
-            "temporal-unit": "year",
-          },
-        ];
-
         const customColumnName = "CC Product Category";
         const query: StructuredQuery = {
           "source-table": ORDERS_ID,
@@ -923,14 +882,6 @@ describe("scenarios > question > offset", () => {
       });
 
       it("works with custom column that contains a column", () => {
-        const BREAKOUT_DATETIME: FieldReference = [
-          "field",
-          ORDERS.CREATED_AT,
-          {
-            "temporal-unit": "year",
-          },
-        ];
-
         const customColumnName = "CC Product Category";
         const query: StructuredQuery = {
           "source-table": ORDERS_ID,
@@ -961,14 +912,6 @@ describe("scenarios > question > offset", () => {
       });
 
       it("works when custom column is a simple expression", () => {
-        const BREAKOUT_DATETIME: FieldReference = [
-          "field",
-          ORDERS.CREATED_AT,
-          {
-            "temporal-unit": "year",
-          },
-        ];
-
         const customColumnName = "1 + 1";
         const query: StructuredQuery = {
           "source-table": ORDERS_ID,
@@ -995,10 +938,6 @@ describe("scenarios > question > offset", () => {
       });
     });
   });
-
-  // describe("custom expression with offset", () => {
-  //   it("should work with a custom column and offset", () => {});
-  // });
 
   describe("standard expression function with offset", () => {
     it("uses standard function inside expression with offset - avg", () => {
@@ -1043,29 +982,30 @@ describe("scenarios > question > offset", () => {
     it("works with 3 breakouts", () => {
       const customColumnName = "CC Product Rating";
 
+      const query: StructuredQuery = {
+        "source-table": ORDERS_ID,
+        aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+        breakout: [
+          BREAKOUT_DATETIME,
+          ["expression", customColumnName],
+          ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
+        ],
+        expressions: {
+          [customColumnName]: [
+            "field",
+            PRODUCTS.RATING,
+            {
+              "base-type": "type/Float",
+              "source-field": ORDERS.PRODUCT_ID,
+            },
+          ],
+        },
+        "order-by": [["desc", BREAKOUT_DATETIME]],
+      };
+
       createQuestion(
         {
-          name: "QB Binning",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
-            breakout: [
-              BREAKOUT_DATETIME,
-              ["expression", customColumnName],
-              ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
-            ],
-            expressions: {
-              [customColumnName]: [
-                "field",
-                PRODUCTS.RATING,
-                {
-                  "base-type": "type/Float",
-                  "source-field": ORDERS.PRODUCT_ID,
-                },
-              ],
-            },
-            "order-by": [["desc", BREAKOUT_DATETIME]],
-          },
+          query,
         },
         { visitQuestion: true },
       );
@@ -1079,10 +1019,8 @@ describe("scenarios > question > offset", () => {
   });
 
   it("works with filtering using segment", () => {
-    const SEGMENT_NAME = "Orders < 100";
-    // Create a segment through API
     createSegment({
-      name: SEGMENT_NAME,
+      name: "Orders < 100",
       // @ts-expect-error convert helper to ts
       description: "All orders with a total under $100.",
       table_id: ORDERS_ID,
@@ -1095,42 +1033,36 @@ describe("scenarios > question > offset", () => {
       const segmentId = res.body.id;
       cy.wrap(segmentId).as("segmentId");
     });
-    const BREAKOUT_DATETIME: FieldReference = [
-      "field",
-      ORDERS.CREATED_AT,
-      {
-        "temporal-unit": "year",
-      },
-    ];
 
     const customColumnName = "CC Product Rating";
 
     cy.get("@segmentId").then(segmentId => {
+      const query: StructuredQuery = {
+        "source-table": ORDERS_ID,
+        aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+        breakout: [
+          BREAKOUT_DATETIME,
+          ["expression", customColumnName],
+          ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
+        ],
+        // TODO: find a better way to convert segmentId to number
+        filter: ["segment", segmentId as unknown as number],
+        expressions: {
+          [customColumnName]: [
+            "field",
+            PRODUCTS.RATING,
+            {
+              "base-type": "type/Float",
+              "source-field": ORDERS.PRODUCT_ID,
+            },
+          ],
+        },
+        "order-by": [["desc", BREAKOUT_DATETIME]],
+      };
+
       createQuestion(
         {
-          name: "QB Binning",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
-            breakout: [
-              BREAKOUT_DATETIME,
-              ["expression", customColumnName],
-              ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
-            ],
-            // TODO: find a better way to convert segmentId to number
-            filter: ["segment", segmentId as unknown as number],
-            expressions: {
-              [customColumnName]: [
-                "field",
-                PRODUCTS.RATING,
-                {
-                  "base-type": "type/Float",
-                  "source-field": ORDERS.PRODUCT_ID,
-                },
-              ],
-            },
-            "order-by": [["desc", BREAKOUT_DATETIME]],
-          },
+          query,
         },
         { visitQuestion: true },
       );
