@@ -116,9 +116,9 @@
                          :template-type template-type}))))))
 
 (t2/define-before-insert :model/NotificationHandler
- [instance]
- (cross-check-channel-type-and-template-type instance)
- instance)
+  [instance]
+  (cross-check-channel-type-and-template-type instance)
+  instance)
 
 (t2/define-before-update :model/NotificationHandler
   [instance]

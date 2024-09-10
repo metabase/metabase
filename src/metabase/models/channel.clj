@@ -35,7 +35,7 @@
 
 (defmethod serdes/make-spec "ChannelTemplate"
   [_model-name _opts]
-  {:copy      [:name :description :channel_type :details]
+  {:copy      [:name :channel_type :details :entity_id]
    :transform {:created_at (serdes/date)}})
 
 (doto :model/Channel
