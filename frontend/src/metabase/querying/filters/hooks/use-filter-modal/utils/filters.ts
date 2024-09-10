@@ -12,11 +12,6 @@ export function appendStageIfAggregated(query: Lib.Query) {
     : query;
 }
 
-function getStageIndexes(query: Lib.Query) {
-  const stageCount = Lib.stageCount(query);
-  return Array.from({ length: stageCount }, (_, stageIndex) => stageIndex);
-}
-
 function getGroupName(
   groupInfo: Lib.ColumnGroupDisplayInfo,
   stageIndex: number,
@@ -27,7 +22,7 @@ function getGroupName(
 }
 
 export function getGroupItems(query: Lib.Query): GroupItem[] {
-  const stageIndexes = getStageIndexes(query);
+  const stageIndexes = Lib.stageIndexes(query);
   return stageIndexes.flatMap(stageIndex => {
     const columns = Lib.filterableColumns(query, stageIndex);
     const groups = Lib.groupColumns(columns);
@@ -65,7 +60,7 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
 }
 
 export function hasFilters(query: Lib.Query) {
-  const stageIndexes = getStageIndexes(query);
+  const stageIndexes = Lib.stageIndexes(query);
   const filters = stageIndexes.flatMap(stageIndex =>
     Lib.filters(query, stageIndex),
   );
@@ -73,7 +68,7 @@ export function hasFilters(query: Lib.Query) {
 }
 
 export function removeFilters(query: Lib.Query) {
-  const stageIndexes = getStageIndexes(query);
+  const stageIndexes = Lib.stageIndexes(query);
   return stageIndexes.reduce(
     (newQuery, stageIndex) => Lib.removeFilters(newQuery, stageIndex),
     query,
