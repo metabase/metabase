@@ -20,6 +20,7 @@ export const interceptRoutes = () => {
   cy.intercept("POST", "/api/cache/invalidate?include=overrides&database=*").as(
     "invalidateCacheForSampleDatabase",
   );
+  cy.intercept("POST", "/api/cache/invalidate?*").as("invalidateCache");
 };
 
 /** Cypress log messages sometimes occur out of order so it is helpful to log to the console as well. */
