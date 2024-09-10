@@ -144,7 +144,10 @@ export const selectCacheStrategy = ({
 
   // On OSS, you can only set the root policy, so there's no need to open a
   // specific strategy form
-  if (!oss) {
+  if (oss) {
+    cy.visit("/admin/performance");
+    cacheStrategyForm();
+  } else {
     openStrategyFormFor(item);
   }
 

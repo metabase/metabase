@@ -24,6 +24,7 @@ import {
   setupQuestionTest,
 } from "./helpers/e2e-performance-helpers";
 import {
+  cacheStrategyForm,
   disableCaching,
   selectCacheStrategy,
 } from "./helpers/e2e-strategy-form-helpers";
@@ -271,6 +272,7 @@ describe(
         restore("postgres-writable");
         cy.signInAsAdmin();
         cy.visit("/admin/performance");
+        cacheStrategyForm();
       });
 
       (
