@@ -4882,15 +4882,15 @@
                  :model/Dashboard {_other-dash-id :id} {}
                  :model/Card {card-id :id} {:dashboard_id dash-id}
                  :model/DashboardCard {_dashcard-id :id} {:card_id card-id
-                                                         :dashboard_id dash-id}]
+                                                          :dashboard_id dash-id}]
     #_(testing "Cannot add a dashboard internal card to another dashboard"
-      (mt/user-http-request :crowberto :put 400 (str "dashboard/" other-dash-id)
-                            {:dashcards [{:id -1
-                                          :size_x 1
-                                          :size_y 1
-                                          :row 0 :col 0
-                                          :card_id card-id
-                                          :dashboard_id other-dash-id}]}))
+        (mt/user-http-request :crowberto :put 400 (str "dashboard/" other-dash-id)
+                              {:dashcards [{:id -1
+                                            :size_x 1
+                                            :size_y 1
+                                            :row 0 :col 0
+                                            :card_id card-id
+                                            :dashboard_id other-dash-id}]}))
     (testing "Should archive all dashboard internal cards with their dashboard"
       (is (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id)
                                 {:archived true}))
@@ -4916,7 +4916,7 @@
                                             :dataset_query (mt/mbql-query orders)
                                             :database_id   (mt/id)}
                  :model/DashboardCard {_dashcard-id :id} {:card_id card-id
-                                                         :dashboard_id dash-id}]
+                                                          :dashboard_id dash-id}]
     (let [new-dash-id (:id (mt/user-http-request :crowberto :post 200 (str "dashboard/" dash-id "/copy")))
           new-card (:card (first (:dashcards (t2/hydrate (t2/select-one :model/Dashboard :id new-dash-id) [:dashcards :card]))))]
       (is (not= (:id new-card) card-id))
