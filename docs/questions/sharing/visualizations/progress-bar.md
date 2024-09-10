@@ -16,7 +16,7 @@ title: Progress bars
 
   ![Progress bar % completion](../../images/progress-percent.png)
 
-## Progress bar prerequisites
+## Progress bar requirements
 
 To create a progress bar you'll need:
 
