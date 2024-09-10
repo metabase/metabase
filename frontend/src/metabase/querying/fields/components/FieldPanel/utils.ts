@@ -43,8 +43,7 @@ function getGroupsWithColumns(
 
     return {
       columnItems,
-      displayName:
-        groupInfo.fkReferenceName || groupInfo.displayName || t`Question`,
+      displayName: groupInfo.displayName || t`Question`,
       isSelected: columnItems.every(({ isSelected }) => isSelected),
       isDisabled: columnItems.every(({ isDisabled }) => isDisabled),
       isSourceGroup: groupIndex === 0,

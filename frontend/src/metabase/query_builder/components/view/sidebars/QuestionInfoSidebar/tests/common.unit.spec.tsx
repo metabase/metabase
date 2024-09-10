@@ -60,7 +60,7 @@ describe("QuestionInfoSidebar", () => {
       });
       await setup({ card });
 
-      const link = screen.getByText("Model details");
+      const link = screen.getByText("See more about this model");
 
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", Urls.modelDetail(card));
@@ -73,7 +73,9 @@ describe("QuestionInfoSidebar", () => {
       });
       await setup({ card });
       expect(screen.getByText(DESCRIPTION)).toBeInTheDocument();
-      expect(screen.queryByText("Model details")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("See more about this model"),
+      ).not.toBeInTheDocument();
     });
   });
 

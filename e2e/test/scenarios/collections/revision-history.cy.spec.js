@@ -137,6 +137,7 @@ describe("revision history", () => {
               visitQuestion(ORDERS_QUESTION_ID);
 
               cy.findByTestId("revision-history-button").click();
+              cy.findByRole("tab", { name: "History" }).click();
 
               cy.findByTestId("question-revert-button").click();
 
@@ -155,8 +156,8 @@ describe("revision history", () => {
               visitQuestion(ORDERS_QUESTION_ID);
 
               questionInfoButton().click();
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText("History").click();
+              cy.findByRole("tab", { name: "History" }).click();
+
               // Last revert is the original state
               cy.findAllByTestId("question-revert-button").last().click();
 

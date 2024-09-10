@@ -1,4 +1,4 @@
-import { modal } from "e2e/support/helpers";
+import { modal, popover } from "e2e/support/helpers";
 import {
   type ScheduleComponentType,
   getScheduleComponentLabel,
@@ -77,18 +77,31 @@ export const openStrategyFormForDatabaseOrDefaultPolicy = (
 export const getScheduleComponent = (componentType: ScheduleComponentType) =>
   cacheStrategyForm().findByLabelText(getScheduleComponentLabel(componentType));
 
-export const openSidebar = () => {
-  cy.findByLabelText("info icon").click();
+export const openSidebar = (type: "question" | "dashboard") => {
+  // this will change when we move to having a dashboard settings sidesheet
+  if (type === "dashboard") {
+    cy.icon("info").click();
+    return;
+  }
+
+  if (type === "question") {
+    cy.findByTestId("qb-header").icon("ellipsis").click();
+  }
+
+  popover().findByText("Edit settings").click();
 };
+
 export const closeSidebar = () => {
-  cy.findByLabelText("info icon").click();
+  cy.findByLabelText("Close").click();
 };
 
 /** Open the sidebar form that lets you set the caching strategy.
  * This works on dashboards and questions */
-export const openSidebarCacheStrategyForm = () => {
+export const openSidebarCacheStrategyForm = (
+  type: "question" | "dashboard",
+) => {
   cy.log("Open the cache strategy form in the sidebar");
-  openSidebar();
+  openSidebar(type);
   cy.wait("@getCacheConfig");
   cy.findByLabelText("Caching policy").click();
 };

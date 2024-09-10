@@ -33,6 +33,7 @@ interface ChartSettingSeriesOrderProps {
   series: Series;
   hasEditSettings: boolean;
   onChangeSeriesColor: (seriesKey: string, color: string) => void;
+  onSortEnd: (newItems: SortableItem[]) => void;
 }
 
 export const ChartSettingSeriesOrder = ({
@@ -41,6 +42,7 @@ export const ChartSettingSeriesOrder = ({
   onShowWidget,
   hasEditSettings = true,
   onChangeSeriesColor,
+  onSortEnd,
 }: ChartSettingSeriesOrderProps) => {
   const [isSeriesPickerVisible, setSeriesPickerVisible] = useState(false);
 
@@ -64,9 +66,14 @@ export const ChartSettingSeriesOrder = ({
   const handleSortEnd = useCallback(
     ({ id, newIndex }: DragEndEvent) => {
       const oldIndex = orderedItems.findIndex(item => item.key === id);
-      onChange(arrayMove(orderedItems, oldIndex, newIndex));
+
+      if (onSortEnd != null) {
+        onSortEnd(arrayMove(orderedItems, oldIndex, newIndex));
+      } else {
+        onChange(arrayMove(orderedItems, oldIndex, newIndex));
+      }
     },
-    [orderedItems, onChange],
+    [orderedItems, onChange, onSortEnd],
   );
 
   const getItemTitle = useCallback((item: SortableItem) => {

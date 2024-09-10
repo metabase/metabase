@@ -8,8 +8,6 @@ import { darken } from "metabase/lib/colors";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box, Flex, rem } from "metabase/ui";
 
-import { MetricSidebar } from "./MetricSidebar";
-
 const propTypes = {
   question: PropTypes.object.isRequired,
   isResizing: PropTypes.bool.isRequired,
@@ -24,7 +22,7 @@ const propTypes = {
  * Setting the overflow to "hidden" while resizing fixes that behavior.
  * @link Demo: https://github.com/metabase/metabase/pull/19103#issuecomment-981935878
  */
-const getOverflow = isResizing => (isResizing ? "hidden" : "scroll");
+const getOverflow = isResizing => (isResizing ? "hidden" : "auto");
 
 const Handle = forwardRef(function Handle(props, ref) {
   return (
@@ -54,7 +52,6 @@ const Handle = forwardRef(function Handle(props, ref) {
 });
 
 export function DatasetNotebook({
-  question,
   isResizing,
   onResizeStop,
   resizableBoxProps,
@@ -71,16 +68,9 @@ export function DatasetNotebook({
         onResizeStop(...args);
       }}
     >
-      <Flex w="100%" style={{ overflowY: getOverflow(isResizing) }}>
-        <Box w="100%">
-          <Notebook
-            {...notebookProps}
-            question={question}
-            hasVisualizeButton={false}
-          />
-        </Box>
-        {question.type() === "metric" && <MetricSidebar />}
-      </Flex>
+      <Box w="100%" style={{ overflowY: getOverflow(isResizing) }}>
+        <Notebook {...notebookProps} hasVisualizeButton={false} />
+      </Box>
     </ResizableBox>
   );
 }
