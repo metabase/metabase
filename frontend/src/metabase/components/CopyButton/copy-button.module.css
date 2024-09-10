@@ -1,9 +1,0 @@
-.CursorPointer {
-  cursor: pointer;
-}
-
-.HoverHighlight {
-  &:hover {
-    color: var(--mb-color-brand);
-  }
-}

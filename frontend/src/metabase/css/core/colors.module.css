@@ -235,10 +235,6 @@
   background-color: var(--mb-color-bg-light);
 }
 
-.bgBrand {
-  background-color: var(--mb-color-brand);
-}
-
 .DashboardNight .bgLight {
   background-color: var(--mb-color-bg-black);
 }
