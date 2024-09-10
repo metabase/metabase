@@ -63,7 +63,7 @@
       (assoc :pivot-grouping (pivot-grouping-key (:column-titles pivot-spec)))))
 
 (mu/defn add-totals-settings :- ::pivot-spec
-  "Given a pivot-spec map without the `:pivot-measures` key, determine what key(s) the measures will be and assoc that value into `:pivot-measures`."
+  "Given a pivot-spec map and `viz-settings`, add the `:row-totals?` and `:col-totals?` keys."
   [pivot-spec :- ::pivot-spec viz-settings]
   (let [row-totals (if (contains? viz-settings :pivot.show_row_totals)
                      (:pivot.show_row_totals viz-settings)
@@ -85,14 +85,24 @@
      :column-values  (zipmap pivot-cols (repeat (sorted-set)))
      :measure-values (zipmap pivot-measures (repeat (sorted-set)))}))
 
-(defn- update-set [m k v]
+(defn- update-set
+  [m k v]
   (update m k conj v))
 
-(defn- update-aggregate [measure-aggregations new-values agg-fns]
+(defn- update-aggregate
+  "Update the given `measure-aggregations` with `new-values` using the appropriate function in the `agg-fns` map.
+
+  Measure aggregations is a map whose keys are each pivot-measure; often just 1 key, but could be several depending on how the user has set up their measures.
+  `new-values` are the values being added and have the same keys as `measure-aggregations`.
+  `agg-fns` is also a map of the measure keys indicating the type of aggregation.
+  For now (2024-09-10), agg-fn is `+`, which actually works fine for every aggregation type in our implementation. This is because the pivot qp
+  returns rows that have already done the aggregation set by the user in the query (eg. count or sum, or whatever), so the post-processing done here
+  will always work. For each 'cell', there will only ever be 1 value per measure (the already-aggregated value from the qp)."
+  [measure-aggregations new-values agg-fns]
   (into {}
         (map
          (fn [[measure-key agg]]
-           (let [agg-fn (get agg-fns measure-key +)
+           (let [agg-fn (get agg-fns measure-key +) ; default aggregation is just summation
                  new-v  (get new-values measure-key)]
              [measure-key (agg-fn agg new-v)])))
         measure-aggregations))
@@ -196,7 +206,7 @@
 
 (defn- build-grand-totals
   "Build grand totals row."
-  [{:keys [pivot-cols pivot-rows]} col-combos pivot-measures totals row-totals? ordered-formatters]
+  [{:keys [pivot-cols pivot-rows pivot-measures]} col-combos totals row-totals? ordered-formatters]
   (concat
    (if (and (seq pivot-cols) (not (seq pivot-rows)))
      (cons "Grand totals" (repeat (dec (count pivot-cols)) nil))
@@ -235,4 +245,4 @@
                (when (and col-totals? (> (count pivot-rows) 1))
                  [(build-column-totals (ffirst section-row-combos) col-combos pivot-measures totals row-totals? ordered-formatters pivot-rows)]))))
      (when col-totals?
-       [(build-grand-totals config col-combos pivot-measures totals row-totals? ordered-formatters)]))))
+       [(build-grand-totals config col-combos totals row-totals? ordered-formatters)]))))
