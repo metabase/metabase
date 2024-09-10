@@ -865,6 +865,7 @@ describe.skip("issue 25189", () => {
 
       resetTestTable({ type: dialect, table: tableName });
       cy.request("POST", `/api/database/${WRITABLE_DB_ID}/sync_schema`);
+      cy.intercept("GET", "/api/search*").as("search");
     });
 
     it("should display all summarize options if the only numeric field is a custom column (metabase#27745)", () => {
@@ -872,6 +873,7 @@ describe.skip("issue 25189", () => {
 
       entityPickerModal().within(() => {
         cy.findByPlaceholderText("Search…").type("colors");
+        cy.wait("@search");
         cy.findByTestId("result-item")
           .contains(/colors/i)
           .click();
