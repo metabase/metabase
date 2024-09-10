@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 
 import {
   changeInput,
@@ -52,8 +52,18 @@ describe("StrategyEditorForDatabases", () => {
     });
     await userEvent.click(adaptiveStrategyRadioButton);
     await userEvent.click(await getSaveButton());
+
+    // After the form is submitted, the save button is briefly shown. Wait for it to disappear
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("strategy-form-submit-button"),
+      ).not.toBeInTheDocument();
+    });
+
+    // Enter a default value into the input
     await changeInput(/multiplier/i, 10, 10);
-    // The form is not considered dirty, so the save button is not present
+
+    // The form is not considered dirty, so the save button should not be present
     expect(
       screen.queryByTestId("strategy-form-submit-button"),
     ).not.toBeInTheDocument();
