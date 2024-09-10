@@ -190,7 +190,7 @@ describe("FilterPicker", () => {
     it("should list filterable columns", async () => {
       setup();
 
-      expect(screen.getByText("Order")).toBeInTheDocument();
+      expect(screen.getByText("Orders")).toBeInTheDocument();
       expect(screen.getByText("Discount")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText("Product"));

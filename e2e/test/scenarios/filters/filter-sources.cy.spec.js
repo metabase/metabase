@@ -265,7 +265,7 @@ describe("scenarios > filters > filter sources", () => {
       visitQuestionAdhoc(tableQuestionWithJoin, { mode: "notebook" });
       filter({ mode: "notebook" });
       popover().within(() => {
-        cy.findByText("Product").click();
+        cy.findByText("Products").click();
         cy.findByText("Vendor").click();
         cy.findByText("Aufderhar-Boehm").click();
         cy.button("Add filter").click();
@@ -279,7 +279,7 @@ describe("scenarios > filters > filter sources", () => {
       visitQuestionAdhoc(tableQuestionWithJoinAndFields, { mode: "notebook" });
       filter({ mode: "notebook" });
       popover().within(() => {
-        cy.findByText("Product").click();
+        cy.findByText("Products").click();
         cy.findByText("Rating").click();
       });
       selectFilterOperator("Equal to");
@@ -394,7 +394,7 @@ describe("scenarios > filters > filter sources", () => {
       });
       filter({ mode: "notebook" });
       popover().within(() => {
-        cy.findByText("Product").click();
+        cy.findByText("Products").click();
         cy.findByText("Vendor").click();
         cy.findByText("Aufderhar-Boehm").click();
         cy.button("Add filter").click();
@@ -412,7 +412,7 @@ describe("scenarios > filters > filter sources", () => {
       });
       filter({ mode: "notebook" });
       popover().within(() => {
-        cy.findByText("Product").click();
+        cy.findByText("Products").click();
         cy.findByText("Rating").click();
       });
       selectFilterOperator("Equal to");
@@ -433,7 +433,7 @@ describe("scenarios > filters > filter sources", () => {
       });
       filter({ mode: "notebook" });
       popover().within(() => {
-        cy.findByText("Product").click();
+        cy.findByText("Products").click();
         cy.findByText("Ean").click();
       });
       selectFilterOperator("Is");
@@ -543,7 +543,7 @@ describe("scenarios > filters > filter sources", () => {
       });
       filter({ mode: "notebook" });
       popover().within(() => {
-        cy.findByText("Product").click();
+        cy.findByText("Products").click();
         cy.findByText("Vendor").click();
         cy.findByText("Aufderhar-Boehm").click();
         cy.button("Add filter").click();
@@ -561,7 +561,7 @@ describe("scenarios > filters > filter sources", () => {
       });
       filter({ mode: "notebook" });
       popover().within(() => {
-        cy.findByText("Product").click();
+        cy.findByText("Products").click();
         cy.findByText("Rating").click();
       });
       selectFilterOperator("Equal to");
@@ -582,7 +582,7 @@ describe("scenarios > filters > filter sources", () => {
       });
       filter({ mode: "notebook" });
       popover().within(() => {
-        cy.findByText("Product").click();
+        cy.findByText("Products").click();
         cy.findByText("Ean").click();
       });
       selectFilterOperator("Is");

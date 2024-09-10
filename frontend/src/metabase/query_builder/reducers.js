@@ -12,8 +12,8 @@ import { copy } from "metabase/lib/utils";
 import {
   API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
-  CANCEL_DATASET_CHANGES,
   CANCEL_QUERY,
+  CANCEL_QUESTION_CHANGES,
   CLEAR_OBJECT_DETAIL_FK_REFERENCES,
   CLEAR_QUERY_RESULT,
   CLOSE_QB,
@@ -379,7 +379,7 @@ export const card = handleActions(
     [API_CREATE_QUESTION]: { next: (state, { payload }) => payload },
     [API_UPDATE_QUESTION]: { next: (state, { payload }) => payload },
 
-    [CANCEL_DATASET_CHANGES]: { next: (state, { payload }) => payload.card },
+    [CANCEL_QUESTION_CHANGES]: { next: (state, { payload }) => payload.card },
 
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
@@ -491,7 +491,7 @@ export const metadataDiff = handleActions(
         };
       },
     },
-    [CANCEL_DATASET_CHANGES]: { next: () => ({}) },
+    [CANCEL_QUESTION_CHANGES]: { next: () => ({}) },
   },
   {},
 );

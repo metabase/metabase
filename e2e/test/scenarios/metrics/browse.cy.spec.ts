@@ -1,5 +1,7 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  ALL_USERS_GROUP_ID,
   FIRST_COLLECTION_ID,
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -7,12 +9,18 @@ import {
   type StructuredQuestionDetails,
   assertIsEllipsified,
   createQuestion,
+  describeEE,
+  getSidebarSectionTitle,
   main,
   navigationSidebar,
+  popover,
   restore,
+  setTokenFeatures,
+  tooltip,
 } from "e2e/support/helpers";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 
-const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
   name: string;
@@ -70,11 +78,23 @@ const PRODUCTS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
   display: "scalar",
 };
 
+const NON_NUMERIC_METRIC: StructuredQuestionDetailsWithName = {
+  name: "Max of product category",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["max", ["field", PRODUCTS.CATEGORY, null]]],
+  },
+  display: "scalar",
+};
+
 const ALL_METRICS = [
   ORDERS_SCALAR_METRIC,
   ORDERS_SCALAR_MODEL_METRIC,
   ORDERS_TIMESERIES_METRIC,
   PRODUCTS_SCALAR_METRIC,
+  NON_NUMERIC_METRIC,
 ];
 
 function createMetrics(
@@ -93,6 +113,16 @@ function findMetric(name: string) {
 
 function getMetricsTableItem(index: number) {
   return metricsTable().findAllByTestId("metric-name").eq(index);
+}
+
+function shouldHaveBookmark(name: string) {
+  getSidebarSectionTitle(/Bookmarks/).should("be.visible");
+  navigationSidebar().findByText(name).should("be.visible");
+}
+
+function shouldNotHaveBookmark(name: string) {
+  getSidebarSectionTitle(/Bookmarks/).should("not.exist");
+  navigationSidebar().findByText(name).should("not.exist");
 }
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -201,7 +231,7 @@ describe("scenarios > browse > metrics", () => {
 
     it("should be possible to sort the metrics", () => {
       createMetrics(
-        ALL_METRICS.map((metric, index) => ({
+        ALL_METRICS.slice(0, 4).map((metric, index) => ({
           ...metric,
           name: `Metric ${alphabet[index]}`,
           description: `Description ${alphabet[25 - index]}`,
@@ -228,6 +258,162 @@ describe("scenarios > browse > metrics", () => {
       getMetricsTableItem(1).should("contain", "Metric A");
       getMetricsTableItem(2).should("contain", "Metric C");
       getMetricsTableItem(3).should("contain", "Metric D");
+    });
+  });
+
+  describe("dot menu", () => {
+    it("should be possible to bookmark a metrics from the dot menu", () => {
+      createMetrics([ORDERS_SCALAR_METRIC]);
+
+      cy.visit("/browse/metrics");
+
+      shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+      metricsTable().findByLabelText("Metric options").click();
+      popover().findByText("Bookmark").should("be.visible").click();
+
+      shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+      metricsTable().findByLabelText("Metric options").click();
+      popover()
+        .findByText("Remove from bookmarks")
+        .should("be.visible")
+        .click();
+
+      shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+      metricsTable().findByLabelText("Metric options").click();
+      popover().findByText("Bookmark").should("be.visible");
+    });
+
+    it("should be possible to navigate to the collection from the dot menu", () => {
+      createMetrics([ORDERS_SCALAR_MODEL_METRIC]);
+
+      cy.visit("/browse/metrics");
+
+      metricsTable().findByLabelText("Metric options").click();
+      popover().findByText("Open collection").should("be.visible").click();
+
+      cy.location("pathname").should(
+        "match",
+        new RegExp(`^/collection/${FIRST_COLLECTION_ID}`),
+      );
+    });
+
+    it("should be possible to trash a metric from the dot menu when the user has write access", () => {
+      createMetrics([ORDERS_SCALAR_METRIC]);
+
+      cy.visit("/browse/metrics");
+
+      metricsTable().findByLabelText("Metric options").click();
+      popover().findByText("Move to trash").should("be.visible").click();
+
+      main()
+        .findByText(
+          "Metrics help you summarize and analyze your data effortlessly.",
+        )
+        .should("be.visible");
+
+      navigationSidebar().findByText("Trash").should("be.visible").click();
+      cy.button("Actions").click();
+      popover().findByText("Restore").should("be.visible").click();
+
+      navigationSidebar().findByText("Metrics").should("be.visible").click();
+      metricsTable().findByText(ORDERS_SCALAR_METRIC.name).should("be.visible");
+    });
+
+    describe("when the user does not have write access", () => {
+      it("should not be possible to trash a metric from the dot menu when the user does not have write access", () => {
+        createMetrics([ORDERS_SCALAR_METRIC]);
+        cy.signIn("readonly");
+
+        cy.visit("/browse/metrics");
+
+        metricsTable().findByLabelText("Metric options").click();
+        popover().findByText("Move to trash").should("not.exist");
+      });
+
+      it("should be possible to navigate to the collection from the dot menu", () => {
+        createMetrics([ORDERS_SCALAR_METRIC]);
+        cy.signIn("readonly");
+
+        cy.visit("/browse/metrics");
+
+        metricsTable().findByLabelText("Metric options").click();
+        popover().findByText("Open collection").should("be.visible").click();
+
+        cy.location("pathname").should("eq", "/collection/root");
+      });
+
+      it("should be possible to bookmark a metrics from the dot menu", () => {
+        createMetrics([ORDERS_SCALAR_METRIC]);
+        cy.signIn("readonly");
+
+        cy.visit("/browse/metrics");
+
+        shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+        metricsTable().findByLabelText("Metric options").click();
+        popover().findByText("Bookmark").should("be.visible").click();
+
+        shouldHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+        metricsTable().findByLabelText("Metric options").click();
+        popover()
+          .findByText("Remove from bookmarks")
+          .should("be.visible")
+          .click();
+
+        shouldNotHaveBookmark(ORDERS_SCALAR_METRIC.name);
+
+        metricsTable().findByLabelText("Metric options").click();
+        popover().findByText("Bookmark").should("be.visible");
+      });
+    });
+  });
+
+  describe("scalar metric value", () => {
+    it("should render a scalar metric's value in the table", () => {
+      restore();
+      cy.signInAsAdmin();
+      createMetrics([ORDERS_SCALAR_METRIC]);
+      cy.visit("/browse/metrics");
+
+      metricsTable().findByText("18,760").should("be.visible");
+      metricsTable().findByText("18,760").realHover();
+      tooltip().should("contain", "Overall");
+    });
+
+    it("should render a scalar metric's value in the table even when it's not a number", () => {
+      restore();
+      cy.signInAsAdmin();
+      createMetrics([NON_NUMERIC_METRIC]);
+      cy.visit("/browse/metrics");
+
+      metricsTable().findByText("Widget").should("be.visible");
+      metricsTable().findByText("Widget").realHover();
+      tooltip().should("contain", "Overall");
+    });
+  });
+
+  describeEE("scalar metric value", () => {
+    it("should not render a scalar metric's value when the user does not have permissions to see it", () => {
+      cy.signInAsAdmin();
+      createMetrics([ORDERS_SCALAR_METRIC]);
+
+      setTokenFeatures("all");
+      cy.updatePermissionsGraph({
+        [ALL_USERS_GROUP_ID]: {
+          [SAMPLE_DB_ID]: {
+            "view-data": DataPermissionValue.BLOCKED,
+          },
+        },
+      });
+
+      cy.signInAsNormalUser();
+      cy.visit("/browse/metrics");
+
+      metricsTable().findByText("18,760").should("not.exist");
     });
   });
 });
