@@ -32,6 +32,7 @@ export const TAG_TYPES = [
   "company-name",
   "checkpoints",
   "feedback",
+  "company",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {
@@ -51,4 +52,5 @@ export const TAG_TYPE_MAPPING = {
   "company-name": "company-name",
   checkpoints: "checkpoints",
   feedback: "feedback",
+  company: "company",
 } as const;

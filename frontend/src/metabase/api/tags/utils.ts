@@ -47,6 +47,7 @@ import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import type { TagType } from "./constants";
 import { TAG_TYPE_MAPPING } from "./constants";
+import { CompanyDetails } from "metabase-types/api/company";
 
 export function tag(type: TagType): TagDescription<TagType> {
   return { type };
@@ -537,4 +538,22 @@ export function provideFeedbackListTags(feedbackItems: any[]) {
     listTag("feedback"),
     ...feedbackItems.map((feedback: any) => idTag("feedback", feedback.id)),
   ];
+}
+
+export function provideCompanyDetailsListTags(
+  companies: CompanyDetails[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("company"), // List-level tag for caching
+    ...companies.flatMap(provideCompanyDetailsTags), // Tags for each individual company
+  ];
+}
+
+/**
+ * Provides tags for individual company details.
+ */
+export function provideCompanyDetailsTags(
+  company: CompanyDetails,
+): TagDescription<TagType>[] {
+  return [idTag("company", company.id)]; // Use the company ID for tagging
 }
