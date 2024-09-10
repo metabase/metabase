@@ -196,9 +196,7 @@ describe("EntityPickerModal", () => {
       await userEvent.type(
         await screen.findByPlaceholderText("Search…"),
         "My ",
-        {
-          delay: 50,
-        },
+        { delay: 50 },
       );
 
       expect(await screen.findByRole("tablist")).toBeInTheDocument();
@@ -213,6 +211,40 @@ describe("EntityPickerModal", () => {
       expect(onItemSelect).toHaveBeenCalledTimes(1);
     });
 
+    it("should return to previous tab when clearing the search input", async () => {
+      setup({
+        tabs: [TEST_CARD_TAB, TEST_TABLE_TAB],
+      });
+
+      expect(
+        await screen.findByRole("tab", { name: /All the foo/ }),
+      ).toHaveAttribute("data-active", "true");
+
+      await userEvent.click(
+        await screen.findByRole("tab", { name: /All the bar/ }),
+      );
+
+      expect(
+        await screen.findByRole("tab", { name: /All the bar/ }),
+      ).toHaveAttribute("data-active", "true");
+
+      await userEvent.type(
+        await screen.findByPlaceholderText("Search…"),
+        "My ",
+        { delay: 50 },
+      );
+
+      expect(
+        await screen.findByRole("tab", { name: /2 results for "My"/ }),
+      ).toHaveAttribute("data-active", "true");
+
+      await userEvent.clear(await screen.findByPlaceholderText("Search…"));
+
+      expect(
+        await screen.findByRole("tab", { name: /All the bar/ }),
+      ).toHaveAttribute("data-active", "true");
+    });
+
     it("should show a loading state while search is happening", async () => {
       setup({
         searchDelay: 2000,
@@ -221,9 +253,7 @@ describe("EntityPickerModal", () => {
       await userEvent.type(
         await screen.findByPlaceholderText("Search…"),
         "My ",
-        {
-          delay: 50,
-        },
+        { delay: 50 },
       );
       expect(await screen.findByRole("tablist")).toBeInTheDocument();
       expect(
@@ -272,9 +302,7 @@ describe("EntityPickerModal", () => {
       await userEvent.type(
         await screen.findByPlaceholderText("Search…"),
         "caterpie",
-        {
-          delay: 50,
-        },
+        { delay: 50 },
       );
 
       await userEvent.click(await screen.findByRole("tab", { name: /Search/ }));
