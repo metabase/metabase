@@ -13,6 +13,7 @@ import { CompanyHeader } from "./CompanySettings/CompanyHeader";
 import CS from "metabase/css/core/index.css";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
+import { PaginationControlsCustom } from "metabase/components/PaginationControlsCustom";
 
 export const BrowseValidation = () => {
   const { data, isLoading, error } = useQuestionListQuery();
@@ -171,7 +172,7 @@ export const BrowseValidation = () => {
           className={cx(CS.flex, CS.justifyBetween, CS.my3)}
           style={{ marginTop: "auto" }}
         >
-          <PaginationControls
+          <PaginationControlsCustom
             showTotal
             page={page}
             pageSize={pageSize}
