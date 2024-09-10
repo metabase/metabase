@@ -270,6 +270,7 @@ describe(
         resetTestTable({ type: "postgres", table: TEST_TABLE });
         restore("postgres-writable");
         cy.signInAsAdmin();
+        cy.visit("admin/performance");
       });
 
       (
