@@ -1,13 +1,16 @@
+import cx from "classnames";
 import { useState } from "react";
 import { c, t } from "ttag";
 
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import DateTime from "metabase/components/DateTime";
-import Styles from "metabase/css/core/cursor.module.css";
+import Styles from "metabase/css/core/index.css";
 import { getUserName } from "metabase/lib/user";
 import { QuestionPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
-import { Flex, Icon, Text } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
+
+import SidebarStyles from "./QuestionInfoSidebar.module.css";
 
 export const QuestionDetails = ({ question }: { question: Question }) => {
   const lastEditInfo = question.lastEditInfo();
@@ -88,7 +91,7 @@ function SharingDisplay({ question }: { question: Question }) {
     <SidesheetCardSection title={t`Visibility`}>
       {publicUUID && (
         <Flex gap="sm" align="center">
-          <Icon name="share" color="var(--mb-color-brand)" />
+          <Icon name="globe" color="var(--mb-color-brand)" />
           <Text>{t`Shared publicly`}</Text>
 
           <QuestionPublicLinkPopover
@@ -96,7 +99,11 @@ function SharingDisplay({ question }: { question: Question }) {
               <Icon
                 name="link"
                 onClick={() => setIsPopoverOpen(prev => !prev)}
-                className={Styles.cursorPointer}
+                className={cx(
+                  Styles.cursorPointer,
+                  Styles.textBrandHover,
+                  SidebarStyles.LittleMarginTop,
+                )}
               />
             }
             isOpen={isPopoverOpen}
@@ -107,8 +114,10 @@ function SharingDisplay({ question }: { question: Question }) {
       )}
       {embeddingEnabled && (
         <Flex gap="sm" align="center">
-          <Icon name="embed" color="var(--mb-color-brand)" />
-          <Text>{t`Embedding enabled`}</Text>
+          <Box className={SidebarStyles.BrandCircle}>
+            <Icon name="embed" size="14px" />
+          </Box>
+          <Text>{t`Embedded`}</Text>
         </Flex>
       )}
     </SidesheetCardSection>

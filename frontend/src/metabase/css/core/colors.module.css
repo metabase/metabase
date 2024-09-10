@@ -154,7 +154,8 @@
   color: var(--mb-color-text-dark);
 }
 
-.textBrand {
+.textBrand,
+.textBrandHover:hover {
   color: var(--mb-color-brand);
 }
 
@@ -232,6 +233,10 @@
 
 .bgLightBlue {
   background-color: var(--mb-color-bg-light);
+}
+
+.bgBrand {
+  background-color: var(--mb-color-brand);
 }
 
 .DashboardNight .bgLight {
