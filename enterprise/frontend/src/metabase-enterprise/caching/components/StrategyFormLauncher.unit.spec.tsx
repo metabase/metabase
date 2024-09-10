@@ -63,7 +63,7 @@ describe("StrategyFormLauncher", () => {
       ...defaultProps,
     });
     const launcher = await screen.findByLabelText(
-      "Edit default policy (currently: Duration: 96h)",
+      "Edit default policy (currently: Duration)",
     );
     expect(launcher).toHaveTextContent("Default policy");
     expect(launcher).toHaveAttribute("data-testid", "strategy-form-launcher");
@@ -89,7 +89,7 @@ describe("StrategyFormLauncher", () => {
       ...defaultProps,
     });
     const launcher = await screen.findByLabelText(
-      "Edit policy for database 'Database 2' (currently inheriting the default policy, Duration: 96h)",
+      "Edit policy for database 'Database 2' (currently inheriting the default policy, Duration)",
     );
     expect(launcher).toHaveTextContent("Database 2");
     expect(launcher).toHaveAttribute(
