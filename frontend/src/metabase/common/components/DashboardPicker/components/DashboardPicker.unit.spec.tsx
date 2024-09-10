@@ -193,9 +193,11 @@ const setupPicker = async ({
 
   renderWithProviders(
     <DashboardPicker
-      onItemSelect={onChange}
       initialValue={initialValue}
       options={defaultOptions}
+      path={undefined}
+      onItemSelect={onChange}
+      onPathChange={jest.fn()}
     />,
   );
 

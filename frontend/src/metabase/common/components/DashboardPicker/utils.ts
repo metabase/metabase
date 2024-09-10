@@ -13,6 +13,7 @@ import type { PickerState } from "../EntityPicker";
 import type {
   DashboardPickerInitialValueItem,
   DashboardPickerItem,
+  DashboardPickerPath,
 } from "./types";
 
 export const getCollectionIdPath = (
@@ -61,7 +62,7 @@ export const getStateFromIdPath = ({
   idPath: CollectionId[];
   namespace?: "snippets";
   models?: CollectionItemModel[];
-}): PickerState<DashboardPickerItem, ListCollectionItemsRequest> => {
+}): DashboardPickerPath => {
   const statePath: PickerState<
     DashboardPickerItem,
     ListCollectionItemsRequest

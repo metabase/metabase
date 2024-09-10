@@ -184,7 +184,12 @@ export const CollectionPickerInner = (
         }
       }
     },
-    [currentCollection, options.namespace, userPersonalCollectionId],
+    [
+      currentCollection,
+      options.namespace,
+      userPersonalCollectionId,
+      onPathChange,
+    ],
   );
 
   if (error) {

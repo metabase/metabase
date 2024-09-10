@@ -158,7 +158,7 @@ export const QuestionPicker = ({
         onPathChange(newPath);
       }
     },
-    [currentCollection, userPersonalCollectionId],
+    [currentCollection, userPersonalCollectionId, onPathChange],
   );
 
   if (isLoading) {

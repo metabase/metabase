@@ -9,7 +9,11 @@ import type {
   CollectionItemId,
   CollectionPickerItem,
 } from "../CollectionPicker";
-import type { EntityPickerModalOptions, ListProps } from "../EntityPicker";
+import type {
+  EntityPickerModalOptions,
+  ListProps,
+  PickerState,
+} from "../EntityPicker";
 
 export type DashboardPickerModel = Extract<
   CollectionPickerItem["model"],
@@ -45,4 +49,9 @@ export type DashboardItemListProps = ListProps<
   DashboardPickerItem,
   ListCollectionItemsRequest,
   DashboardPickerOptions
+>;
+
+export type DashboardPickerPath = PickerState<
+  DashboardPickerItem,
+  ListCollectionItemsRequest
 >;

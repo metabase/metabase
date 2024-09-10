@@ -15,6 +15,7 @@ import type {
   DashboardPickerInitialValueItem,
   DashboardPickerItem,
   DashboardPickerOptions,
+  DashboardPickerPath,
   DashboardPickerValueItem,
 } from "../types";
 import { getCollectionId } from "../utils";
@@ -114,6 +115,8 @@ export const DashboardPickerModal = ({
     </Button>,
   ];
 
+  const [dashboardsPath, setDashboardsPath] = useState<DashboardPickerPath>();
+
   const tabs: EntityPickerTab<
     DashboardPickerItem["id"],
     DashboardPickerItem["model"],
@@ -127,12 +130,14 @@ export const DashboardPickerModal = ({
       icon: "dashboard",
       render: ({ onItemSelect }) => (
         <DashboardPicker
-          onItemSelect={onItemSelect}
           initialValue={value}
-          options={options}
           models={["dashboard"]}
+          options={options}
+          path={dashboardsPath}
           ref={pickerRef}
           shouldDisableItem={shouldDisableItem}
+          onItemSelect={onItemSelect}
+          onPathChange={setDashboardsPath}
         />
       ),
     },

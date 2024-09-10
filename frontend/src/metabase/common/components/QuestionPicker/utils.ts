@@ -6,13 +6,11 @@ import type {
   CardType,
   CollectionId,
   CollectionItemModel,
-  ListCollectionItemsRequest,
 } from "metabase-types/api";
-
-import type { PickerState } from "../EntityPicker";
 
 import type {
   QuestionPickerItem,
+  QuestionPickerPath,
   QuestionPickerValue,
   QuestionPickerValueModel,
 } from "./types";
@@ -63,17 +61,16 @@ export const getStateFromIdPath = ({
   idPath: CollectionId[];
   namespace?: "snippets";
   models?: CollectionItemModel[];
-}): PickerState<QuestionPickerItem, ListCollectionItemsRequest> => {
-  const statePath: PickerState<QuestionPickerItem, ListCollectionItemsRequest> =
-    [
-      {
-        selectedItem: {
-          name: "",
-          model: "collection",
-          id: idPath[0],
-        },
+}): QuestionPickerPath => {
+  const statePath: QuestionPickerPath = [
+    {
+      selectedItem: {
+        name: "",
+        model: "collection",
+        id: idPath[0],
       },
-    ];
+    },
+  ];
 
   idPath.forEach((id, index) => {
     const nextLevelId = idPath[index + 1] ?? null;
