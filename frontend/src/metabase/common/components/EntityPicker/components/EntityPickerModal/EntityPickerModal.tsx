@@ -116,7 +116,6 @@ export function EntityPickerModal<
   onItemSelect,
 }: EntityPickerModalProps<Id, Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const hasSearchTab = searchQuery.length > 0;
   const { data: recentItems, isLoading: isLoadingRecentItems } =
     useListRecentsQuery(
       { context: recentsContext },
@@ -158,6 +157,7 @@ export function EntityPickerModal<
     const computedTabs: EntityPickerTab<Id, Model, Item>[] = [];
     const hasRecentsTab =
       hydratedOptions.hasRecents && filteredRecents.length > 0;
+    const hasSearchTab = !!searchQuery;
     // This is to prevent different tab being initially open and then flickering back
     // to recents tab once recents have loaded (due to computeInitialTab)
     const shouldOptimisticallyAddRecentsTabWhileLoading =
