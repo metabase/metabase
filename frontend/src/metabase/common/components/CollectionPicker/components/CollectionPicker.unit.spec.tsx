@@ -150,8 +150,10 @@ const setup = ({
 
   return renderWithProviders(
     <CollectionPicker
-      onItemSelect={onItemSelect}
       initialValue={initialValue}
+      path={undefined}
+      onItemSelect={onItemSelect}
+      onPathChange={jest.fn()}
     />,
   );
 };

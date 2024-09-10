@@ -189,11 +189,12 @@ const setupPicker = async ({
 
   renderWithProviders(
     <QuestionPicker
-      onItemSelect={onChange}
       initialValue={initialValue}
       models={["card"]}
       options={defaultOptions}
       path={undefined}
+      onItemSelect={onChange}
+      onPathChange={jest.fn()}
     />,
   );
 

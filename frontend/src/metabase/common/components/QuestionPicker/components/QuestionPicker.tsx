@@ -38,7 +38,8 @@ interface QuestionPickerProps {
   options: QuestionPickerOptions;
   path: QuestionPickerPath | undefined;
   shouldShowItem?: (item: QuestionPickerItem) => boolean;
-  onItemSelect: (item: QuestionPickerItem, path: QuestionPickerPath) => void;
+  onItemSelect: (item: QuestionPickerItem) => void;
+  onPathChange: (path: QuestionPickerPath) => void;
 }
 
 const useGetInitialCollection = (
@@ -86,6 +87,7 @@ export const QuestionPicker = ({
   path: pathProp,
   shouldShowItem,
   onItemSelect,
+  onPathChange,
 }: QuestionPickerProps) => {
   const defaultPath = useMemo(() => {
     return getStateFromIdPath({ idPath: ["root"], models });
@@ -103,9 +105,10 @@ export const QuestionPicker = ({
         idPath: getCollectionIdPath(folder, userPersonalCollectionId),
         models,
       });
-      onItemSelect(folder, newPath);
+      onItemSelect(folder);
+      onPathChange(newPath);
     },
-    [onItemSelect, userPersonalCollectionId, models],
+    [onItemSelect, onPathChange, userPersonalCollectionId, models],
   );
 
   const handleItemSelect = useCallback(
@@ -119,9 +122,10 @@ export const QuestionPicker = ({
 
       const newPath = path.slice(0, pathLevel + 1);
       newPath[newPath.length - 1].selectedItem = item;
-      onItemSelect(item, newPath);
+      onItemSelect(item);
+      onPathChange(newPath);
     },
-    [onItemSelect, path, userPersonalCollectionId],
+    [onItemSelect, onPathChange, path, userPersonalCollectionId],
   );
 
   useDeepCompareEffect(
@@ -150,7 +154,8 @@ export const QuestionPicker = ({
 
         newPath[newPath.length - 1].selectedItem = newSelectedItem;
 
-        onItemSelect(newSelectedItem, newPath);
+        onItemSelect(newSelectedItem);
+        onPathChange(newPath);
       }
     },
     [currentCollection, userPersonalCollectionId],

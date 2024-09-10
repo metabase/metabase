@@ -107,10 +107,8 @@ export const QuestionPickerModal = ({
           models={["card"]}
           options={options}
           path={questionsPath}
-          onItemSelect={(item, path) => {
-            onItemSelect(item);
-            setQuestionsPath(path);
-          }}
+          onItemSelect={onItemSelect}
+          onPathChange={setQuestionsPath}
         />
       ),
     },
@@ -126,10 +124,8 @@ export const QuestionPickerModal = ({
           models={["dataset"]}
           options={options}
           path={modelsPath}
-          onItemSelect={(item, path) => {
-            onItemSelect(item);
-            setModelsPath(path);
-          }}
+          onItemSelect={onItemSelect}
+          onPathChange={setModelsPath}
         />
       ),
     },
@@ -145,10 +141,8 @@ export const QuestionPickerModal = ({
           models={["metric"]}
           options={options}
           path={metricsPath}
-          onItemSelect={(item, path) => {
-            onItemSelect(item);
-            setMetricsPath(path);
-          }}
+          onItemSelect={onItemSelect}
+          onPathChange={setMetricsPath}
         />
       ),
     },

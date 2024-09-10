@@ -31,7 +31,8 @@ interface Props {
   databaseId?: DatabaseId;
   path: TablePickerPath | undefined;
   value: TablePickerValue | undefined;
-  onItemSelect: (value: DataPickerItem, path: TablePickerPath) => void;
+  onItemSelect: (value: DataPickerItem) => void;
+  onPathChange: (path: TablePickerPath) => void;
 }
 
 export const TablePicker = ({
@@ -39,6 +40,7 @@ export const TablePicker = ({
   path,
   value,
   onItemSelect,
+  onPathChange,
 }: Props) => {
   const defaultPath = useMemo<TablePickerPath>(() => {
     return [databaseId ?? value?.db_id, value?.schema, value?.id];
@@ -94,32 +96,36 @@ export const TablePicker = ({
           const newSchemaName = schemas?.length === 1 ? schemas[0] : undefined;
           const newPath: TablePickerPath = [dbId, newSchemaName, undefined];
           setSchemaName(newSchemaName);
-          onItemSelect(folder, newPath);
+          onItemSelect(folder);
+          onPathChange(newPath);
         } else {
           const newPath: TablePickerPath = [folder.id, undefined, undefined];
           setDbId(folder.id);
           setSchemaName(undefined);
-          onItemSelect(folder, newPath);
+          onItemSelect(folder);
+          onPathChange(newPath);
         }
       }
 
       if (folder.model === "schema") {
         const newPath: TablePickerPath = [dbId, folder.id, undefined];
         setSchemaName(folder.id);
-        onItemSelect(folder, newPath);
+        onItemSelect(folder);
+        onPathChange(newPath);
       }
 
       setTableId(undefined);
     },
-    [dbId, schemas, onItemSelect],
+    [dbId, schemas, onItemSelect, onPathChange],
   );
 
   const handleTableSelect = useCallback(
     (item: DataPickerValueItem) => {
       setTableId(item.id);
-      onItemSelect(item, [dbId, schemaName, item.id]);
+      onItemSelect(item);
+      onPathChange([dbId, schemaName, item.id]);
     },
-    [dbId, schemaName, setTableId, onItemSelect],
+    [dbId, schemaName, setTableId, onItemSelect, onPathChange],
   );
 
   return (

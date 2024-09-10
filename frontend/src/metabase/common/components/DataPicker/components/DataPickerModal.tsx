@@ -147,12 +147,12 @@ export const DataPickerModal = ({
             options={options}
             path={modelsPath}
             shouldShowItem={modelsShouldShowItem}
-            onItemSelect={(questionPickerItem, path) => {
+            onItemSelect={questionPickerItem => {
               const item =
                 castQuestionPickerItemToDataPickerItem(questionPickerItem);
               onItemSelect(item);
-              setModelsPath(path);
             }}
+            onPathChange={setModelsPath}
           />
         ),
       });
@@ -172,12 +172,12 @@ export const DataPickerModal = ({
             options={options}
             path={metricsPath}
             shouldShowItem={metricsShouldShowItem}
-            onItemSelect={(questionPickerItem, path) => {
+            onItemSelect={questionPickerItem => {
               const item =
                 castQuestionPickerItemToDataPickerItem(questionPickerItem);
               onItemSelect(item);
-              setMetricsPath(path);
             }}
+            onPathChange={setMetricsPath}
           />
         ),
       });
@@ -195,10 +195,8 @@ export const DataPickerModal = ({
             databaseId={databaseId}
             path={tablesPath}
             value={isTableItem(value) ? value : undefined}
-            onItemSelect={(item, path) => {
-              onItemSelect(item);
-              setTablesPath(path);
-            }}
+            onItemSelect={onItemSelect}
+            onPathChange={setTablesPath}
           />
         ),
       });
@@ -218,12 +216,12 @@ export const DataPickerModal = ({
             options={options}
             path={questionsPath}
             shouldShowItem={questionsShouldShowItem}
-            onItemSelect={(questionPickerItem, path) => {
+            onItemSelect={questionPickerItem => {
               const item =
                 castQuestionPickerItemToDataPickerItem(questionPickerItem);
               onItemSelect(item);
-              setQuestionsPath(path);
             }}
+            onPathChange={setQuestionsPath}
           />
         ),
       });
