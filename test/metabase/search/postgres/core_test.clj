@@ -1,5 +1,6 @@
 (ns metabase.search.postgres.core-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.search :refer [is-postgres?]]
    [metabase.search.postgres.core :as search.postgres]
@@ -35,10 +36,13 @@
     (is (<= 3 (count (hybrid "collection"))))
     (testing "Rasta can only see his own collections"
       (is (= ["Rasta Toucan's Personal Collection"]
-             (map :name (hybrid "collection"
-                                {:current-user-id    (mt/user->id :rasta)
-                                 :is-superuser?      false
-                                 :current-user-perms #{"/none/"}})))))))
+             (->> {:current-user-id    (mt/user->id :rasta)
+                   :is-superuser?      false
+                   :current-user-perms #{"/none/"}}
+                  (hybrid "collection")
+                  (map :name)
+                  ;; These can seep in from other tests T_T
+                  (remove #(str/includes? % "trash"))))))))
 
 (deftest hybrid-multi-test
   (with-setup
