@@ -48,7 +48,7 @@
    created_by          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at      [:maybe ms/PositiveInt]
    last_edited_by      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
-   search_engine       [:maybe keyword?]
+   search_engine       [:maybe string?]
    search_native_query [:maybe true?]
    verified            [:maybe true?]}
   (search/query-model-set
@@ -103,7 +103,7 @@
    last_edited_at                      [:maybe ms/NonBlankString]
    last_edited_by                      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    model_ancestors                     [:maybe :boolean]
-   search_engine                       [:maybe keyword?]
+   search_engine                       [:maybe string?]
    search_native_query                 [:maybe true?]
    verified                            [:maybe true?]
    ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]}

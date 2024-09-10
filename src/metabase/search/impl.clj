@@ -1,6 +1,7 @@
 (ns metabase.search.impl
   (:require
    [cheshire.core :as json]
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.db :as mdb]
@@ -14,6 +15,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.permissions.util :as perms.u]
+   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config
     :as search.config
@@ -540,11 +542,26 @@
     (not (zero? v))
     v))
 
+(def ^:private default-engine :in-place)
+
+(defn- allowed-engine? [engine]
+  (case engine
+    :in-place true
+    :fulltext (public-settings/experimental-fulltext-search-enabled)))
+
 (defn- parse-engine [value]
-  (or (get search.config/search-engines value)
-      (when (and value (not= "" (name value)))
-        (log/warnf "Unknown value for :search-engine (%s)" value))
-      :in-place))
+  (or (when-not (str/blank? value)
+        (let [engine (keyword value)]
+          (cond
+            (not (contains? search.config/search-engines engine))
+            (log/warnf "Unknown search-engine: %s" value)
+
+            (not (allowed-engine? engine))
+            (log/warnf "Forbidden search-engine: %s" value)
+
+            :else
+            engine)))
+      default-engine))
 
 (mr/def ::search-context.input
   [:map {:closed true}
@@ -562,7 +579,7 @@
    [:limit                               {:optional true} [:maybe ms/Int]]
    [:offset                              {:optional true} [:maybe ms/Int]]
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
-   [:search-engine                       {:optional true} [:maybe keyword?]]
+   [:search-engine                       {:optional true} [:maybe string?]]
    [:search-native-query                 {:optional true} [:maybe true?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
