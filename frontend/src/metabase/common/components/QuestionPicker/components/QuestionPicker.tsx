@@ -154,7 +154,6 @@ export const QuestionPicker = ({
 
         newPath[newPath.length - 1].selectedItem = newSelectedItem;
 
-        onItemSelect(newSelectedItem);
         onPathChange(newPath);
       }
     },
