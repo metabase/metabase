@@ -109,8 +109,8 @@
    ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let  [models-set (if (seq models)
-                                (set models)
-                                search/all-models)]
+                      (set models)
+                      search/all-models)]
     (search/search
      (search/search-context
       {:archived                            archived
