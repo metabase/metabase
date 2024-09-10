@@ -20,7 +20,7 @@ import {
 } from "e2e/support/helpers";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 
-const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
   name: string;
@@ -78,11 +78,23 @@ const PRODUCTS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
   display: "scalar",
 };
 
+const NON_NUMERIC_METRIC: StructuredQuestionDetailsWithName = {
+  name: "Max of product category",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["max", ["field", PRODUCTS.CATEGORY, null]]],
+  },
+  display: "scalar",
+};
+
 const ALL_METRICS = [
   ORDERS_SCALAR_METRIC,
   ORDERS_SCALAR_MODEL_METRIC,
   ORDERS_TIMESERIES_METRIC,
   PRODUCTS_SCALAR_METRIC,
+  NON_NUMERIC_METRIC,
 ];
 
 function createMetrics(
@@ -219,7 +231,7 @@ describe("scenarios > browse > metrics", () => {
 
     it("should be possible to sort the metrics", () => {
       createMetrics(
-        ALL_METRICS.map((metric, index) => ({
+        ALL_METRICS.slice(0, 4).map((metric, index) => ({
           ...metric,
           name: `Metric ${alphabet[index]}`,
           description: `Description ${alphabet[25 - index]}`,
@@ -369,6 +381,17 @@ describe("scenarios > browse > metrics", () => {
 
       metricsTable().findByText("18,760").should("be.visible");
       metricsTable().findByText("18,760").realHover();
+      tooltip().should("contain", "Overall");
+    });
+
+    it("should render a scalar metric's value in the table even when it's not a number", () => {
+      restore();
+      cy.signInAsAdmin();
+      createMetrics([NON_NUMERIC_METRIC]);
+      cy.visit("/browse/metrics");
+
+      metricsTable().findByText("Widget").should("be.visible");
+      metricsTable().findByText("Widget").realHover();
       tooltip().should("contain", "Overall");
     });
   });
