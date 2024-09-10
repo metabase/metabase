@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
@@ -14,12 +14,16 @@ import type {
 import type { EntityPickerTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
-import { QuestionPicker } from "../../QuestionPicker";
+import {
+  QuestionPicker,
+  type QuestionPickerStatePath,
+} from "../../QuestionPicker";
 import { useAvailableData } from "../hooks";
 import type {
   DataPickerItem,
   DataPickerModalOptions,
   DataPickerValue,
+  TablePickerStatePath,
 } from "../types";
 import {
   castQuestionPickerItemToDataPickerItem,
@@ -120,6 +124,11 @@ export const DataPickerModal = ({
     [onChange, onClose, tryLogRecentItem],
   );
 
+  const [modelsPath, setModelsPath] = useState<QuestionPickerStatePath>();
+  const [metricsPath, setMetricsPath] = useState<QuestionPickerStatePath>();
+  const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
+  const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
+
   const tabs = (function getTabs() {
     const computedTabs: EntityPickerTab<
       DataPickerItem["id"],
@@ -139,12 +148,14 @@ export const DataPickerModal = ({
             initialValue={isModelItem(value) ? value : undefined}
             models={MODEL_PICKER_MODELS}
             options={options}
+            path={modelsPath}
             shouldShowItem={modelsShouldShowItem}
             onItemSelect={questionPickerItem => {
               const item =
                 castQuestionPickerItemToDataPickerItem(questionPickerItem);
               onItemSelect(item);
             }}
+            onPathChange={setModelsPath}
           />
         ),
       });
@@ -162,12 +173,14 @@ export const DataPickerModal = ({
             initialValue={isMetricItem(value) ? value : undefined}
             models={METRIC_PICKER_MODELS}
             options={options}
+            path={metricsPath}
             shouldShowItem={metricsShouldShowItem}
             onItemSelect={questionPickerItem => {
               const item =
                 castQuestionPickerItemToDataPickerItem(questionPickerItem);
               onItemSelect(item);
             }}
+            onPathChange={setMetricsPath}
           />
         ),
       });
@@ -183,8 +196,10 @@ export const DataPickerModal = ({
         render: ({ onItemSelect }) => (
           <TablePicker
             databaseId={databaseId}
+            path={tablesPath}
             value={isTableItem(value) ? value : undefined}
             onItemSelect={onItemSelect}
+            onPathChange={setTablesPath}
           />
         ),
       });
@@ -202,12 +217,14 @@ export const DataPickerModal = ({
             initialValue={isQuestionItem(value) ? value : undefined}
             models={QUESTION_PICKER_MODELS}
             options={options}
+            path={questionsPath}
             shouldShowItem={questionsShouldShowItem}
             onItemSelect={questionPickerItem => {
               const item =
                 castQuestionPickerItemToDataPickerItem(questionPickerItem);
               onItemSelect(item);
             }}
+            onPathChange={setQuestionsPath}
           />
         ),
       });
