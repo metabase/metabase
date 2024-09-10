@@ -134,8 +134,16 @@ export const getSearchInputPlaceholder = <
     return t`Search…`;
   }
 
-  if (folder.model === "dataset") {
-    return t`Search…`;
+  if (folder.model === "collection") {
+    return t`Search this collection or everywhere…`;
+  }
+
+  if (folder.model === "database") {
+    return t`Search this database or everywhere…`;
+  }
+
+  if (folder.model === "schema") {
+    return t`Search this schema or everywhere…`;
   }
 
   return t`Search…`;
