@@ -8,7 +8,6 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import * as IsLocalhostModule from "embedding-sdk/lib/is-localhost";
-import { sdkReducers } from "embedding-sdk/store";
 import {
   createMockApiKeyConfig,
   createMockJwtConfig,
@@ -52,7 +51,6 @@ const setup = (options: Options) => {
   return renderWithProviders(<div>hello!</div>, {
     sdkProviderProps: { config: options.config },
     storeInitialState: state,
-    customReducers: sdkReducers,
     mode: "sdk",
   });
 };
