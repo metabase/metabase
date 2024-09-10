@@ -193,6 +193,7 @@ const setupPicker = async ({
       initialValue={initialValue}
       models={["card"]}
       options={defaultOptions}
+      path={undefined}
     />,
   );
 

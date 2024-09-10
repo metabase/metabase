@@ -11,6 +11,7 @@ import type {
   QuestionPickerItem,
   QuestionPickerModel,
   QuestionPickerOptions,
+  QuestionPickerPath,
   QuestionPickerValue,
   QuestionPickerValueItem,
 } from "../types";
@@ -85,6 +86,10 @@ export const QuestionPickerModal = ({
     }
   };
 
+  const [modelsPath, setModelsPath] = useState<QuestionPickerPath>();
+  const [metricsPath, setMetricsPath] = useState<QuestionPickerPath>();
+  const [questionsPath, setQuestionsPath] = useState<QuestionPickerPath>();
+
   const tabs: EntityPickerTab<
     QuestionPickerItem["id"],
     QuestionPickerItem["model"],
@@ -98,10 +103,14 @@ export const QuestionPickerModal = ({
       icon: "table",
       render: ({ onItemSelect }) => (
         <QuestionPicker
-          onItemSelect={onItemSelect}
           initialValue={value}
-          options={options}
           models={["card"]}
+          options={options}
+          path={questionsPath}
+          onItemSelect={(item, path) => {
+            onItemSelect(item);
+            setQuestionsPath(path);
+          }}
         />
       ),
     },
@@ -113,10 +122,14 @@ export const QuestionPickerModal = ({
       icon: "model",
       render: ({ onItemSelect }) => (
         <QuestionPicker
-          onItemSelect={onItemSelect}
           initialValue={value}
-          options={options}
           models={["dataset"]}
+          options={options}
+          path={modelsPath}
+          onItemSelect={(item, path) => {
+            onItemSelect(item);
+            setModelsPath(path);
+          }}
         />
       ),
     },
@@ -128,10 +141,14 @@ export const QuestionPickerModal = ({
       icon: "metric",
       render: ({ onItemSelect }) => (
         <QuestionPicker
-          onItemSelect={onItemSelect}
           initialValue={value}
-          options={options}
           models={["metric"]}
+          options={options}
+          path={metricsPath}
+          onItemSelect={(item, path) => {
+            onItemSelect(item);
+            setMetricsPath(path);
+          }}
         />
       ),
     },
