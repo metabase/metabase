@@ -22,21 +22,21 @@ import { ChunkyList, ResultItem } from "../ResultItem";
 const defaultSearchFilter = (results: SearchResult[]) => results;
 
 export function EntityPickerSearchInput({
+  searchQuery,
+  setSearchQuery,
+  setSearchResults,
   models,
   placeholder,
   searchFilter = defaultSearchFilter,
   searchParams = {},
-  searchQuery,
-  setSearchQuery,
-  setSearchResults,
 }: {
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  setSearchResults: (results: SearchResult[] | null) => void;
   models: SearchModel[];
   placeholder: string;
   searchFilter?: (results: SearchResult[]) => SearchResult[];
   searchParams?: Partial<SearchRequest>;
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-  setSearchResults: (results: SearchResult[] | null) => void;
 }) {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);

@@ -287,11 +287,11 @@ export function EntityPickerModal<
               <EntityPickerSearchInput
                 models={searchModels}
                 placeholder={getSearchInputPlaceholder(selectedFolder)}
-                searchFilter={searchResultFilter}
-                searchParams={searchParams}
                 searchQuery={searchQuery}
                 setSearchResults={setSearchResults}
                 setSearchQuery={setSearchQuery}
+                searchFilter={searchResultFilter}
+                searchParams={searchParams}
               />
             )}
           </GrowFlex>
