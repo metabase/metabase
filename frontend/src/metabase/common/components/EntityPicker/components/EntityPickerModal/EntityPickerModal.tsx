@@ -236,7 +236,7 @@ export function EntityPickerModal<
   );
 
   useEffect(() => {
-    // when the searchQuery changes, switch to the search tab
+    // automatically switch to search tab when it becomes available (i.e. when searchQuery is not empty)
     if (hasSearchTab) {
       setSelectedTabId(SEARCH_TAB_ID);
     } else {
