@@ -10,7 +10,7 @@ import { createMockModelResult } from "../test-utils";
 import type { ModelResult } from "../types";
 
 import {
-  getDatasetScalarValueForMetric,
+  getDatasetValueForMetric,
   getMaxRecentModelCount,
   isDatasetScalar,
   sortModelOrMetric,
@@ -248,7 +248,7 @@ describe("isDatasetScalar", () => {
   });
 });
 
-describe("getDatasetScalarValueForMetric", () => {
+describe("getDatasetValueForMetric", () => {
   it("should return null if the dataset is not scalar", () => {
     const dataset = createMockDataset({
       data: createMockDatasetData({
@@ -256,7 +256,7 @@ describe("getDatasetScalarValueForMetric", () => {
         rows: [[1], [2]],
       }),
     });
-    expect(getDatasetScalarValueForMetric(dataset)).toBe(null);
+    expect(getDatasetValueForMetric(dataset)).toBe(null);
   });
 
   it("should return the value if the dataset is scalar", () => {
@@ -268,10 +268,9 @@ describe("getDatasetScalarValueForMetric", () => {
         rows: [[value]],
       }),
     });
-    expect(getDatasetScalarValueForMetric(dataset)).toEqual({
-      value,
-      column,
-      tooltip: "Overall",
+    expect(getDatasetValueForMetric(dataset)).toEqual({
+      value: "42",
+      label: "Overall",
     });
   });
 });

@@ -26,7 +26,6 @@ import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import Bookmarks from "metabase/entities/bookmarks";
 import Questions from "metabase/entities/questions";
-import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -56,7 +55,7 @@ import {
   ValueWrapper,
 } from "./BrowseTable.styled";
 import {
-  getDatasetScalarValueForMetric,
+  getDatasetValueForMetric,
   getMetricDescription,
   sortModelOrMetric,
 } from "./utils";
@@ -477,7 +476,7 @@ function ValueCell({ metric }: { metric?: MetricResult }) {
     );
   }
 
-  const value = getDatasetScalarValueForMetric(data);
+  const value = getDatasetValueForMetric(data);
   if (!value) {
     return emptyCell;
   }
@@ -485,13 +484,8 @@ function ValueCell({ metric }: { metric?: MetricResult }) {
   return (
     <ValueTableCell>
       <ValueWrapper>
-        <Tooltip label={<Text>{value.tooltip}</Text>}>
-          <Value>
-            {formatValue(value.value, {
-              jsx: true,
-              column: value.column,
-            })}
-          </Value>
+        <Tooltip label={<Text>{value.label}</Text>}>
+          <Value>{value.value}</Value>
         </Tooltip>
       </ValueWrapper>
     </ValueTableCell>
