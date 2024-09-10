@@ -28,7 +28,9 @@ const DatabaseEngineField = ({
   const options = useMemo(() => {
     return getEngineOptions(engines, engineKey, isAdvanced).filter(
       option =>
-        option.value === "postgres" || option.value === "bigquery-cloud-sdk",
+        option.value === "postgres" ||
+        option.value === "bigquery-cloud-sdk" ||
+        option.value === "redshift",
     );
   }, [engines, engineKey, isAdvanced]);
 
