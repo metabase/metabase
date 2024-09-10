@@ -213,7 +213,7 @@ const StrategyFormBody = ({
         style={{ overflow: isInSidebar ? undefined : "auto" }}
         aria-labelledby={headingId}
       >
-        <FormBox>
+        <FormBox isInSidebar={isInSidebar}>
           {shouldShowName && (
             <Box lh="1rem" pt="md" color="text-medium">
               <Group spacing="sm">

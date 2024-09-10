@@ -95,7 +95,11 @@ export const BrowseModels = () => {
           >
             <Title order={1} color="text-dark">
               <Group spacing="sm">
-                <Icon size={24} color={"var(--mb-color-brand)"} name="model" />
+                <Icon
+                  size={24}
+                  color="var(--mb-color-icon-primary)"
+                  name="model"
+                />
                 {t`Models`}
               </Group>
             </Title>
@@ -135,7 +139,6 @@ export const BrowseModels = () => {
                     recentModelsResult.isLoading || modelsResult.isLoading
                   }
                   style={{ flex: 1 }}
-                  delay={0}
                   loader={<RecentModels skeleton />}
                 >
                   <RecentModels models={recentModels} />
@@ -144,7 +147,6 @@ export const BrowseModels = () => {
                   error={modelsResult.error}
                   loading={modelsResult.isLoading}
                   style={{ flex: 1 }}
-                  delay={0}
                   loader={<ModelsTable skeleton />}
                 >
                   <ModelsTable models={filteredModels} />
