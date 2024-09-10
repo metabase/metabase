@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
 import { getCollectionPathAsString } from "metabase/collections/utils";
-import type Question from "metabase-lib/v1/Question";
-import type { RawSeries, SearchResult } from "metabase-types/api";
+import type { Dataset, SearchResult } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import type { MetricResult, ModelResult } from "../types";
@@ -99,15 +98,19 @@ export const getMaxRecentModelCount = (
   return 0;
 };
 
-export function getMetricValue(rawSeries: RawSeries) {
-  const data = rawSeries?.[0]?.data;
-  if (!data) {
+export function isDatasetScalar(dataset: Dataset) {
+  return dataset.data.cols.length === 1 && dataset.data.rows.length === 1;
+}
+
+export function getDatasetScalarValueForMetric(dataset: Dataset) {
+  const isScalar = isDatasetScalar(dataset);
+  if (!isScalar) {
     return null;
   }
 
-  const columnMetadata = data.results_metadata?.columns?.[0];
+  const columnMetadata = dataset.data.results_metadata?.columns?.[0];
 
-  const lastRow = data.rows?.at(-1);
+  const lastRow = dataset.data.rows?.at(-1);
   const columnValue = lastRow?.[0];
 
   if (columnValue === undefined) {
@@ -115,11 +118,8 @@ export function getMetricValue(rawSeries: RawSeries) {
   }
 
   return {
+    tooltip: t`Overall`,
     value: columnValue,
     column: columnMetadata,
   };
-}
-
-export function isMetricScalar(question: Question) {
-  return question.display() === "scalar";
 }

@@ -5,8 +5,8 @@ import { c, t } from "ttag";
 import {
   useCreateBookmarkMutation,
   useDeleteBookmarkMutation,
+  useGetCardQueryQuery,
 } from "metabase/api";
-import type { QuestionResultLoaderProps } from "metabase/collections/components/PinnedQuestionCard/PinnedQuestionLoader";
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
@@ -22,7 +22,6 @@ import {
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
-import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import Bookmarks from "metabase/entities/bookmarks";
 import Questions from "metabase/entities/questions";
@@ -41,7 +40,6 @@ import {
   Tooltip,
 } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
-import type Question from "metabase-lib/v1/Question";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import type { MetricResult } from "../types";
@@ -57,9 +55,8 @@ import {
   ValueWrapper,
 } from "./BrowseTable.styled";
 import {
+  getDatasetScalarValueForMetric,
   getMetricDescription,
-  getMetricValue,
-  isMetricScalar,
   sortModelOrMetric,
 } from "./utils";
 
@@ -455,62 +452,49 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
 }
 
 function ValueCell({ metric }: { metric?: MetricResult }) {
-  if (!metric) {
-    return <Cell />;
+  const { data, isLoading, error } = useGetCardQueryQuery(
+    { cardId: metric?.id ?? 0 },
+    {
+      skip: !metric?.id,
+    },
+  );
+
+  const emptyCell = (
+    <ValueTableCell>
+      <ValueWrapper />
+    </ValueTableCell>
+  );
+
+  if (error) {
+    return emptyCell;
   }
 
-  const { id } = metric;
+  if (!metric || isLoading || !data) {
+    return (
+      <ValueTableCell>
+        <ValueWrapper>
+          <SkeletonText />
+        </ValueWrapper>
+      </ValueTableCell>
+    );
+  }
+
+  const value = getDatasetScalarValueForMetric(data);
+  if (!value) {
+    return emptyCell;
+  }
 
   return (
     <ValueTableCell>
       <ValueWrapper>
-        <Questions.Loader id={id} loadingAndErrorWrapper={false}>
-          {({
-            loading,
-            question,
-          }: {
-            loading: boolean;
-            question?: Question;
-          }) => {
-            if (loading || !question) {
-              return null;
-            }
-
-            const isScalar = isMetricScalar(question);
-            if (!isScalar) {
-              // only show scalar metrics for now
-              return null;
-            }
-
-            return (
-              <QuestionResultLoader question={question}>
-                {({ loading, error, rawSeries }: QuestionResultLoaderProps) => {
-                  if (loading || error || !rawSeries) {
-                    return null;
-                  }
-
-                  const metricValue = getMetricValue(rawSeries);
-                  if (!metricValue) {
-                    return null;
-                  }
-
-                  const { value, column } = metricValue;
-
-                  return (
-                    <Tooltip label={<Text>{t`Overall`}</Text>}>
-                      <Value>
-                        {formatValue(value, {
-                          jsx: true,
-                          column,
-                        })}
-                      </Value>
-                    </Tooltip>
-                  );
-                }}
-              </QuestionResultLoader>
-            );
-          }}
-        </Questions.Loader>
+        <Tooltip label={<Text>{value.tooltip}</Text>}>
+          <Value>
+            {formatValue(value.value, {
+              jsx: true,
+              column: value.column,
+            })}
+          </Value>
+        </Tooltip>
       </ValueWrapper>
     </ValueTableCell>
   );
