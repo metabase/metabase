@@ -17,6 +17,7 @@ import {
   listTag,
   provideCardListTags,
   provideCardQueryMetadataTags,
+  provideCardQueryTags,
   provideCardTags,
 } from "./tags";
 
@@ -53,7 +54,7 @@ export const cardApi = Api.injectEndpoints({
         url: `/api/card/${cardId}/query`,
         body,
       }),
-      providesTags: (_data, _error, { cardId }) => [idTag("card", cardId)],
+      providesTags: (_data, _error, { cardId }) => provideCardQueryTags(cardId),
     }),
     createCard: builder.mutation<Card, CreateCardRequest>({
       query: body => ({
