@@ -45,7 +45,7 @@ export type QuestionItemListProps = ListProps<
   QuestionPickerOptions
 >;
 
-export type QuestionPickerPath = PickerState<
+export type QuestionPickerStatePath = PickerState<
   QuestionPickerItem,
   ListCollectionItemsRequest
 >;

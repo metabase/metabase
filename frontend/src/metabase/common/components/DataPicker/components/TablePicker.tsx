@@ -15,7 +15,7 @@ import type {
   DataPickerFolderItem,
   DataPickerItem,
   DataPickerValueItem,
-  TablePickerPath,
+  TablePickerStatePath,
   TablePickerValue,
 } from "../types";
 import { generateKey, getDbItem, getSchemaItem, getTableItem } from "../utils";
@@ -29,10 +29,10 @@ interface Props {
    * Limit selection to a particular database
    */
   databaseId?: DatabaseId;
-  path: TablePickerPath | undefined;
+  path: TablePickerStatePath | undefined;
   value: TablePickerValue | undefined;
   onItemSelect: (value: DataPickerItem) => void;
-  onPathChange: (path: TablePickerPath) => void;
+  onPathChange: (path: TablePickerStatePath) => void;
 }
 
 export const TablePicker = ({
@@ -42,7 +42,7 @@ export const TablePicker = ({
   onItemSelect,
   onPathChange,
 }: Props) => {
-  const defaultPath = useMemo<TablePickerPath>(() => {
+  const defaultPath = useMemo<TablePickerStatePath>(() => {
     return [databaseId ?? value?.db_id, value?.schema, value?.id];
   }, [databaseId, value]);
   const [initialDbId, initialSchemaId, initialTableId] = path ?? defaultPath;
@@ -94,12 +94,20 @@ export const TablePicker = ({
       if (folder.model === "database") {
         if (dbId === folder.id) {
           const newSchemaName = schemas?.length === 1 ? schemas[0] : undefined;
-          const newPath: TablePickerPath = [dbId, newSchemaName, undefined];
+          const newPath: TablePickerStatePath = [
+            dbId,
+            newSchemaName,
+            undefined,
+          ];
           setSchemaName(newSchemaName);
           onItemSelect(folder);
           onPathChange(newPath);
         } else {
-          const newPath: TablePickerPath = [folder.id, undefined, undefined];
+          const newPath: TablePickerStatePath = [
+            folder.id,
+            undefined,
+            undefined,
+          ];
           setDbId(folder.id);
           setSchemaName(undefined);
           onItemSelect(folder);
@@ -108,7 +116,7 @@ export const TablePicker = ({
       }
 
       if (folder.model === "schema") {
-        const newPath: TablePickerPath = [dbId, folder.id, undefined];
+        const newPath: TablePickerStatePath = [dbId, folder.id, undefined];
         setSchemaName(folder.id);
         onItemSelect(folder);
         onPathChange(newPath);

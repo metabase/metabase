@@ -14,13 +14,16 @@ import type {
 import type { EntityPickerTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
-import { QuestionPicker, type QuestionPickerPath } from "../../QuestionPicker";
+import {
+  QuestionPicker,
+  type QuestionPickerStatePath,
+} from "../../QuestionPicker";
 import { useAvailableData } from "../hooks";
 import type {
   DataPickerItem,
   DataPickerModalOptions,
   DataPickerValue,
-  TablePickerPath,
+  TablePickerStatePath,
 } from "../types";
 import {
   castQuestionPickerItemToDataPickerItem,
@@ -121,10 +124,10 @@ export const DataPickerModal = ({
     [onChange, onClose, tryLogRecentItem],
   );
 
-  const [modelsPath, setModelsPath] = useState<QuestionPickerPath>();
-  const [metricsPath, setMetricsPath] = useState<QuestionPickerPath>();
-  const [questionsPath, setQuestionsPath] = useState<QuestionPickerPath>();
-  const [tablesPath, setTablesPath] = useState<TablePickerPath>();
+  const [modelsPath, setModelsPath] = useState<QuestionPickerStatePath>();
+  const [metricsPath, setMetricsPath] = useState<QuestionPickerStatePath>();
+  const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
+  const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
 
   const tabs = (function getTabs() {
     const computedTabs: EntityPickerTab<

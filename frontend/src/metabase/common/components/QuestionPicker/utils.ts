@@ -10,7 +10,7 @@ import type {
 
 import type {
   QuestionPickerItem,
-  QuestionPickerPath,
+  QuestionPickerStatePath,
   QuestionPickerValue,
   QuestionPickerValueModel,
 } from "./types";
@@ -61,8 +61,8 @@ export const getStateFromIdPath = ({
   idPath: CollectionId[];
   namespace?: "snippets";
   models?: CollectionItemModel[];
-}): QuestionPickerPath => {
-  const statePath: QuestionPickerPath = [
+}): QuestionPickerStatePath => {
+  const statePath: QuestionPickerStatePath = [
     {
       selectedItem: {
         name: "",

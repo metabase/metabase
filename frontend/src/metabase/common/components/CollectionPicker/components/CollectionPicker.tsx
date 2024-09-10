@@ -13,7 +13,7 @@ import { LoadingSpinner, NestedItemPicker } from "../../EntityPicker";
 import type {
   CollectionPickerItem,
   CollectionPickerOptions,
-  CollectionPickerPath,
+  CollectionPickerStatePath,
 } from "../types";
 import {
   getCollectionIdPath,
@@ -33,10 +33,10 @@ const defaultOptions: CollectionPickerOptions = {
 interface CollectionPickerProps {
   initialValue?: Partial<CollectionPickerItem>;
   options?: CollectionPickerOptions;
-  path: CollectionPickerPath | undefined;
+  path: CollectionPickerStatePath | undefined;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
   onItemSelect: (item: CollectionPickerItem) => void;
-  onPathChange: (path: CollectionPickerPath) => void;
+  onPathChange: (path: CollectionPickerStatePath) => void;
 }
 
 export const CollectionPickerInner = (
@@ -128,7 +128,7 @@ export const CollectionPickerInner = (
         // if the currently selected item is not a folder, it will be once we create a new collection within it
         // so we need to select it
 
-        const newPath: CollectionPickerPath = [
+        const newPath: CollectionPickerStatePath = [
           ...path,
           {
             query: {

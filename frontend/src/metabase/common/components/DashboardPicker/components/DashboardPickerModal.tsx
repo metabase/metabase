@@ -15,7 +15,7 @@ import type {
   DashboardPickerInitialValueItem,
   DashboardPickerItem,
   DashboardPickerOptions,
-  DashboardPickerPath,
+  DashboardPickerStatePath,
   DashboardPickerValueItem,
 } from "../types";
 import { getCollectionId } from "../utils";
@@ -115,7 +115,8 @@ export const DashboardPickerModal = ({
     </Button>,
   ];
 
-  const [dashboardsPath, setDashboardsPath] = useState<DashboardPickerPath>();
+  const [dashboardsPath, setDashboardsPath] =
+    useState<DashboardPickerStatePath>();
 
   const tabs: EntityPickerTab<
     DashboardPickerItem["id"],

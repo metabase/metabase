@@ -62,7 +62,7 @@ export type CollectionItemListProps = ListProps<
   CollectionPickerOptions
 >;
 
-export type CollectionPickerPath = PickerState<
+export type CollectionPickerStatePath = PickerState<
   CollectionPickerItem,
   ListCollectionItemsRequest
 >;

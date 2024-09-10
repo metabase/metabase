@@ -51,7 +51,7 @@ export type DashboardItemListProps = ListProps<
   DashboardPickerOptions
 >;
 
-export type DashboardPickerPath = PickerState<
+export type DashboardPickerStatePath = PickerState<
   DashboardPickerItem,
   ListCollectionItemsRequest
 >;

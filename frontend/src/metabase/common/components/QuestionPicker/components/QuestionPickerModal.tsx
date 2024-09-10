@@ -11,7 +11,7 @@ import type {
   QuestionPickerItem,
   QuestionPickerModel,
   QuestionPickerOptions,
-  QuestionPickerPath,
+  QuestionPickerStatePath,
   QuestionPickerValue,
   QuestionPickerValueItem,
 } from "../types";
@@ -86,9 +86,9 @@ export const QuestionPickerModal = ({
     }
   };
 
-  const [modelsPath, setModelsPath] = useState<QuestionPickerPath>();
-  const [metricsPath, setMetricsPath] = useState<QuestionPickerPath>();
-  const [questionsPath, setQuestionsPath] = useState<QuestionPickerPath>();
+  const [modelsPath, setModelsPath] = useState<QuestionPickerStatePath>();
+  const [metricsPath, setMetricsPath] = useState<QuestionPickerStatePath>();
+  const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
 
   const tabs: EntityPickerTab<
     QuestionPickerItem["id"],

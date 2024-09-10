@@ -17,7 +17,7 @@ import { DelayedLoadingSpinner, NestedItemPicker } from "../../EntityPicker";
 import type {
   QuestionPickerItem,
   QuestionPickerOptions,
-  QuestionPickerPath,
+  QuestionPickerStatePath,
 } from "../types";
 import {
   getCollectionIdPath,
@@ -36,10 +36,10 @@ interface QuestionPickerProps {
   initialValue?: Pick<QuestionPickerItem, "model" | "id">;
   models?: CollectionItemModel[];
   options: QuestionPickerOptions;
-  path: QuestionPickerPath | undefined;
+  path: QuestionPickerStatePath | undefined;
   shouldShowItem?: (item: QuestionPickerItem) => boolean;
   onItemSelect: (item: QuestionPickerItem) => void;
-  onPathChange: (path: QuestionPickerPath) => void;
+  onPathChange: (path: QuestionPickerStatePath) => void;
 }
 
 const useGetInitialCollection = (

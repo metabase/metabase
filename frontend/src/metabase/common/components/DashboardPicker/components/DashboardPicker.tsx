@@ -19,7 +19,7 @@ import { LoadingSpinner, NestedItemPicker } from "../../EntityPicker";
 import type {
   DashboardPickerItem,
   DashboardPickerOptions,
-  DashboardPickerPath,
+  DashboardPickerStatePath,
 } from "../types";
 import { getCollectionIdPath, getStateFromIdPath, isFolder } from "../utils";
 
@@ -33,10 +33,10 @@ interface DashboardPickerProps {
   initialValue?: Pick<DashboardPickerItem, "model" | "id">;
   options: DashboardPickerOptions;
   models?: CollectionItemModel[];
-  path: DashboardPickerPath | undefined;
+  path: DashboardPickerStatePath | undefined;
   shouldDisableItem?: (item: DashboardPickerItem) => boolean;
   onItemSelect: (item: DashboardPickerItem) => void;
-  onPathChange: (path: DashboardPickerPath) => void;
+  onPathChange: (path: DashboardPickerStatePath) => void;
 }
 
 const useGetInitialCollection = (

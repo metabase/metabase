@@ -11,7 +11,7 @@ import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
   CollectionPickerItem,
   CollectionPickerOptions,
-  CollectionPickerPath,
+  CollectionPickerStatePath,
   CollectionPickerValueItem,
 } from "../types";
 
@@ -107,7 +107,7 @@ export const CollectionPickerModal = ({
     : [];
 
   const [collectionsPath, setCollectionsPath] =
-    useState<CollectionPickerPath>();
+    useState<CollectionPickerStatePath>();
 
   const tabs: EntityPickerTab<
     CollectionPickerItem["id"],
