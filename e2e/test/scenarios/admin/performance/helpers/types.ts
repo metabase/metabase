@@ -8,6 +8,8 @@ export type CacheTestParameters = {
   inheritsStrategyFrom?: StrategyBearer;
   /** Function that runs the test. Set to it, it.only, or it.skip */
   it?: Mocha.TestFunction;
+  /** Whether the test is being run in OSS */
+  oss?: boolean;
 };
 
 /** Something with a configurable cache strategy */
