@@ -8,7 +8,11 @@ import type {
   CollectionItemId,
   CollectionPickerItem,
 } from "../CollectionPicker";
-import type { EntityPickerModalOptions, ListProps } from "../EntityPicker";
+import type {
+  EntityPickerModalOptions,
+  ListProps,
+  PickerState,
+} from "../EntityPicker";
 
 export type QuestionPickerModel = Extract<
   CollectionPickerItem["model"],
@@ -39,4 +43,9 @@ export type QuestionItemListProps = ListProps<
   QuestionPickerItem,
   ListCollectionItemsRequest,
   QuestionPickerOptions
+>;
+
+export type QuestionPickerPath = PickerState<
+  QuestionPickerItem,
+  ListCollectionItemsRequest
 >;

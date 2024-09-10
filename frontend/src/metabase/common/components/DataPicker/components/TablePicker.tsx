@@ -15,6 +15,7 @@ import type {
   DataPickerFolderItem,
   DataPickerItem,
   DataPickerValueItem,
+  TablePickerPath,
   TablePickerValue,
 } from "../types";
 import { generateKey, getDbItem, getSchemaItem, getTableItem } from "../utils";
@@ -28,18 +29,26 @@ interface Props {
    * Limit selection to a particular database
    */
   databaseId?: DatabaseId;
+  path: TablePickerPath | undefined;
   value: TablePickerValue | undefined;
-  onItemSelect: (value: DataPickerItem) => void;
+  onItemSelect: (value: DataPickerItem, path: TablePickerPath) => void;
 }
 
-export const TablePicker = ({ databaseId, value, onItemSelect }: Props) => {
-  const [dbId, setDbId] = useState<DatabaseId | undefined>(
-    databaseId ?? value?.db_id,
-  );
+export const TablePicker = ({
+  databaseId,
+  path,
+  value,
+  onItemSelect,
+}: Props) => {
+  const defaultPath = useMemo<TablePickerPath>(() => {
+    return [databaseId ?? value?.db_id, value?.schema, value?.id];
+  }, [databaseId, value]);
+  const [initialDbId, initialSchemaId, initialTableId] = path ?? defaultPath;
+  const [dbId, setDbId] = useState<DatabaseId | undefined>(initialDbId);
   const [schemaName, setSchemaName] = useState<SchemaName | undefined>(
-    value?.schema,
+    initialSchemaId,
   );
-  const [tableId, setTableId] = useState<TableId | undefined>(value?.id);
+  const [tableId, setTableId] = useState<TableId | undefined>(initialTableId);
 
   const {
     data: databases,
@@ -82,19 +91,25 @@ export const TablePicker = ({ databaseId, value, onItemSelect }: Props) => {
     (folder: DataPickerFolderItem) => {
       if (folder.model === "database") {
         if (dbId === folder.id) {
-          setSchemaName(schemas?.length === 1 ? schemas[0] : undefined);
+          const newSchemaName = schemas?.length === 1 ? schemas[0] : undefined;
+          const newPath: TablePickerPath = [dbId, newSchemaName, undefined];
+          setSchemaName(newSchemaName);
+          onItemSelect(folder, newPath);
         } else {
+          const newPath: TablePickerPath = [folder.id, undefined, undefined];
           setDbId(folder.id);
           setSchemaName(undefined);
+          onItemSelect(folder, newPath);
         }
       }
 
       if (folder.model === "schema") {
+        const newPath: TablePickerPath = [dbId, folder.id, undefined];
         setSchemaName(folder.id);
+        onItemSelect(folder, newPath);
       }
 
       setTableId(undefined);
-      onItemSelect(folder);
     },
     [dbId, schemas, onItemSelect],
   );
@@ -102,9 +117,9 @@ export const TablePicker = ({ databaseId, value, onItemSelect }: Props) => {
   const handleTableSelect = useCallback(
     (item: DataPickerValueItem) => {
       setTableId(item.id);
-      onItemSelect(item);
+      onItemSelect(item, [dbId, schemaName, item.id]);
     },
-    [setTableId, onItemSelect],
+    [dbId, schemaName, setTableId, onItemSelect],
   );
 
   return (
