@@ -1,11 +1,23 @@
+import { match } from "ts-pattern";
+
 import { modal, popover } from "e2e/support/helpers";
 import {
   type ScheduleComponentType,
   getScheduleComponentLabel,
 } from "metabase/components/Schedule/constants";
-import type { CacheStrategyType, CacheableModel } from "metabase-types/api";
+import type {
+  CacheStrategyType,
+  CacheableModel,
+  DoNotCacheStrategy,
+  InheritStrategy,
+} from "metabase-types/api";
 
-import { databaseCachingPage } from "./e2e-performance-helpers";
+import {
+  databaseCachingPage,
+  log,
+  wrapResult,
+} from "./e2e-performance-helpers";
+import type { SelectCacheStrategyOptions } from "./types";
 
 /** Save the cache strategy form and wait for a response from the relevant endpoint */
 export const saveCacheStrategyForm = (options?: {
@@ -67,11 +79,26 @@ export const openStrategyFormForDatabaseOrDefaultPolicy = (
   cy.visit("/admin/performance");
   cy.findByRole("tablist").get("[aria-selected]").contains("Database caching");
   cy.log(`Open strategy form for ${databaseNameOrDefaultPolicy}`);
-  formLauncher(
-    databaseNameOrDefaultPolicy,
-    "currently",
-    currentStrategyLabel,
-  ).click();
+
+  const clickLauncher = () =>
+    formLauncher(
+      databaseNameOrDefaultPolicy,
+      "currently",
+      currentStrategyLabel,
+    ).click();
+
+  if (databaseNameOrDefaultPolicy === "default policy") {
+    cy.get("body").then($body => {
+      if ($body.find('form[data-testid="strategy-form-for-root-0"]').length) {
+        // On OSS, the default policy form is open by default, so do nothing
+        return;
+      } else {
+        clickLauncher();
+      }
+    });
+  } else {
+    clickLauncher();
+  }
 };
 
 export const getScheduleComponent = (componentType: ScheduleComponentType) =>
@@ -112,3 +139,88 @@ export const cancelConfirmationModal = () => {
     cy.button("Cancel").click();
   });
 };
+
+export const getRadioButtonForStrategyType = (
+  strategyType: CacheStrategyType,
+) =>
+  match(strategyType)
+    .with("duration", () => durationRadioButton())
+    .with("ttl", () => adaptiveRadioButton())
+    .with("schedule", () => scheduleRadioButton())
+    .with("inherit", () => useDefaultRadioButton())
+    .with("nocache", () => dontCacheResultsRadioButton())
+    .exhaustive();
+
+/** Select a cache invalidation strategy for an item.
+ * The item can be a question, dashboard, database,
+ * or the instance-wide default policy (the "root"). */
+export const selectCacheStrategy = ({
+  item,
+  strategy,
+}: SelectCacheStrategyOptions) => {
+  log(`Selecting ${strategy.type} strategy for ${item.model}`);
+  wrapResult().as("previousResult");
+
+  match(item)
+    .with({ model: "database" }, ({ name }) => {
+      openStrategyFormForDatabaseOrDefaultPolicy(name);
+    })
+    .with({ model: "root" }, () => {
+      openStrategyFormForDatabaseOrDefaultPolicy("default policy");
+    })
+    .with({ model: "question" }, () => {
+      openSidebarCacheStrategyForm("question");
+    })
+    .with({ model: "dashboard" }, () => {
+      openSidebarCacheStrategyForm("dashboard");
+    })
+    .exhaustive();
+  getRadioButtonForStrategyType(strategy.type).click();
+
+  if ("multiplier" in strategy && strategy.multiplier) {
+    cy.findByLabelText(/Multiplier/).type(`${strategy.multiplier}`);
+  }
+
+  if ("min_duration_ms" in strategy && strategy.min_duration_ms) {
+    cy.findByLabelText(/Minimum query duration/).type(
+      `${strategy.min_duration_ms / 1000}`,
+    );
+  }
+
+  if ("duration" in strategy && strategy.duration) {
+    cy.findByLabelText("Cache results for this many hours").type(
+      `${strategy.duration}`,
+    );
+  }
+
+  if ("schedule" in strategy && strategy.schedule) {
+    if (strategy.schedule !== "0 0 * * * ?") {
+      throw new Error(
+        `The schedule ${strategy.schedule} is not supported in this test. Only an hourly schedule ("0 0 * * * ?") is supported`,
+      );
+    }
+  }
+
+  saveCacheStrategyForm({ strategyType: strategy.type, model: item?.model });
+
+  if (item?.model === "dashboard" || item?.model === "question") {
+    closeSidebar();
+  }
+};
+
+export const disableCaching = (
+  options: Omit<SelectCacheStrategyOptions<DoNotCacheStrategy>, "strategy">,
+) =>
+  selectCacheStrategy({
+    ...options,
+    strategy: { type: "nocache" },
+  });
+
+/** Set the cache invalidation strategy to 'Use default' */
+export const useDefaultCacheStrategy = (
+  options: Omit<SelectCacheStrategyOptions<InheritStrategy>, "strategy">,
+) =>
+  selectCacheStrategy({
+    ...options,
+    strategy: { type: "inherit" },
+  });
