@@ -24,6 +24,7 @@ export interface PieSliceData {
   value: number; // size of the slice used for rendering
   displayValue: number; // real metric value of the slice displayed in tooltip or total graphic
   normalizedPercentage: number;
+  visible: boolean;
   color: string;
   isOther: boolean;
   noHover: boolean;

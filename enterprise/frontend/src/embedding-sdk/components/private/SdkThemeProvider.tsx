@@ -8,6 +8,7 @@ import {
 } from "embedding-sdk/lib/theme";
 import { useSelector } from "metabase/lib/redux";
 import { getSettings } from "metabase/selectors/settings";
+import { getFont } from "metabase/styled-components/selectors";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
 import { getApplicationColors } from "metabase-enterprise/settings/selectors";
@@ -32,13 +33,15 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
 
   return (
     <ThemeProvider theme={themeOverride}>
-      <GlobalStyles />
+      <SDKGlobalStyles />
       {children}
     </ThemeProvider>
   );
 };
 
-function GlobalStyles() {
+function SDKGlobalStyles() {
   const theme = useMantineTheme();
-  return <Global styles={getMetabaseSdkCssVariables(theme)} />;
+  const font = useSelector(getFont);
+
+  return <Global styles={getMetabaseSdkCssVariables(theme, font)} />;
 }

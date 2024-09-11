@@ -75,7 +75,7 @@ const propTypes = {
   setMetadataDiff: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
   onCancelCreateNewModel: PropTypes.func.isRequired,
-  onCancelDatasetChanges: PropTypes.func.isRequired,
+  cancelQuestionChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
   updateQuestion: PropTypes.func.isRequired,
   runQuestionQuery: PropTypes.func.isRequired,
@@ -204,7 +204,7 @@ function DatasetEditor(props) {
     runQuestionQuery,
     setDatasetEditorTab,
     setMetadataDiff,
-    onCancelDatasetChanges,
+    cancelQuestionChanges,
     onCancelCreateNewModel,
     onSave,
     updateQuestion,
@@ -212,7 +212,6 @@ function DatasetEditor(props) {
     onOpenModal,
   } = props;
 
-  const isMetric = question.type() === "metric";
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const isDirty = isModelQueryDirty || isMetadataDirty;
   const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
@@ -327,7 +326,7 @@ function DatasetEditor(props) {
 
   const handleCancelEdit = () => {
     setShowCancelEditWarning(false);
-    onCancelDatasetChanges();
+    cancelQuestionChanges();
     setQueryBuilderMode("view");
   };
 
@@ -351,15 +350,12 @@ function DatasetEditor(props) {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
     const questionWithMetadata = question.setResultMetadataDiff(metadataDiff);
-    const questionWithDisplay = isMetric
-      ? questionWithMetadata.setDefaultDisplay()
-      : questionWithMetadata;
 
     if (canBeDataset && isBrandNewDataset) {
-      await updateQuestion(questionWithDisplay, { rerunQuery: false });
+      await updateQuestion(questionWithMetadata, { rerunQuery: false });
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
-      await onSave(questionWithDisplay, { rerunQuery: true });
+      await onSave(questionWithMetadata, { rerunQuery: true });
       await setQueryBuilderMode("view");
       runQuestionQuery();
     } else {
@@ -369,7 +365,6 @@ function DatasetEditor(props) {
   }, [
     question,
     metadataDiff,
-    isMetric,
     updateQuestion,
     onSave,
     setQueryBuilderMode,
@@ -456,11 +451,7 @@ function DatasetEditor(props) {
     ) {
       return t`You must run the query before you can save this model`;
     }
-
-    if (isMetric && Lib.aggregations(question.query(), -1).length === 0) {
-      return t`You must define how the measure is calculated to save this metric`;
-    }
-  }, [isNative, isMetric, isDirty, isResultDirty, question]);
+  }, [isNative, isDirty, isResultDirty, question]);
 
   const sidebar = getSidebar(
     { ...props, modelIndexes },
@@ -481,16 +472,11 @@ function DatasetEditor(props) {
         data-testid="dataset-edit-bar"
         title={question.displayName()}
         center={
-          // Metadata tab is temporarily disabled for metrics.
-          // It should be enabled in #37993
-          // @see https://github.com/metabase/metabase/issues/37993
-          isMetric ? null : (
-            <EditorTabs
-              currentTab={datasetEditorTab}
-              disabledMetadata={!resultsMetadata}
-              onChange={onChangeEditorTab}
-            />
-          )
+          <EditorTabs
+            currentTab={datasetEditorTab}
+            disabledMetadata={!resultsMetadata}
+            onChange={onChangeEditorTab}
+          />
         }
         buttons={[
           <Button

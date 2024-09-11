@@ -142,13 +142,13 @@ Create a new `Card`. Card `type` can be `question`, `metric`, or `model`.
 
 -  **`collection_position`** nullable value must be an integer greater than zero.
 
--  **`result_metadata`** nullable :metabase.analyze.query-results/ResultsMetadata.
+-  **`result_metadata`** nullable value must be an array of valid results column metadata maps.
 
 -  **`collection_id`** nullable value must be an integer greater than zero.
 
 -  **`name`** value must be a non-blank string.
 
--  **`type`** nullable :metabase.api.card/card-type.
+-  **`type`** nullable enum of :question, :metric, :model.
 
 -  **`cache_ttl`** nullable value must be an integer greater than zero.
 
@@ -284,7 +284,7 @@ Update a `Card`.
 
 -  **`collection_position`** nullable value must be an integer greater than zero.
 
--  **`result_metadata`** nullable :metabase.analyze.query-results/ResultsMetadata.
+-  **`result_metadata`** nullable value must be an array of valid results column metadata maps.
 
 -  **`enable_embedding`** nullable boolean.
 
@@ -294,7 +294,7 @@ Update a `Card`.
 
 -  **`name`** nullable value must be a non-blank string.
 
--  **`type`** nullable :metabase.api.card/card-type.
+-  **`type`** nullable enum of :question, :metric, :model.
 
 -  **`embedding_params`** nullable value must be a valid embedding params map.
 

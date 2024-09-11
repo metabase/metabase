@@ -1,6 +1,7 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type {
   BaseEntityId,
+  CardDisplayType,
   ClickBehavior,
   Collection,
   CollectionAuthorityLevel,
@@ -11,6 +12,7 @@ import type {
   ParameterId,
   ParameterTarget,
   Table,
+  VirtualCardDisplay,
 } from "metabase-types/api";
 
 import type {
@@ -18,7 +20,7 @@ import type {
   WritebackAction,
   WritebackActionId,
 } from "./actions";
-import type { Card, CardDisplayType, CardId } from "./card";
+import type { Card, CardId, VisualizationSettings } from "./card";
 import type { Dataset } from "./dataset";
 import type { SearchModel } from "./search";
 
@@ -113,20 +115,13 @@ export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   updated_at: string;
 };
 
-export type VirtualCardDisplay =
-  | "action"
-  | "heading"
-  | "link"
-  | "placeholder"
-  | "text";
-
 export type VirtualCard = Partial<
-  Omit<Card, "name" | "dataset_query" | "visualization_settings">
+  Omit<Card, "name" | "dataset_query" | "visualization_settings" | "display">
 > & {
   name: null;
   dataset_query: Record<string, never>;
   display: VirtualCardDisplay;
-  visualization_settings: Record<string, never>;
+  visualization_settings: VisualizationSettings;
 };
 
 export type ActionDashboardCard = Omit<

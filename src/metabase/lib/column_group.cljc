@@ -72,9 +72,9 @@
         (lib.metadata.calculation/display-info query stage-number table))
       (when-let [card (some->> (:source-card stage) (lib.metadata/card query))]
         (lib.metadata.calculation/display-info query stage-number card))
-      ;; for multi-stage queries return an empty string (#30108)
+      ;; multi-stage queries (#30108)
       (when (next (:stages query))
-        {:display-name ""})
+        {:display-name "Summaries"})
       ;; if this is a native query or something else that doesn't have a source Table or source Card then use the
       ;; stage display name.
       {:display-name (lib.metadata.calculation/display-name query stage-number stage)}))

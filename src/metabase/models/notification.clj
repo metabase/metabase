@@ -6,7 +6,6 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -128,7 +127,7 @@
     instance))
 
 (defn notifications-for-event
-  "Find all notifications for a given event."
+  "Find all active notifications for a given event."
   [event-name]
   (t2/select :model/Notification
              {:select    [:n.*]
@@ -139,19 +138,20 @@
                           [:= :ns.event_name (u/qualified-name event-name)]
                           [:= :ns.type (u/qualified-name :notification-subscription/system-event)]]}))
 
-(mu/defn create-notification!
+(defn create-notification!
   "Create a new notification with `subsciptions`.
   Return the created notification."
   [notification subcriptions handlers+recipients]
   (t2/with-transaction [_conn]
-    (let [noti (t2/insert-returning-instance! :model/Notification notification)
-          noti-id      (:id noti)]
-      (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id noti-id) subcriptions))
+    (let [instance (t2/insert-returning-instance! :model/Notification notification)
+          id       (:id instance)]
+
+      (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id id) subcriptions))
       (doseq [handler handlers+recipients]
         (let [recipients (:recipients handler)
               handler    (-> handler
                              (dissoc :recipients)
-                             (assoc :notification_id noti-id))
+                             (assoc :notification_id id))
               handler-id (t2/insert-returning-pk! :model/NotificationHandler handler)]
           (t2/insert! :model/NotificationRecipient (map #(assoc % :notification_handler_id handler-id) recipients))))
-      noti)))
+      instance)))

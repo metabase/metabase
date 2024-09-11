@@ -1,3 +1,36 @@
+## [0.1.36](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.35...embedding-sdk-0.1.36) (2024-09-09)
+
+
+### Bug Fixes
+
+* **sdk:** Fix entity ID logic to use the correct status ([#47748](https://github.com/metabase/metabase/issues/47748)) ([fc73743](https://github.com/metabase/metabase/commit/fc7374363127669cb1b1517bc4d3a82f343fb612))
+* **sdk:** remove usage of legacy query in static question ([#47727](https://github.com/metabase/metabase/issues/47727)) ([4d9b144](https://github.com/metabase/metabase/commit/4d9b144b6dd63cb82d00d17b73d480b302382cb9))
+
+
+### Features
+
+* **sdk:** add the create question component demo to the cli ([#47348](https://github.com/metabase/metabase/issues/47348)) ([4333267](https://github.com/metabase/metabase/commit/43332678243e75fce5339b607568000e29a3d115))
+
+
+
+## [0.1.35](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.34...embedding-sdk-0.1.35) (2024-09-06)
+
+
+### Bug Fixes
+
+* **sdk:** Add `onSave` behavior to `QuestionEditor` ([#47538](https://github.com/metabase/metabase/issues/47538)) ([e998150](https://github.com/metabase/metabase/commit/e99815024bc9033ddf6170762dd390911650cc3c))
+* **sdk:** Add toggle for saving questions ([#47442](https://github.com/metabase/metabase/issues/47442)) ([0711fba](https://github.com/metabase/metabase/commit/0711fba1b0d8b16b482fc1dca79b5fbfdb3aaf03))
+* **sdk:** default font not working ([#47712](https://github.com/metabase/metabase/issues/47712)) ([2835164](https://github.com/metabase/metabase/commit/28351649395d8072cefbe1cc83993e7804a19183))
+* **sdk:** fix typescript type references to embedding-sdk not resolving ([#47659](https://github.com/metabase/metabase/issues/47659)) ([d74fbe9](https://github.com/metabase/metabase/commit/d74fbe95ed692f36af9a59086cfae4ecb7f7fa99))
+* **sdk:** Use modal instead of hacky form for saving questions ([#47448](https://github.com/metabase/metabase/issues/47448)) ([387db2a](https://github.com/metabase/metabase/commit/387db2abcd7c53dad9baf94d194f305a1e9d8640))
+
+
+### Features
+
+* **sdk:** Use stable IDs in SDK components ([#47210](https://github.com/metabase/metabase/issues/47210)) ([c2b7cc9](https://github.com/metabase/metabase/commit/c2b7cc9e807ee75d2bc94f0b5a814e01d29fd077))
+
+
+
 ## [0.1.34](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.33...embedding-sdk-0.1.34) (2024-09-02)
 
 

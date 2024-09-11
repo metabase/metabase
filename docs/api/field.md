@@ -138,7 +138,7 @@ Update `Field` with ID.
 
 -  **`coercion_strategy`** nullable value must be a valid coercion strategy (keyword or string).
 
--  **`has_field_values`** nullable :metabase.lib.schema.metadata/column.has-field-values.
+-  **`has_field_values`** nullable enum of :auto-list, :list, :none, :search.
 
 -  **`settings`** nullable Value must be a map.
 

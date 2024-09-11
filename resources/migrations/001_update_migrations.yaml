@@ -358,7 +358,7 @@ databaseChangeLog:
                   type: char(21)
                   remarks: Random NanoID tag for unique identity.
                   constraints:
-                    nullable: false
+                    nullable: true
                     unique: true
               - column:
                   name: collection_id
@@ -9271,7 +9271,25 @@ databaseChangeLog:
                   remarks: running, failed, or completed
 
   - changeSet:
-      id: v51.2024-09-05T08:00:00
+      id: v51.2024-09-09T15:11:16
+      author: johnswanson
+      comment: add an index for `collection.type`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: collection
+                indexName: idx_collection_type
+      changes:
+        - createIndex:
+            tableName: collection
+            columns:
+              - column:
+                  name: type
+            indexName: idx_collection_type
+
+  - changeSet:
+      id: v52.2024-09-05T08:00:00
       author: qnkhuat
       comment: Create the notification table
       preConditions:
@@ -9317,7 +9335,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v51.2024-09-05T08:00:01
+      id: v52.2024-09-05T08:00:01
       author: qnkhuat
       comment: Create the notification_subscription table
       preConditions:
@@ -9366,7 +9384,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v51.2024-09-05T08:00:02
+      id: v52.2024-09-05T08:00:02
       author: qnkhuat
       comment: index on notification_subscription.notification_id
       rollback: # no need, will be dropped with the table
@@ -9384,7 +9402,7 @@ databaseChangeLog:
             indexName: idx_notification_subscription_notification_id
 
   - changeSet:
-      id: v51.2024-09-05T08:00:03
+      id: v52.2024-09-05T08:00:03
       author: qnkhuat
       comment: Create the channel_template table
       preConditions:
@@ -9422,6 +9440,13 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
                   name: created_at
                   type: ${timestamp_type}
                   remarks: The timestamp of when the template was created
@@ -9433,16 +9458,9 @@ databaseChangeLog:
                   remarks: The timestamp of when the template was last updated
                   constraints:
                     nullable: false
-              - column:
-                  remarks: Random NanoID tag for unique identity.
-                  name: entity_id
-                  type: char(21)
-                  constraints:
-                    nullable: false
-                    unique: true
 
   - changeSet:
-      id: v51.2024-09-05T08:00:04
+      id: v52.2024-09-05T08:00:04
       author: qnkhuat
       comment: Create the notification_handler table
       validCheckSum: ANY
@@ -9466,7 +9484,7 @@ databaseChangeLog:
               - column:
                   name: channel_type
                   type: varchar(64)
-                  remarks: the type of the channel
+                  remarks: the type of the channel, like :channel/email, :channel/slack
                   constraints:
                     nullable: false
               - column:
@@ -9517,7 +9535,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
   - changeSet:
-      id: v51.2024-09-05T08:00:05
+      id: v52.2024-09-05T08:00:05
       author: qnkhuat
       comment: Add fk constraint to notification_handler.template_id
       preConditions:
@@ -9535,7 +9553,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v51.2024-09-05T08:00:06
+      id: v52.2024-09-05T08:00:06
       author: qnkhuat
       comment: index on notification_handler.notification_id
       rollback: # not necessary, will be removed with the table
@@ -9553,7 +9571,7 @@ databaseChangeLog:
             indexName: idx_notification_handler_notification_id
 
   - changeSet:
-      id: v51.2024-09-05T08:00:07
+      id: v52.2024-09-05T08:00:07
       author: qnkhuat
       comment: index on notification_handler.channel_id
       rollback: # not necessary, will be removed with the table
@@ -9571,7 +9589,7 @@ databaseChangeLog:
             indexName: idx_notification_handler_channel_id
 
   - changeSet:
-      id: v51.2024-09-05T08:00:08
+      id: v52.2024-09-05T08:00:08
       author: qnkhuat
       comment: Create the notification_recipient table
       preConditions:
@@ -9609,7 +9627,7 @@ databaseChangeLog:
               - column:
                   name: user_id
                   type: int
-                  remarks: an user if the recipient has type user
+                  remarks: a user if the recipient has type user
                   constraints:
                     nullable: true
                     referencedTableName: core_user
@@ -9648,7 +9666,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v51.2024-09-05T08:00:09
+      id: v52.2024-09-05T08:00:09
       author: qnkhuat
       comment: index on notification_recipient.notification_handler_id
       rollback: # not necessary, will be removed with the table
@@ -9666,7 +9684,7 @@ databaseChangeLog:
             indexName: idx_notification_recipient_notification_handler_id
 
   - changeSet:
-      id: v51.2024-09-05T08:00:10
+      id: v52.2024-09-05T08:00:10
       author: qnkhuat
       comment: index on notification_recipient.user_id
       rollback: # not necessary, will be removed with the table
@@ -9684,7 +9702,7 @@ databaseChangeLog:
             indexName: idx_notification_recipient_user_id
 
   - changeSet:
-      id: v51.2024-09-05T08:00:11
+      id: v52.2024-09-05T08:00:11
       author: qnkhuat
       comment: index on notification_recipient.permissions_group_id
       rollback: # not necessary, will be removed with the table

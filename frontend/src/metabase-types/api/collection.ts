@@ -4,9 +4,10 @@ import type {
   CollectionEssentials,
   PaginationRequest,
   PaginationResponse,
+  VisualizationDisplay,
 } from "metabase-types/api";
 
-import type { CardDisplayType, CardType } from "./card";
+import type { CardType } from "./card";
 import type { DatabaseId } from "./database";
 import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
@@ -107,7 +108,7 @@ export interface CollectionItem {
   based_on_upload?: TableId | null; // only for models
   collection?: Collection | null;
   collection_id: CollectionId | null; // parent collection id
-  display?: CardDisplayType;
+  display?: VisualizationDisplay;
   personal_owner_id?: UserId;
   database_id?: DatabaseId;
   moderated_status?: string;
@@ -127,8 +128,6 @@ export interface CollectionItem {
   setCollection?: (collection: Pick<Collection, "id">) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
 }
-
-export type StaleCollectionItem = CollectionItem & { last_used_at: string };
 
 export interface CollectionListQuery {
   archived?: boolean;
@@ -156,17 +155,6 @@ export type ListCollectionItemsRequest = {
 export type ListCollectionItemsResponse = {
   data: CollectionItem[];
   models: CollectionItemModel[] | null;
-} & PaginationResponse;
-
-export type ListStaleCollectionItemsRequest = {
-  id: CollectionId;
-  before_date?: string;
-  is_recursive?: boolean;
-} & PaginationRequest &
-  Partial<SortingOptions>;
-
-export type ListStaleCollectionItemsResponse = {
-  data: StaleCollectionItem[];
 } & PaginationResponse;
 
 export interface UpdateCollectionRequest {

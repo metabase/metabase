@@ -25,32 +25,35 @@
   (mt/with-model-cleanup [:model/Notification]
     (with-temporary-event-topics #{:event/test-notification}
       (let [topic      :event/test-notification
-            noti-1     (models.notification/create-notification!
+            n-1        (models.notification/create-notification!
                         {:payload_type :notification/system-event
                          :active       true}
                         [{:type       :notification-subscription/system-event
                           :event_name topic}]
                         nil)
-            noti-2     (models.notification/create-notification!
-                        {:payload_type :notification/system-event
-                         :active       true}
-                        [{:type       :notification-subscription/system-event
-                          :event_name topic}]
-                        nil)
+            n-2         (models.notification/create-notification!
+                         {:payload_type :notification/system-event
+                          :active       true}
+                         [{:type       :notification-subscription/system-event
+                           :event_name topic}]
+                         nil)
             _inactive  (models.notification/create-notification!
                         {:payload_type :notification/system-event
                          :active       false}
                         [{:type       :notification-subscription/system-event
                           :event_name topic}]
                         nil)
-            sent-notis (atom #{})]
+            sent-notis (atom [])]
         (testing "publishing event will send all the actively subscribed notifciations"
-          (with-redefs [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
-                        events.notification/supported-topics #{:event/test-notification}]
+          (mt/with-dynamic-redefs
+            [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
+             events.notification/supported-topics #{:event/test-notification}]
             (events/publish-event! topic {::hi true})
-            (is (= #{[(:id noti-1) {::hi true}]
-                     [(:id noti-2) {::hi true}]}
-                   (set (map (juxt :id :event-info) @sent-notis))))))))))
+            (is (= [[(:id n-1) {::hi true}]
+                    [(:id n-2) {::hi true}]]
+                   (->> @sent-notis
+                        (map (juxt :id :event-info))
+                        (sort-by first))))))))))
 
 (deftest unsupported-events-will-not-send-notification-test
   (mt/with-model-cleanup [:model/Notification]
@@ -64,7 +67,8 @@
            :event_name topic}]
          nil)
         (testing "publish an event that is not supported for notifications will not send any notifications"
-          (with-redefs [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
-                        events.notification/supported-topics #{}]
+          (mt/with-dynamic-redefs
+            [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
+             events.notification/supported-topics #{}]
             (events/publish-event! :event/unsupported-topic {::hi true})
             (is (empty? @sent-notis))))))))

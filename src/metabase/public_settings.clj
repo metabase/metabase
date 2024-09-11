@@ -192,6 +192,7 @@
   :visibility :public
   :export?    true
   :audit      :getter
+  :encryption :never
   :getter     (fn []
                 (let [value (setting/get-value-of-type :string :site-locale)]
                   (when (i18n/available-locale? value)
@@ -840,8 +841,6 @@ See [fonts](../configuring-metabase/fonts.md).")
                    :table_prefix (:uploads_table_prefix db)}))
   :setter     (fn [{:keys [db_id schema_name table_prefix]}]
                 (cond
-                  (premium-features/has-feature? :attached-dwh)
-                  (api/throw-403)
                   (nil? db_id)
                   (t2/update! :model/Database :uploads_enabled true {:uploads_enabled      false
                                                                      :uploads_schema_name  nil
@@ -900,6 +899,13 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :export?    true
   :type       :integer)
+
+(defsetting experimental-fulltext-search-enabled
+  (deferred-tru "Enables search engines which are still in the experimental stage")
+  :visibility :internal
+  :export?    false
+  :default    false
+  :type       :boolean)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin
