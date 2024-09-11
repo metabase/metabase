@@ -209,11 +209,13 @@
   [ctx card]
   (if (get-in ctx [:card-id->filterable-columns (:id card)])
     ctx
-    (assoc-in ctx [:card-id->filterable-columns (:id card)]
-              (let [dataset-query (:dataset_query card)
-                    query (lib/query (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
-                                     dataset-query)]
-                (lib/filterable-columns query)))))
+    (let [database-id   (:database_id card)
+          dataset-query (:dataset_query card)]
+      (if-not (and (not-empty dataset-query) (pos-int? database-id))
+        (update ctx :card-id->filterable-columns assoc (:id card) nil)
+        (-> (lib/query (lib.metadata.jvm/application-database-metadata-provider database-id)
+                       dataset-query)
+            (lib/filterable-columns))))))
 
 (defn- field-id-from-dashcards-filterable-columns
   [ctx param-dashcard-info]
@@ -263,7 +265,7 @@
   ([ctx param-dashcard-info]
    (if-not (:param-field-ref param-dashcard-info)
      ctx
-     (let [param-target    (:target param-dashcard-info)
+     (let [param-target    (get-in param-dashcard-info [:parameter :target])
            card            (get-in param-dashcard-info [:dashcard :card])]
        (if-some [field-id (or
                            ;; Get the field id from the field-clause if it contains it. This is the common case
