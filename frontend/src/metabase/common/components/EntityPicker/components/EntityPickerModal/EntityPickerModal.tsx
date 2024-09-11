@@ -191,6 +191,7 @@ export function EntityPickerModal<
         icon: "search",
         render: ({ onItemSelect }) => (
           <SearchTab
+            folder={selectedFolder}
             searchResults={searchResults}
             selectedItem={selectedItem}
             onItemSelect={onItemSelect}

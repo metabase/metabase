@@ -52,6 +52,8 @@ export type EntityPickerTab<
   folderModels: Model[];
 };
 
+export type EntityPickerSearchScope = "everywhere" | "folder";
+
 export type ListProps<
   Id,
   Model extends string,

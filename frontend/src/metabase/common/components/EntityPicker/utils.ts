@@ -11,7 +11,11 @@ import {
 } from "metabase-types/api";
 
 import { RECENTS_TAB_ID } from "./constants";
-import type { EntityPickerTab, TypeWithModel } from "./types";
+import type {
+  EntityPickerSearchScope,
+  EntityPickerTab,
+  TypeWithModel,
+} from "./types";
 
 export const getEntityPickerIcon = <Id, Model extends string>(
   item: TypeWithModel<Id, Model>,
@@ -143,4 +147,34 @@ export const getSearchInputPlaceholder = <
   }
 
   return t`Search…`;
+};
+
+export const getScopedSearchResults = <
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>(
+  searchResults: SearchResult[],
+  searchScope: EntityPickerSearchScope,
+  folder: Item | undefined,
+): SearchResult[] => {
+  if (searchScope === "everywhere" || !folder) {
+    return searchResults;
+  }
+
+  return searchResults.filter(result => {
+    if (folder.model === "database") {
+      return result.model === "table" && result.database_id === folder.id;
+    }
+
+    if (folder.model === "schema") {
+      return result.model === "table" && result.table_schema === folder.id;
+    }
+
+    if (folder.model === "collection") {
+      return result.collection?.id === folder.id;
+    }
+
+    return false;
+  });
 };

@@ -1,8 +1,11 @@
-import { t } from "ttag";
+import { useState } from "react";
+import { msgid, ngettext, t } from "ttag";
 
+import { Flex, SegmentedControl, Stack, Text } from "metabase/ui";
 import type { SearchResult, SearchResultId } from "metabase-types/api";
 
-import type { TypeWithModel } from "../../types";
+import type { EntityPickerSearchScope, TypeWithModel } from "../../types";
+import { getScopedSearchResults } from "../../utils";
 import { DelayedLoadingSpinner } from "../LoadingSpinner";
 
 import { SearchResults } from "./SearchResults";
@@ -12,6 +15,7 @@ interface Props<
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 > {
+  folder: Item | undefined;
   searchResults: SearchResult[] | null;
   selectedItem: Item | null;
   onItemSelect: (item: Item) => void;
@@ -22,21 +26,70 @@ export const SearchTab = <
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 >({
-  searchResults,
+  folder,
+  searchResults: allSearchResults,
   selectedItem,
   onItemSelect,
 }: Props<Id, Model, Item>) => {
-  if (!searchResults) {
+  const folderName = folder?.name;
+  const folderId = folder?.id;
+  const [searchScope, setSearchScope] = useState<EntityPickerSearchScope>(
+    folderId ? "folder" : "everywhere",
+  );
+
+  if (!allSearchResults) {
     return <DelayedLoadingSpinner text={t`Loading…`} />;
   }
 
+  const scopedSearchResults = getScopedSearchResults(
+    allSearchResults,
+    searchScope,
+    folder,
+  );
+
   return (
-    <div>
+    <Stack
+      bg="bg-light"
+      h="100%"
+      pos="relative"
+      spacing="xl"
+      style={{ overflow: "hidden" }}
+    >
+      {allSearchResults.length > 0 && (
+        <Flex align="center" justify="space-between" p="xl" pb={0}>
+          <Flex align="center">
+            {folderName && (
+              <>
+                <Text mr={12} weight="bold">
+                  Search:
+                </Text>
+                <SegmentedControl
+                  data={[
+                    { label: t`Everywhere`, value: "everywhere" },
+                    { label: `“${folderName}”`, value: "folder" },
+                  ]}
+                  value={searchScope}
+                  onChange={value => setSearchScope(value as any)}
+                />
+              </>
+            )}
+          </Flex>
+
+          <div>
+            {ngettext(
+              msgid`${scopedSearchResults.length} result`,
+              `${scopedSearchResults.length} results`,
+              scopedSearchResults.length,
+            )}
+          </div>
+        </Flex>
+      )}
+
       <SearchResults
-        searchResults={searchResults}
+        searchResults={scopedSearchResults}
         selectedItem={selectedItem}
         onItemSelect={onItemSelect}
       />
-    </div>
+    </Stack>
   );
 };
