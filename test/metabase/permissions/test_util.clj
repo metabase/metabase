@@ -39,12 +39,17 @@
   "Implementation of `with-restored-perms` and related helper functions. Optionally takes `group-ids` to restore only the
   permissions for a set of groups."
   [group-ids thunk]
+  ;; make sure app DB is set up and test users are created
+  (initialize/initialize-if-needed! :db :test-users)
+  ;; make sure at least the normal test-data DB is loaded
+  (data/db)
   (let [select-condition (if-not group-ids
                            true
                            [:in :group_id group-ids])
         original-perms (t2/select :model/DataPermissions {:where select-condition})]
     (try
-      (thunk)
+      (binding [data-perms/*use-perms-cache?* false]
+        (thunk))
       (finally
         (let [existing-db-ids    (t2/select-pks-set :model/Database)
               existing-table-ids (t2/select-pks-set :model/Table)
@@ -75,10 +80,6 @@
   "Implementation of `with-no-data-perms-for-all-users`. Sets every data permission for all databases to the
   least permissive value for the All Users permission group for the duration of the test."
   [thunk]
-  ;; make sure app DB is set up and test users are created
-  (initialize/initialize-if-needed! :db :test-users)
-  ;; make sure at least the normal test-data DB is loaded
-  (data/db)
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
     (doseq [[perm-type _] data-perms/Permissions
             db-id         (t2/select-pks-set :model/Database)]

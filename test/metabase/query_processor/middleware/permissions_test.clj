@@ -378,6 +378,11 @@
       (mt/with-no-data-perms-for-all-users!
         (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (testing "Sanity check: should not be able to run this query the normal way"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"You do not have permissions to run this query"
+               (qp/process-query (mt/mbql-query venues {:limit 1})))))
         (letfn [(process-query []
                   (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
                                            ::query-perms/perms {:gtaps {:perms/view-data :unrestricted
