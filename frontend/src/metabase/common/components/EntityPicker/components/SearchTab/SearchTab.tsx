@@ -70,7 +70,9 @@ export const SearchTab = <
                     { label: `“${folderName}”`, value: "folder" },
                   ]}
                   value={searchScope}
-                  onChange={value => setSearchScope(value as any)}
+                  onChange={value =>
+                    setSearchScope(value as EntityPickerSearchScope)
+                  }
                 />
               </>
             )}
