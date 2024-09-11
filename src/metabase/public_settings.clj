@@ -81,9 +81,10 @@
   :getter     (fn []
                 (-> (site-uuid) hash (mod 100))))
 
-(defn- should-remove-upgrade?
+(defn- prevent-upgrade?
   "On a major upgrade, we check the rollout threshold to indicate whether we should remove the latest release from the
-  version info. This lets us stage upgrade notifications to self-hosted instances in a controlled manner."
+  version info. This lets us stage upgrade notifications to self-hosted instances in a controlled manner. Defaults to
+  show the upgrade except under certain circumstances."
   [current-major latest threshold]
   (when (and (integer? current-major) (integer? threshold) (string? (:version latest)))
     (try (let [upgrade-major (-> latest :version config/major-version)
@@ -93,9 +94,9 @@
                ;; it's the same or a minor release
                (= upgrade-major current-major) false
                ;; the rollout threshold is larger than our threshold
-               (>= rollout threshold) true
-               :else false)))
-         (catch Exception _e false))))
+               (>= rollout threshold) false
+               :else true)))
+         (catch Exception _e true))))
 
 (defsetting version-info
   (deferred-tru "Information about available versions of Metabase.")
@@ -107,7 +108,7 @@
              (let [vi (setting/get-value-of-type :json :version-info)]
                (try
                  (cond-> vi
-                   (should-remove-upgrade? (config/current-major-version) (-> vi :latest) (upgrade-threshold))
+                   (prevent-upgrade? (config/current-major-version) (-> vi :latest) (upgrade-threshold))
                    (dissoc :latest))
                  (catch Exception e
                    (log/error e "Error processing version info")

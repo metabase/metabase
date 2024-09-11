@@ -371,14 +371,28 @@
 
         (is (= true (public-settings/show-metabase-links)))))))
 
-(def should? #'public-settings/should-remove-upgrade?)
+(def prevent? #'public-settings/prevent-upgrade?)
 
-(deftest should-remove-upgrade?-test
-  (is (should? 45 {:version "0.46" :rollout 80} 75))
-  (testing "never throws and returns falsy"
-    ;; missing threshold
-    (is (not (should? 45 {:version "0.46"} 75)))
+(deftest prevent-upgrade?-test
+  ;; verify that the base value works
+  (is (prevent? 45 {:version "0.46" :rollout 50} 75) "base case that it does prevent when rollout is below threshold")
+  (testing "never throws and returns truthy"
+    (is (not (prevent? 45 {:version "0.46"} 75)) "missing rollout")
     ;; version is weird
-    (is (not (should? 45 {:version 45} 75)))
+    (is (not (prevent? 45 {:version 45} 75)) "version not a version string")
     ;; misshape
-    (is (not (should? 45 {:latest {:version "0.46" :rollout 80}} 75)))))
+    (is (not (prevent? 45 {:latest {:version "0.46" :rollout 80}} 75)) "Wrong shape"))
+
+  (testing "Knows when to upgrade"
+    (let [threshold 25
+          above     50
+          below     15]
+      (is (not (prevent? 50 {:version "1.51.23.1" :rollout above} threshold)))
+      (is (prevent? 50 {:version "1.51.23.1" :rollout below} threshold))
+      (testing "when major is the same, threshold does not matter"
+        (is (not (prevent? 50 {:version "1.50.23.1" :rollout above} threshold)) "Same major")
+        (is (not (prevent? 50 {:version "1.50.23.1" :rollout below} threshold)) "Same major"))
+      (testing "when major is two versions below, follows normal behavior"
+        ;; todo: should this offer the next major? ie on 49, 51 is at 10% rollout, should we offer 50 or not?
+        (is (not (prevent? 49 {:version "1.51.23.1" :rollout above} threshold)))
+        (is (prevent? 49 {:version "1.51.23.1" :rollout below} threshold))))))
