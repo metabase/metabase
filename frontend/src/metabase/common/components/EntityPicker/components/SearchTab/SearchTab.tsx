@@ -59,8 +59,8 @@ export const SearchTab = <
                 </Text>
                 <SegmentedControl
                   data={[
-                    { label: t`Everywhere`, value: "everywhere" },
-                    { label: `“${folderName}”`, value: "folder" },
+                    { label: t`Everywhere`, value: "everywhere" as const },
+                    { label: `“${folderName}”`, value: "folder" as const },
                   ]}
                   value={searchScope}
                   onChange={value =>
