@@ -290,7 +290,7 @@
                                 tables))))
     (original-describe-database driver database)))
 
-(deftest ^:parallel oracle-sanity-check-test
+(deftest ^:parallel describe-database-sanity-check-test
   (testing "Make sure even tho tables from different datasets are all stuffed in one DB we still sync them separately"
     (mt/test-driver :oracle
       (mt/dataset airports
