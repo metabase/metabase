@@ -35,6 +35,8 @@
                                    :type/Time                   "TIMESTAMP" #_"TIMESTAMP_NTZ"
                                    :type/DateTime               "TIMESTAMP"  #_"TIMESTAMP_NTZ"
                                    :type/DateTimeWithLocalTZ    "TIMESTAMP"
+                                   :type/DateTimeWithTZ         "TIMESTAMP"
+                                   :type/DateTimeWithZoneOffset "TIMESTAMP"
                                    :type/Decimal                "DECIMAL"
                                    :type/Float                  "DOUBLE"
                                    :type/Integer                "INTEGER"
@@ -55,8 +57,12 @@
     :token     (tx/db-test-env-var-or-throw :databricks-jdbc :token)
     :http-path (tx/db-test-env-var-or-throw :databricks-jdbc :http-path)
     :catalog   (tx/db-test-env-var-or-throw :databricks-jdbc :catalog)}
+   ;; Databricks' namespace model: catalog, schema, table. With current implementation user can add all schemas
+   ;; in catalog on one Metabase database connection. Following expression generates schema filters so only one schema
+   ;; is treated as a Metabase database, for compatibility with existing tests.
    (when (string? (not-empty database-name))
-     {:schema database-name})))
+     {:schema-filters-type "inclusion"
+      :schema-filters-patterns database-name})))
 
 (defn- existing-databases
   "Set of databases that already exist. Used to avoid creating those"
@@ -132,6 +138,12 @@
                                            (rest sql-args))}
                           e)))))))
 
+;; With jdbc driver version 2.6.40 test data load fails due to ~statment using more parameters than driver's able to
+;; handle.
+(defmethod load-data/chunk-size :databricks-jdbc
+  [_driver _dbdef _tabledef]
+  #_25 200)
+
 (defmethod load-data/row-xform :databricks-jdbc
   [_driver _dbdef tabledef]
   (load-data/maybe-add-ids-xform tabledef))
@@ -144,3 +156,8 @@
 (defmethod sql.tx/drop-db-if-exists-sql :databricks-jdbc
   [driver {:keys [database-name]}]
   (format "DROP DATABASE IF EXISTS %s CASCADE" (sql.tx/qualify-and-quote driver database-name)))
+
+(defmethod sql.tx/qualified-name-components :databricks-jdbc
+  ([_ db-name]                       [db-name])
+  ([_ db-name table-name]            [db-name table-name])
+  ([_ db-name table-name field-name] [db-name table-name field-name]))
