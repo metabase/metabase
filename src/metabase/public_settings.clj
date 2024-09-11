@@ -70,12 +70,36 @@
   :audit   :getter
   :default true)
 
+(declare site-uuid)
+
+(defsetting upgrade-threshold
+  (deferred-tru "Threshold (value in 0-100) indicating at which treshold it should offer an upgrade to the latest major version.")
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :setter     :none
+  :getter     (fn []
+                (-> (site-uuid) hash (mod 100))))
+
+(defn- should-remove-upgrade?
+  [_current-major _latest _threshold]
+  true)
+
 (defsetting version-info
   (deferred-tru "Information about available versions of Metabase.")
   :type    :json
   :audit   :never
   :default {}
-  :doc     false)
+  :doc     false
+  :getter  (fn []
+             (let [vi      (setting/get-value-of-type :json :version-info)
+                   remove? (should-remove-upgrade? (config/current-major-version) (-> vi :latest) (upgrade-threshold))]
+               (cond-> vi
+                 remove? (dissoc vi :latest))
+               (try
+                 (catch Exception e
+                   (log/error e "Error processing version info")
+                   vi)))))
 
 (defsetting version-info-last-checked
   (deferred-tru "Indicates when Metabase last checked for new versions.")
