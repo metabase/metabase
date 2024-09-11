@@ -1,18 +1,17 @@
 import fetch from "node-fetch";
+import _ from "underscore";
+
 import { getMilestoneIssues } from "./github";
+import type {
+  Issue,
+  ReleaseProps,
+  VersionInfo,
+  VersionInfoFile,
+} from "./types";
 import {
   getVersionType,
   isEnterpriseVersion,
 } from "./version-helpers";
-
-import type {
-  Issue,
-  ReleaseProps,
-  VersionInfoFile,
-  VersionInfo,
-} from "./types";
-
-import _ from "underscore";
 
 const generateVersionInfo = ({
   version,
