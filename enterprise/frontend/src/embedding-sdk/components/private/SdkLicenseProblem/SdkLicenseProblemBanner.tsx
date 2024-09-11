@@ -32,12 +32,7 @@ export const SdkLicenseProblemBanner = ({ problem }: Props) => {
   const isError = severity === "error";
 
   return (
-    <Popover
-      position="top-start"
-      opened={expanded}
-      onChange={setExpanded}
-      zIndex={1000}
-    >
+    <Popover position="top-start" opened={expanded} onChange={setExpanded}>
       <Popover.Target>
         <Flex
           onClick={() => setExpanded(!expanded)}
