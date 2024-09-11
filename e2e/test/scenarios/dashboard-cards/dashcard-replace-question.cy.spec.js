@@ -204,7 +204,7 @@ describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
     });
     assertDashboardFilterMapping(findTargetDashcard(), {
       filterName: PARAMETER.UNUSED.name,
-      expectedColumName: "Order.Discount",
+      expectedColumName: "Orders.Discount",
     });
 
     // Ensure changes are persisted

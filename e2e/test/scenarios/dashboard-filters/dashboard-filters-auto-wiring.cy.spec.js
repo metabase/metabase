@@ -535,7 +535,7 @@ describe("dashboard filters auto-wiring", () => {
         .findByRole("button", { name: "Auto-connect" })
         .click();
 
-      getDashboardCard(0).findByText("Product.ID").should("exist");
+      getDashboardCard(0).findByText("Products.ID").should("exist");
       getDashboardCard(1).findByText("Product.ID").should("exist");
       getDashboardCard(2).findByText("Product.ID").should("exist");
 
@@ -585,7 +585,7 @@ describe("dashboard filters auto-wiring", () => {
 
       goToFilterMapping("ID");
 
-      getDashboardCard(0).findByText("Product.ID").should("exist");
+      getDashboardCard(0).findByText("Products.ID").should("exist");
       getDashboardCard(1).findByText("Product.ID").should("exist");
       getDashboardCard(2).findByText("Product.ID").should("exist");
 

@@ -1,10 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  getColumnGroupIcon,
-  getColumnGroupName,
-} from "metabase/common/utils/column-groups";
+import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import {
   HoverParent,
   QueryColumnInfoIcon,
@@ -84,7 +81,7 @@ export function FilterColumnPicker({
         : [];
 
       return {
-        name: getColumnGroupName(groupInfo),
+        name: groupInfo.displayName,
         icon: getColumnGroupIcon(groupInfo),
         items: [...segmentItems, ...columnItems],
       };

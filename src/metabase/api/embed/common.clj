@@ -314,7 +314,7 @@
 (def ^:private ApiModel (into [:enum] eid-api-models))
 
 (def ^:private EntityId
-  "A Malli schema for an entity id, this is a little looser because it needs to be fast."
+  "A Malli schema for an entity id, this is a little more loose because it needs to be fast."
   [:and {:description "entity_id"}
    :string
    [:fn {:error/fn (fn [{:keys [value]} _]
