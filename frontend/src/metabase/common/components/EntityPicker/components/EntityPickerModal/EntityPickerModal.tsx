@@ -218,7 +218,12 @@ export function EntityPickerModal<
   const [tabFolderState, setTabFolderState] = useState<
     TabFolderState<Id, Model, Item>
   >({});
-  const selectedFolder = tabFolderState[selectedTabId];
+  const selectedFolder =
+    tabFolderState[
+      selectedTabId === SEARCH_TAB_ID
+        ? previousTabId ?? selectedTabId
+        : selectedTabId
+    ];
 
   const handleSelectItem = useCallback(
     (item: Item) => {
