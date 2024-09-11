@@ -58,18 +58,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       });
 
       cy.location("pathname").should("eq", embeddingPage);
-      cy.findByTestId("enable-embedding-setting").within(() => {
-        cy.findByText(embeddingDescription);
-
-        cy.findByLabelText("Enable Embedding").click({ force: true });
-      });
-      // The URL should stay the same
-      cy.location("pathname").should("eq", embeddingPage);
-
-      cy.findByTestId("enable-embedding-setting").within(() => {
-        cy.findByRole("checkbox").should("be.checked");
-      });
-
+      mainPage().findByText(embeddingDescription).should("be.visible");
       cy.log(
         "With the embedding enabled, we should now see two new sections on the main page",
       );
@@ -89,6 +78,9 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
       cy.log("Standalone embeds page");
       mainPage().within(() => {
+        cy.findByLabelText("Enable Static embedding")
+          .click({ force: true })
+          .should("be.checked");
         cy.findByTestId("embedding-secret-key-setting").within(() => {
           cy.findByText("Embedding secret key");
           cy.findByText(
@@ -98,7 +90,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           cy.button("Regenerate key");
         });
 
-        cy.findByTestId("-embedded-resources-setting").within(() => {
+        cy.findByTestId("embedded-resources").within(() => {
           cy.findByText("Embedded Dashboards");
           cy.findByText("No dashboards have been embedded yet.");
 
@@ -135,6 +127,13 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
   });
 
   context("embedding enabled", () => {
+    beforeEach(() => {
+      // The default value for `enable-embedding` from the snapshot is `true`, but the new setting value is `false`
+      cy.request("PUT", "/api/setting/enable-embedding-static", {
+        value: true,
+      });
+    });
+
     const ids = {
       question: ORDERS_QUESTION_ID,
       dashboard: ORDERS_DASHBOARD_ID,
@@ -310,7 +309,6 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 });
 
 function resetEmbedding() {
-  cy.request("PUT", "/api/setting/enable-embedding", { value: false });
   cy.request("PUT", "/api/setting/embedding-secret-key", {
     value: null,
   });

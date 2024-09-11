@@ -54,13 +54,15 @@ export function StaticEmbeddingSettings({
           checked={isStaticEmbeddingEnabled}
           onChange={handleToggleStaticEmbedding}
         />
-        <Box>
+        <Box data-testid="embedding-secret-key-setting">
           <SettingHeader
-            id={embeddingSecretKeySetting.key}
+            id="setting-embedding-secret-key"
             setting={embeddingSecretKeySetting}
           />
           <SetByEnvVarWrapper setting={embeddingSecretKeySetting}>
             <SecretKeyWidget
+              id="setting-embedding-secret-key"
+              key={isStaticEmbeddingEnabled.toString()}
               onChange={handleChangeEmbeddingSecretKey}
               setting={embeddingSecretKeySetting}
               confirmation={{
@@ -70,9 +72,9 @@ export function StaticEmbeddingSettings({
             />
           </SetByEnvVarWrapper>
         </Box>
-        <Box>
+        <Box data-testid="embedded-resources">
           <SettingTitle>{t`Manage embeds`}</SettingTitle>
-          <EmbeddedResources />
+          <EmbeddedResources key={isStaticEmbeddingEnabled.toString()} />
         </Box>
       </Stack>
     </Box>

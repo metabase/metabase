@@ -50,7 +50,12 @@
   :default    false
   :visibility :authenticated
   :export?    false
-  :audit      :getter)
+  :audit      :getter
+  :setter     (fn [new-value]
+                (when (not= new-value (setting/get-value-of-type :boolean :enable-embedding-static))
+                  (setting/set-value-of-type! :boolean :enable-embedding-static new-value)
+                  (when (and new-value (str/blank? (embed/embedding-secret-key)))
+                    (embed/embedding-secret-key! (crypto-random/hex 32))))))
 
 (defsetting enable-embedding-sdk
   (deferred-tru "Allow admins to embed Metabase via the SDK?")
