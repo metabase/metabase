@@ -3,7 +3,7 @@ import { match } from "ts-pattern";
 import type { SdkLicenseProblem } from "embedding-sdk/types/license-problem";
 
 const HEADER_STYLE = "color: #509ee3; font-size: 16px; font-weight: bold;";
-const TEXT_STYLE = "color: #333; font-size: 14px;";
+const TEXT_STYLE = "font-size: 14px;";
 const LINK_STYLE =
   "color: #509ee3; font-size: 14px; text-decoration: underline;";
 
