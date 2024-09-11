@@ -47,6 +47,7 @@
   instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
   (concat
    [:model/Channel
+    :model/ChannelTemplate
     :model/Database
     :model/User
     :model/Setting

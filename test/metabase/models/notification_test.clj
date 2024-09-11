@@ -65,8 +65,10 @@
 
 (deftest create-notification!+hydration-keys-test
   (mt/with-model-cleanup [:model/Notification]
-    (mt/with-temp [:model/Channel chn-1 (assoc api.channel-test/default-test-channel :name "Channel 1")
-                   :model/Channel chn-2 (assoc api.channel-test/default-test-channel :name "Channel 2")]
+    (mt/with-temp [:model/Channel         chn-1   (assoc api.channel-test/default-test-channel :name "Channel 1")
+                   :model/Channel         chn-2   (assoc api.channel-test/default-test-channel :name "Channel 2")
+                   :model/ChannelTemplate tmpl-1 {:channel_type (:type chn-1)
+                                                  :name         "My Template"}]
       (testing "create a notification with 2 subscriptions with 2 handlers that has 2 recipients"
         (let [noti (models.notification/create-notification!
                     default-system-event-notification
@@ -74,6 +76,7 @@
                      default-card-created-subscription]
                     [{:channel_type (:type chn-1)
                       :channel_id   (:id chn-1)
+                      :template_id  (:id tmpl-1)
                       :recipients   [{:type     :notification-recipient/user
                                       :user_id  (mt/user->id :rasta)}
                                      {:type                 :notification-recipient/group
@@ -91,16 +94,59 @@
                                    default-card-created-subscription]
                    :handlers      [{:channel_type (:type chn-1)
                                     :channel_id   (:id chn-1)
+                                    :channel      {:id (:id chn-1)
+                                                   :name "Channel 1"}
+                                    :template_id  (:id tmpl-1)
+                                    :template     {:id (:id tmpl-1)
+                                                   :name "My Template"}
                                     :recipients   [{:type     :notification-recipient/user
                                                     :user_id  (mt/user->id :rasta)}
                                                    {:type                 :notification-recipient/group
                                                     :permissions_group_id (:id (perms-group/all-users))}]}
                                    {:channel_type (:type chn-2)
                                     :channel_id   (:id chn-2)
+                                    :channel      {:id   (:id chn-2)
+                                                   :name "Channel 2"}
+                                    :template_id  nil
+                                    :template     nil
                                     :recipients   [{:type     :notification-recipient/user
                                                     :user_id  (mt/user->id :crowberto)}
                                                    {:type     :notification-recipient/group
                                                     :permissions_group_id (:id (perms-group/admin))}]}]}
                   (t2/hydrate (t2/select-one :model/Notification (:id noti))
                               :subscriptions
-                              [:handlers :recipients :channel]))))))))
+                              [:handlers :recipients :channel :template]))))))))
+
+(deftest delete-template-set-null-on-existing-handlers-test
+  (testing "if a channel template is deleted, then set null on existing notification_handler"
+    (mt/with-temp [:model/Channel         chn-1   (assoc api.channel-test/default-test-channel :name "Channel 1")
+                   :model/ChannelTemplate tmpl-1 {:channel_type (:type chn-1)}]
+      (let [noti (models.notification/create-notification!
+                  default-system-event-notification
+                  [default-user-invited-subscription]
+                  [{:channel_type (:type chn-1)
+                    :channel_id   (:id chn-1)
+                    :template_id  (:id tmpl-1)
+                    :recipients   [{:type     :notification-recipient/user
+                                    :user_id  (mt/user->id :rasta)}]}])]
+        (t2/delete! :model/ChannelTemplate (:id tmpl-1))
+        (is (=? {:template_id nil} (t2/select-one :model/NotificationHandler :notification_id (:id noti))))))))
+
+(deftest cross-check-channel-type-and-template-type-test
+  (testing "can't create a handler with a template that has different channel type"
+    (mt/with-temp [:model/Channel         chn-1  {:type    :channel/slack}
+                   :model/ChannelTemplate tmpl-1 {:channel_type :channel/email}]
+      (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
+                            (t2/insert! :model/NotificationHandler {:channel_type :channel/slack
+                                                                    :channel_id   (:id chn-1)
+                                                                    :template_id  (:id tmpl-1)})))))
+
+  (testing "can't update a handler with a template that has different channel type"
+    (mt/with-temp [:model/ChannelTemplate     email-tmpl {:channel_type :channel/email}
+                   :model/ChannelTemplate     slack-tmpl {:channel_type :channel/slack}
+                   :model/Notification        noti       {}
+                   :model/NotificationHandler handler    {:channel_type    :channel/slack
+                                                          :notification_id (:id noti)
+                                                          :template_id     (:id slack-tmpl)}]
+      (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
+                            (t2/update! :model/NotificationHandler (:id handler) {:template_id (:id email-tmpl)}))))))
