@@ -16,9 +16,9 @@ function getGroupName(
   groupInfo: Lib.ColumnGroupDisplayInfo,
   stageIndex: number,
 ) {
-  return stageIndex <= 1
-    ? groupInfo.displayName
-    : `${groupInfo.displayName} (${stageIndex})`;
+  return groupInfo.isMainGroup && stageIndex > 1
+    ? `${groupInfo.displayName} (${stageIndex})`
+    : groupInfo.displayName;
 }
 
 export function getGroupItems(query: Lib.Query): GroupItem[] {

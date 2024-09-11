@@ -79,7 +79,8 @@
       ;; if this is a native query or something else that doesn't have a source Table or source Card then use the
       ;; stage display name.
       {:display-name (lib.metadata.calculation/display-name query stage-number stage)}))
-   {:is-from-join           false
+   {:is-main-group          true
+    :is-from-join           false
     :is-implicitly-joinable false}))
 
 (defmethod display-info-for-group-method :group-type/join.explicit
@@ -96,7 +97,8 @@
       (if-let [card (lib.metadata/card query card-id)]
         (lib.metadata.calculation/display-info query stage-number card)
         {:display-name (lib.card/fallback-display-name card-id)})))
-   {:is-from-join           true
+   {::is-main-group         false
+    :is-from-join           true
     :is-implicitly-joinable false}))
 
 (defmethod display-info-for-group-method :group-type/join.implicit
@@ -116,7 +118,8 @@
        ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
        ;; See #30109 for more details.
        (update fk-info :display-name lib.util/strip-id)))
-   {:is-from-join           false
+   {:is-main-group          false
+    :is-from-join           false
     :is-implicitly-joinable true}))
 
 (defmethod lib.metadata.calculation/display-info-method :metadata/column-group
