@@ -119,13 +119,18 @@ function useHasVerifiedMetrics() {
 function useFilteredMetrics(metricFilters: MetricFilterSettings) {
   const hasVerifiedMetrics = useHasVerifiedMetrics();
 
+  const filters = { ...metricFilters };
+  if (!hasVerifiedMetrics.result) {
+    delete filters.verified;
+  }
+
   const metricsResult = useFetchMetrics(
     hasVerifiedMetrics.isLoading || hasVerifiedMetrics.error
       ? skipToken
       : {
           filter_items_in_personal_collection: "exclude",
           model_ancestors: false,
-          ...metricFilters,
+          ...filters,
         },
   );
 
