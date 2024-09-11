@@ -47,9 +47,7 @@ function setup({
 describe("ListValuePicker", () => {
   describe("checkbox list mode", () => {
     const allOptions = PRODUCT_CATEGORY_VALUES.values;
-    const allValues = PRODUCT_CATEGORY_VALUES.values.map(([value]) =>
-      String(value),
-    );
+    const allValues = allOptions.map(([value]) => String(value));
 
     it("should allow to select all options", async () => {
       const { onChange } = setup({
