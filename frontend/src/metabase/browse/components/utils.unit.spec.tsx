@@ -1,10 +1,20 @@
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 import { SortDirection } from "metabase-types/api/sorting";
 
 import { createMockModelResult } from "../test-utils";
 import type { ModelResult } from "../types";
 
-import { getMaxRecentModelCount, sortModelOrMetric } from "./utils";
+import {
+  getDatasetScalarValueForMetric,
+  getMaxRecentModelCount,
+  isDatasetScalar,
+  sortModelOrMetric,
+} from "./utils";
 
 describe("sortModels", () => {
   let id = 0;
@@ -197,5 +207,71 @@ describe("getMaxRecentModelCount", () => {
     expect(getMaxRecentModelCount(0)).toBe(0);
     expect(getMaxRecentModelCount(5)).toBe(0);
     expect(getMaxRecentModelCount(9)).toBe(0);
+  });
+});
+
+describe("isDatasetScalar", () => {
+  it("should return true for a dataset with a single column and a single row", () => {
+    const dataset = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createMockColumn({ name: "col1" })],
+        rows: [[1]],
+      }),
+    });
+
+    expect(isDatasetScalar(dataset)).toBe(true);
+  });
+
+  it("should return false for a dataset with more than one column", () => {
+    const dataset = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn({ name: "col1" }),
+          createMockColumn({ name: "col2" }),
+        ],
+        rows: [[1, 2]],
+      }),
+    });
+
+    expect(isDatasetScalar(dataset)).toBe(false);
+  });
+
+  it("should return false for a dataset with more than one row", () => {
+    const dataset = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createMockColumn({ name: "col1" })],
+        rows: [[1], [2]],
+      }),
+    });
+
+    expect(isDatasetScalar(dataset)).toBe(false);
+  });
+});
+
+describe("getDatasetScalarValueForMetric", () => {
+  it("should return null if the dataset is not scalar", () => {
+    const dataset = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createMockColumn({ name: "col1" })],
+        rows: [[1], [2]],
+      }),
+    });
+    expect(getDatasetScalarValueForMetric(dataset)).toBe(null);
+  });
+
+  it("should return the value if the dataset is scalar", () => {
+    const value = 42;
+    const column = createMockColumn({ name: "col1" });
+    const dataset = createMockDataset({
+      data: createMockDatasetData({
+        cols: [column],
+        rows: [[value]],
+      }),
+    });
+    expect(getDatasetScalarValueForMetric(dataset)).toEqual({
+      value,
+      column,
+      tooltip: "Overall",
+    });
   });
 });

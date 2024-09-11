@@ -2,7 +2,6 @@
   (:require [malli.experimental.time]
             [metabase.embed.settings :as embed.settings]
             [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.util.honey-sql-2 :as h2x]
             [metabase.util.malli :as mu]
             [toucan2.core :as t2]))
@@ -100,11 +99,11 @@
   {:select [[:%count.* :count]]
    :from [[{:union-all (queries args)} :dummy_alias]]})
 
-(mu/defn find-stale-candidates* :- [:map
-                                    [:rows [:sequential [:map
-                                                         [:id pos-int?]
-                                                         [:model keyword?]]]]
-                                    [:total :int]]
+(mu/defn find-candidates :- [:map
+                             [:rows [:sequential [:map
+                                                  [:id pos-int?]
+                                                  [:model keyword?]]]]
+                             [:total :int]]
   "Find stale content in the given collections.
 
   Arguments are defined by [[FindStaleContentArgs]]:
@@ -134,10 +133,3 @@
                 (map (fn [v] (update v :model #(keyword "model" %)))))
                (t2/query (rows-query args)))
    :total (:count (t2/query-one (total-query args)))})
-
-(defenterprise find-stale-candidates
-  "Finds stale content in the given collection. See `find-stale-candidates* for details and malli schema for the
-  argument map.."
-  :feature :collection-cleanup
-  [arg-map]
-  (find-stale-candidates* arg-map))
