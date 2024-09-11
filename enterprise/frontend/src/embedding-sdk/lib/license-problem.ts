@@ -56,6 +56,8 @@ export function getSdkLicenseProblem(
       )
       // For API keys, we allow evaluation usage without a license in localhost.
       // This allows them to test-drive the SDK in development.
+      // API keys are always enabled regardless of the "enable-embedding" setting,
+      // as it can only be used in localhost.
       .with({ isLocalhost: true, isApiKey: true, hasTokenFeature: true }, () =>
         toWarning(PROBLEMS.API_KEYS_WITH_LICENSE),
       )
