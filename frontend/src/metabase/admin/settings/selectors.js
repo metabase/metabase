@@ -435,11 +435,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     settings: [],
   },
   "embedding-in-other-applications/full-app": {
-    component: ({ updateSetting }) => (
-      <PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings
-        updateSetting={updateSetting}
-      />
-    ),
+    component: PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings,
     settings: [],
   },
   license: {
