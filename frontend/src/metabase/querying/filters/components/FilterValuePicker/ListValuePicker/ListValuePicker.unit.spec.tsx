@@ -18,7 +18,7 @@ type SetupOpts = {
 function setup({
   fieldValues = [],
   selectedValues = [],
-  placeholder,
+  placeholder = "Search the list",
   shouldCreate,
   autoFocus,
   compact,
@@ -77,6 +77,25 @@ describe("ListValuePicker", () => {
       expect(onChange).toHaveBeenCalledWith(allValues);
     });
 
+    it("should allow to select all options after search", async () => {
+      const { onChange } = setup({
+        fieldValues: allOptions,
+        selectedValues: [],
+      });
+
+      await userEvent.type(
+        screen.getByPlaceholderText("Search the list"),
+        allValues[0],
+      );
+      expect(screen.getByLabelText(allValues[0])).toBeInTheDocument();
+      expect(screen.queryByLabelText(allValues[1])).not.toBeInTheDocument();
+
+      const checkbox = screen.getByLabelText("Select all");
+      expect(checkbox).not.toBeChecked();
+      await userEvent.click(checkbox);
+      expect(onChange).toHaveBeenCalledWith(allValues);
+    });
+
     it("should allow to deselect all options", async () => {
       const { onChange } = setup({
         fieldValues: allOptions,
@@ -87,6 +106,25 @@ describe("ListValuePicker", () => {
       expect(checkbox).toBeChecked();
       await userEvent.click(checkbox);
 
+      expect(onChange).toHaveBeenCalledWith([]);
+    });
+
+    it("should allow to deselect all options after search", async () => {
+      const { onChange } = setup({
+        fieldValues: allOptions,
+        selectedValues: allValues,
+      });
+
+      await userEvent.type(
+        screen.getByPlaceholderText("Search the list"),
+        allValues[0],
+      );
+      expect(screen.getByLabelText(allValues[0])).toBeInTheDocument();
+      expect(screen.queryByLabelText(allValues[1])).not.toBeInTheDocument();
+
+      const checkbox = screen.getByLabelText("Select none");
+      expect(checkbox).toBeChecked();
+      await userEvent.click(checkbox);
       expect(onChange).toHaveBeenCalledWith([]);
     });
   });
