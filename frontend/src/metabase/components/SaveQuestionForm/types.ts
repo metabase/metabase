@@ -7,6 +7,7 @@ export type SaveQuestionProps = {
   onCreate: (question: Question) => Promise<void>;
   onSave: (question: Question) => Promise<void>;
 
+  closeOnSuccess?: boolean;
   multiStep?: boolean;
   initialCollectionId?: CollectionId | null;
 };
@@ -16,8 +17,4 @@ export type FormValues = {
   collection_id: CollectionId | null | undefined;
   name: string;
   description: string;
-};
-
-export type SaveQuestionFormProps = {
-  onCancel: () => void;
 };

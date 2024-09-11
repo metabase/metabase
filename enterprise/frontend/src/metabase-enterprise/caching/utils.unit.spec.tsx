@@ -30,6 +30,11 @@ describe("hasQuestionCacheSection", () => {
     expect(hasQuestionCacheSection(question)).toBe(false);
   });
 
+  it("should have the cache section for metrics", () => {
+    const question = setup({ type: "metric" });
+    expect(hasQuestionCacheSection(question)).toBe(true);
+  });
+
   it("should not have the cache section when the user has no write access and the question is not cached", () => {
     const question = setup({ canWrite: false, lastQueryStart: null });
     expect(hasQuestionCacheSection(question)).toBe(false);

@@ -155,6 +155,12 @@ export function provideCardQueryMetadataTags(
   return [idTag("card", id), ...provideAdhocQueryMetadataTags(metadata)];
 }
 
+export function provideCardQueryTags(
+  cardId: CardId,
+): TagDescription<TagType>[] {
+  return [idTag("card", cardId)];
+}
+
 export function provideCloudMigrationTags(
   migration: CloudMigration,
 ): TagDescription<TagType>[] {

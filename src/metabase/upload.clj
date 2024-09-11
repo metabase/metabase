@@ -3,6 +3,7 @@
    [clj-bom.core :as bom]
    [clojure.data :as data]
    [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
@@ -38,9 +39,10 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.io File)
+   (java.io File InputStreamReader Reader)
    (java.nio.charset StandardCharsets)
-   (org.apache.tika Tika)))
+   (org.apache.tika Tika)
+   (org.mozilla.universalchardet UniversalDetector)))
 
 (set! *warn-on-reflection* true)
 
@@ -279,6 +281,28 @@
 (defn- file-mime-type [^File file]
   (.detect tika file))
 
+(defn- detect-charset ^String [file]
+  (try
+    (let [detector (UniversalDetector.)
+          buffer   (byte-array 8192)]
+      (with-open [input-stream (io/input-stream file)]
+        (loop []
+          (let [bytes-read (.read input-stream buffer)]
+            (if (pos? bytes-read)
+              (do
+                (.handleData detector buffer 0 bytes-read)
+                (when-not (.isDone detector)
+                  (recur)))
+              (.dataEnd detector)))))
+      (.getDetectedCharset detector))
+    (catch Exception _)))
+
+(defn- ->reader ^Reader [^File file]
+  ;; If we can't detect the encoding, just live with unrecognized characters.
+  (let [charset (or (detect-charset file) "UTF-8")]
+    (-> (bom/bom-input-stream file)
+        (InputStreamReader. charset))))
+
 (defn- assert-separator-chosen [s]
   (or s (throw (IllegalArgumentException. "Unable to determine separator"))))
 
@@ -289,7 +313,7 @@
   [readable]
   (let [count-columns (fn [s]
                         ;; Create a separate reader per separator, as the line-breaking behavior depends on the parser.
-                        (with-open [reader (bom/bom-reader readable)]
+                        (with-open [reader (->reader readable)]
                           (try (into []
                                      (comp (take max-inferred-lines)
                                            (map count))
@@ -343,7 +367,7 @@
    Returns the file size, number of rows, and number of columns."
   [driver db table-name filename ^File csv-file]
   (let [parse (infer-parser filename csv-file)]
-    (with-open [reader (bom/bom-reader csv-file)]
+    (with-open [reader (->reader csv-file)]
       (let [auto-pk?          (auto-pk-column? driver db)
             [header & rows]   (cond-> (parse reader)
                                 auto-pk?
@@ -483,7 +507,7 @@
   It may involve redundantly reading the file, or even failing again if the file is unreadable."
   [filename ^File file]
   (let [parse (infer-parser filename file)]
-    (with-open [reader (bom/bom-reader file)]
+    (with-open [reader (->reader file)]
       (let [rows (parse reader)]
         {:size-mb           (file-size-mb file)
          :num-columns       (count (first rows))
@@ -605,11 +629,15 @@
                                            :model-id    (:id card)
                                            :stats       stats}})
 
-        (snowplow/track-event! ::snowplow/csv-upload-successful api/*current-user-id*
-                               (assoc stats :model-id (:id card)))
+        (snowplow/track-event! ::snowplow/csvupload
+                               (assoc stats
+                                      :event    :csv-upload-successful
+                                      :model-id (:id card)))
         card)
       (catch Throwable e
-        (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* (fail-stats filename file))
+        (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
+                                                           :event :csv-upload-failed))
+
         (throw e)))))
 
 ;;; +-----------------------------
@@ -718,7 +746,7 @@
 (defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
   (try
     (let [parse (infer-parser filename file)]
-      (with-open [reader (bom/bom-reader file)]
+      (with-open [reader (->reader file)]
         (let [timer              (u/start-timer)
               driver             (driver.u/database->driver database)
               auto-pk?           (auto-pk-column? driver database)
@@ -788,11 +816,12 @@
                                              :table-name  (:name table)
                                              :stats       stats}})
 
-          (snowplow/track-event! ::snowplow/csv-append-successful api/*current-user-id* stats)
+          (snowplow/track-event! ::snowplow/csvupload (assoc stats :event :csv-append-successful))
 
           {:row-count row-count})))
     (catch Throwable e
-      (snowplow/track-event! ::snowplow/csv-append-failed api/*current-user-id* (fail-stats filename file))
+      (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
+                                                         :event :csv-append-failed))
       (throw e))))
 
 (defn- can-update-error

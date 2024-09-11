@@ -144,7 +144,8 @@
    [:name      :string]
    ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
    [:base-type ::lib.schema.common/base-type]
-   [:id             {:optional true} ::lib.schema.id/field]
+   ;; This is nillable because internal remap columns have `:id nil`.
+   [:id             {:optional true} [:maybe ::lib.schema.id/field]]
    [:display-name   {:optional true} [:maybe :string]]
    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
    ;; type of this column in the data warehouse, e.g. `TEXT` or `INTEGER`

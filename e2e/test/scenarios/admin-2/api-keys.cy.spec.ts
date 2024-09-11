@@ -11,6 +11,7 @@ import {
 import {
   createApiKey,
   restore,
+  sidesheet,
   visitDashboard,
   visitQuestion,
 } from "e2e/support/helpers";
@@ -200,9 +201,10 @@ describe("scenarios > admin > settings > API keys", () => {
             cy.findByTestId("view-footer").findByText("Showing 22 rows");
 
             cy.findByTestId("qb-header-info-button").click();
-            cy.findByTestId("sidebar-right").findByText(
-              "Test API Key One created this.",
-            );
+            sidesheet().within(() => {
+              cy.findByRole("tab", { name: "History" }).click();
+              cy.findByText("Test API Key One created this.");
+            });
           });
 
           createDashboardForApiKey(apiKey).then(({ body }) => {
@@ -234,7 +236,8 @@ describe("scenarios > admin > settings > API keys", () => {
             visitQuestion(ORDERS_QUESTION_ID);
             cy.findByTestId("qb-header").findByText("Edited Question Name");
             cy.findByTestId("qb-header-info-button").click();
-            cy.findByTestId("sidebar-right").within(() => {
+            sidesheet().within(() => {
+              cy.findByRole("tab", { name: "History" }).click();
               cy.findByText("You created this.");
               cy.findByText(
                 'Test API Key One renamed this Card from "Orders" to "Edited Question Name".',

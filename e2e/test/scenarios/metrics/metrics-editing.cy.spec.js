@@ -11,7 +11,6 @@ import {
   getNotebookStep,
   hovercard,
   modal,
-  openNotebook,
   openQuestionActions,
   popover,
   queryBuilderHeader,
@@ -143,7 +142,7 @@ describe("scenarios > metrics > editing", () => {
       popover().findByText("Edit metric definition").click();
       addBreakout({ tableName: "Product", columnName: "Created At" });
       updateMetric();
-      verifyLineAreaBarChart({ xAxis: "Created At", yAxis: "Count" });
+      verifyLineAreaBarChart({ xAxis: "Product → Created At", yAxis: "Count" });
     });
 
     it("should pin new metrics automatically", () => {
@@ -406,7 +405,8 @@ describe("scenarios > metrics > editing", () => {
       createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
         visitMetric(card.id),
       );
-      openNotebook();
+      openQuestionActions();
+      popover().findByText("Edit metric definition").click();
 
       cy.log("regular screen");
       getNotebookStep("summarize").within(() => {

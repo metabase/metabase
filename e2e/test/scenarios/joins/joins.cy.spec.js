@@ -69,7 +69,7 @@ describe("scenarios > question > joined questions", () => {
     openNotebook();
     filter({ mode: "notebook" });
     popover().within(() => {
-      cy.findByText("Review").click();
+      cy.findByText("Reviews").click();
       cy.findByText("Rating").click();
     });
     selectFilterOperator("Equal to");
@@ -82,10 +82,10 @@ describe("scenarios > question > joined questions", () => {
     summarize({ mode: "notebook" });
     addSummaryField({
       metric: "Average of ...",
-      table: "Review",
+      table: "Reviews",
       field: "Rating",
     });
-    addSummaryGroupingField({ table: "Review", field: "Reviewer" });
+    addSummaryGroupingField({ table: "Reviews", field: "Reviewer" });
 
     visualize();
 
@@ -254,7 +254,7 @@ describe("scenarios > question > joined questions", () => {
 
     summarize({ mode: "notebook" });
     addSummaryField({ metric: "Count of rows" });
-    addSummaryGroupingField({ table: "Product", field: "ID" });
+    addSummaryGroupingField({ table: "Products", field: "ID" });
 
     cy.findAllByTestId("action-buttons").last().button("Join data").click();
     joinTable("Reviews");

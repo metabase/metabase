@@ -578,8 +578,10 @@
       [:in collection-id-field
        {:select :id
         ;; the `FROM` clause is where we limit the collections to the ones we have permissions on. For a superuser,
-        ;; that's all of them. For regular users, it's a) the collections they have permission in the DB for, and b)
-        ;; their personal collection and its descendants.
+        ;; that's all of them. For regular users, it's:
+        ;; a) the collections they have permission in the DB for,
+        ;; b) the trash collection, and
+        ;; c) their personal collection and its descendants
         :from [(if is-superuser?
                  [:collection :c]
                  [{:union-all [{:select [:c.*]
@@ -589,12 +591,15 @@
                                          [:permissions_group :pg] [:= :pg.id :p.group_id]
                                          [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
                                 :where  [:and
-                                         [:= :pgm.user_id api/*current-user-id*]
+                                         [:= :pgm.user_id current-user-id]
                                          [:= :p.perm_type "perms/collection-access"]
                                          [:or
                                           [:= :p.perm_value "read-and-write"]
                                           (when (= :read (:permission-level visibility-config))
                                             [:= :p.perm_value "read"])]]}
+                               {:select [[:c.*]]
+                                :from   [[:collection :c]]
+                                :where  [:= :type "trash"]}
                                (when-let [personal-collection-and-descendant-ids (user->personal-collection-and-descendant-ids current-user-id)]
                                  {:select [:c.*]
                                   :from   [[:collection :c]]
@@ -640,18 +645,14 @@
                                              (when-not (collection.root/is-root-collection? parent-coll)
                                                [:not= :c2.id (u/the-id parent-coll)])]}]]]))]}]])))
 
-(def ^{:arglists '([visibility-config])} visible-collection-ids
-  "Returns all collection IDs that are visible given the `visibility-config` passed in. (Config provides knobs for
-  toggling permission level, trash/archive visibility, etc). If you're trying to filter based on this, you should
-  probably try to use `visible-collection-filter-clause` instead.
-
-  Cached for the lifetime of the request, maximum 10 seconds."
+(def ^{:arglists '([visibility-config])} visible-collection-ids*
+  "Impl for `visible-collection-ids`, caches for the lifetime of the request, maximum 10 seconds."
   (memoize/ttl
    ^{::memoize/args-fn (fn [[visibility-config]]
                          (if-let [req-id *request-id*]
                            [req-id api/*current-user-id* visibility-config]
                            [(random-uuid) api/*current-user-id* visibility-config]))}
-   (fn visible-collection-ids*
+   (fn
      [visibility-config]
      (cond-> (t2/select-pks-set :model/Collection {:where (visible-collection-filter-clause :id visibility-config)})
        (should-display-root-collection? visibility-config)
@@ -660,37 +661,34 @@
    ;; large
    :ttl/threshold (* 60 60 1000)))
 
-(mu/defn- effective-location-path* :- [:maybe LocationPath]
-  ([collection :- CollectionWithLocationOrRoot]
-   (when-not (collection.root/is-root-collection? collection)
-     (effective-location-path* (if (:archived_directly collection)
-                                 (trash-path)
-                                 (:location collection))
-                               (visible-collection-ids
-                                {:include-archived-items    (if (:archived collection)
-                                                              :only
-                                                              :exclude)
-                                 :include-trash-collection? true
-                                 :archive-operation-id      (:archive_operation_id collection)
-                                 :permission-level          :read}))))
-  ([real-location-path     :- LocationPath
-    allowed-collection-ids :- VisibleCollections]
-   (apply location-path (for [id    (location-path->ids real-location-path)
-                              :when (contains? allowed-collection-ids id)]
-                          id))))
+(mu/defn visible-collection-ids :- VisibleCollections
+  "Returns all collection IDs that are visible given the `visibility-config` passed in. (Config provides knobs for
+  toggling permission level, trash/archive visibility, etc). If you're trying to filter based on this, you should
+  probably use `visible-collection-filter-clause` instead."
+  [visibility-config :- CollectionVisibilityConfig]
+  (visible-collection-ids* visibility-config))
 
-(mi/define-simple-hydration-method effective-location-path
+(mi/define-batched-hydration-method effective-location-path*
   :effective_location
-  "Given a `location-path` and a set of Collection IDs one is allowed to view (obtained from
-  `visible-collection-ids` above), calculate the 'effective' location path (excluding IDs of
-  Collections for which we do not have read perms) we should show to the User.
+  "Given a seq of `collections`, batch hydrates them with their effective location."
+  [collections]
+  (when (seq collections)
+    (let [collection-ids (visible-collection-ids {:include-archived-items :all
+                                                  :include-trash-collection? true})]
+      (for [collection collections]
+        (assoc collection :effective_location
+               (when-not (or (nil? collection) (collection.root/is-root-collection? collection))
+                 (let [real-location-path (if (:archived_directly collection)
+                                            (trash-path)
+                                            (:location collection))]
+                   (apply location-path (for [id    (location-path->ids real-location-path)
+                                              :when (contains? collection-ids id)]
+                                          id)))))))))
 
-  When called with a single argument, `collection`, this is used as a hydration function to hydrate
-  `:effective_location`."
-  ([collection]
-   (effective-location-path* collection))
-  ([real-location-path allowed-collection-ids]
-   (effective-location-path* real-location-path allowed-collection-ids)))
+(defn effective-location-path
+  "Given a collection, returns the effective location (hiding parts of the path that the current user doesn't have access to)."
+  [collection]
+  (:effective_location (t2/hydrate collection :effective_location)))
 
 (def ^:private effective-parent-fields
   "Fields that should be included when hydrating the `:effective_parent` of a collection. Used for displaying recent views

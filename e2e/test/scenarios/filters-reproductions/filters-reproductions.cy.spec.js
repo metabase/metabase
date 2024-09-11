@@ -686,7 +686,7 @@ describe("issue 25990", () => {
     queryBuilderHeader().button("Filter").click();
 
     modal().within(() => {
-      cy.findByText("Person").click();
+      cy.findByText("People").click();
       cy.findByPlaceholderText("Enter an ID").type("10").blur();
       cy.button("Apply filters").click();
     });
