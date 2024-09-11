@@ -358,7 +358,7 @@ databaseChangeLog:
                   type: char(21)
                   remarks: Random NanoID tag for unique identity.
                   constraints:
-                    nullable: false
+                    nullable: true
                     unique: true
               - column:
                   name: collection_id
@@ -9269,6 +9269,437 @@ databaseChangeLog:
                   name: status
                   type: ${text.type}
                   remarks: running, failed, or completed
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:00
+      author: qnkhuat
+      comment: Create the notification table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification
+      changes:
+        - createTable:
+            tableName: notification
+            remarks: join table that connect notification subscriptions and notification handlers
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: payload_type
+                  remarks: the type of the payload
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  remarks: whether the notification is active
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: false
+                  defaultValueBoolean: true
+              - column:
+                  remarks: The timestamp of when the notification was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp of when the notification was updated
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:01
+      author: qnkhuat
+      comment: Create the notification_subscription table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_subscription
+      changes:
+        - createTable:
+            remarks: which type of trigger a notification is subscribed to
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: notification_id
+                  remarks: the notification that the subscription is connected to
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: notification
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_subscription_notification_id
+                    deleteCascade: true
+              - column:
+                  name: type
+                  remarks: the type of the subscription
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event_name
+                  remarks: the event name of subscriptions with type :notification-subscription/system-event
+                  type: varchar(64)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the subscription was created
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:02
+      author: qnkhuat
+      comment: index on notification_subscription.notification_id
+      rollback: # no need, will be dropped with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: notification_subscription
+                indexName: idx_notification_subscription_notification_id
+      changes:
+        - createIndex:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: notification_id
+            indexName: idx_notification_subscription_notification_id
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:03
+      author: qnkhuat
+      comment: Create the channel_template table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: channel_template
+      changes:
+        - createTable:
+            tableName: channel_template
+            remarks: custom template for the channel
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(64)
+                  remarks: the name of the template
+                  constraints:
+                    nullable: false
+              - column:
+                  name: channel_type
+                  type: varchar(64)
+                  remarks: the channel type of the template
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: ${text.type}
+                  remarks: the details of the template
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the template was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the template was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:04
+      author: qnkhuat
+      comment: Create the notification_handler table
+      validCheckSum: ANY
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_handler
+      changes:
+        - createTable:
+            tableName: notification_handler
+            remarks: which channel to send the notification to
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              # TODO: can be removed once emails and slack configuration are fully migrated to be stored in channel table.
+              - column:
+                  name: channel_type
+                  type: varchar(64)
+                  remarks: the type of the channel, like :channel/email, :channel/slack
+                  constraints:
+                    nullable: false
+              - column:
+                  name: notification_id
+                  type: int
+                  remarks: the notification that the handler is connected to
+                  constraints:
+                    nullable: false
+                    referencedTableName: notification
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_handler_notification_id
+                    deleteCascade: true
+              - column:
+                  name: channel_id
+                  type: int
+                  remarks: the channel that the handler is connected to
+                  constraints:
+                    nullable: true # temporarily nullable, because we need to support email and slack channels as global configuration
+                    referencedTableName: channel
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_handler_channel_id
+                    deleteCascade: true
+              - column:
+                  name: template_id
+                  type: int
+                  remarks: the template that the handler is connected to
+                  constraints:
+                    nullable: true
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  remarks: whether the handler is active
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the handler was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the handler was updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v51.2024-09-05T08:00:05
+      author: qnkhuat
+      comment: Add fk constraint to notification_handler.template_id
+      preConditions:
+        - not:
+          - foreignKeyConstraintExists:
+              foreignKeyName: fk_notification_handler_template_id
+              foreignKyeTableName: notification_handler
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: notification_handler
+            baseColumnNames: template_id
+            referencedTableName: channel_template
+            referencedColumnNames: id
+            constraintName: fk_notification_handler_template_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:06
+      author: qnkhuat
+      comment: index on notification_handler.notification_id
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: notification_handler
+                indexName: idx_notification_handler_notification_id
+      changes:
+        - createIndex:
+            tableName: notification_handler
+            columns:
+              - column:
+                  name: notification_id
+            indexName: idx_notification_handler_notification_id
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:07
+      author: qnkhuat
+      comment: index on notification_handler.channel_id
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: notification_handler
+                indexName: idx_notification_handler_channel_id
+      changes:
+        - createIndex:
+            tableName: notification_handler
+            columns:
+              - column:
+                  name: channel_id
+            indexName: idx_notification_handler_channel_id
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:08
+      author: qnkhuat
+      comment: Create the notification_recipient table
+      preConditions:
+        - not:
+          - tableExists:
+              tableName: notification_recipient
+      changes:
+        - createTable:
+            tableName: notification_recipient
+            remarks: who should receive the notification
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: notification_handler_id
+                  type: int
+                  remarks: the handler that the recipient is connected to
+                  constraints:
+                    nullable: false
+                    referencedTableName: notification_handler
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_recipient_notification_handler_id
+                    deleteCascade: true
+              - column:
+                  name: type
+                  type: varchar(64)
+                  remarks: the type of the recipient
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: a user if the recipient has type user
+                  constraints:
+                    nullable: true
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_recipient_user_id
+                    deleteCascade: true
+              - column:
+                  name: permissions_group_id
+                  type: int
+                  remarks: a permissions group if the recipient has type permissions_group
+                  constraints:
+                    nullable: true
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
+                    foreignKeyName: fk_notification_recipient_permissions_group_id
+                    deleteCascade: true
+              - column:
+                  name: details
+                  type: ${text.type}
+                  remarks: custom details for the recipient
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the recipient was updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:09
+      author: qnkhuat
+      comment: index on notification_recipient.notification_handler_id
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: notification_recipient
+                indexName: idx_notification_recipient_notification_handler_id
+      changes:
+        - createIndex:
+            tableName: notification_recipient
+            columns:
+              - column:
+                  name: notification_handler_id
+            indexName: idx_notification_recipient_notification_handler_id
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:10
+      author: qnkhuat
+      comment: index on notification_recipient.user_id
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: notification_recipient
+                indexName: idx_notification_recipient_user_id
+      changes:
+        - createIndex:
+            tableName: notification_recipient
+            columns:
+              - column:
+                  name: user_id
+            indexName: idx_notification_recipient_user_id
+
+  - changeSet:
+      id: v51.2024-09-05T08:00:11
+      author: qnkhuat
+      comment: index on notification_recipient.permissions_group_id
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: notification_recipient
+                indexName: idx_notification_recipient_permissions_group_id
+      changes:
+        - createIndex:
+            tableName: notification_recipient
+            columns:
+              - column:
+                  name: permissions_group_id
+            indexName: idx_notification_recipient_permissions_group_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
