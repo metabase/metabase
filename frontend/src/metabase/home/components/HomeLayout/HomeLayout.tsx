@@ -3,9 +3,12 @@ import { LayoutRoot, ContentContainer, ChatSection } from "./HomeLayout.styled";
 import { ChatGreeting } from "metabase/browse/components/ChatItems/Welcome";
 import { HomeInitialOptions } from "metabase/browse/components/ChatItems/InitialOptions";
 import ChatPrompt from "metabase/browse/components/ChatItems/Prompt";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { push } from "react-router-redux"; // Import the push method for navigation
-import { setInitialMessage } from "metabase/redux/initialMessage";
+import {
+  getInitialMessage,
+  setInitialMessage,
+} from "metabase/redux/initialMessage";
 import { setDBInputValue, setCompanyName } from "metabase/redux/initialDb";
 import ChatAssistant from "metabase/query_builder/components/ChatAssistant";
 import {
@@ -17,6 +20,7 @@ import ChatHistory from "metabase/browse/components/ChatItems/ChatHistory";
 import { useListDatabasesQuery } from "metabase/api";
 
 export const HomeLayout = () => {
+  const initialMessage = useSelector(getInitialMessage);
   const [inputValue, setInputValue] = useState("");
   const [showChatAssistant, setShowChatAssistant] = useState(false);
   const [selectedChatHistory, setSelectedChatHistory] = useState([]);
@@ -117,6 +121,7 @@ export const HomeLayout = () => {
                   oldCardId={oldCardId}
                   insights={insights}
                   setSelectedThreadId={setSelectedThreadId}
+                  initial_message={initialMessage}
                 />
               </Stack>
               <Stack

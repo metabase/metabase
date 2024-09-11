@@ -16,13 +16,11 @@ import {
     adhocQuestionHash
 } from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
 import { useSelector } from "metabase/lib/redux";
-import { getInitialMessage } from "metabase/redux/initialMessage";
 import { getDBInputValue, getCompanyName } from "metabase/redux/initialDb";
 import { useListDatabasesQuery } from "metabase/api";
 import { SemanticError } from "metabase/components/ErrorPages";
 import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
-const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights }) => {
-    const initialMessage = useSelector(getInitialMessage);
+const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message }) => {
     const initialDbName = useSelector(getDBInputValue);
     const initialCompanyName = useSelector(getCompanyName);
     const inputRef = useRef(null);
@@ -762,33 +760,33 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         const run_id = runId[0];
         ws.send(
             JSON.stringify({
-              type: "stopStreaming",
-              data: {
-                codeInterpreterThreadId: thread_id,
-                runId: run_id,
-              },
+                type: "stopStreaming",
+                data: {
+                    codeInterpreterThreadId: thread_id,
+                    runId: run_id,
+                },
             })
-          );
+        );
         setRunId([]);
         setCodeInterpreterThreadId([]);
         setChatLoading(false);
     };
 
     const stopMessage = async () => {
-        if(runId.length > 0 && codeInterpreterThreadId.length > 0) {
+        if (runId.length > 0 && codeInterpreterThreadId.length > 0) {
             await stopStream();
         }
     }
 
     useEffect(() => {
-        if (initialMessage.message) {
-            setInputValue(initialMessage.message);
+        if (initial_message.message) {
+            setInputValue(initial_message.message);
 
             if (ws && isConnected) {
                 sendMessage();
             }
         }
-    }, [initialMessage, ws, isConnected]);
+    }, [initial_message, ws, isConnected]);
 
     useEffect(() => {
         if (initialDbName !== null && initialCompanyName !== '') {
@@ -913,14 +911,14 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                                 }}
                                             >
                                                 {chatLoading ? (
-                                            <SpinnerIcon
-                                                iconSize={18}
-                                                borderWidth={2}
-                                            />
-                                        ): (
-                                            <Icon size={18} name="sendChat" style={{ paddingTop: "2px", paddingLeft: "2px" }} /> 
+                                                    <SpinnerIcon
+                                                        iconSize={18}
+                                                        borderWidth={2}
+                                                    />
+                                                ) : (
+                                                    <Icon size={18} name="sendChat" style={{ paddingTop: "2px", paddingLeft: "2px" }} />
                                                 )}
-                                    </Button>
+                                            </Button>
                                         </>
 
                                     ) : (

@@ -30,6 +30,9 @@ export const BrowseChat = () => {
               oldCardId={oldCardId}
               insights={[]}
               setSelectedThreadId={setSelectedThreadId}
+              initial_message={{
+                message: "",
+              }}
             />
           </Stack>
           <Stack
