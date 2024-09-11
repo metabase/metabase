@@ -977,6 +977,8 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     });
 
     getIframeBody().findByText("Rows 1-21 of first 2000").should("exist");
+    // make sure that table is actually rendered
+    getIframeBody().findByText("116.01").should("be.visible");
 
     cy.get("#iframe").then($iframe => {
       const [iframe] = $iframe;
