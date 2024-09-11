@@ -140,17 +140,20 @@ export const TablePicker = ({
     [dbId, schemaName, setTableId, onItemSelect, onPathChange],
   );
 
-  useEffect(() => {
-    if (initialDbId == null && databases && databases.length > 0) {
-      const firstDatabase = databases[0];
+  useEffect(
+    function ensureFolderSelected() {
+      if (initialDbId == null && databases && databases.length > 0) {
+        const firstDatabase = databases[0];
 
-      handleFolderSelect({
-        id: firstDatabase.id,
-        model: "database",
-        name: firstDatabase.name,
-      });
-    }
-  }, [databases, handleFolderSelect, initialDbId]);
+        handleFolderSelect({
+          id: firstDatabase.id,
+          model: "database",
+          name: firstDatabase.name,
+        });
+      }
+    },
+    [databases, handleFolderSelect, initialDbId],
+  );
 
   return (
     <AutoScrollBox
