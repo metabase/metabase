@@ -43,6 +43,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   result_metadata: Field[];
   moderation_reviews?: ModerationReview[];
+  persisted?: boolean;
 
   query_average_duration?: number | null;
   last_query_start: string | null;
@@ -118,6 +119,7 @@ export type PivotTableCollapsedRowsSetting = {
 export type TableColumnOrderSetting = {
   name: string;
   enabled: boolean;
+  fieldRef?: FieldReference;
 };
 
 export type StackType = "stacked" | "normalized" | null;
@@ -328,3 +330,11 @@ export type InvalidCardRequest = {
   sort_column?: string;
   collection_id?: CollectionId | null;
 } & PaginationRequest;
+
+export type CardQueryRequest = {
+  cardId: CardId;
+  dashboardId?: DashboardId;
+  collection_preview?: boolean;
+  ignore_cache?: boolean;
+  parameters?: unknown[];
+};

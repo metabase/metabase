@@ -805,6 +805,32 @@
             (is (< count-after (+ count-before 5))
                 "unbounded thread growth!")))))))
 
+(deftest later-page-fetch-returns-nil-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "BigQuery queries which fail on later pages are caught properly"
+      (let [page-counter (atom 3)
+            orig-exec    @#'bigquery/execute-bigquery
+            wrap-result  (fn wrap-result [^TableResult result]
+                           (proxy [TableResult] []
+                             (getSchema [] (.getSchema result))
+                             (getValues [] (.getValues result))
+                             (hasNextPage [] (.hasNextPage result))
+                             (getNextPage []
+                               (if (zero? @page-counter)
+                                 nil
+                                 (wrap-result (.getNextPage result))))))]
+        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters cancel-chan]
+                                                  (wrap-result (orig-exec client sql parameters cancel-chan)))]
+          (binding [bigquery/*page-size*     100 ; small pages so there are several
+                    bigquery/*page-callback* (fn []
+                                               (let [pages (swap! page-counter #(max (dec %) 0))]
+                                                 (log/debugf "*page-callback counting down: %d to go" pages)))]
+            (mt/dataset test-data
+                        ;; *page-size* is inexact - should be 300 but give it a wide margin.
+              (is (< 10
+                     (count (mt/rows (mt/process-query (mt/query orders))))
+                     500)))))))))
+
 (deftest later-page-fetch-throws-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "BigQuery queries which fail on later pages are caught properly"
@@ -815,7 +841,7 @@
                            (proxy [TableResult] []
                              (getSchema [] (.getSchema result))
                              (getValues [] (.getValues result))
-                             (getNextPageToken [] (.getNextPageToken result))
+                             (hasNextPage [] (.hasNextPage result))
                              (getNextPage []
                                (if (zero? @page-counter)
                                  (throw (ex-info "onoes BigQuery failed to fetch a later page" {}))
@@ -835,20 +861,24 @@
           (let [count-after (count (future-thread-names))]
             (is (< count-after (+ count-before 5)))))))))
 
-;; TODO Temporarily disabling due to flakiness (#33140)
-#_(deftest global-max-rows-test
-    (mt/test-driver :bigquery-cloud-sdk
-      (testing "The limit middleware prevents us from fetching more pages than are necessary to fulfill query max-rows"
-        (let [page-size          100
-              max-rows           1000
-              num-page-callbacks (atom 0)]
-          (binding [bigquery/*page-size*     page-size
-                    bigquery/*page-callback* (fn []
-                                               (swap! num-page-callbacks inc))]
+(deftest cancel-page-test
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (let [page-size 10
+          max-rows 50000]
+      (testing "Cancel happens after first page"
+        (mt/with-open-channels [canceled-chan (a/promise-chan)]
+          (binding [qp.pipeline/*canceled-chan* canceled-chan
+                    bigquery/*page-size*     page-size
+                    bigquery/*page-callback* (fn [] (a/put! canceled-chan true))]
             (mt/dataset test-data
-              (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
-                (is (= max-rows (count rows)))
-                (is (= (/ max-rows page-size) @num-page-callbacks)))))))))
+              ;; Page size does not guarantee the size of the response but orders table is ~20k rows.
+              (is (< 0
+                     (-> (mt/query orders {:query {:limit max-rows}})
+                         mt/process-query
+                         mt/rows
+                         count)
+                     1000)))))))))
 
 (defn- synced-tables [db-attributes]
   (t2.with-temp/with-temp [Database db db-attributes]

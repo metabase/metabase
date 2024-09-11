@@ -295,7 +295,7 @@ describe("scenarios > models", () => {
         .findByText("Add filters to narrow your answer")
         .click();
       popover().within(() => {
-        cy.findByText("Product").click();
+        cy.findByText("Products").click();
         cy.findByText("Price").click();
       });
       selectFilterOperator("Less than");

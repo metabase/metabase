@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import * as Lib from "metabase-lib";
 
 import type { ColumnGroupItem, ColumnItem } from "./types";
@@ -43,8 +41,7 @@ function getGroupsWithColumns(
 
     return {
       columnItems,
-      displayName:
-        groupInfo.fkReferenceName || groupInfo.displayName || t`Question`,
+      displayName: groupInfo.displayName,
       isSelected: columnItems.every(({ isSelected }) => isSelected),
       isDisabled: columnItems.every(({ isDisabled }) => isDisabled),
       isSourceGroup: groupIndex === 0,

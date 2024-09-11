@@ -2,12 +2,17 @@ import { createAction } from "redux-actions";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
+import { getOriginalCard } from "metabase/query_builder/selectors";
 import { updateUserSetting } from "metabase/redux/settings";
 import { UserApi } from "metabase/services";
-import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
+import type {
+  Dispatch,
+  GetState,
+  QueryBuilderMode,
+} from "metabase-types/store";
 
 import { updateUrl } from "./navigation";
-import { cancelQuery } from "./querying";
+import { cancelQuery, runDirtyQuestionQuery } from "./querying";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
 export const setUIControls = createAction(SET_UI_CONTROLS);
@@ -64,6 +69,13 @@ export const onCloseQuestionInfo = createAction(
   "metabase/qb/CLOSE_QUESTION_INFO",
 );
 
+export const onOpenQuestionSettings = createAction(
+  "metabase/qb/OPEN_QUESTION_SETTINGS",
+);
+export const onCloseQuestionSettings = createAction(
+  "metabase/qb/CLOSE_QUESTION_SETTINGS",
+);
+
 export const onOpenTimelines = createAction("metabase/qb/OPEN_TIMELINES");
 export const onCloseTimelines = createAction("metabase/qb/CLOSE_TIMELINES");
 
@@ -100,3 +112,14 @@ export const setNotebookNativePreviewSidebarWidth = (width: number) =>
     key: "notebook-native-preview-sidebar-width",
     value: width,
   });
+
+export const CANCEL_QUESTION_CHANGES = "metabase/qb/CANCEL_QUESTION_CHANGES";
+export const cancelQuestionChanges =
+  () => (dispatch: Dispatch, getState: GetState) => {
+    const cardBeforeChanges = getOriginalCard(getState());
+    dispatch({
+      type: CANCEL_QUESTION_CHANGES,
+      payload: { card: cardBeforeChanges },
+    });
+    dispatch(runDirtyQuestionQuery());
+  };
