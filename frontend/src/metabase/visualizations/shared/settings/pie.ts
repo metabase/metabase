@@ -178,20 +178,12 @@ export function getPieRows(
   if (settings["pie.colors"] != null) {
     colors = { ...colors, ...settings["pie.colors"] };
   }
-  const savedPieRows = settings["pie.rows"] ?? [];
-
-  const savedPieKeys = savedPieRows.map(pieRow => pieRow.key);
-
-  const keyToSavedPieRow = new Map<PieRow["key"], PieRow>(
-    savedPieRows.map(pieRow => [pieRow.key, pieRow]),
-  );
 
   const currentDataRows = getAggregatedRows(
     dataRows,
     dimensionDesc.index,
     metricDesc.index,
   );
-
   const keyToCurrentDataRow = new Map<PieRow["key"], RowValues>(
     currentDataRows.map(dataRow => [
       getKeyFromDimensionValue(dataRow[dimensionDesc.index]),
@@ -200,7 +192,15 @@ export function getPieRows(
   );
   const currentDataKeys = Array.from(keyToCurrentDataRow.keys());
 
-  const removed = _.difference(savedPieKeys, currentDataKeys);
+  const savedPieRows = (settings["pie.rows"] ?? []).filter(row =>
+    currentDataKeys.includes(row.key),
+  );
+
+  const savedPieKeys = savedPieRows.map(pieRow => pieRow.key);
+
+  const keyToSavedPieRow = new Map<PieRow["key"], PieRow>(
+    savedPieRows.map(pieRow => [pieRow.key, pieRow]),
+  );
 
   let newPieRows: PieRow[] = [];
   // Case 1: Auto sorted, sort existing and new rows together
@@ -294,19 +294,6 @@ export function getPieRows(
       }),
     );
   }
-
-  const removedPieRows = removed.map(removedKey => {
-    const savedPieRow = keyToSavedPieRow.get(removedKey);
-    if (savedPieRow == null) {
-      throw Error(`Did not find saved pie row for removed key ${removedKey}`);
-    }
-
-    return {
-      ...savedPieRow,
-      hidden: true,
-    };
-  });
-  newPieRows.push(...removedPieRows);
 
   // Make any slices below mimium slice percentage hidden
   const total = newPieRows.reduce((currTotal, pieRow) => {
