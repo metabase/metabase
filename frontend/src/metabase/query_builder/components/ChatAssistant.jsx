@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Button, Icon} from "metabase/ui";
+import { Box, Button, Icon } from "metabase/ui";
 import Input from "metabase/core/components/Input";
 import TextArea from "metabase/core/components/TextArea";
 import useWebSocket from "metabase/hooks/useWebSocket";
@@ -20,7 +20,7 @@ import { getInitialMessage } from "metabase/redux/initialMessage";
 import { getDBInputValue, getCompanyName } from "metabase/redux/initialDb";
 import { useListDatabasesQuery } from "metabase/api";
 import { SemanticError } from "metabase/components/ErrorPages";
-const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId, insights }) => {
+const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights }) => {
     const initialMessage = useSelector(getInitialMessage);
     const initialDbName = useSelector(getDBInputValue);
     const initialCompanyName = useSelector(getCompanyName);
@@ -77,6 +77,14 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         let thread_Id = generateRandomId();
         setThreadId(thread_Id)
     }, [])
+
+    const newChat = () => {
+        setSelectedThreadId(null)
+        setMessages([])
+        setInputValue("")
+        let thread_Id = generateRandomId();
+        setThreadId(thread_Id)
+    }
 
     useEffect(() => {
         if (selectedMessages && selectedThreadId && selectedMessages.length > 0) {
@@ -136,7 +144,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
     };
 
     const { ws, isConnected } = useWebSocket(
-        assistant_url,
+        "ws://localhost:8090",
         async e => {
             if (e.data) {
                 const data = JSON.parse(e.data);
@@ -446,17 +454,17 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
     const handlePlanReview = async func => {
         const { planReview, plan } = func.arguments;
         //Only print infoMessage
-            addServerMessageWithType(
-                planReview|| "Received a message from the server.",
-                "text",
-                "planReview"
-            );
+        addServerMessageWithType(
+            planReview || "Received a message from the server.",
+            "text",
+            "planReview"
+        );
         setIsLoading(false);
         setToolWaitingResponse("planReview");
         setInisghtPlan(prevPlan => [...prevPlan, ...plan]);
         removeLoadingMessage();
     };
-    
+
     const handleGetImage = async func => {
         const { generatedImages } = func.arguments;
         try {
@@ -465,7 +473,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                 const buffer = Buffer.from(generatedImages.data);
                 // Convert the buffer to a Base64 string
                 const base64Image = `data:image/png;base64,${buffer.toString('base64')}`;
-    
+
                 setInsightsImg(prevInsightsImg => [...prevInsightsImg, base64Image]);
             } else {
                 throw new Error('Invalid image buffer format');
@@ -488,19 +496,19 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
     const handleGetText = async func => {
         const { generatedTexts } = func.arguments;
         try {
-                setInsightTextIndex(prevIndex => {
-                    const currentIndex = prevIndex + 1;
-                    addServerMessageWithType(
-                        "Current Step:",
-                        "text",
-                        "insightText",
-                        currentIndex
-                    );
-                    return currentIndex;
-                });
-                setInsightsText(prevInsightsText => [...prevInsightsText, generatedTexts.value]);
-                setIsLoading(false);
-                removeLoadingMessage();
+            setInsightTextIndex(prevIndex => {
+                const currentIndex = prevIndex + 1;
+                addServerMessageWithType(
+                    "Current Step:",
+                    "text",
+                    "insightText",
+                    currentIndex
+                );
+                return currentIndex;
+            });
+            setInsightsText(prevInsightsText => [...prevInsightsText, generatedTexts.value]);
+            setIsLoading(false);
+            removeLoadingMessage();
         } catch (error) {
             console.error("Error getting text", error);
         }
@@ -619,7 +627,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                     thread_id: threadId,
                 }
             ]);
-            if(toolWaitingResponse === "planReview") {
+            if (toolWaitingResponse === "planReview") {
                 setMessages(prevMessages => [
                     ...prevMessages,
                     {
@@ -652,7 +660,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
             ws.send(
                 JSON.stringify({
                     type: "configure",
-                    configData: [dbInputValue, companyName],
+                    configData: [3, companyName],
                     appType: chatType,
                 }),
             );
@@ -683,8 +691,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         };
         if (isConnected) {
             ws && ws.send(JSON.stringify(response));
-            setInputValue("");
         }
+        setInputValue("");
     };
 
     const removeLoadingMessage = () => {
@@ -809,6 +817,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                                         display: "flex",
                                         alignItems: "center",
                                         width: "100%",
+                                        height: `${selectedThreadId ? "70px" : ""}`,
                                         padding: "8px",
                                         border: "1px solid #E0E0E0",
                                         borderRadius: "8px",
@@ -816,53 +825,84 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                                         position: "relative", // Important for absolute positioning inside this div
                                     }}
                                 >
-                                    <TextArea
-                                        ref={inputRef}
-                                        value={inputValue}
-                                        onChange={handleInputChange}
-                                        onKeyPress={handleKeyPress}
-                                        placeholder="Enter a prompt here..."
-                                        style={{
-                                            width: "100%",
-                                            resize: "none",
-                                            overflowY: "auto",
-                                            height: "100px",
-                                            minHeight: "100px",
-                                            maxHeight: "220px",
-                                            padding: "12px",
-                                            paddingRight: "50px", // Space for the send button
-                                            lineHeight: "24px",
-                                            border: "none",
-                                            outline: "none",
-                                            boxSizing: "border-box",
-                                            borderRadius: "8px",
-                                            backgroundColor: "transparent",
-                                        }}
-                                    />
-                                    <Button
-                                        variant="filled"
-                                        disabled={!isConnected || selectedThreadId}
-                                        onClick={sendMessage}
-                                        style={{
-                                            position: "absolute",
-                                            right: "10px",
-                                            bottom: "10px",
-                                            borderRadius: "8px",
-                                            width: "30px",
-                                            height: "30px",
-                                            padding: "0",
-                                            minWidth: "0",
-                                            backgroundColor: isConnected ? "#8A64DF" : "#F1EBFF",
-                                            color: "#FFF",
-                                            border: "none",
-                                            cursor: isConnected ? "pointer" : "not-allowed",
-                                            display: "flex",
-                                            justifyContent: "center",
-                                            alignItems: "center",
-                                        }}
-                                    >
-                                        <Icon size={18} name="sendChat" style={{ paddingTop: "2px", paddingLeft: "2px" }} />
-                                    </Button>
+                                    {!selectedThreadId ? (
+                                        <>
+                                            <TextArea
+                                                ref={inputRef}
+                                                value={inputValue}
+                                                onChange={handleInputChange}
+                                                onKeyPress={handleKeyPress}
+                                                placeholder="Enter a prompt here..."
+                                                style={{
+                                                    width: "100%",
+                                                    resize: "none",
+                                                    overflowY: "auto",
+                                                    height: "100px",
+                                                    minHeight: "100px",
+                                                    maxHeight: "220px",
+                                                    padding: "12px",
+                                                    paddingRight: "50px", // Space for the send button
+                                                    lineHeight: "24px",
+                                                    border: "none",
+                                                    outline: "none",
+                                                    boxSizing: "border-box",
+                                                    borderRadius: "8px",
+                                                    backgroundColor: "transparent",
+                                                }}
+                                            />
+                                            <Button
+                                                variant="filled"
+                                                disabled={!isConnected || selectedThreadId}
+                                                onClick={sendMessage}
+                                                style={{
+                                                    position: "absolute",
+                                                    right: "10px",
+                                                    bottom: "10px",
+                                                    borderRadius: "8px",
+                                                    width: "30px",
+                                                    height: "30px",
+                                                    padding: "0",
+                                                    minWidth: "0",
+                                                    backgroundColor: isConnected ? "#8A64DF" : "#F1EBFF",
+                                                    color: "#FFF",
+                                                    border: "none",
+                                                    cursor: isConnected ? "pointer" : "not-allowed",
+                                                    display: "flex",
+                                                    justifyContent: "center",
+                                                    alignItems: "center",
+                                                }}
+                                            >
+                                                <Icon size={18} name="sendChat" style={{ paddingTop: "2px", paddingLeft: "2px" }} />
+                                            </Button>
+                                        </>
+
+                                    ) : (
+                                        <Button
+                                            variant="filled"
+                                            disabled={!isConnected}
+                                            onClick={newChat}
+                                            style={{
+                                                position: "absolute",
+                                                right: "10px",
+                                                bottom: "10px",
+                                                borderRadius: "8px",
+                                                width: "200px",
+                                                height: "50px",
+                                                padding: "0",
+                                                minWidth: "0",
+                                                backgroundColor: isConnected ? "#8A64DF" : "#F1EBFF",
+                                                color: "#FFF",
+                                                border: "none",
+                                                cursor: isConnected ? "pointer" : "not-allowed",
+                                                display: "flex",
+                                                justifyContent: "center",
+                                                alignItems: "center",
+                                            }}
+                                        >
+                                            Generate new chat
+                                        </Button>
+                                    )}
+
                                 </div>
                             </div>
 

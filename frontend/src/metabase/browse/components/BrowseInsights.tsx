@@ -29,6 +29,7 @@ export const BrowseInsights = () => {
               chatType={"insights"}
               oldCardId={oldCardId}
               insights={insights}
+              setSelectedThreadId={setSelectedThreadId}
             />
           </Stack>
           <Stack

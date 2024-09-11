@@ -116,6 +116,7 @@ export const HomeLayout = () => {
                   chatType={selectedChatType}
                   oldCardId={oldCardId}
                   insights={insights}
+                  setSelectedThreadId={setSelectedThreadId}
                 />
               </Stack>
               <Stack
