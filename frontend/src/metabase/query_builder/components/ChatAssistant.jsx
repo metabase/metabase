@@ -20,6 +20,7 @@ import { getInitialMessage } from "metabase/redux/initialMessage";
 import { getDBInputValue, getCompanyName } from "metabase/redux/initialDb";
 import { useListDatabasesQuery } from "metabase/api";
 import { SemanticError } from "metabase/components/ErrorPages";
+import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
 const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights }) => {
     const initialMessage = useSelector(getInitialMessage);
     const initialDbName = useSelector(getDBInputValue);
@@ -59,6 +60,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [insightsCode, setInsightsCode] = useState([]);
     const [codeIndex, setCodeIndex] = useState(-1);
     const [insightTextIndex, setInsightTextIndex] = useState(-1);
+    const [runId, setRunId] = useState([]);
+    const [codeInterpreterThreadId, setCodeInterpreterThreadId] = useState([]);
+    const [chatLoading, setChatLoading] = useState(false);
     const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
     const databases = data?.data;
     useEffect(() => {
@@ -206,6 +210,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     break;
                 case "getCode":
                     await handleGetCode(func);
+                    break;
+                case "getRunIdandCodeInterpreterThreadId":
+                    await handleGetRunIdandCodeInterpreterThreadId(func);
                     break;
                 default:
                     console.log(func);
@@ -533,6 +540,16 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         }
     }
 
+    const handleGetRunIdandCodeInterpreterThreadId = async func => {
+        const { runId, codeInterpreterThreadId } = func.arguments;
+        try {
+            setRunId(prevRunId => [...prevRunId, runId]);
+            setCodeInterpreterThreadId(prevCodeInterpreterThreadId => [...prevCodeInterpreterThreadId, codeInterpreterThreadId]);
+        } catch (error) {
+            console.error("Error getting code", error);
+        }
+    }
+
     const handleDefaultMessage = data => {
         addServerMessage(
             data.message || "Received a message from the server.",
@@ -639,6 +656,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     }
                 ]);
                 setIsLoading(true)
+                setChatLoading(true);
             }
             ws.send(
                 JSON.stringify({
@@ -739,6 +757,28 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         setApprovalChangeButtons(false);
     };
 
+    const stopStream = async () => {
+        const thread_id = codeInterpreterThreadId[0];
+        const run_id = runId[0];
+        ws.send(
+            JSON.stringify({
+              type: "stopStreaming",
+              data: {
+                codeInterpreterThreadId: thread_id,
+                runId: run_id,
+              },
+            })
+          );
+        setRunId([]);
+        setCodeInterpreterThreadId([]);
+        setChatLoading(false);
+    };
+
+    const stopMessage = async () => {
+        if(runId.length > 0 && codeInterpreterThreadId.length > 0) {
+            await stopStream();
+        }
+    }
 
     useEffect(() => {
         if (initialMessage.message) {
@@ -853,7 +893,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                             <Button
                                                 variant="filled"
                                                 disabled={!isConnected || selectedThreadId}
-                                                onClick={sendMessage}
+                                                onClick={chatLoading ? stopMessage : sendMessage}
                                                 style={{
                                                     position: "absolute",
                                                     right: "10px",
@@ -872,8 +912,15 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                                     alignItems: "center",
                                                 }}
                                             >
-                                                <Icon size={18} name="sendChat" style={{ paddingTop: "2px", paddingLeft: "2px" }} />
-                                            </Button>
+                                                {chatLoading ? (
+                                            <SpinnerIcon
+                                                iconSize={18}
+                                                borderWidth={2}
+                                            />
+                                        ): (
+                                            <Icon size={18} name="sendChat" style={{ paddingTop: "2px", paddingLeft: "2px" }} /> 
+                                                )}
+                                    </Button>
                                         </>
 
                                     ) : (
