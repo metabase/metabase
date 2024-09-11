@@ -52,11 +52,12 @@ export const SearchTab = <
       bg="bg-light"
       h="100%"
       pos="relative"
-      spacing="xl"
+      spacing={0}
+      py="xl"
       style={{ overflow: "hidden" }}
     >
       {allSearchResults.length > 0 && (
-        <Flex align="center" justify="space-between" p="xl" pb={0}>
+        <Flex align="center" justify="space-between" px="xl" pb="xl">
           <Flex align="center">
             {folderName && (
               <>

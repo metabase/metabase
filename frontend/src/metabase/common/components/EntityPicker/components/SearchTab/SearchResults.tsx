@@ -35,7 +35,7 @@ export const SearchResults = <
         <Stack h="100%" bg="bg-light">
           <VirtualizedList
             Wrapper={({ children, ...props }) => (
-              <Box p="xl" {...props}>
+              <Box px="xl" {...props}>
                 <ChunkyList>{children}</ChunkyList>
               </Box>
             )}
