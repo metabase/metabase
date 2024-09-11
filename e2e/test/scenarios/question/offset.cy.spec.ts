@@ -638,12 +638,7 @@ describe("scenarios > question > offset", () => {
         "order-by": [["asc", BREAKOUT_DATETIME]],
       };
 
-      createQuestion(
-        {
-          query,
-        },
-        { visitQuestion: true },
-      );
+      createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -678,12 +673,7 @@ describe("scenarios > question > offset", () => {
         "order-by": [["asc", BREAKOUT_DATETIME]],
       };
 
-      createQuestion(
-        {
-          query,
-        },
-        { visitQuestion: true },
-      );
+      createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -1002,12 +992,7 @@ describe("scenarios > question > offset", () => {
         "order-by": [["desc", BREAKOUT_DATETIME]],
       };
 
-      createQuestion(
-        {
-          query,
-        },
-        { visitQuestion: true },
-      );
+      createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
       verifyTableContent([
@@ -1059,12 +1044,7 @@ describe("scenarios > question > offset", () => {
         "order-by": [["desc", BREAKOUT_DATETIME]],
       };
 
-      createQuestion(
-        {
-          query,
-        },
-        { visitQuestion: true },
-      );
+      createQuestion({ query }, { visitQuestion: true });
 
       verifyNoQuestionError();
       verifyTableContent([
