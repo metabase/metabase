@@ -118,13 +118,15 @@ export const TablePicker = ({
       if (folder.model === "schema") {
         const newPath: TablePickerStatePath = [dbId, folder.id, undefined];
         setSchemaName(folder.id);
-        onItemSelect(folder);
+        onItemSelect(
+          selectedDbItem && schemas?.length === 1 ? selectedDbItem : folder,
+        );
         onPathChange(newPath);
       }
 
       setTableId(undefined);
     },
-    [dbId, schemas, onItemSelect, onPathChange],
+    [dbId, selectedDbItem, schemas, onItemSelect, onPathChange],
   );
 
   const handleTableSelect = useCallback(

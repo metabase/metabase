@@ -26,6 +26,7 @@ export function EntityPickerSearchInput({
   setSearchQuery,
   setSearchResults,
   models,
+  placeholder,
   searchFilter = defaultSearchFilter,
   searchParams = {},
 }: {
@@ -33,6 +34,7 @@ export function EntityPickerSearchInput({
   setSearchQuery: (query: string) => void;
   setSearchResults: (results: SearchResult[] | null) => void;
   models: SearchModel[];
+  placeholder: string;
   searchFilter?: (results: SearchResult[]) => SearchResult[];
   searchParams?: Partial<SearchRequest>;
 }) {
@@ -67,7 +69,7 @@ export function EntityPickerSearchInput({
       mr="2rem"
       value={searchQuery}
       onChange={e => setSearchQuery(e.target.value ?? "")}
-      placeholder={t`Search…`}
+      placeholder={placeholder}
     />
   );
 }

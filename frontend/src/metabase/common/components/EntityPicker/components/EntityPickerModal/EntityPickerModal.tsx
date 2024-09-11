@@ -27,6 +27,7 @@ import type {
 import {
   computeInitialTabId,
   getFolderModels,
+  getSearchInputPlaceholder,
   getSearchModels,
   getSearchTabText,
 } from "../../utils";
@@ -215,8 +216,10 @@ export function EntityPickerModal<
   const showActionButtons = ![SEARCH_TAB_ID, RECENTS_TAB_ID].includes(
     selectedTabId,
   );
-  const [tabFolderState, setTabFolderState] = useState<TabFolderState>({});
-  const _selectedFolder = tabFolderState[selectedTabId]; // TODO: use me
+  const [tabFolderState, setTabFolderState] = useState<
+    TabFolderState<Id, Model, Item>
+  >({});
+  const selectedFolder = tabFolderState[selectedTabId];
 
   const handleSelectItem = useCallback(
     (item: Item) => {
@@ -297,6 +300,7 @@ export function EntityPickerModal<
             {hydratedOptions.showSearch && (
               <EntityPickerSearchInput
                 models={searchModels}
+                placeholder={getSearchInputPlaceholder(selectedFolder)}
                 setSearchResults={setSearchResults}
                 searchQuery={searchQuery}
                 setSearchQuery={handleQueryChange}

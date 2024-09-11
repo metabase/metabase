@@ -1,4 +1,4 @@
-import { c, msgid } from "ttag";
+import { c, msgid, t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import type { ObjectWithModel } from "metabase/lib/icon";
@@ -121,4 +121,26 @@ export const getFolderModels = <
 
 const isSearchModel = (model: string): model is SearchModel => {
   return SEARCH_MODELS.some(searchModel => searchModel === model);
+};
+
+export const getSearchInputPlaceholder = <
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>(
+  folder: Item | undefined,
+): string => {
+  if (folder?.model === "collection") {
+    return t`Search this collection or everywhere…`;
+  }
+
+  if (folder?.model === "database") {
+    return t`Search this database or everywhere…`;
+  }
+
+  if (folder?.model === "schema") {
+    return t`Search this schema or everywhere…`;
+  }
+
+  return t`Search…`;
 };

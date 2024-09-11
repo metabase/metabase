@@ -71,6 +71,8 @@ export type ListProps<
 
 export type FilterItemsInPersonalCollection = "only" | "exclude";
 
-export type TabFolderState = Partial<
-  Record<EntityPickerTabId, TypeWithModel<unknown, string>>
->;
+export type TabFolderState<
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+> = Partial<Record<EntityPickerTabId, Item>>;
