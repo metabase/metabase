@@ -127,13 +127,6 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
   });
 
   context("embedding enabled", () => {
-    beforeEach(() => {
-      // The default value for `enable-embedding` from the snapshot is `true`, but the new setting value is `false`
-      cy.request("PUT", "/api/setting/enable-embedding-static", {
-        value: true,
-      });
-    });
-
     const ids = {
       question: ORDERS_QUESTION_ID,
       dashboard: ORDERS_DASHBOARD_ID,
@@ -309,6 +302,9 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 });
 
 function resetEmbedding() {
+  cy.request("PUT", "/api/setting/enable-embedding-static", {
+    value: false,
+  });
   cy.request("PUT", "/api/setting/embedding-secret-key", {
     value: null,
   });
