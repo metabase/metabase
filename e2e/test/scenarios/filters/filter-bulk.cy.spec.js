@@ -224,7 +224,7 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.findByText("Showing 138 rows").should("be.visible");
   });
 
-  it("should be able to add filters for all query stages", () => {
+  it("should be able to add and remove filters for all query stages", () => {
     visitQuestionAdhoc(multiStageQuestionDetails);
 
     cy.log("add filters for all stages in the filter modal");
