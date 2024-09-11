@@ -1,4 +1,4 @@
-(ns metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
+(ns ^:mb/driver-tests metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]

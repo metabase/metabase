@@ -1,4 +1,4 @@
-(ns metabase.driver.sql-jdbc.execute.diagnostic-test
+(ns ^:mb/driver-tests metabase.driver.sql-jdbc.execute.diagnostic-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]

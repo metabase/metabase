@@ -384,8 +384,8 @@
                                                                         :perms/create-queries {(mt/id :venues) :query-builder}}})))]
           (testing "Make sure the middleware is actually preventing something by disabling it"
             (with-redefs [qp.perms/remove-permissions-key identity]
-              (is (partial= {:status :completed}
-                            (process-query)))))
+              (is (=? {:status :completed}
+                      (process-query)))))
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You do not have permissions to run this query"

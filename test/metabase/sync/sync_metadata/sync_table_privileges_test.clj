@@ -1,4 +1,4 @@
-(ns metabase.sync.sync-metadata.sync-table-privileges-test
+(ns ^:mb/driver-tests metabase.sync.sync-metadata.sync-table-privileges-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]

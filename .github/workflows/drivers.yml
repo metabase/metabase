@@ -49,7 +49,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-athena-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -82,7 +83,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -116,7 +118,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-druid-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -150,7 +153,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-druid-jdbc-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -272,7 +276,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-4-4-ee'
-        test-args: ":exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'"
+        test-args: >-
+          :exclude-tags [:mongo-sharded-cluster-tests]
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -327,7 +333,9 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           junit-name: 'be-tests-mongo-4-4-ee'
-          test-args: ":exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'"
+          test-args: >-
+            :exclude-tags [:mongo-sharded-cluster-tests]
+            :only-tags [:mb/driver-tests]
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -361,7 +369,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-5-0-ee'
-        test-args: ":exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'"
+        test-args: >-
+          :exclude-tags [:mongo-sharded-cluster-tests]
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -416,7 +426,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-5-0-ee'
-        test-args: ":exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'"
+        test-args: >-
+          :exclude-tags [:mongo-sharded-cluster-tests]
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -453,7 +465,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-latest-ee'
-        test-args: ":exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'"
+        test-args: >-
+          :exclude-tags [:mongo-sharded-cluster-tests]
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -626,7 +640,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-oracle-18-4-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -673,7 +688,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-oracle-21-3-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -814,7 +830,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-presto-jdbc-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -845,7 +862,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-redshift-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -883,7 +901,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-snowflake-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -915,7 +934,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sparksql-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -942,7 +962,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlite-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -981,7 +1002,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlserver-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1020,7 +1042,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-sqlserver-2022-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -1054,7 +1077,8 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-vertica-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: >-
+          :only-tags [:mb/driver-tests]
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()

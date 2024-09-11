@@ -1,4 +1,4 @@
-(ns metabase.models.permissions-group-test
+(ns ^:mb/once metabase.models.permissions-group-test
   (:require
    [clojure.test :refer :all]
    [metabase.api.permissions-test-util :as perm-test-util]

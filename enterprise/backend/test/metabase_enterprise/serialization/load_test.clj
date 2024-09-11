@@ -1,4 +1,4 @@
-(ns metabase-enterprise.serialization.load-test
+(ns ^:mb/driver-tests metabase-enterprise.serialization.load-test
   (:refer-clojure :exclude [load])
   (:require
    [clojure.data :as data]

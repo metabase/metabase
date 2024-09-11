@@ -1,4 +1,4 @@
-(ns metabase.api.preview-embed-test
+(ns ^:mb/driver-tests metabase.api.preview-embed-test
   (:require
    [buddy.sign.jwt :as jwt]
    [cheshire.core :as json]

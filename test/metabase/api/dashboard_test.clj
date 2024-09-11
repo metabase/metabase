@@ -1,4 +1,4 @@
-(ns metabase.api.dashboard-test
+(ns ^:mb/driver-tests metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
   (:require
    [cheshire.core :as json]

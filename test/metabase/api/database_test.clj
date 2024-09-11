@@ -1,4 +1,4 @@
-(ns metabase.api.database-test
+(ns ^:mb/driver-tests metabase.api.database-test
   "Tests for /api/database endpoints."
   (:require
    [clojure.string :as str]

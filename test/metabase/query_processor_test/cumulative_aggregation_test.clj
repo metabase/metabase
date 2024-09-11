@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.cumulative-aggregation-test
+(ns ^:mb/driver-tests metabase.query-processor-test.cumulative-aggregation-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -25,7 +25,7 @@
                 (-> result :data :cols)))
         (is (= [[120]]
                (mt/formatted-rows
-                [int]
+                ^:mb/test-drivers [int]
                 result)))))))
 
 (deftest ^:parallel cumulative-sum-test-2

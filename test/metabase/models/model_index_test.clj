@@ -1,4 +1,4 @@
-(ns metabase.models.model-index-test
+(ns ^:mb/driver-tests metabase.models.model-index-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]

@@ -1,4 +1,4 @@
-(ns ^:mb/once metabase.sync.sync-metadata.fields-test
+(ns ^:mb/driver-tests metabase.sync.sync-metadata.fields-test
   "Tests for the logic that syncs Field models with the Metadata fetched from a DB. (There are more tests for this
   behavior in the namespace `metabase.sync-database.sync-dynamic-test`, which is sort of a misnomer.)"
   (:require

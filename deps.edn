@@ -240,7 +240,7 @@
     djblue/portal                {:mvn/version "0.56.0"}                    ; ui for inspecting values
     hashp/hashp                  {:mvn/version "0.2.2"}                     ; debugging/spying utility
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
-    io.github.metabase/hawk      {:sha "8ecb6231ec9e8f51854fda03377c1be851b50d61"}
+    io.github.metabase/hawk      {:sha "c6686e1aeaa9f11fec2de1571d165a0a130e4f73"}
     jonase/eastwood              {:mvn/version "1.4.2"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}

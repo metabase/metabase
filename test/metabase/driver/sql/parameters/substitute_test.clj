@@ -1,4 +1,4 @@
-(ns metabase.driver.sql.parameters.substitute-test
+(ns ^:mb/driver-tests metabase.driver.sql.parameters.substitute-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
