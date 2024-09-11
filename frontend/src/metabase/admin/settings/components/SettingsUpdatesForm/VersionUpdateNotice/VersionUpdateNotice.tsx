@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import {
@@ -13,13 +12,14 @@ import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { newVersionAvailable, versionIsLatest } from "metabase/lib/utils";
 import { getIsHosted } from "metabase/setup/selectors";
+import type { VersionInfoRecord } from "metabase-types/api";
 
 import {
   NewVersionContainer,
   OnLatestVersionMessage,
 } from "./VersionUpdateNotice.styled";
 
-export default function VersionUpdateNotice() {
+export function VersionUpdateNotice() {
   const currentVersion = useSelector(getCurrentVersion);
   const latestVersion = useSelector(getLatestVersion);
   const isHosted = useSelector(getIsHosted);
@@ -37,11 +37,10 @@ export default function VersionUpdateNotice() {
   if (newVersionAvailable({ currentVersion, latestVersion })) {
     return <NewVersionAvailable currentVersion={displayVersion} />;
   }
-
-  return <div>{t`No successful checks yet.`}</div>;
+  return <DefaultUpdateMessage currentVersion={currentVersion} />;
 }
 
-function CloudCustomers({ currentVersion }) {
+function CloudCustomers({ currentVersion }: { currentVersion: string }) {
   return (
     <div>
       {t`Metabase Cloud keeps your instance up-to-date. You're currently on version ${currentVersion}. Thanks for being a customer!`}
@@ -49,11 +48,7 @@ function CloudCustomers({ currentVersion }) {
   );
 }
 
-CloudCustomers.propTypes = {
-  currentVersion: PropTypes.string.isRequired,
-};
-
-function OnLatestVersion({ currentVersion }) {
+function OnLatestVersion({ currentVersion }: { currentVersion: string }) {
   return (
     <div>
       <OnLatestVersionMessage>
@@ -63,11 +58,17 @@ function OnLatestVersion({ currentVersion }) {
   );
 }
 
-OnLatestVersion.propTypes = {
-  currentVersion: PropTypes.string.isRequired,
-};
+function DefaultUpdateMessage({ currentVersion }: { currentVersion: string }) {
+  return (
+    <div>
+      <OnLatestVersionMessage>
+        {t`You're running Metabase ${currentVersion}`}
+      </OnLatestVersionMessage>
+    </div>
+  );
+}
 
-function NewVersionAvailable({ currentVersion }) {
+function NewVersionAvailable({ currentVersion }: { currentVersion: string }) {
   const latestVersion = MetabaseSettings.latestVersion();
   const versionInfo = MetabaseSettings.versionInfo();
 
@@ -119,7 +120,7 @@ function NewVersionAvailable({ currentVersion }) {
       >
         <h3 className={cx(CS.pb3, CS.textUppercase)}>{t`What's Changed:`}</h3>
 
-        <Version version={versionInfo.latest} />
+        {versionInfo.latest && <Version version={versionInfo.latest} />}
 
         {versionInfo.older &&
           versionInfo.older.map((version, index) => (
@@ -130,11 +131,7 @@ function NewVersionAvailable({ currentVersion }) {
   );
 }
 
-NewVersionAvailable.propTypes = {
-  currentVersion: PropTypes.string.isRequired,
-};
-
-function Version({ version }) {
+function Version({ version }: { version: VersionInfoRecord }) {
   if (!version) {
     return null;
   }
@@ -156,10 +153,6 @@ function Version({ version }) {
     </div>
   );
 }
-
-Version.propTypes = {
-  version: PropTypes.object.isRequired,
-};
 
 function formatVersion(versionLabel = "") {
   return versionLabel.replace(/^v/, "");
