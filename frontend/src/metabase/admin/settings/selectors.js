@@ -435,7 +435,12 @@ export const ADMIN_SETTINGS_SECTIONS = {
     settings: [],
   },
   "embedding-in-other-applications/full-app": {
-    component: PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings,
+    // We need to do this because EE plugins would load after this file in unit tests
+    component: ({ updateSettings }) => (
+      <PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingSettings
+        updateSettings={updateSettings}
+      />
+    ),
     settings: [],
   },
   license: {
