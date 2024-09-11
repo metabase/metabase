@@ -5,6 +5,7 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
@@ -570,19 +571,39 @@
               (:default setting)))
       whitelabel-settings))))
 
+(def csv-upload-version-availability
+  "Map from driver engines to the first version ([major minor]) which introduced support for CSV uploads"
+  {:postgres   [47 0]
+   :mysql      [47 0]
+   :redshift   [49 6]
+   :clickhouse [50 0]})
+
+(defn- csv-upload-available?
+  "Is CSV upload currently available to be used on this instance?"
+  []
+  (let [major-version (config/current-major-version)
+        minor-version (config/current-minor-version)
+        engines       (t2/select-fn-set :engine :model/Database
+                                        {:where [:in :engine (map name (keys csv-upload-version-availability))]})]
+    (boolean
+     (some
+      (fn [engine]
+        (let [[required-major required-minor] (csv-upload-version-availability engine)]
+          (and (>= major-version required-major)
+               (>= minor-version required-minor))))
+      engines))))
+
 (defenterprise enterprise-snowplow-features
   "OSS values to use for features which require calling EE code to check whether they are available/enabled."
   metabase-enterprise.snowplow
   []
-  [{:key       :sso_jwt
-    :available false
-    :enabled   false}
-   {:key       :sso_saml
-    :available false
-    :enabled   false}
-   {:key       :scim
-    :available false
-    :enabled   false}])
+  (let [features [:sso_jwt :sso_saml :scim :sandboxes :email_allow_list]]
+    (map
+     (fn [feature]
+       {:key       feature
+        :available false
+        :enabled   false})
+     features)))
 
 (defn- snowplow-features
   [stats]
@@ -623,9 +644,55 @@
                       (or
                        (t2/exists? :model/Dashboard :public_uuid [:not= nil])
                        (t2/exists? :model/Card :public_uuid [:not= nil])))}
-         {:key       :public_sharing
+         {:key       :whitelabel
           :available (premium-features/enable-whitelabeling?)
-          :enabled   (whitelabeling-in-use?)}]]
+          :enabled   (whitelabeling-in-use?)}
+         {:key       :csv_upload
+          :available (csv-upload-available?)
+          :enabled   (t2/exists? :model/Database :uploads_enabled true)}
+         {:key       :mb_analytics
+          :available (premium-features/enable-audit-app?)
+          :enabled   true}
+         {:key       :advanced_permissions
+          :available (premium-features/enable-advanced-permissions?)
+          :enabled   true}
+         {:key       :advanced_permissions
+          :available (premium-features/enable-serialization?)
+          :enabled   true}
+         {:key       :official_collections
+          :available (premium-features/enable-official-collections?)
+          :enabled   (t2/exists? :model/Collection :authority_level "official")}
+         {:key       :cache_granular_controls
+          :available (premium-features/enable-cache-granular-controls?)
+          :enabled   (t2/exists? :model/CacheConfig)}
+         {:key       :attached_dwh
+          :available (and (premium-features/has-attached-dwh?)
+                          (>= (config/current-major-version) 50))
+          :enabled   (t2/exists? :model/CacheConfig)}
+         {:key       :auto_cleanup ;; TODO: is this the right key?
+          :available (premium-features/enable-collection-cleanup?)
+          :enabled   true}
+         {:key       :config_text_file
+          :available (premium-features/enable-config-text-file?)
+          :enabled   (some? (get env/env :mb-config-file-path))}
+         {:key       :content_verification
+          :available (premium-features/enable-content-verification?)
+          :enabled   (t2/exists? :model/ModerationReview)}
+         {:key       :dashboard_subscription_filters
+          :available (premium-features/enable-content-verification?)
+          :enabled   (t2/exists? :model/Pulse {:where [:not= :parameters "[]"]})}
+         {:key       :disable_password_login
+          :available (premium-features/can-disable-password-login?)
+          :enabled   (not (public-settings/enable-password-login))}
+         {:key       :email_restrict_recipients
+          :available (premium-features/enable-email-restrict-recipients?)
+          :enabled   (not= (setting/get-value-of-type :keyword :user-visibility) :all)}
+         {:key       :upload_management
+          :available (premium-features/enable-upload-management?)
+          :enabled   (t2/exists? :model/Table :is_upload true)}
+         {:key       :snippet_collections
+          :available (premium-features/enable-snippet-collections?)
+          :enabled   (t2/exists? :model/Collection :namespace "snippets")}]]
       (concat features (enterprise-snowplow-features))))
 
 (defn- send-stats-via-snowplow!
