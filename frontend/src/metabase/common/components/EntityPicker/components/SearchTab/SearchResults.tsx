@@ -1,80 +1,27 @@
-import { useLayoutEffect, useState } from "react";
-import { useDebounce } from "react-use";
 import { t } from "ttag";
 
-import { useSearchQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import { trackSearchClick } from "metabase/search/analytics";
-import { Box, Flex, Icon, Stack, TextInput } from "metabase/ui";
-import type {
-  SearchModel,
-  SearchRequest,
-  SearchResult,
-  SearchResultId,
-} from "metabase-types/api";
+import { Box, Flex, Stack } from "metabase/ui";
+import type { SearchResult, SearchResultId } from "metabase-types/api";
 
 import type { TypeWithModel } from "../../types";
 import { DelayedLoadingSpinner } from "../LoadingSpinner";
 import { ChunkyList, ResultItem } from "../ResultItem";
 
-const defaultSearchFilter = (results: SearchResult[]) => results;
-
-export function EntityPickerSearchInput({
-  searchQuery,
-  setSearchQuery,
-  setSearchResults,
-  models,
-  placeholder,
-  searchFilter = defaultSearchFilter,
-  searchParams = {},
-}: {
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-  setSearchResults: (results: SearchResult[] | null) => void;
-  models: SearchModel[];
-  placeholder: string;
-  searchFilter?: (results: SearchResult[]) => SearchResult[];
-  searchParams?: Partial<SearchRequest>;
-}) {
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
-  useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
-
-  const { data, isFetching } = useSearchQuery(
-    {
-      q: debouncedSearchQuery,
-      models,
-      context: "entity-picker",
-      ...searchParams,
-    },
-    {
-      skip: !debouncedSearchQuery,
-    },
-  );
-
-  useLayoutEffect(() => {
-    if (data && !isFetching) {
-      setSearchResults(searchFilter(data.data));
-    } else {
-      setSearchResults(null);
-    }
-  }, [data, isFetching, searchFilter, setSearchResults]);
-
-  return (
-    <TextInput
-      type="search"
-      icon={<Icon name="search" size={16} />}
-      miw={400}
-      mr="2rem"
-      value={searchQuery}
-      onChange={e => setSearchQuery(e.target.value ?? "")}
-      placeholder={placeholder}
-    />
-  );
+export interface Props<
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+> {
+  searchResults: SearchResult[] | null;
+  onItemSelect: (item: Item) => void;
+  selectedItem: Item | null;
 }
 
-export const EntityPickerSearchResults = <
+export const SearchResults = <
   Id extends SearchResultId,
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
@@ -82,11 +29,7 @@ export const EntityPickerSearchResults = <
   searchResults,
   onItemSelect,
   selectedItem,
-}: {
-  searchResults: SearchResult[] | null;
-  onItemSelect: (item: Item) => void;
-  selectedItem: Item | null;
-}) => {
+}: Props<Id, Model, Item>) => {
   if (!searchResults) {
     return <DelayedLoadingSpinner text={t`Loading…`} />;
   }

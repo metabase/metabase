@@ -31,11 +31,9 @@ import {
   getSearchModels,
   getSearchTabText,
 } from "../../utils";
-import {
-  EntityPickerSearchInput,
-  EntityPickerSearchResults,
-} from "../EntityPickerSearch";
 import { RecentsTab } from "../RecentsTab";
+import { SearchInput } from "../SearchInput";
+import { SearchTab } from "../SearchTab";
 
 import { ButtonBar } from "./ButtonBar";
 import {
@@ -192,7 +190,7 @@ export function EntityPickerModal<
         displayName: getSearchTabText(searchResults, searchQuery),
         icon: "search",
         render: ({ onItemSelect }) => (
-          <EntityPickerSearchResults
+          <SearchTab
             searchResults={searchResults}
             onItemSelect={onItemSelect}
             selectedItem={selectedItem}
@@ -298,7 +296,7 @@ export function EntityPickerModal<
           <GrowFlex justify="space-between">
             <Modal.Title lh="2.5rem">{title}</Modal.Title>
             {hydratedOptions.showSearch && (
-              <EntityPickerSearchInput
+              <SearchInput
                 models={searchModels}
                 placeholder={getSearchInputPlaceholder(selectedFolder)}
                 setSearchResults={setSearchResults}
