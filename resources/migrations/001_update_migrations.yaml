@@ -9422,6 +9422,13 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  remarks: Random NanoID tag for unique identity.
+                  name: entity_id
+                  type: char(21)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
                   name: created_at
                   type: ${timestamp_type}
                   remarks: The timestamp of when the template was created
@@ -9433,13 +9440,6 @@ databaseChangeLog:
                   remarks: The timestamp of when the template was last updated
                   constraints:
                     nullable: false
-              - column:
-                  remarks: Random NanoID tag for unique identity.
-                  name: entity_id
-                  type: char(21)
-                  constraints:
-                    nullable: false
-                    unique: true
 
   - changeSet:
       id: v51.2024-09-05T08:00:04

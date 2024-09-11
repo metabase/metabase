@@ -252,18 +252,18 @@
   {:in  json-in
    :out json-out-without-keywordization})
 
-(defn assert-enum
+(mu/defn assert-enum
   "Assert that a value is one of the values in `enum`."
-  [enum value]
-  (assert (set? enum) "enum but be a set")
+  [enum :- :set
+   value]
   (when-not (contains? enum value)
     (throw (ex-info (format "Invalid value %s. Must be one of %s" value (str/join ", " enum)) {:status-code 400
                                                                                                :value       value}))))
 
-(defn assert-namespaced
+(mu/defn assert-namespaced
   "Assert that a value is a namespaced keyword under `qualified-ns`."
-  [qualified-ns value]
-  (assert (string? qualified-ns) "namespace must be a string")
+  [qualified-ns :- :string
+   value]
   (when-not (= qualified-ns (-> value keyword namespace))
     (throw (ex-info (format "Must be a namespaced keyword under :%s, got: %s" qualified-ns value) {:status-code 400
                                                                                                    :value       value}))))
