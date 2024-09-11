@@ -46,10 +46,6 @@ export function getSdkLicenseProblem(
       .with({ isSSO: true, isApiKey: true }, () =>
         toError(PROBLEMS.CONFLICTING_AUTH_METHODS),
       )
-      .with(
-        { isEnabled: false, hasTokenFeature: true, isLocalhost: false },
-        () => toError(PROBLEMS.EMBEDDING_SDK_NOT_ENABLED),
-      )
       // For SSO, the token features and the toggle must both be enabled.
       .with({ isSSO: true, hasTokenFeature: true, isEnabled: true }, () => null)
       .with({ isSSO: true, hasTokenFeature: false }, () =>
