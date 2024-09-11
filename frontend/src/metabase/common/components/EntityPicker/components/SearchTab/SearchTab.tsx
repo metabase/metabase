@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { Flex, SegmentedControl, Stack, Text } from "metabase/ui";
+import { Box, Flex, SegmentedControl, Stack, Text } from "metabase/ui";
 import type { SearchResult, SearchResultId } from "metabase-types/api";
 
 import type { EntityPickerSearchScope, TypeWithModel } from "../../types";
@@ -48,16 +48,9 @@ export const SearchTab = <
   );
 
   return (
-    <Stack
-      bg="bg-light"
-      h="100%"
-      pos="relative"
-      spacing={0}
-      py="xl"
-      style={{ overflow: "hidden" }}
-    >
+    <Stack bg="bg-light" h="100%" spacing={0}>
       {allSearchResults.length > 0 && (
-        <Flex align="center" justify="space-between" px="xl" pb="xl">
+        <Flex align="center" justify="space-between" p="xl">
           <Flex align="center">
             {folderName && (
               <>
@@ -88,11 +81,13 @@ export const SearchTab = <
         </Flex>
       )}
 
-      <SearchResults
-        searchResults={scopedSearchResults}
-        selectedItem={selectedItem}
-        onItemSelect={onItemSelect}
-      />
+      <Box style={{ flex: 1, overflow: "hidden" }}>
+        <SearchResults
+          searchResults={scopedSearchResults}
+          selectedItem={selectedItem}
+          onItemSelect={onItemSelect}
+        />
+      </Box>
     </Stack>
   );
 };
