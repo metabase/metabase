@@ -1,10 +1,12 @@
 import { t } from "ttag";
 
 import NoResults from "assets/img/metrics_bot.svg";
+import { skipToken } from "metabase/api";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import EmptyState from "metabase/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Box, Flex, Group, Icon, Stack, Text, Title } from "metabase/ui";
+import type { SearchRequest } from "metabase-types/api";
 
 import type { MetricResult } from "../types";
 
@@ -16,14 +18,58 @@ import {
 } from "./BrowseContainer.styled";
 import { MetricsTable } from "./MetricsTable";
 
-export function BrowseMetrics() {
-  const metricsResult = useFetchMetrics({
+function useHasVerifiedMetrics() {
+  const result = useFetchMetrics({
     filter_items_in_personal_collection: "exclude",
     model_ancestors: false,
+    limit: 0,
+    verified: true,
   });
+
+  const total = result.data?.total ?? 0;
+
+  return {
+    isLoading: result.isLoading,
+    error: result.error,
+    result: total > 0,
+  };
+}
+
+function useFilteredMetrics({ verified = false }: { verified?: boolean }) {
+  const hasVerifiedMetrics = useHasVerifiedMetrics();
+
+  const request: Partial<SearchRequest> = {
+    filter_items_in_personal_collection: "exclude" as const,
+    model_ancestors: false,
+  };
+
+  if (hasVerifiedMetrics.result && verified) {
+    request.verified = true;
+  }
+
+  const metricsResult = useFetchMetrics(
+    hasVerifiedMetrics.isLoading || hasVerifiedMetrics.error
+      ? skipToken
+      : request,
+  );
+
+  const isLoading = hasVerifiedMetrics.isLoading || metricsResult.isLoading;
+  const error = hasVerifiedMetrics.error || metricsResult.error;
   const metrics = metricsResult.data?.data as MetricResult[] | undefined;
 
-  const isEmpty = !metricsResult.isLoading && !metrics?.length;
+  return {
+    isLoading,
+    error,
+    hasVerifiedMetrics: hasVerifiedMetrics.result,
+    metrics,
+  };
+}
+
+export function BrowseMetrics() {
+  const { isLoading, error, metrics } = useFilteredMetrics({
+    verified: false,
+  });
+  const isEmpty = !isLoading && !metrics?.length;
 
   return (
     <BrowseContainer>
@@ -56,8 +102,8 @@ export function BrowseMetrics() {
               <MetricsEmptyState />
             ) : (
               <DelayedLoadingAndErrorWrapper
-                error={metricsResult.error}
-                loading={metricsResult.isLoading}
+                error={error}
+                loading={isLoading}
                 style={{ flex: 1 }}
                 loader={<MetricsTable skeleton />}
               >
