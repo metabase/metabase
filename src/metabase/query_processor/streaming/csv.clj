@@ -94,14 +94,13 @@
                      (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
                      (vec (repeat (count ordered-cols) identity))))
           ;; write the column names for non-pivot tables
-          (when opts
-            (let [modified-row (m/remove-nth @pivot-grouping-idx col-names)]
+          (when-not opts
+            (let [modified-row (m/remove-nth (or @pivot-grouping-idx (inc (count col-names))) col-names)]
               (write-csv writer [modified-row]))
             (.flush writer))))
 
       (write-row! [_ row _row-num _ {:keys [output-order]}]
-        (let [pivot-grouping-key @pivot-grouping-idx
-              ordered-row (if output-order
+        (let [ordered-row (if output-order
                             (let [row-v (into [] row)]
                               (for [i output-order] (row-v i)))
                             row)
@@ -112,11 +111,15 @@
             ;; if we're processing a pivot result, we don't write it out yet, just store it
             ;; so that we can post process the full set of results in finish!
             (swap! rows! conj xf-row)
-            (let [group        (get row pivot-grouping-key)
-                  modified-row (m/remove-nth pivot-grouping-key xf-row)]
-              (when (= 0 group)
-                (write-csv writer [modified-row]))
-              (.flush writer)))))
+            (let [pivot-grouping-key @pivot-grouping-idx
+                  group              (get row pivot-grouping-key)
+                  cleaned-row        (if pivot-grouping-key
+                                      (m/remove-nth pivot-grouping-key xf-row)
+                                      xf-row)]
+              (when (or (= 0 group)
+                        (not group))
+                (write-csv writer [cleaned-row])
+                (.flush writer))))))
 
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
