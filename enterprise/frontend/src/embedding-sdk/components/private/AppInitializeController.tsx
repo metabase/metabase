@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo } from "react";
+import type { ReactNode } from "react";
 
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { useInitData } from "embedding-sdk/hooks";
@@ -28,25 +28,13 @@ export const AppInitializeController = ({
   const isInitialized = useSdkSelector(getIsInitialized);
   const licenseProblem = useSdkLicenseProblem(config);
 
-  const content = useMemo(() => {
-    if (!isInitialized) {
-      return <SdkLoader />;
-    }
-
-    if (licenseProblem?.severity === "error") {
-      return null;
-    }
-
-    return children;
-  }, [children, isInitialized, licenseProblem]);
-
   return (
     <SdkGlobalStylesWrapper
       baseUrl={config.metabaseInstanceUrl}
       id={EMBEDDING_SDK_ROOT_ELEMENT_ID}
       className={className}
     >
-      {content}
+      {isInitialized ? children : <SdkLoader />}
 
       {licenseProblem && (
         <Box pos="fixed" bottom="15px" left="15px">
