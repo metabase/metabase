@@ -627,12 +627,12 @@
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols format-rows? pivot-export-options]} :data}
                {col-settings ::mb.viz/column-settings :as viz-settings}]
-        (let [opts      (when (and *pivot-export-post-processing-enabled* pivot-export-options)
-                          (pivot-opts->pivot-spec (merge {:pivot-cols []
-                                                          :pivot-rows []}
-                                                         pivot-export-options) ordered-cols))
+        (let [opts           (when (and *pivot-export-post-processing-enabled* pivot-export-options)
+                               (pivot-opts->pivot-spec (merge {:pivot-cols []
+                                                               :pivot-rows []}
+                                                              pivot-export-options) ordered-cols))
               ;; col-names are created later when exporting a pivot table, so only create them if there are no pivot options
-              col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
+              col-names      (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
               pivot-grouping (qp.pivot.postprocess/pivot-grouping-key col-names)]
           (when pivot-grouping (vreset! pivot-grouping-idx pivot-grouping))
           (vreset! cell-styles (compute-column-cell-styles workbook data-format viz-settings ordered-cols))
@@ -645,11 +645,13 @@
                                      :viz-settings viz-settings}
                    :pivot-options opts))
 
-          (when opts
+          (when-not opts
             (doseq [i (range (count ordered-cols))]
               (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
             (setup-header-row! sheet (count ordered-cols))
-            (let [modified-row (m/remove-nth @pivot-grouping-idx (common/column-titles ordered-cols col-settings true))]
+            (let [modified-row (m/remove-nth
+                                (or @pivot-grouping-idx (inc (count col-names)))
+                                (common/column-titles ordered-cols col-settings true))]
               (spreadsheet/add-row! sheet modified-row)))))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
@@ -659,30 +661,31 @@
                                         row)
               col-settings            (::mb.viz/column-settings viz-settings)
               {:keys [pivot-options]} @pivot-data!
-              pivot-grouping-key @pivot-grouping-idx]
-          (if pivot-options
-            (let [{:keys [pivot-grouping-key]} pivot-options
-                  group                        (get row pivot-grouping-key)]
-              (when (= 0 group)
-                ;; TODO: right now, the way I'm building up the native pivot,
-                ;; I end up using the docjure set-cell! (since I create a whole sheet with all the rows at once)
-                ;; I'll want to change that so I can use the set-cell! method we have in this ns, but for now just string everything.
-                (let [modified-row (->> (vec (m/remove-nth pivot-grouping-key row))
-                                        (mapv (fn [value]
-                                                (if (number? value)
-                                                  value
-                                                  (str value)))))]
-                  (swap! pivot-data! update :rows conj modified-row))))
-            (let [group (get row pivot-grouping-key)
-                  modified-row (m/remove-nth pivot-grouping-key ordered-row)]
-              (when (= 0 group)
-                (add-row! sheet modified-row ordered-cols col-settings @cell-styles @typed-cell-styles)
+              pivot-grouping-key      @pivot-grouping-idx
+              group                   (get ordered-row pivot-grouping-key)
+              cleaned-row             (if pivot-grouping-key
+                                        (m/remove-nth pivot-grouping-key ordered-row)
+                                        ordered-row)]
+          (when (or (= 0 group)
+                    (not group))
+            (if pivot-options
+              ;; TODO: right now, the way I'm building up the native pivot,
+              ;; I end up using the docjure set-cell! (since I create a whole sheet with all the rows at once)
+              ;; I'll want to change that so I can use the set-cell! method we have in this ns, but for now just string everything.
+              (let [modified-row (mapv (fn [value]
+                                         (if (number? value)
+                                           value
+                                           (str value)))
+                                       cleaned-row)]
+                (swap! pivot-data! update :rows conj modified-row))
+              (do
+                (add-row! sheet cleaned-row ordered-cols col-settings @cell-styles @typed-cell-styles)
                 (when (= (inc row-num) *auto-sizing-threshold*)
                   (autosize-columns! sheet)))))))
 
       (finish! [_ {:keys [row_count]}]
         (let [{:keys [pivot-options rows cell-style-data]} @pivot-data!
-              pivot-grouping-key @pivot-grouping-idx]
+              pivot-grouping-key                           @pivot-grouping-idx]
           (if pivot-options
             (let [header (vec (m/remove-nth pivot-grouping-key (:column-titles pivot-options)))
                   wb     (native-pivot (concat [header] rows) pivot-options cell-style-data)]
