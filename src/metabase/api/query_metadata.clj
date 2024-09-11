@@ -62,7 +62,7 @@
     {;; TODO: This is naive and issues multiple queries currently. That's probably okay for most dashboards,
      ;; since they tend to query only a handful of databases at most.
      :databases (sort-by :id (get-databases database-ids))
-     :tables    (sort-by (comp str :id) tables)
+     :tables    (sort-by :id tables)
      :fields    (or (sort-by :id (api.field/get-fields template-tag-field-ids))
                     [])}))
 
@@ -126,7 +126,7 @@
         dashboards (->> (:dashboard links)
                         (into #{} (map :id))
                         batch-fetch-linked-dashboards)]
-    {:cards      (sort-by (comp str :id) link-cards)
+    {:cards      (sort-by :id link-cards)
      :dashboards (sort-by :id dashboards)}))
 
 (defn batch-fetch-dashboard-metadata
