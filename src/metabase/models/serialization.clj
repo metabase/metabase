@@ -963,7 +963,6 @@
                (throw (ex-info "Could not find dir name" {:entry entry})))
            (:id entry)])))
 
-
 ;;; ## Fields
 
 (defn- field-hierarchy [id]
@@ -979,19 +978,23 @@
                :from           [:parents]
                :select         [:name :table_id]})))
 
-(defn- recursively-field [table-id [field & rest]]
+(defn recursively-find-field-q
+  "Build a query to find a field among parents (should start with bottom-most field first), i.e.:
+
+  `(recursively-find-field-q 1 [\"inner\" \"outer\"])`"
+  [table-id [field & rest]]
   (when field
     {:from   [:metabase_field]
      :select [:id]
      :where  [:and
               [:= :table_id table-id]
               [:= :name field]
-              [:= :parent_id (recursively-field table-id rest)]]}))
+              [:= :parent_id (recursively-find-field-q table-id rest)]]}))
 
 (defn ^:dynamic ^::cache *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
-  [[import-field-fk]] is the inverse."
+  [[*import-field-fk*]] is the inverse."
   [field-id]
   (when field-id
     (let [fields                      (field-hierarchy field-id)
@@ -999,11 +1002,11 @@
       (into [db-name schema field-name] (map :name fields)))))
 
 (defn ^:dynamic ^::cache *import-field-fk*
-  "Given a `field_id` as exported by [[export-field-fk]], resolve it back into a numeric `field_id`."
+  "Given a `field_id` as exported by [[*export-field-fk*]], resolve it back into a numeric `field_id`."
   [[db-name schema table-name & fields :as field-id]]
   (when field-id
     (let [table-id (*import-table-fk* [db-name schema table-name])
-          field-q  (recursively-field table-id (reverse fields))]
+          field-q  (recursively-find-field-q table-id (reverse fields))]
       (t2/select-one-pk :model/Field field-q))))
 
 (defn field->path

@@ -353,7 +353,7 @@
 
 ;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
 ;; a trio of strings with schema maybe nil.
-(defmethod serdes/generate-path "Field" [_ field #_{table_id :table_id parent :parent_id field :name}]
+(defmethod serdes/generate-path "Field" [_ field]
   (let [[db schema table & fields] (serdes/*export-field-fk* (:id field))]
     (->> (into (serdes/table->path [db schema table])
                (map (fn [n] {:model "Field" :id n}) fields))
@@ -364,9 +364,10 @@
 
 (defmethod serdes/load-find-local "Field"
   [path]
-  (let [field-id (cond->> (map :id path)
-                   (not= "Schema" (:model (second path))) (m/insert-nth 1 nil))]
-    (t2/select-one :model/Field (serdes/*import-field-fk* field-id))))
+  (let [[table-path fields] (split-with #(not= "Field" (:model %)) path)
+        table               (serdes/load-find-local table-path)
+        field-q             (serdes/recursively-find-field-q (:id table) (map :id (reverse fields)))]
+    (t2/select-one :model/Field field-q)))
 
 (defmethod serdes/dependencies "Field" [field]
   ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.
@@ -378,9 +379,12 @@
                    (keep :human_readable_field_id)
                    (map serdes/field->path)
                    set)]
-    (cond-> (set/union #{table} human)
-      fks  (set/union #{fks})
-      true (disj this))))
+    (-> (set/union
+         #{table}
+         human
+         (when fks #{fks})
+         (when (:parent_id field) #{(butlast this)}))
+        (disj this))))
 
 (defmethod serdes/make-spec "Field" [_model-name opts]
   {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_indexed
