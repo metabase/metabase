@@ -840,6 +840,41 @@ describe("scenarios > question > offset", () => {
         openNotebook();
         getNotebookStep("summarize").icon("play").should("be.visible");
       });
+
+      it("works when custom column is a simple expression with CC not in the first place", () => {
+        const customColumnName = "1 + 1";
+        const customColumnName2 = "constant";
+        const customColumnName3 = "string";
+        const query: StructuredQuery = {
+          "source-table": ORDERS_ID,
+          expressions: {
+            [customColumnName]: ["+", 1, 1],
+            [customColumnName2]: 1,
+            [customColumnName3]: ["concat", "a", "b"],
+          },
+          aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
+          breakout: [
+            BREAKOUT_DATETIME,
+            ["expression", customColumnName],
+            ["expression", customColumnName2],
+            ["expression", customColumnName3],
+          ],
+          "order-by": [["asc", BREAKOUT_DATETIME]],
+        };
+
+        createQuestion({ query }, { visitQuestion: true });
+
+        verifyNoQuestionError();
+
+        verifyTableContent([
+          ["2022", "2", "1", "ab", "42,156.87", ""],
+          ["2023", "2", "1", "ab", "205,256.02", "42,156.87"],
+          ["2024", "2", "1", "ab", "510,045.03", "205,256.02"],
+        ]);
+
+        openNotebook();
+        getNotebookStep("summarize").icon("play").should("be.visible");
+      });
     });
 
     describe("when custom column is not in the first place of breakout", () => {
