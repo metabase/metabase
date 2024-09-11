@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   skipToken,
@@ -53,10 +53,12 @@ export const TablePicker = ({
   const [tableId, setTableId] = useState<TableId | undefined>(initialTableId);
 
   const {
-    data: databases,
+    data: databasesResponse,
     error: errorDatabases,
     isFetching: isLoadingDatabases,
   } = useListDatabasesQuery({ saved: false });
+
+  const databases = isLoadingDatabases ? undefined : databasesResponse?.data;
 
   const {
     data: schemas,
@@ -75,7 +77,7 @@ export const TablePicker = ({
   );
 
   const selectedDbItem = useMemo(
-    () => getDbItem(databases?.data, dbId),
+    () => getDbItem(databases, dbId),
     [databases, dbId],
   );
 
@@ -138,6 +140,18 @@ export const TablePicker = ({
     [dbId, schemaName, setTableId, onItemSelect, onPathChange],
   );
 
+  useEffect(() => {
+    if (initialDbId == null && databases && databases.length > 0) {
+      const firstDatabase = databases[0];
+
+      handleFolderSelect({
+        id: firstDatabase.id,
+        model: "database",
+        name: firstDatabase.name,
+      });
+    }
+  }, [databases, handleFolderSelect, initialDbId]);
+
   return (
     <AutoScrollBox
       contentHash={generateKey(
@@ -150,7 +164,7 @@ export const TablePicker = ({
       <Flex h="100%" w="fit-content">
         {!databaseId && (
           <DatabaseList
-            databases={isLoadingDatabases ? undefined : databases?.data}
+            databases={databases}
             error={errorDatabases}
             isCurrentLevel={!schemaName || (schemas?.length === 1 && !tableId)}
             isLoading={isLoadingDatabases}
