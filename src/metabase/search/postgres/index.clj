@@ -101,12 +101,11 @@
       (t2/insert! pending-table entry))))
 
 (defn- to-tsquery-expr [search-term]
-  (let [in-word? (= search-term (str/trimr search-term))
-        trimmed (str/trim search-term)
-        words (str/split trimmed #"\s+")]
-    (str (str/join " & " words)
-         (when in-word?
-           ":*"))))
+  (as-> search-term <>
+    (str/trim <>)
+    (str/split <> #"\s+")
+    (str/join " & " <>)
+    (str <> ":*")))
 
 (defn search-query
   "Query fragment for all models corresponding to a query paramter `:search-term`."
