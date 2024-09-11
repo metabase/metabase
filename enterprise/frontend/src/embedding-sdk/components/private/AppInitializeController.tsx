@@ -1,16 +1,13 @@
 import type { ReactNode } from "react";
+import { t } from "ttag";
 
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { useInitData } from "embedding-sdk/hooks";
-import { useSdkLicenseProblem } from "embedding-sdk/hooks/private/use-sdk-license-problem";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getIsInitialized } from "embedding-sdk/store/selectors";
 import type { SDKConfig } from "embedding-sdk/types";
-import { Box } from "metabase/ui";
 
-import { SdkLoader } from "./PublicComponentWrapper";
 import { SdkGlobalStylesWrapper } from "./SdkGlobalStylesWrapper";
-import { SdkLicenseProblemBanner } from "./SdkLicenseProblemBanner";
 
 interface AppInitializeControllerProps {
   children: ReactNode;
@@ -26,7 +23,6 @@ export const AppInitializeController = ({
   useInitData({ config });
 
   const isInitialized = useSdkSelector(getIsInitialized);
-  const licenseProblem = useSdkLicenseProblem(config);
 
   return (
     <SdkGlobalStylesWrapper
@@ -34,13 +30,7 @@ export const AppInitializeController = ({
       id={EMBEDDING_SDK_ROOT_ELEMENT_ID}
       className={className}
     >
-      {isInitialized ? children : <SdkLoader />}
-
-      {licenseProblem && (
-        <Box pos="fixed" bottom="15px" left="15px">
-          <SdkLicenseProblemBanner problem={licenseProblem} />
-        </Box>
-      )}
+      {!isInitialized ? <div>{t`Loading…`}</div> : children}
     </SdkGlobalStylesWrapper>
   );
 };

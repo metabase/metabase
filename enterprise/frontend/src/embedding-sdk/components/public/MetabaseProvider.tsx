@@ -24,6 +24,7 @@ import { EmotionCacheProvider } from "metabase/styled-components/components/Emot
 
 import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
+import { SdkLicenseProblemDisplay } from "../private/SdkLicenseProblem";
 
 export interface MetabaseProviderProps {
   children: ReactNode;
@@ -81,6 +82,8 @@ export const MetabaseProviderInternal = ({
         <SdkThemeProvider theme={theme}>
           <AppInitializeController className={className} config={config}>
             {children}
+
+            <SdkLicenseProblemDisplay config={config} />
           </AppInitializeController>
         </SdkThemeProvider>
       </EmotionCacheProvider>
