@@ -674,7 +674,7 @@ describe("scenarios > question > offset", () => {
           },
         ],
         aggregation: [OFFSET_SUM_TOTAL_AGGREGATION, SUM_TOTAL_AGGREGATION],
-        breakout: [BREAKOUT_DATETIME, BREAKOUT_CATEGORY],
+        breakout: [BREAKOUT_CATEGORY, BREAKOUT_DATETIME],
         "order-by": [["asc", BREAKOUT_DATETIME]],
       };
 
@@ -687,9 +687,9 @@ describe("scenarios > question > offset", () => {
 
       verifyNoQuestionError();
       verifyTableContent([
-        ["2022", "Doohickey", "9,031.56", ""],
-        ["2022", "Gadget", "10,672.63", ""],
-        ["2022", "Gizmo", "9,929.32", ""],
+        ["Doohickey", "2022", "", "9,031.56"],
+        ["Gadget", "2022", "9,031.56", "10,672.63"],
+        ["Gizmo", "2022", "10,672.63", "9,929.32"],
       ]);
 
       openNotebook();
