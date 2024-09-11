@@ -231,8 +231,8 @@
 (def ^:dynamic *field-id-context*
   "Conext for effective computation of field ids for parameters. Bound in
   the [[metabase.api.dashboard/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to
-  re-use values of previous `filterable-columns` computations (hydration of `:param_fields` and `:param_values` at the
-  time of writing)."
+  re-use values of previous `filterable-columns` computations (during the reduction itself and hydration
+  of `:param_fields` and `:param_values` at the time of writing)."
   (volatile! nil))
 
 (def empty-field-id-context
