@@ -21,6 +21,7 @@
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.checkpoints :as checkpoints]
    [metabase.models.company :as company]
+   [metabase.models.cubes_requests :as cubes_requests]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database
     :as database

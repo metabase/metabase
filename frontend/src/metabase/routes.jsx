@@ -50,7 +50,6 @@ import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisi
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
-import { BrowseValidation } from "./browse/components/BrowseValidation";
 import { BrowseDatabases } from "./browse/components/BrowseDatabases";
 import { DatabasesConnections } from "./browse/components/DatabasesConnections";
 import { BrowseModels } from "./browse/components/BrowseModels";
@@ -301,7 +300,6 @@ export const getRoutes = store => {
             <Route path="semantic-layer/:slug" component={BrowseSemanticLayerTable} />
             <Route path="semantic-layer/:slug/cubes/:cubeName" component={BrowseCubes} />
             <Route path="semantic-layer/:slug/data-map" component={CubeFlow} />
-            <Route path="validation" component={BrowseValidation} />
             <Route path="chat" component={BrowseChat} />
             <Route path="insights" component={HomeLayout} />
             <Route path="databases/:slug" component={BrowseSchemas} />

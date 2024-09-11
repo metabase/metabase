@@ -11,8 +11,13 @@ interface ChatHistoryProps {
   setInsights: (insights: any) => void; // Optional prop
 }
 
-
-const ChatHistory = ({ setSelectedChatHistory, setThreadId, type, setOldCardId, setInsights }: ChatHistoryProps) => {
+const ChatHistory = ({
+  setSelectedChatHistory,
+  setThreadId,
+  type,
+  setOldCardId,
+  setInsights,
+}: ChatHistoryProps) => {
   const [chatHistory, setChatHistory] = useState({
     today: [],
     last7Days: [],
@@ -28,64 +33,99 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId, type, setOldCardId, 
   useEffect(() => {
     if (checkpoints && checkpoints.length > 0) {
       const groupedHistory = checkpoints.reduce((acc: any, checkpoint: any) => {
-        const { thread_id, step, agent_name, agent_description, card_id, insights } = checkpoint;
+        const {
+          thread_id,
+          step,
+          agent_name,
+          agent_description,
+          card_id,
+          insights,
+        } = checkpoint;
         if (!acc[thread_id]) {
           acc[thread_id] = {
             ...checkpoint,
             card_id: card_id !== null && card_id !== 0 ? [card_id] : [],
-            agent_description: agent_description && agent_description !== "" ? [agent_description] : [],
+            agent_description:
+              agent_description && agent_description !== ""
+                ? [agent_description]
+                : [],
             agent_name: agent_name && agent_name !== "" ? [agent_name] : [],
-            insights: insights && insights !== null && insights !== "{}" ? [insights] : [],
+            insights:
+              insights && insights !== null && insights !== "{}"
+                ? [insights]
+                : [],
           };
         } else {
           if (acc[thread_id].step < step) {
-            acc[thread_id] = { 
+            acc[thread_id] = {
               ...checkpoint,
               card_id: acc[thread_id].card_id,
               agent_description: acc[thread_id].agent_description,
               agent_name: acc[thread_id].agent_name,
-              insights: acc[thread_id].insights
+              insights: acc[thread_id].insights,
             };
           }
-    
-          // Always update card_id if it's provided and non-empty
-          if (card_id && card_id !== 0 && !acc[thread_id].card_id.includes(card_id)) {
+
+          if (
+            card_id &&
+            card_id !== 0 &&
+            !acc[thread_id].card_id.includes(card_id)
+          ) {
             acc[thread_id].card_id.push(card_id);
           }
-    
-          // Always update agent_description if it's provided and non-empty
-          if (agent_description && agent_description !== "" && !acc[thread_id].agent_description.includes(agent_description)) {
+
+          if (
+            agent_description &&
+            agent_description !== "" &&
+            !acc[thread_id].agent_description.includes(agent_description)
+          ) {
             acc[thread_id].agent_description.push(agent_description);
           }
-    
-          // Always update agent_name if it's provided and non-empty
-          if (agent_name && agent_name !== "" && !acc[thread_id].agent_name.includes(agent_name)) {
+
+          if (
+            agent_name &&
+            agent_name !== "" &&
+            !acc[thread_id].agent_name.includes(agent_name)
+          ) {
             acc[thread_id].agent_name.push(agent_name);
           }
 
-          // Always update insights if it's provided and non-empty
-          if (insights && insights !== "{}" && !acc[thread_id].insights.includes(insights)) {
+          if (
+            insights &&
+            insights !== "{}" &&
+            !acc[thread_id].insights.includes(insights)
+          ) {
             acc[thread_id].insights.push(insights);
           }
         }
-    
+
         return acc;
       }, {});
 
       const rawChatGroups: any = Object.values(groupedHistory);
-      const filteredGroups = rawChatGroups.filter((group: any) =>
-        Array.isArray(group.agent_name) && group.agent_name.includes(type)
+      const filteredGroups = rawChatGroups.filter(
+        (group: any) =>
+          Array.isArray(group.agent_name) && group.agent_name.includes(type),
       );
       let chatGroups;
-      if(type == "getInsights") {
-        chatGroups = filteredGroups.filter((group: any) =>
-          Array.isArray(group.insights) && group.insights.length > 0
+      if (type === "getInsights") {
+        chatGroups = filteredGroups.filter(
+          (group: any) =>
+            Array.isArray(group.insights) && group.insights.length > 0,
         );
       } else {
-        chatGroups = filteredGroups.filter((group: any) =>
-          Array.isArray(group.card_id) && group.card_id.length > 0
+        chatGroups = filteredGroups.filter(
+          (group: any) =>
+            Array.isArray(group.card_id) && group.card_id.length > 0,
         );
       }
+
+      // Sort chat groups by date descending
+      chatGroups.sort((a: any, b: any) => {
+        const dateA = dayjs(JSON.parse(a.checkpoint).ts);
+        const dateB = dayjs(JSON.parse(b.checkpoint).ts);
+        return dateB.diff(dateA); // Sort descending
+      });
 
       const today = dayjs().startOf("day");
       const last7Days = dayjs().subtract(7, "day").startOf("day");
@@ -117,20 +157,22 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId, type, setOldCardId, 
   const handleHistoryItemClick = (item: any) => {
     setThreadId(null);
     setSelectedChatHistory([]);
-    setOldCardId([])
+    setOldCardId([]);
     const parsedMetadata = JSON.parse(item.metadata);
     const messages = parsedMetadata.writes?.solve?.messages || [];
     const parsedCheckpoint = JSON.parse(item.checkpoint);
-    if(type == "getInsights") {
-      const newInsights = item.insights
-      const parsedInsights = newInsights.map((insight:string) => JSON.parse(insight));
-      if(parsedInsights.length > 0) {
-        setInsights(parsedInsights)
+    if (type === "getInsights") {
+      const newInsights = item.insights;
+      const parsedInsights = newInsights.map((insight: string) =>
+        JSON.parse(insight),
+      );
+      if (parsedInsights.length > 0) {
+        setInsights(parsedInsights);
       }
     }
     setThreadId(item.thread_id);
     setSelectedChatHistory(messages);
-    setOldCardId(item.card_id)
+    setOldCardId(item.card_id);
   };
 
   return (
@@ -210,7 +252,7 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId, type, setOldCardId, 
                 onClick={() => handleHistoryItemClick(chat)}
               >
                 <Text style={{ color: "#76797d" }}>
-                {chat.agent_description[0] || chat.thread_id}
+                  {chat.agent_description[0] || chat.thread_id}
                 </Text>
                 <Text style={{ color: "#76797d", cursor: "pointer" }}>⋮</Text>
               </Box>
@@ -243,7 +285,7 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId, type, setOldCardId, 
                 onClick={() => handleHistoryItemClick(chat)}
               >
                 <Text style={{ color: "#76797d" }}>
-                {chat.agent_description[0] || chat.thread_id}
+                  {chat.agent_description[0] || chat.thread_id}
                 </Text>
                 <Text style={{ color: "#76797d", cursor: "pointer" }}>⋮</Text>
               </Box>

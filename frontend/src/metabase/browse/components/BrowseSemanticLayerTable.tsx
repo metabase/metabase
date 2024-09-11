@@ -85,19 +85,23 @@ export const BrowseSemanticLayerTable = () => {
                     cubeDataArray={cubeData}
                     onRowClick={handleRowClick}
                   />
-                  <MaybeItemLinkDataMap to={Urls.browseCubeFlow()}>
-                    <Button
-                      style={{
-                        width: "150px",
-                        height: "50px",
-                        marginLeft: "30px",
-                        background: "rgba(80, 158, 227, 0.2)",
-                        color: "#587330",
-                      }}
-                    >
-                      {t`Data Map`}
-                    </Button>
-                  </MaybeItemLinkDataMap>
+                  <div
+                    style={{ display: "flex", flexDirection: "column", gap: 2 }}
+                  >
+                    <MaybeItemLinkDataMap to={Urls.browseCubeFlow()}>
+                      <Button
+                        style={{
+                          width: "150px",
+                          height: "40px",
+                          marginLeft: "30px",
+                          background: "rgba(80, 158, 227, 0.2)",
+                          color: "#587330",
+                        }}
+                      >
+                        {t`Data Map`}
+                      </Button>
+                    </MaybeItemLinkDataMap>
+                  </div>
                 </div>
               </>
             )}

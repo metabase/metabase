@@ -113,6 +113,8 @@ import dashboard_component from "./dashboard.svg?component";
 import dashboard_source from "./dashboard.svg?source";
 import database_component from "./database.svg?component";
 import database_source from "./database.svg?source";
+import description_component from "./description.svg?component";
+import description_source from "./description.svg?source";
 import document_component from "./document.svg?component";
 import document_source from "./document.svg?source";
 import download_component from "./download.svg?component";
@@ -237,6 +239,8 @@ import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
+import menu_book_component from "./menu_book.svg?component";
+import menu_book_source from "./menu_book.svg?source";
 import metric_component from "./metric.svg?component";
 import metric_source from "./metric.svg?source";
 import model_component from "./model.svg?component";
@@ -625,6 +629,10 @@ export const Icons = {
     component: curve_component,
     source: curve_source,
   },
+  description: {
+    component: description_component,
+    source: description_source,
+  },
   document: {
     component: document_component,
     source: document_source,
@@ -876,6 +884,10 @@ export const Icons = {
   metric: {
     component: metric_component,
     source: metric_source,
+  },
+  menu_book: {
+    component: menu_book_component,
+    source: menu_book_source,
   },
   model: {
     component: model_component,

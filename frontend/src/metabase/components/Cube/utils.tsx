@@ -1,4 +1,3 @@
-
 export interface FieldData {
   id: string;
   table: string;
@@ -7,11 +6,11 @@ export interface FieldData {
 }
 
 export interface MapData {
-id: string;
-sourceCube:string;
-sourceField: string;
-targetTable: string;
-targetField: string;
+  id: string;
+  sourceCube: string;
+  sourceField: string;
+  targetTable: string;
+  targetField: string;
 }
 
 export interface CubeFlowProps {
@@ -61,7 +60,7 @@ type ExtractedData = {
 
 interface ExtractedMapField {
   id: string;
-  sourceCube:string;
+  sourceCube: string;
   sourceField: string;
   targetTable: string;
   targetField: string;
@@ -77,27 +76,27 @@ export interface CubeData {
 
 export const formatAndCleanCubeContent = (content: string) => {
   const removeCubeWrapper = (str: string) => {
-    let result = str.replace(/^cube\(`[^`]+`,/, '').replace(/\);$/, '');
+    let result = str.replace(/^cube\(`[^`]+`,/, "").replace(/\);$/, "");
     return result.trim();
   };
 
   const formatContent = (str: string) => {
     let indentLevel = 0;
-    const indent = '  ';
+    const indent = "  ";
     let inSqlBlock = false;
 
     if (str === undefined) {
-      return '';
+      return "";
     }
 
-    let lines = str.split('\n');
+    let lines = str.split("\n");
     let formattedLines = lines.map((line, index) => {
       let trimmedLine = line.trim();
 
       // Check if we're entering or exiting an SQL block
-      if (trimmedLine.startsWith('sql: `')) {
+      if (trimmedLine.startsWith("sql: `")) {
         inSqlBlock = true;
-      } else if (inSqlBlock && trimmedLine.endsWith('`,')) {
+      } else if (inSqlBlock && trimmedLine.endsWith("`,")) {
         inSqlBlock = false;
       }
 
@@ -106,27 +105,36 @@ export const formatAndCleanCubeContent = (content: string) => {
         return indent.repeat(indentLevel) + line.trim();
       }
 
-      let colonIndex = trimmedLine.indexOf(':');
-      let keyPart = colonIndex !== -1 ? trimmedLine.slice(0, colonIndex + 1) : trimmedLine;
-      let valuePart = colonIndex !== -1 ? trimmedLine.slice(colonIndex + 1).trim() : '';
+      let colonIndex = trimmedLine.indexOf(":");
+      let keyPart =
+        colonIndex !== -1 ? trimmedLine.slice(0, colonIndex + 1) : trimmedLine;
+      let valuePart =
+        colonIndex !== -1 ? trimmedLine.slice(colonIndex + 1).trim() : "";
 
       // Check if the line starts a new object
-      if (valuePart.startsWith('{')) {
+      if (valuePart.startsWith("{")) {
         indentLevel++;
       }
 
       // Format the line
-      let formattedLine = keyPart + (valuePart ? ' ' + valuePart : '');
+      let formattedLine = keyPart + (valuePart ? " " + valuePart : "");
 
       // Check if the line ends an object
-      if (trimmedLine.endsWith('},') || trimmedLine === '}') {
+      if (trimmedLine.endsWith("},") || trimmedLine === "}") {
         indentLevel = Math.max(0, indentLevel - 1);
+      }
+
+      // Correctly handle primaryKey boolean values
+      if (formattedLine.includes("primaryKey:")) {
+        formattedLine = formattedLine
+          .replace(/`true`/g, "true")
+          .replace(/`false`/g, "false");
       }
 
       return indent.repeat(indentLevel) + formattedLine;
     });
 
-    return formattedLines.join('\n');
+    return formattedLines.join("\n");
   };
 
   const cleanedContent = removeCubeWrapper(content);
@@ -134,71 +142,83 @@ export const formatAndCleanCubeContent = (content: string) => {
 
   return formattedContent;
 };
-  
+
 export function extractCubeName(cubeString: string): string {
-    const cubeRegex = /cube\(`([^`]+)`/;
-    const cubeRegexs = /cube\(([`'"])([^`'"]+)\1/;
-    const match = cubeString.match(cubeRegex);
-    const matches = cubeString.match(cubeRegexs);
-    if (matches && matches[2]) {
-      return matches[2].trim();
-    }
-    throw new Error('Cube name not found');
+  const cubeRegex = /cube\(`([^`]+)`/;
+  const cubeRegexs = /cube\(([`'"])([^`'"]+)\1/;
+  const match = cubeString.match(cubeRegex);
+  const matches = cubeString.match(cubeRegexs);
+  if (matches && matches[2]) {
+    return matches[2].trim();
+  }
+  throw new Error("Cube name not found");
+}
+
+export function extractCubeNames(content: any) {
+  const cubeRegex = /cube\s*\(`([^`]+)`/g;
+  const cubeNames = [];
+  let match;
+
+  while ((match = cubeRegex.exec(content)) !== null) {
+    cubeNames.push(match[1]);
   }
 
-  export function extractCubeNames(content:any) {
-    const cubeRegex = /cube\s*\(`([^`]+)`/g;
-    const cubeNames = [];
-    let match;
-  
-    while ((match = cubeRegex.exec(content)) !== null) {
-        cubeNames.push(match[1]);
-    }
-  
-    return cubeNames;
-  }
-  
-  export function separateCubes(input:string) {
-    const cubeDefinitions = input.split(/cube\(/).slice(1);
-    const cubes = cubeDefinitions.map(cubeDef => 'cube(' + cubeDef.trim());
-    return cubes;
+  return cubeNames;
+}
+
+export function separateCubes(input: string) {
+  const cubeDefinitions = input.split(/cube\(/).slice(1);
+  const cubes = cubeDefinitions.map(cubeDef => "cube(" + cubeDef.trim());
+  return cubes;
+}
+
+export function removeLineBreaks(str: string) {
+  return str.replace(/\n\s*/g, "");
+}
+
+export const addCubeWrapper = (content: string, cubeName: string) => {
+  const trimmedContent = content.trim();
+
+  // Check if the content is already wrapped with `cube(...)`
+  if (trimmedContent.startsWith(`cube(\`${cubeName}\``)) {
+    return trimmedContent; // If already wrapped, return the content as is
   }
 
-  export function removeLineBreaks(str:string) {
-    return str.replace(/\n\s*/g, '');
+  // Otherwise, wrap the content with `cube(...)` and ensure proper closure
+  if (trimmedContent.endsWith("}") || trimmedContent.endsWith("};")) {
+    return `cube(\`${cubeName}\`, ${trimmedContent})`;
+  } else {
+    return `cube(\`${cubeName}\`, ${trimmedContent});`;
   }
-
-  export const addCubeWrapper = (content: string, cubeName: string) => {
-    const trimmedContent = content.trim();
-    const lastChar = trimmedContent.slice(-1);
-    if (lastChar === ')' || lastChar === ';') {
-      return `cube(\`${cubeName}\`, ${trimmedContent}`;
-    } else {
-      return `cube(\`${cubeName}\`, ${trimmedContent});`;
-    }
-  };
-
-export function extractAllJoins(cubesContent: string[]): Record<string, string[]> {
+};
+export function extractAllJoins(
+  cubesContent: string[],
+): Record<string, string[]> {
   const allJoins: Record<string, string[]> = {};
   const allJoinsContent: Record<string, string[]> = {};
 
   cubesContent.forEach(content => {
     const cubeName = extractCubeName(content);
 
-    const joinContent = extractJoinsContent(content)
+    const joinContent = extractJoinsContent(content);
     // console.log('join content', joinContent)
 
-    
-    if(!joinContent) return;
-    const joinEntriesFrm = joinContent.split(/},\s*(?=\w+:)/).map(entry => entry.trim());
+    if (!joinContent) return;
+    const joinEntriesFrm = joinContent
+      .split(/},\s*(?=\w+:)/)
+      .map(entry => entry.trim());
 
     allJoins[cubeName] = [];
-    allJoinsContent[cubeName] = []
+    allJoinsContent[cubeName] = [];
     joinEntriesFrm.forEach(entry => {
       const joinedCube = entry.match(/(\w+):\s*{/)?.[1];
       const relationshipMatch = entry.match(/relationship:\s*['"`](\w+)['"`]/);
-      
-      if (joinedCube && relationshipMatch && relationshipMatch[1].toLowerCase() === 'belongsto') {
+
+      if (
+        joinedCube &&
+        relationshipMatch &&
+        relationshipMatch[1].toLowerCase() === "belongsto"
+      ) {
         allJoins[cubeName].push(joinedCube);
       }
     });
@@ -211,8 +231,8 @@ export function extractAllJoins(cubesContent: string[]): Record<string, string[]
   return allJoins;
 }
 
-function extractJoinsContent(input:string) {
-  const joinsStart = input.indexOf('joins:');
+function extractJoinsContent(input: string) {
+  const joinsStart = input.indexOf("joins:");
   if (joinsStart === -1) return null;
 
   let openBraces = 0;
@@ -220,9 +240,9 @@ function extractJoinsContent(input:string) {
   let endIndex = joinsStart + 6; // Start after 'joins:'
 
   for (let i = endIndex; i < input.length; i++) {
-    if (input[i] === '{') openBraces++;
-    if (input[i] === '}') closeBraces++;
-    
+    if (input[i] === "{") openBraces++;
+    if (input[i] === "}") closeBraces++;
+
     if (openBraces > 0 && openBraces === closeBraces) {
       endIndex = i + 1;
       break;
@@ -235,22 +255,27 @@ function extractJoinsContent(input:string) {
 
 export function extractMainQuery(input: string): string | null {
   const sqlMatch = input.match(/sql:\s*(`|"|')(.*?)\1/);
-  
+
   if (sqlMatch && sqlMatch[2]) {
     return sqlMatch[2].trim();
   }
-  
+
   return null;
 }
 
 export function extractSQLInfo(input: string) {
-  const result: { mainTable: string | null; fields: { [key: string]: string } } = {
+  const result: {
+    mainTable: string | null;
+    fields: { [key: string]: string };
+  } = {
     mainTable: null,
-    fields: {}
+    fields: {},
   };
 
   // Extract main table name
-  const mainTableMatch = input.match(/sql:\s*`SELECT\s+\*\s+FROM\s+public\.(\w+)`/);
+  const mainTableMatch = input.match(
+    /sql:\s*`SELECT\s+\*\s+FROM\s+public\.(\w+)`/,
+  );
   if (mainTableMatch) {
     result.mainTable = mainTableMatch[1];
   }
@@ -261,7 +286,7 @@ export function extractSQLInfo(input: string) {
 
   for (const match of fieldMatches) {
     const [, fieldName, fieldSQL] = match;
-    if (!fieldSQL.includes('CAST') && !seenFields.has(fieldSQL)) {
+    if (!fieldSQL.includes("CAST") && !seenFields.has(fieldSQL)) {
       result.fields[fieldName] = fieldSQL;
       seenFields.add(fieldSQL);
     }
@@ -270,22 +295,28 @@ export function extractSQLInfo(input: string) {
   return result;
 }
 
-export function extractTableName(cubeDefinition:string):string {
-  const tableNameMatch = cubeDefinition.match(/sql:\s*`SELECT\s+\*\s+FROM\s+public\.(\w+)`/);
-  return tableNameMatch ? tableNameMatch[1] : '';
+export function extractTableName(cubeDefinition: string): string {
+  const tableNameMatch = cubeDefinition.match(
+    /sql:\s*`SELECT\s+\*\s+FROM\s+public\.(\w+)`/,
+  );
+  return tableNameMatch ? tableNameMatch[1] : "";
 }
 
-export function newExtractAllJoins(cubesContent: string[]): Record<string, string[]> {
+export function newExtractAllJoins(
+  cubesContent: string[],
+): Record<string, string[]> {
   const allJoins: Record<string, string[]> = {};
 
   cubesContent.forEach(content => {
-    const cubeName = extractCubeName(content)
+    const cubeName = extractCubeName(content);
 
     const joinContent = extractJoinsContent(content);
 
     if (!joinContent) return;
 
-    const joinEntriesFrm = joinContent.split(/},\s*(?=\w+:)/).map(entry => entry.trim());
+    const joinEntriesFrm = joinContent
+      .split(/},\s*(?=\w+:)/)
+      .map(entry => entry.trim());
 
     allJoins[cubeName] = [];
 
@@ -294,7 +325,12 @@ export function newExtractAllJoins(cubesContent: string[]): Record<string, strin
       const relationshipMatch = entry.match(/relationship:\s*['"`](\w+)['"`]/);
       const sqlMatch = entry.match(/sql:\s*`([^`]+)`/);
 
-      if (joinedCubeMatch && relationshipMatch && sqlMatch && relationshipMatch[1].toLowerCase() === 'belongsto') {
+      if (
+        joinedCubeMatch &&
+        relationshipMatch &&
+        sqlMatch &&
+        relationshipMatch[1].toLowerCase() === "belongsto"
+      ) {
         const joinedCube = joinedCubeMatch[1];
         const sqlCondition = sqlMatch[1];
         allJoins[cubeName].push(`${sqlCondition}`);
@@ -309,10 +345,10 @@ export function newExtractAllJoins(cubesContent: string[]): Record<string, strin
   return allJoins;
 }
 
-export const extractFields = (cubes:any) => {
-  let fields:FieldData[] = [];
-  cubes.forEach((cube:any) => {
-    const cubeName = cube.fileName.replace('.js', '').toLowerCase();
+export const extractFields = (cubes: any) => {
+  let fields: FieldData[] = [];
+  cubes.forEach((cube: any) => {
+    const cubeName = cube.fileName.replace(".js", "").toLowerCase();
     const table = `csv_${cubeName}`;
     const regex = /(\w+): { sql: `(\w+)`, type: `(\w+)` }/g;
     let match;
@@ -324,30 +360,35 @@ export const extractFields = (cubes:any) => {
   return fields;
 };
 
-export function createGraphData(extractedData: ExtractedData, cubeData: CubeData, tableArr: string[], cubeArr: string[]): GraphData {
+export function createGraphData(
+  extractedData: ExtractedData,
+  cubeData: CubeData,
+  tableArr: string[],
+  cubeArr: string[],
+): GraphData {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const sourceFields: { [fieldName: string]: string } = {};
 
   // Create nodes
   for (const [tableName, fields] of Object.entries(extractedData)) {
-    let tableOriginalName = getTableName(tableName, tableArr, cubeArr )
+    let tableOriginalName = getTableName(tableName, tableArr, cubeArr);
     const node: Node = {
       id: tableName,
       label: tableName,
       fields: fields.map(field => ({
         name: field.field,
         type: "target",
-        key: field.field.endsWith('_id'),
-        lock: field.field.endsWith('_id')
+        key: field.field.endsWith("_id"),
+        lock: field.field.endsWith("_id"),
       })),
-      cubeInfo: cubeData[tableOriginalName]
+      cubeInfo: cubeData[tableOriginalName],
     };
     nodes.push(node);
 
     // Store source fields for edge creation
     fields.forEach(field => {
-      if (field.field.endsWith('_id')) {
+      if (field.field.endsWith("_id")) {
         sourceFields[field.field] = tableName;
       }
     });
@@ -356,13 +397,13 @@ export function createGraphData(extractedData: ExtractedData, cubeData: CubeData
   // Create edges
   for (const [tableName, fields] of Object.entries(extractedData)) {
     fields.forEach(field => {
-      modifiedTable = extractBase(field.field)
+      modifiedTable = extractBase(field.field);
       if (modifiedTable !== tableName) {
         const edge: Edge = {
           source: tableName,
           target: modifiedTable,
           sourceHandle: field.field,
-          targetHandle: field.field
+          targetHandle: field.field,
         };
         edges.push(edge);
       }
@@ -372,50 +413,59 @@ export function createGraphData(extractedData: ExtractedData, cubeData: CubeData
     node.fields = node.fields.map(field => {
       return {
         ...field,
-        type: extractBase(field.name) === node.id ? "source" : "target"
+        type: extractBase(field.name) === node.id ? "source" : "target",
       };
     });
   });
-  
+
   return { nodes, edges };
 }
 
-export function createNewGraphData(extractedData: ExtractedData, cubeData: CubeData, tableArr: string[], cubeArr: string[], edgeData: ExtractedMapField[]): GraphData {
+export function createNewGraphData(
+  extractedData: ExtractedData,
+  cubeData: CubeData,
+  tableArr: string[],
+  cubeArr: string[],
+  edgeData: ExtractedMapField[],
+): GraphData {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const sourceFields: { [fieldName: string]: string } = {};
 
-  
   // Create nodes
   for (const [tableName, fields] of Object.entries(extractedData)) {
-    let tableOriginalName = getTableName(tableName, tableArr, cubeArr )
+    let tableOriginalName = getTableName(tableName, tableArr, cubeArr);
     const node: Node = {
       id: tableName,
       label: tableName,
       fields: fields.map(field => ({
         name: field.field,
         type: field.type as "source" | "target",
-        key: field.field.endsWith('_id'),
-        lock: field.field.endsWith('_id')
+        key: field.field.endsWith("_id"),
+        lock: field.field.endsWith("_id"),
       })),
-      cubeInfo: cubeData[tableOriginalName]
+      cubeInfo: cubeData[tableOriginalName],
     };
     nodes.push(node);
   }
 
   edgeData.forEach(field => {
-        const edge: Edge = {
-          source: field.sourceCube,
-          target: field.targetTable,
-          sourceHandle: field.sourceField,
-          targetHandle: field.targetField
-        };
-        edges.push(edge);
-    });
+    const edge: Edge = {
+      source: field.sourceCube,
+      target: field.targetTable,
+      sourceHandle: field.sourceField,
+      targetHandle: field.targetField,
+    };
+    edges.push(edge);
+  });
   return { nodes, edges };
 }
 
-const getTableName = (cubeName: string, cubeNameArr: string[], tableNameArr: string[]) => {
+const getTableName = (
+  cubeName: string,
+  cubeNameArr: string[],
+  tableNameArr: string[],
+) => {
   let idx = 0;
   for (let i = 0; i < cubeNameArr.length; i++) {
     if (cubeName === cubeNameArr[i]) {
@@ -425,25 +475,25 @@ const getTableName = (cubeName: string, cubeNameArr: string[], tableNameArr: str
   return tableNameArr[idx];
 };
 
-function extractBase(str:string) {
-  const base = str.split('_')[0];
-return base.charAt(0).toUpperCase() + base.slice(1);
+function extractBase(str: string) {
+  const base = str.split("_")[0];
+  return base.charAt(0).toUpperCase() + base.slice(1);
 }
 
-export const tableArr = (cubes:any) => {
-  let tableNameArr
-  cubes.forEach((cube:any) => {
+export const tableArr = (cubes: any) => {
+  let tableNameArr;
+  cubes.forEach((cube: any) => {
     const tableName = extractTableName(cube.content);
     tableNameArr.push(tableName);
   });
-  return tableNameArr
-}
+  return tableNameArr;
+};
 
-export const cubeArr = (cubes:any) => {
-  let cubeNameArr
-  cubes.forEach((cube:any) => {
+export const cubeArr = (cubes: any) => {
+  let cubeNameArr;
+  cubes.forEach((cube: any) => {
     const cubeName = extractCubeName(cube.content);
     cubeNameArr.push(cubeName);
   });
-  return cubeNameArr
-}
+  return cubeNameArr;
+};

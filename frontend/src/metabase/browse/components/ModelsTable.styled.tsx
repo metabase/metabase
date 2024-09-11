@@ -44,3 +44,16 @@ export const ModelNameColumn = styled(TableColumn)`
     width: 200px;
   }
 `;
+
+export const ActionSpan = styled.span<{ isDone: boolean }>`
+  background: ${props =>
+    props.isDone
+      ? "#CFE6C9 !important"
+      : "#D3D8F4 !important"}; /* Green for Done, Purple for Pending */
+  color: ${props =>
+    props.isDone ? "#29920E" : "#4D62D2"}; /* Darker text color for contrast */
+  padding: 0.5rem 1rem;
+  text-align: center;
+  border-radius: 99px; /* Full border radius */
+  display: inline-block;
+`;

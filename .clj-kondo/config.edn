@@ -391,6 +391,7 @@
     metabase.api.collection                                       api.collection
     metabase.api.checkpoints                                      api.checkpoints
     metabase.api.company                                          api.company
+    metabase.api.cubes_requests                                   api.cubes_requests
     metabase.api.common                                           api
     metabase.api.dashboard                                        api.dashboard
     metabase.api.dashboard-test                                   api.dashboard-test
@@ -484,6 +485,7 @@
     metabase.models.collection                                    collection
     metabase.models.checkpoints                                   checkpoints
     metabase.models.company                                       company
+    metabase.models.cubes_requests                                cubes_requests
     metabase.models.collection.graph                              graph
     metabase.models.collection-permission-graph-revision          c-perm-revision
     metabase.models.dashboard-card                                dashboard-card

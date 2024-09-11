@@ -48,6 +48,7 @@ import type { CloudMigration } from "metabase-types/api/cloud-migration";
 import type { TagType } from "./constants";
 import { TAG_TYPE_MAPPING } from "./constants";
 import { CompanyDetails } from "metabase-types/api/company";
+import { CubesRequestDetails } from "metabase-types/api/cubes_requests";
 
 export function tag(type: TagType): TagDescription<TagType> {
   return { type };
@@ -556,4 +557,28 @@ export function provideCompanyDetailsTags(
   company: CompanyDetails,
 ): TagDescription<TagType>[] {
   return [idTag("company", company.id)]; // Use the company ID for tagging
+}
+
+/**
+ * Provides tags for the list of cube requests.
+ */
+export function provideCubesRequestsListTags(
+  cubes_requests: CubesRequestDetails[], // Accepts an array of CubesRequest objects
+): TagDescription<TagType>[] {
+  return [
+    listTag("cubes_requests"), // List-level tag for caching
+    ...cubes_requests.flatMap(provideCubesRequestTags), // Tags for each individual cube request
+  ];
+}
+
+/**
+ * Provides tags for individual cube requests.
+ */
+export function provideCubesRequestTags(
+  cubes_requests: CubesRequestDetails,
+): TagDescription<TagType>[] {
+  return [
+    listTag("cubes_requests"), // Provide list tag
+    idTag("cubes_requests", cubes_requests.id), // Provide item-specific tag
+  ];
 }

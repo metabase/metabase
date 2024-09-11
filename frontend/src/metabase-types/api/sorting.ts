@@ -11,7 +11,13 @@ export type SortColumn =
   | "last update"
   | "type"
   | "category"
-  | "title";
+  | "title"
+  | "verified_status"
+  | "in_semantic_layer"
+  | "user"
+  | "admin_user"
+  | "updated_at"
+  | "action";
 
 export enum SortDirection {
   Asc = "asc",
