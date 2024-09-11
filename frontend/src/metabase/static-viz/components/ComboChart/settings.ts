@@ -54,7 +54,7 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { RawSeries, VisualizationSettings } from "metabase-types/api";
+import type { RawSeries } from "metabase-types/api";
 
 const getSeriesFunction = (
   rawSeries: RawSeries,
@@ -117,11 +117,10 @@ const getSeriesFunction = (
 // settings computation code in the static rendering environment
 export const computeStaticComboChartSettings = (
   rawSeries: RawSeries,
-  dashcardSettings: VisualizationSettings,
   renderingContext: RenderingContext,
 ): ComputedVisualizationSettings => {
   const { card: mainCard, data: mainDataset } = rawSeries[0];
-  const settings = getCommonStaticVizSettings(rawSeries, dashcardSettings);
+  const settings = getCommonStaticVizSettings(rawSeries);
   const areDimensionsAndMetricsValid =
     getAreDimensionsAndMetricsValid(rawSeries);
 

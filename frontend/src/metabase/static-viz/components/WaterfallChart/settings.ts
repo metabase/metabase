@@ -9,20 +9,15 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { RawSeries, VisualizationSettings } from "metabase-types/api";
+import type { RawSeries } from "metabase-types/api";
 
 import { computeStaticComboChartSettings } from "../ComboChart/settings";
 
 export function computeStaticWaterfallChartSettings(
   rawSeries: RawSeries,
-  dashcardSettings: VisualizationSettings,
   renderingContext: RenderingContext,
 ): ComputedVisualizationSettings {
-  const settings = computeStaticComboChartSettings(
-    rawSeries,
-    dashcardSettings,
-    renderingContext,
-  );
+  const settings = computeStaticComboChartSettings(rawSeries, renderingContext);
 
   fillWithDefaultValue(
     settings,
