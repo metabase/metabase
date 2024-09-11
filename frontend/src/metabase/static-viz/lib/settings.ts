@@ -65,10 +65,7 @@ const getColumnSettings = (
   return columnSettings;
 };
 
-export const getCommonStaticVizSettings = (
-  rawSeries: RawSeries,
-  dashcardSettings: VisualizationSettings,
-) => {
+export const getCommonStaticVizSettings = (rawSeries: RawSeries) => {
   const [{ card }] = rawSeries;
 
   const settings: ComputedVisualizationSettings = {
@@ -77,5 +74,5 @@ export const getCommonStaticVizSettings = (
       getColumnSettings(column, settings),
   };
 
-  return { ...settings, ...dashcardSettings };
+  return settings;
 };
