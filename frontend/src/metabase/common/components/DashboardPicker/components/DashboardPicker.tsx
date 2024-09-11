@@ -1,5 +1,11 @@
 import type { Ref } from "react";
-import { forwardRef, useCallback, useImperativeHandle, useMemo } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+} from "react";
 import { useDeepCompareEffect } from "react-use";
 
 import {
@@ -195,6 +201,15 @@ const DashboardPickerInner = (
       }
     },
     [currentCollection, userPersonalCollectionId, onPathChange],
+  );
+
+  useEffect(
+    function ensureFolderSelected() {
+      if (!pathProp && defaultPath[0].selectedItem) {
+        onItemSelect(defaultPath[0].selectedItem);
+      }
+    },
+    [pathProp, defaultPath, onItemSelect],
   );
 
   if (error) {
