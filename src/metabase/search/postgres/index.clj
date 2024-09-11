@@ -100,15 +100,23 @@
     (when @reindexing?
       (t2/insert! pending-table entry))))
 
+(defn- to-tsquery-expr [search-term]
+  (let [in-word? (= search-term (str/trimr search-term))
+        trimmed (str/trim search-term)
+        words (str/split trimmed #"\s+")]
+    (str (str/join " & " words)
+         (when in-word?
+           ":*"))))
+
 (defn search-query
   "Query fragment for all models corresponding to a query paramter `:search-term`."
   [search-term]
   {:select [:model_id :model]
    :from   [active-table]
    :where  [:raw
-            "search_vector @@ websearch_to_tsquery('"
+            "search_vector @@ to_tsquery('"
             tsv-language "', "
-            [:lift search-term] ")"]})
+            [:lift (to-tsquery-expr search-term)] ")"]})
 
 (defn search
   "Use the index table to search for records."
