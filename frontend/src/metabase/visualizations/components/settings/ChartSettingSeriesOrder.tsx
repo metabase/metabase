@@ -26,6 +26,8 @@ interface SortableItem {
 interface ChartSettingSeriesOrderProps {
   onChange: (rows: SortableItem[]) => void;
   value: SortableItem[];
+  addButtonLabel: string;
+  searchPickerPlaceholder: string;
   onShowWidget: (
     widget: { props: { seriesKey: string } },
     ref: HTMLElement | undefined,
@@ -39,6 +41,8 @@ interface ChartSettingSeriesOrderProps {
 export const ChartSettingSeriesOrder = ({
   onChange,
   value: orderedItems,
+  addButtonLabel = t`Add another series`,
+  searchPickerPlaceholder = t`Select a series`,
   onShowWidget,
   hasEditSettings = true,
   onChangeSeriesColor,
@@ -133,13 +137,15 @@ export const ChartSettingSeriesOrder = ({
             <Button
               variant="subtle"
               onClick={() => setSeriesPickerVisible(true)}
-            >{t`Add another series`}</Button>
+            >
+              {addButtonLabel}
+            </Button>
           )}
           {isSeriesPickerVisible && (
             <Select
               initiallyOpened
               searchable
-              placeholder={t`Select a series`}
+              placeholder={searchPickerPlaceholder}
               data={hiddenItems.map(item => ({
                 value: item.key,
                 label: getItemTitle(item),

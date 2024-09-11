@@ -107,6 +107,8 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         onChangeSettings,
       ) => {
         return {
+          addButtonLabel: t`Add another row`,
+          searchPickerPlaceholder: t`Select a row`,
           onChangeSeriesColor: (sliceKey: string, color: string) => {
             const pieRows = vizSettings["pie.rows"];
             if (pieRows == null) {
