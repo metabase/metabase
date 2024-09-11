@@ -40,8 +40,8 @@ function createFilteredQuery(query: Lib.Query) {
 }
 
 function createMultiStageFilteredQuery() {
-  const stages = Array(STAGE_COUNT).fill(0);
-  return stages.reduce(
+  const stageIndexes = Array.from({ length: STAGE_COUNT }, (_, i) => i);
+  return stageIndexes.reduce(
     query => Lib.appendStage(createFilteredQuery(query)),
     createQuery(),
   );
