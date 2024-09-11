@@ -261,20 +261,20 @@
    (when @*field-id-context*
      (vswap! *field-id-context* update :card-id->filterable-columns
              merge (:card-id->filterable-columns ctx)))
-   (:field-ids ctx))
+   (set (:field-ids ctx)))
   ([ctx param-dashcard-info]
-   (if-not (:param-field-ref param-dashcard-info)
+   (if-not (:param-target-field param-dashcard-info)
      ctx
-     (let [param-target    (get-in param-dashcard-info [:parameter :target])
-           card            (get-in param-dashcard-info [:dashcard :card])]
+     (let [param-target-field (get param-dashcard-info :param-target-field)
+           card               (get-in param-dashcard-info [:dashcard :card])]
        (if-some [field-id (or
                            ;; Get the field id from the field-clause if it contains it. This is the common case
                            ;; for mbql queries.
-                           (lib.util.match/match-one param-target [:field (id :guard integer?) _] id)
+                           (lib.util.match/match-one param-target-field [:field (id :guard integer?) _] id)
                            ;; Attempt to get the field clause from the model metadata corresponding to the field.
                            ;; This is the common case for native queries in which mappings from original columns
                            ;; have been performed using model metadata.
-                           (:id (qp.util/field->field-info param-target (:result_metadata card))))]
+                           (:id (qp.util/field->field-info param-target-field (:result_metadata card))))]
          (update ctx :field-ids conj field-id)
          ;; In case the card doesn't have the same result_metadata columns as filterable columns (a question that
          ;; aggregates a native query model with a field that was mapped to a db field), we need to load metadata in
@@ -290,8 +290,8 @@
             [dashcard]
             (map #(hash-map :parameter       %
                             :dashcard        dashcard
-                            :param-field-ref (param-target->field-clause (:target %)
-                                                                         (:card dashcard)))
+                            :param-target-field (param-target->field-clause (:target %)
+                                                                            (:card dashcard)))
                  (:parameter_mappings dashcard)))]
     (transduce (mapcat dashcard->param-dashcard-info)
                field-id-into-context-rf
