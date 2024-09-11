@@ -30,9 +30,9 @@ export const SearchResults = <
   onItemSelect,
 }: Props<Id, Model, Item>) => {
   return (
-    <Box h="100%" bg="bg-light">
+    <Box h="100%">
       {searchResults.length > 0 ? (
-        <Stack h="100%" bg="bg-light">
+        <Stack h="100%">
           <VirtualizedList
             Wrapper={({ children, ...props }) => (
               <Box p="xl" pt={0} {...props}>
