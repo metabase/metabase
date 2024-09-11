@@ -16,6 +16,7 @@ interface PaletteActionExtras {
     iconColor?: string;
     /** subtext: text to come after the item name */
     subtext?: string;
+    openInNewTab?: boolean;
   };
   disabled?: boolean;
 }

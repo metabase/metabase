@@ -1,5 +1,6 @@
-import { render, screen } from "__support__/ui";
-import { color } from "metabase/lib/colors";
+import { Route } from "react-router";
+
+import { renderWithProviders, screen } from "__support__/ui";
 
 import type { PaletteActionImpl } from "../types";
 
@@ -21,9 +22,23 @@ const setup = ({
   active?: boolean;
   item?: Partial<PaletteActionImpl>;
 }) => {
-  render(
-    <PaletteResultItem item={mockPaletteActionImpl(item)} active={active} />,
+  const utils = renderWithProviders(
+    <>
+      <Route
+        path="/"
+        component={() => (
+          <PaletteResultItem
+            item={mockPaletteActionImpl(item)}
+            active={active}
+          />
+        )}
+      />
+      <Route path="search" component={() => null} />
+    </>,
+    { withRouter: true },
   );
+  const link = item.name ? screen.getByRole("link") : null;
+  return { ...utils, link: link as HTMLAnchorElement };
 };
 
 describe("PaletteResultItem", () => {
@@ -32,7 +47,7 @@ describe("PaletteResultItem", () => {
 
     expect(await screen.findByRole("img", { name: /model/ })).toHaveAttribute(
       "color",
-      color("brand"),
+      "var(--mb-color-brand)",
     );
   });
 
@@ -41,7 +56,7 @@ describe("PaletteResultItem", () => {
 
     expect(await screen.findByRole("img", { name: /model/ })).toHaveAttribute(
       "color",
-      color("green"),
+      "green",
     );
   });
 
@@ -53,7 +68,7 @@ describe("PaletteResultItem", () => {
 
     expect(await screen.findByRole("img", { name: /model/ })).toHaveAttribute(
       "color",
-      color("white"),
+      "var(--mb-color-text-white)",
     );
   });
 

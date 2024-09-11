@@ -1,5 +1,14 @@
+import type { LocationDescriptor } from "history";
+
+import api from "metabase/lib/api";
+
 import type { PaletteActionImpl } from "./types";
-import { navigateActionIndex, processResults, processSection } from "./utils";
+import {
+  locationDescriptorToURL,
+  navigateActionIndex,
+  processResults,
+  processSection,
+} from "./utils";
 
 interface mockAction {
   name: string;
@@ -204,6 +213,65 @@ describe("command palette utils", () => {
       expect(navigateActionIndex(items, 2, -3)).toBe(2);
       expect(navigateActionIndex(items, 3, -2)).toBe(3);
       expect(navigateActionIndex(items, 3, -4)).toBe(3);
+    });
+  });
+
+  describe("locationDescriptorToURL", () => {
+    ["", "metabase"].forEach(basename => {
+      describe(`with basename "${basename}"`, () => {
+        beforeAll(() => {
+          api.basename = basename;
+        });
+        it(`should return the string if locationDescriptor is a string`, () => {
+          expect(locationDescriptorToURL("/a/b/c")).toBe(`${basename}/a/b/c`);
+        });
+
+        it("should return the correct URL when a LocationDescriptor is provided", () => {
+          const locationDescriptor: LocationDescriptor = { pathname: "/a/b/c" };
+          expect(locationDescriptorToURL(locationDescriptor)).toBe(
+            `${basename}/a/b/c`,
+          );
+        });
+
+        it("should return the correct URL when query is provided", () => {
+          const locationDescriptor = {
+            pathname: "/a/b/c",
+            query: { en: "hello", es: "hola" },
+          };
+          expect(locationDescriptorToURL(locationDescriptor)).toBe(
+            `${basename}/a/b/c?en=hello&es=hola`,
+          );
+        });
+
+        it("should return the correct URL when pathname and hash are provided", () => {
+          const locationDescriptor = { pathname: "/a/b/c", hash: "top" };
+          expect(locationDescriptorToURL(locationDescriptor)).toBe(
+            `${basename}/a/b/c#top`,
+          );
+        });
+
+        it("should return the correct URL with pathname, query, and hash", () => {
+          const locationDescriptor = {
+            pathname: "/a/b/c",
+            query: { en: "hello", es: "hola" },
+            hash: "top",
+          };
+          expect(locationDescriptorToURL(locationDescriptor)).toBe(
+            `${basename}/a/b/c?en=hello&es=hola#top`,
+          );
+        });
+
+        it("should handle empty values appropriately", () => {
+          const locationDescriptor: LocationDescriptor = {
+            pathname: "/a/b/c",
+            query: undefined,
+            hash: undefined,
+          };
+          expect(locationDescriptorToURL(locationDescriptor)).toBe(
+            `${basename}/a/b/c`,
+          );
+        });
+      });
     });
   });
 });
