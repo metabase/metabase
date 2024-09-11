@@ -32,20 +32,17 @@ const renderingContext: RenderingContext = {
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.funnelBarCategorical as any,
-  dashcardSettings: {},
   renderingContext,
 };
 
 export const FunnelBarOrderedRows = Template.bind({});
 FunnelBarOrderedRows.args = {
   rawSeries: data.funnelBarOrderedRows as any,
-  dashcardSettings: {},
   renderingContext,
 };
 
 export const FunnelBarUnorderedRows = Template.bind({});
 FunnelBarUnorderedRows.args = {
   rawSeries: data.funnelBarUnorderedRows as any,
-  dashcardSettings: {},
   renderingContext,
 };
