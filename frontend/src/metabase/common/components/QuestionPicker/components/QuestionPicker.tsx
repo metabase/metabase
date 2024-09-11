@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useDeepCompareEffect } from "react-use";
 
 import {
@@ -158,6 +158,15 @@ export const QuestionPicker = ({
       }
     },
     [currentCollection, userPersonalCollectionId, onPathChange],
+  );
+
+  useEffect(
+    function ensureFolderSelected() {
+      if (!pathProp && defaultPath[0].selectedItem) {
+        onItemSelect(defaultPath[0].selectedItem);
+      }
+    },
+    [pathProp, defaultPath, onItemSelect],
   );
 
   if (isLoading) {
