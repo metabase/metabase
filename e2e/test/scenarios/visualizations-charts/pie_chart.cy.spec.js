@@ -172,6 +172,12 @@ describe("scenarios > visualizations > pie chart", () => {
     changeRowLimit(4, 2);
     ensurePieChartRendered(["Gadget", "Doohickey"]);
 
+    // Ensure row settings should show only two rows
+    cy.findByTestId("viz-settings-button").click();
+    getDraggableElements().should("have.length", 2);
+    getDraggableElements().contains("Woooget").should("not.exist");
+    getDraggableElements().contains("Gizmo").should("not.exist");
+
     changeRowLimit(2, 4);
     ensurePieChartRendered(["Woooget", "Gadget", "Gizmo", "Doohickey"]);
     chartPathWithFillColor("#509EE3").should("be.visible");
