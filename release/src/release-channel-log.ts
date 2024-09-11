@@ -2,9 +2,6 @@ import fs from 'fs';
 
 import { $ } from 'zx';
 
-import { issueNumberRegex } from './linked-issues';
-import { Commit } from './types';
-
 const releaseChannels = [
   "nightly",
   "beta",
@@ -24,7 +21,6 @@ type ReleaseChannel = typeof releaseChannels[number];
 type Edition = typeof editions[number];
 type ChannelInfo = Record<Edition, CommitInfo & { edition: Edition, channel: ReleaseChannel }>;
 type TagInfo = Record<ReleaseChannel, ChannelInfo>;
-
 
 const tablePageTemplate = fs.readFileSync('./src/releaseChannelPageTemplate.html', 'utf8');
 const format = "--pretty='format:%(decorate:prefix=,suffix=)||%s||%H||%ah'";
@@ -81,7 +77,6 @@ function buildTable(tagInfo: TagInfo) {
     .replace(/{{current-time}}/, currentTime);
 }
 
-
 export async function releaseChannelLog() {
   // @ts-expect-error - TS is too stupid to infer from Object.fromEntries
   const tagInfo: TagInfo = Object.fromEntries(releaseChannels.map((
@@ -103,7 +98,3 @@ export async function releaseChannelLog() {
 }
 
 console.log(await releaseChannelLog());
-
-
-
-

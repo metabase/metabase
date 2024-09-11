@@ -25,18 +25,6 @@ on:
         type: boolean
         default: true
 
-
-
-# 1. determine if this version has been released
-# 2. Copy s3 jars
-# 3. Verify s3 download
-# 4. download docker image
-# 5. push docker image with new tag
-# 6. verify docker pull
-# 7. push git tags
-# 8. trigger release log page update
-
-
 jobs:
   check-version:
     runs-on: ubuntu-22.04
@@ -175,11 +163,11 @@ jobs:
           s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.source_path.outputs.result }}/metabase.jar \
           s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.upload_path.outputs.result }}/metabase.jar
 
-    # - name: Create cloudfront invalidation
-    #   run: |
-    #     aws cloudfront create-invalidation \
-    #     --distribution-id ${{ vars.AWS_CLOUDFRONT_DOWNLOADS_ID }} \
-    #     --paths /${{ steps.upload_path.outputs.result }}/metabase.jar
+    - name: Create cloudfront invalidation
+      run: |
+        aws cloudfront create-invalidation \
+        --distribution-id ${{ vars.AWS_CLOUDFRONT_DOWNLOADS_ID }} \
+        --paths /${{ steps.upload_path.outputs.result }}/metabase.jar
 
     - name: Download the jars
       run: | # sh
@@ -324,8 +312,8 @@ jobs:
         else
           aws s3 cp version-info.json s3://${{ vars.AWS_S3_STATIC_BUCKET }}/version-info.json
         fi
-    # - name: Create cloudfront invalidation for version-info.json and version-info-ee.json
-    #   run: |
-    #     aws cloudfront create-invalidation \
-    #     --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
-    #     --paths "/version-info.json" "/version-info-ee.json"
+    - name: Create cloudfront invalidation for version-info.json and version-info-ee.json
+      run: |
+        aws cloudfront create-invalidation \
+        --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
+        --paths "/version-info.json" "/version-info-ee.json"

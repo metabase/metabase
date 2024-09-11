@@ -50,9 +50,8 @@ jobs:
           release/channels.html \
           s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/channels.html
 
-      # FIXME
-      # - name: Create cloudfront invalidation
-      #   run: |
-      #     aws cloudfront create-invalidation \
-      #     --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
-      #     --paths /release-log/v$VERSION.html
+      - name: Create cloudfront invalidation
+        run: |
+          aws cloudfront create-invalidation \
+          --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
+          --paths /release-log/v$VERSION.html
