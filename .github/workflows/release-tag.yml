@@ -16,6 +16,10 @@ on:
           - beta
           - latest
         required: true
+      tag_rollout:
+        description: Rollout % (0-100)
+        type: number
+        default: 100
       tag_ee:
         description: Apply to EE
         type: boolean
@@ -300,6 +304,7 @@ jobs:
 
           const newVersionInfo = await updateVersionInfoLatest({
             newLatestVersion: canonical_version,
+            rollout: ${{ inputs.tag_rollout }},
           });
 
           fs.writeFileSync('version-info.json', JSON.stringify(newVersionInfo));
