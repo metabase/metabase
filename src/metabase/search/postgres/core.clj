@@ -87,9 +87,16 @@
 (defn init!
   "Ensure that the search index exists, and has been populated with all the entities."
   [& [force-reset?]]
-  (when (or force-reset? (not (#'search.index/exists? @#'search.index/active-table)))
-    (search.index/reset-index!))
+  (search.index/ensure-ready! force-reset?)
   (search.ingestion/populate-index!))
+
+(defn reindex!
+  "Populate a new index"
+  []
+  (search.index/ensure-ready! false)
+  (search.index/maybe-create-pending!)
+  (search.ingestion/populate-index!)
+  (search.index/activate-pending!))
 
 (comment
   (init! true))
