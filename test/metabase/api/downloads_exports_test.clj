@@ -795,23 +795,23 @@
 (deftest unpivoted-pivot-results-do-not-include-pivot-grouping
   (testing "If a pivot question is downloaded or exported unpivoted, the results do not include 'pivot-grouping' column"
     (doseq [export-format ["csv" "xlsx" "json"]]
-        (testing (format "for %s" export-format)
-          (mt/dataset test-data
-            (mt/with-temp [:model/Card {pivot-card-id :id}
-                           {:display                :pivot
-                            :visualization_settings {:pivot_table.column_split
-                                                     {:rows    []
-                                                      :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
-                                                      :values  [[:aggregation 0]]}}
-                            :dataset_query          {:database (mt/id)
-                                                     :type     :query
-                                                     :query
-                                                     {:source-table (mt/id :products)
-                                                      :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
-                                                      :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
-              (let [result (mt/user-http-request :crowberto :post 200
-                                                 (format "card/%d/query/%s?format_rows=false" pivot-card-id export-format)
-                                                 {})
-                    data   (process-results (keyword export-format) result)]
-                (is (= ["Category" "Sum of Price"]
-                       (first data))))))))))
+      (testing (format "for %s" export-format)
+        (mt/dataset test-data
+          (mt/with-temp [:model/Card {pivot-card-id :id}
+                         {:display                :pivot
+                          :visualization_settings {:pivot_table.column_split
+                                                   {:rows    []
+                                                    :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                    :values  [[:aggregation 0]]}}
+                          :dataset_query          {:database (mt/id)
+                                                   :type     :query
+                                                   :query
+                                                   {:source-table (mt/id :products)
+                                                    :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                    :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
+            (let [result (mt/user-http-request :crowberto :post 200
+                                               (format "card/%d/query/%s?format_rows=false" pivot-card-id export-format)
+                                               {})
+                  data   (process-results (keyword export-format) result)]
+              (is (= ["Category" "Sum of Price"]
+                     (first data))))))))))

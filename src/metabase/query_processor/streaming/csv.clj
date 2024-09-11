@@ -115,8 +115,8 @@
             (let [pivot-grouping-key @pivot-grouping-idx
                   group              (get ordered-row pivot-grouping-key)
                   cleaned-row        (if pivot-grouping-key
-                                      (m/remove-nth pivot-grouping-key xf-row)
-                                      xf-row)]
+                                       (m/remove-nth pivot-grouping-key xf-row)
+                                       xf-row)]
               (when (or (= 0 group)
                         (not group))
                 (write-csv writer [cleaned-row])
