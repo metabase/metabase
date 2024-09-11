@@ -13,6 +13,7 @@ import {
   popover,
   restore,
   startNewQuestion,
+  visitMetric,
   visitQuestion,
   visualize,
 } from "e2e/support/helpers";
@@ -1050,6 +1051,36 @@ describe("scenarios > question > offset", () => {
         ["2026", "0", "Facebook", "1,835.1", "5,739.97"],
       ]);
     });
+  });
+
+  // unskip once https://github.com/metabase/metabase/issues/47854 is fixed
+  it.skip("should work with metrics(metabase#47854)", () => {
+    const metricName = "Count of orders";
+    const ORDERS_SCALAR_METRIC: StructuredQuestionDetails = {
+      name: metricName,
+      type: "metric",
+      description: "A metric",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+      },
+      display: "scalar",
+    };
+
+    createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
+      visitMetric(card.id),
+    );
+
+    openNotebook();
+
+    addCustomAggregation({
+      formula: `Offset([${metricName}], -1)`,
+      name: "Count of orders (previous month)",
+    });
+
+    visualize();
+
+    cy.findByTestId("chart-container").should("contain", "January 2024");
   });
 });
 
