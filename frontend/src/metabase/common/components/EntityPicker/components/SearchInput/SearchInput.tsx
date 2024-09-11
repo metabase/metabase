@@ -9,8 +9,6 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 
-const defaultSearchFilter = (results: SearchResult[]) => results;
-
 interface Props {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -20,6 +18,8 @@ interface Props {
   searchFilter?: (results: SearchResult[]) => SearchResult[];
   searchParams?: Partial<SearchRequest>;
 }
+
+const defaultSearchFilter = (results: SearchResult[]) => results;
 
 export function SearchInput({
   searchQuery,
