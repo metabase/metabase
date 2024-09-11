@@ -19,10 +19,13 @@ driver:
         display-name: Catalog
         default: default
         required: true
-      - name: schema
-        display-name: Schema
-        default: default
-        required: true
+      - name: schema-filters
+        type: schema-filters
+        display-name: Schemas
+      - advanced-options-start
+      - merge:
+        - additional-options
+        - placeholder: 'IgnoreTransactions=0'
 init:
   - step: load-namespace
     namespace: metabase.driver.hive-like
