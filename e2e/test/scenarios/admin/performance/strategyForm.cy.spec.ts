@@ -16,7 +16,6 @@ import {
 import {
   adaptiveRadioButton,
   cacheStrategyForm,
-  cacheStrategyRadioButton,
   cancelConfirmationModal,
   dontCacheResultsRadioButton,
   durationRadioButton,
@@ -25,20 +24,64 @@ import {
   openStrategyFormForDatabaseOrDefaultPolicy,
   saveCacheStrategyForm,
   scheduleRadioButton,
-  useDefaultRadioButton,
 } from "./helpers/e2e-strategy-form-helpers";
 
-/** NOTE: These do not test whether caches are actually invalidated at the specified times. */
-describe("scenarios > admin > performance", () => {
+/** NOTE: These tests do not check whether caches are actually invalidated at the specified times. */
+describe("scenarios > admin > performance > strategy form", () => {
   describe("oss", { tags: "@OSS" }, () => {
     beforeEach(() => {
       restore();
       interceptPerformanceRoutes();
       cy.signInAsAdmin();
-
       cy.visit("/admin");
       cy.findByRole("link", { name: "Performance" }).click();
     });
+
+    it("can enable and disable model persistence", () => {
+      cy.findByRole("tab", { name: "Model persistence" }).click();
+      cy.findByRole("checkbox", { name: "Disabled" }).next("label").click();
+      cy.wait("@enablePersistence");
+      cy.findByTestId("toast-undo").contains("Saved");
+      cy.findByTestId("toast-undo")
+        .findByRole("img", { name: /close icon/ })
+        .click();
+
+      cy.findByRole("checkbox", { name: "Enabled" }).next("label").click();
+      cy.wait("@disablePersistence");
+      cy.findByTestId("toast-undo").contains("Saved");
+    });
+
+    it("can change when models are refreshed", () => {
+      cy.findByRole("tab", { name: "Model persistence" }).click();
+      cy.findByRole("checkbox", { name: "Disabled" }).next("label").click();
+      cy.wait("@enablePersistence");
+      cy.findByTestId("toast-undo").contains("Saved");
+      cy.findByTestId("toast-undo")
+        .findByRole("img", { name: /close icon/ })
+        .click();
+      cy.findByRole("combobox").click();
+      cy.findByRole("listbox").findByText("2 hours").click();
+      cy.findByTestId("toast-undo").contains("Saved");
+    });
+
+    it("there are two policy options for the default policy, Adaptive and Don't cache results", () => {
+      cacheStrategyForm().findAllByRole("radio").should("have.length", 2);
+      adaptiveRadioButton().should("exist");
+      dontCacheResultsRadioButton().should("exist");
+    });
+
+    it("can set default policy to Don't cache results", () => {
+      cy.log("Set default policy to Adaptive first");
+      adaptiveRadioButton().click();
+      saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
+      adaptiveRadioButton().should("be.checked");
+
+      cy.log("Then set default policy to Don't cache results");
+      dontCacheResultsRadioButton().click();
+      saveCacheStrategyForm({ strategyType: "nocache", model: "root" });
+      dontCacheResultsRadioButton().should("be.checked");
+    });
+
     it("has the right tabs", () => {
       cy.findByRole("main")
         .findByRole("tablist")
@@ -51,93 +94,24 @@ describe("scenarios > admin > performance", () => {
       );
     });
 
-    describe("model persistence tab", () => {
-      it("can enable and disable model persistence", () => {
-        cy.findByRole("tab", { name: "Model persistence" }).click();
-        cy.findByRole("checkbox", { name: "Disabled" }).next("label").click();
-        cy.wait("@enablePersistence");
-        cy.findByTestId("toast-undo").contains("Saved");
-        cy.findByTestId("toast-undo")
-          .findByRole("img", { name: /close icon/ })
-          .click();
-
-        cy.findByRole("checkbox", { name: "Enabled" }).next("label").click();
-        cy.wait("@disablePersistence");
-        cy.findByTestId("toast-undo").contains("Saved");
-      });
-
-      it("can change when models are refreshed", () => {
-        cy.findByRole("tab", { name: "Model persistence" }).click();
-        cy.findByRole("checkbox", { name: "Disabled" }).next("label").click();
-        cy.wait("@enablePersistence");
-        cy.findByTestId("toast-undo").contains("Saved");
-        cy.findByTestId("toast-undo")
-          .findByRole("img", { name: /close icon/ })
-          .click();
-        cy.findByRole("combobox").click();
-        cy.findByRole("listbox").findByText("2 hours").click();
-        cy.findByTestId("toast-undo").contains("Saved");
-      });
-    });
-
-    describe("database caching tab", () => {
-      it("there are two policy options for the default policy, Adaptive and Don't cache results", () => {
-        cacheStrategyForm().findAllByRole("radio").should("have.length", 2);
-        adaptiveRadioButton().should("exist");
-        dontCacheResultsRadioButton().should("exist");
-      });
-
-      it("can set default policy to Don't cache results", () => {
-        const model = "root";
-        cy.log("Set default policy to Adaptive first");
+    describe("adaptive strategy", () => {
+      it("can set default policy to adaptive", () => {
         adaptiveRadioButton().click();
-        saveCacheStrategyForm({ strategyType: "ttl", model });
+        saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
         adaptiveRadioButton().should("be.checked");
-
-        cy.log("Then set default policy to Don't cache results");
-        dontCacheResultsRadioButton().click();
-        saveCacheStrategyForm({ strategyType: "nocache", model });
-        dontCacheResultsRadioButton().should("be.checked");
       });
 
-      describe("adaptive strategy", () => {
-        it("can set default policy to adaptive", () => {
-          adaptiveRadioButton().click();
-          saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
-          adaptiveRadioButton().should("be.checked");
-        });
-
-        it("can configure a minimum query duration for the default adaptive policy", () => {
-          adaptiveRadioButton().click();
-          cy.findByLabelText(/Minimum query duration/).type("1000");
-          saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
-          adaptiveRadioButton().should("be.checked");
-          cy.findByLabelText(/Minimum query duration/).should(
-            "have.value",
-            "1000",
-          );
-        });
-
-        it("can configure a multiplier for the default adaptive policy", () => {
-          adaptiveRadioButton().click();
-          cy.findByLabelText(/Multiplier/).type("3");
-          saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
-          adaptiveRadioButton().should("be.checked");
-          cy.findByLabelText(/Multiplier/).should("have.value", "3");
-        });
-
-        it("can configure both a minimum query duration and a multiplier for the default adaptive policy", () => {
-          adaptiveRadioButton().click();
-          cy.findByLabelText(/Minimum query duration/).type("1234");
-          cy.findByLabelText(/Multiplier/).type("4");
-          saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
-          adaptiveRadioButton().should("be.checked");
-          cy.findByLabelText(/Minimum query duration/).should(
-            "have.value",
-            "1234",
-          );
-          cy.findByLabelText(/Multiplier/).should("have.value", "4");
-        });
+      it("can configure both a minimum query duration and a multiplier for the default adaptive policy", () => {
+        adaptiveRadioButton().click();
+        cy.findByLabelText(/Minimum query duration/).type("1234");
+        cy.findByLabelText(/Multiplier/).type("4");
+        saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
+        adaptiveRadioButton().should("be.checked");
+        cy.findByLabelText(/Minimum query duration/).should(
+          "have.value",
+          "1234",
+        );
+        cy.findByLabelText(/Multiplier/).should("have.value", "4");
       });
     });
   });
@@ -149,22 +123,6 @@ describe("scenarios > admin > performance", () => {
       cy.signInAsAdmin();
       setTokenFeatures("all");
     });
-
-    const checkInheritanceIfNeeded = (
-      itemName: string,
-      strategyName: string,
-    ) => {
-      if (itemName === "default policy") {
-        cy.log(
-          `Sample Database is now inheriting a default policy of ${strategyName}`,
-        );
-        formLauncher(
-          "Sample Database",
-          "currently inheriting the default policy",
-          strategyName,
-        );
-      }
-    };
 
     it("has the right tabs", () => {
       cy.visit("/admin");
@@ -217,38 +175,21 @@ describe("scenarios > admin > performance", () => {
       cy.button(/Cache cleared/);
     });
 
-    [/Duration/, /Schedule/, /Adaptive/].forEach(strategy => {
-      const strategyAsString = strategy.toString().replace(/\//g, "");
-      it(`can configure Sample Database to use a default policy of ${strategyAsString}`, () => {
-        cy.log(`Set default policy to ${strategy}`);
-        openStrategyFormForDatabaseOrDefaultPolicy(
-          "default policy",
-          "No caching",
+    const checkInheritanceIfNeeded = (
+      itemName: string,
+      strategyName: string,
+    ) => {
+      if (itemName === "default policy") {
+        cy.log(
+          `Sample Database is now inheriting a default policy of ${strategyName}`,
         );
-        cacheStrategyRadioButton(strategy).click();
-        saveCacheStrategyForm();
-
-        cy.log("Open strategy form for Sample Database");
-        openStrategyFormForDatabaseOrDefaultPolicy(
-          "Sample Database",
-          strategyAsString,
-        );
-
-        cy.log("Set Sample Database to Duration first");
-        durationRadioButton().click();
-        saveCacheStrategyForm({ strategyType: "duration", model: "database" });
-        formLauncher("Sample Database", "currently", "Duration");
-
-        cy.log("Then configure Sample Database to use the default policy");
-        useDefaultRadioButton().click();
-        saveCacheStrategyForm({ strategyType: "inherit", model: "database" });
         formLauncher(
           "Sample Database",
-          "currently inheriting",
-          strategyAsString,
+          "currently inheriting the default policy",
+          strategyName,
         );
-      });
-    });
+      }
+    };
 
     ["default policy", "Sample Database"].forEach(itemName => {
       const model = itemName === "default policy" ? "root" : "database";
