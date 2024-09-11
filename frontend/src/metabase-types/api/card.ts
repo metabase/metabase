@@ -119,6 +119,7 @@ export type PivotTableCollapsedRowsSetting = {
 export type TableColumnOrderSetting = {
   name: string;
   enabled: boolean;
+  fieldRef?: FieldReference;
 };
 
 export type StackType = "stacked" | "normalized" | null;
