@@ -11,6 +11,16 @@ import type {
 
 const defaultSearchFilter = (results: SearchResult[]) => results;
 
+interface Props {
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  setSearchResults: (results: SearchResult[] | null) => void;
+  models: SearchModel[];
+  placeholder: string;
+  searchFilter?: (results: SearchResult[]) => SearchResult[];
+  searchParams?: Partial<SearchRequest>;
+}
+
 export function SearchInput({
   searchQuery,
   setSearchQuery,
@@ -19,15 +29,7 @@ export function SearchInput({
   placeholder,
   searchFilter = defaultSearchFilter,
   searchParams = {},
-}: {
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-  setSearchResults: (results: SearchResult[] | null) => void;
-  models: SearchModel[];
-  placeholder: string;
-  searchFilter?: (results: SearchResult[]) => SearchResult[];
-  searchParams?: Partial<SearchRequest>;
-}) {
+}: Props) {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
 
