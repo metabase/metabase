@@ -1,4 +1,4 @@
-(ns metabase.test.data.redshift
+(ns ^:mb/driver-tests metabase.test.data.redshift
   "We use a single redshift database for all test runs in CI, so to isolate test runs and test databases we:
    1. Use a unique session schema for the test run (unique-session-schema), and only sync tables in that schema.
    2. Prefix table names with the database name, and for each database we only sync tables with the matching prefix.
@@ -18,6 +18,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
+   [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -227,10 +228,25 @@
       (update r :tables (fn [tables]
                           (into #{}
                                 (filter #(or (tx/qualified-by-db-name? physical-db-name (:name %))
-                                             ;; the `extsales` table is used for testing external tables
-                                             (= (:name %) "extsales")))
+                                             ;; the `extsales` table is used for testing external tables (only when
+                                             ;; using the normal test-data dataset)
+                                             (when (= physical-db-name "test-data")
+                                               (= (:name %) "extsales"))))
                                 tables))))
     (original-describe-database driver database)))
+
+(deftest ^:parallel describe-database-sanity-check-test
+  (testing "Make sure even tho tables from different datasets are all stuffed in one DB we still sync them separately"
+    (mt/test-driver :redshift
+      (mt/dataset airports
+        (is (= #{"airports_airport"
+                 "airports_continent"
+                 "airports_country"
+                 "airports_municipality"
+                 "airports_region"}
+               (into #{}
+                     (map :name)
+                     (:tables (driver/describe-database :redshift (mt/db))))))))))
 
 (defmethod ddl.i/format-name :redshift
   [_driver s]
