@@ -22,48 +22,6 @@ import { MetricsTable } from "./MetricsTable";
 const { MetricFilterControls, useMetricFilterSettings } =
   PLUGIN_CONTENT_VERIFICATION;
 
-function useHasVerifiedMetrics() {
-  const result = useFetchMetrics({
-    filter_items_in_personal_collection: "exclude",
-    model_ancestors: false,
-    limit: 0,
-    verified: true,
-  });
-
-  const total = result.data?.total ?? 0;
-
-  return {
-    isLoading: result.isLoading,
-    error: result.error,
-    result: total > 0,
-  };
-}
-
-function useFilteredMetrics(metricFilters: MetricFilterSettings) {
-  const hasVerifiedMetrics = useHasVerifiedMetrics();
-
-  const metricsResult = useFetchMetrics(
-    hasVerifiedMetrics.isLoading || hasVerifiedMetrics.error
-      ? skipToken
-      : {
-          filter_items_in_personal_collection: "exclude",
-          model_ancestors: false,
-          ...metricFilters,
-        },
-  );
-
-  const isLoading = hasVerifiedMetrics.isLoading || metricsResult.isLoading;
-  const error = hasVerifiedMetrics.error || metricsResult.error;
-  const metrics = metricsResult.data?.data as MetricResult[] | undefined;
-
-  return {
-    isLoading,
-    error,
-    hasVerifiedMetrics: hasVerifiedMetrics.result,
-    metrics,
-  };
-}
-
 export function BrowseMetrics() {
   const [metricFilters, setMetricFilters] = useMetricFilterSettings();
   const { isLoading, error, metrics, hasVerifiedMetrics } =
@@ -139,4 +97,46 @@ function MetricsEmptyState() {
       </Box>
     </Flex>
   );
+}
+
+function useHasVerifiedMetrics() {
+  const result = useFetchMetrics({
+    filter_items_in_personal_collection: "exclude",
+    model_ancestors: false,
+    limit: 0,
+    verified: true,
+  });
+
+  const total = result.data?.total ?? 0;
+
+  return {
+    isLoading: result.isLoading,
+    error: result.error,
+    result: total > 0,
+  };
+}
+
+function useFilteredMetrics(metricFilters: MetricFilterSettings) {
+  const hasVerifiedMetrics = useHasVerifiedMetrics();
+
+  const metricsResult = useFetchMetrics(
+    hasVerifiedMetrics.isLoading || hasVerifiedMetrics.error
+      ? skipToken
+      : {
+          filter_items_in_personal_collection: "exclude",
+          model_ancestors: false,
+          ...metricFilters,
+        },
+  );
+
+  const isLoading = hasVerifiedMetrics.isLoading || metricsResult.isLoading;
+  const error = hasVerifiedMetrics.error || metricsResult.error;
+  const metrics = metricsResult.data?.data as MetricResult[] | undefined;
+
+  return {
+    isLoading,
+    error,
+    hasVerifiedMetrics: hasVerifiedMetrics.result,
+    metrics,
+  };
 }
