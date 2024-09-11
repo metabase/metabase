@@ -97,7 +97,7 @@
       (if-let [card (lib.metadata/card query card-id)]
         (lib.metadata.calculation/display-info query stage-number card)
         {:display-name (lib.card/fallback-display-name card-id)})))
-   {::is-main-group         false
+   {:is-main-group          false
     :is-from-join           true
     :is-implicitly-joinable false}))
 
