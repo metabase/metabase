@@ -83,7 +83,7 @@
    (merge
     (mt/object-defaults Database)
     (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version
-                     :metadata_sync_schedule :cache_field_values_schedule])
+                     :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled])
     {:engine               (u/qualified-name (:engine db))
      :settings             {}
      :features             (map u/qualified-name (driver.u/features driver db))
