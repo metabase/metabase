@@ -452,10 +452,16 @@ function ViewTitleHeaderRightSide(props) {
     }
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
-  const getRunButtonLabel = useCallback(
-    () => (isRunning ? t`Cancel` : t`Refresh`),
-    [isRunning],
-  );
+  const cacheStrategyType = result?.json_query?.["cache-strategy"]?.type;
+  const getRunButtonLabel = useCallback(() => {
+    if (isRunning) {
+      return t`Cancel`;
+    }
+    if ([undefined, "nocache"].includes(cacheStrategyType)) {
+      return `Refresh`;
+    }
+    return t`Clear cache and refresh`;
+  }, [isRunning, cacheStrategyType]);
 
   const canSave = Lib.canSave(question.query());
   const isSaveDisabled = !canSave;

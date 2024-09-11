@@ -226,14 +226,6 @@ class Question {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
-  cacheTTL(): number | null {
-    return this._card?.cache_ttl;
-  }
-
-  setCacheTTL(cache) {
-    return this.setCard(assoc(this.card(), "cache_ttl", cache));
-  }
-
   type(): CardType {
     return this._card?.type ?? "question";
   }

@@ -41,6 +41,7 @@ import { DurationUnit } from "metabase-types/api";
 import { strategyValidationSchema } from "../constants/complex";
 import { rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
+import { isModelWithClearableCache } from "../types";
 import {
   cronToScheduleSettings,
   getDefaultValueForField,
@@ -341,7 +342,12 @@ const FormButtons = ({
     );
   }
 
-  if (shouldAllowInvalidation && targetId && targetName) {
+  if (
+    shouldAllowInvalidation &&
+    isModelWithClearableCache(targetModel) &&
+    targetId &&
+    targetName
+  ) {
     return (
       <FormButtonsGroup isInSidebar={isInSidebar}>
         <PLUGIN_CACHING.InvalidateNowButton
