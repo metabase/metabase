@@ -11,6 +11,7 @@ import {
   addOrUpdateDashboardCard,
   appBar,
   assertQueryBuilderRowCount,
+  changeSynchronousBatchUpdateSetting,
   commandPalette,
   commandPaletteSearch,
   createDashboardWithTabs,
@@ -1459,6 +1460,12 @@ describe("issues 15279 and 24500", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(true);
+  });
+
+  afterEach(() => {
+    cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(false);
   });
 
   it("corrupted dashboard filter should still appear in the UI without breaking other filters (metabase#15279, metabase#24500)", () => {

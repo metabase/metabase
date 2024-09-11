@@ -16,7 +16,6 @@ const HEIGHT = 360;
 
 export function WaterfallChart({
   rawSeries,
-  dashcardSettings,
   renderingContext,
   width = WIDTH,
   height = HEIGHT,
@@ -24,7 +23,6 @@ export function WaterfallChart({
 }: StaticChartProps) {
   const computedVisualizationSettings = computeStaticWaterfallChartSettings(
     rawSeries,
-    dashcardSettings,
     renderingContext,
   );
   const chartModel = getWaterfallChartModel(
