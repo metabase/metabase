@@ -52,8 +52,6 @@
   (when (is-postgres?)
     (search.postgres/reindex!)))
 
-(reindex!)
-
 (mu/defn search
   "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- search.config/SearchContext]
