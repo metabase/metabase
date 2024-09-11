@@ -192,9 +192,7 @@ export function getPieRows(
   );
   const currentDataKeys = Array.from(keyToCurrentDataRow.keys());
 
-  const savedPieRows = (settings["pie.rows"] ?? []).filter(row =>
-    currentDataKeys.includes(row.key),
-  );
+  const savedPieRows = settings["pie.rows"] ?? [];
 
   const savedPieKeys = savedPieRows.map(pieRow => pieRow.key);
 
