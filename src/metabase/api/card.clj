@@ -430,7 +430,7 @@
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
 (mr/def ::card-type
-  (into [:enum {:decode/json keyword}] (mapcat (juxt identity u/qualified-name)) card/card-types))
+  (into [:enum {:decode/json keyword}] card/card-types))
 
 (api/defendpoint POST "/"
   "Create a new `Card`. A card can be of type `question`, `model`, or `metric`."
