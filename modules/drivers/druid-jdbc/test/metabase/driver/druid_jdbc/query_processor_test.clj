@@ -1,4 +1,4 @@
-(ns metabase.driver.druid-jdbc.query-processor-test
+(ns ^:mb/test-drivers metabase.driver.druid-jdbc.query-processor-test
   (:require
    [clojure.test :refer :all]
    [metabase.models :refer [Card]]

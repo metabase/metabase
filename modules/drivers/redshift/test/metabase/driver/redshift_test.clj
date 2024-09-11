@@ -1,4 +1,4 @@
-(ns metabase.driver.redshift-test
+(ns ^:mb/test-drivers metabase.driver.redshift-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]

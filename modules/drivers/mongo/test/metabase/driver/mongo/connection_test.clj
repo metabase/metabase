@@ -1,4 +1,4 @@
-(ns metabase.driver.mongo.connection-test
+(ns ^:mb/test-drivers metabase.driver.mongo.connection-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

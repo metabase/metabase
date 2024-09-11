@@ -1,4 +1,4 @@
-(ns metabase.driver.druid.query-processor-test
+(ns ^:mb/test-drivers metabase.driver.druid.query-processor-test
   "Some tests to make sure the Druid Query Processor is generating sane Druid queries when compiling MBQL."
   (:require
    [cheshire.core :as json]

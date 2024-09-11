@@ -1,4 +1,4 @@
-(ns metabase.driver.bigquery-cloud-sdk.params-test
+(ns ^:mb/test-drivers metabase.driver.bigquery-cloud-sdk.params-test
   (:require
    [clojure.test :refer :all]
    [metabase.query-processor :as qp]

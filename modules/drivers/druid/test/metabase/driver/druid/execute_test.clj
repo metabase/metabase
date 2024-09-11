@@ -1,4 +1,4 @@
-(ns metabase.driver.druid.execute-test
+(ns ^:mb/test-drivers metabase.driver.druid.execute-test
   (:require [cheshire.core :as json]
             [clojure.java.io :as io]
             [clojure.test :refer :all]

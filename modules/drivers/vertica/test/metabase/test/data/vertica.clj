@@ -1,4 +1,4 @@
-(ns metabase.test.data.vertica
+(ns ^:mb/test-drivers metabase.test.data.vertica
   "Code for creating / destroying a Vertica database from a `DatabaseDefinition`."
   (:require
    [clojure.data.csv :as csv]

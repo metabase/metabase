@@ -1,4 +1,4 @@
-(ns metabase.driver.druid-jdbc.nested-field-columns-test
+(ns ^:mb/test-drivers metabase.driver.druid-jdbc.nested-field-columns-test
   "This namespace contains collection of tests that ensure `:nested-field-columns` works correctly.
    Tests are near duplicates of existing tests from `./test` directory. Reason for that is that Druid JDBC does not
    support test runtime data ingestion and tests had to be modified to work with the driver."

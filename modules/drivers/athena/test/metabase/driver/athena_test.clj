@@ -1,4 +1,4 @@
-(ns metabase.driver.athena-test
+(ns ^:mb/test-drivers metabase.driver.athena-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]

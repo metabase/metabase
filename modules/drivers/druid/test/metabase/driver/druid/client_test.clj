@@ -1,4 +1,4 @@
-(ns metabase.driver.druid.client-test
+(ns ^:mb/test-drivers metabase.driver.druid.client-test
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]

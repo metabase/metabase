@@ -1,4 +1,4 @@
-(ns metabase.driver.mongo-test
+(ns ^:mb/test-drivers metabase.driver.mongo-test
   "Tests for Mongo driver."
   (:require
    [cheshire.core :as json]
