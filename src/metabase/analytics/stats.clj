@@ -452,7 +452,7 @@
 
 ;;; Combined Stats & Logic for sending them in
 
-(defn anonymous-usage-stats
+(defn legacy-anonymous-usage-stats
   "generate a map of the usage stats for this instance"
   []
   (merge (instance-settings)
@@ -494,9 +494,9 @@
 (defn- deployment-model
   []
   (case
-    (premium-features/is-hosted?) "cloud"
-    (in-docker?) "docker"
-    :else "jar"))
+   (premium-features/is-hosted?) "cloud"
+   (in-docker?) "docker"
+   :else "jar"))
 
 (def ^:private activation-days 3)
 
@@ -607,7 +607,6 @@
 
 (defn- snowplow-features
   [stats]
-  #_(def stats (anonymous-usage-stats))
   (let [features
         [{:name      :email
           :available true
@@ -693,21 +692,21 @@
          {:key       :snippet_collections
           :available (premium-features/enable-snippet-collections?)
           :enabled   (t2/exists? :model/Collection :namespace "snippets")}]]
-      (concat features (enterprise-snowplow-features))))
+    (concat features (enterprise-snowplow-features))))
 
-(defn- send-stats-via-snowplow!
+(defn- snowplow-anonymous-usage-stats
   "Send stats to Metabase's snowplow collector. Transforms stats into the format required by the Snowplow schema."
   [stats]
   (let [instance-attributes (snowplow-instance-attributes stats)
         features            (snowplow-features stats)]
-    (snowplow/track-event! ::snowplow/instance_stats
-                           {:instance-attributes instance-attributes
-                            :features            features})))
+    {:instance-attributes instance-attributes
+     :features            features}))
 
 (defn phone-home-stats!
   "Collect usage stats and phone them home"
   []
   (when (public-settings/anon-tracking-enabled)
-    (let [stats (anonymous-usage-stats)]
+    (let [stats          (legacy-anonymous-usage-stats)
+          snowplow-stats (snowplow-anonymous-usage-stats stats)]
       (send-stats-deprecated! stats)
-      (send-stats-via-snowplow! stats))))
+      (snowplow/track-event! ::snowplow/instance_stats snowplow-stats))))

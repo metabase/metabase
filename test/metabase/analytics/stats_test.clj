@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
+   [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
    [metabase.core :as mbc]
    [metabase.db :as mdb]
    [metabase.email :as email]
@@ -94,7 +94,7 @@
                                        google-auth-enabled false
                                        enable-embedding    false]
       (mt/with-temp [:model/Database _ {:is_sample true}]
-        (let [stats (anonymous-usage-stats)]
+        (let [stats (legacy-anonymous-usage-stats)]
           (is (partial= {:running_on                           :unknown
                          :check_for_updates                    true
                          :startup_time_millis                  1234.0
@@ -143,7 +143,7 @@
                                          application-colors           {:brand "#123456"}
                                          show-metabase-links          false]
         (mt/with-temp [:model/Database _ {:is_sample true}]
-          (let [stats (anonymous-usage-stats)]
+          (let [stats (legacy-anonymous-usage-stats)]
             (is (partial= {:running_on                           :unknown
                            :check_for_updates                    true
                            :startup_time_millis                  1234.0
@@ -173,7 +173,7 @@
 
 (deftest ^:parallel conversion-test
   (is (= #{true}
-         (let [system-stats (get-in (anonymous-usage-stats) [:stats :system])]
+         (let [system-stats (get-in (legacy-anonymous-usage-stats) [:stats :system])]
            (into #{} (map #(contains? system-stats %) [:java_version :java_runtime_name :max_memory]))))
       "Spot checking a few system stats to ensure conversion from property names and presence in the anonymous-usage-stats"))
 
