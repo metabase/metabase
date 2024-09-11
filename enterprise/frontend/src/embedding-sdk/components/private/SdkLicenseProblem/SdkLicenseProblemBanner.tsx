@@ -17,6 +17,7 @@ interface Props {
 
 // Prevent the license problem banner from inheriting the theme colors,
 // so they remain legible even when the theme is changed.
+const unthemedBrand = originalColors["brand"];
 const unthemedTextDark = originalColors["text-dark"];
 const unthemedTextMedium = originalColors["text-medium"];
 
@@ -40,7 +41,7 @@ export const SdkLicenseProblemBanner = ({ problem }: Props) => {
           data-testid="sdk-license-problem-indicator"
         >
           <Flex bg="white" px="sm" py="xs" className={S.Logo}>
-            <LogoIcon height={24} />
+            <LogoIcon height={24} fill={unthemedBrand} />
           </Flex>
 
           <Flex
@@ -54,6 +55,7 @@ export const SdkLicenseProblemBanner = ({ problem }: Props) => {
               name={isError ? "warning_round_filled" : "warning"}
               size={14}
               fill={unthemedTextDark}
+              stroke={unthemedTextDark}
             />
 
             <Text transform="capitalize" c={unthemedTextMedium}>
