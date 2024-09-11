@@ -19,6 +19,7 @@ import type {
 import { RECENTS_TAB_ID, SEARCH_TAB_ID } from "../../constants";
 import type {
   EntityPickerOptions,
+  EntityPickerSearchScope,
   EntityPickerTab,
   EntityPickerTabId,
   TabFolderState,
@@ -27,6 +28,7 @@ import type {
 import {
   computeInitialTabId,
   getFolderModels,
+  getScopedSearchResults,
   getSearchInputPlaceholder,
   getSearchModels,
   getSearchTabText,
@@ -115,6 +117,8 @@ export function EntityPickerModal<
   onItemSelect,
 }: EntityPickerModalProps<Id, Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchScope, setSearchScope] =
+    useState<EntityPickerSearchScope>("everywhere");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
     useListRecentsQuery(
       { context: recentsContext },
@@ -125,7 +129,21 @@ export function EntityPickerModal<
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
     null,
   );
-
+  const [selectedTabId, setSelectedTabId] = useState<EntityPickerTabId>("");
+  const previousTabId = usePreviousDistinct(selectedTabId);
+  const [tabFolderState, setTabFolderState] = useState<
+    TabFolderState<Id, Model, Item>
+  >({});
+  const selectedFolder =
+    tabFolderState[
+      selectedTabId === SEARCH_TAB_ID
+        ? previousTabId ?? selectedTabId
+        : selectedTabId
+    ];
+  const scopedSearchResults = useMemo(
+    () => getScopedSearchResults(searchResults, searchScope, selectedFolder),
+    [searchResults, searchScope, selectedFolder],
+  );
   const hydratedOptions = useMemo(
     () => ({ ...defaultOptions, ...options }),
     [options],
@@ -187,14 +205,17 @@ export function EntityPickerModal<
         id: SEARCH_TAB_ID,
         model: null,
         folderModels: [],
-        displayName: getSearchTabText(searchResults, searchQuery),
+        displayName: getSearchTabText(scopedSearchResults, searchQuery),
         icon: "search",
         render: ({ onItemSelect }) => (
           <SearchTab
             folder={selectedFolder}
-            searchResults={searchResults}
+            isLoading={searchResults == null}
+            searchScope={searchScope}
+            searchResults={scopedSearchResults}
             selectedItem={selectedItem}
             onItemSelect={onItemSelect}
+            onSearchScopeChange={setSearchScope}
           />
         ),
       });
@@ -208,22 +229,10 @@ export function EntityPickerModal<
     () => computeInitialTabId({ initialValue, tabs, defaultToRecentTab }),
     [initialValue, tabs, defaultToRecentTab],
   );
-  const [selectedTabId, setSelectedTabId] =
-    useState<EntityPickerTabId>(initialTabId);
-  const previousTabId = usePreviousDistinct(selectedTabId);
   // we don't want to show bonus actions on recents or search tabs
   const showActionButtons = ![SEARCH_TAB_ID, RECENTS_TAB_ID].includes(
     selectedTabId,
   );
-  const [tabFolderState, setTabFolderState] = useState<
-    TabFolderState<Id, Model, Item>
-  >({});
-  const selectedFolder =
-    tabFolderState[
-      selectedTabId === SEARCH_TAB_ID
-        ? previousTabId ?? selectedTabId
-        : selectedTabId
-    ];
 
   const handleSelectItem = useCallback(
     (item: Item) => {
@@ -234,6 +243,7 @@ export function EntityPickerModal<
           ...state,
           [selectedTabId]: item,
         }));
+        setSearchScope("folder");
       }
 
       onItemSelect(item);

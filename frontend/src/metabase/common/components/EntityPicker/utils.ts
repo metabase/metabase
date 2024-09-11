@@ -154,10 +154,14 @@ export const getScopedSearchResults = <
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 >(
-  searchResults: SearchResult[],
+  searchResults: SearchResult[] | null,
   searchScope: EntityPickerSearchScope,
   folder: Item | undefined,
 ): SearchResult[] => {
+  if (!searchResults) {
+    return [];
+  }
+
   if (searchScope === "everywhere" || !folder) {
     return searchResults;
   }

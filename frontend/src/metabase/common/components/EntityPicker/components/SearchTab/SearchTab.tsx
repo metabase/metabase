@@ -1,11 +1,9 @@
-import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { Box, Flex, SegmentedControl, Stack, Text } from "metabase/ui";
 import type { SearchResult, SearchResultId } from "metabase-types/api";
 
 import type { EntityPickerSearchScope, TypeWithModel } from "../../types";
-import { getScopedSearchResults } from "../../utils";
 import { DelayedLoadingSpinner } from "../LoadingSpinner";
 
 import { SearchResults } from "./SearchResults";
@@ -16,9 +14,12 @@ interface Props<
   Item extends TypeWithModel<Id, Model>,
 > {
   folder: Item | undefined;
-  searchResults: SearchResult[] | null;
+  isLoading: boolean;
+  searchScope: EntityPickerSearchScope;
+  searchResults: SearchResult[];
   selectedItem: Item | null;
   onItemSelect: (item: Item) => void;
+  onSearchScopeChange: (scope: EntityPickerSearchScope) => void;
 }
 
 export const SearchTab = <
@@ -27,55 +28,43 @@ export const SearchTab = <
   Item extends TypeWithModel<Id, Model>,
 >({
   folder,
-  searchResults: allSearchResults,
+  isLoading,
+  searchScope,
+  searchResults,
   selectedItem,
   onItemSelect,
+  onSearchScopeChange,
 }: Props<Id, Model, Item>) => {
-  const folderName = folder?.name;
-  const folderId = folder?.id;
-  const [searchScope, setSearchScope] = useState<EntityPickerSearchScope>(
-    folderId ? "folder" : "everywhere",
-  );
-
-  if (!allSearchResults) {
+  if (isLoading) {
     return <DelayedLoadingSpinner text={t`Loading…`} />;
   }
 
-  const scopedSearchResults = getScopedSearchResults(
-    allSearchResults,
-    searchScope,
-    folder,
-  );
-
   return (
     <Stack bg="bg-light" h="100%" spacing={0}>
-      {allSearchResults.length > 0 && (
+      {folder && (
         <Flex align="center" justify="space-between" p="xl">
           <Flex align="center">
-            {folderName && (
-              <>
-                <Text mr={12} weight="bold">
-                  {t`Search:`}
-                </Text>
-                <SegmentedControl
-                  data={[
-                    { label: t`Everywhere`, value: "everywhere" as const },
-                    { label: `“${folderName}”`, value: "folder" as const },
-                  ]}
-                  value={searchScope}
-                  onChange={value =>
-                    setSearchScope(value as EntityPickerSearchScope)
-                  }
-                />
-              </>
-            )}
+            <Text mr={12} weight="bold">
+              {t`Search:`}
+            </Text>
+
+            <SegmentedControl
+              data={[
+                { label: t`Everywhere`, value: "everywhere" as const },
+                { label: `“${folder.name}”`, value: "folder" as const },
+              ]}
+              value={searchScope}
+              onChange={value =>
+                onSearchScopeChange(value as EntityPickerSearchScope)
+              }
+            />
           </Flex>
 
           <div>
             {ngettext(
-              msgid`${scopedSearchResults.length} result`,
-              `${scopedSearchResults.length} results`,
-              scopedSearchResults.length,
+              msgid`${searchResults.length} result`,
+              `${searchResults.length} results`,
+              searchResults.length,
             )}
           </div>
         </Flex>
@@ -83,7 +72,8 @@ export const SearchTab = <
 
       <Box style={{ flex: 1, overflow: "hidden" }}>
         <SearchResults
-          searchResults={scopedSearchResults}
+          folder={folder}
+          searchResults={searchResults}
           selectedItem={selectedItem}
           onItemSelect={onItemSelect}
         />

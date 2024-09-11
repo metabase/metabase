@@ -15,6 +15,7 @@ interface Props<
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 > {
+  folder: Item | undefined;
   searchResults: SearchResult[];
   selectedItem: Item | null;
   onItemSelect: (item: Item) => void;
@@ -25,6 +26,7 @@ export const SearchResults = <
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 >({
+  folder,
   searchResults,
   selectedItem,
   onItemSelect,
@@ -35,7 +37,7 @@ export const SearchResults = <
         <Stack h="100%">
           <VirtualizedList
             Wrapper={({ children, ...props }) => (
-              <Box p="xl" pt={0} {...props}>
+              <Box p="xl" pt={folder ? 0 : "xl"} {...props}>
                 <ChunkyList>{children}</ChunkyList>
               </Box>
             )}
