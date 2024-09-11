@@ -47,6 +47,7 @@
   instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
   (concat
    [:model/Channel
+    :model/ChannelTemplate
     :model/Database
     :model/User
     :model/Setting
@@ -100,7 +101,9 @@
     :model/UserParameterValue
     ;; 51+
     :model/Notification
-    :model/NotificationSubscription]
+    :model/NotificationSubscription
+    :model/NotificationHandler
+    :model/NotificationRecipient]
    (when config/ee-available?
      [:model/GroupTableAccessPolicy
       :model/ConnectionImpersonation])))

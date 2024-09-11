@@ -125,7 +125,13 @@
 
    :model/Channel
    (fn [_] (default-timestamped
-            {:name (u.random/random-name)}))
+            {:name    (u.random/random-name)
+             :details {}}))
+
+   :model/ChannelTemplate
+   (fn [_] (default-timestamped
+            {:name         (u.random/random-name)
+             :channel_type :email}))
 
    :model/Dashboard
    (fn [_] (default-timestamped
