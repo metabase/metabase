@@ -76,11 +76,18 @@ export const CollectionPickerModal = ({
   }>();
 
   const handleItemSelect = useCallback(
-    async (item: CollectionPickerItem) => {
+    async (
+      item: CollectionPickerItem,
+      { autoSelected }: { autoSelected?: boolean } = {},
+    ) => {
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
       } else if (canSelectItem(item)) {
-        await handleChange(item);
+        if (autoSelected) {
+          setSelectedItem(item);
+        } else {
+          await handleChange(item);
+        }
       }
     },
     [handleChange, options],

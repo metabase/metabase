@@ -41,7 +41,10 @@ interface CollectionPickerProps {
   options?: CollectionPickerOptions;
   path: CollectionPickerStatePath | undefined;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
-  onItemSelect: (item: CollectionPickerItem) => void;
+  onItemSelect: (
+    item: CollectionPickerItem,
+    options?: { autoSelected?: boolean },
+  ) => void;
   onPathChange: (path: CollectionPickerStatePath) => void;
 }
 
@@ -203,7 +206,9 @@ export const CollectionPickerInner = (
   useEffect(
     function ensureFolderSelected() {
       if (!pathProp && defaultPath[0].selectedItem) {
-        onItemSelectRef.current(defaultPath[0].selectedItem);
+        onItemSelectRef.current(defaultPath[0].selectedItem, {
+          autoSelected: true,
+        });
       }
     },
     [pathProp, defaultPath, onItemSelectRef],
