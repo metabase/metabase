@@ -1054,7 +1054,7 @@ describe("scenarios > question > offset", () => {
   });
 
   // unskip once https://github.com/metabase/metabase/issues/47854 is fixed
-  it.skip("should work with metrics(metabase#47854)", () => {
+  it.skip("should work with metrics (metabase#47854)", () => {
     const metricName = "Count of orders";
     const ORDERS_SCALAR_METRIC: StructuredQuestionDetails = {
       name: metricName,
