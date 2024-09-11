@@ -1,22 +1,78 @@
-import type { MouseEvent } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { t } from "ttag";
 
-import EntityMenu from "metabase/components/EntityMenu";
+import { MaybeLink } from "metabase/components/Badge/Badge.styled";
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
+import { Group, Icon, type IconName, Menu, Text, Tooltip } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
-export const DashboardActionMenu = (props: { items: any[] }) => (
-  <EntityMenu
-    key="dashboard-action-menu-button"
-    triggerAriaLabel={t`Move, trash, and more…`}
-    items={props.items}
-    triggerIcon="ellipsis"
-    tooltip={t`Move, trash, and more…`}
-    // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
-    transitionDuration={0}
-  />
-);
+import Styles from "./DashboardActionMenu.module.css";
+
+export const DashboardActionMenu = ({
+  items,
+}: {
+  items: DashboardHeaderActionMenuItem[];
+}) => {
+  const tooltipLabel = t`Move, trash, and more…`;
+  return (
+    <Menu trigger="click" closeDelay={200} key="dashboard-action-menu-button">
+      <Menu.Target>
+        <Tooltip label={tooltipLabel}>
+          <ToolbarButton
+            aria-label={tooltipLabel}
+            className={Styles.DashboardMenuTriggerToolbarButton}
+          >
+            <Icon name="ellipsis" className={Styles.DashboardMenuTriggerIcon} />
+          </ToolbarButton>
+        </Tooltip>
+      </Menu.Target>
+      <Menu.Dropdown>
+        {items.map(
+          item =>
+            item.component ?? (
+              // The em padding and spacing here makes it match our legacy menus
+              <Menu.Item
+                p="0.85em 1.45em"
+                onClick={item.action}
+                key={item.key || item.title}
+                className={Styles.DashboardActionMenuItem}
+              >
+                <MaybeLink to={item.link}>
+                  <Group noWrap h="18px" spacing=".65em">
+                    {item.icon && (
+                      <Icon
+                        height="1rem"
+                        style={{ flexShrink: 0 }}
+                        name={item.icon}
+                      />
+                    )}
+                    <Text
+                      lh="1rem"
+                      className={Styles.DashboardActionMenuItemText}
+                    >
+                      {item.title}
+                    </Text>
+                  </Group>
+                </MaybeLink>
+              </Menu.Item>
+            ),
+        )}
+      </Menu.Dropdown>
+    </Menu>
+  );
+};
+
+export type DashboardHeaderActionMenuItem = {
+  key?: string;
+  title?: string;
+  component?: ReactNode;
+  icon?: IconName;
+  separator?: boolean;
+  action?: (e: MouseEvent) => void;
+  link?: string;
+};
 
 export const getExtraButtons = ({
   canResetFilters,
@@ -34,8 +90,8 @@ export const getExtraButtons = ({
   canEdit: boolean;
   pathname: string;
   openSettingsSidebar: () => void;
-}) => {
-  const extraButtons = [];
+}): DashboardHeaderActionMenuItem[] => {
+  const extraButtons: DashboardHeaderActionMenuItem[] = [];
 
   if (canResetFilters) {
     extraButtons.push({
@@ -55,11 +111,7 @@ export const getExtraButtons = ({
     title: t`Edit settings`,
     icon: "gear",
     action: openSettingsSidebar,
-  });
-
-  extraButtons.push({
     separator: true,
-    key: "separator-after-edit-settings",
   });
 
   if (canEdit) {
@@ -74,14 +126,10 @@ export const getExtraButtons = ({
     title: t`Duplicate`,
     icon: "clone",
     link: `${pathname}/copy`,
+    separator: true,
   });
 
   if (canEdit) {
-    extraButtons.push({
-      separator: true,
-      key: "separator-before-ee-buttons-and-trash",
-    });
-
     extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
 
     extraButtons.push({

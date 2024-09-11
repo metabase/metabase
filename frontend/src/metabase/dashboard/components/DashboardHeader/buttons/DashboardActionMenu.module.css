@@ -1,0 +1,24 @@
+.DashboardMenuTriggerIcon {
+  color: var(--mb-color-text-dark);
+  flex-shrink: 0;
+}
+
+.DashboardMenuTriggerToolbarButton {
+  &:hover {
+    .DashboardMenuTriggerIcon {
+      color: var(--mb-color-brand);
+    }
+  }
+}
+
+.DashboardActionMenuItem {
+  white-space: nowrap;
+
+  &:hover {
+    background-color: var(--mb-color-bg-light) !important;
+
+    .DashboardActionMenuItemText {
+      color: var(--mb-color-brand);
+    }
+  }
+}
