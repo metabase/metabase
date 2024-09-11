@@ -82,8 +82,20 @@
                 (-> (site-uuid) hash (mod 100))))
 
 (defn- should-remove-upgrade?
-  [_current-major _latest _threshold]
-  true)
+  "On a major upgrade, we check the rollout threshold to indicate whether we should remove the latest release from the
+  version info. This lets us stage upgrade notifications to self-hosted instances in a controlled manner."
+  [current-major latest threshold]
+  (when (and (integer? current-major) (integer? threshold) (string? (:version latest)))
+    (try (let [upgrade-major (-> latest :version config/major-version)
+               rollout       (some-> latest :rollout)]
+           (when (and upgrade-major rollout)
+             (cond
+               ;; it's the same or a minor release
+               (= upgrade-major current-major) false
+               ;; the rollout threshold is larger than our threshold
+               (>= rollout threshold) true
+               :else false)))
+         (catch Exception _e false))))
 
 (defsetting version-info
   (deferred-tru "Information about available versions of Metabase.")

@@ -370,3 +370,15 @@
              (public-settings/show-metabase-links! true)))
 
         (is (= true (public-settings/show-metabase-links)))))))
+
+(def should? #'public-settings/should-remove-upgrade?)
+
+(deftest should-remove-upgrade?-test
+  (is (should? 45 {:version "0.46" :rollout 80} 75))
+  (testing "never throws and returns falsy"
+    ;; missing threshold
+    (is (not (should? 45 {:version "0.46"} 75)))
+    ;; version is weird
+    (is (not (should? 45 {:version 45} 75)))
+    ;; misshape
+    (is (not (should? 45 {:latest {:version "0.46" :rollout 80}} 75)))))
