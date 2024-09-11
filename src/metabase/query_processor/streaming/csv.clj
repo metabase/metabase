@@ -100,10 +100,11 @@
             (.flush writer))))
 
       (write-row! [_ row _row-num _ {:keys [output-order]}]
-        (let [ordered-row (if output-order
-                            (let [row-v (into [] row)]
-                              (for [i output-order] (row-v i)))
-                            row)
+        (let [ordered-row (vec
+                           (if output-order
+                             (let [row-v (into [] row)]
+                               (for [i output-order] (row-v i)))
+                             row))
               xf-row      (perf/mapv (fn [formatter r]
                                        (formatter (common/format-value r)))
                                      @ordered-formatters ordered-row)]
@@ -112,7 +113,7 @@
             ;; so that we can post process the full set of results in finish!
             (swap! rows! conj xf-row)
             (let [pivot-grouping-key @pivot-grouping-idx
-                  group              (get row pivot-grouping-key)
+                  group              (get ordered-row pivot-grouping-key)
                   cleaned-row        (if pivot-grouping-key
                                       (m/remove-nth pivot-grouping-key xf-row)
                                       xf-row)]

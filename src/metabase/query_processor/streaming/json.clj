@@ -44,7 +44,10 @@
         (let [cols           (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
               pivot-grouping (qp.pivot.postprocess/pivot-grouping-key cols)]
           (when pivot-grouping (vreset! pivot-grouping-idx pivot-grouping))
-          (vreset! col-names cols)
+          (let [names (if pivot-grouping
+                        (m/remove-nth pivot-grouping cols)
+                        cols)]
+            (vreset! col-names names))
           (vreset! ordered-formatters
                    (if format-rows?
                      (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
@@ -52,12 +55,13 @@
           (.write writer "[\n")))
 
       (write-row! [_ row row-num _ {:keys [output-order]}]
-        (let [ordered-row        (if output-order
-                                   (let [row-v (into [] row)]
-                                     (for [i output-order] (row-v i)))
-                                   row)
+        (let [ordered-row        (vec
+                                  (if output-order
+                                    (let [row-v (into [] row)]
+                                      (for [i output-order] (row-v i)))
+                                    row))
               pivot-grouping-key @pivot-grouping-idx
-              group              (get row pivot-grouping-key)
+              group              (get ordered-row pivot-grouping-key)
               cleaned-row        (if pivot-grouping-key
                                    (m/remove-nth pivot-grouping-key ordered-row)
                                    ordered-row)]

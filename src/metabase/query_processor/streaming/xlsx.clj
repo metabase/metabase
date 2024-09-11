@@ -655,10 +655,10 @@
               (spreadsheet/add-row! sheet modified-row)))))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
-        (let [ordered-row             (if output-order
-                                        (let [row-v (into [] row)]
-                                          (for [i output-order] (row-v i)))
-                                        row)
+        (let [ordered-row             (vec (if output-order
+                                             (let [row-v (into [] row)]
+                                               (for [i output-order] (row-v i)))
+                                             row))
               col-settings            (::mb.viz/column-settings viz-settings)
               {:keys [pivot-options]} @pivot-data!
               pivot-grouping-key      @pivot-grouping-idx
