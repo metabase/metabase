@@ -207,7 +207,7 @@
 
 (defn- ensure-filterable-columns-for-card
   [ctx card]
-  (if (get-in ctx [:card-id->filterable-columns (:id card)])
+  (if (contains? (get ctx :card-id->filterable-columns) (:id card))
     ctx
     (let [database-id   (:database_id card)
           dataset-query (:dataset_query card)]
