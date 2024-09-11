@@ -2,12 +2,12 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 
 import { useDefaultFilter } from "metabase/querying/filters/hooks/use-default-filter";
-import { Box, Radio, Stack } from "metabase/ui";
+import { Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { FilterPickerFooter } from "../FilterPickerFooter";
+import { FilterPickerForm } from "../FilterPickerForm";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function DefaultFilterPicker({
@@ -52,9 +52,7 @@ export function DefaultFilterPicker({
   };
 
   return (
-    <Box
-      component="form"
-      miw={MIN_WIDTH}
+    <FilterPickerForm
       data-testid="default-filter-picker"
       onSubmit={handleSubmit}
     >
@@ -78,6 +76,6 @@ export function DefaultFilterPicker({
         </Radio.Group>
         <FilterPickerFooter isNew={isNew} canSubmit />
       </div>
-    </Box>
+    </FilterPickerForm>
   );
 }

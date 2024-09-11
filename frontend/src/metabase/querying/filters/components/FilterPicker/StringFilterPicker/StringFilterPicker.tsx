@@ -12,8 +12,8 @@ import * as Lib from "metabase-lib";
 import { StringFilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
+import { FilterPickerForm } from "../FilterPickerForm";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function StringFilterPicker({
@@ -64,10 +64,7 @@ export function StringFilterPicker({
   };
 
   return (
-    <Box
-      component="form"
-      miw={MIN_WIDTH}
-      maw={MAX_WIDTH}
+    <FilterPickerForm
       data-testid="string-filter-picker"
       onSubmit={handleSubmit}
     >
@@ -81,7 +78,7 @@ export function StringFilterPicker({
           onChange={handleOperatorChange}
         />
       </FilterPickerHeader>
-      <div>
+      <Flex direction="column" mih={0}>
         <StringValueInput
           query={query}
           stageIndex={stageIndex}
@@ -98,8 +95,8 @@ export function StringFilterPicker({
             />
           )}
         </FilterPickerFooter>
-      </div>
-    </Box>
+      </Flex>
+    </FilterPickerForm>
   );
 }
 
@@ -122,7 +119,7 @@ function StringValueInput({
 }: StringValueInputProps) {
   if (type === "exact") {
     return (
-      <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
+      <Box p="md" style={{ overflow: "auto" }}>
         <StringFilterValuePicker
           query={query}
           stageIndex={stageIndex}
@@ -137,7 +134,7 @@ function StringValueInput({
 
   if (type === "partial") {
     return (
-      <Flex p="md">
+      <Box p="md">
         <MultiAutocomplete
           value={values}
           data={[]}
@@ -147,7 +144,7 @@ function StringValueInput({
           aria-label={t`Filter value`}
           onChange={onChange}
         />
-      </Flex>
+      </Box>
     );
   }
 
