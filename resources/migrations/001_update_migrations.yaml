@@ -9466,7 +9466,7 @@ databaseChangeLog:
               - column:
                   name: channel_type
                   type: varchar(64)
-                  remarks: the type of the channel
+                  remarks: the type of the channel, like :channel/email, :channel/slack
                   constraints:
                     nullable: false
               - column:
@@ -9609,7 +9609,7 @@ databaseChangeLog:
               - column:
                   name: user_id
                   type: int
-                  remarks: an user if the recipient has type user
+                  remarks: a user if the recipient has type user
                   constraints:
                     nullable: true
                     referencedTableName: core_user

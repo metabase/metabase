@@ -6,7 +6,6 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -139,7 +138,7 @@
                           [:= :ns.event_name (u/qualified-name event-name)]
                           [:= :ns.type (u/qualified-name :notification-subscription/system-event)]]}))
 
-(mu/defn create-notification!
+(defn create-notification!
   "Create a new notification with `subsciptions`.
   Return the created notification."
   [notification subcriptions handlers+recipients]
