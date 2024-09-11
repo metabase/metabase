@@ -306,28 +306,30 @@ export type FilterOperatorName =
   | ExcludeDateFilterOperatorName
   | CoordinateFilterOperatorName;
 
-export type StringFilterOperatorName = typeof STRING_FILTER_OPERATORS[number];
+export type StringFilterOperatorName = (typeof STRING_FILTER_OPERATORS)[number];
 
-export type NumberFilterOperatorName = typeof NUMBER_FILTER_OPERATORS[number];
+export type NumberFilterOperatorName = (typeof NUMBER_FILTER_OPERATORS)[number];
 
 export type CoordinateFilterOperatorName =
-  typeof COORDINATE_FILTER_OPERATORS[number];
+  (typeof COORDINATE_FILTER_OPERATORS)[number];
 
-export type BooleanFilterOperatorName = typeof BOOLEAN_FILTER_OPERATORS[number];
+export type BooleanFilterOperatorName =
+  (typeof BOOLEAN_FILTER_OPERATORS)[number];
 
 export type SpecificDateFilterOperatorName =
-  typeof SPECIFIC_DATE_FILTER_OPERATORS[number];
+  (typeof SPECIFIC_DATE_FILTER_OPERATORS)[number];
 
 export type ExcludeDateFilterOperatorName =
-  typeof EXCLUDE_DATE_FILTER_OPERATORS[number];
+  (typeof EXCLUDE_DATE_FILTER_OPERATORS)[number];
 
-export type TimeFilterOperatorName = typeof TIME_FILTER_OPERATORS[number];
+export type TimeFilterOperatorName = (typeof TIME_FILTER_OPERATORS)[number];
 
-export type DefaultFilterOperatorName = typeof DEFAULT_FILTER_OPERATORS[number];
+export type DefaultFilterOperatorName =
+  (typeof DEFAULT_FILTER_OPERATORS)[number];
 
-export type RelativeDateBucketName = typeof RELATIVE_DATE_BUCKETS[number];
+export type RelativeDateBucketName = (typeof RELATIVE_DATE_BUCKETS)[number];
 
-export type ExcludeDateBucketName = typeof EXCLUDE_DATE_BUCKETS[number];
+export type ExcludeDateBucketName = (typeof EXCLUDE_DATE_BUCKETS)[number];
 
 export type FilterOperatorDisplayInfo = {
   shortName: FilterOperatorName;

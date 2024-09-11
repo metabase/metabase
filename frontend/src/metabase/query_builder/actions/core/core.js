@@ -119,10 +119,10 @@ export const setCardAndRun = (nextCard, { shouldUpdateUrl = true } = {}) => {
       ? // If the original card id is present, dynamically load its information for showing lineage
         await loadCard(card.original_card_id, { dispatch, getState })
       : // Otherwise, use a current card as the original card if the card has been saved
-      // This is needed for checking whether the card is in dirty state or not
-      card.id
-      ? card
-      : null;
+        // This is needed for checking whether the card is in dirty state or not
+        card.id
+        ? card
+        : null;
 
     // Update the card and originalCard before running the actual query
     dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });

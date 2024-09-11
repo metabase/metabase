@@ -7,7 +7,7 @@ export const ErrorBox = ({ children }: { children: ErrorDetails }) => (
     {typeof children === "string"
       ? children
       : typeof children.message === "string"
-      ? children.message
-      : String(children)}
+        ? children.message
+        : String(children)}
   </MonospaceErrorDisplay>
 );
