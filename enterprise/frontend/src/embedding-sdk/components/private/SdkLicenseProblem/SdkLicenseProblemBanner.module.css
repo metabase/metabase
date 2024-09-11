@@ -26,9 +26,9 @@
 }
 
 .Indicator.Warning .Content {
-  background: #fef3cf;
+  background: color-mix(in srgb, var(--mb-color-warning) 20%, white 80%);
 }
 
 .Indicator.Error .Content {
-  background: #fdf0f0;
+  background: color-mix(in srgb, var(--mb-color-error) 10%, white 90%);
 }
