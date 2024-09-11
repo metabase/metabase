@@ -98,6 +98,16 @@
                :else true)))
          (catch Exception _e true))))
 
+(defn- version-info*
+  [raw-version-info {:keys [current-major upgrade-threshold-value]}]
+  (try
+    (cond-> raw-version-info
+      (prevent-upgrade? current-major (-> raw-version-info :latest) upgrade-threshold-value)
+      (dissoc :latest))
+    (catch Exception e
+      (log/error e "Error processing version info")
+      raw-version-info)))
+
 (defsetting version-info
   (deferred-tru "Information about available versions of Metabase.")
   :type    :json
@@ -105,14 +115,9 @@
   :default {}
   :doc     false
   :getter  (fn []
-             (let [vi (setting/get-value-of-type :json :version-info)]
-               (try
-                 (cond-> vi
-                   (prevent-upgrade? (config/current-major-version) (-> vi :latest) (upgrade-threshold))
-                   (dissoc :latest))
-                 (catch Exception e
-                   (log/error e "Error processing version info")
-                   vi)))))
+             (let [raw-vi (setting/get-value-of-type :json :version-info)
+                   current-major (config/current-major-version)]
+               (version-info* raw-vi {:current-major current-major :upgrade-threshold-value (upgrade-threshold)}))))
 
 (defsetting version-info-last-checked
   (deferred-tru "Indicates when Metabase last checked for new versions.")

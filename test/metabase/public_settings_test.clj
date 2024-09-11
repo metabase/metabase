@@ -396,3 +396,31 @@
         ;; todo: should this offer the next major? ie on 49, 51 is at 10% rollout, should we offer 50 or not?
         (is (not (prevent? 49 {:version "1.51.23.1" :rollout above} threshold)))
         (is (prevent? 49 {:version "1.51.23.1" :rollout below} threshold))))))
+
+(def info #'public-settings/version-info*)
+
+(deftest version-info*-test
+  (let [version-info {:latest {:version "1.51.23.1" :rollout 50
+                               :highlights [,,,]}
+                      :older [{:version "1.51.22" :highlights [,,,]}
+                              {:version "1.51.21" :highlights [,,,]}]}]
+    (testing "When on same major, includes latest"
+      (is (= version-info (info version-info {:current-major 51 :upgrade-threshold-value 25}))))
+    (testing "When below major"
+      (testing "And below rollout threshold lacks latest"
+        (is (not (contains? (info version-info {:current-major 50 :upgrade-threshold-value 75}) :latest))))
+      (testing "And above rollout threshold includes latest"
+        (is (contains? (info version-info {:current-major 50 :upgrade-threshold-value 25}) :latest))))
+    (testing "if something feels off, just includes it by default"
+      (testing "missing rollout"
+        (let [modified (update version-info :latest dissoc :rollout)]
+          (is (= modified (info modified {:current-major 51 :upgrade-threshold-value 25})))))
+      (testing "version is weird"
+        (let [modified (update version-info :latest assoc :version "x01.51")]
+          (is (= modified (info modified {:current-major 51 :upgrade-threshold-value 25})))))
+      (testing "unknown current threshold"
+        (doseq [weird-value [nil "45" (Object.) 23.234 :keyword "string"]]
+          (is (= version-info (info version-info {:current-major 51 :upgrade-threshold-value weird-value})))))
+      (testing "rollout is a decimal"
+        (let [modified (update version-info :latest assoc :rollout 0.2)]
+          (is (= modified (info modified {:current-major 51 :upgrade-threshold-value 25}))))))))
