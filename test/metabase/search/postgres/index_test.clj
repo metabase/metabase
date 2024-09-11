@@ -58,7 +58,14 @@
       (doseq [[a b] [["revenue" "revenues"]
                      ["collect" "collection"]]]
         (is (= (search.index/search a)
-               (search.index/search b)))))))
+               (search.index/search b)))))
+
+    (testing "Or we match a completion of the final word"
+      (is (seq (search.index/search "ras")))
+      (is (seq (search.index/search "rasta coll")))
+      (is (seq (search.index/search "collection ras")))
+      (is (empty? (search.index/search "coll rasta")))
+      (is (empty? (search.index/search "ras collection"))))))
 
 (deftest either-test
   (with-index
