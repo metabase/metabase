@@ -21,7 +21,7 @@
 (defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
 
 (defmethod serdes/hash-fields :model/Channel         [_instance] [:name :type])
-(defmethod serdes/hash-fields :model/ChannelTemplate [_instance] [:name :channel_type])
+(defmethod serdes/hash-fields :model/ChannelTemplate [_instance] [:name :channel_type :details])
 
 (defmethod mi/can-write? :model/ChannelTemplate
   [& _]
