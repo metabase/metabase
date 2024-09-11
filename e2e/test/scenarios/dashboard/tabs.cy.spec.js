@@ -11,6 +11,7 @@ import {
 import {
   addHeadingWhileEditing,
   addLinkWhileEditing,
+  changeSynchronousBatchUpdateSetting,
   createDashboardWithTabs,
   createNewTab,
   dashboardCards,
@@ -90,12 +91,6 @@ const TAB_1 = {
 const TAB_2 = {
   id: 2,
   name: "Tab 2",
-};
-
-const changeSynchronousBatchUpdateSetting = value => {
-  cy.request("PUT", "/api/setting/synchronous-batch-updates", {
-    value: value,
-  });
 };
 
 describe("scenarios > dashboard > tabs", () => {
