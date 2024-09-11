@@ -41,30 +41,40 @@ export function getSdkLicenseProblem(
   const isApiKey = !!apiKey;
   const isLocalhost = getIsLocalhost();
 
-  return match({ hasTokenFeature, isSSO, isApiKey, isLocalhost, isEnabled })
-    .with({ isSSO: true, isApiKey: true }, () =>
-      toError(PROBLEMS.CONFLICTING_AUTH_METHODS),
-    )
-    .with({ isEnabled: false, hasTokenFeature: true, isLocalhost: false }, () =>
-      toError(PROBLEMS.EMBEDDING_SDK_NOT_ENABLED),
-    )
-    .with({ isSSO: true, hasTokenFeature: true, isEnabled: true }, () => null)
-    .with({ isSSO: true, hasTokenFeature: false }, () =>
-      toError(PROBLEMS.SSO_WITHOUT_LICENSE),
-    )
-    .with({ isLocalhost: true, isApiKey: true, hasTokenFeature: true }, () =>
-      toWarning(PROBLEMS.API_KEYS_WITH_LICENSE),
-    )
-    .with({ isLocalhost: true, isApiKey: true, hasTokenFeature: false }, () =>
-      toWarning(PROBLEMS.API_KEYS_WITHOUT_LICENSE),
-    )
-    .with({ isApiKey: true, hasTokenFeature: true }, () =>
-      toError(PROBLEMS.API_KEYS_WITH_LICENSE),
-    )
-    .with({ isApiKey: true, hasTokenFeature: false }, () =>
-      toError(PROBLEMS.API_KEYS_WITHOUT_LICENSE),
-    )
-    .otherwise(() => null);
+  return (
+    match({ hasTokenFeature, isSSO, isApiKey, isLocalhost, isEnabled })
+      .with({ isSSO: true, isApiKey: true }, () =>
+        toError(PROBLEMS.CONFLICTING_AUTH_METHODS),
+      )
+      .with(
+        { isEnabled: false, hasTokenFeature: true, isLocalhost: false },
+        () => toError(PROBLEMS.EMBEDDING_SDK_NOT_ENABLED),
+      )
+      // For SSO, the token features and the toggle must both be enabled.
+      .with({ isSSO: true, hasTokenFeature: true, isEnabled: true }, () => null)
+      .with({ isSSO: true, hasTokenFeature: false }, () =>
+        toError(PROBLEMS.SSO_WITHOUT_LICENSE),
+      )
+      .with({ isSSO: true, isEnabled: false }, () =>
+        toError(PROBLEMS.EMBEDDING_SDK_NOT_ENABLED),
+      )
+      // For API keys, we allow evaluation usage without a license in localhost.
+      // This allows them to test-drive the SDK in development.
+      .with({ isLocalhost: true, isApiKey: true, hasTokenFeature: true }, () =>
+        toWarning(PROBLEMS.API_KEYS_WITH_LICENSE),
+      )
+      .with({ isLocalhost: true, isApiKey: true, hasTokenFeature: false }, () =>
+        toWarning(PROBLEMS.API_KEYS_WITHOUT_LICENSE),
+      )
+      // We do not allow using API keys in production.
+      .with({ isApiKey: true, hasTokenFeature: true }, () =>
+        toError(PROBLEMS.API_KEYS_WITH_LICENSE),
+      )
+      .with({ isApiKey: true, hasTokenFeature: false }, () =>
+        toError(PROBLEMS.API_KEYS_WITHOUT_LICENSE),
+      )
+      .otherwise(() => null)
+  );
 }
 
 const toError = (message: string): SdkLicenseProblem => ({
