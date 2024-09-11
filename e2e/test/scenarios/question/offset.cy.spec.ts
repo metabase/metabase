@@ -554,11 +554,10 @@ describe("scenarios > question > offset", () => {
       cy.findAllByTestId("notebook-cell-item").findByText(name).click();
       cy.findByTestId("expression-editor-textfield").should("contain", formula);
 
-      // TODO: remove this block or find a proper way to check console errors
       cy.on("uncaught:exception", error => {
-        expect(error.message.includes("Error normalizing")).to.be.true;
-        // verifies that this line is not called and whole the block can be removed
-        expect(1).to.equal(2);
+        // this check is intended to catch possible normalization errors if BE or FE code changes
+        // does not run by default
+        expect(error.message.includes("Error normalizing")).to.be.false;
       });
     });
 
@@ -1029,8 +1028,7 @@ describe("scenarios > question > offset", () => {
           ["expression", customColumnName],
           ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
         ],
-        // TODO: find a better way to convert segmentId to number
-        filter: ["segment", segmentId as unknown as number],
+        filter: ["segment", Number(segmentId)],
         expressions: {
           [customColumnName]: [
             "field",
