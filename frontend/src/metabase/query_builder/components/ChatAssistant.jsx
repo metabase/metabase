@@ -157,6 +157,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     case "result":
                         await handleResultMessage(data);
                         break;
+                    case "info":
+                        await handleInfoMessage(data);
+                        break;
                     default:
                         handleDefaultMessage(data);
                         break;
@@ -582,6 +585,20 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         setIsLoading(false);
         removeLoadingMessage();
     };
+    
+    const handleInfoMessage = data => {
+        if(data.functions.type === "data") {
+            addServerMessage(
+                data.functions.payload.message || "Received a message from the server.",
+                "text",
+            );
+        } else if(data.functions.type === "error") {
+            addServerMessage(
+                data.functions.payload.message || "Received a message from the server.",
+                "text",
+            );
+        }
+    }
 
     const redirect = async () => {
         dispatch(push(`/question#${cardHash}`));
