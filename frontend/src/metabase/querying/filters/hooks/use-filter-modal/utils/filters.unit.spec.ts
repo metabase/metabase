@@ -4,6 +4,8 @@ import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import { getGroupItems, hasFilters, removeFilters } from "./filters";
 
+const STAGE_COUNT = 4;
+
 function createFilteredQuery(query: Lib.Query) {
   const joinTable = Lib.tableOrCardMetadata(query, PRODUCTS_ID);
   const queryWithJoin = Lib.join(
@@ -38,7 +40,7 @@ function createFilteredQuery(query: Lib.Query) {
 }
 
 function createMultiStageFilteredQuery() {
-  const stages = Array(4).fill(0);
+  const stages = Array(STAGE_COUNT).fill(0);
   return stages.reduce(
     query => Lib.appendStage(createFilteredQuery(query)),
     createQuery(),
@@ -70,7 +72,7 @@ describe("hasFilters", () => {
   });
 
   it("should be true if there is a filter on a deeply nested stage", () => {
-    const stages = Array(4).fill(0);
+    const stages = Array(STAGE_COUNT).fill(0);
     const query = stages.reduce(
       Lib.appendStage,
       createFilteredQuery(createQuery()),
@@ -79,7 +81,7 @@ describe("hasFilters", () => {
   });
 
   it("should be false if there are no filters on any stage", () => {
-    const stages = Array(4).fill(0);
+    const stages = Array(STAGE_COUNT).fill(0);
     const query = stages.reduce(Lib.appendStage, createQuery());
     expect(hasFilters(query)).toBe(false);
   });
