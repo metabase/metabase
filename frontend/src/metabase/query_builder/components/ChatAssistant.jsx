@@ -660,7 +660,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             ws.send(
                 JSON.stringify({
                     type: "configure",
-                    configData: [3, companyName],
+                    configData: [dbInputValue, companyName],
                     appType: chatType,
                 }),
             );
