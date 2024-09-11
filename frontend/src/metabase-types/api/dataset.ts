@@ -1,4 +1,7 @@
-import type { LocalFieldReference } from "metabase-types/api";
+import type {
+  Strategy as CacheStrategy,
+  LocalFieldReference,
+} from "metabase-types/api";
 
 import type { Card } from "./card";
 import type { DatabaseId } from "./database";
@@ -66,6 +69,12 @@ export interface DatasetData {
 
 export type JsonQuery = DatasetQuery & {
   parameters?: unknown[];
+  "cache-strategy"?: CacheStrategy & {
+    /** An ISO 8601 date */
+    "invalidated-at"?: string;
+    /** In milliseconds */
+    "avg-execution-ms"?: number;
+  };
 };
 
 export interface Dataset {
@@ -81,6 +90,12 @@ export interface Dataset {
   };
   context?: string;
   status?: string;
+  /** In milliseconds */
+  average_execution_time?: number;
+  /** A date in ISO 8601 format */
+  cached?: string;
+  /** A date in ISO 8601 format */
+  started_at?: string;
 }
 
 export interface EmbedDatasetData {

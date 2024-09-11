@@ -21,7 +21,7 @@ import { isJWT } from "metabase/lib/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
-import { mergeSettings } from "metabase/visualizations/lib/settings";
+import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
@@ -132,13 +132,11 @@ function DashCardInner({
   });
 
   const mainCard: Card | VirtualCard = useMemo(
-    () => ({
-      ...dashcard.card,
-      visualization_settings: mergeSettings(
-        dashcard?.card?.visualization_settings,
+    () =>
+      extendCardWithDashcardSettings(
+        dashcard.card,
         dashcard.visualization_settings,
       ),
-    }),
     [dashcard],
   );
 

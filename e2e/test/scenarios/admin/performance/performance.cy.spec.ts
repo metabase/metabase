@@ -156,7 +156,7 @@ describeEE("EE", () => {
     saveCacheStrategyForm({ strategyType: "duration", model: "database" });
 
     cy.log("Now there's a 'Clear cache' button. Click it");
-    cy.button(/Clear cache/).click();
+    cy.button(/Clear cache for this database/).click();
 
     cy.log('Confirm via the "Clear cache" dialog');
     cy.findByRole("dialog")

@@ -14,14 +14,13 @@ import { computeSmartScalarSettings } from "./settings";
 
 export function SmartScalar({
   rawSeries,
-  dashcardSettings,
   renderingContext,
 }: StaticVisualizationProps) {
   const { fontFamily, formatValue, getColor } = renderingContext;
   const [{ card, data }] = rawSeries;
   const { insights } = data;
 
-  const settings = computeSmartScalarSettings(rawSeries, dashcardSettings);
+  const settings = computeSmartScalarSettings(rawSeries);
 
   const { trend, error } = computeTrend(rawSeries, insights, settings, {
     formatValue,

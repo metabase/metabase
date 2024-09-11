@@ -14,6 +14,7 @@
    [metabase.server.middleware.exceptions :as mw.exceptions]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.adapter.jetty :as jetty]
    [ring.middleware.params :refer [wrap-params]])
@@ -22,7 +23,19 @@
 
 (set! *warn-on-reflection* true)
 
-(def TestAddress
+(mr/def ::card-type
+  [:enum :question :model :metric])
+
+(deftest ^:parallel dox-for-schema-test
+  (testing "We should resolve schemas in the Malli registry when generating documentation (#46799)\n"
+    (are [schema] (= "nullable enum of :question, :model, :metric"
+                     (#'internal/dox-for-schema schema nil))
+      [:maybe [:enum :question :model :metric]]
+      [:maybe ::card-type]
+      [:maybe [:schema ::card-type]]
+      [:maybe [:schema [:schema ::card-type]]])))
+
+(def ^:private TestAddress
   [:map
    {:title "Address"}
    [:id :string]
@@ -34,7 +47,7 @@
      [:zip :int]
      [:lonlat [:tuple :double :double]]]]])
 
-(def ClosedTestAddress
+(def ^:private ClosedTestAddress
   (mut/closed-schema TestAddress))
 
 (api/defendpoint POST "/post/any" [:as {body :body :as _request}]
@@ -123,30 +136,40 @@
               (handler req)
               (catch Exception e (mw.exceptions/api-exception-response e)))))
 
-(deftest defendpoint-query-params-test
+(defn- do-with-jetty-server [f]
   (let [^Server server (jetty/run-jetty (json-mw
                                          (exception-mw
                                           (wrap-params #'routes))) {:port 0 :join? false})
         port (.. server getURI getPort)
-        get! (fn [route]
-               (http/get (str "http://localhost:" port route)
-                         {:throw-exceptions false
-                          :accept           :json
-                          :as               :json
-                          :coerce           :always}))]
-    (is (= "{:bool-key true, :string-key \"abc\", :enum-key :a, :kw-key :abc}"
-           (:body (get! "/with-query-params/?bool-key=true&string-key=abc&enum-key=a&kw-key=abc"))))))
+        get (fn [route]
+              (http/get (str "http://localhost:" port route)
+                        {:throw-exceptions false
+                         :accept           :json
+                         :as               :json
+                         :coerce           :always}))
+        post (fn [route body]
+               (http/post (str "http://localhost:" port route)
+                          {:throw-exceptions false
+                           :accept           :json
+                           :as               :json
+                           :coerce           :always
+                           :body             (json/generate-string body)}))]
+    (try
+      (testing (format "With temp Jetty server on port %d" port)
+        (f {:get get, :post! post}))
+      (finally
+        (.stop server)))))
 
-(deftest defendpoint-test
-  (let [^Server server (jetty/run-jetty (json-mw (exception-mw #'routes)) {:port 0 :join? false})
-        port   (.. server getURI getPort)
-        post!  (fn [route body]
-                 (http/post (str "http://localhost:" port route)
-                            {:throw-exceptions false
-                             :accept           :json
-                             :as               :json
-                             :coerce           :always
-                             :body             (json/generate-string body)}))]
+(defmacro ^:private with-jetty-server [bindings & body]
+  `(do-with-jetty-server (fn ~bindings ~@body)))
+
+(deftest defendpoint-query-params-test
+  (with-jetty-server [{:keys [get]}]
+    (is (= "{:bool-key true, :string-key \"abc\", :enum-key :a, :kw-key :abc}"
+           (:body (get "/with-query-params/?bool-key=true&string-key=abc&enum-key=a&kw-key=abc"))))))
+
+(deftest defendpoint-validation-test
+  (with-jetty-server [{:keys [post!]}]
     (testing "validation"
       (is (= {:a 1 :b 2} (:body (post! "/post/any" {:a 1 :b 2}))))
 
@@ -206,20 +229,25 @@
                {:address ["missing required key, received: nil"],
                 :a ["disallowed key, received: 1"],
                 :b ["disallowed key, received: 2"]}}}
-             (:body (post! "/post/closed-test-address" {:id "1" :tags [] :a 1 :b 2}))))
+             (:body (post! "/post/closed-test-address" {:id "1" :tags [] :a 1 :b 2})))))))
 
+(deftest defendpoint-validation-localiazed-errors-test
+  (with-jetty-server [{:keys [post!]}]
+    (testing "validation"
       (testing "malli schema message are localized"
-        (mt/with-mock-i18n-bundles  {"es" {:messages
-                                           {"value must be a non-blank string."
-                                            "el valor debe ser una cadena que no esté en blanco."}}}
+        (mt/with-mock-i18n-bundles {"es" {:messages
+                                          {"value must be a non-blank string."
+                                           "el valor debe ser una cadena que no esté en blanco."}}}
           (mt/with-temporary-setting-values [site-locale "es"]
             (is (= {:errors {:address "el valor debe ser una cadena que no esté en blanco."},
-                                                                                            ;; TODO remove .'s from ms schemas
-                                                                                            ;; TODO translate received (?)
+                    ;; TODO remove .'s from ms schemas
+                    ;; TODO translate received (?)
                     :specific-errors
                     {:address ["should be a string, received: {:address \"\"}" "non-blank string, received: {:address \"\"}"]}}
-                   (:body (post! "/test-localized-error" {:address ""}))))))))
+                   (:body (post! "/test-localized-error" {:address ""}))))))))))
 
+(deftest defendpoint-auto-coercion-test
+  (with-jetty-server [{:keys [post!]}]
     (testing "auto-coercion"
 
       (is (= 16 (:body (post! "/auto-coerce-pos-square/4" {}))))
@@ -271,8 +299,10 @@
                                        :rchipelago ["should be spelled :archipelago, received: \"my archipelago\""]}}}
              (:body (post! "/closed-map-spellcheck" {:ser-state "my state"
                                                      :o-box "my po-box"
-                                                     :rchipelago "my archipelago"})))))
+                                                     :rchipelago "my archipelago"})))))))
 
+(deftest defendpoint-arbitrary-routes-test
+  (with-jetty-server [{:keys [post!]}]
     (testing "routes need to not be arbitrarily chosen"
       (is (= "hit route for a." (:body (post! "/accept-thing/a123" {}))))
       (is (= "hit route for b." (:body (post! "/accept-thing/b123" {}))))
@@ -281,7 +311,7 @@
       (is (= "hit route for e." (:body (post! "/accept-thing/e123" {}))))
       (is (= nil (:body (post! "/accept-thing/f123" {})))))))
 
-(deftest route-fn-name-test
+(deftest ^:parallel route-fn-name-test
   (are [method route expected] (= expected
                                   (internal/route-fn-name method route))
     'GET "/"                    'GET_
@@ -289,7 +319,7 @@
     ;; check that internal/route-fn-name can handle routes with regex conditions
     'GET ["/:id" :id #"[0-9]+"] 'GET_:id))
 
-(deftest arg-type-test
+(deftest ^:parallel arg-type-test
   (are [param expected] (= expected
                            (internal/arg-type param))
     :fish    nil
@@ -307,7 +337,7 @@
                                                      internal/*auto-parse-types*)]
      ~@body))
 
-(deftest route-param-regex-test
+(deftest ^:parallel route-param-regex-test
   (no-route-regexes
     (are [param expected] (= expected
                              (internal/route-param-regex param))
@@ -315,7 +345,7 @@
       :id      [:id "#[0-9]+"]
       :card-id [:card-id "#[0-9]+"])))
 
-(deftest route-arg-keywords-test
+(deftest ^:parallel route-arg-keywords-test
   (no-route-regexes
     (are [route expected] (= expected
                              (internal/route-arg-keywords route))
@@ -325,7 +355,7 @@
       "/:id/etc/:org" [:id :org]
       "/:card-id"     [:card-id])))
 
-(deftest add-route-param-schema-test
+(deftest ^:parallel add-route-param-schema-test
   (are [route expected] (= expected
                            (let [result (internal/add-route-param-schema
                                          {'id ms/PositiveInt
@@ -352,7 +382,7 @@
     "/:id/:card-id"                        ["/:id/:card-id" :id "#[0-9]+" :card-id "#[0-9]+"]
     "/:unlisted/:card-id"                  ["/:unlisted/:card-id" :card-id "#[0-9]+"]))
 
-(deftest let-form-for-arg-test
+(deftest ^:parallel let-form-for-arg-test
   (are [arg expected] (= expected
                          (internal/let-form-for-arg arg))
     'id           '[id (clojure.core/when id (metabase.api.common.internal/parse-int id))]
@@ -362,7 +392,7 @@
     :as           nil
     '{body :body} nil))
 
-(deftest auto-parse-test
+(deftest ^:parallel auto-parse-test
   (are [args expected] (= expected
                           (macroexpand-1 `(internal/auto-parse ~args '~'body)))
     ;; when auto-parse gets an args form where arg is present in *autoparse-types*
@@ -391,7 +421,7 @@
     '[id :as {body :body}]
     '(clojure.core/let [id (clojure.core/when id (metabase.api.common.internal/parse-int id))] 'body)))
 
-(deftest enterprise-endpoint-name-test
+(deftest ^:parallel enterprise-endpoint-name-test
   (when config/ee-available?
     (testing "Make sure the route name for enterprise API endpoints is somewhat correct"
       (require 'metabase-enterprise.advanced-permissions.api.application)
