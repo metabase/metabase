@@ -142,7 +142,7 @@ describe("scenarios > metrics > editing", () => {
       popover().findByText("Edit metric definition").click();
       addBreakout({ tableName: "Product", columnName: "Created At" });
       updateMetric();
-      verifyLineAreaBarChart({ xAxis: "Created At", yAxis: "Count" });
+      verifyLineAreaBarChart({ xAxis: "Product → Created At", yAxis: "Count" });
     });
 
     it("should pin new metrics automatically", () => {

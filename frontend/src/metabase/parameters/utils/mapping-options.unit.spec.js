@@ -95,7 +95,7 @@ describe("parameters/utils/mapping-options", () => {
             icon: "calendar",
             isForeign: false,
             name: "~*~Created At~*~",
-            sectionName: "Order",
+            sectionName: "Orders",
             target: [
               "dimension",
               ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
@@ -150,7 +150,7 @@ describe("parameters/utils/mapping-options", () => {
         );
         expect(options).toEqual([
           {
-            sectionName: "Review",
+            sectionName: "Reviews",
             icon: "calendar",
             name: "Created At",
             target: [
@@ -208,7 +208,7 @@ describe("parameters/utils/mapping-options", () => {
         );
         expect(options).toEqual([
           {
-            sectionName: "Order",
+            sectionName: "Orders",
             name: "Created At",
             icon: "calendar",
             target: [
@@ -219,7 +219,7 @@ describe("parameters/utils/mapping-options", () => {
             isForeign: false,
           },
           {
-            sectionName: "Product",
+            sectionName: "Products",
             name: "Created At",
             icon: "calendar",
             target: [
@@ -285,7 +285,7 @@ describe("parameters/utils/mapping-options", () => {
         );
         expect(options).toEqual([
           {
-            sectionName: "Product",
+            sectionName: "Products",
             name: "Created At",
             icon: "calendar",
             target: [

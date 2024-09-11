@@ -17,7 +17,7 @@ export type NotebookProps = {
   hasVisualizeButton?: boolean;
   updateQuestion: (question: Question) => Promise<void>;
   runQuestionQuery: () => Promise<void>;
-  setQueryBuilderMode: (mode: string) => void;
+  setQueryBuilderMode?: (mode: string) => void;
   readOnly?: boolean;
 };
 
@@ -56,7 +56,7 @@ export const Notebook = ({
       cleanupQuestion();
     }
     // switch mode before running otherwise URL update may cause it to switch back to notebook mode
-    await setQueryBuilderMode("view");
+    await setQueryBuilderMode?.("view");
     if (isResultDirty) {
       await runQuestionQuery();
     }

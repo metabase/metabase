@@ -309,7 +309,7 @@ describe("Notebook Editor > Join Step", () => {
 
     const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
 
-    expect(within(lhsColumnPicker).getByText("Order")).toBeInTheDocument();
+    expect(within(lhsColumnPicker).getByText("Orders")).toBeInTheDocument();
     expect(within(lhsColumnPicker).getByText("Product ID")).toBeInTheDocument();
     expect(
       within(lhsColumnPicker).queryByText(/Review/i),
