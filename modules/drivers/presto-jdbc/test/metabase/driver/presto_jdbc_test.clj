@@ -1,4 +1,4 @@
-(ns ^:mb/test-drivers metabase.driver.presto-jdbc-test
+(ns ^:mb/driver-tests metabase.driver.presto-jdbc-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

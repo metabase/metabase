@@ -1,4 +1,4 @@
-(ns ^:mb/test-drivers metabase.driver.mongo.execute-test
+(ns ^:mb/driver-tests metabase.driver.mongo.execute-test
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]

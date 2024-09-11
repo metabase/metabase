@@ -1,4 +1,4 @@
-(ns ^:mb/test-drivers metabase.driver.bigquery-cloud-sdk.query-processor-test.reconciliation-test-util
+(ns ^:mb/driver-tests metabase.driver.bigquery-cloud-sdk.query-processor-test.reconciliation-test-util
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

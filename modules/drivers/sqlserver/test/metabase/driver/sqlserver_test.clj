@@ -1,4 +1,4 @@
-(ns ^:mb/test-drivers metabase.driver.sqlserver-test
+(ns ^:mb/driver-tests metabase.driver.sqlserver-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

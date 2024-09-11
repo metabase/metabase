@@ -1,4 +1,4 @@
-(ns ^:mb/test-drivers metabase.driver.mongo.query-processor-test
+(ns ^:mb/driver-tests metabase.driver.mongo.query-processor-test
   (:require
    [clojure.set :as set]
    [clojure.string :as str]

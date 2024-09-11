@@ -1,4 +1,4 @@
-(ns ^:mb/test-drivers metabase.driver.druid.sync-test
+(ns ^:mb/driver-tests metabase.driver.druid.sync-test
   (:require
    [clojure.test :refer :all]
    [malli.core :as mc]
