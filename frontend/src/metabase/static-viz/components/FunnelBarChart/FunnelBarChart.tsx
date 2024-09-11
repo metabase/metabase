@@ -6,7 +6,7 @@ import { funnelToBarTransform } from "metabase/visualizations/visualizations/Fun
 export const FunnelBarChart = (props: StaticChartProps) => {
   const barSeries = funnelToBarTransform(
     props.rawSeries,
-    computeFunnelBarChartSettings(props.rawSeries, props.dashcardSettings),
+    computeFunnelBarChartSettings(props.rawSeries),
     props.renderingContext,
   );
 
