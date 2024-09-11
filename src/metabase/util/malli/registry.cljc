@@ -74,6 +74,8 @@
   [type]
   (malli.registry/schema registry type))
 
+;;; TODO -- we should change `:doc/message` to `:description` so it's inline
+;;; with [[metabase.util.malli.describe/describe]] and [[malli.experimental.describe/describe]]
 (defn -with-doc
   "Add a `:doc/message` option to a `schema`. Tries to merge it in existing vector schemas to avoid unnecessary
   indirection."
@@ -100,7 +102,40 @@
       `(metabase.util.malli.registry/def ~type
          (-with-doc ~schema ~docstring)))))
 
-(defn resolve-schema
-  "For REPL/test usage: get the definition of a registered schema from the registry."
+(defn- deref-all-preserving-properties
+  "Like [[mc/deref-all]] but preserves properties attached to a `:ref` by wrapping the result in `:schema`."
   [schema]
-  (mc/deref-all (mc/schema schema)))
+  (letfn [(with-properties [schema properties]
+            (-> schema
+                (mc/-set-properties (merge (mc/properties schema) properties))))
+          (deref* [schema]
+            (let [dereffed   (-> schema mc/deref deref-all-preserving-properties)
+                  properties (mc/properties schema)]
+              (cond-> dereffed
+                (seq properties) (with-properties properties))))]
+    (cond-> schema
+      (mc/-ref-schema? schema) deref*)))
+
+(defn resolve-schema
+  "For REPL/test/documentation generation usage: get the definition of a registered schema from the registry.
+  Recursively resolves the top-level schema (e.g. a `:ref` to another `:ref`), but does not recursively resolve
+  children of the schema e.g. the value schemas for a `:map`.
+
+  I was going to use [[mc/deref-recursive]] here but it tosses out properties attached to `:ref`s or `:schemas` which
+  are sorta important when they contain stuff like `:description` -- so this version uses the
+  custom [[deref-all-preserving-properties]] function above which merges them in. -- Cam"
+  [schema]
+  (let [schema (-> schema mc/schema deref-all-preserving-properties)]
+    (mc/walk schema
+             (fn [schema _path children _options]
+               (cond (= (mc/type schema) :ref)
+                     schema
+
+                     (mc/-ref-schema? schema)
+                     (deref-all-preserving-properties (mc/-set-children schema children))
+
+                     :else
+                     (mc/-set-children schema children)))
+             ;; not sure this option is really needed, but [[mc/deref-recursive]] sets it... turning it off doesn't
+             ;; seem to make any of our tests fail so maybe I'm not capturing something
+             {::mc/walk-schema-refs true})))
