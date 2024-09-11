@@ -978,7 +978,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
 
     getIframeBody().findByText("Rows 1-21 of first 2000").should("exist");
 
-    cy.get("#iframe").then($iframe => {
+    cy.get("#iframe").should($iframe => {
       const [iframe] = $iframe;
       expect(iframe.clientHeight).to.be.greaterThan(1000);
     });
