@@ -6,7 +6,7 @@ import {
   useImperativeHandle,
   useMemo,
 } from "react";
-import { useDeepCompareEffect } from "react-use";
+import { useDeepCompareEffect, useLatest } from "react-use";
 
 import { isValidCollectionId } from "metabase/collections/utils";
 import { useCollectionQuery } from "metabase/common/hooks";
@@ -198,15 +198,16 @@ export const CollectionPickerInner = (
     ],
   );
 
+  const onItemSelectRef = useLatest(onItemSelect); // use ref to prevent effect from running too often
+
   useEffect(
     function ensureFolderSelected() {
       if (!pathProp && defaultPath[0].selectedItem) {
-        onItemSelect(defaultPath[0].selectedItem);
+        onItemSelectRef.current(defaultPath[0].selectedItem);
       }
     },
-    [pathProp, defaultPath, onItemSelect],
+    [pathProp, defaultPath, onItemSelectRef],
   );
-
   if (error) {
     return <LoadingAndErrorWrapper error={error} />;
   }

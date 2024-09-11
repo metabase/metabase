@@ -6,7 +6,7 @@ import {
   useImperativeHandle,
   useMemo,
 } from "react";
-import { useDeepCompareEffect } from "react-use";
+import { useDeepCompareEffect, useLatest } from "react-use";
 
 import {
   skipToken,
@@ -203,13 +203,15 @@ const DashboardPickerInner = (
     [currentCollection, userPersonalCollectionId, onPathChange],
   );
 
+  const onItemSelectRef = useLatest(onItemSelect); // use ref to prevent effect from running too often
+
   useEffect(
     function ensureFolderSelected() {
       if (!pathProp && defaultPath[0].selectedItem) {
-        onItemSelect(defaultPath[0].selectedItem);
+        onItemSelectRef.current(defaultPath[0].selectedItem);
       }
     },
-    [pathProp, defaultPath, onItemSelect],
+    [pathProp, defaultPath, onItemSelectRef],
   );
 
   if (error) {

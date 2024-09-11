@@ -255,9 +255,13 @@ export function EntityPickerModal<
     (newSearchQuery: string) => {
       setSearchQuery(newSearchQuery);
 
-      // automatically switch to search tab when it becomes available
-      if (!searchQuery && newSearchQuery) {
+      // automatically switch to search tab
+      if (newSearchQuery) {
         setSelectedTabId(SEARCH_TAB_ID);
+
+        if (!searchQuery) {
+          setSearchScope(selectedFolder ? "folder" : "everywhere");
+        }
       }
 
       // restore previous tab when clearing search while on search tab
@@ -265,7 +269,7 @@ export function EntityPickerModal<
         setSelectedTabId(previousTabId ?? initialTabId);
       }
     },
-    [searchQuery, selectedTabId, previousTabId, initialTabId],
+    [selectedFolder, searchQuery, selectedTabId, previousTabId, initialTabId],
   );
 
   useEffect(() => {
