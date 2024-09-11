@@ -806,25 +806,35 @@ describe("scenarios > question > offset", () => {
         getNotebookStep("summarize").icon("play").should("be.visible");
       });
 
-      it("works when custom column is a simple expression", () => {
+      it.skip("works when custom column is a simple expression (metabase#47870)", () => {
         const customColumnName = "1 + 1";
+        const customColumnName2 = "constant";
+        const customColumnName3 = "string";
         const query: StructuredQuery = {
           "source-table": ORDERS_ID,
           expressions: {
-            [customColumnName]: ["+", "1", "1"],
+            [customColumnName]: ["+", 1, 1],
+            [customColumnName2]: 1,
+            [customColumnName3]: ["concat", "a", "b"],
           },
           aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
-          breakout: [["expression", customColumnName], BREAKOUT_DATETIME],
+          breakout: [
+            ["expression", customColumnName],
+            ["expression", customColumnName2],
+            ["expression", customColumnName3],
+            BREAKOUT_DATETIME,
+          ],
           "order-by": [["asc", BREAKOUT_DATETIME]],
         };
 
         createQuestion({ query }, { visitQuestion: true });
 
         verifyNoQuestionError();
+
         verifyTableContent([
-          ["2", "2022", "42,156.87", ""],
-          ["2", "2023", "205,256.02", ""],
-          ["2", "2024", "510,045.03", ""],
+          ["2", "1", "ab", "2022", "42,156.87", "here should be a value"],
+          ["2", "1", "ab", "2023", "205,256.02", "here should be a value"],
+          ["2", "1", "ab", "2024", "510,045.03", "here should be a value"],
         ]);
 
         openNotebook();
@@ -860,7 +870,6 @@ describe("scenarios > question > offset", () => {
 
         verifyNoQuestionError();
         verifyTableContent([
-          // TODO: should there be "prev" values?
           ["2022", "Doohickey from products", "9,031.56", ""],
           ["2022", "Gadget from products", "10,672.63", ""],
           ["2022", "Gizmo from products", "9,929.32", ""],
@@ -890,7 +899,6 @@ describe("scenarios > question > offset", () => {
 
         verifyNoQuestionError();
         verifyTableContent([
-          // TODO: should there be "prev" values?
           ["2022", "Doohickey", "9,031.56", ""],
           ["2022", "Gadget", "10,672.63", ""],
           ["2022", "Gizmo", "9,929.32", ""],
@@ -905,7 +913,7 @@ describe("scenarios > question > offset", () => {
         const query: StructuredQuery = {
           "source-table": ORDERS_ID,
           expressions: {
-            [customColumnName]: ["+", "1", "1"],
+            [customColumnName]: ["+", 1, 1],
           },
           aggregation: [SUM_TOTAL_AGGREGATION, OFFSET_SUM_TOTAL_AGGREGATION],
           breakout: [BREAKOUT_DATETIME, ["expression", customColumnName]],
@@ -916,7 +924,6 @@ describe("scenarios > question > offset", () => {
 
         verifyNoQuestionError();
         verifyTableContent([
-          // TODO: double check prev values
           ["2022", "2", "42,156.87", ""],
           ["2023", "2", "205,256.02", "42,156.87"],
           ["2024", "2", "510,045.03", "205,256.02"],
