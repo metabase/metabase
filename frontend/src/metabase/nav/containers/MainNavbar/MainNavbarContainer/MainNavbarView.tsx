@@ -74,14 +74,11 @@ type Props = {
   }) => Promise<any>;
 };
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
-const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 const BROWSE_DATA_URL = "/browse/databases";
-const BROWSE_MODELS_URL = "/browse/models";
 const BROWSE_CHAT = "/browse/chat";
 const BROWSE_SEMANTIC_LAYER = "/browse/semantic-layer";
 const BROWSE_LIBRARY = "/collection/2-library";
 const BROWSE_INSIGHTS = "/browse/insights";
-const BROWSE_VALIDATION = "/browse/validation";
 
 function MainNavbarView({
   isAdmin,
@@ -194,15 +191,6 @@ function MainNavbarView({
               aria-label={t`Library`}
             >
               {t`Library`}
-            </PaddedSidebarLink>
-            <PaddedSidebarLink
-              icon="check"
-              url={BROWSE_VALIDATION}
-              isSelected={nonEntityItem?.url?.startsWith(BROWSE_VALIDATION)}
-              onClick={onItemSelect}
-              aria-label={t`Validation`}
-            >
-              {t`Validation`}
             </PaddedSidebarLink>
             <PaddedSidebarLink
               icon="lightbulb"
