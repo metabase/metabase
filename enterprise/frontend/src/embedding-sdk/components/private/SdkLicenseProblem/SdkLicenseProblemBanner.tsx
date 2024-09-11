@@ -88,6 +88,7 @@ export const SdkLicenseProblemBanner = ({ problem }: Props) => {
                 size={16}
                 onClick={() => setExpanded(false)}
                 cursor="pointer"
+                fill={unthemedTextDark}
               />
             </Flex>
 
