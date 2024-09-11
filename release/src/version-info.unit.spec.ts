@@ -192,6 +192,77 @@ describe("version-info", () => {
         highlights: ["Old Issue 1", "Old Issue 2"],
       });
     });
+
+    it("should update rollout % on new latest version", () => {
+      const updatedJson = updateVersionInfoLatestJson({
+        newLatestVersion: "v0.2.5",
+        existingVersionInfo: oldJson,
+        rollout: 51,
+      });
+
+      expect(updatedJson.latest.rollout).toEqual(51);
+    });
+
+    it("should update rollout % on old latest version", () => {
+      const updatedJson = updateVersionInfoLatestJson({
+        newLatestVersion: "v0.2.4",
+        existingVersionInfo: oldJson,
+        rollout: 51,
+      });
+
+      expect(updatedJson.latest).toEqual({
+        version: "v0.2.4",
+        released: "2022-01-01",
+        patch: true,
+        highlights: ["Old Issue 1", "Old Issue 2"],
+        rollout: 51,
+      });
+
+      const updatedJson2 = updateVersionInfoLatestJson({
+        newLatestVersion: "v0.2.4",
+        existingVersionInfo: updatedJson,
+        rollout: 59,
+      });
+
+      expect(updatedJson2.latest).toEqual({
+        version: "v0.2.4",
+        released: "2022-01-01",
+        patch: true,
+        highlights: ["Old Issue 1", "Old Issue 2"],
+        rollout: 59,
+      });
+    });
+
+    it("should remove rollout % on old latest version", () => {
+
+      const updatedJson = updateVersionInfoLatestJson({
+        newLatestVersion: "v0.2.4",
+        existingVersionInfo: oldJson,
+        rollout: 51,
+      });
+
+      const updatedJson2 = updateVersionInfoLatestJson({
+        newLatestVersion: "v0.2.5",
+        existingVersionInfo: updatedJson,
+        rollout: 100,
+      });
+
+      expect(updatedJson2.latest).toEqual({
+        version: "v0.2.5",
+        released: "2023-01-01",
+        patch: true,
+        highlights: ["New Issue 31", "New Issue 41"],
+        rollout: 100,
+      });
+
+      expect(updatedJson2.older[0]).toEqual({
+        version: "v0.2.4",
+        released: "2022-01-01",
+        patch: true,
+        highlights: ["Old Issue 1", "Old Issue 2"],
+        // no rollout
+      });
+    });
   });
 
   describe("getVersionInfoUrl", () => {
