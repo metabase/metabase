@@ -66,8 +66,14 @@ export const updateVersionInfoLatestJson = ({
   rollout: number;
 }) => {
   if (existingVersionInfo.latest.version === newLatestVersion) {
-    console.warn(`Version ${newLatestVersion} already latest`);
-    return existingVersionInfo;
+    console.warn(`Version ${newLatestVersion} already latest, updating rollout % only`);
+    return {
+      ...existingVersionInfo,
+      latest: {
+        ...existingVersionInfo.latest,
+        rollout,
+      },
+    };
   }
 
   const newLatestVersionInfo = existingVersionInfo.older
