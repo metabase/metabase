@@ -18,6 +18,7 @@ const PROBLEMS = {
   API_KEYS_WITH_LICENSE: t`The embedding SDK is using API keys. This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO.`,
   SSO_WITHOUT_LICENSE: t`Usage without a valid license for this feature is only allowed for evaluation purposes, using API keys and only on localhost. Attempting to use this in other ways is in breach of our usage policy.`,
   CONFLICTING_AUTH_METHODS: t`You cannot use both JWT and API key authentication at the same time.`,
+  NO_AUTH_METHOD_PROVIDED: t`You must provide either a JWT URI or an API key for authentication.`,
   EMBEDDING_SDK_NOT_ENABLED: t`The embedding SDK is not enabled for this instance. Please enable it in settings to start embedding.`,
 } as const;
 
@@ -43,6 +44,9 @@ export function getSdkLicenseProblem(
 
   return (
     match({ hasTokenFeature, isSSO, isApiKey, isLocalhost, isEnabled })
+      .with({ isSSO: false, isApiKey: false }, () =>
+        toError(PROBLEMS.NO_AUTH_METHOD_PROVIDED),
+      )
       .with({ isSSO: true, isApiKey: true }, () =>
         toError(PROBLEMS.CONFLICTING_AUTH_METHODS),
       )

@@ -1,7 +1,6 @@
 import { P, match } from "ts-pattern";
 
 import type { EmbeddingSessionToken, SDKConfig } from "embedding-sdk";
-import { getErrorMessage } from "embedding-sdk/lib/user-warnings";
 import {
   getOrRefreshSession,
   setLoginStatus,
@@ -48,5 +47,4 @@ export const getAuthConfiguration = (config: SDKConfig, dispatch: Dispatch) =>
     )
     .with([{ apiKey: P.select(P.nonNullable) }, "localhost"], apiKey => {
       setupLocalApiKey(dispatch, apiKey);
-    })
-    .otherwise(() => getErrorMessage("NO_AUTH_PROVIDED"));
+    });

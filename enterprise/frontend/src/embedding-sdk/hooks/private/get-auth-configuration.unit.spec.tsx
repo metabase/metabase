@@ -1,6 +1,5 @@
 import type { SDKConfig } from "embedding-sdk";
 import { getAuthConfiguration } from "embedding-sdk/hooks";
-import { getErrorMessage } from "embedding-sdk/lib/user-warnings";
 import {
   createMockApiKeyConfig,
   createMockJwtConfig,
@@ -9,7 +8,6 @@ import api from "metabase/lib/api";
 
 const JWT_CONFIG = createMockJwtConfig();
 const API_KEY_CONFIG = createMockApiKeyConfig();
-const NO_CONFIG = {};
 
 const setup = ({ config }: { config: SDKConfig }) => {
   const dispatch = jest.fn();
@@ -63,13 +61,6 @@ describe("getAuthConfiguration", () => {
       expect(api.apiKey).toBe(API_KEY_CONFIG.apiKey);
       expect(console.warn).toHaveBeenCalled();
       expect(authConfig).toBe(undefined);
-    });
-  });
-
-  describe("No configuration", () => {
-    it("should return an error string if no config is provided", () => {
-      const authConfig = setup({ config: NO_CONFIG as SDKConfig });
-      expect(authConfig).toBe(getErrorMessage("NO_AUTH_PROVIDED"));
     });
   });
 });

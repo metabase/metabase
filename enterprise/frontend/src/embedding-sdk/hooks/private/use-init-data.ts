@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getAuthConfiguration } from "embedding-sdk/hooks/private/get-auth-configuration";
-import { getErrorMessage } from "embedding-sdk/lib/user-warnings";
+import { COULD_NOT_AUTHENTICATE_MESSAGE } from "embedding-sdk/lib/user-warnings";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   setFetchRefreshTokenFn,
@@ -57,16 +57,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
 
     api.basename = config.metabaseInstanceUrl;
 
-    const authErrorMessage = getAuthConfiguration(config, dispatch);
-
-    if (authErrorMessage) {
-      dispatch(
-        setLoginStatus({
-          status: "error",
-          error: new Error(authErrorMessage),
-        }),
-      );
-    }
+    getAuthConfiguration(config, dispatch);
   }, [config, dispatch, loginStatus.status]);
 
   useEffect(() => {
@@ -87,7 +78,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
             dispatch(
               setLoginStatus({
                 status: "error",
-                error: new Error(getErrorMessage("COULD_NOT_AUTHENTICATE")),
+                error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
               }),
             );
             return;
@@ -98,7 +89,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
           dispatch(
             setLoginStatus({
               status: "error",
-              error: new Error(getErrorMessage("COULD_NOT_AUTHENTICATE")),
+              error: new Error(COULD_NOT_AUTHENTICATE_MESSAGE),
             }),
           );
         }
