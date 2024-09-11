@@ -200,6 +200,7 @@
                                         :aggregation  [[:aggregation-options
                                                         [:sum [:field 1 nil]]
                                                         {:display-name "Revenue"}]]}}))))
+
 (deftest ^:parallel effective-type-drop-test
   (testing ":effective_type values should be dropped in ->legacy-MBQL"
     (is (=? {:type  :query

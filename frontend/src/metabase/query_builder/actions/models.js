@@ -7,7 +7,7 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import { getOriginalCard, getQuestion } from "../selectors";
+import { getQuestion } from "../selectors";
 
 import { API_UPDATE_QUESTION, apiUpdateQuestion, updateQuestion } from "./core";
 import { runDirtyQuestionQuery, runQuestionQuery } from "./querying";
@@ -22,16 +22,6 @@ export const setDatasetEditorTab = datasetEditorTab => dispatch => {
 
 export const onCancelCreateNewModel = () => async dispatch => {
   await dispatch(push("/"));
-};
-
-export const CANCEL_DATASET_CHANGES = "metabase/qb/CANCEL_DATASET_CHANGES";
-export const onCancelDatasetChanges = () => (dispatch, getState) => {
-  const cardBeforeChanges = getOriginalCard(getState());
-  dispatch({
-    type: CANCEL_DATASET_CHANGES,
-    payload: { card: cardBeforeChanges },
-  });
-  dispatch(runDirtyQuestionQuery());
 };
 
 export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
