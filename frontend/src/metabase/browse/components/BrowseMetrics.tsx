@@ -5,10 +5,11 @@ import { skipToken } from "metabase/api";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import EmptyState from "metabase/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Stack, Text, Title } from "metabase/ui";
-import type { SearchRequest } from "metabase-types/api";
 
 import type { MetricResult } from "../types";
+import type { MetricFilterSettings } from "../utils";
 
 import {
   BrowseContainer,
@@ -17,6 +18,9 @@ import {
   BrowseSection,
 } from "./BrowseContainer.styled";
 import { MetricsTable } from "./MetricsTable";
+
+const { MetricFilterControls, useMetricFilterSettings } =
+  PLUGIN_CONTENT_VERIFICATION;
 
 function useHasVerifiedMetrics() {
   const result = useFetchMetrics({
@@ -35,22 +39,17 @@ function useHasVerifiedMetrics() {
   };
 }
 
-function useFilteredMetrics({ verified = false }: { verified?: boolean }) {
+function useFilteredMetrics(metricFilters: MetricFilterSettings) {
   const hasVerifiedMetrics = useHasVerifiedMetrics();
-
-  const request: Partial<SearchRequest> = {
-    filter_items_in_personal_collection: "exclude" as const,
-    model_ancestors: false,
-  };
-
-  if (hasVerifiedMetrics.result && verified) {
-    request.verified = true;
-  }
 
   const metricsResult = useFetchMetrics(
     hasVerifiedMetrics.isLoading || hasVerifiedMetrics.error
       ? skipToken
-      : request,
+      : {
+          filter_items_in_personal_collection: "exclude",
+          model_ancestors: false,
+          ...metricFilters,
+        },
   );
 
   const isLoading = hasVerifiedMetrics.isLoading || metricsResult.isLoading;
@@ -66,9 +65,10 @@ function useFilteredMetrics({ verified = false }: { verified?: boolean }) {
 }
 
 export function BrowseMetrics() {
-  const { isLoading, error, metrics } = useFilteredMetrics({
-    verified: false,
-  });
+  const [metricFilters, setMetricFilters] = useMetricFilterSettings();
+  const { isLoading, error, metrics, hasVerifiedMetrics } =
+    useFilteredMetrics(metricFilters);
+
   const isEmpty = !isLoading && !metrics?.length;
 
   return (
@@ -92,6 +92,12 @@ export function BrowseMetrics() {
                 {t`Metrics`}
               </Group>
             </Title>
+            {hasVerifiedMetrics && (
+              <MetricFilterControls
+                metricFilters={metricFilters}
+                setMetricFilters={setMetricFilters}
+              />
+            )}
           </Flex>
         </BrowseSection>
       </BrowseHeader>
