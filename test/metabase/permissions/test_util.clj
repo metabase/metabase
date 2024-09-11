@@ -48,8 +48,8 @@
                            [:in :group_id group-ids])
         original-perms (t2/select :model/DataPermissions {:where select-condition})]
     (try
-      (binding [data-perms/*use-perms-cache?* false]
-        (thunk))
+      ;; TODO -- should this disabled the cache [[data-perms/*use-perms-cache?*]] ??
+      (thunk)
       (finally
         (let [existing-db-ids    (t2/select-pks-set :model/Database)
               existing-table-ids (t2/select-pks-set :model/Table)
