@@ -166,19 +166,21 @@ export const getScopedSearchResults = <
     return searchResults;
   }
 
-  return searchResults.filter(result => {
-    if (folder.model === "database") {
-      return result.model === "table" && result.database_id === folder.id;
-    }
+  if (folder.model === "database") {
+    return searchResults.filter(
+      result => result.model === "table" && result.database_id === folder.id,
+    );
+  }
 
-    if (folder.model === "schema") {
-      return result.model === "table" && result.table_schema === folder.id;
-    }
+  if (folder.model === "schema") {
+    return searchResults.filter(
+      result => result.model === "table" && result.table_schema === folder.id,
+    );
+  }
 
-    if (folder.model === "collection") {
-      return result.collection?.id === folder.id;
-    }
+  if (folder.model === "collection") {
+    return searchResults.filter(result => result.collection?.id === folder.id);
+  }
 
-    return false;
-  });
+  return [];
 };
