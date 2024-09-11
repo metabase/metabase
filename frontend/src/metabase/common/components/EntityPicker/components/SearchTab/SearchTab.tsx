@@ -61,7 +61,7 @@ export const SearchTab = <
             {folderName && (
               <>
                 <Text mr={12} weight="bold">
-                  Search:
+                  {t`Search:`}
                 </Text>
                 <SegmentedControl
                   data={[
