@@ -105,7 +105,9 @@
        :id   targetId})))
 
 (mu/defn- get-cards :- [:maybe [:sequential [:map [:id ::lib.schema.id/card]]]]
-  [ids :- [:maybe [:sequential ::lib.schema.id/card]]]
+  [ids :- [:maybe [:or
+                   [:sequential ::lib.schema.id/card]
+                   [:set ::lib.schema.id/card]]]]
   (when (seq ids)
     (let [cards (into [] (filter mi/can-read?)
                       (t2/select :model/Card :id [:in ids]))]
