@@ -173,8 +173,8 @@ export function EntityPickerModal<
           <RecentsTab
             isLoading={isLoadingRecentItems}
             recentItems={filteredRecents}
-            onItemSelect={onItemSelect}
             selectedItem={selectedItem}
+            onItemSelect={onItemSelect}
           />
         ),
       });
@@ -192,8 +192,8 @@ export function EntityPickerModal<
         render: ({ onItemSelect }) => (
           <SearchTab
             searchResults={searchResults}
-            onItemSelect={onItemSelect}
             selectedItem={selectedItem}
+            onItemSelect={onItemSelect}
           />
         ),
       });
