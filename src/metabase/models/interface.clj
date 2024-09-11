@@ -252,7 +252,7 @@
    :out json-out-without-keywordization})
 
 (defn transform-validator
-  "Given a transform, returns a transform that call `assert-fn` on the value.
+  "Given a transform, returns a transform that call `assert-fn` on the "out" value.
 
   E.g: A keyword transfomer that throw an error if the value is not namespaced
     (transform-validator

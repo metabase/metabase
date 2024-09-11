@@ -11,7 +11,7 @@
 
 (deftest notification-type-test
   (mt/with-model-cleanup [:model/Notification]
-    (testing "success path"
+    (testing "success if :payload_type is supported"
       (let [noti-id (t2/insert-returning-pk! :model/Notification {:payload_type :notification/system-event
                                                                   :created_at   :%now
                                                                   :updated_at   :%now})]

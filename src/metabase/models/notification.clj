@@ -43,7 +43,7 @@
               :hook/timestamped?))))
 
 (defn notifications-for-event
-  "Find all notifications for a given event."
+  "Find all active notifications for a given event."
   [event-name]
   (t2/select :model/Notification
              {:select    [:n.*]
