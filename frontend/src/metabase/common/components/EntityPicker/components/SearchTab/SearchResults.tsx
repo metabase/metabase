@@ -8,17 +8,16 @@ import { Box, Flex, Stack } from "metabase/ui";
 import type { SearchResult, SearchResultId } from "metabase-types/api";
 
 import type { TypeWithModel } from "../../types";
-import { DelayedLoadingSpinner } from "../LoadingSpinner";
 import { ChunkyList, ResultItem } from "../ResultItem";
 
-export interface Props<
+interface Props<
   Id extends SearchResultId,
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 > {
-  searchResults: SearchResult[] | null;
-  onItemSelect: (item: Item) => void;
+  searchResults: SearchResult[];
   selectedItem: Item | null;
+  onItemSelect: (item: Item) => void;
 }
 
 export const SearchResults = <
@@ -27,13 +26,9 @@ export const SearchResults = <
   Item extends TypeWithModel<Id, Model>,
 >({
   searchResults,
-  onItemSelect,
   selectedItem,
+  onItemSelect,
 }: Props<Id, Model, Item>) => {
-  if (!searchResults) {
-    return <DelayedLoadingSpinner text={t`Loading…`} />;
-  }
-
   return (
     <Box h="100%" bg="bg-light">
       {searchResults.length > 0 ? (

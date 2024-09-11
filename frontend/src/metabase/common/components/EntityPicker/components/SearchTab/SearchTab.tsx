@@ -1,15 +1,21 @@
-import type { SearchResultId } from "metabase-types/api";
+import { t } from "ttag";
+
+import type { SearchResult, SearchResultId } from "metabase-types/api";
 
 import type { TypeWithModel } from "../../types";
+import { DelayedLoadingSpinner } from "../LoadingSpinner";
 
-import type { Props as SearchResultsProps } from "./SearchResults";
 import { SearchResults } from "./SearchResults";
 
 interface Props<
   Id extends SearchResultId,
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
-> extends SearchResultsProps<Id, Model, Item> {}
+> {
+  searchResults: SearchResult[] | null;
+  selectedItem: Item | null;
+  onItemSelect: (item: Item) => void;
+}
 
 export const SearchTab = <
   Id extends SearchResultId,
@@ -19,12 +25,18 @@ export const SearchTab = <
   searchResults,
   selectedItem,
   onItemSelect,
-}: Props<Id, Model, Item>) => (
-  <div>
-    <SearchResults
-      searchResults={searchResults}
-      selectedItem={selectedItem}
-      onItemSelect={onItemSelect}
-    />
-  </div>
-);
+}: Props<Id, Model, Item>) => {
+  if (!searchResults) {
+    return <DelayedLoadingSpinner text={t`Loading…`} />;
+  }
+
+  return (
+    <div>
+      <SearchResults
+        searchResults={searchResults}
+        selectedItem={selectedItem}
+        onItemSelect={onItemSelect}
+      />
+    </div>
+  );
+};
