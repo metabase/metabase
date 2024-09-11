@@ -27,6 +27,8 @@ import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors"
 import type {
   ActualModelFilters,
   AvailableModelFilters,
+  MetricFilterControlsProps,
+  MetricFilterSettings,
   ModelFilterControlsProps,
 } from "metabase/browse/utils";
 import { getIconBase } from "metabase/lib/icon";
@@ -517,6 +519,14 @@ export const PLUGIN_CONTENT_VERIFICATION = {
     [{}, _.noop] as [
       ActualModelFilters,
       Dispatch<SetStateAction<ActualModelFilters>>,
+    ],
+
+  MetricFilterControls: (() =>
+    null) as ComponentType<MetricFilterControlsProps>,
+  useMetricFilterSettings: () =>
+    [{}, _.noop] as [
+      MetricFilterSettings,
+      (settings: MetricFilterSettings) => void,
     ],
 };
 
