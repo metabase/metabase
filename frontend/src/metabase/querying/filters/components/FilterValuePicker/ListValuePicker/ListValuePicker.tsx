@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import {
   Checkbox,
-  Divider,
   Icon,
   MultiAutocomplete,
   Stack,
@@ -88,9 +87,9 @@ function CheckboxListPicker({
             label={isAll ? `Select none` : t`Select all`}
             checked={isAll}
             indeterminate={!isAll && !isNone}
+            fw="bold"
             onChange={handleToggleAll}
           />
-          <Divider />
           <Checkbox.Group value={selectedValues} onChange={onChange}>
             <Stack>
               {visibleOptions.map(option => (
