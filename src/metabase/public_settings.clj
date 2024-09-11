@@ -92,11 +92,11 @@
   :default {}
   :doc     false
   :getter  (fn []
-             (let [vi      (setting/get-value-of-type :json :version-info)
-                   remove? (should-remove-upgrade? (config/current-major-version) (-> vi :latest) (upgrade-threshold))]
-               (cond-> vi
-                 remove? (dissoc vi :latest))
+             (let [vi (setting/get-value-of-type :json :version-info)]
                (try
+                 (cond-> vi
+                   (should-remove-upgrade? (config/current-major-version) (-> vi :latest) (upgrade-threshold))
+                   (dissoc :latest))
                  (catch Exception e
                    (log/error e "Error processing version info")
                    vi)))))
