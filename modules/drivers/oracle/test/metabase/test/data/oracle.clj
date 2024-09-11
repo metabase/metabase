@@ -1,4 +1,4 @@
-(ns metabase.test.data.oracle
+(ns ^:mb/driver-tests metabase.test.data.oracle
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -9,6 +9,8 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.test :as mt]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -265,3 +267,38 @@
                                     #_types          (into-array String ["TABLE"]))]
          ;; if the ResultSet returns anything we know the table is already loaded.
          (.next rset))))))
+
+(def ^:dynamic *override-describe-database-to-filter-by-db-name?*
+  "Whether to override the production implementation for `describe-database` with a special one that only syncs
+  the tables qualified by the database name. This is `true` by default during tests to fake database isolation.
+  See (metabase#40310)"
+  true)
+
+(defonce ^:private ^{:arglists '([driver database])}
+  original-describe-database
+  (get-method driver/describe-database :oracle))
+
+;; For test databases, only sync the tables that are qualified by the db name
+(defmethod driver/describe-database :oracle
+  [driver database]
+  (if *override-describe-database-to-filter-by-db-name?*
+    (let [r                (original-describe-database driver database)
+          physical-db-name (data.impl/database-source-dataset-name database)]
+      (update r :tables (fn [tables]
+                          (into #{}
+                                (filter #(tx/qualified-by-db-name? physical-db-name (:name %)))
+                                tables))))
+    (original-describe-database driver database)))
+
+(deftest ^:parallel oracle-sanity-check-test
+  (testing "Make sure even tho tables from different datasets are all stuffed in one DB we still sync them separately"
+    (mt/test-driver :oracle
+      (mt/dataset airports
+        (is (= #{"airports_airport"
+                 "airports_continent"
+                 "airports_country"
+                 "airports_municipality"
+                 "airports_region"}
+               (into #{}
+                     (map :name)
+                     (:tables (driver/describe-database :oracle (mt/db))))))))))

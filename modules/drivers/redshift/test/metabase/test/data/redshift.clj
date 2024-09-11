@@ -223,10 +223,10 @@
   [driver database]
   (if *override-describe-database-to-filter-by-db-name?*
     (let [r                (original-describe-database driver database)
-          phyiscal-db-name (data.impl/database-source-dataset-name database)]
+          physical-db-name (data.impl/database-source-dataset-name database)]
       (update r :tables (fn [tables]
                           (into #{}
-                                (filter #(or (tx/qualified-by-db-name? phyiscal-db-name (:name %))
+                                (filter #(or (tx/qualified-by-db-name? physical-db-name (:name %))
                                              ;; the `extsales` table is used for testing external tables
                                              (= (:name %) "extsales")))
                                 tables))))
