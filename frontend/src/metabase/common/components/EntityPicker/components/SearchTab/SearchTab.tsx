@@ -35,10 +35,6 @@ export const SearchTab = <
   onItemSelect,
   onSearchScopeChange,
 }: Props<Id, Model, Item>) => {
-  if (isLoading) {
-    return <DelayedLoadingSpinner text={t`Loading…`} />;
-  }
-
   return (
     <Stack bg="bg-light" h="100%" spacing={0}>
       {folder && (
@@ -60,23 +56,29 @@ export const SearchTab = <
             />
           </Flex>
 
-          <div>
-            {ngettext(
-              msgid`${searchResults.length} result`,
-              `${searchResults.length} results`,
-              searchResults.length,
-            )}
-          </div>
+          {!isLoading && (
+            <div>
+              {ngettext(
+                msgid`${searchResults.length} result`,
+                `${searchResults.length} results`,
+                searchResults.length,
+              )}
+            </div>
+          )}
         </Flex>
       )}
 
       <Box style={{ flex: 1, overflow: "hidden" }}>
-        <SearchResults
-          folder={folder}
-          searchResults={searchResults}
-          selectedItem={selectedItem}
-          onItemSelect={onItemSelect}
-        />
+        {isLoading && <DelayedLoadingSpinner text={t`Loading…`} />}
+
+        {!isLoading && (
+          <SearchResults
+            folder={folder}
+            searchResults={searchResults}
+            selectedItem={selectedItem}
+            onItemSelect={onItemSelect}
+          />
+        )}
       </Box>
     </Stack>
   );
