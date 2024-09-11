@@ -29,6 +29,7 @@ export const BrowseChat = () => {
               chatType={"default"}
               oldCardId={oldCardId}
               insights={[]}
+              setSelectedThreadId={setSelectedThreadId}
             />
           </Stack>
           <Stack
