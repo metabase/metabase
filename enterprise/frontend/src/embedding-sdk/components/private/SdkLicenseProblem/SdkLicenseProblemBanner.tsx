@@ -6,6 +6,7 @@ import { SDK_SSO_DOCS_LINK } from "embedding-sdk/lib/license-problem";
 import type { SdkLicenseProblem } from "embedding-sdk/types/license-problem";
 import LogoIcon from "metabase/components/LogoIcon";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { originalColors } from "metabase/lib/colors";
 import { Button, Card, Flex, Icon, Popover, Stack, Text } from "metabase/ui";
 
 import S from "./SdkLicenseProblemBanner.module.css";
@@ -13,6 +14,11 @@ import S from "./SdkLicenseProblemBanner.module.css";
 interface Props {
   problem: SdkLicenseProblem | null;
 }
+
+// Prevent the license problem banner from inheriting the theme colors,
+// so they remain legible even when the theme is changed.
+const unthemedTextDark = originalColors["text-dark"];
+const unthemedTextMedium = originalColors["text-medium"];
 
 export const SdkLicenseProblemBanner = ({ problem }: Props) => {
   const [expanded, setExpanded] = useState(false);
@@ -52,10 +58,10 @@ export const SdkLicenseProblemBanner = ({ problem }: Props) => {
             <Icon
               name={isError ? "warning_round_filled" : "warning"}
               size={14}
-              fill="var(--mb-color-text-dark)"
+              fill={unthemedTextDark}
             />
 
-            <Text transform="capitalize" c="text-medium">
+            <Text transform="capitalize" c={unthemedTextMedium}>
               {severity}
             </Text>
           </Flex>
@@ -66,13 +72,17 @@ export const SdkLicenseProblemBanner = ({ problem }: Props) => {
         <Card
           p="md"
           radius="md"
-          c="text-dark"
           maw="20rem"
           data-testid="sdk-license-problem-card"
         >
           <Stack spacing="sm">
             <Flex w="100%" justify="space-between">
-              <Text fw="bold" size="lg" transform="capitalize">
+              <Text
+                fw="bold"
+                size="lg"
+                transform="capitalize"
+                c={unthemedTextDark}
+              >
                 {severity}
               </Text>
 
@@ -84,7 +94,7 @@ export const SdkLicenseProblemBanner = ({ problem }: Props) => {
               />
             </Flex>
 
-            <Text>{problem.message}</Text>
+            <Text c={unthemedTextDark}>{problem.message}</Text>
 
             <Flex w="100%" justify="end" mt="sm" columnGap="sm">
               <Button fz="sm" variant="subtle" onClick={hideBanner} compact>
