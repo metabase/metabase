@@ -32,6 +32,5 @@ const renderingContext: RenderingContext = {
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.twoScalars as any,
-  dashcardSettings: {},
   renderingContext,
 };
