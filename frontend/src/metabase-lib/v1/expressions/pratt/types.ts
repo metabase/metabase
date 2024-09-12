@@ -88,7 +88,10 @@ abstract class ExpressionError extends Error {
 }
 
 export class CompileError extends ExpressionError {
-  constructor(message: string, private data: any) {
+  constructor(
+    message: string,
+    private data: any,
+  ) {
     super(message);
   }
 
@@ -102,7 +105,10 @@ export class CompileError extends ExpressionError {
 }
 
 export class ResolverError extends ExpressionError {
-  constructor(message: string, private node?: Node) {
+  constructor(
+    message: string,
+    private node?: Node,
+  ) {
     super(message);
   }
 

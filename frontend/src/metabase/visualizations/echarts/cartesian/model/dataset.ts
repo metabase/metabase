@@ -947,29 +947,35 @@ export const getCardColumnByDataKeyMap = (
       ? getBreakoutDistinctValues(data, columns.breakout.index)
       : null;
 
-  return data.cols.reduce((acc, column) => {
-    if (breakoutValues != null) {
-      breakoutValues.forEach(breakoutValue => {
-        acc[getDatasetKey(column, card.id, breakoutValue)] = column;
-      });
-    } else {
-      acc[getDatasetKey(column, card.id)] = column;
-    }
-    return acc;
-  }, {} as Record<DataKey, DatasetColumn>);
+  return data.cols.reduce(
+    (acc, column) => {
+      if (breakoutValues != null) {
+        breakoutValues.forEach(breakoutValue => {
+          acc[getDatasetKey(column, card.id, breakoutValue)] = column;
+        });
+      } else {
+        acc[getDatasetKey(column, card.id)] = column;
+      }
+      return acc;
+    },
+    {} as Record<DataKey, DatasetColumn>,
+  );
 };
 
 export const getCardsColumnByDataKeyMap = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
 ): Record<DataKey, DatasetColumn> => {
-  return rawSeries.reduce((acc, cardSeries, index) => {
-    const columns = cardsColumns[index];
-    const cardColumnByDataKeyMap = getCardColumnByDataKeyMap(
-      cardSeries,
-      columns,
-    );
+  return rawSeries.reduce(
+    (acc, cardSeries, index) => {
+      const columns = cardsColumns[index];
+      const cardColumnByDataKeyMap = getCardColumnByDataKeyMap(
+        cardSeries,
+        columns,
+      );
 
-    return { ...acc, ...cardColumnByDataKeyMap };
-  }, {} as Record<DataKey, DatasetColumn>);
+      return { ...acc, ...cardColumnByDataKeyMap };
+    },
+    {} as Record<DataKey, DatasetColumn>,
+  );
 };

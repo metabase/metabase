@@ -27,7 +27,7 @@ const THEME_OPTIONS = [
   { label: t`Dark`, value: "night" },
   { label: t`Transparent`, value: "transparent" },
 ] as const;
-type ThemeOptions = typeof THEME_OPTIONS[number]["value"];
+type ThemeOptions = (typeof THEME_OPTIONS)[number]["value"];
 
 export interface AppearanceSettingsProps {
   resourceType: EmbedResourceType;

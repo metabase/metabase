@@ -34,7 +34,7 @@ import type {
   QueryBuilderUIControls,
 } from "metabase-types/store";
 
-type ModalType = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
+type ModalType = (typeof MODAL_TYPES)[keyof typeof MODAL_TYPES];
 
 interface QueryModalsProps {
   questionAlerts: Alert[];

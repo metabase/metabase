@@ -135,7 +135,7 @@ const SingleSelectListField = ({
             <OptionItem
               data-testid={`${option[0]}-filter-value`}
               selectedColor={
-                checkedColor ?? isDashboardFilter ? "brand" : "filter"
+                (checkedColor ?? isDashboardFilter) ? "brand" : "filter"
               }
               selected={selectedValue === option[0]}
               onClick={() => onClickOption(option[0])}

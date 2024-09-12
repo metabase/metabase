@@ -280,19 +280,22 @@ const getYAxisSplit = (
       : [nonStackedKeys, stackedKeys];
   }
 
-  const axisBySeriesKey = seriesModels.reduce((acc, seriesModel) => {
-    const seriesSettings: SeriesSettings = settings.series(
-      seriesModel.legacySeriesSettingsObjectKey,
-    );
+  const axisBySeriesKey = seriesModels.reduce(
+    (acc, seriesModel) => {
+      const seriesSettings: SeriesSettings = settings.series(
+        seriesModel.legacySeriesSettingsObjectKey,
+      );
 
-    const seriesStack = stackModels.find(stackModel =>
-      stackModel.seriesKeys.includes(seriesModel.dataKey),
-    );
+      const seriesStack = stackModels.find(stackModel =>
+        stackModel.seriesKeys.includes(seriesModel.dataKey),
+      );
 
-    acc[seriesModel.dataKey] =
-      seriesStack != null ? seriesStack.axis : seriesSettings?.["axis"];
-    return acc;
-  }, {} as Record<DataKey, string | undefined>);
+      acc[seriesModel.dataKey] =
+        seriesStack != null ? seriesStack.axis : seriesSettings?.["axis"];
+      return acc;
+    },
+    {} as Record<DataKey, string | undefined>,
+  );
 
   const left: DataKey[] = [];
   const right: DataKey[] = [];
@@ -609,7 +612,7 @@ export function getYAxesModels(
       columnByDataKey,
       settings["stackable.stack_type"] === "normalized"
         ? null
-        : settings["stackable.stack_type"] ?? null,
+        : (settings["stackable.stack_type"] ?? null),
       renderingContext,
       { compact: isCompactFormatting },
     ),
@@ -820,8 +823,8 @@ export function getXAxisModel(
   };
 
   const histogramInterval = isHistogram
-    ? dimensionColumn.binning_info?.bin_width ??
-      computeNumericDataInverval(dataset.map(datum => datum[X_AXIS_DATA_KEY]))
+    ? (dimensionColumn.binning_info?.bin_width ??
+      computeNumericDataInverval(dataset.map(datum => datum[X_AXIS_DATA_KEY])))
     : undefined;
 
   const valuesCount = isScatter

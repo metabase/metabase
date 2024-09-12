@@ -138,4 +138,4 @@ export const createMockImplicitActionFieldSettings = (
     id: "",
     hidden: false,
     ...opts,
-  } as FieldSettings);
+  }) as FieldSettings;

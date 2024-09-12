@@ -186,8 +186,8 @@ export function IllustrationWidget({
                 {!customIllustrationSource
                   ? t`No file chosen`
                   : fileName
-                  ? fileName
-                  : t`Remove uploaded image`}
+                    ? fileName
+                    : t`Remove uploaded image`}
               </Text>
               {customIllustrationSource && (
                 <Button

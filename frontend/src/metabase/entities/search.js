@@ -132,30 +132,30 @@ export default createEntity({
     getCollection: object => {
       const entity = entityForObject(object);
       return entity
-        ? entity?.objectSelectors?.getCollection?.(object) ??
+        ? (entity?.objectSelectors?.getCollection?.(object) ??
             object?.collection ??
-            null
+            null)
         : warnEntityAndReturnObject(object);
     },
 
     getName: object => {
       const entity = entityForObject(object);
       return entity
-        ? entity?.objectSelectors?.getName?.(object) ?? object?.name
+        ? (entity?.objectSelectors?.getName?.(object) ?? object?.name)
         : warnEntityAndReturnObject(object);
     },
 
     getColor: object => {
       const entity = entityForObject(object);
       return entity
-        ? entity?.objectSelectors?.getColor?.(object) ?? null
+        ? (entity?.objectSelectors?.getColor?.(object) ?? null)
         : warnEntityAndReturnObject(object);
     },
 
     getIcon: object => {
       const entity = entityForObject(object);
       return entity
-        ? entity?.objectSelectors?.getIcon?.(object) ?? null
+        ? (entity?.objectSelectors?.getIcon?.(object) ?? null)
         : warnEntityAndReturnObject(object);
     },
   },

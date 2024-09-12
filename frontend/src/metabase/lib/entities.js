@@ -413,8 +413,8 @@ export function createEntity(def) {
     typeof entityId === "object"
       ? JSON.stringify(entityId)
       : entityId
-      ? entityId
-      : "",
+        ? entityId
+        : "",
   ); // must stringify objects
 
   // LIST SELECTORS

@@ -30,7 +30,7 @@ const defaultOptionForParameterSection =
   getDefaultOptionForParameterSectionMap();
 const PARAMETER_SECTIONS = getDashboardParameterSections();
 
-type ParameterSection = typeof PARAMETER_SECTIONS[number];
+type ParameterSection = (typeof PARAMETER_SECTIONS)[number];
 
 export const ParametersPopover = ({
   onClose,

@@ -80,9 +80,7 @@ describe("recipient picker", () => {
       );
 
       await userEvent.click(
-        (
-          await screen.findAllByRole("img", { name: /close/ })
-        )[2],
+        (await screen.findAllByRole("img", { name: /close/ }))[2],
       );
 
       expect(onRecipientsChange).toHaveBeenCalledWith([
