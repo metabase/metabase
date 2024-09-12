@@ -2,7 +2,6 @@
   "Define the `metabase-test` channel and notification test utilities."
   (:require
    [metabase.channel.core :as channel]
-   [metabase.test.util.dynamic-redefs :as test.util.dynamic-redefs]
    [metabase.util :as u]))
 
 (def test-channel-type
@@ -34,7 +33,7 @@
 (defn do-with-captured-channel-send!
   [thunk]
   (let [channel-messages (atom {})]
-    (test.util.dynamic-redefs/with-dynamic-redefs
+    (with-redefs
       [channel/send! (fn [channel message]
                        (swap! channel-messages update (:type channel) u/conjv message))]
       (thunk)
