@@ -33,11 +33,6 @@
   [{:keys [uri]}]
   (re-matches #"^/embed/.*$" uri))
 
-(defn session-properties-endpoint?
-  "Is this ring request a call to session properties?"
-  [{:keys [^String uri]}]
-  (str/starts-with? uri "/api/session/prop"))
-
 (defn cacheable?
   "Can the ring request be permanently cached?"
   [{:keys [request-method uri], :as _request}]
