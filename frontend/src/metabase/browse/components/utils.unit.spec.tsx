@@ -261,97 +261,101 @@ describe("isDatasetScalar", () => {
 });
 
 describe("getDatasetValueForMetric", () => {
-  it("should return null if the dataset is not scalar", () => {
-    const dataset = createMockDataset({
-      data: createMockDatasetData({
-        cols: [createMockColumn({ name: "col1" })],
-        rows: [[1], [2]],
-      }),
-    });
-    expect(getDatasetValueForMetric(dataset)).toBe(null);
-  });
-
-  it("should return null for a scalar dataset with errors", () => {
-    const dataset = createMockDataset({
-      error: "error",
-      data: createMockDatasetData({
-        cols: [createMockColumn({ name: "col1" })],
-        rows: [[1]],
-      }),
+  describe("scalar metric", () => {
+    it("should return null if the dataset is not scalar", () => {
+      const dataset = createMockDataset({
+        data: createMockDatasetData({
+          cols: [createMockColumn({ name: "col1" })],
+          rows: [[1], [2]],
+        }),
+      });
+      expect(getDatasetValueForMetric(dataset)).toBe(null);
     });
 
-    expect(getDatasetValueForMetric(dataset)).toBe(null);
-  });
+    it("should return null for a scalar dataset with errors", () => {
+      const dataset = createMockDataset({
+        error: "error",
+        data: createMockDatasetData({
+          cols: [createMockColumn({ name: "col1" })],
+          rows: [[1]],
+        }),
+      });
 
-  it("should return null for a timeseries dataset with errors", () => {
-    const dataset = createMockDataset({
-      error: "error",
-      data: createMockDatasetData({
-        cols: [
-          createMockColumn({ name: "col1", base_type: "type/DateTime" }),
-          createMockColumn({ name: "col2" }),
-        ],
-        rows: [["2024-01-01T00:00:00.000Z", 1]],
-      }),
+      expect(getDatasetValueForMetric(dataset)).toBe(null);
     });
 
-    expect(getDatasetValueForMetric(dataset)).toBe(null);
-  });
-
-  it("should return the value if the dataset is scalar", () => {
-    const value = 42;
-    const column = createMockColumn({ name: "col1" });
-    const dataset = createMockDataset({
-      data: createMockDatasetData({
-        cols: [column],
-        rows: [[value]],
-      }),
+    it("should return the value if the dataset is scalar", () => {
+      const value = 42;
+      const column = createMockColumn({ name: "col1" });
+      const dataset = createMockDataset({
+        data: createMockDatasetData({
+          cols: [column],
+          rows: [[value]],
+        }),
+      });
+      expect(getDatasetValueForMetric(dataset)).toEqual({
+        value: "42",
+        label: "Overall",
+      });
     });
-    expect(getDatasetValueForMetric(dataset)).toEqual({
-      value: "42",
-      label: "Overall",
+
+    it("should return null for a scalar dataset with no value", () => {
+      const dataset = createMockDataset({
+        data: createMockDatasetData({
+          cols: [createMockColumn({ name: "col2" })],
+          rows: [],
+        }),
+      });
+
+      expect(getDatasetValueForMetric(dataset)).toEqual(null);
     });
   });
 
-  it("should return the last row value a timeseries dataset", () => {
-    const dataset = createMockDataset({
-      data: createMockDatasetData({
-        cols: [
-          createMockColumn({ name: "col1", base_type: "type/DateTime" }),
-          createMockColumn({ name: "col2" }),
-        ],
-        rows: [["2024-01-01T00:00:00.000Z", 1]],
-      }),
+  describe("temporal metric", () => {
+    it("should return null for a timeseries dataset with errors", () => {
+      const dataset = createMockDataset({
+        error: "error",
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: "col1", base_type: "type/DateTime" }),
+            createMockColumn({ name: "col2" }),
+          ],
+          rows: [["2024-01-01T00:00:00.000Z", 1]],
+        }),
+      });
+
+      expect(getDatasetValueForMetric(dataset)).toBe(null);
     });
 
-    expect(getDatasetValueForMetric(dataset)).toEqual({
-      value: "1",
-      label: "January 1, 2024, 12:00 AM",
-    });
-  });
+    it("should return the last row value a timeseries dataset", () => {
+      const dataset = createMockDataset({
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: "col1", base_type: "type/DateTime" }),
+            createMockColumn({ name: "col2" }),
+          ],
+          rows: [["2024-01-01T00:00:00.000Z", 1]],
+        }),
+      });
 
-  it("should return null for a scalar dataset with no value", () => {
-    const dataset = createMockDataset({
-      data: createMockDatasetData({
-        cols: [createMockColumn({ name: "col2" })],
-        rows: [],
-      }),
-    });
-
-    expect(getDatasetValueForMetric(dataset)).toEqual(null);
-  });
-
-  it("should return null for a temporal dataset with no value", () => {
-    const dataset = createMockDataset({
-      data: createMockDatasetData({
-        cols: [
-          createMockColumn({ name: "col1", base_type: "type/DateTime" }),
-          createMockColumn({ name: "col2" }),
-        ],
-        rows: [],
-      }),
+      expect(getDatasetValueForMetric(dataset)).toEqual({
+        value: "1",
+        label: "January 1, 2024, 12:00 AM",
+      });
     });
 
-    expect(getDatasetValueForMetric(dataset)).toEqual(null);
+    it("should return null for a temporal dataset with no value", () => {
+      const dataset = createMockDataset({
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: "col1", base_type: "type/DateTime" }),
+            createMockColumn({ name: "col2" }),
+          ],
+          rows: [],
+        }),
+      });
+
+      expect(getDatasetValueForMetric(dataset)).toEqual(null);
+    });
   });
 });
