@@ -229,10 +229,10 @@
         card-id            (get-in param-dashcard-info [:dashcard :card :id])
         filterable-columns (get-in ctx [:card-id->filterable-columns card-id])]
     (if-some [field-id (lib.util.match/match-one param-target
-                                                 [:field (field-name :guard string?) _]
-                                                 (->> filterable-columns
-                                                      (m/find-first #(= field-name (:name %)))
-                                                      :id))]
+                         [:field (field-name :guard string?) _]
+                         (->> filterable-columns
+                              (m/find-first #(= field-name (:name %)))
+                              :id))]
       (update ctx :field-ids conj field-id)
       ctx)))
 
