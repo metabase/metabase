@@ -2,7 +2,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import type { SDKConfig } from "embedding-sdk/types";
-import type { SdkUsageProblem } from "embedding-sdk/types/license-problem";
+import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 
 import { getIsLocalhost } from "./is-localhost";
 

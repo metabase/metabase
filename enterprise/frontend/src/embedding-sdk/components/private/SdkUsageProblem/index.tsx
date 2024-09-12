@@ -1,5 +1,5 @@
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
-import { useSdkUsageProblem } from "embedding-sdk/hooks/private/use-sdk-license-problem";
+import { useSdkUsageProblem } from "embedding-sdk/hooks/private/use-sdk-usage-problem";
 import type { SDKConfig } from "embedding-sdk/types";
 import { Box, Portal } from "metabase/ui";
 

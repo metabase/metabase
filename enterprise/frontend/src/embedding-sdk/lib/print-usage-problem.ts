@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 
-import type { SdkUsageProblem } from "embedding-sdk/types/license-problem";
+import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 
 const HEADER_STYLE = "color: #509ee3; font-size: 16px; font-weight: bold;";
 const TEXT_STYLE = "font-size: 14px;";

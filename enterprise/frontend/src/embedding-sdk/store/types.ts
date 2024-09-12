@@ -12,7 +12,7 @@ import type {
 } from "embedding-sdk";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import type { SdkUsageProblem } from "embedding-sdk/types/license-problem";
+import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {

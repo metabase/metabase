@@ -11,7 +11,7 @@ import type {
   SdkState,
   SdkStoreState,
 } from "embedding-sdk/store/types";
-import type { SdkUsageProblem } from "embedding-sdk/types/license-problem";
+import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 import { getFetchRefreshTokenFn, getSessionTokenState } from "./selectors";

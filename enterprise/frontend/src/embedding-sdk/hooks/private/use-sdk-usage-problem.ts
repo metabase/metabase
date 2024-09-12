@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef } from "react";
 import { useDispatch } from "react-redux";
 
 import type { SDKConfig } from "embedding-sdk";
-import { getSdkUsageProblem } from "embedding-sdk/lib/license-problem";
-import { printUsageProblemToConsole } from "embedding-sdk/lib/print-license-problem";
+import { printUsageProblemToConsole } from "embedding-sdk/lib/print-usage-problem";
+import { getSdkUsageProblem } from "embedding-sdk/lib/usage-problem";
 import { setUsageProblem } from "embedding-sdk/store/reducer";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
