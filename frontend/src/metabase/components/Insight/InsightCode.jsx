@@ -1,4 +1,8 @@
+import React, { useState } from 'react';
+
 export const InsightCode = ({ index, insightCode }) => {
+  const [isCodeVisible, setIsCodeVisible] = useState(false);
+
     if (!insightCode) {
       return null;
     }
@@ -13,13 +17,26 @@ export const InsightCode = ({ index, insightCode }) => {
     });
   };
 
+  const toggleCodeVisibility = () => {
+    setIsCodeVisible(!isCodeVisible);
+  };
+
   return (
     <div style={styles.container}>
-      <div style={styles.stepContainer}>
-        {/* <h2 style={styles.stepName}>{index + 1}</h2> */}
-        <pre style={styles.codeBlock}>
-          {highlightCode(insightCode)}
-        </pre>
+      {isCodeVisible && (
+        <div style={styles.stepContainer}>
+          <pre style={styles.codeBlock}>
+            {highlightCode(insightCode)}
+          </pre>
+        </div>
+      )}
+      <div style={styles.buttonContainer}>
+        <button 
+          onClick={toggleCodeVisibility} 
+          style={styles.button}
+        >
+          {isCodeVisible ? 'Hide Code' : 'Check Code'}
+        </button>
       </div>
     </div>
   );
@@ -29,7 +46,9 @@ const styles = {
   container: {
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
+    width: '100%',
+    maxWidth: '800px',
+    margin: '0 auto',
     padding: '20px',
   },
   stepContainer: {
@@ -37,25 +56,33 @@ const styles = {
     border: '1px solid #444',
     marginBottom: '20px',
     borderRadius: '8px',
-    backgroundColor: '#2e2e2e', // Dark background
-    color: '#dcdcdc', // Light text color
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)', // Subtle shadow
-    maxWidth: '800px', // Max width for better readability
+    backgroundColor: '#2e2e2e',
+    color: '#dcdcdc',
+    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
     width: '100%',
   },
-  stepName: {
-    marginBottom: '15px',
-    fontSize: '18px',
-    color: '#c5e478', // Light green color for step number
+  buttonContainer: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    width: '100%',
+  },
+  button: {
+    padding: '10px 20px',
+    fontSize: '16px',
+    backgroundColor: '#8A64DF',
+    color: 'white',
+    border: 'none',
+    borderRadius: '5px',
+    cursor: 'pointer',
   },
   codeBlock: {
-    whiteSpace: 'pre-wrap', // Maintain formatting
-    fontFamily: 'monospace', // Monospace font for code
-    overflowWrap: 'break-word', // Ensure long lines break
-    fontSize: '16px', 
+    whiteSpace: 'pre-wrap',
+    fontFamily: 'monospace',
+    overflowWrap: 'break-word',
+    fontSize: '16px',
   },
   comment: {
-    color: '#6a8759', // Style for comments
-    fontStyle: 'italic', // Italicize comments
+    color: '#6a8759',
+    fontStyle: 'italic',
   }
 };

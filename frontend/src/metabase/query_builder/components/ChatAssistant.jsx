@@ -525,16 +525,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const handleGetCode = async func => {
         const { generatedCodes } = func.arguments;
         try {
-            setCodeIndex(prevIndex => {
-                const currentIndex = prevIndex + 1;
-                addServerMessageWithType(
-                    `The code is as follows:`,
-                    "text",
-                    "insightCode",
-                    currentIndex
-                );
-                return currentIndex;
-            });
             setInsightsCode(prevCode => [...prevCode, generatedCodes]);
         } catch (error) {
             console.error("Error getting code", error);

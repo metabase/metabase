@@ -78,6 +78,11 @@ const ChatMessageList = ({
               message.showType == "insightText" && message.visualizationIdx === index && (
                 <div key={`insightText-${index}`} style={{ padding: '10px' }}>
                   <InsightText index={index} insightText={insightText} />
+                  {insightsCode[index] && (
+                  <div style={{ marginTop: '10px' }}>
+                    <InsightCode index={index} insightCode={insightsCode[index]} />
+                  </div>
+                )}
                 </div>
               )
             ))}
@@ -87,15 +92,6 @@ const ChatMessageList = ({
               message.showType == "insightImg" && message.visualizationIdx === index && (
                 <div key={`insightImg-${index}`} style={{ padding: '10px' }}>
                   <InsightImg index={index} insightImg={insightImg} />
-                </div>
-              )
-            ))}
-
-            {/* Loop over insightsCode and display matching items */}
-            {insightsCode.map((insightCode, index) => (
-              message.showType == "insightCode" && message.visualizationIdx === index && (
-                <div key={`insightCode-${index}`} style={{ padding: '10px' }}>
-                  <InsightCode index={index} insightCode={insightCode} />
                 </div>
               )
             ))}
