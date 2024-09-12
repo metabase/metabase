@@ -136,7 +136,7 @@
   [expression]
   (str/replace expression #"(\S+)(?=\s*$)" "$1:*"))
 
-(defn to-tsquery-expr
+(defn- to-tsquery-expr
   "Given the user input, construct a query in the Postgres tsvector query language."
   [input]
   (let [trimmed        (str/trim input)

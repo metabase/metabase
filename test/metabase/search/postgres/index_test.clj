@@ -109,7 +109,7 @@
 
 ;; lower level search expression tests
 
-(def search-expr search.index/to-tsquery-expr)
+(def search-expr #'search.index/to-tsquery-expr)
 
 (deftest to-tsquery-expr-test
   (is (= "a & b & c:*"
