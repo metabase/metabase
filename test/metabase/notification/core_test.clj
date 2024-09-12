@@ -40,7 +40,7 @@
               (is (=? {:channel/metabase-test [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}
                                                {:type :notification-recipient/user :user_id (mt/user->id :rasta)}]}
                       (notification.test/with-captured-channel-send!
-                        (notification/send-notification!* notification-info)))))
+                        (notification/send-notification! notification-info)))))
 
             (testing "render-notification is called on all handlers with the correct channel and template"
               (is (=? [{:channel-type (keyword notification.test/test-channel-type)

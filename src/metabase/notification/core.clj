@@ -26,7 +26,7 @@
                                  [:event-info [:maybe :map]]
                                  [:settings   :map]]]]])
 
-(mu/defn send-notification!*
+(mu/defn send-notification!
   "Send the notification to all handlers synchronously."
   [notification :- NotificationInfo]
   (let [noti-handlers (t2/hydrate (t2/select :model/NotificationHandler :notification_id (:id notification))
