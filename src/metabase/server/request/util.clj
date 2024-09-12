@@ -35,8 +35,8 @@
 
 (defn session-properties-endpoint?
   "Is this ring request a call to session properties?"
-  [{:keys [^String uri]}]
-  (str/starts-with? uri "/api/session/prop"))
+  [{:keys [uri]}]
+  (= uri "/api/session/properties"))
 
 (defn cacheable?
   "Can the ring request be permanently cached?"

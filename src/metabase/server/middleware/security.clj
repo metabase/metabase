@@ -188,11 +188,10 @@
   "Returns headers for CORS requests"
   [origin uri]
   (merge
-   (when (req.util/session-properties-endpoint? uri)
-    {"Access-Control-Allow-Origin" origin
-     "Vary"                        "Origin"})
    (when
-    (approved-origin? origin (embedding-app-origin-sdk))
+    (or
+     (approved-origin? origin (embedding-app-origin-sdk))
+     (req.util/session-properties-endpoint? {:uri uri}))
      {"Access-Control-Allow-Origin" origin
       "Vary"                        "Origin"})
    {"Access-Control-Allow-Headers"   "*"
@@ -208,7 +207,7 @@
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
-  [& {:keys [origin nonce uri allow-iframes? allow-cache?]
+  [& {:keys [uri origin nonce allow-iframes? allow-cache?]
       :or   {allow-iframes? false, allow-cache? false}}]
   (merge
    (if allow-cache?
@@ -232,6 +231,7 @@
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
   (update response :headers #(merge %2 %1) (security-headers
+                                            :uri            (:uri request)
                                             :origin         ((:headers request) "origin")
                                             :nonce          (:nonce request)
                                             :allow-iframes? ((some-fn req.util/public? req.util/embed?) request)
