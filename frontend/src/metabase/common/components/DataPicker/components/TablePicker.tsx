@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLatest } from "react-use";
 
 import {
   skipToken,
@@ -140,19 +141,32 @@ export const TablePicker = ({
     [dbId, schemaName, setTableId, onItemSelect, onPathChange],
   );
 
+  const onItemSelectRef = useLatest(onItemSelect);
+
   useEffect(
     function ensureFolderSelected() {
       if (initialDbId == null && databases && databases.length > 0) {
         const firstDatabase = databases[0];
 
-        handleFolderSelect({
+        onItemSelectRef.current({
           id: firstDatabase.id,
           model: "database",
           name: firstDatabase.name,
         });
       }
+
+      if (initialDbId != null) {
+        const item =
+          initialSchemaId == null || schemas?.length === 1
+            ? getDbItem(databases, initialDbId)
+            : getSchemaItem(initialSchemaId);
+
+        if (item) {
+          onItemSelectRef.current(item);
+        }
+      }
     },
-    [databases, handleFolderSelect, initialDbId],
+    [databases, schemas, onItemSelectRef, initialDbId, initialSchemaId],
   );
 
   return (
