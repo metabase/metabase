@@ -52,6 +52,8 @@ export function getSdkUsageProblem(
       )
       // For SSO, the token features and the toggle must both be enabled.
       .with({ isSSO: true, hasTokenFeature: true, isEnabled: true }, () => null)
+      // TODO: this condition will not trigger in non-localhost
+      //       until the CORS for properties PR is merged
       .with({ isSSO: true, hasTokenFeature: false }, () =>
         toError(PROBLEMS.SSO_WITHOUT_LICENSE),
       )
@@ -72,9 +74,8 @@ export function getSdkUsageProblem(
       .with({ isApiKey: true, hasTokenFeature: true }, () =>
         toError(PROBLEMS.API_KEYS_WITH_LICENSE),
       )
-      .with({ isApiKey: true, hasTokenFeature: false }, () =>
-        toError(PROBLEMS.API_KEYS_WITHOUT_LICENSE),
-      )
+      // TODO: resolve (isApiKey: true, hasTokenFeature: false) to
+      //       PROBLEMS.API_KEYS_WITHOUT_LICENSE when CORS for properties PR is merged
       .otherwise(() => null)
   );
 }
