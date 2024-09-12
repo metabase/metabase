@@ -1,19 +1,17 @@
-import { type ChangeEvent, useMemo } from "react";
+import type { ChangeEvent } from "react";
 import { jt, t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { Box, Stack, Switch } from "metabase/ui";
-import type { SettingKey } from "metabase-types/api";
 
-import { getSettings } from "../../selectors";
 import SettingHeader from "../SettingHeader";
 import { SetByEnvVarWrapper } from "../SettingsSetting";
 import { SettingTextInput } from "../widgets/SettingTextInput";
 
+import { useMergeSetting } from "./hooks";
 import type { AdminSettingComponentProps } from "./types";
 
 const SDK_ORIGINS_SETTING = {
@@ -38,7 +36,7 @@ export function EmbeddingSdkSettings({
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
 
   function handleChangeSdkOrigins(value: string | null) {
-    updateSetting({ key: SDK_ORIGINS_SETTING.key }, value);
+    updateSetting({ key: sdkOriginsSetting.key }, value);
   }
   const hasEmbeddingSdkFeature = PLUGIN_EMBEDDING_SDK.isEnabled();
   const canEditSdkOrigins = hasEmbeddingSdkFeature && isEmbeddingSdkEnabled;
@@ -82,19 +80,4 @@ export function EmbeddingSdkSettings({
       </Stack>
     </Box>
   );
-}
-
-type DisplaySetting = { key: SettingKey };
-function useMergeSetting(displaySetting: DisplaySetting) {
-  const apiSetting = useSelector(getSettings).find(
-    (setting: any) => setting.key === displaySetting.key,
-  );
-  const mergedSetting = useMemo(() => {
-    return {
-      ...apiSetting,
-      ...displaySetting,
-    };
-  }, [apiSetting, displaySetting]);
-
-  return mergedSetting;
 }

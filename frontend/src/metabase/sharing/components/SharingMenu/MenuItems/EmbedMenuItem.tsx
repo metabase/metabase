@@ -7,7 +7,8 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { Center, Icon, Menu, Stack, Text, Title } from "metabase/ui";
 
 export function EmbedMenuItem({ onClick }: { onClick: () => void }) {
-  const isEmbeddingEnabled = useSetting("enable-embedding");
+  // TODO: Change this to `enable-embedding-static` once the BE is implemented.
+  const isStaticEmbeddingEnabled = useSetting("enable-embedding");
   const isAdmin = useSelector(getUserIsAdmin);
 
   if (!isAdmin) {
@@ -23,9 +24,9 @@ export function EmbedMenuItem({ onClick }: { onClick: () => void }) {
           <Icon name="embed" />
         </Center>
       }
-      onClick={isEmbeddingEnabled ? onClick : undefined}
+      onClick={isStaticEmbeddingEnabled ? onClick : undefined}
     >
-      {isEmbeddingEnabled ? (
+      {isStaticEmbeddingEnabled ? (
         <Title order={4}>{t`Embed`}</Title>
       ) : (
         <Link

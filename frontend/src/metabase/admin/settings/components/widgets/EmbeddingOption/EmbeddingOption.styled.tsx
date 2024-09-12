@@ -27,5 +27,5 @@ export const BoldExternalLink = styled(ExternalLink)`
   font-weight: bold;
   display: flex;
   align-items: center;
-  gap: calc(6 / 16 * 1rem);
+  gap: 0.5rem;
 `;

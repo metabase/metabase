@@ -1,13 +1,17 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, screen, within } from "__support__/ui";
+import { screen, within } from "__support__/ui";
+import {
+  createMockSettingDefinition,
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
+
+import { FULL_APP_EMBEDDING_URL, setup } from "../setup";
 
 import type { SetupOpts } from "./setup";
 import {
-  embeddingSettingsUrl,
-  getQuickStartLink,
-  goToInteractiveEmbeddingSettings,
-  goToStaticEmbeddingSettings,
+  getInteractiveEmbeddingQuickStartLink,
   interactiveEmbeddingSettingsUrl,
   setupEmbedding,
   staticEmbeddingSettingsUrl,
@@ -23,64 +27,85 @@ const setupPremium = (opts?: SetupOpts) => {
 };
 
 describe("[EE, with token] embedding settings", () => {
-  describe("when the embedding is disabled", () => {
+  describe("when static embedding is disabled", () => {
     let history: History;
 
     beforeEach(async () => {
       history = (
         await setupPremium({
-          settingValues: { "enable-embedding": false },
+          settingValues: { "enable-embedding-static": false },
         })
       ).history;
     });
 
     describe("static embedding", () => {
-      it("should not allow going to static embedding settings page", async () => {
-        expect(
-          await screen.findByRole("button", { name: "Manage" }),
-        ).toBeDisabled();
-
-        act(() => {
-          history.push(staticEmbeddingSettingsUrl);
-        });
-
-        expect(history.getCurrentLocation().pathname).toEqual(
-          embeddingSettingsUrl,
+      it("should show info about static embedding", async () => {
+        const withinStaticEmbeddingCard = within(
+          screen.getByRole("article", {
+            name: "Static embedding",
+          }),
         );
+
+        expect(
+          withinStaticEmbeddingCard.getByRole("heading", {
+            name: "Static embedding",
+          }),
+        ).toBeInTheDocument();
+        expect(
+          withinStaticEmbeddingCard.getByText(/Use static embedding when/),
+        ).toBeInTheDocument();
+
+        expect(
+          withinStaticEmbeddingCard.getByLabelText("Disabled"),
+        ).not.toBeChecked();
+        expect(
+          withinStaticEmbeddingCard.getByLabelText("Disabled"),
+        ).toBeEnabled();
       });
 
       it("should not prompt to upgrade to remove the Powered by text", async () => {
+        const withinStaticEmbeddingCard = within(
+          screen.getByRole("article", {
+            name: "Static embedding",
+          }),
+        );
         expect(
-          screen.queryByText("upgrade to a paid plan"),
+          withinStaticEmbeddingCard.queryByText("upgrade to a paid plan"),
         ).not.toBeInTheDocument();
       });
-    });
 
-    describe("interactive embedding", () => {
-      it("should not allow going to interactive settings page", async () => {
-        expect(
+      it("should allow access to static embedding settings page", async () => {
+        // Go to static embedding settings page
+        await userEvent.click(
           within(
             screen.getByRole("article", {
-              name: "Interactive embedding",
+              name: "Static embedding",
             }),
-          ).getByRole("button", { name: "Configure" }),
-        ).toBeDisabled();
-
-        act(() => {
-          history.push(interactiveEmbeddingSettingsUrl);
-        });
-
-        expect(history.getCurrentLocation().pathname).toEqual(
-          embeddingSettingsUrl,
+          ).getByRole("button", { name: "Manage" }),
         );
+
+        const staticEmbeddingToggle = screen.getByLabelText(
+          "Enable Static embedding",
+        );
+        expect(staticEmbeddingToggle).toBeEnabled();
+        expect(staticEmbeddingToggle).not.toBeChecked();
+
+        expect(screen.getByText("Embedding secret key")).toBeInTheDocument();
+        expect(screen.getByText("Manage embeds")).toBeInTheDocument();
+
+        const location = history.getCurrentLocation();
+        expect(location.pathname).toEqual(staticEmbeddingSettingsUrl);
       });
     });
   });
 
-  describe("when the embedding SDK is disabled", () => {
+  describe("when embedding SDK is disabled", () => {
     beforeEach(async () => {
       await setupPremium({
-        settingValues: { "enable-embedding-sdk": false },
+        settingValues: {
+          "enable-embedding-sdk": false,
+          "embedding-app-origins-sdk": "metabase-sdk.com",
+        },
       });
     });
 
@@ -108,7 +133,7 @@ describe("[EE, with token] embedding settings", () => {
         expect(withinEmbeddingSdkCard.getByLabelText("Disabled")).toBeEnabled();
       });
 
-      it("should allow access to the embedding SDK settings page", async () => {
+      it("should allow access to embedding SDK settings page", async () => {
         // Go to embedding SDK settings page
         await userEvent.click(
           within(
@@ -127,54 +152,185 @@ describe("[EE, with token] embedding settings", () => {
         expect(
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
         ).toBeDisabled();
+        expect(
+          screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
+        ).toHaveValue("metabase-sdk.com");
       });
     });
   });
 
-  it("should link to quickstart for interactive embedding", async () => {
-    await setupPremium({
-      settingValues: {
-        "enable-embedding": false,
-        version: { tag: "v1.49.3" },
-      },
-    });
-    expect(getQuickStartLink()).toBeInTheDocument();
-    expect(getQuickStartLink()).toHaveProperty(
-      "href",
-      "https://www.metabase.com/docs/v0.49/embedding/interactive-embedding-quick-start-guide.html?utm_source=pro-self-hosted&utm_media=embed-settings",
-    );
-  });
-
-  describe("when the embedding is enabled", () => {
+  describe("when interactive embedding is disabled", () => {
     let history: History;
 
     beforeEach(async () => {
       history = (
         await setupPremium({
-          settingValues: { "enable-embedding": true },
+          settingValues: {
+            "enable-embedding-interactive": false,
+            "embedding-app-origin": "localhost:9999",
+            "session-cookie-samesite": "strict",
+          },
         })
       ).history;
     });
 
-    it("should allow going to static embedding settings page", async () => {
-      await goToStaticEmbeddingSettings();
+    describe("interactive embedding", () => {
+      it("should show info about interactive embedding", async () => {
+        const withinInteractiveEmbeddingCard = within(
+          screen.getByRole("article", {
+            name: "Interactive embedding",
+          }),
+        );
 
-      const location = history.getCurrentLocation();
-      expect(location.pathname).toEqual(staticEmbeddingSettingsUrl);
-    });
+        expect(
+          withinInteractiveEmbeddingCard.getByRole("heading", {
+            name: "Interactive embedding",
+          }),
+        ).toBeInTheDocument();
+        expect(
+          withinInteractiveEmbeddingCard.getByText(
+            /Use interactive embedding when/,
+          ),
+        ).toBeInTheDocument();
+        expect(
+          withinInteractiveEmbeddingCard.getByLabelText("Disabled"),
+        ).not.toBeChecked();
+        expect(
+          withinInteractiveEmbeddingCard.getByLabelText("Disabled"),
+        ).toBeEnabled();
 
-    it("should allow going to interactive embedding settings page", async () => {
-      await goToInteractiveEmbeddingSettings();
+        // should link to https://www.metabase.com/blog/why-full-app-embedding?utm_source=pro-self-hosted&utm_media=embed-settings
+        expect(
+          withinInteractiveEmbeddingCard.getByText(
+            "offer multi-tenant, self-service analytics",
+          ),
+        ).toHaveProperty(
+          "href",
+          "https://www.metabase.com/blog/why-full-app-embedding?utm_source=pro-self-hosted&utm_media=embed-settings",
+        );
+      });
 
-      const location = history.getCurrentLocation();
-      expect(location.pathname).toEqual(interactiveEmbeddingSettingsUrl);
+      it("should allow access to interactive embedding settings page", async () => {
+        const withinInteractiveEmbeddingCard = within(
+          screen.getByRole("article", {
+            name: "Interactive embedding",
+          }),
+        );
+        expect(
+          withinInteractiveEmbeddingCard.queryByRole("link", {
+            name: "Learn More",
+          }),
+        ).not.toBeInTheDocument();
+
+        await userEvent.click(
+          withinInteractiveEmbeddingCard.getByRole("button", {
+            name: "Configure",
+          }),
+        );
+
+        expect(
+          screen.getByLabelText("Enable Interactive embedding"),
+        ).toBeEnabled();
+        expect(
+          screen.getByLabelText("Enable Interactive embedding"),
+        ).not.toBeChecked();
+
+        expect(screen.getByLabelText("Authorized origins")).toBeEnabled();
+        expect(screen.getByLabelText("Authorized origins")).toHaveValue(
+          "localhost:9999",
+        );
+
+        expect(screen.getByText("SameSite cookie setting")).toBeInTheDocument();
+        expect(
+          screen.getByText("Strict (not recommended)"),
+        ).toBeInTheDocument();
+
+        expect(history.getCurrentLocation().pathname).toEqual(
+          interactiveEmbeddingSettingsUrl,
+        );
+      });
     });
   });
 
-  describe("when the embedding SDK is enabled", () => {
+  describe("when static embedding is enabled", () => {
+    let history: History;
+
+    beforeEach(async () => {
+      history = (
+        await setupPremium({
+          settingValues: { "enable-embedding-static": true },
+        })
+      ).history;
+    });
+
+    describe("static embedding", () => {
+      it("should show info about static embedding", async () => {
+        const withinStaticEmbeddingCard = within(
+          screen.getByRole("article", {
+            name: "Static embedding",
+          }),
+        );
+
+        expect(
+          withinStaticEmbeddingCard.getByRole("heading", {
+            name: "Static embedding",
+          }),
+        ).toBeInTheDocument();
+        expect(
+          withinStaticEmbeddingCard.getByText(/Use static embedding when/),
+        ).toBeInTheDocument();
+
+        expect(
+          withinStaticEmbeddingCard.getByLabelText("Enabled"),
+        ).toBeChecked();
+        expect(
+          withinStaticEmbeddingCard.getByLabelText("Enabled"),
+        ).toBeEnabled();
+      });
+
+      it("should not prompt to upgrade to remove the Powered by text", async () => {
+        const withinStaticEmbeddingCard = within(
+          screen.getByRole("article", {
+            name: "Static embedding",
+          }),
+        );
+        expect(
+          withinStaticEmbeddingCard.queryByText("upgrade to a paid plan"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("should allow access to static embedding settings page", async () => {
+        // Go to static embedding settings page
+        await userEvent.click(
+          within(
+            screen.getByRole("article", {
+              name: "Static embedding",
+            }),
+          ).getByRole("button", { name: "Manage" }),
+        );
+
+        const staticEmbeddingToggle = screen.getByLabelText(
+          "Enable Static embedding",
+        );
+        expect(staticEmbeddingToggle).toBeEnabled();
+        expect(staticEmbeddingToggle).toBeChecked();
+
+        expect(screen.getByText("Embedding secret key")).toBeInTheDocument();
+        expect(screen.getByText("Manage embeds")).toBeInTheDocument();
+
+        const location = history.getCurrentLocation();
+        expect(location.pathname).toEqual(staticEmbeddingSettingsUrl);
+      });
+    });
+  });
+
+  describe("when embedding SDK is enabled", () => {
     beforeEach(async () => {
       await setupPremium({
-        settingValues: { "enable-embedding-sdk": true },
+        settingValues: {
+          "enable-embedding-sdk": true,
+          "embedding-app-origins-sdk": "metabase-sdk.com",
+        },
       });
     });
 
@@ -200,7 +356,7 @@ describe("[EE, with token] embedding settings", () => {
         expect(withinEmbeddingSdkCard.getByLabelText("Enabled")).toBeEnabled();
       });
 
-      it("should allow access to the embedding SDK settings page", async () => {
+      it("should allow access to embedding SDK settings page", async () => {
         // Go to embedding SDK settings page
         await userEvent.click(
           within(
@@ -219,7 +375,135 @@ describe("[EE, with token] embedding settings", () => {
         expect(
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
         ).toBeEnabled();
+        expect(
+          screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
+        ).toHaveValue("metabase-sdk.com");
       });
     });
+  });
+
+  describe("when interactive embedding is enabled", () => {
+    let history: History;
+
+    beforeEach(async () => {
+      history = (
+        await setupPremium({
+          settingValues: {
+            "enable-embedding-interactive": true,
+            "embedding-app-origin": "localhost:9999",
+            "session-cookie-samesite": "strict",
+          },
+        })
+      ).history;
+    });
+
+    describe("interactive embedding", () => {
+      it("should show info about interactive embedding", async () => {
+        const withinInteractiveEmbeddingCard = within(
+          screen.getByRole("article", {
+            name: "Interactive embedding",
+          }),
+        );
+
+        expect(
+          withinInteractiveEmbeddingCard.getByRole("heading", {
+            name: "Interactive embedding",
+          }),
+        ).toBeInTheDocument();
+        expect(
+          withinInteractiveEmbeddingCard.getByText(
+            /Use interactive embedding when/,
+          ),
+        ).toBeInTheDocument();
+        expect(
+          withinInteractiveEmbeddingCard.getByLabelText("Enabled"),
+        ).toBeChecked();
+        expect(
+          withinInteractiveEmbeddingCard.getByLabelText("Enabled"),
+        ).toBeEnabled();
+
+        // should link to https://www.metabase.com/blog/why-full-app-embedding?utm_source=pro-self-hosted&utm_media=embed-settings
+        expect(
+          withinInteractiveEmbeddingCard.getByText(
+            "offer multi-tenant, self-service analytics",
+          ),
+        ).toHaveProperty(
+          "href",
+          "https://www.metabase.com/blog/why-full-app-embedding?utm_source=pro-self-hosted&utm_media=embed-settings",
+        );
+      });
+
+      it("should allow access to interactive embedding settings page", async () => {
+        const withinInteractiveEmbeddingCard = within(
+          screen.getByRole("article", {
+            name: "Interactive embedding",
+          }),
+        );
+        expect(
+          withinInteractiveEmbeddingCard.queryByRole("link", {
+            name: "Learn More",
+          }),
+        ).not.toBeInTheDocument();
+
+        await userEvent.click(
+          withinInteractiveEmbeddingCard.getByRole("button", {
+            name: "Configure",
+          }),
+        );
+
+        expect(
+          screen.getByLabelText("Enable Interactive embedding"),
+        ).toBeEnabled();
+        expect(
+          screen.getByLabelText("Enable Interactive embedding"),
+        ).toBeChecked();
+
+        expect(screen.getByLabelText("Authorized origins")).toBeEnabled();
+        expect(screen.getByLabelText("Authorized origins")).toHaveValue(
+          "localhost:9999",
+        );
+
+        expect(screen.getByText("SameSite cookie setting")).toBeInTheDocument();
+        expect(
+          screen.getByText("Strict (not recommended)"),
+        ).toBeInTheDocument();
+
+        expect(history.getCurrentLocation().pathname).toEqual(
+          interactiveEmbeddingSettingsUrl,
+        );
+      });
+    });
+  });
+
+  it("should link to quickstart for interactive embedding", async () => {
+    await setupPremium({
+      settingValues: {
+        "enable-embedding": false,
+        version: { tag: "v1.49.3" },
+      },
+    });
+    expect(getInteractiveEmbeddingQuickStartLink()).toBeInTheDocument();
+    expect(getInteractiveEmbeddingQuickStartLink()).toHaveProperty(
+      "href",
+      "https://www.metabase.com/docs/v0.49/embedding/interactive-embedding-quick-start-guide.html?utm_source=pro-self-hosted&utm_media=embed-settings",
+    );
+  });
+
+  it("should not redirect users back to embedding settings page when visiting the full-app embedding page when embedding is not enabled", async () => {
+    await setup({
+      settings: [createMockSettingDefinition({ key: "enable-embedding" })],
+      settingValues: createMockSettings({ "enable-embedding": false }),
+      tokenFeatures: createMockTokenFeatures({
+        embedding: false,
+        embedding_sdk: false,
+      }),
+      hasEnterprisePlugins: true,
+      initialRoute: FULL_APP_EMBEDDING_URL,
+    });
+
+    expect(screen.queryByText("Static embedding")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Embedding SDK for React"),
+    ).not.toBeInTheDocument();
   });
 });

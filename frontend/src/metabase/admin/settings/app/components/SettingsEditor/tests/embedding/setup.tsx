@@ -24,7 +24,12 @@ export const setupEmbedding = async ({
   hasEnterprisePlugins = false,
 }: SetupOpts) => {
   const returnedValue = await setup({
-    settings: [createMockSettingDefinition({ key: "enable-embedding" })],
+    settings: Object.entries(settingValues ?? {}).map(([key, value]) => {
+      return createMockSettingDefinition({
+        key,
+        value,
+      });
+    }),
     settingValues: createMockSettings(settingValues),
     tokenFeatures: createMockTokenFeatures({
       embedding: hasEmbeddingFeature,
@@ -41,22 +46,12 @@ export const setupEmbedding = async ({
   return { ...returnedValue, history: checkNotNull(returnedValue.history) };
 };
 
-export const goToStaticEmbeddingSettings = async () => {
-  await userEvent.click(screen.getByText("Manage"));
-};
-
-export const goToInteractiveEmbeddingSettings = async () => {
-  await userEvent.click(
-    within(
-      screen.getByRole("article", {
-        name: "Interactive embedding",
-      }),
-    ).getByRole("button", { name: "Configure" }),
-  );
-};
-
-export const getQuickStartLink = () => {
-  return screen.getByRole("link", { name: "Check out our Quick Start" });
+export const getInteractiveEmbeddingQuickStartLink = () => {
+  return within(
+    screen.getByRole("article", {
+      name: "Interactive embedding",
+    }),
+  ).getByRole("link", { name: "Check out our Quick Start" });
 };
 
 export const embeddingSettingsUrl =
