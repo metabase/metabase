@@ -11,7 +11,7 @@ import type {
   SdkState,
   SdkStoreState,
 } from "embedding-sdk/store/types";
-import type { SdkLicenseProblem } from "embedding-sdk/types/license-problem";
+import type { SdkUsageProblem } from "embedding-sdk/types/license-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 import { getFetchRefreshTokenFn, getSessionTokenState } from "./selectors";
@@ -86,9 +86,9 @@ export const setEventHandlers = createAction<SdkEventHandlersConfig | null>(
   SET_EVENT_HANDLERS,
 );
 
-const SET_LICENSE_PROBLEM = "sdk/SET_LICENSE_PROBLEM";
-export const setLicenseProblem = createAction<SdkLicenseProblem | null>(
-  SET_LICENSE_PROBLEM,
+const SET_USAGE_PROBLEM = "sdk/SET_USAGE_PROBLEM";
+export const setUsageProblem = createAction<SdkUsageProblem | null>(
+  SET_USAGE_PROBLEM,
 );
 
 const initialState: SdkState = {
@@ -101,7 +101,7 @@ const initialState: SdkState = {
   loginStatus: { status: "uninitialized" },
   plugins: null,
   eventHandlers: null,
-  licenseProblem: null,
+  usageProblem: null,
   loaderComponent: null,
   errorComponent: null,
   fetchRefreshTokenFn: null,
@@ -169,8 +169,8 @@ export const sdk = createReducer(initialState, builder => {
     fetchRefreshTokenFn: action.payload,
   }));
 
-  builder.addCase(setLicenseProblem, (state, action) => ({
+  builder.addCase(setUsageProblem, (state, action) => ({
     ...state,
-    licenseProblem: action.payload,
+    usageProblem: action.payload,
   }));
 });

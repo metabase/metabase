@@ -2,15 +2,15 @@ import { useEffect, useMemo, useRef } from "react";
 import { useDispatch } from "react-redux";
 
 import type { SDKConfig } from "embedding-sdk";
-import { getSdkLicenseProblem } from "embedding-sdk/lib/license-problem";
-import { printLicenseProblemToConsole } from "embedding-sdk/lib/print-license-problem";
-import { setLicenseProblem } from "embedding-sdk/store/reducer";
+import { getSdkUsageProblem } from "embedding-sdk/lib/license-problem";
+import { printUsageProblemToConsole } from "embedding-sdk/lib/print-license-problem";
+import { setUsageProblem } from "embedding-sdk/store/reducer";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getTokenFeature } from "metabase/setup/selectors";
 
-export function useSdkLicenseProblem(config: SDKConfig) {
+export function useSdkUsageProblem(config: SDKConfig) {
   const { allowConsoleLog = true } = config;
 
   const hasLoggedRef = useRef(false);
@@ -35,20 +35,20 @@ export function useSdkLicenseProblem(config: SDKConfig) {
     return getTokenFeature(state, "embedding");
   });
 
-  const licenseProblem = useMemo(() => {
-    return getSdkLicenseProblem({ hasTokenFeature, isEnabled, config });
+  const usageProblem = useMemo(() => {
+    return getSdkUsageProblem({ hasTokenFeature, isEnabled, config });
   }, [config, hasTokenFeature, isEnabled]);
 
   useEffect(() => {
     // SDK components will stop rendering if a license error is detected.
-    dispatch(setLicenseProblem(licenseProblem));
+    dispatch(setUsageProblem(usageProblem));
 
     // Log the problem to the console once.
     if (!hasLoggedRef.current && allowConsoleLog) {
-      printLicenseProblemToConsole(licenseProblem, appName);
+      printUsageProblemToConsole(usageProblem, appName);
       hasLoggedRef.current = true;
     }
-  }, [licenseProblem, appName, allowConsoleLog, dispatch]);
+  }, [usageProblem, appName, allowConsoleLog, dispatch]);
 
-  return licenseProblem;
+  return usageProblem;
 }

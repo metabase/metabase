@@ -2,18 +2,18 @@ import type { ComponentStory } from "@storybook/react";
 
 import { Box } from "metabase/ui";
 
-import { SdkLicenseProblemBanner } from "./SdkLicenseProblemBanner";
+import { SdkUsageProblemBanner } from "./SdkUsageProblemBanner";
 
 // eslint-disable-next-line import/no-default-export
 export default {
-  title: "EmbeddingSDK/SdkLicenseProblemBanner",
-  component: SdkLicenseProblemBanner,
+  title: "EmbeddingSDK/SdkUsageProblemBanner",
+  component: SdkUsageProblemBanner,
 };
 
-const Template: ComponentStory<typeof SdkLicenseProblemBanner> = args => {
+const Template: ComponentStory<typeof SdkUsageProblemBanner> = args => {
   return (
     <Box pos="absolute" bottom="15px" left="15px">
-      <SdkLicenseProblemBanner {...args} />
+      <SdkUsageProblemBanner {...args} />
     </Box>
   );
 };

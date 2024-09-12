@@ -1,4 +1,4 @@
-export interface SdkLicenseProblem {
+export interface SdkUsageProblem {
   severity: "warning" | "error";
   message: string;
 }

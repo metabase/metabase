@@ -55,7 +55,7 @@ const setup = (options: Options) => {
   });
 };
 
-describe("SdkLicenseProblemDisplay", () => {
+describe("SdkUsageProblemDisplay", () => {
   it("should not show an error when JWT is provided with a license", () => {
     setup({ config: createMockJwtConfig(), tokenFeatureEnabled: true });
 

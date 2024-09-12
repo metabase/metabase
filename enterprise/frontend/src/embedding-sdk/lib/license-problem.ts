@@ -2,7 +2,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import type { SDKConfig } from "embedding-sdk/types";
-import type { SdkLicenseProblem } from "embedding-sdk/types/license-problem";
+import type { SdkUsageProblem } from "embedding-sdk/types/license-problem";
 
 import { getIsLocalhost } from "./is-localhost";
 
@@ -29,9 +29,9 @@ export const SDK_SSO_DOCS_LINK =
  * Determine whether is a problem with user's use case of the embedding sdk.
  * This is determined by their license and the auth method they are using.
  */
-export function getSdkLicenseProblem(
+export function getSdkUsageProblem(
   options: SdkProblemOptions,
-): SdkLicenseProblem | null {
+): SdkUsageProblem | null {
   const {
     isEnabled,
     hasTokenFeature,
@@ -79,12 +79,12 @@ export function getSdkLicenseProblem(
   );
 }
 
-const toError = (message: string): SdkLicenseProblem => ({
+const toError = (message: string): SdkUsageProblem => ({
   severity: "error",
   message,
 });
 
-const toWarning = (message: string): SdkLicenseProblem => ({
+const toWarning = (message: string): SdkUsageProblem => ({
   severity: "warning",
   message,
 });

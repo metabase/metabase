@@ -5,10 +5,7 @@ import { PublicComponentStylesWrapper } from "embedding-sdk/components/private/P
 import { SdkError } from "embedding-sdk/components/private/PublicComponentWrapper/SdkError";
 import { SdkLoader } from "embedding-sdk/components/private/PublicComponentWrapper/SdkLoader";
 import { useSdkSelector } from "embedding-sdk/store";
-import {
-  getLicenseProblem,
-  getLoginStatus,
-} from "embedding-sdk/store/selectors";
+import { getLoginStatus, getUsageProblem } from "embedding-sdk/store/selectors";
 
 type PublicComponentWrapperProps = {
   children: React.ReactNode;
@@ -20,7 +17,7 @@ export const PublicComponentWrapper = React.forwardRef<
   PublicComponentWrapperProps
 >(function PublicComponentWrapper({ children, className, style }, ref) {
   const loginStatus = useSdkSelector(getLoginStatus);
-  const licenseProblem = useSdkSelector(getLicenseProblem);
+  const usageProblem = useSdkSelector(getUsageProblem);
 
   let content = children;
 
@@ -41,7 +38,7 @@ export const PublicComponentWrapper = React.forwardRef<
   }
 
   // The SDK components should not load if there is a license error.
-  if (licenseProblem?.severity === "error") {
+  if (usageProblem?.severity === "error") {
     content = null;
   }
 

@@ -12,7 +12,7 @@ import type {
 } from "embedding-sdk";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import type { SdkLicenseProblem } from "embedding-sdk/types/license-problem";
+import type { SdkUsageProblem } from "embedding-sdk/types/license-problem";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
@@ -58,7 +58,7 @@ export type SdkState = {
   loginStatus: LoginStatus;
   plugins: null | SdkPluginsConfig;
   eventHandlers: null | SdkEventHandlersConfig;
-  licenseProblem: null | SdkLicenseProblem;
+  usageProblem: null | SdkUsageProblem;
   loaderComponent: null | (() => JSX.Element);
   errorComponent: null | SdkErrorComponent;
   fetchRefreshTokenFn: null | FetchRequestTokenFn;

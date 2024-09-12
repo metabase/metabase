@@ -3,25 +3,25 @@ import cx from "classnames";
 import { useState } from "react";
 
 import { SDK_SSO_DOCS_LINK } from "embedding-sdk/lib/license-problem";
-import type { SdkLicenseProblem } from "embedding-sdk/types/license-problem";
+import type { SdkUsageProblem } from "embedding-sdk/types/license-problem";
 import LogoIcon from "metabase/components/LogoIcon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { originalColors } from "metabase/lib/colors";
 import { Button, Card, Flex, Icon, Popover, Stack, Text } from "metabase/ui";
 
-import S from "./SdkLicenseProblemBanner.module.css";
+import S from "./SdkUsageProblemBanner.module.css";
 
 interface Props {
-  problem: SdkLicenseProblem | null;
+  problem: SdkUsageProblem | null;
 }
 
-// Prevent the license problem banner from inheriting the theme colors,
+// Prevent the usage problem banner from inheriting the theme colors,
 // so they remain legible even when the theme is changed.
 const unthemedBrand = originalColors["brand"];
 const unthemedTextDark = originalColors["text-dark"];
 const unthemedTextMedium = originalColors["text-medium"];
 
-export const SdkLicenseProblemBanner = ({ problem }: Props) => {
+export const SdkUsageProblemBanner = ({ problem }: Props) => {
   const [expanded, setExpanded] = useState(false);
   const [shown, { close: hideBanner }] = useDisclosure(true);
 

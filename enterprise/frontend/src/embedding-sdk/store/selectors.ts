@@ -16,8 +16,7 @@ export const getPlugins = (state: SdkStoreState) => state.sdk.plugins;
 export const getEventHandlers = (state: SdkStoreState | State) =>
   "sdk" in state ? state.sdk.eventHandlers : null;
 
-export const getLicenseProblem = (state: SdkStoreState) =>
-  state.sdk.licenseProblem;
+export const getUsageProblem = (state: SdkStoreState) => state.sdk.usageProblem;
 
 export const getLoaderComponent = (state: SdkStoreState) =>
   state.sdk.loaderComponent;

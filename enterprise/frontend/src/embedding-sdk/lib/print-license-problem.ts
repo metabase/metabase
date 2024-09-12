@@ -1,14 +1,14 @@
 import { match } from "ts-pattern";
 
-import type { SdkLicenseProblem } from "embedding-sdk/types/license-problem";
+import type { SdkUsageProblem } from "embedding-sdk/types/license-problem";
 
 const HEADER_STYLE = "color: #509ee3; font-size: 16px; font-weight: bold;";
 const TEXT_STYLE = "font-size: 14px;";
 const LINK_STYLE =
   "color: #509ee3; font-size: 14px; text-decoration: underline;";
 
-export function printLicenseProblemToConsole(
-  problem: SdkLicenseProblem | null,
+export function printUsageProblemToConsole(
+  problem: SdkUsageProblem | null,
   appName: string,
 ) {
   if (!problem) {
