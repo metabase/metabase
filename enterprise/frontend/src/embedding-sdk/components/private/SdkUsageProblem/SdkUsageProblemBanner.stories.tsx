@@ -4,7 +4,6 @@ import { Box } from "metabase/ui";
 
 import { SdkUsageProblemBanner } from "./SdkUsageProblemBanner";
 
-// eslint-disable-next-line import/no-default-export
 export default {
   title: "EmbeddingSDK/SdkUsageProblemBanner",
   component: SdkUsageProblemBanner,
