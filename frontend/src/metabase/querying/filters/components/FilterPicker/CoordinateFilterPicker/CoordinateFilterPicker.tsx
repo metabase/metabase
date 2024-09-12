@@ -13,8 +13,8 @@ import * as Lib from "metabase-lib";
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
-import { FilterPickerForm } from "../FilterPickerForm";
 import { FilterPickerHeader } from "../FilterPickerHeader";
+import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
@@ -72,7 +72,10 @@ export function CoordinateFilterPicker({
   };
 
   return (
-    <FilterPickerForm
+    <Box
+      component="form"
+      miw={MIN_WIDTH}
+      maw={MAX_WIDTH}
       data-testid="coordinate-filter-picker"
       onSubmit={handleSubmit}
     >
@@ -86,7 +89,7 @@ export function CoordinateFilterPicker({
           onChange={handleOperatorChange}
         />
       </FilterPickerHeader>
-      <Flex direction="column" mih={0}>
+      <Box>
         {canPickColumns && (
           <CoordinateColumnPicker
             query={query}
@@ -107,8 +110,8 @@ export function CoordinateFilterPicker({
           onChange={setValues}
         />
         <FilterPickerFooter isNew={isNew} canSubmit={isValid} />
-      </Flex>
-    </FilterPickerForm>
+      </Box>
+    </Box>
   );
 }
 
@@ -133,7 +136,7 @@ function CoordinateValueInput({
 }: CoordinateValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <Box p="md" style={{ overflow: "auto" }}>
+      <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
         <NumberFilterValuePicker
           query={query}
           stageIndex={stageIndex}
@@ -148,7 +151,7 @@ function CoordinateValueInput({
 
   if (valueCount === 1) {
     return (
-      <Box p="md">
+      <Flex p="md">
         <NumberInput
           value={values[0]}
           placeholder={t`Enter a number`}
@@ -157,7 +160,7 @@ function CoordinateValueInput({
           aria-label={t`Filter value`}
           onChange={(newValue: number) => onChange([newValue])}
         />
-      </Box>
+      </Flex>
     );
   }
 

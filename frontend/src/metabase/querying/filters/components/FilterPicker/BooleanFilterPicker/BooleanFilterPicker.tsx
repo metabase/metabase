@@ -3,12 +3,12 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useBooleanOptionFilter } from "metabase/querying/filters/hooks/use-boolean-option-filter";
-import { Button, Icon, Radio, Stack } from "metabase/ui";
+import { Box, Button, Icon, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { FilterPickerFooter } from "../FilterPickerFooter";
-import { FilterPickerForm } from "../FilterPickerForm";
 import { FilterPickerHeader } from "../FilterPickerHeader";
+import { MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function BooleanFilterPicker({
@@ -52,7 +52,9 @@ export function BooleanFilterPicker({
   };
 
   return (
-    <FilterPickerForm
+    <Box
+      component="form"
+      miw={MIN_WIDTH}
       data-testid="boolean-filter-picker"
       onSubmit={handleSubmit}
     >
@@ -87,6 +89,6 @@ export function BooleanFilterPicker({
         )}
         <FilterPickerFooter isNew={isNew} canSubmit />
       </div>
-    </FilterPickerForm>
+    </Box>
   );
 }

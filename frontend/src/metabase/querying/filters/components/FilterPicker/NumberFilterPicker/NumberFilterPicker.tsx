@@ -13,8 +13,8 @@ import * as Lib from "metabase-lib";
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
-import { FilterPickerForm } from "../FilterPickerForm";
 import { FilterPickerHeader } from "../FilterPickerHeader";
+import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function NumberFilterPicker({
@@ -64,7 +64,10 @@ export function NumberFilterPicker({
   };
 
   return (
-    <FilterPickerForm
+    <Box
+      component="form"
+      miw={MIN_WIDTH}
+      maw={MAX_WIDTH}
       data-testid="number-filter-picker"
       onSubmit={handleSubmit}
     >
@@ -78,7 +81,7 @@ export function NumberFilterPicker({
           onChange={handleOperatorChange}
         />
       </FilterPickerHeader>
-      <Flex direction="column" mih={0}>
+      <div>
         <NumberValueInput
           query={query}
           stageIndex={stageIndex}
@@ -89,8 +92,8 @@ export function NumberFilterPicker({
           onChange={setValues}
         />
         <FilterPickerFooter isNew={isNew} canSubmit={isValid} />
-      </Flex>
-    </FilterPickerForm>
+      </div>
+    </Box>
   );
 }
 
@@ -115,7 +118,7 @@ function NumberValueInput({
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <Box p="md" style={{ overflow: "auto" }}>
+      <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
         <NumberFilterValuePicker
           query={query}
           stageIndex={stageIndex}
@@ -130,7 +133,7 @@ function NumberValueInput({
 
   if (valueCount === 1) {
     return (
-      <Box p="md">
+      <Flex p="md">
         <NumberInput
           value={values[0]}
           placeholder={t`Enter a number`}
@@ -139,7 +142,7 @@ function NumberValueInput({
           aria-label={t`Filter value`}
           onChange={newValue => onChange([newValue])}
         />
-      </Box>
+      </Flex>
     );
   }
 
