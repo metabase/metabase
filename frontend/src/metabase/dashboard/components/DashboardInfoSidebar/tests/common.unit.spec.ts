@@ -1,33 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupRevisionsEndpoints } from "__support__/server-mocks/revision";
-import { renderWithProviders, screen } from "__support__/ui";
-import type { Dashboard } from "metabase-types/api";
+import { screen } from "__support__/ui";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
-import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
-
-interface SetupOpts {
-  dashboard?: Dashboard;
-}
-
-function setup({ dashboard = createMockDashboard() }: SetupOpts = {}) {
-  const setDashboardAttribute = jest.fn();
-
-  setupRevisionsEndpoints([]);
-
-  renderWithProviders(
-    <DashboardInfoSidebar
-      dashboard={dashboard}
-      setDashboardAttribute={setDashboardAttribute}
-      onClose={() => {}}
-    />,
-  );
-
-  return {
-    setDashboardAttribute,
-  };
-}
+import { setup } from "./setup";
 
 jest.mock("metabase/dashboard/constants", () => ({
   ...jest.requireActual("metabase/dashboard/constants"),
@@ -38,11 +14,44 @@ describe("DashboardInfoSidebar", () => {
   it("should render the component", () => {
     setup();
 
-    expect(screen.getByText("About")).toBeInTheDocument();
+    expect(screen.getByText("Info")).toBeInTheDocument();
+    expect(screen.getByTestId("sidesheet")).toBeInTheDocument();
+  });
+
+  it("should render overview tab", () => {
+    setup();
+    expect(screen.getByRole("tab", { name: "Overview" })).toBeInTheDocument();
+  });
+
+  it("should render history tab", () => {
+    setup();
+    expect(screen.getByRole("tab", { name: "History" })).toBeInTheDocument();
+  });
+
+  it("should show description when clicking on overview tab", async () => {
+    await setup();
+    await userEvent.click(screen.getByRole("tab", { name: "History" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Overview" }));
+
+    expect(screen.getByText("Description")).toBeInTheDocument();
+  });
+
+  it("should show history when clicking on history tab", async () => {
+    await setup();
+    await userEvent.click(screen.getByRole("tab", { name: "History" }));
+
+    expect(screen.getByTestId("dashboard-history-list")).toBeInTheDocument();
+  });
+
+  it("should close when clicking the close button", async () => {
+    const { onClose } = await setup();
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("should allow to set description", async () => {
-    const { setDashboardAttribute } = setup();
+    const { setDashboardAttribute } = await setup();
 
     await userEvent.click(screen.getByTestId("editable-text"));
     await userEvent.type(
@@ -59,7 +68,7 @@ describe("DashboardInfoSidebar", () => {
 
   it("should validate description length", async () => {
     const expectedErrorMessage = "Must be 20 characters or less";
-    const { setDashboardAttribute } = setup();
+    const { setDashboardAttribute } = await setup();
 
     await userEvent.click(screen.getByTestId("editable-text"));
     await userEvent.type(
@@ -80,7 +89,7 @@ describe("DashboardInfoSidebar", () => {
   });
 
   it("should allow to clear description", async () => {
-    const { setDashboardAttribute } = setup({
+    const { setDashboardAttribute } = await setup({
       dashboard: createMockDashboard({ description: "some description" }),
     });
 
@@ -89,5 +98,10 @@ describe("DashboardInfoSidebar", () => {
     await userEvent.tab();
 
     expect(setDashboardAttribute).toHaveBeenCalledWith("description", "");
+  });
+
+  it("should not render caching section in OSS", async () => {
+    await setup();
+    expect(screen.queryByText("Caching")).not.toBeInTheDocument();
   });
 });
