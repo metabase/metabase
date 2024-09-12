@@ -11,10 +11,9 @@ import { getScrollX, getScrollY } from "metabase/lib/dom";
 import { Transition } from "metabase/ui";
 
 export type FullPageModalProps = BaseModalProps & {
-  isOpen?: boolean;
+  isOpen: boolean;
   onClose?: () => void;
   fullPageModal?: boolean;
-  className?: string;
 };
 
 type FullPageModalState = {
@@ -42,10 +41,7 @@ export class FullPageModal extends Component<
     };
 
     this._modalElement = document.createElement("div");
-    this._modalElement.className = cx(
-      ModalS.ModalContainer,
-      this.props.className,
-    );
+    this._modalElement.className = ModalS.ModalContainer;
     document.body.appendChild(this._modalElement);
 
     // save the scroll position, scroll to the top left, and disable scrolling
