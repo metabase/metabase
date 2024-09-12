@@ -20,6 +20,7 @@ function setup({ dashboard = createMockDashboard() }: SetupOpts = {}) {
     <DashboardInfoSidebar
       dashboard={dashboard}
       setDashboardAttribute={setDashboardAttribute}
+      onClose={() => {}}
     />,
   );
 
