@@ -617,7 +617,7 @@
    (str "Matching style for native query editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
         "Larger instances can have performance issues matching using substring, so can use prefix matching, "
         " or turn autocompletions off."))
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :keyword
   :default    :substring

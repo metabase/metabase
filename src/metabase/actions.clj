@@ -21,7 +21,7 @@
   (i18n/deferred-tru "Whether to enable Actions for a specific Database.")
   :default false
   :type :boolean
-  :visibility :public
+  :visibility :authenticated
   :database-local :only)
 
 (defmulti normalize-action-arg-map

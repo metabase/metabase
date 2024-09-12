@@ -21,7 +21,7 @@
   (deferred-tru "Allow admins to securely embed questions and dashboards within other applications?")
   :type       :boolean
   :default    false
-  :visibility :authenticated
+  :visibility :public
   :export?    true
   :audit      :getter
   :setter     (fn [new-value]

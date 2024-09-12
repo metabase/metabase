@@ -112,7 +112,7 @@
 (defsetting ldap-configured?
   (deferred-tru "Have the mandatory LDAP settings (host and user search base) been validated and saved?")
   :type       :boolean
-  :visibility :public
+  :visibility :authenticated
   :setter     :none
   :getter     (fn [] (boolean (and (ldap-host)
                                    (ldap-user-base))))

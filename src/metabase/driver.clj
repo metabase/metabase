@@ -72,7 +72,7 @@
 
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :setter     :none
   :getter     (fn [] (short-timezone-name (report-timezone)))
@@ -80,7 +80,7 @@
 
 (defsetting report-timezone-long
   "Current report timezone string"
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :setter     :none
   :getter     (fn [] (long-timezone-name (report-timezone)))

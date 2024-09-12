@@ -213,7 +213,7 @@
                 (application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
-  :visibility :authenticated
+  :visibility :public
   :audit      :getter)
 
 (defsetting map-tile-server-url
@@ -684,7 +684,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting available-locales
   "Available i18n locales"
-  :visibility :authenticated
+  :visibility :public
   :export?    true
   :setter     :none
   :getter     available-locales-with-names
@@ -730,7 +730,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting token-features
   "Features registered for this instance's token"
-  :visibility :authenticated
+  :visibility :public
   :setter     :none
   :getter     (fn [] {:advanced_permissions           (premium-features/enable-advanced-permissions?)
                       :attached_dwh                   (premium-features/has-attached-dwh?)
