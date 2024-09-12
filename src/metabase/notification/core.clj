@@ -22,9 +22,11 @@
    [:notification/system-event [:merge
                                 Notification
                                 [:map {:closed true}
-                                 ;; TODO: event-info schema
-                                 [:event-info [:maybe :map]]
-                                 [:settings   :map]]]]])
+                                 [:payload
+                                  [:map {:closed true}
+                                   ;; TODO: event-info schema for each event type
+                                   [:event-info [:maybe :map]]
+                                   [:settings   :map]]]]]]])
 
 (mu/defn send-notification!
   "Send the notification to all handlers synchronously."
@@ -32,7 +34,7 @@
   (let [noti-handlers (t2/hydrate (t2/select :model/NotificationHandler :notification_id (:id notification))
                                   :channel
                                   :template
-                                  :recipients)]
+                                  [:recipients :user])]
     (log/infof "[Notification %d] Found %d destinations" (:id notification) (count noti-handlers))
     (doseq [handler noti-handlers]
       (let [channel-type (:channel_type handler)

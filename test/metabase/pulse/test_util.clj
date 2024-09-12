@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.integrations.slack :as slack]
-   [metabase.notification.test-util :as notification.test]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.pulse :as pulse]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -82,7 +82,7 @@
 
 (defmacro with-captured-channel-send-messages!
   [& body]
-  `(notification.test/with-captured-channel-send!
+  `(notification.tu/with-captured-channel-send!
      ~@body))
 
 (def png-attachment

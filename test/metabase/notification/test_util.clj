@@ -53,3 +53,15 @@
   `(do-with-captured-channel-send!
     (fn []
       ~@body)))
+
+(defmacro with-temporary-event-topics!
+  "Temporarily make `topics` valid event topics."
+  [topics & body]
+  `(let [topics# ~topics]
+     (try
+       (doseq [topic# topics#]
+         (derive topic# :metabase/event))
+       ~@body
+       (finally
+         (doseq [topic# topics#]
+           (underive topic# :metabase/event))))))

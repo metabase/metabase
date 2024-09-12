@@ -1,26 +1,13 @@
 (ns metabase.channel.params
   (:require
-   [clojure.string :as str]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.parse :as params.parse]))
-
-(defn- param-name->path
-  [param-name]
-  (->> (str/split param-name #"\.")
-       (mapv keyword)))
+   [stencil.core :as stencil]))
 
 (defn substitute-params
   "Substitute parameters in text with values from context.
 
-  Parameters are specified in the text using the format {{param-name}}."
-  [text context]
-  (let [components (params.parse/parse text)]
-    (str/join ""
-              (for [c components]
-                (if (params/Param? c)
-                  (or (get-in context (param-name->path (:k c)))
-                      (throw (ex-info (str "Missing parameter: " (:k c)) {:param (:k c)})))
-                  c)))))
+  Params are specified using mustache syntax, e.g. {{param}}."
+  [template-src data-map]
+  (stencil/render-string template-src data-map))
 
 (comment
   (substitute-params "Hello {{user.email}}!" {:user {:email "ngoc@metabase.com"}}))

@@ -2,14 +2,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.http-test :as channel.http-test]
-   [metabase.notification.test-util :as notification.test]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(def default-test-channel notification.test/default-can-connect-channel)
+(def default-test-channel notification.tu/default-can-connect-channel)
 
 (deftest CRU-channel-test
   (mt/with-model-cleanup [:model/Channel]
@@ -155,7 +155,7 @@
               (is (= {:details  {:description "Test channel description"
                                  :id          id
                                  :name        "Test channel"
-                                 :type        notification.test/test-channel-type
+                                 :type        notification.tu/test-channel-type
                                  :active      true}
                       :model    "Channel"
                       :model_id id

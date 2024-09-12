@@ -2,12 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.permissions :as perms]
-   [metabase.notification.test-util :as notification.test]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]))
 
 (comment
  ;; to register the :metabase-test channel implementation
-  notification.test/keepme)
+  notification.tu/keepme)
 
 (deftest channel-api-test
   (testing "/api/channel"
@@ -17,13 +17,13 @@
          user  [group]]
         (letfn [(update-channel [user status]
                   (testing (format "set channel setting with %s user" (mt/user-descriptor user))
-                    (mt/with-temp [:model/Channel {id :id} notification.test/default-can-connect-channel]
+                    (mt/with-temp [:model/Channel {id :id} notification.tu/default-can-connect-channel]
                       (mt/user-http-request user :put status (format "channel/%d" id) {:name (mt/random-name)}))))
                 (create-channel [user status]
                   (testing (format "create channel setting with %s user" (mt/user-descriptor user))
-                    (mt/user-http-request user :post status "channel" (assoc notification.test/default-can-connect-channel :name (mt/random-name)))))
+                    (mt/user-http-request user :post status "channel" (assoc notification.tu/default-can-connect-channel :name (mt/random-name)))))
                 (include-details [user include-details?]
-                  (mt/with-temp [:model/Channel {id :id} notification.test/default-can-connect-channel]
+                  (mt/with-temp [:model/Channel {id :id} notification.tu/default-can-connect-channel]
                     (testing (format "GET /api/channel/:id with %s user" (mt/user-descriptor user))
                       (is (= include-details? (contains? (mt/user-http-request user :get 200 (str "channel/" id)) :details))))
 

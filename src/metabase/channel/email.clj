@@ -109,16 +109,22 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (defn- notification-recipients->emails
-  [payload recipients]
-  (let [user-recipients ()]))
+  [recipients]
+  (for [recipient recipients]
+    (case (:type recipient)
+      :notification-recipient/user
+      (-> recipient :user :email))))
 
 (defmethod channel/render-notification
   [:channel/email :notification/system-event]
   [_channel-type notification-info template recipients]
+  (def notification-info notification-info)
+  (def template template)
+  (def recipients recipients)
+  (def payload (:payload notification-info))
   (assert (some? template) "Template is required for system event notifications")
   (let [payload (:payload notification-info)]
-    (seq (for [recipient recipients]
-           (construct-email (channel/substitute-params (:subject template) payload)
-                            [(channel/substitute-params (:details recipient) payload)]
-                            [{:type    "text/html; charset=utf-8"
-                              :content (stencil/render-file (:path template) payload)}])))))
+    [(construct-email (channel/substitute-params (-> template :details :subject) payload)
+                      (notification-recipients->emails recipients)
+                      [{:type    "text/html; charset=utf-8"
+                        :content (stencil/render-string (-> template :details :body) payload)}])]))

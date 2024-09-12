@@ -19,10 +19,10 @@
 
 (defn- enriched-event-info
   [event-info]
-  {:event-info event-info
-   ;; DO NOT delete or rename these fields, they are used in the notification templates
-   :settings   {:application-name (public-settings/application-name)
-                :site-name        (public-settings/site-name)}})
+  ;; DO NOT delete or rename these fields, they are used in the notification templates
+  {:settings {:application-name (public-settings/application-name)
+              :site-name        (public-settings/site-name)}
+   :event-info event-info})
 
 (defn- maybe-send-notification-for-topic!
   [topic event-info]
@@ -30,7 +30,7 @@
     (let [enriched-event-info (enriched-event-info event-info)]
       (log/infof "Found %d notifications for event: %s" (count notifications) topic)
       (doseq [notification notifications]
-        (notification/send-notification! (merge notification enriched-event-info))))))
+        (notification/send-notification! (assoc notification :payload enriched-event-info))))))
 
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]
