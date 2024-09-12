@@ -1,9 +1,4 @@
-import { t } from "ttag";
-
-import {
-  getColumnGroupIcon,
-  getColumnGroupName,
-} from "metabase/common/utils/column-groups";
+import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import * as Lib from "metabase-lib";
 
 import type { GroupItem } from "../types";
@@ -36,8 +31,8 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
 
       return {
         key: `${stageIndex}-${groupIndex}`,
-        displayName: getColumnGroupName(groupInfo) || t`Summaries`,
-        icon: getColumnGroupIcon(groupInfo) || "sum",
+        displayName: groupInfo.displayName,
+        icon: getColumnGroupIcon(groupInfo),
         columnItems: availableColumns.map(column => {
           const columnInfo = Lib.displayInfo(query, stageIndex, column);
           return {

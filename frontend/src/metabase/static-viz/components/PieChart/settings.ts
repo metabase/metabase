@@ -17,13 +17,12 @@ import {
   getPieRows,
 } from "metabase/visualizations/shared/settings/pie";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { RawSeries, VisualizationSettings } from "metabase-types/api";
+import type { RawSeries } from "metabase-types/api";
 
 export function computeStaticPieChartSettings(
   rawSeries: RawSeries,
-  dashcardSettings: VisualizationSettings,
 ): ComputedVisualizationSettings {
-  const settings = getCommonStaticVizSettings(rawSeries, dashcardSettings);
+  const settings = getCommonStaticVizSettings(rawSeries);
   const { dimension: defaultDimension, metric: defaultMetric } =
     getDefaultDimensionAndMetric(rawSeries);
 
