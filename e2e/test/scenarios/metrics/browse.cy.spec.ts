@@ -13,6 +13,7 @@ import {
   getSidebarSectionTitle,
   main,
   navigationSidebar,
+  openNavigationSidebar,
   popover,
   restore,
   setTokenFeatures,
@@ -108,7 +109,7 @@ function metricsTable() {
 }
 
 function findMetric(name: string) {
-  return metricsTable().findByText(name).should("be.visible");
+  return metricsTable().findByText(name);
 }
 
 function getMetricsTableItem(index: number) {
@@ -401,7 +402,6 @@ describe("scenarios > browse > metrics", () => {
       cy.signInAsAdmin();
       createMetrics([ORDERS_SCALAR_METRIC]);
 
-      setTokenFeatures("all");
       cy.updatePermissionsGraph({
         [ALL_USERS_GROUP_ID]: {
           [SAMPLE_DB_ID]: {
@@ -416,4 +416,80 @@ describe("scenarios > browse > metrics", () => {
       metricsTable().findByText("18,760").should("not.exist");
     });
   });
+
+  describe("verified metrics", () => {
+    describeEE("on enterprise", () => {
+      beforeEach(() => {
+        cy.signInAsAdmin();
+        setTokenFeatures("all");
+      });
+
+      it("should not the verified metrics filter when there are no verified metrics", () => {
+        createMetrics();
+        cy.visit("/browse/metrics");
+
+        cy.findByLabelText("Filters").should("not.exist");
+      });
+
+      it("should show the verified metrics filter when there are verified metrics", () => {
+        createMetrics([ORDERS_SCALAR_METRIC, ORDERS_SCALAR_MODEL_METRIC]);
+        cy.visit("/browse/metrics");
+
+        findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
+        findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
+
+        verifyMetric(ORDERS_SCALAR_METRIC);
+
+        findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
+        findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
+
+        toggleVerifiedMetricsFilter();
+
+        findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
+        findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
+
+        toggleVerifiedMetricsFilter();
+
+        findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
+        findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
+
+        unverifyMetric(ORDERS_SCALAR_METRIC);
+
+        findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
+        findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
+      });
+    });
+  });
 });
+
+function verifyMetric(metric: StructuredQuestionDetailsWithName) {
+  metricsTable().findByText(metric.name).should("be.visible").click();
+
+  cy.button("Move, trash, and more...").click();
+  popover().findByText("Verify this metric").click();
+
+  openNavigationSidebar();
+
+  navigationSidebar()
+    .findByRole("listitem", { name: "Browse metrics" })
+    .click();
+}
+
+function unverifyMetric(metric: StructuredQuestionDetailsWithName) {
+  metricsTable().findByText(metric.name).should("be.visible").click();
+
+  cy.button("Move, trash, and more...").click();
+  popover().findByText("Remove verification").click();
+
+  openNavigationSidebar();
+
+  navigationSidebar()
+    .findByRole("listitem", { name: "Browse metrics" })
+    .click();
+}
+
+function toggleVerifiedMetricsFilter() {
+  cy.findByLabelText("Filters").should("be.visible").click();
+  popover().findByText("Show verified metrics only").click();
+  cy.findByLabelText("Filters").should("be.visible").click();
+}
