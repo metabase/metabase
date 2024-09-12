@@ -70,7 +70,13 @@
   :audit   :getter
   :default true)
 
-(declare site-uuid)
+(defsetting site-uuid
+  ;; Don't i18n this docstring because it's not user-facing! :)
+  "Unique identifier used for this instance of {0}. This is set once and only once the first time it is fetched via
+  its magic getter. Nice!"
+  :visibility :authenticated
+  :base       setting/uuid-nonce-base
+  :doc        false)
 
 (defsetting upgrade-threshold
   (deferred-tru "Threshold (value in 0-100) indicating at which treshold it should offer an upgrade to the latest major version.")
@@ -155,14 +161,6 @@
   :type       :integer
   :visibility :public
   :audit      :getter)
-
-(defsetting site-uuid
-  ;; Don't i18n this docstring because it's not user-facing! :)
-  "Unique identifier used for this instance of {0}. This is set once and only once the first time it is fetched via
-  its magic getter. Nice!"
-  :visibility :authenticated
-  :base       setting/uuid-nonce-base
-  :doc        false)
 
 (defsetting site-uuid-for-premium-features-token-checks
   "In the interest of respecting everyone's privacy and keeping things as anonymous as possible we have a *different*
