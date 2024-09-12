@@ -359,7 +359,6 @@ describe("scenarios > home > custom homepage", () => {
         //appear in search
         cy.findByPlaceholderText(/search/i).type("das{enter}");
         cy.wait("@search");
-        cy.findByText("Everywhere").click();
         cy.findByText("Orders in a dashboard").should("exist");
         cy.findByText("nested dash").should("not.exist");
 
