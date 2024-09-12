@@ -160,7 +160,7 @@ export const useEnsureCollectionSelected = ({
   useEffect(() => {
     if (isEnabled && defaultCollectionItem) {
       onItemSelect(defaultCollectionItem, { autoSelected: true });
-      setIsEnabled(false);
+      setIsEnabled(false); // ensure this effect runs only once
     }
   }, [isEnabled, defaultCollectionItem, onItemSelect]);
 };
