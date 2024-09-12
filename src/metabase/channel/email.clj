@@ -118,10 +118,6 @@
 (defmethod channel/render-notification
   [:channel/email :notification/system-event]
   [_channel-type notification-info template recipients]
-  (def notification-info notification-info)
-  (def template template)
-  (def recipients recipients)
-  (def payload (:payload notification-info))
   (assert (some? template) "Template is required for system event notifications")
   (let [payload (:payload notification-info)]
     [(construct-email (channel/substitute-params (-> template :details :subject) payload)

@@ -965,7 +965,7 @@
                                     :details      {:channel "#general"}}]
       (let [original-render-noti (var-get #'channel/render-notification)]
         (with-redefs [channel/render-notification (fn [& args]
-                                                    (if (= :channel/slacke (:type (first args)))
+                                                    (if (= :channel/slack (:type (first args)))
                                                       (throw (ex-info "Slack failed" {}))
                                                       (apply original-render-noti args)))]
          ;; slack failed but email should still be sent
