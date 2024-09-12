@@ -401,9 +401,9 @@
 
 (deftest version-info*-test
   (let [version-info {:latest {:version "1.51.23.1" :rollout 50
-                               :highlights [,,,]}
-                      :older [{:version "1.51.22" :highlights [,,,]}
-                              {:version "1.51.21" :highlights [,,,]}]}]
+                               :highlights ["highlights for 1.51.23.1"]}
+                      :older [{:version "1.51.22" :highlights ["highlights for 1.51.22"]}
+                              {:version "1.51.21" :highlights ["highlights for 1.51.21"]}]}]
     (testing "When on same major, includes latest"
       (is (= version-info (info version-info {:current-major 51 :upgrade-threshold-value 25}))))
     (testing "When below major"
