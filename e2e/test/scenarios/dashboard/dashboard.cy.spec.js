@@ -32,6 +32,7 @@ import {
   getDashboardCards,
   getTextCardDetails,
   modal,
+  openDashboardInfoSidebar,
   openDashboardMenu,
   openProductsTable,
   openQuestionsSidebar,
@@ -48,7 +49,7 @@ import {
   setTokenFeatures,
   showDashboardCardActions,
   sidebar,
-  toggleDashboardInfoSidebar,
+  sidesheet,
   updateDashboardCards,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -422,9 +423,9 @@ describe("scenarios > dashboard", () => {
         cy.wait("@updateDashboard");
         cy.wait("@getDashboard");
 
-        toggleDashboardInfoSidebar();
+        openDashboardInfoSidebar();
 
-        rightSidebar()
+        sidesheet()
           .findByPlaceholderText("Add description")
           .type(newDescription)
           .blur();
@@ -439,8 +440,8 @@ describe("scenarios > dashboard", () => {
         cy.wait("@getDashboard");
 
         dashboardHeader().findByDisplayValue(newTitle);
-        toggleDashboardInfoSidebar();
-        sidebar().findByText(newDescription);
+        openDashboardInfoSidebar();
+        sidesheet().findByText(newDescription);
 
         cy.log("should not call unnecessary API requests (metabase#31721)");
         cy.get("@updateDashboardSpy").should("have.callCount", 2);
@@ -494,12 +495,12 @@ describe("scenarios > dashboard", () => {
       });
 
       it("should not have markdown content overflow the description area (metabase#31326)", () => {
-        toggleDashboardInfoSidebar();
+        openDashboardInfoSidebar();
 
         const testMarkdownContent =
           "# Heading 1{enter}{enter}**bold** https://www.metabase.com/community_posts/how-to-measure-the-success-of-new-product-features-and-why-it-is-important{enter}{enter}![alt](/app/assets/img/welcome-modal-2.png){enter}{enter}This is my description. ";
 
-        rightSidebar()
+        sidesheet()
           .findByPlaceholderText("Add description")
           .type(testMarkdownContent, { delay: 0 })
           .blur();

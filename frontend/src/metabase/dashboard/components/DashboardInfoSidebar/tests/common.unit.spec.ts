@@ -100,6 +100,11 @@ describe("DashboardInfoSidebar", () => {
     expect(setDashboardAttribute).toHaveBeenCalledWith("description", "");
   });
 
+  it("should show dashboard auto-apply filter toggle", async () => {
+    await setup();
+    expect(screen.getByText("Auto-apply filters")).toBeInTheDocument();
+  });
+
   it("should not render caching section in OSS", async () => {
     await setup();
     expect(screen.queryByText("Caching")).not.toBeInTheDocument();

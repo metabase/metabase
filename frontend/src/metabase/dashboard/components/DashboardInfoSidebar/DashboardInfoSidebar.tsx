@@ -14,13 +14,18 @@ import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks";
 import EditableText from "metabase/core/components/EditableText";
-import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
+import {
+  revertToRevision,
+  toggleAutoApplyFilters,
+  updateDashboard,
+} from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
 import { isDashboardCacheable } from "metabase/dashboard/utils";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
-import { Stack, Tabs, Text } from "metabase/ui";
+import { Stack, Switch, Tabs, Text } from "metabase/ui";
 import type {
   CacheableDashboard,
   Dashboard,
@@ -172,6 +177,14 @@ const OverviewTab = ({
   showCaching: boolean;
 }) => {
   const isCacheable = isDashboardCacheable(dashboard);
+  const autoApplyFilterToggleId = useUniqueId();
+  const dispatch = useDispatch();
+  const handleToggleAutoApplyFilters = useCallback(
+    (isAutoApplyingFilters: boolean) => {
+      dispatch(toggleAutoApplyFilters(isAutoApplyingFilters));
+    },
+    [dispatch],
+  );
 
   return (
     <Stack spacing="lg">
@@ -195,6 +208,21 @@ const OverviewTab = ({
           </Text>
         )}
       </SidesheetCard>
+
+      {!dashboard.archived && (
+        <SidesheetCard>
+          <Switch
+            disabled={!canWrite}
+            label={t`Auto-apply filters`}
+            labelPosition="left"
+            variant="stretch"
+            size="sm"
+            id={autoApplyFilterToggleId}
+            checked={dashboard.auto_apply_filters}
+            onChange={e => handleToggleAutoApplyFilters(e.target.checked)}
+          />
+        </SidesheetCard>
+      )}
 
       {showCaching && isCacheable && (
         <SidesheetCard title={t`Caching`} pb="md">

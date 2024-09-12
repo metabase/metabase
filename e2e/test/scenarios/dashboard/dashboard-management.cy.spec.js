@@ -9,12 +9,12 @@ import {
   getDashboardCard,
   modal,
   navigationSidebar,
+  openDashboardInfoSidebar,
   openDashboardMenu,
   openNavigationSidebar,
   popover,
   restore,
-  rightSidebar,
-  toggleDashboardInfoSidebar,
+  sidesheet,
   undoToast,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -71,9 +71,9 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               assertOnRequest("updateDashboard");
               assertOnRequest("getDashboard");
 
-              toggleDashboardInfoSidebar();
+              openDashboardInfoSidebar();
 
-              rightSidebar()
+              sidesheet()
                 .findByPlaceholderText("Add description")
                 .type("Foo")
                 .blur();
