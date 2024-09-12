@@ -23,6 +23,15 @@
         (= y ::expression/type.unknown))
     ::expression/type.unknown
 
+    ;; Naive fix for https://github.com/metabase/metabase/issues/47887
+    ;; Following tuple not being in place, the :type/Temporal (the common ancestor) would be returned. That is
+    ;; unfortunately not very usable from filter pickers perspective.
+    (and (keyword? x)
+         (keyword? y)
+         (some #(isa? % :type/Date) [x y])
+         (some #(isa? % :type/DateTime) [x y]))
+    :type/Date
+
     ;; if both types are keywords return their most-specific ancestor.
     (and (keyword? x)
          (keyword? y))
