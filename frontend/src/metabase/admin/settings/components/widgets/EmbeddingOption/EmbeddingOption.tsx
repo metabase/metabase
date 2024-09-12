@@ -32,7 +32,7 @@ import StaticEmbedding from "./StaticEmbedding.svg?component";
 
 interface EmbeddingOptionProps {
   title: string;
-  label?: string;
+  label?: React.ReactNode;
   children?: React.ReactNode;
   description: React.ReactNode;
   icon: React.ReactNode;
@@ -53,7 +53,7 @@ function EmbeddingOption({
         <Title id={titleId} order={2}>
           {title}
         </Title>
-        {label && <Label>{label}</Label>}
+        {label}
       </Flex>
       <Text lh={"1.25rem"} mb={"lg"}>
         {description}
@@ -135,7 +135,12 @@ export function EmbeddingSdkOptionCard({ onToggle }: EmbeddingOptionCardProps) {
         />
       }
       title={t`Embedding SDK for React`}
-      label={t`PRO & ENTERPRISE`}
+      label={
+        <Flex gap="sm">
+          <Label>{t`PRO & ENTERPRISE`}</Label>
+          <Label className={EmbeddingOptionStyle.labelMuted}>{t`BETA`}</Label>
+        </Flex>
+      }
       description={t`Interactive embedding with full, granular control. Embed and style individual Metabase components in your app, and tailor the experience to each person. Allows for CSS styling, custom user flows, event subscriptions, and more. Only available with SSO via JWT.`}
     >
       <Flex align="center" w="100%">
@@ -182,7 +187,7 @@ export const InteractiveEmbeddingOptionCard = ({
         />
       }
       title={t`Interactive embedding`}
-      label={t`PRO & ENTERPRISE`}
+      label={<Label>{t`PRO & ENTERPRISE`}</Label>}
       description={jt`Use interactive embedding when you want to ${(
         <ExternalLink
           href={`https://www.metabase.com/blog/why-full-app-embedding?utm_source=${plan}&utm_media=embed-settings`}

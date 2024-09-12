@@ -11,6 +11,9 @@ export const StyledCard = styled(Card)`
 `;
 
 export const Label = styled.span`
+  --mb-color-label-text: var(--mb-color-text-white);
+  --mb-color-label-background: var(--mb-color-background-brand);
+
   padding: ${space(0)} ${space(1)};
   display: inline-block;
   line-height: 1.3;
@@ -18,8 +21,8 @@ export const Label = styled.span`
   font-weight: 700;
   border-radius: 0.25rem;
   text-transform: uppercase;
-  color: var(--mb-color-text-white);
-  background: var(--mb-color-brand);
+  color: var(--mb-color-label-text);
+  background: var(--mb-color-label-background);
 `;
 
 export const BoldExternalLink = styled(ExternalLink)`
