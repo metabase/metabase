@@ -61,8 +61,10 @@
   [param-field-ids]
   (not-empty
    (into {}
-         (comp (map (juxt identity field-values/get-latest-full-field-values))
-               (remove (comp nil? second)))
+         (comp (map field-values/get-latest-full-field-values)
+               (remove nil?)
+               (map #(select-keys % [:field_id :human_readable_values :values]))
+               (map (juxt :field_id identity)))
          param-field-ids)))
 
 (defn- field-ids->param-field-values
