@@ -458,7 +458,9 @@ function ValueCell({ metric }: { metric?: MetricResult }) {
 
   const emptyCell = (
     <ValueTableCell>
-      <ValueWrapper />
+      <ValueWrapper>
+        <Value data-testid="metric-value" />
+      </ValueWrapper>
     </ValueTableCell>
   );
 
@@ -469,7 +471,7 @@ function ValueCell({ metric }: { metric?: MetricResult }) {
   if (!metric || isLoading || !data) {
     return (
       <ValueTableCell>
-        <ValueWrapper>
+        <ValueWrapper data-testid="metric-value">
           <SkeletonText />
         </ValueWrapper>
       </ValueTableCell>
@@ -485,7 +487,7 @@ function ValueCell({ metric }: { metric?: MetricResult }) {
     <ValueTableCell>
       <ValueWrapper>
         <Tooltip label={<Text>{value.label}</Text>}>
-          <Value>{value.value}</Value>
+          <Value data-testid="metric-value">{value.value}</Value>
         </Tooltip>
       </ValueWrapper>
     </ValueTableCell>

@@ -107,6 +107,35 @@ const TEMPORAL_METRIC_WITH_SORT: StructuredQuestionDetailsWithName = {
   },
 };
 
+const SCALAR_METRIC_WITH_NO_VALUE: StructuredQuestionDetailsWithName = {
+  name: "Scalar metric with no value",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["max", ["field", ORDERS.TOTAL, {}]]],
+    filter: ["=", ["field", ORDERS.TOTAL, {}], 3.333],
+  },
+};
+
+const TIMESERIES_METRIC_WITH_NO_VALUE: StructuredQuestionDetailsWithName = {
+  name: "Timeseries metric with no value",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["max", ["field", ORDERS.TOTAL, {}]]],
+    filter: ["=", ["field", ORDERS.TOTAL, {}], 3.333],
+    breakout: [
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "month" },
+      ],
+    ],
+  },
+};
+
 const ALL_METRICS = [
   ORDERS_SCALAR_METRIC,
   ORDERS_SCALAR_MODEL_METRIC,
@@ -452,6 +481,24 @@ describe("scenarios > browse > metrics", () => {
       cy.visit("/browse/metrics");
 
       checkMetricValueAndTooltipExist("584", "January 2025");
+    });
+
+    it("should render an empty value for a scalar metric with no value", () => {
+      cy.signInAsAdmin();
+      createMetrics([SCALAR_METRIC_WITH_NO_VALUE]);
+      cy.visit("/browse/metrics");
+
+      findMetric(SCALAR_METRIC_WITH_NO_VALUE.name).should("be.visible");
+      cy.findByTestId("metric-value").should("be.empty");
+    });
+
+    it("should render an empty value for a timeseries metric with no value", () => {
+      cy.signInAsAdmin();
+      createMetrics([TIMESERIES_METRIC_WITH_NO_VALUE]);
+      cy.visit("/browse/metrics");
+
+      findMetric(TIMESERIES_METRIC_WITH_NO_VALUE.name).should("be.visible");
+      cy.findByTestId("metric-value").should("be.empty");
     });
   });
 
