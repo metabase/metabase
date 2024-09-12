@@ -24,7 +24,7 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
           <Flex gap="sm" align="center">
             <Icon name="ai" />
             <Text>
-              {c("{0} is a date/time and ${1} is a person's name").jt`${(
+              {c("{0} is a date/time and {1} is a person's name").jt`${(
                 <DateTime
                   unit="day"
                   value={lastEditInfo.timestamp}
@@ -38,7 +38,7 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
         <Flex gap="sm" align="center">
           <Icon name="pencil" />
           <Text>
-            {c("{0} is a date/time and ${1} is a person's name").jt`${(
+            {c("{0} is a date/time and {1} is a person's name").jt`${(
               <DateTime unit="day" value={createdAt} key="date" />
             )} by ${getUserName(createdBy)}`}
           </Text>
@@ -102,7 +102,7 @@ function SharingDisplay({ question }: { question: Question }) {
                 className={cx(
                   Styles.cursorPointer,
                   Styles.textBrandHover,
-                  SidebarStyles.LittleMarginTop,
+                  SidebarStyles.LinkIcon,
                 )}
               />
             }
