@@ -218,6 +218,7 @@ export const InteractiveEmbeddingOptionCard = ({
           label={isInteractiveEmbeddingEnabled ? t`Enabled` : t`Disabled`}
           ml="auto"
           labelPosition="left"
+          disabled={!isEE}
           checked={isInteractiveEmbeddingEnabled}
           onChange={onToggle}
         />

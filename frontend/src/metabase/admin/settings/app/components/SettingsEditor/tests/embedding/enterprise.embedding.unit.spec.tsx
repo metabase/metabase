@@ -197,7 +197,7 @@ describe("[EE, no token] embedding settings", () => {
         ).not.toBeChecked();
         expect(
           withinInteractiveEmbeddingCard.getByLabelText("Disabled"),
-        ).toBeEnabled();
+        ).toBeDisabled();
 
         // should link to https://www.metabase.com/blog/why-full-app-embedding?utm_source=oss&utm_media=embed-settings
         expect(
@@ -404,7 +404,7 @@ describe("[EE, no token] embedding settings", () => {
         ).toBeChecked();
         expect(
           withinInteractiveEmbeddingCard.getByLabelText("Enabled"),
-        ).toBeEnabled();
+        ).toBeDisabled();
 
         // should link to https://www.metabase.com/blog/why-full-app-embedding?utm_source=oss&utm_media=embed-settings
         expect(

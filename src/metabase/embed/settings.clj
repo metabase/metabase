@@ -67,6 +67,7 @@
 
 (defsetting enable-embedding-interactive
   (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
+  :feature    :embedding
   :type       :boolean
   :default    false
   :visibility :authenticated

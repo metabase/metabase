@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { screen, within } from "__support__/ui";
 import {
@@ -19,6 +20,7 @@ import {
 import type { History } from "./types";
 
 const setupPremium = (opts?: SetupOpts) => {
+  fetchMock.put("path:/api/setting/enable-embedding-interactive", 204);
   return setupEmbedding({
     ...opts,
     hasEnterprisePlugins: true,
@@ -234,6 +236,9 @@ describe("[EE, with token] embedding settings", () => {
         expect(
           screen.getByLabelText("Enable Interactive embedding"),
         ).not.toBeChecked();
+        await userEvent.click(
+          screen.getByLabelText("Enable Interactive embedding"),
+        );
 
         expect(screen.getByLabelText("Authorized origins")).toBeEnabled();
         expect(screen.getByLabelText("Authorized origins")).toHaveValue(
@@ -457,6 +462,9 @@ describe("[EE, with token] embedding settings", () => {
         expect(
           screen.getByLabelText("Enable Interactive embedding"),
         ).toBeChecked();
+        await userEvent.click(
+          screen.getByLabelText("Enable Interactive embedding"),
+        );
 
         expect(screen.getByLabelText("Authorized origins")).toBeEnabled();
         expect(screen.getByLabelText("Authorized origins")).toHaveValue(
