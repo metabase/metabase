@@ -6,7 +6,7 @@ title: Progress bars
 
 **Progress bars** are for comparing a single number to a goal value that you set.
 
-![Progress bar](../../images/progress-kpi.png)
+![Progress bar](../../images/progress.png)
 
 ## When to use the progress bar
 
