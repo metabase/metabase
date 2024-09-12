@@ -1277,13 +1277,13 @@ describeEE("scenarios > dashboard > caching", () => {
       cy.log(
         "Check that the newly chosen cache invalidation policy - Duration - is now visible in the sidebar",
       );
-      cy.findByLabelText(/Caching policy/).should("contain", "Duration");
-      cy.findByLabelText(/Caching policy/).click();
+      cy.findByLabelText(/Caching/).should("contain", "Duration");
+      cy.findByLabelText(/Caching/).click();
       adaptiveRadioButton().click();
       cy.findByLabelText(/Minimum query duration/).type("999");
       cy.findByRole("button", { name: /Save/ }).click();
       cy.wait("@putCacheConfig");
-      cy.findByLabelText(/Caching policy/).should("contain", "Adaptive");
+      cy.findByLabelText(/Caching/).should("contain", "Adaptive");
     });
   });
 

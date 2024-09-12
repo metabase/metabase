@@ -35,7 +35,6 @@ describe("QuestionSettingsSidebar", () => {
     it("should show caching controls with cache token feature", async () => {
       await setupEnterprise({ card }, { cache_granular_controls: true });
       expect(await screen.findByText("Caching")).toBeInTheDocument();
-      expect(await screen.findByText("Caching policy")).toBeInTheDocument();
     });
   });
 
