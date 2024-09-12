@@ -124,6 +124,11 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
   },
 });
 
+// What's up with the commented `satisfies`?
+// Mantine docs says they don't typecheck default props because of performance reasons.
+// To be sure to not slow down typescript I left the check commented.
+// If you change any of the default props please verify that the types are correct
+
 export function getEmbeddingComponentOverrides(
   theme?: DeepPartial<MetabaseComponentTheme>,
 ): MantineThemeOverride["components"] {
@@ -138,62 +143,23 @@ export function getEmbeddingComponentOverrides(
         ...(theme?.popover?.zIndex && { zIndex: theme.popover.zIndex }),
       },
     },
-    // TODO: fix those, they're not all correct
     ModalRoot: {
       defaultProps: {
         withinPortal: true,
-        // portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
         target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
-      }, // satisfies Partial<ModalRootProps>,
+      }, //  satisfies Partial<ModalRootProps>,
+    },
+    Modal: {
+      defaultProps: {
+        withinPortal: true,
+        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
+      }, // satisfies Partial<ModalProps>,
     },
     Popover: {
       defaultProps: {
         withinPortal: true,
         portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
-        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
-      }, //satisfies Partial<PopoverProps>,
-    },
-    PopoverDropdown: {
-      defaultProps: {
-        withinPortal: true,
-        portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
-        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
-      },
-    },
-    Menu: {
-      defaultProps: {
-        withinPortal: true,
-        portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
-        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
-      },
-    },
-    MultiSelect: {
-      defaultProps: {
-        withinPortal: true,
-        portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
-        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
-      },
-    },
-    Select: {
-      defaultProps: {
-        withinPortal: true,
-        portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
-        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
-      },
-    },
-    Modal: {
-      defaultProps: {
-        withinPortal: true,
-        // portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
-        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
-      },
-    },
-    Tooltip: {
-      defaultProps: {
-        withinPortal: true,
-        portalProps: { target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}` },
-        target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
-      },
+      }, // satisfies Partial<PopoverProps>,
     },
   };
 }

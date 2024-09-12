@@ -1,7 +1,6 @@
-import { Global, css } from "@emotion/react";
 import type { Action, Store } from "@reduxjs/toolkit";
-import { type JSX, type ReactNode, memo, useEffect, useMemo } from "react";
-import { Provider, useSelector } from "react-redux";
+import { type JSX, type ReactNode, memo, useEffect } from "react";
+import { Provider } from "react-redux";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
@@ -19,15 +18,14 @@ import {
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import type { SDKConfig } from "embedding-sdk/types";
 import type { MetabaseTheme } from "embedding-sdk/types/theme";
-import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { getFontFiles } from "metabase/styled-components/selectors";
 
 import { withPublicComponentWrapper } from "../private/PublicComponentWrapper";
+import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
 
-import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
+import "metabase/css/vendor.css";
 
 export interface MetabaseProviderProps {
   children: ReactNode;
@@ -83,7 +81,7 @@ export const MetabaseProviderInternal = ({
   return (
     <EmotionCacheProvider>
       <SdkThemeProvider theme={theme}>
-        <GlobalFontsStyles baseUrl={config.metabaseInstanceUrl} />
+        <SdkFontsGlobalStyles baseUrl={config.metabaseInstanceUrl} />
         <div className={className}>
           <PortalContainer />
           {children}
@@ -103,8 +101,6 @@ export const MetabaseProvider = memo(function MetabaseProvider(
   );
 });
 
-// TODO: move to separate files
-
 /**
  * This is the portal container used by popovers modals etc, it is wrapped with withPublicComponentWrapper
  * so that it has our styles applied.
@@ -113,29 +109,3 @@ export const MetabaseProvider = memo(function MetabaseProvider(
 const PortalContainer = withPublicComponentWrapper(() => (
   <div id={EMBEDDING_SDK_ROOT_ELEMENT_ID}></div>
 ));
-
-const GlobalFontsStyles = ({ baseUrl }: { baseUrl: string }) => {
-  const fontFiles = useSelector(getFontFiles);
-
-  const fontStyles = useMemo(
-    () =>
-      css`
-      ${defaultFontFiles({ baseUrl })}}
-
-      ${fontFiles?.map(
-        file => css`
-          @font-face {
-            font-family: "Custom";
-            src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
-            font-weight: ${file.fontWeight};
-            font-style: normal;
-            font-display: swap;
-          }
-        `,
-      )}
-    `,
-    [fontFiles, baseUrl],
-  );
-
-  return <Global styles={fontStyles} />;
-};
