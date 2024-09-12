@@ -142,6 +142,7 @@ export const useEnsureCollectionSelected = ({
   ) => void;
 }) => {
   const [isEnabled, setIsEnabled] = useState(enabled);
+  // all this is done to acquire the name of the root collection, which getStateFromIdPath can't provide
   const { items } = useRootCollectionPickerItems(options);
 
   const currentCollectionItem: CollectionPickerItem | undefined =
