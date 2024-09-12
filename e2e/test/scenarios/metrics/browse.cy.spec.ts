@@ -402,6 +402,7 @@ describe("scenarios > browse > metrics", () => {
       cy.signInAsAdmin();
       createMetrics([ORDERS_SCALAR_METRIC]);
 
+      setTokenFeatures("all");
       cy.updatePermissionsGraph({
         [ALL_USERS_GROUP_ID]: {
           [SAMPLE_DB_ID]: {
