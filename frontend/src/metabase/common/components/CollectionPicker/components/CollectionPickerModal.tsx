@@ -80,14 +80,14 @@ export const CollectionPickerModal = ({
       item: CollectionPickerItem,
       { autoSelected }: { autoSelected?: boolean } = {},
     ) => {
-      if (options.hasConfirmButtons) {
+      if (!canSelectItem(item)) {
+        return;
+      }
+
+      if (options.hasConfirmButtons || autoSelected) {
         setSelectedItem(item);
-      } else if (canSelectItem(item)) {
-        if (autoSelected) {
-          setSelectedItem(item);
-        } else {
-          await handleChange(item);
-        }
+      } else {
+        await handleChange(item);
       }
     },
     [handleChange, options],

@@ -88,9 +88,13 @@ export const DashboardPickerModal = ({
 
   const handleItemSelect = useCallback(
     (item: DashboardPickerItem) => {
+      if (!canSelectItem(item)) {
+        return;
+      }
+
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
-      } else if (canSelectItem(item)) {
+      } else {
         handleOnChange(item);
       }
     },
