@@ -33,7 +33,7 @@
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.timeline-event :as timeline-event]
-   [metabase.notification.test :as notification.test]
+   [metabase.notification.test-util :as notification.test]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.util :as qp.util]
