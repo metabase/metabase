@@ -26,7 +26,7 @@
 
 (defsetting application-name
   (deferred-tru "Replace the word “Metabase” wherever it appears.")
-  :visibility :authenticated
+  :visibility :public
   :export?    true
   :type       :string
   :audit      :getter
@@ -165,7 +165,7 @@
   (deferred-tru
    (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
         "so changing it could break functionality or get you locked out of this instance."))
-  :visibility :authenticated
+  :visibility :public
   :audit      :getter
   :getter     (fn []
                 (try
@@ -189,7 +189,7 @@
         "Users can individually override this default language from their own account settings.")
    (application-name-for-setting-descriptions))
   :default    "en"
-  :visibility :authenticated
+  :visibility :public
   :export?    true
   :audit      :getter
   :encryption :never
@@ -219,7 +219,7 @@
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
   :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-  :visibility :authenticated
+  :visibility :public
   :audit      :getter)
 
 (defn- coerce-to-relative-url
@@ -339,7 +339,7 @@
 
 (defsetting loading-message
   (deferred-tru "Choose the message to show while a query is running.")
-  :visibility :authenticated
+  :visibility :public
   :export?    true
   :feature    :whitelabel
   :type       :keyword
@@ -348,7 +348,7 @@
 
 (defsetting application-colors
   (deferred-tru "Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You need to refresh your browser to see your changes take effect.")
-  :visibility :authenticated
+  :visibility :public
   :export?    true
   :type       :json
   :feature    :whitelabel
@@ -381,7 +381,7 @@ To change the chart colors:
 
 (defsetting application-font
   (deferred-tru "Replace “Lato” as the font family.")
-  :visibility :authenticated
+  :visibility :public
   :export?    true
   :type       :string
   :default    "Lato"
@@ -395,7 +395,7 @@ To change the chart colors:
 
 (defsetting application-font-files
   (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
-  :visibility :authenticated
+  :visibility :public
   :export?    true
   :type       :json
   :audit      :getter
@@ -431,7 +431,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting application-logo-url
   (deferred-tru "Upload a file to replace the Metabase logo on the top bar.")
-  :visibility :authenticated
+  :visibility :public
   :export?    true
   :type       :string
   :audit      :getter
@@ -441,7 +441,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting application-favicon-url
   (deferred-tru "Upload a file to use as the favicon.")
-  :visibility :authenticated
+  :visibility :public
   :export?    true
   :type       :string
   :audit      :getter
@@ -573,13 +573,13 @@ See [fonts](../configuring-metabase/fonts.md).")
   (deferred-tru (str "Whether or not to display Metabase links outside admin settings."))
   :type       :boolean
   :default    true
-  :visibility :authenticated
+  :visibility :public
   :audit      :getter
   :feature    :whitelabel)
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
-  :visibility :authenticated
+  :visibility :public
   :type       :boolean
   :default    true
   :feature    :disable-password-login
@@ -676,7 +676,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting available-fonts
   "Available fonts"
-  :visibility :authenticated
+  :visibility :public
   :export?    true
   :setter     :none
   :getter     u.fonts/available-fonts

@@ -77,7 +77,7 @@
 (defsetting ldap-enabled
   (deferred-tru "Is LDAP currently enabled?")
   :type       :boolean
-  :visibility :authenticated
+  :visibility :public
   :setter     (fn [new-value]
                 (let [new-value (boolean new-value)]
                   (when new-value
