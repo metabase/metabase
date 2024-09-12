@@ -42,7 +42,7 @@
 
 (defn- search-items-reducible []
   (-> {:search-string      nil
-       :models             search.config/all-models
+       :models             (disj search.config/all-models "indexed-entity")
        ;; we want to see everything
        :is-superuser?      true
        ;; irrelevant, as we're acting as a super user
@@ -66,4 +66,4 @@
          (map t2.realize/realize)
          (map ->entry)
          (partition-all insert-batch-size)))
-       (run! search.index/update!)))
+       (run! search.index/batch-update!)))
