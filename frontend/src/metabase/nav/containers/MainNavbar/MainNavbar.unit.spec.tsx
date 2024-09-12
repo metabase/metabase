@@ -246,11 +246,11 @@ describe("nav > containers > MainNavbar", () => {
       expect(link).toHaveAttribute("href", "/browse/models");
     });
 
-    it("should not render when there are no models", async () => {
+    it("should render when there are no models", async () => {
       await setup({ models: [] });
       expect(
-        screen.queryByRole("listitem", { name: /Browse models/i }),
-      ).not.toBeInTheDocument();
+        screen.getByRole("listitem", { name: /Browse models/i }),
+      ).toBeInTheDocument();
     });
 
     it("should be highlighted if selected", async () => {

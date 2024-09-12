@@ -54,6 +54,8 @@ Search for items in Metabase.
 
 -  **`models`** nullable vector of enum of dashboard, table, dataset, segment, collection, database, action, indexed-entity, metric, card.
 
+-  **`search_engine`** nullable string.
+
 -  **`last_edited_by`** nullable vector of value must be an integer greater than zero.
 
 -  **`last_edited_at`** nullable value must be a non-blank string.
@@ -79,6 +81,8 @@ Get the set of models that a search query will return.
 -  **`q`** 
 
 -  **`search_native_query`** nullable true.
+
+-  **`search_engine`** nullable string.
 
 -  **`last_edited_by`** nullable vector of value must be an integer greater than zero.
 
