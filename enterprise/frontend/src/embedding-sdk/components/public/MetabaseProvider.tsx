@@ -82,9 +82,9 @@ export const MetabaseProviderInternal = ({
         <SdkThemeProvider theme={theme}>
           <AppInitializeController className={className} config={config}>
             {children}
-
-            <SdkUsageProblemDisplay config={config} />
           </AppInitializeController>
+
+          <SdkUsageProblemDisplay config={config} />
         </SdkThemeProvider>
       </EmotionCacheProvider>
     </Provider>
