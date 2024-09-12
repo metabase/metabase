@@ -581,9 +581,12 @@ describe("issue 36669", () => {
     });
 
     entityPickerModal().within(() => {
-      cy.findByPlaceholderText("Search…").type("Orders 36669");
+      cy.findByPlaceholderText("Search this collection or everywhere…").type(
+        "Orders 36669",
+      );
       cy.wait("@search");
 
+      cy.findByText("Everywhere").click();
       cy.findByRole("tabpanel").findByText("Orders 36669").click();
     });
 
