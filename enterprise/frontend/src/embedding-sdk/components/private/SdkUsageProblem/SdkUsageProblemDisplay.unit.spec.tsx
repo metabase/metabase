@@ -59,12 +59,27 @@ const PROBLEM_CARD_TEST_ID = "sdk-usage-problem-card";
 const PROBLEM_INDICATOR_TEST_ID = "sdk-usage-problem-indicator";
 
 describe("SdkUsageProblemDisplay", () => {
-  it("should not show an error when JWT is provided with a license", () => {
+  it("does not show an error when JWT is provided with a license", () => {
     setup({ config: createMockJwtConfig(), tokenFeatureEnabled: true });
 
     expect(
       screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows an error when JWT is used without a license", async () => {
+    setup({ config: createMockJwtConfig(), tokenFeatureEnabled: false });
+
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
+    expect(within(card).getByText("error")).toBeInTheDocument();
+
+    expect(
+      within(card).getByText(
+        /Attempting to use this in other ways is in breach of our usage policy/,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("shows a warning when API keys are used in localhost", async () => {
@@ -106,21 +121,6 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
 
     mock.mockRestore();
-  });
-
-  it("shows an error when JWT is used without a license", async () => {
-    setup({ config: createMockJwtConfig(), tokenFeatureEnabled: false });
-
-    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
-
-    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
-    expect(within(card).getByText("error")).toBeInTheDocument();
-
-    expect(
-      within(card).getByText(
-        /Attempting to use this in other ways is in breach of our usage policy/,
-      ),
-    ).toBeInTheDocument();
   });
 
   it("should show an error when neither JWT or API keys are provided", async () => {
