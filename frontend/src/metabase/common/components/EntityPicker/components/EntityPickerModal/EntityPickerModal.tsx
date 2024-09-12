@@ -238,7 +238,7 @@ export function EntityPickerModal<
     (item: Item, tabId: EntityPickerTabId) => {
       const isFolder = folderModels.includes(item.model);
 
-      if (isFolder) {
+      if (isFolder && ![SEARCH_TAB_ID, RECENTS_TAB_ID].includes(tabId)) {
         setTabFolderState(state => ({
           ...state,
           [tabId]: item,
