@@ -63,7 +63,7 @@
    (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
         "This is a public setting since some analytics events are sent prior to initial setup."))
   :encryption :never
-  :visibility :authenticated
+  :visibility :public
   :base       setting/uuid-nonce-base
   :doc        false)
 
@@ -72,7 +72,7 @@
    (str "Boolean indicating whether a Snowplow collector is available to receive analytics events. "
         "Should be set via environment variable in Cypress tests or during local development."))
   :type       :boolean
-  :visibility :authenticated
+  :visibility :public
   :default    config/is-prod?
   :doc        false
   :audit      :never)
@@ -85,7 +85,7 @@
   :setter     :none
   :getter     (fn [] (and (snowplow-available)
                           (public-settings/anon-tracking-enabled)))
-  :visibility :authenticated
+  :visibility :public
   :doc        false)
 
 (defsetting snowplow-url
@@ -94,7 +94,7 @@
                 "https://sp.metabase.com"
                 ;; See the iglu-schema-registry repo for instructions on how to run Snowplow Micro locally for development
                 "http://localhost:9090")
-  :visibility :authenticated
+  :visibility :public
   :audit      :never
   :doc        false)
 
@@ -110,7 +110,7 @@
 
 (defsetting instance-creation
   (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
-  :visibility :authenticated
+  :visibility :public
   :setter     :none
   :getter     (fn []
                 (when-not (t2/exists? Setting :key "instance-creation")
