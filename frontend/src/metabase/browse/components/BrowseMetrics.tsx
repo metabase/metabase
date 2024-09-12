@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/metrics_bot.svg";
 import { skipToken } from "metabase/api";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import EmptyState from "metabase/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -100,12 +101,26 @@ function MetricsEmptyState() {
 }
 
 function useHasVerifiedMetrics() {
-  const result = useFetchMetrics({
-    filter_items_in_personal_collection: "exclude",
-    model_ancestors: false,
-    limit: 0,
-    verified: true,
-  });
+  const hasVerification = useHasTokenFeature("content_verification");
+
+  const result = useFetchMetrics(
+    hasVerification
+      ? {
+          filter_items_in_personal_collection: "exclude",
+          model_ancestors: false,
+          limit: 0,
+          verified: true,
+        }
+      : skipToken,
+  );
+
+  if (!hasVerification) {
+    return {
+      isLoading: false,
+      error: null,
+      result: false,
+    };
+  }
 
   const total = result.data?.total ?? 0;
 
