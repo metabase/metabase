@@ -19,6 +19,8 @@ const PROBLEMS = {
   SSO_WITHOUT_LICENSE: t`Usage without a valid license for this feature is only allowed for evaluation purposes, using API keys and only on localhost. Attempting to use this in other ways is in breach of our usage policy.`,
   CONFLICTING_AUTH_METHODS: t`You cannot use both JWT and API key authentication at the same time.`,
   NO_AUTH_METHOD_PROVIDED: t`You must provide either a JWT URI or an API key for authentication.`,
+
+  // TODO: this message is pending on the "allowing CORS for /api/session/properties" PR to be merged
   EMBEDDING_SDK_NOT_ENABLED: t`The embedding SDK is not enabled for this instance. Please enable it in settings to start embedding.`,
 } as const;
 
@@ -42,6 +44,15 @@ export function getSdkUsageProblem(
   const isApiKey = !!apiKey;
   const isLocalhost = getIsLocalhost();
 
+  /**
+   * TODO: these checks for non-localhost environments are pending on
+   *       the "allowing CORS for /api/session/properties" PR to be merged
+   *
+   * 1: (isSSO: true, isEnabled: false) -> EMBEDDING_SDK_NOT_ENABLED
+   * 2: (isSSO: true, hasTokenFeature: false) -> PROBLEMS.SSO_WITHOUT_LICENSE
+   * 3: (isApiKey: true, hasTokenFeature: false) -> PROBLEMS.API_KEYS_WITHOUT_LICENSE
+   */
+
   return (
     match({ hasTokenFeature, isSSO, isApiKey, isLocalhost, isEnabled })
       .with({ isSSO: false, isApiKey: false }, () =>
@@ -52,13 +63,8 @@ export function getSdkUsageProblem(
       )
       // For SSO, the token features and the toggle must both be enabled.
       .with({ isSSO: true, hasTokenFeature: true, isEnabled: true }, () => null)
-      // TODO: this condition will not trigger in non-localhost
-      //       until the CORS for properties PR is merged
-      .with({ isSSO: true, hasTokenFeature: false }, () =>
+      .with({ isSSO: true, hasTokenFeature: false, isLocalhost: true }, () =>
         toError(PROBLEMS.SSO_WITHOUT_LICENSE),
-      )
-      .with({ isSSO: true, isEnabled: false }, () =>
-        toError(PROBLEMS.EMBEDDING_SDK_NOT_ENABLED),
       )
       // For API keys, we allow evaluation usage without a license in localhost.
       // This allows them to test-drive the SDK in development.
@@ -74,8 +80,6 @@ export function getSdkUsageProblem(
       .with({ isApiKey: true, hasTokenFeature: true }, () =>
         toError(PROBLEMS.API_KEYS_WITH_LICENSE),
       )
-      // TODO: resolve (isApiKey: true, hasTokenFeature: false) to
-      //       PROBLEMS.API_KEYS_WITHOUT_LICENSE when CORS for properties PR is merged
       .otherwise(() => null)
   );
 }
