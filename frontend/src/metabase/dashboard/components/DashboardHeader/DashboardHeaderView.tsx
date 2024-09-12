@@ -9,13 +9,11 @@ import CS from "metabase/css/core/index.css";
 import {
   applyDraftParameterValues,
   resetParameters,
-  setSidebar,
   updateDashboard,
 } from "metabase/dashboard/actions";
 import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
-import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   getCanResetFilters,
   getIsEditing,
@@ -95,10 +93,6 @@ export function DashboardHeaderView({
     await dispatch(applyDraftParameterValues());
   }, [dispatch]);
 
-  const openSettingsSidebar = useCallback(() => {
-    dispatch(setSidebar({ name: SIDEBAR_NAME.settings }));
-  }, [dispatch]);
-
   const { dashboardActions } = useInteractiveDashboardContext();
 
   const _headerButtons = useMemo(
@@ -120,7 +114,6 @@ export function DashboardHeaderView({
           onNightModeChange={onNightModeChange}
           hasNightModeToggle={hasNightModeToggle}
           isAnalyticsDashboard={isAnalyticsDashboard}
-          openSettingsSidebar={openSettingsSidebar}
         />
       </HeaderButtonSection>
     ),
@@ -138,7 +131,6 @@ export function DashboardHeaderView({
       onRefreshPeriodChange,
       refreshPeriod,
       setRefreshElapsedHook,
-      openSettingsSidebar,
     ],
   );
 

@@ -16,7 +16,6 @@ export type DashboardHeaderButtonRowProps = {
   collection?: Collection;
   isPublic?: boolean;
   isAnalyticsDashboard?: boolean;
-  openSettingsSidebar: () => void;
 } & DashboardRefreshPeriodControls &
   DashboardFullscreenControls &
   DashboardNightModeControls;
@@ -32,6 +31,7 @@ export type HeaderButtonProps = {
   formInput: any;
   isAdmin: boolean;
   isEmbeddingSdk: boolean;
+  openSettingsSidebar: () => void;
 } & DashboardHeaderButtonRowProps;
 
 export type DashboardActionButton = {

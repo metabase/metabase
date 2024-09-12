@@ -169,6 +169,7 @@ const setup = ({
           isNightMode={isNightMode}
           isPublic={isPublic}
           isAnalyticsDashboard={isAnalyticsDashboard}
+          openSettingsSidebar={jest.fn()}
         />
       )}
     ></Route>,
