@@ -7,7 +7,16 @@ import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import LogoIcon from "metabase/components/LogoIcon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { originalColors } from "metabase/lib/colors";
-import { Button, Card, Flex, Icon, Popover, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  Card,
+  Flex,
+  Icon,
+  Popover,
+  Stack,
+  Text,
+  useMantineTheme,
+} from "metabase/ui";
 
 import S from "./SdkUsageProblemBanner.module.css";
 
@@ -22,6 +31,8 @@ const unthemedTextDark = originalColors["text-dark"];
 const unthemedTextMedium = originalColors["text-medium"];
 
 export const SdkUsageProblemBanner = ({ problem }: Props) => {
+  const theme = useMantineTheme();
+
   const [expanded, setExpanded] = useState(false);
   const [shown, { close: hideBanner }] = useDisclosure(true);
 
@@ -31,6 +42,11 @@ export const SdkUsageProblemBanner = ({ problem }: Props) => {
 
   const { severity } = problem;
   const isError = severity === "error";
+
+  // When the font family cannot be loaded from the MB instance,
+  // due to MB instance outage or missing CORS header,
+  // we fall back to the system font.
+  const fontFamily = `${theme.fontFamily}, sans-serif`;
 
   return (
     <Popover position="top-start" opened={expanded} onChange={setExpanded}>
@@ -58,7 +74,7 @@ export const SdkUsageProblemBanner = ({ problem }: Props) => {
               stroke={isError ? unthemedTextDark : ""}
             />
 
-            <Text transform="capitalize" c={unthemedTextMedium}>
+            <Text transform="capitalize" c={unthemedTextMedium} ff={fontFamily}>
               {severity}
             </Text>
           </Flex>
@@ -79,6 +95,7 @@ export const SdkUsageProblemBanner = ({ problem }: Props) => {
                 size="lg"
                 transform="capitalize"
                 c={unthemedTextDark}
+                ff={fontFamily}
               >
                 {severity}
               </Text>
@@ -92,10 +109,18 @@ export const SdkUsageProblemBanner = ({ problem }: Props) => {
               />
             </Flex>
 
-            <Text c={unthemedTextDark}>{problem.message}</Text>
+            <Text c={unthemedTextDark} ff={fontFamily}>
+              {problem.message}
+            </Text>
 
             <Flex w="100%" justify="end" mt="sm" columnGap="sm">
-              <Button fz="sm" variant="subtle" onClick={hideBanner} compact>
+              <Button
+                fz="sm"
+                variant="subtle"
+                onClick={hideBanner}
+                ff={fontFamily}
+                compact
+              >
                 Hide {severity}
               </Button>
 
@@ -104,6 +129,7 @@ export const SdkUsageProblemBanner = ({ problem }: Props) => {
                   fz="sm"
                   variant="outline"
                   rightIcon={<Icon name="external" size={10} />}
+                  ff={fontFamily}
                   compact
                 >
                   View documentation
