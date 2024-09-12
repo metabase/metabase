@@ -364,26 +364,27 @@
                                             :include-archived-items :all
                                             :include-trash-collection? true})))))))))
 
+(def ^:dynamic ^:private *visible-collection-ids* #{})
+
 (deftest effective-location-path-test
-  (with-redefs [audit/is-collection-id-audit? (constantly false)]
+  (with-redefs [audit/is-collection-id-audit? (constantly false)
+                collection/visible-collection-ids (fn [& _] *visible-collection-ids*)]
     (testing "valid input"
-      (doseq [[args expected] {["/10/20/30/" #{10 20}]    "/10/20/"
-                               ["/10/20/30/" #{10 30}]    "/10/30/"
-                               ["/10/20/30/" #{}]         "/"
-                               ["/10/20/30/" #{10 20 30}] "/10/20/30/"}]
-        (testing (pr-str (cons 'effective-location-path args))
+      (doseq [[[path visible-ids] expected] {["/10/20/30/" #{10 20}]    "/10/20/"
+                                             ["/10/20/30/" #{10 30}]    "/10/30/"
+                                             ["/10/20/30/" #{}]         "/"
+                                             ["/10/20/30/" #{10 20 30}] "/10/20/30/"}]
+        (testing (format "path '%s' with visible ids '%s'" path (pr-str visible-ids))
           (is (= expected
-                 (apply collection/effective-location-path args))))))
+                 (binding [*visible-collection-ids* visible-ids]
+                   (collection/effective-location-path {:location path})))))))
 
     (testing "invalid input"
-      (doseq [args [["/10/20/30/" nil]
-                    ["/10/20/30/" [20]]
-                    [nil #{}]
-                    [[10 20] #{}]]]
-        (testing (pr-str (cons 'effective-location-path args))
+      (doseq [path [nil [10 20]]]
+        (testing (format "path '%s'" path)
           (is (thrown?
                Exception
-               (apply collection/effective-location-path args))))))))
+               (collection/effective-location-path {:location path}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Nested Collections: CRUD Constraints & Behavior                                 |
@@ -499,9 +500,10 @@
 
 (deftest effective-ancestors-root-collection-test
   ;; happens if we do, e.g. `(t2/hydrate a-card-in-the-root-collection [:collection :effective_ancestors])`
-  (testing "`nil` and the root collection should get `[]` as their effective_ancestors"
-    (is (= [[] []]
-           (map :effective_ancestors (t2/hydrate [nil collection/root-collection] :effective_ancestors))))))
+  (mt/with-test-user :rasta
+    (testing "`nil` and the root collection should get `[]` as their effective_ancestors"
+      (is (= [[] []]
+             (map :effective_ancestors (t2/hydrate [nil collection/root-collection] :effective_ancestors)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Nested Collections: Descendants & Effective Children                              |

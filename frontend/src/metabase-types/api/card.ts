@@ -119,13 +119,14 @@ export type PivotTableCollapsedRowsSetting = {
 export type TableColumnOrderSetting = {
   name: string;
   enabled: boolean;
+  fieldRef?: FieldReference;
 };
 
 export type StackType = "stacked" | "normalized" | null;
 export type StackValuesDisplay = "total" | "all" | "series";
 
 export const numericScale = ["linear", "pow", "log"] as const;
-export type NumericScale = typeof numericScale[number];
+export type NumericScale = (typeof numericScale)[number];
 
 export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
 
@@ -329,3 +330,11 @@ export type InvalidCardRequest = {
   sort_column?: string;
   collection_id?: CollectionId | null;
 } & PaginationRequest;
+
+export type CardQueryRequest = {
+  cardId: CardId;
+  dashboardId?: DashboardId;
+  collection_preview?: boolean;
+  ignore_cache?: boolean;
+  parameters?: unknown[];
+};

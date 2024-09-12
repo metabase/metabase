@@ -48,7 +48,7 @@ export type CliError = {
 
 export type CliSuccess = {
   type: "success";
-  nextStep?: typeof CLI_STEPS[number]["id"];
+  nextStep?: (typeof CLI_STEPS)[number]["id"];
 };
 
 export type CliDone = {

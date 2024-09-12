@@ -11,6 +11,7 @@ import {
   addOrUpdateDashboardCard,
   appBar,
   assertQueryBuilderRowCount,
+  changeSynchronousBatchUpdateSetting,
   commandPalette,
   commandPaletteSearch,
   createDashboardWithTabs,
@@ -1241,7 +1242,7 @@ describe("issue 22482", () => {
 
 describe("issue 22788", () => {
   const ccName = "Custom Category";
-  const ccDisplayName = "Product.Custom Category";
+  const ccDisplayName = "Products.Custom Category";
 
   const questionDetails = {
     name: "22788",
@@ -1459,6 +1460,12 @@ describe("issues 15279 and 24500", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(true);
+  });
+
+  afterEach(() => {
+    cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(false);
   });
 
   it("corrupted dashboard filter should still appear in the UI without breaking other filters (metabase#15279, metabase#24500)", () => {
@@ -1717,7 +1724,7 @@ describe("issue 25248", () => {
     popover().findAllByText("Created At").first().click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Order.Created At").should("be.visible");
+    cy.findByText("Orders.Created At").should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").should("be.visible");
   });
@@ -2185,7 +2192,7 @@ describe("issue 27768", () => {
 
     getDashboardCard().within(() => {
       cy.findByText("Select…").should("not.exist");
-      cy.contains("Product.CCategory");
+      cy.contains("Products.CCategory");
     });
   });
 });

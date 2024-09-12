@@ -1,11 +1,15 @@
 import {
+  setupCardEndpoints,
+  setupCardQueryEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import {
+  createMockCard,
   createMockCollection,
+  createMockDataset,
   createMockSearchResult,
 } from "metabase-types/api/mocks";
 import { createMockSetupState } from "metabase-types/store/mocks";
@@ -19,6 +23,8 @@ type SetupOpts = {
   metricCount?: number;
   recentMetricCount?: number;
 };
+
+const TEST_DATASET = createMockDataset();
 
 function setup({
   metricCount = Infinity,
@@ -35,6 +41,15 @@ function setup({
   setupSettingsEndpoints([]);
   setupSearchEndpoints(metrics.map(createMockSearchResult));
   setupRecentViewsEndpoints(recentMetrics);
+
+  for (const metric of metrics) {
+    const card = createMockCard({
+      id: metric.id,
+    });
+
+    setupCardEndpoints(card);
+    setupCardQueryEndpoints(card, TEST_DATASET);
+  }
 
   return renderWithProviders(<BrowseMetrics />, {
     storeInitialState: {

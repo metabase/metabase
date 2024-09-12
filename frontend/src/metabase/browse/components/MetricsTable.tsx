@@ -1,13 +1,20 @@
-import { type MouseEvent, useCallback, useState } from "react";
+import { type MouseEvent, useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
+import {
+  skipToken,
+  useCreateBookmarkMutation,
+  useDeleteBookmarkMutation,
+  useGetCardQueryQuery,
+} from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import EntityItem from "metabase/components/EntityItem";
 import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
 import {
+  ColumnHeader,
   ItemNameCell,
   MaybeItemLink,
   TBody,
@@ -17,9 +24,21 @@ import {
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
+import Bookmarks from "metabase/entities/bookmarks";
+import Questions from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { FixedSizeIcon, Flex, Skeleton } from "metabase/ui";
+import {
+  Button,
+  FixedSizeIcon,
+  Flex,
+  Icon,
+  type IconName,
+  Menu,
+  Skeleton,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
@@ -31,8 +50,15 @@ import {
   CollectionTableCell,
   NameColumn,
   TableRow,
+  Value,
+  ValueTableCell,
+  ValueWrapper,
 } from "./BrowseTable.styled";
-import { getMetricDescription, sortModelOrMetric } from "./utils";
+import {
+  getDatasetValueForMetric,
+  getMetricDescription,
+  sortModelOrMetric,
+} from "./utils";
 
 type MetricsTableProps = {
   metrics?: MetricResult[];
@@ -46,19 +72,33 @@ const DEFAULT_SORTING_OPTIONS: SortingOptions = {
 
 export const itemsTableContainerName = "ItemsTableContainer";
 
-const nameProps = {
+const sharedProps = {
   containerName: itemsTableContainerName,
+};
+
+const nameProps = {
+  ...sharedProps,
 };
 
 const descriptionProps: ResponsiveProps = {
-  hideAtContainerBreakpoint: "sm",
-  containerName: itemsTableContainerName,
+  ...sharedProps,
+  hideAtContainerBreakpoint: "md",
 };
 
 const collectionProps: ResponsiveProps = {
-  hideAtContainerBreakpoint: "xs",
-  containerName: itemsTableContainerName,
+  ...sharedProps,
+  hideAtContainerBreakpoint: "sm",
 };
+
+const valueProps = {
+  ...sharedProps,
+};
+
+const menuProps = {
+  ...sharedProps,
+};
+
+const DOTMENU_WIDTH = 34;
 
 export function MetricsTable({
   skeleton = false,
@@ -74,21 +114,19 @@ export function MetricsTable({
   const handleSortingOptionsChange = skeleton ? undefined : setSortingOptions;
 
   /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
-  const collectionWidth = 38.5;
-  const descriptionWidth = 100 - collectionWidth;
+  const valueWidth = 25;
+  const collectionWidth = 30;
+  const descriptionWidth = 100 - collectionWidth - valueWidth;
 
   return (
     <Table aria-label={skeleton ? undefined : t`Table of metrics`}>
       <colgroup>
         {/* <col> for Name column */}
         <NameColumn {...nameProps} />
-
-        {/* <col> for Collection column */}
+        <TableColumn {...valueProps} width={`${valueWidth}%`} />
         <TableColumn {...collectionProps} width={`${collectionWidth}%`} />
-
-        {/* <col> for Description column */}
         <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
-
+        <TableColumn {...menuProps} width={DOTMENU_WIDTH} />
         <Columns.RightEdge.Col />
       </colgroup>
       <thead>
@@ -105,6 +143,11 @@ export function MetricsTable({
           >
             {t`Name`}
           </SortableColumnHeader>
+          <ColumnHeader
+            style={{
+              textAlign: "right",
+            }}
+          >{t`Value`}</ColumnHeader>
           <SortableColumnHeader
             name="collection"
             sortingOptions={sortingOptions}
@@ -131,6 +174,11 @@ export function MetricsTable({
           >
             {t`Description`}
           </SortableColumnHeader>
+          <ColumnHeader
+            style={{
+              paddingInline: ".5rem",
+            }}
+          />
           <Columns.RightEdge.Header />
         </tr>
       </thead>
@@ -187,8 +235,10 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
   return (
     <TableRow onClick={handleClick}>
       <NameCell metric={metric} />
+      <ValueCell metric={metric} />
       <CollectionCell metric={metric} />
       <DescriptionCell metric={metric} />
+      <MenuCell metric={metric} />
       <Columns.RightEdge.Cell />
     </TableRow>
   );
@@ -291,5 +341,155 @@ function DescriptionCell({ metric }: { metric?: MetricResult }) {
         <SkeletonText />
       )}
     </Cell>
+  );
+}
+
+type MetricAction = {
+  key: string;
+  title: string;
+  icon: IconName;
+  action: () => void;
+};
+
+function MenuCell({ metric }: { metric?: MetricResult }) {
+  const [createBookmark] = useCreateBookmarkMutation();
+  const [deleteBookmark] = useDeleteBookmarkMutation();
+  const dispatch = useDispatch();
+
+  const actions = useMemo(() => {
+    if (!metric) {
+      return [];
+    }
+
+    const actions: MetricAction[] = [];
+
+    if (metric.bookmark) {
+      actions.push({
+        key: "remove-bookmark",
+        title: t`Remove from bookmarks`,
+        icon: "bookmark",
+        async action() {
+          await deleteBookmark({
+            id: metric.id,
+            type: "card",
+          });
+
+          dispatch(Bookmarks.actions.invalidateLists());
+        },
+      });
+    } else {
+      actions.push({
+        key: "add-bookmark",
+        title: c("Verb").t`Bookmark`,
+        icon: "bookmark",
+        async action() {
+          await createBookmark({
+            id: metric.id,
+            type: "card",
+          });
+          dispatch(Bookmarks.actions.invalidateLists());
+        },
+      });
+    }
+
+    if (metric.collection) {
+      actions.push({
+        key: "open-collection",
+        title: t`Open collection`,
+        icon: "folder",
+        action() {
+          dispatch(push(Urls.collection(metric.collection)));
+        },
+      });
+    }
+
+    if (metric.can_write) {
+      actions.push({
+        key: "move-to-trash",
+        title: t`Move to trash`,
+        icon: "trash",
+        action() {
+          dispatch(
+            Questions.actions.setArchived(
+              { id: metric.id, model: "metric" },
+              true,
+            ),
+          );
+        },
+      });
+    }
+
+    return actions;
+  }, [metric, createBookmark, deleteBookmark, dispatch]);
+
+  return (
+    <Cell onClick={stopPropagation} style={{ padding: 0 }}>
+      <Menu position="bottom-end">
+        <Menu.Target>
+          <Button
+            size="xs"
+            variant="subtle"
+            px="sm"
+            aria-label={t`Metric options`}
+          >
+            <Icon name="ellipsis" />
+          </Button>
+        </Menu.Target>
+        <Menu.Dropdown>
+          {actions.map(action => (
+            <Menu.Item
+              key={action.key}
+              icon={<Icon name={action.icon} />}
+              onClick={action.action}
+            >
+              {action.title}
+            </Menu.Item>
+          ))}
+        </Menu.Dropdown>
+      </Menu>
+    </Cell>
+  );
+}
+
+function ValueCell({ metric }: { metric?: MetricResult }) {
+  const { data, isLoading, error } = useGetCardQueryQuery(
+    metric ? { cardId: metric.id } : skipToken,
+  );
+
+  const emptyCell = (
+    <ValueTableCell>
+      <ValueWrapper>
+        <Value data-testid="metric-value" />
+      </ValueWrapper>
+    </ValueTableCell>
+  );
+
+  if (error) {
+    return emptyCell;
+  }
+
+  if (!metric || isLoading || !data) {
+    return (
+      <ValueTableCell>
+        <ValueWrapper data-testid="metric-value">
+          <SkeletonText />
+        </ValueWrapper>
+      </ValueTableCell>
+    );
+  }
+
+  const value = getDatasetValueForMetric(data);
+  if (!value) {
+    return emptyCell;
+  }
+
+  return (
+    <ValueTableCell>
+      <ValueWrapper>
+        <Tooltip label={<Text>{value.label}</Text>}>
+          <Value data-testid="metric-value">{value.value}</Value>
+        </Tooltip>
+      </ValueWrapper>
+    </ValueTableCell>
   );
 }

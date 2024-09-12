@@ -19,21 +19,22 @@ export const CONFIRM_DELETE_MEMBERSHIP =
   "metabase-enterprise/group_managers/CONFIRM_DELETE_MEMBERSHIP";
 export const confirmDeleteMembership = createThunkAction(
   CONFIRM_DELETE_MEMBERSHIP,
-  (membershipId, currentUserMemberships, view) => async (dispatch, getState) => {
-    await dispatch(deleteMembership(membershipId));
-    await dispatch(refreshCurrentUser());
+  (membershipId, currentUserMemberships, view) =>
+    async (dispatch, getState) => {
+      await dispatch(deleteMembership(membershipId));
+      await dispatch(refreshCurrentUser());
 
-    const adminPaths = getAdminPaths(getState());
+      const adminPaths = getAdminPaths(getState());
 
-    const redirectUrl =
-      view === "people"
-        ? getRevokeManagerPeopleRedirect(currentUserMemberships, adminPaths)
-        : getRevokeManagerGroupsRedirect(currentUserMemberships, adminPaths);
+      const redirectUrl =
+        view === "people"
+          ? getRevokeManagerPeopleRedirect(currentUserMemberships, adminPaths)
+          : getRevokeManagerGroupsRedirect(currentUserMemberships, adminPaths);
 
-    if (redirectUrl) {
-      await dispatch(push(redirectUrl));
-    }
-  },
+      if (redirectUrl) {
+        await dispatch(push(redirectUrl));
+      }
+    },
 );
 
 export const CONFIRM_UPDATE_MEMBERSHIP =

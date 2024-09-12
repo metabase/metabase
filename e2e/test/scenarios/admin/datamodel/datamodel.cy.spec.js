@@ -596,7 +596,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
       cy.get("[data-element-id=list-section-header]").should("have.length", 3);
       cy.get("[data-element-id=list-section-header]")
         .eq(0)
-        .should("have.text", "Review");
+        .should("have.text", "Reviews");
       cy.get("[data-element-id=list-section-header]")
         .eq(1)
         .should("have.text", "Product");

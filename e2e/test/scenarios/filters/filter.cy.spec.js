@@ -44,7 +44,7 @@ describe("scenarios > question > filter", () => {
 
     filter({ mode: "notebook" });
     popover().within(() => {
-      cy.findByText("Product").click();
+      cy.findByText("Products").click();
       cy.findByText("Category").click();
       cy.findByDisplayValue("Is").click();
     });

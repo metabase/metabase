@@ -492,7 +492,7 @@ describe("BreakoutStep", () => {
       const { getNextBreakouts } = setup({ step });
 
       await userEvent.click(screen.getByText("Pick a column to group by"));
-      expect(await screen.findByText("Order")).toBeInTheDocument();
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
       expect(await screen.findByText("Created At")).toBeInTheDocument();
       expect(screen.queryByText("Tax")).not.toBeInTheDocument();
 
