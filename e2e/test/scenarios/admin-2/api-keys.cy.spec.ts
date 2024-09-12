@@ -214,9 +214,10 @@ describe("scenarios > admin > settings > API keys", () => {
             visitDashboard(dashboardId);
             cy.findByTestId("dashboard-header").findByText("Test Dashboard");
             cy.findByTestId("dashboard-header").icon("info").click();
-            cy.findByTestId("sidebar-right").findByText(
-              "Test API Key One created this.",
-            );
+            sidesheet().within(() => {
+              cy.findByRole("tab", { name: "History" }).click();
+              cy.findByText("Test API Key One created this.");
+            });
           });
         },
       );
@@ -256,7 +257,8 @@ describe("scenarios > admin > settings > API keys", () => {
               "Edited Dashboard Name",
             );
             cy.findByTestId("dashboard-header").icon("info").click();
-            cy.findByTestId("sidebar-right").within(() => {
+            sidesheet().within(() => {
+              cy.findByRole("tab", { name: "History" }).click();
               cy.findByText("You created this.");
               cy.findByText(
                 'Test API Key One renamed this Dashboard from "Orders in a dashboard" to "Edited Dashboard Name".',

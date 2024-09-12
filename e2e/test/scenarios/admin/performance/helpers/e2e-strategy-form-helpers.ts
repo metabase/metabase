@@ -111,7 +111,7 @@ export const openSidebarCacheStrategyForm = (
   cy.log("Open the cache strategy form in the sidebar");
   openSidebar(type);
   cy.wait("@getCacheConfig");
-  cy.findByLabelText("Caching").click();
+  cy.findByLabelText("Caching policy").click();
 };
 
 export const cancelConfirmationModal = () => {
@@ -178,12 +178,6 @@ export const selectCacheStrategy = ({
   }
 
   saveCacheStrategyForm({ strategyType: strategy.type, model: item?.model });
-
-  if (item.model === "question" || item.model === "dashboard") {
-    cy.findByTestId("sidesheet").within(() => {
-      cy.findByLabelText("Close").click();
-    });
-  }
 };
 
 export const disableCaching = (

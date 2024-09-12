@@ -4,6 +4,7 @@ import { USERS } from "e2e/support/cypress_data";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   appBar,
+  closeDashboardInfoSidebar,
   collectionOnTheGoModal,
   entityPickerModal,
   getDashboardCard,
@@ -77,6 +78,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 .findByPlaceholderText("Add description")
                 .type("Foo")
                 .blur();
+              closeDashboardInfoSidebar();
 
               assertOnRequest("updateDashboard");
               assertOnRequest("getDashboard");

@@ -13,6 +13,7 @@ import {
   appBar,
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
+  closeDashboardInfoSidebar,
   closeNavigationSidebar,
   collectionOnTheGoModal,
   commandPalette,
@@ -404,7 +405,7 @@ describe("scenarios > dashboard", () => {
       });
     });
 
-    context("title and description", () => {
+    describe("title and description", () => {
       beforeEach(() => {
         cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
         cy.intercept(
@@ -442,6 +443,7 @@ describe("scenarios > dashboard", () => {
         dashboardHeader().findByDisplayValue(newTitle);
         openDashboardInfoSidebar();
         sidesheet().findByText(newDescription);
+        closeDashboardInfoSidebar();
 
         cy.log("should not call unnecessary API requests (metabase#31721)");
         cy.get("@updateDashboardSpy").should("have.callCount", 2);
@@ -452,8 +454,11 @@ describe("scenarios > dashboard", () => {
         cy.get("@updateDashboardSpy").should("have.callCount", 2);
 
         cy.log("Should revert the description change if escaped");
-        sidebar().findByText(newDescription).type("Baz{esc}");
-        sidebar().findByText(newDescription);
+        openDashboardInfoSidebar();
+        sidesheet().within(() => {
+          cy.findByText(newDescription).type("Baz{esc}");
+          cy.findByText(newDescription);
+        });
         cy.get("@updateDashboardSpy").should("have.callCount", 2);
       });
 
@@ -479,7 +484,7 @@ describe("scenarios > dashboard", () => {
           .findByText(/^Edited a few seconds ago/)
           .click();
 
-        rightSidebar()
+        sidesheet()
           .findByPlaceholderText("Add description")
           .type(newDescription)
           .blur();
@@ -488,6 +493,7 @@ describe("scenarios > dashboard", () => {
         // This might be a bug! We're applying the description while still in the edit mode!
         // OTOH, the title is preserved only on save.
         cy.wait("@updateDashboard");
+        closeDashboardInfoSidebar();
 
         saveDashboard();
         cy.wait("@updateDashboard");
@@ -507,7 +513,7 @@ describe("scenarios > dashboard", () => {
 
         cy.wait("@updateDashboard");
 
-        rightSidebar().within(() => {
+        sidesheet().within(() => {
           cy.log("Markdown content should not be bigger than its container");
           cy.findByTestId("editable-text").then($markdown => {
             const el = $markdown[0];
@@ -1267,10 +1273,8 @@ describeEE("scenarios > dashboard > caching", () => {
 
     openSidebarCacheStrategyForm("dashboard");
 
-    rightSidebar().within(() => {
-      cy.findByRole("heading", { name: /Caching settings/ }).should(
-        "be.visible",
-      );
+    sidesheet().within(() => {
+      cy.findByText(/Caching settings/).should("be.visible");
       durationRadioButton().click();
       cy.findByLabelText("Cache results for this many hours").type("48");
       cy.findByRole("button", { name: /Save/ }).click();
@@ -1294,10 +1298,8 @@ describeEE("scenarios > dashboard > caching", () => {
 
     openSidebarCacheStrategyForm("dashboard");
 
-    rightSidebar().within(() => {
-      cy.findByRole("heading", { name: /Caching settings/ }).should(
-        "be.visible",
-      );
+    sidesheet().within(() => {
+      cy.findByText(/Caching settings/).should("be.visible");
       cy.findByRole("button", {
         name: /Clear cache for this dashboard/,
       }).click();

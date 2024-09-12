@@ -378,6 +378,8 @@ describe("issue 16559", () => {
           .should("be.visible");
 
         cy.log("Add description");
+        cy.findByRole("tab", { name: "Overview" }).click();
+
         cy.findByPlaceholderText("Add description")
           .click()
           .type("16559 description")
@@ -394,9 +396,7 @@ describe("issue 16559", () => {
         cy.log("Toggle auto-apply filters");
 
         cy.findByRole("tab", { name: "Overview" }).click();
-
         cy.findByText("Auto-apply filters").click();
-
         cy.findByRole("tab", { name: "History" }).click();
 
         cy.findByTestId("dashboard-history-list")
