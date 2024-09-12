@@ -7,7 +7,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { Alert, Box, Icon, Stack, Switch, Text } from "metabase/ui";
+import { Alert, Box, Button, Icon, Stack, Switch, Text } from "metabase/ui";
 
 import SettingHeader from "../SettingHeader";
 import { SetByEnvVarWrapper } from "../SettingsSetting";
@@ -41,7 +41,7 @@ export function EmbeddingSdkSettings({
     updateSetting({ key: sdkOriginsSetting.key }, value);
   }
   const hasEmbeddingSdkFeature = PLUGIN_EMBEDDING_SDK.isEnabled();
-  const canEditSdkOrigins = hasEmbeddingSdkFeature && isEmbeddingSdkEnabled;
+  const isEE = hasEmbeddingSdkFeature && isEmbeddingSdkEnabled;
 
   function handleToggleEmbeddingSdk(event: ChangeEvent<HTMLInputElement>) {
     updateSetting({ key: "enable-embedding-sdk" }, event.target.checked);
@@ -86,7 +86,7 @@ export function EmbeddingSdkSettings({
           maw={620}
         >
           <Text size="sm">
-            {!canEditSdkOrigins
+            {!isEE
               ? jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, switch Metabase binaries, ${(
                   <ExternalLink key="upgrade-url" href={upgradeUrl}>
                     {t`upgrade to Metabase Pro`}
@@ -95,6 +95,26 @@ export function EmbeddingSdkSettings({
               : jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, implement JWT SSO.`}
           </Text>
         </Alert>
+        <Box>
+          <SettingHeader
+            id="get-started"
+            setting={
+              !isEE
+                ? {
+                    display_name: t`Try Embedded analytics SDK`,
+                    description: t`Use the SDK with API keys for development.`,
+                  }
+                : {
+                    display_name: t`Get started`,
+                  }
+            }
+          />
+          <Button
+            variant="outline"
+            component={ExternalLink}
+            href="https://www.npmjs.com/package/@metabase/embedding-sdk-react"
+          >{t`Check out the Quick Start`}</Button>
+        </Box>
         <Box>
           <SettingHeader
             id={sdkOriginsSetting.key}
@@ -106,7 +126,7 @@ export function EmbeddingSdkSettings({
               setting={sdkOriginsSetting}
               onChange={handleChangeSdkOrigins}
               type="text"
-              disabled={!canEditSdkOrigins}
+              disabled={!isEE}
             />
           </SetByEnvVarWrapper>
         </Box>
