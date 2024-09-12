@@ -2,10 +2,17 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import {
+  getCurrentVersion,
+  getLatestVersion,
+} from "metabase/admin/settings/selectors";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
+import { newVersionAvailable, versionIsLatest } from "metabase/lib/utils";
+import { getIsHosted } from "metabase/setup/selectors";
 
 import {
   NewVersionContainer,
@@ -13,18 +20,22 @@ import {
 } from "./VersionUpdateNotice.styled";
 
 export default function VersionUpdateNotice() {
-  const currentVersion = formatVersion(MetabaseSettings.currentVersion());
+  const currentVersion = useSelector(getCurrentVersion);
+  const latestVersion = useSelector(getLatestVersion);
+  const isHosted = useSelector(getIsHosted);
 
-  if (MetabaseSettings.isHosted()) {
+  if (isHosted) {
     return <CloudCustomers currentVersion={currentVersion} />;
   }
 
-  if (MetabaseSettings.versionIsLatest()) {
-    return <OnLatestVersion currentVersion={currentVersion} />;
+  const displayVersion = formatVersion(currentVersion);
+
+  if (versionIsLatest({ currentVersion, latestVersion })) {
+    return <OnLatestVersion currentVersion={displayVersion} />;
   }
 
-  if (MetabaseSettings.newVersionAvailable()) {
-    return <NewVersionAvailable currentVersion={currentVersion} />;
+  if (newVersionAvailable({ currentVersion, latestVersion })) {
+    return <NewVersionAvailable currentVersion={displayVersion} />;
   }
 
   return <div>{t`No successful checks yet.`}</div>;
