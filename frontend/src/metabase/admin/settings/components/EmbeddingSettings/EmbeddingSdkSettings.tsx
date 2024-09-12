@@ -4,8 +4,10 @@ import { jt, t } from "ttag";
 import { useSetting } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import { Box, Stack, Switch } from "metabase/ui";
+import { getUpgradeUrl } from "metabase/selectors/settings";
+import { Alert, Box, Icon, Stack, Switch, Text } from "metabase/ui";
 
 import SettingHeader from "../SettingHeader";
 import { SetByEnvVarWrapper } from "../SettingsSetting";
@@ -45,6 +47,13 @@ export function EmbeddingSdkSettings({
     updateSetting({ key: "enable-embedding-sdk" }, event.target.checked);
   }
 
+  const upgradeUrl = useSelector(state =>
+    getUpgradeUrl(state, {
+      utm_campaign: "embedding-sdk",
+      utm_content: "embedding-sdk-settings",
+    }),
+  );
+
   return (
     <Box p="0.5rem 1rem 0">
       <Stack spacing="2.5rem">
@@ -62,6 +71,30 @@ export function EmbeddingSdkSettings({
           checked={isEmbeddingSdkEnabled}
           onChange={handleToggleEmbeddingSdk}
         />
+
+        <Alert
+          icon={
+            <Icon color="var(--mb-color-text-secondary)" name="info_filled" />
+          }
+          bg="var(--mb-color-background-info)"
+          style={{
+            borderColor: "var(--mb-color-border)",
+          }}
+          variant="outline"
+          px="lg"
+          py="md"
+          maw={620}
+        >
+          <Text size="sm">
+            {!canEditSdkOrigins
+              ? jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, switch Metabase binaries, ${(
+                  <ExternalLink key="upgrade-url" href={upgradeUrl}>
+                    {t`upgrade to Metabase Pro`}
+                  </ExternalLink>
+                )} and implement JWT SSO.`
+              : jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, implement JWT SSO.`}
+          </Text>
+        </Alert>
         <Box>
           <SettingHeader
             id={sdkOriginsSetting.key}
