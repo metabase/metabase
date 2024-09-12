@@ -576,6 +576,7 @@ describe("AddToDashSelectDashModal", () => {
         typedText,
       );
 
+      await userEvent.click(await screen.findByText("Everywhere"));
       await screen.findAllByTestId("result-item");
 
       const call = fetchMock.lastCall("path:/api/search");
