@@ -55,12 +55,15 @@ const setup = (options: Options) => {
   });
 };
 
+const PROBLEM_CARD_TEST_ID = "sdk-usage-problem-card";
+const PROBLEM_INDICATOR_TEST_ID = "sdk-usage-problem-indicator";
+
 describe("SdkUsageProblemDisplay", () => {
   it("should not show an error when JWT is provided with a license", () => {
     setup({ config: createMockJwtConfig(), tokenFeatureEnabled: true });
 
     expect(
-      screen.queryByTestId("sdk-usage-problem-indicator"),
+      screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
     ).not.toBeInTheDocument();
   });
 
@@ -69,9 +72,9 @@ describe("SdkUsageProblemDisplay", () => {
 
     setup({ config: createMockApiKeyConfig(), tokenFeatureEnabled: true });
 
-    await userEvent.click(screen.getByTestId("sdk-usage-problem-indicator"));
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
-    const card = screen.getByTestId("sdk-usage-problem-card");
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
     expect(within(card).getByText("warning")).toBeInTheDocument();
 
     expect(
@@ -91,9 +94,9 @@ describe("SdkUsageProblemDisplay", () => {
       tokenFeatureEnabled: true,
     });
 
-    await userEvent.click(screen.getByTestId("sdk-usage-problem-indicator"));
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
-    const card = screen.getByTestId("sdk-usage-problem-card");
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
     expect(within(card).getByText("error")).toBeInTheDocument();
 
     expect(
@@ -108,9 +111,9 @@ describe("SdkUsageProblemDisplay", () => {
   it("shows an error when JWT is used without a license", async () => {
     setup({ config: createMockJwtConfig(), tokenFeatureEnabled: false });
 
-    await userEvent.click(screen.getByTestId("sdk-usage-problem-indicator"));
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
-    const card = screen.getByTestId("sdk-usage-problem-card");
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
     expect(within(card).getByText("error")).toBeInTheDocument();
 
     expect(
@@ -130,10 +133,10 @@ describe("SdkUsageProblemDisplay", () => {
       },
     });
 
-    await userEvent.click(screen.getByTestId("sdk-usage-problem-indicator"));
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
     expect(
-      within(screen.getByTestId("sdk-usage-problem-card")).getByText(
+      within(screen.getByTestId(PROBLEM_CARD_TEST_ID)).getByText(
         /cannot use both JWT and API key authentication at the same time/,
       ),
     ).toBeInTheDocument();
