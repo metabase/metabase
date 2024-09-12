@@ -4839,12 +4839,12 @@
                   (apply orig-filterable-columns-for-query args))]
         (let [response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d?dashboard_load_id=%s"
                                                                          (:id d) (str (random-uuid))))]
-          (testing "Baseline: expected :param_fields and :param_fields (#42829)"
+          (testing "Baseline: expected :param_fields (#42829)"
             (is (=? {(mt/id :people :name)  {:name "NAME"}
                      (mt/id :people :state) {:name "STATE"}
                      (mt/id :people :city)  {:name "CITY"}}
                     (get response :param_fields))))
-          (testing "Baseline: expected :param_fields and :param_values (#42829)"
+          (testing "Baseline: expected :param_values (#42829)"
             (is (=? {(mt/id :people :state) {:values ["AK" "AL"]}}
                     (-> (get response :param_values)
                         ;; Take just first 2 values for testing purposes
