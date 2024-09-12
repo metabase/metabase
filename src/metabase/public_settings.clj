@@ -192,6 +192,7 @@
   :visibility :public
   :export?    true
   :audit      :getter
+  :encryption :never
   :getter     (fn []
                 (let [value (setting/get-value-of-type :string :site-locale)]
                   (when (i18n/available-locale? value)
@@ -898,6 +899,13 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :export?    true
   :type       :integer)
+
+(defsetting experimental-fulltext-search-enabled
+  (deferred-tru "Enables search engines which are still in the experimental stage")
+  :visibility :internal
+  :export?    false
+  :default    false
+  :type       :boolean)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin

@@ -36,6 +36,7 @@ export const Cell = styled.td<ResponsiveProps>`
   &:focus {
     outline: 2px solid var(--mb-color-focus);
 
+    button,
     a {
       outline: none;
     }
@@ -45,14 +46,14 @@ export const Cell = styled.td<ResponsiveProps>`
 `;
 
 export const NameColumn = styled(TableColumn)`
-  width: 356px;
+  width: 220px;
 
   @container ${props => props.containerName} (max-width: ${breakpoints.md}) {
-    width: 280px;
+    width: 220px;
   }
 
   @container ${props => props.containerName} (max-width: ${breakpoints.sm}) {
-    width: 200px;
+    width: 160px;
   }
 `;
 
@@ -70,4 +71,21 @@ export const CollectionLink = styled(Link)`
   &:hover {
     color: var(--mb-color-icon-primary) !important;
   }
+`;
+
+export const ValueTableCell = styled(Cell)`
+  td& {
+    padding: 0;
+    padding-inline: 0.5em 1em;
+  }
+`;
+
+export const ValueWrapper = styled.span`
+  display: flex;
+  justify-content: flex-end;
+`;
+
+export const Value = styled.span`
+  padding: 1em 0;
+  height: 100%;
 `;

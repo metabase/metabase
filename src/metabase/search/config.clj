@@ -20,6 +20,11 @@
   :export?    true
   :audit      :getter)
 
+(def search-engines
+  "Supported search engines."
+  #{:in-place
+    :fulltext})
+
 (def ^:dynamic *db-max-results*
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
   returning tons of results; this number should probably be adjusted downward once we have UI in place to indicate
@@ -121,6 +126,7 @@
    [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:limit-int                           {:optional true} ms/Int]
    [:offset-int                          {:optional true} ms/Int]
+   [:search-engine                       {:optional true} (into [:enum] search-engines)]
    [:search-native-query                 {:optional true} true?]
    [:table-db-id                         {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items

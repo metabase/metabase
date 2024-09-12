@@ -79,7 +79,6 @@ export type ComputedVisualizationSettings = VisualizationSettings & {
 
 export interface StaticVisualizationProps {
   rawSeries: RawSeries;
-  dashcardSettings: VisualizationSettings;
   renderingContext: RenderingContext;
 }
 
