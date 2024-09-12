@@ -3,11 +3,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import type { TokenFeature } from "metabase-types/api";
 
 export function hasPremiumFeature(feature: TokenFeature) {
-  const hasFeature = MetabaseSettings.get("token-features")?.[feature];
-  if (hasFeature == null) {
-    console.warn("Unknown premium feature", feature);
-  }
-  return hasFeature;
+  return MetabaseSettings.get("token-features")?.[feature];
 }
 
 export function hasAnySsoPremiumFeature() {
