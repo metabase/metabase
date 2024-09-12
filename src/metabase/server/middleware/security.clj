@@ -186,13 +186,15 @@
 
 (defn access-control-headers
   "Returns headers for CORS requests"
-  [origin]
+  [origin uri]
   (merge
+   (when (req.util/session-properties-endpoint? uri)
+    {"Access-Control-Allow-Origin" origin
+     "Vary"                        "Origin"})
    (when
     (approved-origin? origin (embedding-app-origin-sdk))
      {"Access-Control-Allow-Origin" origin
       "Vary"                        "Origin"})
-
    {"Access-Control-Allow-Headers"   "*"
     "Access-Control-Allow-Methods"   "*"
     "Access-Control-Expose-Headers"  "X-Metabase-Anti-CSRF-Token"}))
@@ -206,7 +208,7 @@
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
-  [& {:keys [origin nonce allow-iframes? allow-cache?]
+  [& {:keys [origin nonce uri allow-iframes? allow-cache?]
       :or   {allow-iframes? false, allow-cache? false}}]
   (merge
    (if allow-cache?
@@ -214,7 +216,7 @@
      (cache-prevention-headers))
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
-   (when (embedding-app-origin-sdk) (access-control-headers origin))
+   (when (embedding-app-origin-sdk) (access-control-headers origin uri))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 (if (embedding-app-origin)
