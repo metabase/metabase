@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import {
   getCurrentVersion,
@@ -52,7 +52,8 @@ function OnLatestVersion({ currentVersion }: { currentVersion: string }) {
   return (
     <div>
       <OnLatestVersionMessage>
-        {t`You're running Metabase ${currentVersion} which is the latest and greatest!`}
+        {c(`{0} is a version number`)
+          .t`You're running Metabase ${currentVersion} which is the latest and greatest!`}
       </OnLatestVersionMessage>
     </div>
   );
@@ -62,7 +63,8 @@ function DefaultUpdateMessage({ currentVersion }: { currentVersion: string }) {
   return (
     <div>
       <OnLatestVersionMessage>
-        {t`You're running Metabase ${currentVersion}`}
+        {c(`{0} is a version number`)
+          .t`You're running Metabase ${currentVersion}`}
       </OnLatestVersionMessage>
     </div>
   );
