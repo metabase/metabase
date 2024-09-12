@@ -9527,6 +9527,7 @@ databaseChangeLog:
       id: v51.2024-09-11T12:34:05
       author: johnswanson
       comment: Add an index for `report_card.dashboard_id`
+      rollback: # will be removed with the column
       preConditions:
         - onFail: MARK_RAN
         - not:
