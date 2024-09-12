@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupRevisionsEndpoints } from "__support__/server-mocks/revision";
 import { renderWithProviders, screen } from "__support__/ui";
+import { sidesheet } from "e2e/support/helpers";
 import type { Dashboard } from "metabase-types/api";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
@@ -38,7 +39,9 @@ describe("DashboardInfoSidebar", () => {
   it("should render the component", () => {
     setup();
 
-    expect(screen.getByText("About")).toBeInTheDocument();
+    sidesheet().within(() => {
+      expect(screen.getByText("Info")).toBeInTheDocument();
+    });
   });
 
   it("should allow to set description", async () => {
