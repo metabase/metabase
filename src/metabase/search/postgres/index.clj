@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (def ^:private active-table :search_index)
@@ -100,12 +101,54 @@
     (when @reindexing?
       (t2/insert! pending-table entry))))
 
-(defn- to-tsquery-expr [search-term]
-  (as-> search-term <>
-    (str/trim <>)
-    (str/split <> #"\s+")
-    (str/join " & " <>)
-    (str <> ":*")))
+(defn- process-negation [term]
+  (if (str/starts-with? term "-")
+    (str "!" (subs term 1))
+    term))
+
+(defn- process-phrase [word-or-phrase]
+  ;; a phrase is quoted even if the closing quotation mark has not been typed yet
+  (if (str/starts-with? word-or-phrase "\"")
+    ;; quoted phrases must be matched sequentially
+    (as-> word-or-phrase <>
+      ;; remove the quote mark(s)
+      (str/replace <> #"^\"|\"$" "")
+      (str/trim <>)
+      (str/split <> #"\s+")
+      (str/join " <-> " <>))
+    ;; just a regular word
+    word-or-phrase))
+
+(defn- split-preserving-quotes
+  "Break up the words in the search input, preserving quoted and partially quoted segments."
+  [s]
+  (re-seq #"\"[^\"]*(?:\"|$)|[^\s\"]+|\s+" (u/lower-case-en s)))
+
+(defn- process-clause [words-and-phrases]
+  (->> words-and-phrases
+       (remove #{"and"})
+       (map (comp process-phrase
+                  process-negation))
+       (str/join " & ")))
+
+(defn- complete-last-word
+  "Add wildcards at the end of the final word, so that we match ts completions."
+  [expression]
+  (str/replace expression #"(\S+)(?=\s*$)" "$1:*"))
+
+(defn to-tsquery-expr
+  "Given the user input, construct a query in the Postgres tsvector query language."
+  [input]
+  (let [trimmed        (str/trim input)
+        complete?      (not (str/ends-with? trimmed "\""))
+        maybe-complete (if complete? complete-last-word identity)]
+    (->> (split-preserving-quotes trimmed)
+         (remove str/blank?)
+         (partition-by #{"or"})
+         (remove #(= (first %) "or"))
+         (map process-clause)
+         (str/join " | ")
+         maybe-complete)))
 
 (defn search-query
   "Query fragment for all models corresponding to a query paramter `:search-term`."
