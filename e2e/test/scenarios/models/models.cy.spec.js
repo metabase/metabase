@@ -262,12 +262,41 @@ describe("scenarios > models", () => {
         cy.findByText("Reviews").should("exist");
         cy.findByText("Orders, Count").should("not.exist");
 
-        testDataPickerSearch({
-          query: "Ord",
-          models: true,
-          cards: true,
-          tables: true,
-        });
+        cy.findByPlaceholderText("Search this database or everywhere…").type(
+          "Ord",
+        );
+        cy.wait("@search");
+
+        getResults().should("have.length", 1);
+        cy.findByText("1 result").should("be.visible");
+        getResults()
+          .eq(0)
+          .should("have.attr", "data-model-type", "table")
+          .and("contain.text", "Orders");
+
+        cy.findByText("Everywhere").click();
+        getResults().should("have.length", 5);
+        cy.findByText("5 results").should("be.visible");
+        getResults()
+          .eq(0)
+          .should("have.attr", "data-model-type", "dataset")
+          .and("contain.text", "Orders");
+        getResults()
+          .eq(1)
+          .should("have.attr", "data-model-type", "table")
+          .and("contain.text", "Orders");
+        getResults()
+          .eq(2)
+          .should("have.attr", "data-model-type", "card")
+          .and("contain.text", "Orders, Count");
+        getResults()
+          .eq(3)
+          .should("have.attr", "data-model-type", "dataset")
+          .and("contain.text", "Orders Model");
+        getResults()
+          .eq(4)
+          .should("have.attr", "data-model-type", "card")
+          .and("contain.text", "Orders, Count, Grouped by Created At (year)");
       });
     });
 
@@ -604,45 +633,6 @@ function getCollectionItemCard(itemName) {
   return cy.findByText(itemName).parent();
 }
 
-function testDataPickerSearch({
-  query,
-  models = false,
-  cards = false,
-  tables = false,
-} = {}) {
-  cy.findByPlaceholderText("Search…").type(query);
-  cy.wait("@search");
-
-  const searchResultItems = cy.findAllByTestId("result-item");
-
-  searchResultItems.then($results => {
-    const modelTypes = {};
-
-    for (const htmlElement of $results.toArray()) {
-      const type = htmlElement.getAttribute("data-model-type");
-      if (type in modelTypes) {
-        modelTypes[type] += 1;
-      } else {
-        modelTypes[type] = 1;
-      }
-    }
-
-    if (models) {
-      expect(modelTypes["dataset"]).to.be.greaterThan(0);
-    } else {
-      expect(Object.keys(modelTypes)).not.to.include("dataset");
-    }
-
-    if (cards) {
-      expect(modelTypes["card"]).to.be.greaterThan(0);
-    } else {
-      expect(Object.keys(modelTypes)).not.to.include("card");
-    }
-
-    if (tables) {
-      expect(modelTypes["table"]).to.be.greaterThan(0);
-    } else {
-      expect(Object.keys(modelTypes)).not.to.include("table");
-    }
-  });
+function getResults() {
+  return cy.findAllByTestId("result-item");
 }
