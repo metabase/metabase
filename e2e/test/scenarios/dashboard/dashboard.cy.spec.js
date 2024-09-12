@@ -41,13 +41,13 @@ import {
   removeDashboardCard,
   resetSnowplow,
   restore,
-  rightSidebar,
   saveDashboard,
   selectDashboardFilter,
   setFilter,
   setTokenFeatures,
   showDashboardCardActions,
   sidebar,
+  sidesheet,
   toggleDashboardInfoSidebar,
   updateDashboardCards,
   visitDashboard,
@@ -424,7 +424,7 @@ describe("scenarios > dashboard", () => {
 
         toggleDashboardInfoSidebar();
 
-        rightSidebar()
+        sidesheet()
           .findByPlaceholderText("Add description")
           .type(newDescription)
           .blur();
@@ -440,7 +440,7 @@ describe("scenarios > dashboard", () => {
 
         dashboardHeader().findByDisplayValue(newTitle);
         toggleDashboardInfoSidebar();
-        sidebar().findByText(newDescription);
+        sidesheet().findByText(newDescription);
 
         cy.log("should not call unnecessary API requests (metabase#31721)");
         cy.get("@updateDashboardSpy").should("have.callCount", 2);
@@ -451,8 +451,8 @@ describe("scenarios > dashboard", () => {
         cy.get("@updateDashboardSpy").should("have.callCount", 2);
 
         cy.log("Should revert the description change if escaped");
-        sidebar().findByText(newDescription).type("Baz{esc}");
-        sidebar().findByText(newDescription);
+        sidesheet().findByText(newDescription).type("Baz{esc}");
+        sidesheet().findByText(newDescription);
         cy.get("@updateDashboardSpy").should("have.callCount", 2);
       });
 
@@ -478,7 +478,7 @@ describe("scenarios > dashboard", () => {
           .findByText(/^Edited a few seconds ago/)
           .click();
 
-        rightSidebar()
+        sidesheet()
           .findByPlaceholderText("Add description")
           .type(newDescription)
           .blur();
@@ -499,14 +499,14 @@ describe("scenarios > dashboard", () => {
         const testMarkdownContent =
           "# Heading 1{enter}{enter}**bold** https://www.metabase.com/community_posts/how-to-measure-the-success-of-new-product-features-and-why-it-is-important{enter}{enter}![alt](/app/assets/img/welcome-modal-2.png){enter}{enter}This is my description. ";
 
-        rightSidebar()
+        sidesheet()
           .findByPlaceholderText("Add description")
           .type(testMarkdownContent, { delay: 0 })
           .blur();
 
         cy.wait("@updateDashboard");
 
-        rightSidebar().within(() => {
+        sidesheet().within(() => {
           cy.log("Markdown content should not be bigger than its container");
           cy.findByTestId("editable-text").then($markdown => {
             const el = $markdown[0];
@@ -1266,7 +1266,7 @@ describeEE("scenarios > dashboard > caching", () => {
 
     openSidebarCacheStrategyForm("dashboard");
 
-    rightSidebar().within(() => {
+    sidesheet().within(() => {
       cy.findByRole("heading", { name: /Caching settings/ }).should(
         "be.visible",
       );
@@ -1293,7 +1293,7 @@ describeEE("scenarios > dashboard > caching", () => {
 
     openSidebarCacheStrategyForm("dashboard");
 
-    rightSidebar().within(() => {
+    sidesheet().within(() => {
       cy.findByRole("heading", { name: /Caching settings/ }).should(
         "be.visible",
       );
@@ -1306,7 +1306,7 @@ describeEE("scenarios > dashboard > caching", () => {
       cy.findByRole("button", { name: /Clear cache/ }).click();
     });
     cy.wait("@invalidateCache");
-    rightSidebar().within(() => {
+    sidesheet().within(() => {
       cy.findByText("Cache cleared").should("be.visible");
     });
   });
