@@ -30,7 +30,7 @@
         (sql.helpers/rename-table new)
         t2/query)))
 
-(defn create-pending!
+(defn maybe-create-pending!
   "Create a non-active search index table."
   []
   (when (not @reindexing?)
@@ -50,7 +50,12 @@
              [:database_id :int]
              [:table_id :int]
              ;; filter related
-             [:archived :boolean]])
+             [:archived :boolean]
+             ;; useful for tracking the speed and age of the index
+             [:created_at :timestamp
+              [:default [:raw "CURRENT_TIMESTAMP"]]
+              :not-null]])
+
           t2/query)
 
       (t2/query
@@ -116,6 +121,13 @@
   []
   (reset! reindexing? false)
   (drop-table! pending-table)
-  (create-pending!)
+  (maybe-create-pending!)
   (activate-pending!)
   (reset! initialized? true))
+
+(defn ensure-ready!
+  "Ensure the index is ready to be populated. Return false if it was already ready."
+  [force-recreation?]
+  (if (or force-recreation? (not (exists? active-table)))
+    (reset-index!)
+    (reset! initialized? true)))
