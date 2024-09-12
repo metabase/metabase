@@ -204,6 +204,14 @@
   [cards]
   (reduce set/union #{} (map card->template-tag-field-ids cards)))
 
+;; Following function is dynamic for testing purposes.
+(defn ^:dynamic *filterable-columns-for-query*
+  "Get filterable columns for query."
+  [database-id dataset-query]
+  (-> (lib/query (lib.metadata.jvm/application-database-metadata-provider database-id)
+                 dataset-query)
+      (lib/filterable-columns)))
+
 (defn- ensure-filterable-columns-for-card
   [ctx card]
   (if (contains? (get ctx :card-id->filterable-columns) (:id card))
@@ -213,9 +221,7 @@
       (if-not (and (not-empty dataset-query) (pos-int? database-id))
         ctx
         (update ctx :card-id->filterable-columns assoc (:id card)
-                (-> (lib/query (lib.metadata.jvm/application-database-metadata-provider database-id)
-                               dataset-query)
-                    (lib/filterable-columns)))))))
+                (*filterable-columns-for-query* database-id dataset-query))))))
 
 (defn- field-id-from-dashcards-filterable-columns
   [ctx param-dashcard-info]
@@ -288,8 +294,8 @@
   [dashcards]
   (letfn [(dashcard->param-dashcard-info
             [dashcard]
-            (map #(hash-map :parameter       %
-                            :dashcard        dashcard
+            (map #(hash-map :parameter          %
+                            :dashcard           dashcard
                             :param-target-field (param-target->field-clause (:target %)
                                                                             (:card dashcard)))
                  (:parameter_mappings dashcard)))]
