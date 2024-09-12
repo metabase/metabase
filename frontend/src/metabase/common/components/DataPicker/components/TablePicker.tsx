@@ -191,7 +191,9 @@ export const TablePicker = ({
           <DatabaseList
             databases={databases}
             error={errorDatabases}
-            isCurrentLevel={!schemaName || (schemas?.length === 1 && !tableId)}
+            isCurrentLevel={
+              schemaName == null || (schemas?.length === 1 && !tableId)
+            }
             isLoading={isLoadingDatabases}
             selectedItem={selectedDbItem}
             onClick={handleFolderSelect}
