@@ -111,6 +111,8 @@ export function isDatasetTemporalMetric(dataset: Dataset) {
   }
 
   const col = cols[0];
+
+  // TODO(romeovs): isDate should not be used but there is not easy alternative for now
   if (!isDate(col)) {
     return false;
   }
