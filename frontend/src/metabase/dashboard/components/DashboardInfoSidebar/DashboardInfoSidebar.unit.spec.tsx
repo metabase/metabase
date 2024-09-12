@@ -2,7 +2,6 @@ import userEvent from "@testing-library/user-event";
 
 import { setupRevisionsEndpoints } from "__support__/server-mocks/revision";
 import { renderWithProviders, screen } from "__support__/ui";
-import { sidesheet } from "e2e/support/helpers";
 import type { Dashboard } from "metabase-types/api";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
@@ -36,12 +35,10 @@ jest.mock("metabase/dashboard/constants", () => ({
 }));
 
 describe("DashboardInfoSidebar", () => {
-  it("should render the sidesheet component", () => {
+  it("should render the sidesheet component", async () => {
     setup();
 
-    sidesheet().within(() => {
-      expect(screen.getByText("Info")).toBeInTheDocument();
-    });
+    expect(await screen.findByTestId("sidesheet")).toBeInTheDocument();
   });
 
   it("should allow to set description", async () => {
