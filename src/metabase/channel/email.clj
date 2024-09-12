@@ -1,6 +1,7 @@
 (ns metabase.channel.email
   (:require
    [metabase.channel.core :as channel]
+   [metabase.channel.params :as channel.params]
    [metabase.channel.shared :as channel.shared]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
@@ -120,7 +121,7 @@
   [_channel-type notification-info template recipients]
   (assert (some? template) "Template is required for system event notifications")
   (let [payload (:payload notification-info)]
-    [(construct-email (channel/substitute-params (-> template :details :subject) payload)
+    [(construct-email (channel.params/substitute-params (-> template :details :subject) payload)
                       (notification-recipients->emails recipients)
                       [{:type    "text/html; charset=utf-8"
                         :content (stencil/render-string (-> template :details :body) payload)}])]))

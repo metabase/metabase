@@ -3,17 +3,11 @@
 
   The API is still in development and subject to change."
   (:require
-   [metabase.channel.params :as channel.params]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [potemkin :as p]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
-
-(p/import-vars
- [channel.params
-  substitute-params])
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Channels methods                                           ;;
