@@ -12,7 +12,7 @@ const createMockAction = ({
   section = "basic",
   disabled,
 }: mockAction): PaletteActionImpl =>
-  ({ name, section, disabled } as PaletteActionImpl);
+  ({ name, section, disabled }) as PaletteActionImpl;
 
 describe("command palette utils", () => {
   describe("processSection", () => {

@@ -33,8 +33,8 @@ export const useHelpLink = (): { visible: boolean; href: string } => {
     helpLinkSetting === "custom"
       ? helpLinkCustomDestinationSetting
       : isAdmin && isPaidPlan
-      ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${version.tag}&diag=${compactBugReportDetailsForUrl}`
-      : `https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${version.tag}`;
+        ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${version.tag}&diag=${compactBugReportDetailsForUrl}`
+        : `https://www.metabase.com/help?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=${version.tag}`;
 
   return { visible, href };
 };

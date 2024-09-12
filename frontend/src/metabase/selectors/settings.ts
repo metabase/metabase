@@ -27,9 +27,18 @@ export const getSetting = <S extends State, T extends GetSettingKey<S>>(
   return setting;
 };
 
+export const isSsoEnabled = (state: State) =>
+  getSetting(state, "ldap-enabled") ||
+  getSetting(state, "google-auth-enabled") ||
+  getSetting(state, "saml-enabled") ||
+  getSetting(state, "other-sso-enabled?");
+
 export const getStoreUrl = (path = "") => {
   return `https://store.metabase.com/${path}`;
 };
+
+export const migrateToCloudGuideUrl = () =>
+  "https://www.metabase.com/cloud/docs/migrate/guide";
 
 export const getLearnUrl = (path = "") => {
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This is the implementation of getLearnUrl()

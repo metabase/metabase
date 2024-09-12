@@ -2,8 +2,8 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 
 import { UpsellHostingUpdates } from "metabase/admin/upsells";
+import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import MetabaseSettings from "metabase/lib/settings";
 import { Flex } from "metabase/ui";
 
 import { SettingsSetting } from "../SettingsSetting";
@@ -18,16 +18,17 @@ export default function SettingsUpdatesForm({ elements, updateSetting }) {
       autoFocus={index === 0}
     />
   ));
+  const isHosted = useSetting("is-hosted");
 
   return (
     <Flex justify="space-between">
       <div style={{ width: "585px" }}>
-        {!MetabaseSettings.isHosted() && <ul>{settings}</ul>}
+        {!isHosted && <ul>{settings}</ul>}
 
         <div className={CS.px2}>
           <div
             className={cx(CS.pt3, {
-              [CS.borderTop]: !MetabaseSettings.isHosted(),
+              [CS.borderTop]: !isHosted,
             })}
           >
             <VersionUpdateNotice />

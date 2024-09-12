@@ -46,13 +46,12 @@ Table.defaultProps = { className: AdminS.ContentTable };
 export const hideResponsively = ({
   hideAtContainerBreakpoint,
   containerName,
-}: ResponsiveProps) =>
-  css`
-    ${getContainerQuery({
-      hideAtContainerBreakpoint,
-      containerName,
-    })}
-  `;
+}: ResponsiveProps) => css`
+  ${getContainerQuery({
+    hideAtContainerBreakpoint,
+    containerName,
+  })}
+`;
 
 export const ColumnHeader = styled.th<ResponsiveProps>`
   th& {
