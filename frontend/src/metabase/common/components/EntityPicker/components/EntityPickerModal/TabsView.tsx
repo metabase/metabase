@@ -4,7 +4,6 @@ import type { SearchResultId } from "metabase-types/api";
 import type {
   EntityPickerTab,
   EntityPickerTabId,
-  EntityPickerTabRenderProps,
   TypeWithModel,
 } from "../../types";
 
@@ -15,7 +14,7 @@ interface Props<
 > {
   selectedTabId: EntityPickerTabId;
   tabs: EntityPickerTab<Id, Model, Item>[];
-  onItemSelect: EntityPickerTabRenderProps<Id, Model, Item>["onItemSelect"];
+  onItemSelect: (item: Item, tabId: EntityPickerTabId) => void;
   onTabChange: (tabId: EntityPickerTabId) => void;
 }
 
@@ -68,7 +67,9 @@ export const TabsView = <
               height: 0,
             }}
           >
-            {tab.render({ onItemSelect })}
+            {tab.render({
+              onItemSelect: item => onItemSelect(item, id),
+            })}
           </Tabs.Panel>
         );
       })}

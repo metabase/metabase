@@ -235,20 +235,20 @@ export function EntityPickerModal<
   );
 
   const handleSelectItem = useCallback(
-    (item: Item) => {
+    (item: Item, tabId: EntityPickerTabId) => {
       const isFolder = folderModels.includes(item.model);
 
       if (isFolder) {
         setTabFolderState(state => ({
           ...state,
-          [selectedTabId]: item,
+          [tabId]: item,
         }));
         setSearchScope("folder");
       }
 
       onItemSelect(item);
     },
-    [folderModels, selectedTabId, onItemSelect],
+    [folderModels, onItemSelect],
   );
 
   const handleQueryChange = useCallback(
@@ -340,7 +340,9 @@ export function EntityPickerModal<
               />
             ) : (
               <SinglePickerView>
-                {tabs[0].render({ onItemSelect: handleSelectItem })}
+                {tabs[0].render({
+                  onItemSelect: item => handleSelectItem(item, tabs[0].id),
+                })}
               </SinglePickerView>
             )}
             {!!hydratedOptions.hasConfirmButtons && onConfirm && (
