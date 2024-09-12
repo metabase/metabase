@@ -212,10 +212,11 @@
     (let [database-id   (:database_id card)
           dataset-query (:dataset_query card)]
       (if-not (and (not-empty dataset-query) (pos-int? database-id))
-        (update ctx :card-id->filterable-columns assoc (:id card) nil)
-        (-> (lib/query (lib.metadata.jvm/application-database-metadata-provider database-id)
-                       dataset-query)
-            (lib/filterable-columns))))))
+        ctx
+        (update ctx :card-id->filterable-columns assoc (:id card)
+                (-> (lib/query (lib.metadata.jvm/application-database-metadata-provider database-id)
+                               dataset-query)
+                    (lib/filterable-columns)))))))
 
 (defn- field-id-from-dashcards-filterable-columns
   [ctx param-dashcard-info]
