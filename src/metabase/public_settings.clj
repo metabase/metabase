@@ -26,7 +26,7 @@
 
 (defsetting application-name
   (deferred-tru "Replace the word “Metabase” wherever it appears.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :audit      :getter
@@ -79,7 +79,7 @@
 
 (defsetting version-info-last-checked
   (deferred-tru "Indicates when Metabase last checked for new versions.")
-  :visibility :public
+  :visibility :authenticated
   :type       :timestamp
   :audit      :never
   :default    nil
@@ -87,7 +87,7 @@
 
 (defsetting startup-time-millis
   (deferred-tru "The startup time in milliseconds")
-  :visibility :public
+  :visibility :authenticated
   :type       :double
   :audit      :never
   :default    0.0
@@ -106,12 +106,12 @@
   :default    false
   :type       :boolean
   :audit      :getter
-  :visibility :public)
+  :visibility :authenticated)
 
 (defsetting custom-homepage-dashboard
   (deferred-tru "ID of dashboard to use as a homepage")
   :type       :integer
-  :visibility :public
+  :visibility :authenticated
   :audit      :getter)
 
 (defsetting site-uuid
@@ -165,7 +165,7 @@
   (deferred-tru
    (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
         "so changing it could break functionality or get you locked out of this instance."))
-  :visibility :public
+  :visibility :authenticated
   :audit      :getter
   :getter     (fn []
                 (try
@@ -189,7 +189,7 @@
         "Users can individually override this default language from their own account settings.")
    (application-name-for-setting-descriptions))
   :default    "en"
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :audit      :getter
   :encryption :never
@@ -213,13 +213,13 @@
                 (application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
-  :visibility :public
+  :visibility :authenticated
   :audit      :getter)
 
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
   :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-  :visibility :public
+  :visibility :authenticated
   :audit      :getter)
 
 (defn- coerce-to-relative-url
@@ -234,7 +234,7 @@
 
 (defsetting landing-page
   (deferred-tru "Enter a URL of the landing page to show the user. This overrides the custom homepage setting above.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :default    ""
@@ -277,7 +277,7 @@
   (deferred-tru "Allow persisting models into the source database.")
   :type       :boolean
   :default    false
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :audit      :getter)
 
@@ -339,7 +339,7 @@
 
 (defsetting loading-message
   (deferred-tru "Choose the message to show while a query is running.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :feature    :whitelabel
   :type       :keyword
@@ -348,7 +348,7 @@
 
 (defsetting application-colors
   (deferred-tru "Choose the colors used in the user interface throughout Metabase and others specifically for the charts. You need to refresh your browser to see your changes take effect.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :json
   :feature    :whitelabel
@@ -381,7 +381,7 @@ To change the chart colors:
 
 (defsetting application-font
   (deferred-tru "Replace “Lato” as the font family.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :default    "Lato"
@@ -395,7 +395,7 @@ To change the chart colors:
 
 (defsetting application-font-files
   (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :json
   :audit      :getter
@@ -431,7 +431,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting application-logo-url
   (deferred-tru "Upload a file to replace the Metabase logo on the top bar.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :audit      :getter
@@ -441,7 +441,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting application-favicon-url
   (deferred-tru "Upload a file to use as the favicon.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :audit      :getter
@@ -450,7 +450,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting show-metabot
   (deferred-tru "Enables Metabot character on the home page")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :boolean
   :audit      :getter
@@ -459,7 +459,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting login-page-illustration
   (deferred-tru "Options for displaying the illustration on the login page.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :audit      :getter
@@ -468,7 +468,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting login-page-illustration-custom
   (deferred-tru "The custom illustration for the login page.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :audit      :getter
@@ -476,7 +476,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting landing-page-illustration
   (deferred-tru "Options for displaying the illustration on the landing page.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :audit      :getter
@@ -485,7 +485,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting landing-page-illustration-custom
   (deferred-tru "The custom illustration for the landing page.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :audit      :getter
@@ -493,7 +493,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting no-data-illustration
   (deferred-tru "Options for displaying the illustration when there are no results after running a question.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :audit      :getter
@@ -502,7 +502,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting no-data-illustration-custom
   (deferred-tru "The custom illustration for when there are no results after running a question.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :audit      :getter
@@ -510,7 +510,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting no-object-illustration
   (deferred-tru "Options for displaying the illustration when there are no results after searching.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :audit      :getter
@@ -519,7 +519,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting no-object-illustration-custom
   (deferred-tru "The custom illustration for when there are no results after searching.")
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :string
   :audit      :getter
@@ -536,7 +536,7 @@ See [fonts](../configuring-metabase/fonts.md).")
     "or be hidden if it is not set."))
   :type       :keyword
   :audit      :getter
-  :visibility :public
+  :visibility :authenticated
   :feature    :whitelabel
   :default    :metabase
   :setter     (fn [value]
@@ -560,7 +560,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting help-link-custom-destination
   (deferred-tru "Custom URL for the help link.")
-  :visibility :public
+  :visibility :authenticated
   :type       :string
   :audit      :getter
   :feature    :whitelabel
@@ -573,13 +573,13 @@ See [fonts](../configuring-metabase/fonts.md).")
   (deferred-tru (str "Whether or not to display Metabase links outside admin settings."))
   :type       :boolean
   :default    true
-  :visibility :public
+  :visibility :authenticated
   :audit      :getter
   :feature    :whitelabel)
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
-  :visibility :public
+  :visibility :authenticated
   :type       :boolean
   :default    true
   :feature    :disable-password-login
@@ -615,7 +615,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :type       :json
   :export?    true
   :default    {}
-  :visibility :public
+  :visibility :authenticated
   :audit      :getter)
 
 (defsetting enable-xrays
@@ -676,7 +676,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting available-fonts
   "Available fonts"
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :setter     :none
   :getter     u.fonts/available-fonts
@@ -684,7 +684,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting available-locales
   "Available i18n locales"
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :setter     :none
   :getter     available-locales-with-names
@@ -692,7 +692,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting available-timezones
   "Available report timezone options"
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :setter     :none
   :getter     (comp sort t/available-zone-ids)
@@ -707,14 +707,14 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting password-complexity
   "Current password complexity requirements"
-  :visibility :public
+  :visibility :authenticated
   :setter     :none
   :getter     u.password/active-password-complexity)
 
 (defsetting session-cookies
   (deferred-tru "When set, enforces the use of session cookies for all users which expire when the browser is closed.")
   :type       :boolean
-  :visibility :public
+  :visibility :authenticated
   :default    nil
   :audit      :getter
   :doc "The user login session will always expire after the amount of time defined in MAX_SESSION_AGE (by default 2 weeks).
@@ -723,14 +723,14 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting version
   "Metabase's version info"
-  :visibility :public
+  :visibility :authenticated
   :setter     :none
   :getter     (constantly config/mb-version-info)
   :doc        false)
 
 (defsetting token-features
   "Features registered for this instance's token"
-  :visibility :public
+  :visibility :authenticated
   :setter     :none
   :getter     (fn [] {:advanced_permissions           (premium-features/enable-advanced-permissions?)
                       :attached_dwh                   (premium-features/has-attached-dwh?)
@@ -762,7 +762,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting redirect-all-requests-to-https
   (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")
-  :visibility :public
+  :visibility :authenticated
   :type       :boolean
   :default    false
   :audit      :getter
@@ -780,7 +780,7 @@ See [fonts](../configuring-metabase/fonts.md).")
    (str "This will affect things like grouping by week or filtering in GUI queries. "
         "It won''t affect most SQL queries, "
         "although it is used to set the WEEK_START session variable in Snowflake."))
-  :visibility :public
+  :visibility :authenticated
   :export?    true
   :type       :keyword
   :default    :sunday
@@ -799,7 +799,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting cloud-gateway-ips
   (deferred-tru "Metabase Cloud gateway IP addresses, to configure connections to DBs behind firewalls")
-  :visibility :public
+  :visibility :authenticated
   :type       :string
   :setter     :none
   :getter (fn []
