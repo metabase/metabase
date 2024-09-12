@@ -123,6 +123,21 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
   });
 
+  it("should show an error when neither JWT or API keys are provided", async () => {
+    setup({
+      // @ts-expect-error - we're intentionally passing neither to simulate bad usage
+      config: { metabaseInstanceUrl: "http://localhost" },
+    });
+
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+
+    expect(
+      within(screen.getByTestId(PROBLEM_CARD_TEST_ID)).getByText(
+        /must provide either a JWT URI or an API key for authentication/,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("should show an error when both JWT and API keys are provided", async () => {
     setup({
       // @ts-expect-error - we're intentionally passing both to simulate bad usage
