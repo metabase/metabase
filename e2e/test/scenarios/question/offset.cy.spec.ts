@@ -806,7 +806,7 @@ describe("scenarios > question > offset", () => {
         getNotebookStep("summarize").icon("play").should("be.visible");
       });
 
-      it.skip("works when custom column is a simple expression (metabase#47870)", () => {
+      it("works when custom column is a simple expression (metabase#47870)", () => {
         const customColumnName = "1 + 1";
         const customColumnName2 = "constant";
         const customColumnName3 = "string";
@@ -832,9 +832,9 @@ describe("scenarios > question > offset", () => {
         verifyNoQuestionError();
 
         verifyTableContent([
-          ["2", "1", "ab", "2022", "42,156.87", "here should be a value"],
-          ["2", "1", "ab", "2023", "205,256.02", "here should be a value"],
-          ["2", "1", "ab", "2024", "510,045.03", "here should be a value"],
+          ["2", "1", "ab", "2022", "42,156.87", ""],
+          ["2", "1", "ab", "2023", "205,256.02", ""],
+          ["2", "1", "ab", "2024", "510,045.03", ""],
         ]);
 
         openNotebook();
