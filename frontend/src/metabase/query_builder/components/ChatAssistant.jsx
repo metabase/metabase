@@ -17,12 +17,14 @@ import {
 } from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
 import { useSelector } from "metabase/lib/redux";
 import { getDBInputValue, getCompanyName } from "metabase/redux/initialDb";
-import { useListDatabasesQuery } from "metabase/api";
+import { getInitialSchema } from "metabase/redux/initialSchema";
+import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery } from "metabase/api";
 import { SemanticError } from "metabase/components/ErrorPages";
 import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
 const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message }) => {
     const initialDbName = useSelector(getDBInputValue);
     const initialCompanyName = useSelector(getCompanyName);
+    const initialSchema = useSelector(getInitialSchema);
     const inputRef = useRef(null);
     const dispatch = useDispatch();
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
@@ -56,6 +58,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [insightsText, setInsightsText] = useState([]);
     const [insightsImg, setInsightsImg] = useState([]);
     const [insightsCode, setInsightsCode] = useState([]);
+    const [schema, setSchema] = useState([]);
     const [codeIndex, setCodeIndex] = useState(-1);
     const [insightTextIndex, setInsightTextIndex] = useState(-1);
     const [runId, setRunId] = useState([]);
@@ -72,6 +75,33 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             }
         }
     }, [databases]);
+
+    const { 
+        data: databaseMetadata, 
+        isLoading: databaseMetadataIsLoading, 
+        error: databaseMetadataIsError 
+      } = useGetDatabaseMetadataWithoutParamsQuery({ 
+        id: initialDbName, 
+        skip: !initialDbName
+      });
+    const databaseMetadataData = databaseMetadata;
+    
+    useEffect(() => {
+      if (databaseMetadataData) {
+        const schema = databaseMetadata.tables.map((table) => ({
+          display_name: table.display_name,
+          id: table.id,
+          fields: table.fields.map((field) => ({
+            id: field.id,
+            name: field.name,
+            fieldName: field.display_name,
+            description: field.description,
+            details: field.fingerprint ? JSON.stringify(field.fingerprint) : null
+          }))
+        }));
+        setSchema(schema)
+      }
+    }, [databaseMetadataData]);
 
     useEffect(() => {
         setMessages([])
@@ -685,6 +715,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     type: "configure",
                     configData: [dbInputValue, companyName],
                     appType: chatType,
+                    schema: schema
                 }),
             );
         }
@@ -796,11 +827,12 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     }, [initial_message, ws, isConnected]);
 
     useEffect(() => {
-        if (initialDbName !== null && initialCompanyName !== '') {
+        if (initialDbName !== null && initialCompanyName !== '' && initialSchema && initialSchema.schema && initialSchema.schema.length > 0) {
             setDBInputValue(initialDbName)
             setCompanyName(initialCompanyName)
+            setSchema(initialSchema.schema)
         }
-    }, [initialDbName, initialCompanyName])
+    }, [initialDbName, initialCompanyName, initialSchema])
 
 
     return (

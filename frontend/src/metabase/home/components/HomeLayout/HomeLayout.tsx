@@ -10,6 +10,7 @@ import {
   setInitialMessage,
 } from "metabase/redux/initialMessage";
 import { setDBInputValue, setCompanyName } from "metabase/redux/initialDb";
+import { setInitialSchema } from "metabase/redux/initialSchema";
 import ChatAssistant from "metabase/query_builder/components/ChatAssistant";
 import {
   BrowseContainer,
@@ -17,7 +18,7 @@ import {
 } from "metabase/browse/components/BrowseContainer.styled";
 import { Flex, Stack } from "metabase/ui";
 import ChatHistory from "metabase/browse/components/ChatItems/ChatHistory";
-import { useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipToken } from "metabase/api";
 
 export const HomeLayout = () => {
   const initialMessage = useSelector(getInitialMessage);
@@ -30,6 +31,9 @@ export const HomeLayout = () => {
     useState("dataAgent");
   const [oldCardId, setOldCardId] = useState(null);
   const [insights, setInsights] = useState([]);
+  const [dbId, setDbId] = useState<number | null>(null)
+  const [company, setCompany] = useState<string | null>(null)
+  const [schema, setSchema] = useState<any[]>([]);
   const dispatch = useDispatch();
   const {
     data,
@@ -45,9 +49,38 @@ export const HomeLayout = () => {
       if (cubeDatabase) {
         dispatch(setDBInputValue(cubeDatabase.id as number));
         dispatch(setCompanyName(cubeDatabase.company_name as string));
+        setDbId(cubeDatabase.id as number)
+        setCompany(cubeDatabase.company_name as string)
       }
     }
   }, [databases]);
+
+  const { 
+    data: databaseMetadata, 
+    isLoading: databaseMetadataIsLoading, 
+    error: databaseMetadataIsError 
+  } = useGetDatabaseMetadataWithoutParamsQuery(
+    dbId !== null ? { id: dbId } : skipToken 
+);
+const databaseMetadataData = databaseMetadata;
+
+useEffect(() => {
+  if (databaseMetadataData && Array.isArray(databaseMetadataData.tables)) {
+    const schema = databaseMetadata.tables?.map((table:any) => ({
+      display_name: table.display_name,
+      id: table.id,
+      fields: table.fields.map((field:any) => ({
+        id: field.id,
+        name: field.name,
+        fieldName: field.display_name,
+        description: field.description,
+        details: field.fingerprint ? JSON.stringify(field.fingerprint) : null
+      })) 
+    }));
+    dispatch(setInitialSchema(schema as any))
+    setSchema(schema as any)
+  }
+}, [databaseMetadataData]);
 
   useEffect(() => {
     setInputValue("");
