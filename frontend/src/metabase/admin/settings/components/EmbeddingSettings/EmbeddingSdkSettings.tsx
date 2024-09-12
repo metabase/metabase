@@ -68,6 +68,7 @@ export function EmbeddingSdkSettings({
             [t`Embedding SDK for React`],
           ]}
         />
+
         <Switch
           label={t`Enable Embedding SDK for React`}
           labelPosition="left"
@@ -99,6 +100,7 @@ export function EmbeddingSdkSettings({
               : jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, implement JWT SSO.`}
           </Text>
         </Alert>
+
         <Box>
           <SettingHeader
             id="get-started"
@@ -119,6 +121,7 @@ export function EmbeddingSdkSettings({
             href="https://www.npmjs.com/package/@metabase/embedding-sdk-react"
           >{t`Check out the Quick Start`}</Button>
         </Box>
+
         <Box>
           <SettingHeader
             id={sdkOriginsSetting.key}
@@ -134,6 +137,17 @@ export function EmbeddingSdkSettings({
             />
           </SetByEnvVarWrapper>
         </Box>
+
+        <Text>
+          {jt`Check out the ${(
+            <ExternalLink
+              key="sdk-doc"
+              href="https://www.npmjs.com/package/@metabase/embedding-sdk-react"
+            >
+              {t`documentation`}
+            </ExternalLink>
+          )} for more.`}
+        </Text>
       </Stack>
     </Box>
   );
