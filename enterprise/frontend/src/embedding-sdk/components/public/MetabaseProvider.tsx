@@ -4,10 +4,7 @@ import { type JSX, type ReactNode, memo, useEffect, useMemo } from "react";
 import { Provider, useSelector } from "react-redux";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
-import {
-  DEFAULT_FONT,
-  EMBEDDING_SDK_ROOT_ELEMENT_ID,
-} from "embedding-sdk/config";
+import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { useInitData } from "embedding-sdk/hooks";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
@@ -54,7 +51,7 @@ export const MetabaseProviderInternal = ({
   store,
   className,
 }: InternalMetabaseProviderProps): JSX.Element => {
-  const { fontFamily = DEFAULT_FONT } = theme ?? {};
+  const { fontFamily } = theme ?? {};
   useInitData({ config });
 
   useEffect(() => {
