@@ -46,3 +46,9 @@ export function setFilterListSource({ values }) {
     cy.button("Done").click();
   });
 }
+
+export function changeSynchronousBatchUpdateSetting(value) {
+  cy.request("PUT", "/api/setting/synchronous-batch-updates", {
+    value: value,
+  });
+}
