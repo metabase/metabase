@@ -1,22 +1,24 @@
-import type { HTMLAttributes } from "react";
+import { type HTMLAttributes, type Ref, forwardRef } from "react";
 
 import { Box } from "metabase/ui";
 
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 
-import S from "./FilterPickerForm.module.css";
-
-export function FilterPickerForm(props: HTMLAttributes<HTMLFormElement>) {
+export const FilterPickerForm = forwardRef(function FilterPickerForm(
+  props: HTMLAttributes<HTMLFormElement>,
+  ref: Ref<HTMLFormElement>,
+) {
   return (
     <Box
-      className={S.form}
+      ref={ref}
+      {...props}
       component="form"
       display="flex"
       miw={MIN_WIDTH}
       maw={MAX_WIDTH}
       mih={0}
       mah="inherit"
-      {...props}
+      style={{ flexDirection: "column" }}
     />
   );
-}
+});
