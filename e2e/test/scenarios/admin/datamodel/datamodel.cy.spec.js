@@ -6,6 +6,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  createSegment,
   entityPickerModal,
   entityPickerModalTab,
   filter,
@@ -26,7 +27,6 @@ import {
   visitQuestionAdhoc,
   withDatabase,
 } from "e2e/support/helpers";
-import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, REVIEWS, REVIEWS_ID, PRODUCTS_ID } =
   SAMPLE_DATABASE;

@@ -3,6 +3,7 @@ import {
   POPOVER_ELEMENT,
   type StructuredQuestionDetails,
   createQuestion,
+  createSegment,
   echartsContainer,
   enterCustomColumnDetails,
   entityPickerModal,
@@ -17,7 +18,6 @@ import {
   visitQuestion,
   visualize,
 } from "e2e/support/helpers";
-import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 import { uuid } from "metabase/lib/uuid";
 import type {
   Aggregation,
