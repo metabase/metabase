@@ -82,7 +82,7 @@ const _DashboardCachingStrategySidebar = ({
   return (
     <SidesheetSubPage
       isOpen={isOpen}
-      title={t`Caching`}
+      title={t`Caching settings`}
       onBack={() => withConfirmation(goBack)}
       onClose={() => withConfirmation(onClose)}
       size="sm"
