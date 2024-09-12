@@ -78,24 +78,27 @@
     (drop-table! retired-table)
     true))
 
+(defn- entity->entry [entity]
+  (-> entity
+      (select-keys
+       [:model
+        :model_rank
+        :collection_id
+        :database_id
+        :table_id
+        :archived])
+      (assoc
+       :model_id      (:id entity)
+       :search_vector [:to_tsvector
+                       [:inline tsv-language]
+                       [:cast
+                        (:searchable_text entity)
+                        :text]])))
+
 (defn update!
-  "Create or update the given search index trny"
+  "Create the given search index entries"
   [entity]
-  (let [entry (-> entity
-                  (select-keys
-                   [:model
-                    :model_rank
-                    :collection_id
-                    :database_id
-                    :table_id
-                    :archived])
-                  (assoc
-                   :model_id      (:id entity)
-                   :search_vector [:to_tsvector
-                                   [:inline tsv-language]
-                                   [:cast
-                                    (:searchable_text entity)
-                                    :text]]))]
+  (let [entry (entity->entry entity)]
     (when @initialized?
       (t2/insert! active-table entry))
     (when @reindexing?
@@ -149,6 +152,15 @@
          (map process-clause)
          (str/join " | ")
          maybe-complete)))
+
+(defn batch-update!
+  "Create the given search index entries in bulk"
+  [entities]
+  (let [entries (map entity->entry entities)]
+    (when @initialized?
+      (t2/insert! active-table entries))
+    (when @reindexing?
+      (t2/insert! pending-table entries))))
 
 (defn search-query
   "Query fragment for all models corresponding to a query paramter `:search-term`."

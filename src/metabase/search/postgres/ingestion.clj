@@ -11,6 +11,8 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
+(def ^:private insert-batch-size 50)
+
 (def ^:private model-rankings
   (zipmap search.config/models-search-order (range)))
 
@@ -62,5 +64,6 @@
        (eduction
         (comp
          (map t2.realize/realize)
-         (map ->entry)))
+         (map ->entry)
+         (partition-all insert-batch-size)))
        (run! search.index/update!)))
