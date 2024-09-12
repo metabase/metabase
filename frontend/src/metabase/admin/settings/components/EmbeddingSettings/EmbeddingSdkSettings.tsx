@@ -16,36 +16,12 @@ import { SettingTextInput } from "../widgets/SettingTextInput";
 import { useMergeSetting } from "./hooks";
 import type { AdminSettingComponentProps } from "./types";
 
-const SDK_ORIGINS_SETTING = {
-  key: "embedding-app-origins-sdk",
-  placeholder: "https://*.example.com",
-  display_name: t`Cross-Origin Resource Sharing (CORS)`,
-  description: jt`Enter the origins for the websites or web apps where you want to allow SDK embedding, separated by a space. Here are the ${(
-    <ExternalLink
-      key="specs"
-      href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors"
-    >
-      {t`exact specifications`}
-    </ExternalLink>
-  )} for what can be entered.`,
-} as const;
-
 export function EmbeddingSdkSettings({
   updateSetting,
 }: AdminSettingComponentProps) {
-  const sdkOriginsSetting = useMergeSetting(SDK_ORIGINS_SETTING);
-
+  const isEE = PLUGIN_EMBEDDING_SDK.isEnabled();
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
-
-  function handleChangeSdkOrigins(value: string | null) {
-    updateSetting({ key: sdkOriginsSetting.key }, value);
-  }
-  const hasEmbeddingSdkFeature = PLUGIN_EMBEDDING_SDK.isEnabled();
-  const isEE = hasEmbeddingSdkFeature && isEmbeddingSdkEnabled;
-
-  function handleToggleEmbeddingSdk(event: ChangeEvent<HTMLInputElement>) {
-    updateSetting({ key: "enable-embedding-sdk" }, event.target.checked);
-  }
+  const canEditSdkOrigins = isEE && isEmbeddingSdkEnabled;
 
   const upgradeUrl = useSelector(state =>
     getUpgradeUrl(state, {
@@ -53,6 +29,34 @@ export function EmbeddingSdkSettings({
       utm_content: "embedding-sdk-settings",
     }),
   );
+
+  const sdkOriginsSetting = useMergeSetting(
+    !isEE
+      ? {
+          key: "embedding-app-origins-sdk",
+          placeholder: "https://*.example.com",
+          display_name: t`Cross-Origin Resource Sharing (CORS)`,
+          description: jt`Try out the SDK on localhost. To enable other sites, ${(
+            <ExternalLink key="upgrade-url" href={upgradeUrl}>
+              {t`upgrade to Metabase Pro`}
+            </ExternalLink>
+          )} and Enter the origins for the websites or apps where you want to allow SDK embedding.`,
+        }
+      : {
+          key: "embedding-app-origins-sdk",
+          placeholder: "https://*.example.com",
+          display_name: t`Cross-Origin Resource Sharing (CORS)`,
+          description: t`Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included.`,
+        },
+  );
+
+  function handleChangeSdkOrigins(value: string | null) {
+    updateSetting({ key: sdkOriginsSetting.key }, value);
+  }
+
+  function handleToggleEmbeddingSdk(event: ChangeEvent<HTMLInputElement>) {
+    updateSetting({ key: "enable-embedding-sdk" }, event.target.checked);
+  }
 
   return (
     <Box p="0.5rem 1rem 0">
@@ -126,7 +130,7 @@ export function EmbeddingSdkSettings({
               setting={sdkOriginsSetting}
               onChange={handleChangeSdkOrigins}
               type="text"
-              disabled={!isEE}
+              disabled={!canEditSdkOrigins}
             />
           </SetByEnvVarWrapper>
         </Box>
