@@ -142,13 +142,14 @@ export const TablePicker = ({
   );
 
   const onItemSelectRef = useLatest(onItemSelect);
+  const handleFolderSelectRef = useLatest(handleFolderSelect);
 
   useEffect(
     function ensureFolderSelected() {
       if (initialDbId == null && databases && databases.length > 0) {
         const firstDatabase = databases[0];
 
-        onItemSelectRef.current({
+        handleFolderSelectRef.current({
           id: firstDatabase.id,
           model: "database",
           name: firstDatabase.name,
@@ -166,7 +167,14 @@ export const TablePicker = ({
         }
       }
     },
-    [databases, schemas, onItemSelectRef, initialDbId, initialSchemaId],
+    [
+      databases,
+      schemas,
+      handleFolderSelectRef,
+      onItemSelectRef,
+      initialDbId,
+      initialSchemaId,
+    ],
   );
 
   return (
