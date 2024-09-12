@@ -61,10 +61,9 @@
   [param-field-ids]
   (not-empty
    (into {}
-         (map (comp (juxt :field_id identity)
-                    #(select-keys % [:field_id :human_readable_values :values])
-                    #(field-values/get-latest-full-field-values (:id %))))
-         (t2/hydrate (t2/select :model/Field :id [:in (set param-field-ids)]) :values))))
+         (comp (map (juxt identity field-values/get-latest-full-field-values))
+               (remove (comp nil? second)))
+         param-field-ids)))
 
 (defn- field-ids->param-field-values
   "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference.
