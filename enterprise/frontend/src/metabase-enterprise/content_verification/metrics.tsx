@@ -64,7 +64,14 @@ export const MetricFilterControls = ({
   return (
     <Popover position="bottom-end">
       <Popover.Target>
-        <Button p="sm" lh={0} variant="subtle" color="text-dark" pos="relative">
+        <Button
+          p="sm"
+          lh={0}
+          variant="subtle"
+          color="text-dark"
+          pos="relative"
+          aria-label={t`Filters`}
+        >
           {areAnyFiltersActive && <Dot />}
           <Icon name="filter" />
         </Button>
