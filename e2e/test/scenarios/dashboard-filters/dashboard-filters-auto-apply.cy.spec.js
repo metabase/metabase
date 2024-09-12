@@ -13,7 +13,6 @@ import {
   popover,
   resetSnowplow,
   restore,
-  rightSidebar,
   saveDashboard,
   setFilter,
   sidebar,
@@ -254,6 +253,7 @@ describe(
           cy.wait("@updateDashboard");
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
         });
+        closeDashboardInfoSidebar();
 
         getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
 
@@ -271,7 +271,8 @@ describe(
         cy.log(
           "should not use the default parameter after turning auto-apply filter on again since the parameter was manually updated",
         );
-        rightSidebar().within(() => {
+        openDashboardInfoSidebar();
+        sidesheet().within(() => {
           cy.findByLabelText(filterToggleLabel).should("not.be.checked");
           cy.findAllByText(filterToggleLabel).click();
           cy.wait("@updateDashboard");

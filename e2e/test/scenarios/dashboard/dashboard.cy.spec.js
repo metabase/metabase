@@ -43,7 +43,6 @@ import {
   removeDashboardCard,
   resetSnowplow,
   restore,
-  rightSidebar,
   saveDashboard,
   selectDashboardFilter,
   setFilter,
@@ -1305,11 +1304,11 @@ describeEE("scenarios > dashboard > caching", () => {
       }).click();
     });
 
-    modal().within(() => {
+    cy.findByTestId("confirm-modal").within(() => {
       cy.findByRole("button", { name: /Clear cache/ }).click();
     });
     cy.wait("@invalidateCache");
-    rightSidebar().within(() => {
+    sidesheet().within(() => {
       cy.findByText("Cache cleared").should("be.visible");
     });
   });
