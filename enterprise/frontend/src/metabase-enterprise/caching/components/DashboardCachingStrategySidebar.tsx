@@ -85,7 +85,8 @@ const _DashboardCachingStrategySidebar = ({
       title={t`Caching`}
       onBack={() => withConfirmation(goBack)}
       onClose={() => withConfirmation(onClose)}
-      size="md"
+      size="sm"
+      data-testid="dashboard-caching-strategy-sidebar"
     >
       <SidesheetCard>
         <DashboardCachingStrategySidebarBody

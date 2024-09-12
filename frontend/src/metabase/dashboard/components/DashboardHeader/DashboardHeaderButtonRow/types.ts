@@ -16,6 +16,7 @@ export type DashboardHeaderButtonRowProps = {
   collection?: Collection;
   isPublic?: boolean;
   isAnalyticsDashboard?: boolean;
+  openSettingsSidebar: () => void;
 } & DashboardRefreshPeriodControls &
   DashboardFullscreenControls &
   DashboardNightModeControls;

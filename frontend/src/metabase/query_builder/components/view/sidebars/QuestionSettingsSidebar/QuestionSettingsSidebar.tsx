@@ -45,7 +45,7 @@ export const QuestionSettingsSidebar = ({
 
   if (page === "caching") {
     return (
-      <PLUGIN_CACHING.SidebarCacheForm
+      <PLUGIN_CACHING.QuestionCachingStrategySidebar
         item={question}
         model="question"
         onBack={() => setPage("default")}

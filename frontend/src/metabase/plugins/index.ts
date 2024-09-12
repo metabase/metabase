@@ -395,7 +395,7 @@ export type SidebarCacheSectionProps = {
   setPage: Dispatch<SetStateAction<"default" | "caching">>;
 };
 
-export type SidebarCacheFormProps = {
+export type QuestionCachingStrategySidebarProps = {
   item: CacheableDashboard | Question;
   model: CacheableModel;
   onClose: () => void;
@@ -408,8 +408,8 @@ export const PLUGIN_CACHING = {
   DashboardCachingStrategySidebar: PluginPlaceholder as any,
   SidebarCacheSection:
     PluginPlaceholder as ComponentType<SidebarCacheSectionProps>,
-  SidebarCacheForm: PluginPlaceholder as ComponentType<
-    SidebarCacheFormProps & { onBack: () => void }
+  QuestionCachingStrategySidebar: PluginPlaceholder as ComponentType<
+    QuestionCachingStrategySidebarProps & { onBack: () => void }
   >,
   InvalidateNowButton:
     PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,

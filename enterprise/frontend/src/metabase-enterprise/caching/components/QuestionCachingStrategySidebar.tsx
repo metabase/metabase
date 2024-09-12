@@ -12,19 +12,19 @@ import {
   SidesheetSubPage,
 } from "metabase/common/components/Sidesheet";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import type { SidebarCacheFormProps } from "metabase/plugins";
+import type { QuestionCachingStrategySidebarProps } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 import type { CacheStrategy } from "metabase-types/api";
 
 import { getItemId, getItemName } from "./utils";
 
-const SidebarCacheForm_Base = ({
+const _QuestionCachingStrategySidebar = ({
   item,
   model,
   onClose,
   onBack,
   ...groupProps
-}: SidebarCacheFormProps & { onBack: () => void }) => {
+}: QuestionCachingStrategySidebarProps & { onBack: () => void }) => {
   const configurableModels = useMemo(() => [model], [model]);
   const id: number = getItemId(model, item);
   const { configs, setConfigs, loading, error } = useCacheConfigs({
@@ -55,7 +55,7 @@ const SidebarCacheForm_Base = ({
     setIsStrategyFormDirty,
   } = useConfirmIfFormIsDirty();
 
-  const headingId = `${model}-sidebar-caching-settings-heading`;
+  const headingId = `question-sidebar-caching-settings-heading`;
 
   return (
     <SidesheetSubPage
@@ -65,6 +65,7 @@ const SidebarCacheForm_Base = ({
         isStrategyFormDirty ? askBeforeDiscardingChanges(onBack) : onBack()
       }
       onClose={onClose}
+      data-testid="question-caching-strategy-sidebar"
     >
       <Stack
         align="space-between"
@@ -96,4 +97,6 @@ const SidebarCacheForm_Base = ({
   );
 };
 
-export const SidebarCacheForm = withRouter(SidebarCacheForm_Base);
+export const QuestionCachingStrategySidebar = withRouter(
+  _QuestionCachingStrategySidebar,
+);

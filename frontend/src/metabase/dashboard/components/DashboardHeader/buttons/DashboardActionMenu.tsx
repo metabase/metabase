@@ -26,12 +26,14 @@ export const getExtraButtons = ({
   dashboard,
   canEdit,
   pathname,
+  openSettingsSidebar,
 }: DashboardFullscreenControls & {
   canResetFilters: boolean;
   onResetFilters: () => void;
   dashboard: Dashboard;
   canEdit: boolean;
   pathname: string;
+  openSettingsSidebar: () => void;
 }) => {
   const extraButtons = [];
 
@@ -47,6 +49,17 @@ export const getExtraButtons = ({
     title: t`Enter fullscreen`,
     icon: "expand",
     action: (e: MouseEvent) => onFullscreenChange(!isFullscreen, !e.altKey),
+  });
+
+  extraButtons.push({
+    title: t`Edit settings`,
+    icon: "gear",
+    action: openSettingsSidebar,
+  });
+
+  extraButtons.push({
+    separator: true,
+    key: "separator-after-edit-settings",
   });
 
   if (canEdit) {

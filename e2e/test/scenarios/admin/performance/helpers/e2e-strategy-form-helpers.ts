@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 
-import { modal, popover } from "e2e/support/helpers";
+import { modal, openDashboardMenu, popover } from "e2e/support/helpers";
 import {
   type ScheduleComponentType,
   getScheduleComponentLabel,
@@ -85,14 +85,12 @@ export const openStrategyFormForDatabaseOrDefaultPolicy = (
 export const getScheduleComponent = (componentType: ScheduleComponentType) =>
   cacheStrategyForm().findByLabelText(getScheduleComponentLabel(componentType));
 
-export const openSidebar = (type: "question" | "dashboard") => {
-  // this will change when we move to having a dashboard settings sidesheet
+export const openSidebarContainingCacheStrategyForm = (
+  type: "question" | "dashboard",
+) => {
   if (type === "dashboard") {
-    cy.icon("info").click();
-    return;
-  }
-
-  if (type === "question") {
+    openDashboardMenu();
+  } else if (type === "question") {
     cy.findByTestId("qb-header").icon("ellipsis").click();
   }
 
@@ -109,7 +107,7 @@ export const openSidebarCacheStrategyForm = (
   type: "question" | "dashboard",
 ) => {
   cy.log("Open the cache strategy form in the sidebar");
-  openSidebar(type);
+  openSidebarContainingCacheStrategyForm(type);
   cy.wait("@getCacheConfig");
   cy.findByLabelText("Caching").click();
 };
@@ -179,8 +177,14 @@ export const selectCacheStrategy = ({
 
   saveCacheStrategyForm({ strategyType: strategy.type, model: item?.model });
 
-  if (item.model === "question" || item.model === "dashboard") {
-    cy.findByTestId("sidesheet").within(() => {
+  if (item.model === "question") {
+    cy.findByTestId("question-settings-sidebar").within(() => {
+      cy.findByLabelText("Close").click();
+    });
+  }
+
+  if (item.model === "dashboard") {
+    cy.findByTestId("dashboard-settings-sidebar").within(() => {
       cy.findByLabelText("Close").click();
     });
   }

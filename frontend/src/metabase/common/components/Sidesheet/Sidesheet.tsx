@@ -1,4 +1,5 @@
 import type React from "react";
+import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 
 import { Modal, Stack } from "metabase/ui";
@@ -7,7 +8,8 @@ import Styles from "./sidesheet.module.css";
 
 type Size = "xs" | "sm" | "md" | "lg" | "xl" | "auto";
 
-export interface SidesheetProps {
+export interface SidesheetProps
+  extends Omit<HTMLAttributes<HTMLDivElement>, "title"> {
   title?: React.ReactNode;
   isOpen: boolean;
   onClose: () => void;
@@ -33,14 +35,14 @@ export function Sidesheet({
   size = "sm",
   children,
   removeBodyPadding,
+  ...modalRootProps
 }: SidesheetProps) {
   return (
     <Modal.Root
       opened={isOpen}
-      onClose={() => {
-        onClose();
-      }}
+      onClose={onClose}
       h="100dvh"
+      {...modalRootProps}
     >
       <Modal.Overlay data-testid="modal-overlay" />
       <Modal.Content

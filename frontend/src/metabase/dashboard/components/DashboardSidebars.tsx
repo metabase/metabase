@@ -32,6 +32,7 @@ import { ActionSidebarConnected } from "./ActionSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
+import { DashboardSettingsSidebar } from "./DashboardInfoSidebar/DashboardSettingsSidebar";
 
 interface DashboardSidebarsProps {
   dashboard: IDashboard;
@@ -207,6 +208,13 @@ export function DashboardSidebars({
         />
       );
     }
+    case SIDEBAR_NAME.settings:
+      return (
+        <DashboardSettingsSidebar
+          dashboard={dashboard}
+          onClose={closeSidebar}
+        />
+      );
     case SIDEBAR_NAME.sharing:
       return <SharingSidebar dashboard={dashboard} onCancel={onCancel} />;
     case SIDEBAR_NAME.info:

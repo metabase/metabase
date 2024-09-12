@@ -19,9 +19,7 @@ import { formatEditorName } from "metabase/components/LastEditInfoLabel/LastEdit
 import Link from "metabase/core/components/Link";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
-import { isDashboardCacheable } from "metabase/dashboard/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { PLUGIN_CACHING } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
 import {
   Flex,
@@ -98,8 +96,6 @@ export function DashboardInfoSidebar({
 
   const canWrite = dashboard.can_write && !dashboard.archived;
 
-  const showCaching = canWrite && PLUGIN_CACHING.isGranularCachingEnabled();
-
   return (
     <div data-testid="sidebar-right">
       <ErrorBoundary>
@@ -127,9 +123,6 @@ export function DashboardInfoSidebar({
                   descriptionError={descriptionError}
                   setDescriptionError={setDescriptionError}
                   canWrite={canWrite}
-                  onClose={onClose}
-                  isOpen={isOpen}
-                  showCaching={showCaching}
                 />
               </Tabs.Panel>
               <Tabs.Panel value={Tab.History}>
@@ -154,9 +147,6 @@ const OverviewTab = ({
   descriptionError,
   setDescriptionError,
   canWrite,
-  onClose,
-  isOpen,
-  showCaching,
 }: {
   dashboard: Dashboard;
   handleDescriptionChange: (description: string) => void;
@@ -164,16 +154,9 @@ const OverviewTab = ({
   descriptionError: string | null;
   setDescriptionError: (error: string | null) => void;
   canWrite: boolean;
-  onClose: () => void;
-  isOpen: boolean;
-  showCaching: boolean;
 }) => {
   const lastEditDate = dashboard.updated_at;
   const lastEditor = formatEditorName(dashboard["last-edit-info"]);
-
-  const [page, setPage] = useState<"caching" | "default">("default");
-
-  const isCacheable = isDashboardCacheable(dashboard);
 
   const { url: serializationDocsUrl, showMetabaseLinks } = useDocsUrl(
     "installation-and-operation/serialization",
@@ -208,9 +191,7 @@ const OverviewTab = ({
           {c(
             "This phrase describes the last time a dashboard was edited. {0} is the date. {1} is the name of the editor.",
           ).jt`${(
-            <>
-              <DateTime unit="day" value={lastEditDate} />
-            </>
+            <DateTime unit="day" value={lastEditDate} />
           )} by ${lastEditor}`}
         </Flex>
       </SidesheetCard>
@@ -258,21 +239,6 @@ const OverviewTab = ({
             />
           </Group>
         </SidesheetCard>
-      )}
-      {showCaching && isCacheable && (
-        <PLUGIN_CACHING.SidebarCacheSection
-          model="dashboard"
-          item={dashboard}
-          setPage={setPage}
-        />
-      )}
-      {page === "caching" && (
-        <PLUGIN_CACHING.DashboardCachingStrategySidebar
-          dashboard={dashboard}
-          setPage={setPage}
-          isOpen={isOpen}
-          onClose={onClose}
-        />
       )}
     </Stack>
   );

@@ -5,7 +5,7 @@ import { DashboardAndQuestionCachingTab } from "./components/DashboardAndQuestio
 import { DashboardCachingStrategySidebar } from "./components/DashboardCachingStrategySidebar";
 import { GranularControlsExplanation } from "./components/GranularControlsExplanation";
 import { InvalidateNowButton } from "./components/InvalidateNowButton";
-import { SidebarCacheForm } from "./components/SidebarCacheForm";
+import { QuestionCachingStrategySidebar } from "./components/QuestionCachingStrategySidebar";
 import { SidebarCacheSection } from "./components/SidebarCacheSection";
 import { StrategyEditorForQuestionsAndDashboards } from "./components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards";
 import { StrategyFormLauncherPanel } from "./components/StrategyFormLauncherPanel";
@@ -25,7 +25,8 @@ if (hasPremiumFeature("cache_granular_controls")) {
   PLUGIN_CACHING.DashboardCachingStrategySidebar =
     DashboardCachingStrategySidebar;
   PLUGIN_CACHING.SidebarCacheSection = SidebarCacheSection;
-  PLUGIN_CACHING.SidebarCacheForm = SidebarCacheForm;
+  PLUGIN_CACHING.QuestionCachingStrategySidebar =
+    QuestionCachingStrategySidebar;
   PLUGIN_CACHING.strategies = {
     inherit: PLUGIN_CACHING.strategies.inherit,
     duration: enterpriseOnlyCachingStrategies.duration,
