@@ -36,7 +36,7 @@ import {
 
     describe("when embedding is disabled", () => {
       beforeEach(() => {
-        cy.request("PUT", "/api/setting/enable-embedding-static", {
+        cy.request("PUT", "/api/setting/enable-embedding", {
           value: false,
         });
       });
@@ -75,7 +75,7 @@ import {
           cy.request("PUT", "/api/setting/enable-public-sharing", {
             value: true,
           });
-          cy.request("PUT", "/api/setting/enable-embedding-static", {
+          cy.request("PUT", "/api/setting/enable-embedding", {
             value: true,
           });
         });
@@ -145,7 +145,7 @@ import {
           cy.request("PUT", "/api/setting/enable-public-sharing", {
             value: false,
           });
-          cy.request("PUT", "/api/setting/enable-embedding-static", {
+          cy.request("PUT", "/api/setting/enable-embedding", {
             value: true,
           });
         });

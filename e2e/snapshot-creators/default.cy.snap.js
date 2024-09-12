@@ -116,7 +116,7 @@ describe("snapshots", () => {
 
   function updateSettings() {
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
-    cy.request("PUT", "/api/setting/enable-embedding-static", {
+    cy.request("PUT", "/api/setting/enable-embedding", {
       value: true,
     }).then(() => {
       cy.request("PUT", "/api/setting/embedding-secret-key", {
