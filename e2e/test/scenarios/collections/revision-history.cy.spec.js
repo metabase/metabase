@@ -206,9 +206,10 @@ function openRevisionHistory() {
   cy.get("main header").within(() => {
     cy.icon("info").click();
   });
-  cy.wait("@revisionHistory");
 
   rightSidebar().within(() => {
+    cy.findByRole("tab", { name: "History" }).click();
+    cy.wait("@revisionHistory");
     cy.findByText("History");
     cy.findByTestId("dashboard-history-list").should("be.visible");
   });
