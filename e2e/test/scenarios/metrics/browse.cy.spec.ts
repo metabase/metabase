@@ -8,6 +8,7 @@ import {
 import {
   type StructuredQuestionDetails,
   assertIsEllipsified,
+  createNativeQuestion,
   createQuestion,
   describeEE,
   getSidebarSectionTitle,
@@ -498,6 +499,37 @@ describe("scenarios > browse > metrics", () => {
       cy.visit("/browse/metrics");
 
       findMetric(TIMESERIES_METRIC_WITH_NO_VALUE.name).should("be.visible");
+      cy.findByTestId("metric-value").should("be.empty");
+    });
+
+    it("should render an empty value for metric with errors", () => {
+      cy.signInAsAdmin();
+
+      createNativeQuestion(
+        {
+          name: "Question with error",
+          native: {
+            query: "SELECT __syntax_error__;",
+          },
+        },
+        { wrapId: true },
+      ).then(id => {
+        createMetrics([
+          {
+            name: "Metric with error",
+            type: "metric",
+            description: "A metric",
+            query: {
+              "source-table": `card__${id}`,
+              aggregation: [["count"]],
+            },
+          },
+        ]);
+      });
+
+      cy.visit("/browse/metrics");
+
+      findMetric("Metric with error").should("be.visible");
       cy.findByTestId("metric-value").should("be.empty");
     });
   });
