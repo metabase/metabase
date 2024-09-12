@@ -11,18 +11,18 @@ export type DatePickerOperator =
   | ExcludeDatePickerOperator;
 
 export type SpecificDatePickerOperator =
-  typeof SPECIFIC_DATE_PICKER_OPERATORS[number];
+  (typeof SPECIFIC_DATE_PICKER_OPERATORS)[number];
 
 export type ExcludeDatePickerOperator =
-  typeof EXCLUDE_DATE_PICKER_OPERATORS[number];
+  (typeof EXCLUDE_DATE_PICKER_OPERATORS)[number];
 
-export type DatePickerShortcut = typeof DATE_PICKER_SHORTCUTS[number];
+export type DatePickerShortcut = (typeof DATE_PICKER_SHORTCUTS)[number];
 
 export type DatePickerExtractionUnit =
-  typeof DATE_PICKER_EXTRACTION_UNITS[number];
+  (typeof DATE_PICKER_EXTRACTION_UNITS)[number];
 
 export type DatePickerTruncationUnit =
-  typeof DATE_PICKER_TRUNCATION_UNITS[number];
+  (typeof DATE_PICKER_TRUNCATION_UNITS)[number];
 
 export interface SpecificDatePickerValue {
   type: "specific";

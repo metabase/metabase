@@ -43,7 +43,10 @@ export const JoinCellItem = styled.button<{
       ? hasColumnStyle(props.isOpen)
       : noColumnStyle(props.isOpen)};
   cursor: ${props => (props.isReadOnly ? "default" : "pointer")};
-  transition: background 300ms linear, border 300ms linear, color 300ms linear;
+  transition:
+    background 300ms linear,
+    border 300ms linear,
+    color 300ms linear;
 `;
 
 export const JoinColumnPicker = styled(QueryColumnPicker)`

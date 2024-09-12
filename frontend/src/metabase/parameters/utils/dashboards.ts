@@ -196,7 +196,7 @@ function buildFieldFilterUiParameter(
       },
     )
     .map(({ field, shouldResolveFkField }) => {
-      return shouldResolveFkField ? field.target ?? field : field;
+      return shouldResolveFkField ? (field.target ?? field) : field;
     });
 
   return {

@@ -15,8 +15,8 @@ var token = jwt.sign(payload, METABASE_SECRET_KEY);
 
 var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token +
   "#${getThemeParameter(theme)}bordered=true&titled=true${getParameter({
-      hideDownloadButton,
-    })}";`
+    hideDownloadButton,
+  })}";`
       .split("\n")
       .join("")
       .replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")

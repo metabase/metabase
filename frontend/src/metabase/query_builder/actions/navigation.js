@@ -125,16 +125,16 @@ export const UPDATE_URL = "metabase/qb/UPDATE_URL";
 export const updateUrl = createThunkAction(
   UPDATE_URL,
   (
-      question,
-      {
-        dirty,
-        replaceState,
-        preserveParameters = true,
-        queryBuilderMode,
-        datasetEditorTab,
-        objectId,
-      } = {},
-    ) =>
+    question,
+    {
+      dirty,
+      replaceState,
+      preserveParameters = true,
+      queryBuilderMode,
+      datasetEditorTab,
+      objectId,
+    } = {},
+  ) =>
     (dispatch, getState) => {
       if (!question) {
         question = getQuestion(getState());

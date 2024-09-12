@@ -89,7 +89,9 @@ export const HeaderButton = styled(Button)<{ active: boolean }>`
     color: ${({ color }) => color};
   }
 
-  transition: background 300ms linear, border 300ms linear;
+  transition:
+    background 300ms linear,
+    border 300ms linear;
 
   > .Icon {
     opacity: 0.6;

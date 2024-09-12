@@ -9,7 +9,7 @@ export const ACTIVITY_MODELS = [
   "collection",
 ] as const;
 
-export type ActivityModel = typeof ACTIVITY_MODELS[number];
+export type ActivityModel = (typeof ACTIVITY_MODELS)[number];
 
 export const isActivityModel = (model: string): model is ActivityModel =>
   (ACTIVITY_MODELS as unknown as string[]).includes(model);

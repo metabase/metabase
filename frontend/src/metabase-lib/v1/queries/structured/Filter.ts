@@ -79,8 +79,8 @@ export default class Filter extends MBQLClause {
         const detectedUnit = dates.some(d => d.minutes())
           ? "minute"
           : dates.some(d => d.hours())
-          ? "hour"
-          : "day";
+            ? "hour"
+            : "day";
         const unit = this.dimension()?.temporalUnit() ?? detectedUnit;
         return [dates, unit];
       }

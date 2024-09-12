@@ -11,7 +11,9 @@ export const Root = styled.button`
   border-radius: 6px;
   color: ${color("white")};
   background-color: ${color("summarize")};
-  transition: background 300ms linear, border 300ms linear;
+  transition:
+    background 300ms linear,
+    border 300ms linear;
   min-height: 34px;
   min-width: 34px;
   cursor: pointer;

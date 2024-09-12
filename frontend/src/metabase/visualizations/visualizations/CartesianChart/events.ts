@@ -178,7 +178,7 @@ const getEventColumnsData = (
       const displayValue =
         isBreakoutSeries(seriesModel) && seriesModel.breakoutColumn === col
           ? seriesModel.name
-          : value ?? NULL_DISPLAY_VALUE;
+          : (value ?? NULL_DISPLAY_VALUE);
 
       return {
         key,

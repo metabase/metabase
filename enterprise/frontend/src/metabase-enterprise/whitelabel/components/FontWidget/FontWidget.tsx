@@ -24,7 +24,7 @@ const FontWidget = ({
   onChangeSetting,
 }: FontWidgetProps): JSX.Element => {
   const value = !settingValues["application-font-files"]
-    ? setting.value ?? setting.default
+    ? (setting.value ?? setting.default)
     : CUSTOM;
 
   const options = useMemo(
