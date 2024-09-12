@@ -457,9 +457,9 @@ describeEE("formatting > whitelabel", () => {
             );
 
             cy.log("test search not found illustration");
-            cy.findByPlaceholderText("Search…").type(
-              "This aren't the objects you're looking for",
-            );
+            cy.findByPlaceholderText(
+              "Search this collection or everywhere…",
+            ).type("This aren't the objects you're looking for");
             cy.get("@imageDataUrl").then(imageDataUrl => {
               cy.findByAltText("No results").should(
                 "have.attr",
@@ -486,9 +486,9 @@ describeEE("formatting > whitelabel", () => {
             cy.findByAltText("No results").should("not.exist");
 
             cy.log("test search not found illustration");
-            cy.findByPlaceholderText("Search…").type(
-              "This aren't the objects you're looking for",
-            );
+            cy.findByPlaceholderText(
+              "Search this collection or everywhere…",
+            ).type("This aren't the objects you're looking for");
             cy.findByAltText("No results").should("not.exist");
           });
         });
