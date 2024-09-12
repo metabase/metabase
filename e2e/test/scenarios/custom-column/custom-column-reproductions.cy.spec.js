@@ -872,7 +872,10 @@ describe.skip("issue 25189", () => {
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        cy.findByPlaceholderText("Search…").type("colors");
+        cy.findByPlaceholderText("Search this collection or everywhere…").type(
+          "colors",
+        );
+        cy.findByText("Everywhere").click();
         cy.wait("@search");
         cy.findByTestId("result-item")
           .contains(/colors/i)
