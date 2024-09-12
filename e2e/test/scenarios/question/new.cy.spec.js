@@ -69,12 +69,18 @@ describe("scenarios > question > new", () => {
 
         entityPickerModalTab("Search").should("not.exist");
 
-        cy.findByPlaceholderText("Search…").type("  ").blur();
-        cy.findByPlaceholderText("Search…").type("ord");
+        cy.findByPlaceholderText("Search this collection or everywhere…")
+          .type("  ")
+          .blur();
+        cy.findByPlaceholderText("Search this collection or everywhere…").type(
+          "ord",
+        );
         cy.wait("@search");
         // should not trigger search for an empty string
         cy.get("@searchQuery").should("have.been.calledOnce");
 
+        cy.findAllByTestId("result-item").should("not.exist");
+        cy.findByText("Everywhere").click();
         cy.findAllByTestId("result-item").should("have.length.at.least", 4);
 
         const searchResultItems = cy.findAllByTestId("result-item");
@@ -91,7 +97,9 @@ describe("scenarios > question > new", () => {
         });
 
         // Discarding the search query should take us back to the original tab
-        cy.findByPlaceholderText("Search…").clear().blur();
+        cy.findByPlaceholderText("Search this collection or everywhere…")
+          .clear()
+          .blur();
         entityPickerModalTab("Search").should("not.exist");
         tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
 
