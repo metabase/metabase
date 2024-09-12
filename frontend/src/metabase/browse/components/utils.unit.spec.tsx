@@ -246,6 +246,18 @@ describe("isDatasetScalar", () => {
 
     expect(isDatasetScalar(dataset)).toBe(false);
   });
+
+  it("should return false for a dataset with errors", () => {
+    const dataset = createMockDataset({
+      error: "error",
+      data: createMockDatasetData({
+        cols: [createMockColumn({ name: "col1" })],
+        rows: [[1]],
+      }),
+    });
+
+    expect(isDatasetScalar(dataset)).toBe(false);
+  });
 });
 
 describe("getDatasetValueForMetric", () => {
@@ -256,6 +268,33 @@ describe("getDatasetValueForMetric", () => {
         rows: [[1], [2]],
       }),
     });
+    expect(getDatasetValueForMetric(dataset)).toBe(null);
+  });
+
+  it("should return null for a scalar dataset with errors", () => {
+    const dataset = createMockDataset({
+      error: "error",
+      data: createMockDatasetData({
+        cols: [createMockColumn({ name: "col1" })],
+        rows: [[1]],
+      }),
+    });
+
+    expect(getDatasetValueForMetric(dataset)).toBe(null);
+  });
+
+  it("should return null for a timeseries dataset with errors", () => {
+    const dataset = createMockDataset({
+      error: "error",
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn({ name: "col1", base_type: "type/DateTime" }),
+          createMockColumn({ name: "col2" }),
+        ],
+        rows: [["2024-01-01T00:00:00.000Z", 1]],
+      }),
+    });
+
     expect(getDatasetValueForMetric(dataset)).toBe(null);
   });
 

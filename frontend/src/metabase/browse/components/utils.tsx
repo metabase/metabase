@@ -101,10 +101,17 @@ export const getMaxRecentModelCount = (
 };
 
 export function isDatasetScalar(dataset: Dataset) {
+  if (dataset.error) {
+    return false;
+  }
   return dataset.data.cols.length === 1 && dataset.data.rows.length === 1;
 }
 
 export function isDatasetTemporalMetric(dataset: Dataset) {
+  if (dataset.error) {
+    return false;
+  }
+
   const cols = dataset.data.cols;
   if (cols.length !== 2) {
     return false;
