@@ -312,4 +312,21 @@ describe("getDatasetValueForMetric", () => {
       label: "Overall",
     });
   });
+
+  it("should return the last row value a timeseries dataset", () => {
+    const dataset = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn({ name: "col1", base_type: "type/DateTime" }),
+          createMockColumn({ name: "col2" }),
+        ],
+        rows: [["2024-01-01T00:00:00.000Z", 1]],
+      }),
+    });
+
+    expect(getDatasetValueForMetric(dataset)).toEqual({
+      value: "1",
+      label: "January 1, 2024, 12:00 AM",
+    });
+  });
 });
