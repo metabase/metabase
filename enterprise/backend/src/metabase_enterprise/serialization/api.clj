@@ -128,9 +128,10 @@
                      (let [cnt  (u.compress/untgz file dst)
                            path (find-serialization-dir dst)]
                        (when-not path
-                         (throw (ex-info "No source dir detected" {:dst   (.getPath dst)
-                                                                   :count cnt
-                                                                   :files (.listFiles dst)})))
+                         (throw (ex-info "No source dir detected. Please make sure the serialization files are in the top level dir."
+                                         {:dst   (.getPath dst)
+                                          :count cnt
+                                          :files (.listFiles dst)})))
                        (log/infof "In total %s entries unpacked, detected source dir: %s" cnt (.getName path))
                        (serdes/with-cache
                          (-> (v2.ingest/ingest-yaml (.getPath path))
@@ -206,8 +207,9 @@
                 report
                 error-message
                 callback]} (serialize&pack opts)]
-    (snowplow/track-event! ::snowplow/serialization api/*current-user-id*
-                           {:direction       "export"
+    (snowplow/track-event! ::snowplow/serialization
+                           {:event           :serialization
+                            :direction       "export"
                             :source          "api"
                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
                             :count           (count (:seen report))
@@ -257,8 +259,9 @@
                                             {:size              (:size file)
                                              :continue-on-error continue_on_error})
           imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
-      (snowplow/track-event! ::snowplow/serialization api/*current-user-id*
-                             {:direction     "import"
+      (snowplow/track-event! ::snowplow/serialization
+                             {:event         :serialization
+                              :direction     "import"
                               :source        "api"
                               :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
                               :models        (str/join "," imported)

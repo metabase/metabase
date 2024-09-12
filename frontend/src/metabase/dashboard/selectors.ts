@@ -17,7 +17,7 @@ import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getIsWebApp } from "metabase/selectors/web-app";
-import { mergeSettings } from "metabase/visualizations/lib/settings";
+import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import Question from "metabase-lib/v1/Question";
 import {
   getValuePopulatedParameters as _getValuePopulatedParameters,
@@ -217,13 +217,10 @@ export const getDashcardHref = createSelector(
       return undefined;
     }
 
-    const card = {
-      ...dashcard.card,
-      visualization_settings: mergeSettings(
-        dashcard.card.visualization_settings,
-        dashcard.visualization_settings,
-      ),
-    };
+    const card = extendCardWithDashcardSettings(
+      dashcard.card,
+      dashcard.visualization_settings,
+    );
 
     return getNewCardUrl({
       metadata,
