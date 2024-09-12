@@ -8,6 +8,7 @@ import {
   SidesheetTabPanelContainer,
 } from "metabase/common/components/Sidesheet";
 import SidesheetStyles from "metabase/common/components/Sidesheet/sidesheet.module.css";
+import { EntityIdCard } from "metabase/components/EntityIdCard";
 import EditableText from "metabase/core/components/EditableText";
 import Link from "metabase/core/components/Link";
 import { useDispatch } from "metabase/lib/redux";
@@ -18,6 +19,7 @@ import { QuestionActivityTimeline } from "metabase/query_builder/components/Ques
 import { Stack, Tabs } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
+import { QuestionDetails } from "./QuestionDetails";
 import Styles from "./QuestionInfoSidebar.module.css";
 
 interface QuestionInfoSidebarProps {
@@ -93,6 +95,10 @@ export const QuestionInfoSidebar = ({
                   >{t`See more about this model`}</Link>
                 )}
               </SidesheetCard>
+              <SidesheetCard>
+                <QuestionDetails question={question} />
+              </SidesheetCard>
+              <EntityIdCard entityId={question._card.entity_id} />
             </Stack>
           </Tabs.Panel>
           <Tabs.Panel value="history">
