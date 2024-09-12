@@ -153,6 +153,14 @@ export function getPieRows(
     },
   ] = rawSeries;
 
+  if (!settings["pie.metric"] || !settings["pie.dimension"]) {
+    return [];
+  }
+
+  const hasSortDimensionChanged =
+    settings["pie.sort_rows_dimension"] != null &&
+    settings["pie.sort_rows_dimension"] !== settings["pie.dimension"];
+
   const { metricDesc, dimensionDesc } = getPieColumns(rawSeries, settings);
 
   const getColumnSettings = settings["column"];
@@ -192,13 +200,16 @@ export function getPieRows(
   );
   const currentDataKeys = Array.from(keyToCurrentDataRow.keys());
 
-  const savedPieRows = settings["pie.rows"] ?? [];
+  const savedPieRows = hasSortDimensionChanged
+    ? []
+    : settings["pie.rows"] ?? [];
 
   const savedPieKeys = savedPieRows.map(pieRow => pieRow.key);
 
   const keyToSavedPieRow = new Map<PieRow["key"], PieRow>(
     savedPieRows.map(pieRow => [pieRow.key, pieRow]),
   );
+  const removed = _.difference(savedPieKeys, currentDataKeys);
 
   let newPieRows: PieRow[] = [];
   // Case 1: Auto sorted, sort existing and new rows together
@@ -293,6 +304,19 @@ export function getPieRows(
     );
   }
 
+  const removedPieRows = removed.map(removedKey => {
+    const savedPieRow = keyToSavedPieRow.get(removedKey);
+    if (savedPieRow == null) {
+      throw Error(`Did not find saved pie row for removed key ${removedKey}`);
+    }
+
+    return {
+      ...savedPieRow,
+      hidden: true,
+    };
+  });
+  newPieRows.push(...removedPieRows);
+
   // Make any slices below mimium slice percentage hidden
   const total = newPieRows.reduce((currTotal, pieRow) => {
     if (pieRow.hidden || !pieRow.enabled) {
@@ -336,5 +360,11 @@ export function getPieRows(
 
   return newPieRows;
 }
+
+export const getPieSortRowsDimensionSetting = (
+  settings: ComputedVisualizationSettings,
+) => {
+  return settings["pie.dimension"];
+};
 
 export const getDefaultSortRows = () => true;

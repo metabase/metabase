@@ -21,6 +21,7 @@ interface SortableItem {
   enabled: boolean;
   name: string;
   color?: string;
+  hidden?: boolean;
 }
 
 interface ChartSettingSeriesOrderProps {
@@ -51,7 +52,11 @@ export const ChartSettingSeriesOrder = ({
   const [isSeriesPickerVisible, setSeriesPickerVisible] = useState(false);
 
   const [visibleItems, hiddenItems] = useMemo(
-    () => _.partition(orderedItems, item => item.enabled),
+    () =>
+      _.partition(
+        orderedItems.filter(item => !item.hidden),
+        item => item.enabled,
+      ),
     [orderedItems],
   );
 

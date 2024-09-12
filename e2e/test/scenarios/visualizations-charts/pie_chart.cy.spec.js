@@ -178,12 +178,19 @@ describe("scenarios > visualizations > pie chart", () => {
     getDraggableElements().contains("Woooget").should("not.exist");
     getDraggableElements().contains("Gizmo").should("not.exist");
 
+    cy.findByTestId("Gadget-settings-button").click();
+    cy.findByDisplayValue("Gadget").type("{selectall}Katget").realPress("Tab");
+    moveDnDKitElement(getDraggableElements().contains("Katget"), {
+      vertical: 30,
+    });
+
     changeRowLimit(2, 4);
-    ensurePieChartRendered(["Woooget", "Gadget", "Gizmo", "Doohickey"]);
+    ensurePieChartRendered(["Doohickey", "Katget", "Gizmo", "Woooget"]);
     chartPathWithFillColor("#509EE3").should("be.visible");
 
     cy.findByTestId("chart-legend").within(() => {
-      cy.get("li").eq(2).contains("Woooget");
+      cy.get("li").eq(1).contains("Katget");
+      cy.get("li").eq(3).contains("Woooget");
     });
   });
 });

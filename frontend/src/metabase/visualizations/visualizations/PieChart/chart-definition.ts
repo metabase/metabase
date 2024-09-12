@@ -20,6 +20,7 @@ import {
   getDefaultSliceThreshold,
   getDefaultSortRows,
   getPieRows,
+  getPieSortRowsDimensionSetting,
 } from "metabase/visualizations/shared/settings/pie";
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
 import { getDefaultShowTotal } from "metabase/visualizations/shared/settings/waterfall";
@@ -128,6 +129,8 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
             onChangeSettings({
               "pie.sort_rows": false,
               "pie.rows": newPieRows,
+              "pie.sort_rows_dimension":
+                getPieSortRowsDimensionSetting(vizSettings),
             }),
         };
       },
@@ -138,6 +141,13 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         "pie.sort_rows",
         "pie.slice_threshold",
       ],
+      writeDependencies: ["pie.sort_rows_dimension"],
+    },
+    "pie.sort_rows_dimension": {
+      getValue: (_series, settings) => getPieSortRowsDimensionSetting(settings),
+      // This read dependency is set so that "pie.sort_rows" is computed *before* this value, ensuring that
+      // that it uses the stored value if one exists. This is needed to check if the dimension has actually changed
+      readDependencies: ["pie.sort_rows", "pie.dimension"],
     },
     "pie.sort_rows": {
       hidden: true,
