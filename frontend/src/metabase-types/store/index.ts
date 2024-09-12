@@ -12,3 +12,4 @@ export * from "./settings";
 export * from "./setup";
 export * from "./state";
 export * from "./downloads";
+export * from "./InitialSchema";
