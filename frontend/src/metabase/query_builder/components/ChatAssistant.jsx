@@ -157,6 +157,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     case "result":
                         await handleResultMessage(data);
                         break;
+                    case "info":
+                        await handleInfoMessage(data);
+                        break;
                     default:
                         handleDefaultMessage(data);
                         break;
@@ -522,16 +525,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const handleGetCode = async func => {
         const { generatedCodes } = func.arguments;
         try {
-            setCodeIndex(prevIndex => {
-                const currentIndex = prevIndex + 1;
-                addServerMessageWithType(
-                    `The code is as follows:`,
-                    "text",
-                    "insightCode",
-                    currentIndex
-                );
-                return currentIndex;
-            });
             setInsightsCode(prevCode => [...prevCode, generatedCodes]);
         } catch (error) {
             console.error("Error getting code", error);
@@ -582,6 +575,20 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         setIsLoading(false);
         removeLoadingMessage();
     };
+    
+    const handleInfoMessage = data => {
+        if(data.functions.type === "data") {
+            addServerMessage(
+                data.functions.payload.message || "Received a message from the server.",
+                "text",
+            );
+        } else if(data.functions.type === "error") {
+            addServerMessage(
+                data.functions.payload.message || "Received a message from the server.",
+                "text",
+            );
+        }
+    }
 
     const redirect = async () => {
         dispatch(push(`/question#${cardHash}`));
