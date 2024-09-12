@@ -13,22 +13,21 @@
       (mt/with-temp [:model/Channel         chn-1 notification.tu/default-can-connect-channel
                      :model/Channel         chn-2 (assoc notification.tu/default-can-connect-channel :name "Channel 2")
                      :model/ChannelTemplate tmpl  {:channel_type notification.tu/test-channel-type}]
-        (let [n                (models.notification/create-notification!
-                                {:payload_type :notification/system-event}
-                                nil
-                                [{:channel_type notification.tu/test-channel-type
-                                  :channel_id   (:id chn-1)
-                                  :template_id  (:id tmpl)
-                                  :recipients   [{:type    :notification-recipient/user
-                                                  :user_id (mt/user->id :crowberto)}]}
-                                 {:channel_type notification.tu/test-channel-type
-                                  :channel_id   (:id chn-2)
-                                  :recipients   [{:type    :notification-recipient/user
-                                                  :user_id (mt/user->id :rasta)}]}])
-              notification-info (assoc n
-                                       :event-info {:test true}
-                                       :settings {:test true})
-              renders (atom [])]
+        (let [n                 (models.notification/create-notification!
+                                 {:payload_type :notification/system-event}
+                                 nil
+                                 [{:channel_type notification.tu/test-channel-type
+                                   :channel_id   (:id chn-1)
+                                   :template_id  (:id tmpl)
+                                   :recipients   [{:type    :notification-recipient/user
+                                                   :user_id (mt/user->id :crowberto)}]}
+                                  {:channel_type notification.tu/test-channel-type
+                                   :channel_id   (:id chn-2)
+                                   :recipients   [{:type    :notification-recipient/user
+                                                   :user_id (mt/user->id :rasta)}]}])
+              notification-info (assoc n :payload {:event-info {:test true}
+                                                   :settings {:test true}})
+              renders           (atom [])]
           (mt/with-dynamic-redefs [channel/render-notification (fn [channel-type notification template recipients]
                                                                  (swap! renders conj {:channel-type channel-type
                                                                                       :notification notification

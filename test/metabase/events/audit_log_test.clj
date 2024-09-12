@@ -539,7 +539,7 @@
                 :user_id  (mt/user->id :rasta)
                 :details  {:id          (:id channel)
                            :name        "Test channel"
-                           :description nil
+                           :description "Test channel description"
                            :type        notification.tu/test-channel-type
                            :active      true}
                 :topic    :channel-create
