@@ -5,10 +5,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (java.util.concurrent Callable Executors ExecutorService)
-   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,17 +23,12 @@
                                 Notification
                                 [:map {:closed true}
                                  ;; TODO: event-info schema
-                                 [:event-info [:maybe :map]]]]]])
-
-(defonce ^:private pool
-  (Executors/newFixedThreadPool
-   10
-   (.build
-    (doto (BasicThreadFactory$Builder.)
-      (.namingPattern "send-notification-thread-pool-%d")))))
+                                 [:event-info [:maybe :map]]
+                                 [:settings   :map]]]]])
 
 (mu/defn send-notification!*
-  [notification :- NotificationInfo context]
+  "Send the notification to all handlers synchronously."
+  [notification :- NotificationInfo]
   (let [noti-handlers (t2/hydrate (t2/select :model/NotificationHandler :notification_id (:id notification))
                                   :channel
                                   :template
@@ -46,22 +38,10 @@
       (let [channel-type (:channel_type handler)
             messages     (channel/render-notification
                           channel-type
-                          (assoc notification :payload context)
+                          notification
                           (:template handler)
                           (:recipients handler))]
         (log/infof "[Notification %d] Got %d messages for channel %s" (:id notification) (count messages) (:channel_type handler))
         (doseq [message messages]
           (channel/send! (or (:channel handler)
                              {:type channel-type}) message))))))
-
-(defn send-notification-async!
-  "Send a notification asynchronously."
-  [notification context]
-  (let [task (bound-fn []
-               (send-notification!* notification context))]
-    (.submit ^ExecutorService pool ^Callable task))
-  nil)
-
-(def ^:dynamic *send-notification!*
-  "The function to use to send notifications. Defaults to `send-notification!`."
-  send-notification!*)

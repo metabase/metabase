@@ -10,6 +10,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models
     :refer [Card Dashboard DashboardCard LegacyMetric Pulse Segment]]
+   [metabase.notification.test-util :as notification.test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -530,10 +531,7 @@
 
 (deftest create-channel-event-test
   (mt/with-current-user (mt/user->id :rasta)
-    (mt/with-temp [:model/Channel channel {:name    "Test channel"
-                                           :type    "channel/metabase-test"
-                                           :details {:return-type  "return-value"
-                                                     :return-value true}}]
+    (mt/with-temp [:model/Channel channel notification.test/default-can-connect-channel]
       (testing :event/channel-create
         (is (= {:object channel}
                (events/publish-event! :event/channel-create {:object channel})))
@@ -542,7 +540,7 @@
                 :details  {:id          (:id channel)
                            :name        "Test channel"
                            :description nil
-                           :type        "channel/metabase-test"
+                           :type        notification.test/test-channel-type
                            :active      true}
                 :topic    :channel-create
                 :model    "Channel"}

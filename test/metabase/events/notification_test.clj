@@ -46,7 +46,7 @@
             sent-notis (atom [])]
         (testing "publishing event will send all the actively subscribed notifciations"
           (mt/with-dynamic-redefs
-            [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
+            [notification/send-notification!*      (fn [notification] (swap! sent-notis conj notification))
              events.notification/supported-topics #{:event/test-notification}]
             (events/publish-event! topic {::hi true})
             (is (= [[(:id n-1) {::hi true}]
@@ -68,7 +68,20 @@
          nil)
         (testing "publish an event that is not supported for notifications will not send any notifications"
           (mt/with-dynamic-redefs
-            [notification/send-notification!      (fn [notification] (swap! sent-notis conj notification))
+            [notification/send-notification!*      (fn [notification] (swap! sent-notis conj notification))
              events.notification/supported-topics #{}]
             (events/publish-event! :event/unsupported-topic {::hi true})
             (is (empty? @sent-notis))))))))
+
+(deftest enriched-event-info-settings-test
+  (let [event-info {:foo :bar}]
+    (testing "you shouldn't delete or rename these fields without 100% sure that it's not referenced
+             in any channel_template.details or notification_recipient.details"
+      (mt/with-additional-premium-features #{:whitelabel}
+        (mt/with-temporary-setting-values
+          [application-name "Metabase Test"
+           site-name        "Metabase Test"]
+          (is (= {:event-info {:foo :bar}
+                  :settings   {:application-name "Metabase Test"
+                               :site-name        "Metabase Test"}}
+                 (#'events.notification/enriched-event-info event-info))))))))

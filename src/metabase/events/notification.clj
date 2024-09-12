@@ -3,6 +3,7 @@
    [metabase.events :as events]
    [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
+   [metabase.public-settings :as public-settings]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
 
@@ -16,12 +17,20 @@
   (when (supported-topics topic)
     (models.notification/notifications-for-event topic)))
 
+(defn- enriched-event-info
+  [event-info]
+  {:event-info event-info
+   ;; DO NOT delete or rename these fields, they are used in the notification templates
+   :settings   {:application-name (public-settings/application-name)
+                :site-name        (public-settings/site-name)}})
+
 (defn- maybe-send-notification-for-topic!
   [topic event-info]
   (when-let [notifications (notifications-for-topic topic)]
-    (log/infof "Found %d notifications for event: %s" (count notifications) topic)
-    (doseq [notification notifications]
-      (notification/*send-notification!* (assoc notification :event-info event-info)))))
+    (let [enriched-event-info (enriched-event-info event-info)]
+      (log/infof "Found %d notifications for event: %s" (count notifications) topic)
+      (doseq [notification notifications]
+        (notification/send-notification! (merge notification enriched-event-info))))))
 
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]
