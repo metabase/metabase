@@ -71,13 +71,9 @@ export const QuestionPickerModal = ({
 
   const handleItemSelect = useCallback(
     (item: QuestionPickerItem) => {
-      if (!canSelectItem(item)) {
-        return;
-      }
-
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
-      } else {
+      } else if (canSelectItem(item)) {
         handleOnChange(item);
       }
     },
