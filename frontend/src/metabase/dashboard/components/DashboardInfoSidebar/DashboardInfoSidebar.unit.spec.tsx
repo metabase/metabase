@@ -36,7 +36,7 @@ jest.mock("metabase/dashboard/constants", () => ({
 }));
 
 describe("DashboardInfoSidebar", () => {
-  it("should render the component", () => {
+  it("should render the sidesheet component", () => {
     setup();
 
     sidesheet().within(() => {
