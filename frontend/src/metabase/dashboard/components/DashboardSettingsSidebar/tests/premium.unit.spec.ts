@@ -8,11 +8,11 @@ const tokenFeatures = {
   cache_granular_controls: true,
 };
 
-describe("DashboardInfoSidebar > premium enterprise", () => {
+describe("DashboardSettingsSidebar > premium enterprise", () => {
   it("should render the component", async () => {
     await setupEnterprise({}, tokenFeatures);
 
-    expect(screen.getByText("Info")).toBeInTheDocument();
+    expect(screen.getByText("Dashboard settings")).toBeInTheDocument();
     expect(screen.getByTestId("sidesheet")).toBeInTheDocument();
   });
 

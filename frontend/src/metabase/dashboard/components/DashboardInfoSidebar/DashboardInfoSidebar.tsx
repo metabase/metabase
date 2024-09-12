@@ -1,4 +1,4 @@
-import type { FocusEvent, SetStateAction } from "react";
+import type { FocusEvent } from "react";
 import { useCallback, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
@@ -14,24 +14,12 @@ import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks";
 import EditableText from "metabase/core/components/EditableText";
-import {
-  revertToRevision,
-  toggleAutoApplyFilters,
-  updateDashboard,
-} from "metabase/dashboard/actions";
+import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
-import { isDashboardCacheable } from "metabase/dashboard/utils";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { PLUGIN_CACHING } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
-import { Stack, Switch, Tabs, Text } from "metabase/ui";
-import type {
-  CacheableDashboard,
-  Dashboard,
-  Revision,
-  User,
-} from "metabase-types/api";
+import { Stack, Tabs, Text } from "metabase/ui";
+import type { Dashboard, Revision, User } from "metabase-types/api";
 
 import DashboardInfoSidebarS from "./DashboardInfoSidebar.module.css";
 
@@ -55,7 +43,6 @@ export function DashboardInfoSidebar({
   onClose,
 }: DashboardInfoSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [page, setPage] = useState<"default" | "caching">("default");
 
   useMount(() => {
     // this component is not rendered until it is "open"
@@ -95,19 +82,6 @@ export function DashboardInfoSidebar({
   );
 
   const canWrite = dashboard.can_write && !dashboard.archived;
-  const showCaching = canWrite && PLUGIN_CACHING.isGranularCachingEnabled();
-
-  if (page === "caching") {
-    return (
-      <PLUGIN_CACHING.SidebarCacheForm
-        item={dashboard as CacheableDashboard}
-        model="dashboard"
-        onBack={() => setPage("default")}
-        onClose={onClose}
-        pt="md"
-      />
-    );
-  }
 
   return (
     <div data-testid="sidebar-right">
@@ -136,8 +110,6 @@ export function DashboardInfoSidebar({
                   descriptionError={descriptionError}
                   setDescriptionError={setDescriptionError}
                   canWrite={canWrite}
-                  setPage={setPage}
-                  showCaching={showCaching}
                 />
               </Tabs.Panel>
               <Tabs.Panel value={Tab.History}>
@@ -162,8 +134,6 @@ const OverviewTab = ({
   descriptionError,
   setDescriptionError,
   canWrite,
-  setPage,
-  showCaching,
 }: {
   dashboard: Dashboard;
   handleDescriptionChange: (description: string) => void;
@@ -171,21 +141,7 @@ const OverviewTab = ({
   descriptionError: string | null;
   setDescriptionError: (error: string | null) => void;
   canWrite: boolean;
-  setPage: (
-    page: "default" | "caching" | SetStateAction<"default" | "caching">,
-  ) => void;
-  showCaching: boolean;
 }) => {
-  const isCacheable = isDashboardCacheable(dashboard);
-  const autoApplyFilterToggleId = useUniqueId();
-  const dispatch = useDispatch();
-  const handleToggleAutoApplyFilters = useCallback(
-    (isAutoApplyingFilters: boolean) => {
-      dispatch(toggleAutoApplyFilters(isAutoApplyingFilters));
-    },
-    [dispatch],
-  );
-
   return (
     <Stack spacing="lg">
       <SidesheetCard title={t`Description`} pb="md">
@@ -208,31 +164,6 @@ const OverviewTab = ({
           </Text>
         )}
       </SidesheetCard>
-
-      {!dashboard.archived && (
-        <SidesheetCard>
-          <Switch
-            disabled={!canWrite}
-            label={t`Auto-apply filters`}
-            labelPosition="left"
-            variant="stretch"
-            size="sm"
-            id={autoApplyFilterToggleId}
-            checked={dashboard.auto_apply_filters}
-            onChange={e => handleToggleAutoApplyFilters(e.target.checked)}
-          />
-        </SidesheetCard>
-      )}
-
-      {showCaching && isCacheable && (
-        <SidesheetCard title={t`Caching`} pb="md">
-          <PLUGIN_CACHING.SidebarCacheSection
-            model="dashboard"
-            item={dashboard}
-            setPage={setPage}
-          />
-        </SidesheetCard>
-      )}
     </Stack>
   );
 };
