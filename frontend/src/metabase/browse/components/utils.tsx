@@ -166,7 +166,14 @@ export function getMetricValueForTemporalMetric(dataset: Dataset) {
   // the order of the rows, this will not return the latest value per se.
   const { cols, rows } = dataset.data;
 
-  const lastRow = rows?.at(-1) ?? [];
+  if (!rows || rows.length < 1) {
+    return null;
+  }
+
+  const lastRow = rows?.at(-1);
+  if (!lastRow) {
+    return null;
+  }
 
   const [label, value] = lastRow;
   const [labelColumn, valueColumn] = cols;

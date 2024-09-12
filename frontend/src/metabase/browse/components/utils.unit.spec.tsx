@@ -329,4 +329,29 @@ describe("getDatasetValueForMetric", () => {
       label: "January 1, 2024, 12:00 AM",
     });
   });
+
+  it("should return null for a scalar dataset with no value", () => {
+    const dataset = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createMockColumn({ name: "col2" })],
+        rows: [],
+      }),
+    });
+
+    expect(getDatasetValueForMetric(dataset)).toEqual(null);
+  });
+
+  it("should return null for a temporal dataset with no value", () => {
+    const dataset = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn({ name: "col1", base_type: "type/DateTime" }),
+          createMockColumn({ name: "col2" }),
+        ],
+        rows: [],
+      }),
+    });
+
+    expect(getDatasetValueForMetric(dataset)).toEqual(null);
+  });
 });
