@@ -43,7 +43,7 @@
   (api/check-superuser)
   (cond
     (not (public-settings/experimental-fulltext-search-enabled))
-    {:search-code 501, :message "Search index is not enabled."}
+    {:status-code 501, :message "Search index is not enabled."}
 
     (search/supports-index?)
     (do
