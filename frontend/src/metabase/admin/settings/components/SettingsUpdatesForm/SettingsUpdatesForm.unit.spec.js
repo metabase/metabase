@@ -68,7 +68,7 @@ describe("SettingsUpdatesForm", () => {
   it("shows current version when latest version info is missing", () => {
     setup({ currentVersion: "v1.0.0", latestVersion: null });
     expect(
-      screen.getByText("You're running Metabase 1.0.0"),
+      screen.getByText(/You're running Metabase 1.0.0/),
     ).toBeInTheDocument();
   });
 

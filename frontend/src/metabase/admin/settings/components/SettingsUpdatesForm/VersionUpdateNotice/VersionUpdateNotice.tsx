@@ -37,7 +37,7 @@ export function VersionUpdateNotice() {
   if (newVersionAvailable({ currentVersion, latestVersion })) {
     return <NewVersionAvailable currentVersion={displayVersion} />;
   }
-  return <DefaultUpdateMessage currentVersion={currentVersion} />;
+  return <DefaultUpdateMessage currentVersion={displayVersion} />;
 }
 
 function CloudCustomers({ currentVersion }: { currentVersion: string }) {
