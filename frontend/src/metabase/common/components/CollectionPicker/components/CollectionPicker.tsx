@@ -1,12 +1,6 @@
 import type { Ref } from "react";
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-} from "react";
-import { useDeepCompareEffect, useLatest } from "react-use";
+import { forwardRef, useCallback, useImperativeHandle, useMemo } from "react";
+import { useDeepCompareEffect } from "react-use";
 
 import { isValidCollectionId } from "metabase/collections/utils";
 import { useCollectionQuery } from "metabase/common/hooks";
@@ -16,6 +10,7 @@ import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { Collection } from "metabase-types/api";
 
 import { LoadingSpinner, NestedItemPicker } from "../../EntityPicker";
+import { useEnsureCollectionSelected } from "../hooks";
 import type {
   CollectionPickerItem,
   CollectionPickerOptions,
@@ -73,7 +68,6 @@ export const CollectionPickerInner = (
     isLoading: loadingCurrentCollection,
   } = useCollectionQuery({
     id: isValidCollectionId(initialValue?.id) ? initialValue?.id : "root",
-    enabled: !!initialValue?.id,
   });
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
@@ -201,18 +195,14 @@ export const CollectionPickerInner = (
     ],
   );
 
-  const onItemSelectRef = useLatest(onItemSelect); // use ref to prevent effect from running too often
+  useEnsureCollectionSelected({
+    currentCollection,
+    enabled: path === defaultPath,
+    options,
+    useRootCollection: initialValue?.id == null,
+    onItemSelect,
+  });
 
-  useEffect(
-    function ensureFolderSelected() {
-      if (!pathProp && defaultPath[0].selectedItem) {
-        onItemSelectRef.current(defaultPath[0].selectedItem, {
-          autoSelected: true,
-        });
-      }
-    },
-    [pathProp, defaultPath, onItemSelectRef],
-  );
   if (error) {
     return <LoadingAndErrorWrapper error={error} />;
   }

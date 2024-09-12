@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo } from "react";
-import { useDeepCompareEffect, useLatest } from "react-use";
+import { useCallback, useMemo } from "react";
+import { useDeepCompareEffect } from "react-use";
 
 import {
   skipToken,
@@ -11,6 +11,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { CollectionItemModel } from "metabase-types/api";
 
+import { useEnsureCollectionSelected } from "../../CollectionPicker";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
 import { DelayedLoadingSpinner, NestedItemPicker } from "../../EntityPicker";
@@ -160,16 +161,13 @@ export const QuestionPicker = ({
     [currentCollection, userPersonalCollectionId, onPathChange],
   );
 
-  const onItemSelectRef = useLatest(onItemSelect); // use ref to prevent effect from running too often
-
-  useEffect(
-    function ensureFolderSelected() {
-      if (!pathProp && defaultPath[0].selectedItem) {
-        onItemSelectRef.current(defaultPath[0].selectedItem);
-      }
-    },
-    [pathProp, defaultPath, onItemSelectRef],
-  );
+  useEnsureCollectionSelected({
+    currentCollection,
+    enabled: path === defaultPath,
+    options,
+    useRootCollection: initialValue?.id == null,
+    onItemSelect,
+  });
 
   if (isLoading) {
     return <DelayedLoadingSpinner />;
