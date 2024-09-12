@@ -1,3 +1,5 @@
+import { Api } from "metabase/api/api";
+import { listTag } from "metabase/api/tags";
 import { createThunkAction } from "metabase/lib/redux";
 import { softReloadCard } from "metabase/query_builder/actions";
 
@@ -13,6 +15,7 @@ export const verifyCard = createThunkAction(
       text,
     });
 
+    dispatch(Api.util.invalidateTags([listTag("card")]));
     return dispatch(softReloadCard());
   },
 );
@@ -27,6 +30,7 @@ export const removeCardReview = createThunkAction(
       itemType: "card",
     });
 
+    dispatch(Api.util.invalidateTags([listTag("card")]));
     return dispatch(softReloadCard());
   },
 );
