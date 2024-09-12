@@ -394,9 +394,8 @@ describe("Actions > ActionViz > Action", () => {
       const editorModal = await screen.findByTestId("action-editor-modal");
 
       // edit action title
-      const actionTitleField = await within(editorModal).findByTestId(
-        "editable-text",
-      );
+      const actionTitleField =
+        await within(editorModal).findByTestId("editable-text");
       await userEvent.type(actionTitleField, updatedTitle);
       await userEvent.tab(); // blur field
 

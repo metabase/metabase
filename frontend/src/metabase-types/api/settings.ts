@@ -170,7 +170,7 @@ export const tokenFeatures = [
   "query_reference_validation",
 ] as const;
 
-export type TokenFeature = typeof tokenFeatures[number];
+export type TokenFeature = (typeof tokenFeatures)[number];
 export type TokenFeatures = Record<TokenFeature, boolean>;
 
 export type PasswordComplexity = {
