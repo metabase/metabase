@@ -156,6 +156,7 @@ const setup = ({
       <CollectionPicker
         initialValue={initialValue}
         path={path}
+        onInit={jest.fn()}
         onItemSelect={onItemSelect}
         onPathChange={setPath}
       />

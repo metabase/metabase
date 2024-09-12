@@ -204,6 +204,7 @@ const setupPicker = async ({
         initialValue={initialValue}
         options={defaultOptions}
         path={path}
+        onInit={jest.fn()}
         onItemSelect={onChange}
         onPathChange={setPath}
       />

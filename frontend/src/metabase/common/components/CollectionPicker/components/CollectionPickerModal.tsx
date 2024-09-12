@@ -75,12 +75,13 @@ export const CollectionPickerModal = ({
     onNewCollection: (item: CollectionPickerItem) => void;
   }>();
 
+  const handleInit = useCallback((item: CollectionPickerItem) => {
+    setSelectedItem(current => current ?? item);
+  }, []);
+
   const handleItemSelect = useCallback(
-    async (
-      item: CollectionPickerItem,
-      { autoSelected }: { autoSelected?: boolean } = {},
-    ) => {
-      if (options.hasConfirmButtons || autoSelected) {
+    async (item: CollectionPickerItem) => {
+      if (options.hasConfirmButtons) {
         setSelectedItem(item);
       } else if (canSelectItem(item)) {
         await handleChange(item);
@@ -130,6 +131,7 @@ export const CollectionPickerModal = ({
           path={collectionsPath}
           ref={pickerRef}
           shouldDisableItem={shouldDisableItem}
+          onInit={handleInit}
           onItemSelect={onItemSelect}
           onPathChange={setCollectionsPath}
         />

@@ -39,6 +39,7 @@ interface QuestionPickerProps {
   options: QuestionPickerOptions;
   path: QuestionPickerStatePath | undefined;
   shouldShowItem?: (item: QuestionPickerItem) => boolean;
+  onInit: (item: QuestionPickerItem) => void;
   onItemSelect: (item: QuestionPickerItem) => void;
   onPathChange: (path: QuestionPickerStatePath) => void;
 }
@@ -87,6 +88,7 @@ export const QuestionPicker = ({
   options,
   path: pathProp,
   shouldShowItem,
+  onInit,
   onItemSelect,
   onPathChange,
 }: QuestionPickerProps) => {
@@ -166,7 +168,7 @@ export const QuestionPicker = ({
     enabled: path === defaultPath,
     options,
     useRootCollection: initialValue?.id == null,
-    onItemSelect,
+    onInit,
   });
 
   if (isLoading) {

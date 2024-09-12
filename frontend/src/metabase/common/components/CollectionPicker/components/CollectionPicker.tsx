@@ -36,10 +36,8 @@ interface CollectionPickerProps {
   options?: CollectionPickerOptions;
   path: CollectionPickerStatePath | undefined;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
-  onItemSelect: (
-    item: CollectionPickerItem,
-    options?: { autoSelected?: boolean },
-  ) => void;
+  onInit: (item: CollectionPickerItem) => void;
+  onItemSelect: (item: CollectionPickerItem) => void;
   onPathChange: (path: CollectionPickerStatePath) => void;
 }
 
@@ -49,6 +47,7 @@ export const CollectionPickerInner = (
     options = defaultOptions,
     path: pathProp,
     shouldDisableItem,
+    onInit,
     onItemSelect,
     onPathChange,
   }: CollectionPickerProps,
@@ -200,7 +199,7 @@ export const CollectionPickerInner = (
     enabled: path === defaultPath,
     options,
     useRootCollection: initialValue?.id == null,
-    onItemSelect,
+    onInit,
   });
 
   if (error) {

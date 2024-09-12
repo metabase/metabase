@@ -189,3 +189,12 @@ export const castQuestionPickerItemToDataPickerItem = (
   // see comment for QuestionPickerItem definition to see why we need this cast
   return item as DataPickerItem;
 };
+
+export const createQuestionPickerItemSelectHandler = (
+  onItemSelect: (item: DataPickerItem) => void,
+) => {
+  return (questionPickerItem: QuestionPickerItem) => {
+    const item = castQuestionPickerItemToDataPickerItem(questionPickerItem);
+    onItemSelect(item);
+  };
+};

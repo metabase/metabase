@@ -36,6 +36,7 @@ interface DashboardPickerProps {
   models?: CollectionItemModel[];
   path: DashboardPickerStatePath | undefined;
   shouldDisableItem?: (item: DashboardPickerItem) => boolean;
+  onInit: (item: DashboardPickerItem) => void;
   onItemSelect: (item: DashboardPickerItem) => void;
   onPathChange: (path: DashboardPickerStatePath) => void;
 }
@@ -86,6 +87,7 @@ const DashboardPickerInner = (
     models = ["dashboard"],
     path: pathProp,
     shouldDisableItem,
+    onInit,
     onItemSelect,
     onPathChange,
   }: DashboardPickerProps,
@@ -203,7 +205,7 @@ const DashboardPickerInner = (
     enabled: path === defaultPath,
     options,
     useRootCollection: initialValue?.id == null,
-    onItemSelect,
+    onInit,
   });
 
   if (error) {
