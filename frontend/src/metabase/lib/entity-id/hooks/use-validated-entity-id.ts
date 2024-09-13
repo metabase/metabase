@@ -2,7 +2,8 @@ import { useMemo } from "react";
 
 import { skipToken } from "metabase/api";
 import { useTranslateEntityIdQuery } from "metabase/api/entity-id";
-import type { BaseEntityId, CardId, DashboardId } from "metabase-types/api";
+import type { CardId, DashboardId } from "metabase-types/api";
+import type { BaseEntityId } from "metabase-types/api/entity-id";
 import { isBaseEntityID } from "metabase-types/api/entity-id";
 
 type SUPPORTED_ENTITIES = { dashboard: DashboardId; card: CardId };
