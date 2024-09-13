@@ -106,6 +106,7 @@ export const createMockTokenFeatures = (
   disable_password_login: false,
   content_verification: false,
   embedding: false,
+  embedding_sdk: false,
   hosting: false,
   official_collections: false,
   llm_autodescription: false,

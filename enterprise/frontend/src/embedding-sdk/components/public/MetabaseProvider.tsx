@@ -24,10 +24,10 @@ import type { MetabaseTheme } from "embedding-sdk/types/theme";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 
-import { PublicComponentWrapper } from "../private/PublicComponentWrapper";
+import { PublicComponentStylesWrapper } from "../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
-
 import "metabase/css/index.module.css";
+import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
 import "metabase/css/vendor.css";
 
 export interface MetabaseProviderProps {
@@ -88,6 +88,7 @@ export const MetabaseProviderInternal = ({
         <div className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
           <PortalContainer />
           {children}
+          <SdkUsageProblemDisplay config={config} />
         </div>
       </SdkThemeProvider>
     </EmotionCacheProvider>
@@ -105,12 +106,12 @@ export const MetabaseProvider = memo(function MetabaseProvider(
 });
 
 /**
- * This is the portal container used by popovers modals etc, it is wrapped with withPublicComponentWrapper
+ * This is the portal container used by popovers modals etc, it is wrapped with PublicComponentStylesWrapper
  * so that it has our styles applied.
  * Mantine components needs to have the defaultProps set to use `EMBEDDING_SDK_PORTAL_CONTAINER_ELEMENT_ID` as target for the portal
  */
 const PortalContainer = () => (
-  <PublicComponentWrapper>
+  <PublicComponentStylesWrapper>
     <div id={EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}></div>
-  </PublicComponentWrapper>
+  </PublicComponentStylesWrapper>
 );

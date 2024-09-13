@@ -88,6 +88,12 @@ export function renderWithProviders(
       { sdk: createMockSdkState(), ...initialState },
       ...sdkReducerNames,
     ) as SdkStoreState;
+
+    // Enable the embedding_sdk premium feature by default in SDK tests, unless explicitly disabled.
+    // Without this, SDK components will not render due to missing token features.
+    if (!storeInitialState.settings && initialState.settings) {
+      initialState.settings.values["token-features"].embedding_sdk = true;
+    }
   }
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,
@@ -126,6 +132,11 @@ export function renderWithProviders(
     initialState,
     storeMiddleware,
   ) as unknown as Store<State>;
+
+  if (sdkProviderProps?.config) {
+    // Prevent spamming the console during tests
+    sdkProviderProps.config.allowConsoleLog = false;
+  }
 
   const wrapper = (props: any) => {
     if (mode === "sdk") {
