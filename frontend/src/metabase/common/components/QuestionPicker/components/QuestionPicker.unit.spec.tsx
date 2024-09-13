@@ -200,6 +200,7 @@ const setupPicker = async ({
         models={["card"]}
         options={defaultOptions}
         path={path}
+        onInit={jest.fn()}
         onItemSelect={onChange}
         onPathChange={setPath}
       />

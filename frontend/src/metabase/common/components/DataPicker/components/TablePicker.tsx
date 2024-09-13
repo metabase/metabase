@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLatest } from "react-use";
 
 import {
   skipToken,
@@ -53,10 +54,12 @@ export const TablePicker = ({
   const [tableId, setTableId] = useState<TableId | undefined>(initialTableId);
 
   const {
-    data: databases,
+    data: databasesResponse,
     error: errorDatabases,
     isFetching: isLoadingDatabases,
   } = useListDatabasesQuery({ saved: false });
+
+  const databases = isLoadingDatabases ? undefined : databasesResponse?.data;
 
   const {
     data: schemas,
@@ -75,13 +78,19 @@ export const TablePicker = ({
   );
 
   const selectedDbItem = useMemo(
-    () => getDbItem(databases?.data, dbId),
+    () => getDbItem(databases, dbId),
     [databases, dbId],
   );
 
   const selectedSchemaItem = useMemo(
-    () => getSchemaItem(schemaName),
-    [schemaName],
+    () =>
+      getSchemaItem(
+        dbId,
+        selectedDbItem?.name,
+        schemaName,
+        schemas?.length === 1,
+      ),
+    [dbId, selectedDbItem, schemaName, schemas],
   );
 
   const selectedTableItem = useMemo(
@@ -118,9 +127,14 @@ export const TablePicker = ({
       if (folder.model === "schema") {
         const newPath: TablePickerStatePath = [dbId, folder.id, undefined];
         setSchemaName(folder.id);
-        onItemSelect(
-          selectedDbItem && schemas?.length === 1 ? selectedDbItem : folder,
-        );
+        onItemSelect({
+          ...folder,
+          name:
+            // use database name if there is only 1 schema, as user won't even see the schema in the UI
+            selectedDbItem && schemas?.length === 1
+              ? selectedDbItem.name
+              : folder.name,
+        });
         onPathChange(newPath);
       }
 
@@ -138,6 +152,84 @@ export const TablePicker = ({
     [dbId, schemaName, setTableId, onItemSelect, onPathChange],
   );
 
+  const onItemSelectRef = useLatest(onItemSelect);
+  const handleFolderSelectRef = useLatest(handleFolderSelect);
+
+  useEffect(
+    function ensureDbSelected() {
+      const hasDbs = !isLoadingDatabases && databases && databases.length > 0;
+
+      if (hasDbs && !selectedDbItem) {
+        const firstDatabase = databases[0];
+        const item = getDbItem(databases, firstDatabase.id);
+
+        if (item) {
+          handleFolderSelectRef.current(item);
+        }
+      }
+    },
+    [
+      dbId,
+      isLoadingDatabases,
+      databases,
+      handleFolderSelectRef,
+      selectedDbItem,
+    ],
+  );
+
+  useEffect(
+    function ensureSchemaSelected() {
+      const hasSchemas = !isLoadingSchemas && schemas && schemas.length > 0;
+
+      if (hasSchemas && !selectedSchemaItem) {
+        const firstSchema = schemas[0];
+        const item = getSchemaItem(
+          dbId,
+          selectedDbItem?.name,
+          firstSchema,
+          schemas.length === 1,
+        );
+
+        if (item) {
+          handleFolderSelectRef.current(item);
+        }
+      }
+    },
+    [
+      dbId,
+      selectedDbItem,
+      isLoadingSchemas,
+      schemas,
+      handleFolderSelectRef,
+      selectedSchemaItem,
+    ],
+  );
+
+  useEffect(
+    function ensureFolderSelected() {
+      if (initialDbId != null) {
+        const item = getSchemaItem(
+          initialDbId,
+          selectedDbItem?.name,
+          initialSchemaId,
+          schemas?.length === 1,
+        );
+
+        if (item) {
+          onItemSelectRef.current(item);
+        }
+      }
+    },
+    [
+      databases,
+      schemas,
+      selectedDbItem,
+      onItemSelectRef,
+      initialDbId,
+      initialSchemaId,
+    ],
+  );
+
   return (
     <AutoScrollBox
       contentHash={generateKey(
@@ -150,9 +242,11 @@ export const TablePicker = ({
       <Flex h="100%" w="fit-content">
         {!databaseId && (
           <DatabaseList
-            databases={isLoadingDatabases ? undefined : databases?.data}
+            databases={databases}
             error={errorDatabases}
-            isCurrentLevel={!schemaName || (schemas?.length === 1 && !tableId)}
+            isCurrentLevel={
+              schemaName == null || (schemas?.length === 1 && !tableId)
+            }
             isLoading={isLoadingDatabases}
             selectedItem={selectedDbItem}
             onClick={handleFolderSelect}
@@ -161,6 +255,8 @@ export const TablePicker = ({
 
         {isNotNull(dbId) && (
           <SchemaList
+            dbId={dbId}
+            dbName={selectedDbItem?.name}
             error={errorSchemas}
             isCurrentLevel={!tableId}
             isLoading={isLoadingSchemas}

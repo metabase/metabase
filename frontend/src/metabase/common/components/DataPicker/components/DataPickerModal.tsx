@@ -26,7 +26,7 @@ import type {
   TablePickerStatePath,
 } from "../types";
 import {
-  castQuestionPickerItemToDataPickerItem,
+  createQuestionPickerItemSelectHandler,
   createShouldShowItem,
   isMetricItem,
   isModelItem,
@@ -150,11 +150,8 @@ export const DataPickerModal = ({
             options={options}
             path={modelsPath}
             shouldShowItem={modelsShouldShowItem}
-            onItemSelect={questionPickerItem => {
-              const item =
-                castQuestionPickerItemToDataPickerItem(questionPickerItem);
-              onItemSelect(item);
-            }}
+            onInit={createQuestionPickerItemSelectHandler(onItemSelect)}
+            onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
             onPathChange={setModelsPath}
           />
         ),
@@ -175,11 +172,8 @@ export const DataPickerModal = ({
             options={options}
             path={metricsPath}
             shouldShowItem={metricsShouldShowItem}
-            onItemSelect={questionPickerItem => {
-              const item =
-                castQuestionPickerItemToDataPickerItem(questionPickerItem);
-              onItemSelect(item);
-            }}
+            onInit={createQuestionPickerItemSelectHandler(onItemSelect)}
+            onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
             onPathChange={setMetricsPath}
           />
         ),
@@ -219,11 +213,8 @@ export const DataPickerModal = ({
             options={options}
             path={questionsPath}
             shouldShowItem={questionsShouldShowItem}
-            onItemSelect={questionPickerItem => {
-              const item =
-                castQuestionPickerItemToDataPickerItem(questionPickerItem);
-              onItemSelect(item);
-            }}
+            onInit={createQuestionPickerItemSelectHandler(onItemSelect)}
+            onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
             onPathChange={setQuestionsPath}
           />
         ),

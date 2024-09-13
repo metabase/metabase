@@ -80,15 +80,18 @@ export const getDbItem = (
 };
 
 export const getSchemaItem = (
+  dbId: DatabaseId | undefined,
+  dbName: string | undefined,
   schemaName: SchemaName | undefined,
+  isOnlySchema: boolean,
 ): DataPickerFolderItem | null => {
-  if (typeof schemaName === "undefined") {
+  if (typeof schemaName === "undefined" || typeof dbId === "undefined") {
     return null;
   }
 
   const name = getSchemaDisplayName(schemaName);
 
-  return { model: "schema", id: schemaName, name };
+  return { model: "schema", id: schemaName, name, dbId, dbName, isOnlySchema };
 };
 
 export const getTableItem = (
@@ -188,4 +191,13 @@ export const castQuestionPickerItemToDataPickerItem = (
 ): DataPickerItem => {
   // see comment for QuestionPickerItem definition to see why we need this cast
   return item as DataPickerItem;
+};
+
+export const createQuestionPickerItemSelectHandler = (
+  onItemSelect: (item: DataPickerItem) => void,
+) => {
+  return (questionPickerItem: QuestionPickerItem) => {
+    const item = castQuestionPickerItemToDataPickerItem(questionPickerItem);
+    onItemSelect(item);
+  };
 };

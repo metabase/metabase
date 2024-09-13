@@ -75,6 +75,10 @@ export const CollectionPickerModal = ({
     onNewCollection: (item: CollectionPickerItem) => void;
   }>();
 
+  const handleInit = useCallback((item: CollectionPickerItem) => {
+    setSelectedItem(current => current ?? item);
+  }, []);
+
   const handleItemSelect = useCallback(
     async (item: CollectionPickerItem) => {
       if (options.hasConfirmButtons) {
@@ -127,6 +131,7 @@ export const CollectionPickerModal = ({
           path={collectionsPath}
           ref={pickerRef}
           shouldDisableItem={shouldDisableItem}
+          onInit={handleInit}
           onItemSelect={onItemSelect}
           onPathChange={setCollectionsPath}
         />

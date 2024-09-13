@@ -4,14 +4,20 @@ import { color } from "metabase/lib/colors";
 import type { ObjectWithModel } from "metabase/lib/icon";
 import { getIcon } from "metabase/lib/icon";
 import {
+  type DatabaseId,
   SEARCH_MODELS,
   type SearchModel,
   type SearchResult,
   type SearchResultId,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 import { RECENTS_TAB_ID } from "./constants";
-import type { EntityPickerTab, TypeWithModel } from "./types";
+import type {
+  EntityPickerSearchScope,
+  EntityPickerTab,
+  TypeWithModel,
+} from "./types";
 
 export const getEntityPickerIcon = <Id, Model extends string>(
   item: TypeWithModel<Id, Model>,
@@ -139,8 +145,71 @@ export const getSearchInputPlaceholder = <
   }
 
   if (folder?.model === "schema") {
+    // we're not showing schema selection step if there's only 1 schema
+    if (isSchemaItem(folder) && folder.isOnlySchema) {
+      return t`Search this database or everywhere…`;
+    }
+
     return t`Search this schema or everywhere…`;
   }
 
   return t`Search…`;
+};
+
+export const getScopedSearchResults = <
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>(
+  searchResults: SearchResult[] | null,
+  searchScope: EntityPickerSearchScope,
+  folder: Item | undefined,
+): SearchResult[] => {
+  if (!searchResults) {
+    return [];
+  }
+
+  if (searchScope === "everywhere" || !folder) {
+    return searchResults;
+  }
+
+  if (folder.model === "database") {
+    return searchResults.filter(
+      result => result.model === "table" && result.database_id === folder.id,
+    );
+  }
+
+  if (folder.model === "schema") {
+    return searchResults.filter(
+      result => result.model === "table" && result.table_schema === folder.id,
+    );
+  }
+
+  if (folder.model === "collection") {
+    return searchResults.filter(result => result.collection?.id === folder.id);
+  }
+
+  return [];
+};
+
+export const isSchemaItem = <
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>(
+  item: Item,
+): item is Item & {
+  dbId: DatabaseId;
+  dbName: string;
+  isOnlySchema: boolean;
+} => {
+  return (
+    isObject(item) &&
+    "dbId" in item &&
+    typeof item.dbId === "number" &&
+    "dbName" in item &&
+    typeof item.dbName === "string" &&
+    "isOnlySchema" in item &&
+    typeof item.isOnlySchema === "boolean"
+  );
 };

@@ -10,6 +10,7 @@ import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { Collection } from "metabase-types/api";
 
 import { LoadingSpinner, NestedItemPicker } from "../../EntityPicker";
+import { useEnsureCollectionSelected } from "../hooks";
 import type {
   CollectionPickerItem,
   CollectionPickerOptions,
@@ -35,6 +36,7 @@ interface CollectionPickerProps {
   options?: CollectionPickerOptions;
   path: CollectionPickerStatePath | undefined;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
+  onInit: (item: CollectionPickerItem) => void;
   onItemSelect: (item: CollectionPickerItem) => void;
   onPathChange: (path: CollectionPickerStatePath) => void;
 }
@@ -45,6 +47,7 @@ export const CollectionPickerInner = (
     options = defaultOptions,
     path: pathProp,
     shouldDisableItem,
+    onInit,
     onItemSelect,
     onPathChange,
   }: CollectionPickerProps,
@@ -64,7 +67,6 @@ export const CollectionPickerInner = (
     isLoading: loadingCurrentCollection,
   } = useCollectionQuery({
     id: isValidCollectionId(initialValue?.id) ? initialValue?.id : "root",
-    enabled: !!initialValue?.id,
   });
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
@@ -191,6 +193,14 @@ export const CollectionPickerInner = (
       onPathChange,
     ],
   );
+
+  useEnsureCollectionSelected({
+    currentCollection,
+    enabled: path === defaultPath,
+    options,
+    useRootCollection: initialValue?.id == null,
+    onInit,
+  });
 
   if (error) {
     return <LoadingAndErrorWrapper error={error} />;

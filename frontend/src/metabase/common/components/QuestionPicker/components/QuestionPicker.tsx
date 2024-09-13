@@ -11,6 +11,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { CollectionItemModel } from "metabase-types/api";
 
+import { useEnsureCollectionSelected } from "../../CollectionPicker";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
 import { DelayedLoadingSpinner, NestedItemPicker } from "../../EntityPicker";
@@ -38,6 +39,7 @@ interface QuestionPickerProps {
   options: QuestionPickerOptions;
   path: QuestionPickerStatePath | undefined;
   shouldShowItem?: (item: QuestionPickerItem) => boolean;
+  onInit: (item: QuestionPickerItem) => void;
   onItemSelect: (item: QuestionPickerItem) => void;
   onPathChange: (path: QuestionPickerStatePath) => void;
 }
@@ -86,6 +88,7 @@ export const QuestionPicker = ({
   options,
   path: pathProp,
   shouldShowItem,
+  onInit,
   onItemSelect,
   onPathChange,
 }: QuestionPickerProps) => {
@@ -159,6 +162,14 @@ export const QuestionPicker = ({
     },
     [currentCollection, userPersonalCollectionId, onPathChange],
   );
+
+  useEnsureCollectionSelected({
+    currentCollection,
+    enabled: path === defaultPath,
+    options,
+    useRootCollection: initialValue?.id == null,
+    onInit,
+  });
 
   if (isLoading) {
     return <DelayedLoadingSpinner />;
