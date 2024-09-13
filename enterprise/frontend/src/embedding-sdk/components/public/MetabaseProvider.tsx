@@ -109,6 +109,8 @@ export const MetabaseProvider = memo(function MetabaseProvider(
  * so that it has our styles applied.
  * Mantine components needs to have the defaultProps set to use `EMBEDDING_SDK_PORTAL_CONTAINER_ELEMENT_ID` as target for the portal
  */
-const PortalContainer = withPublicComponentWrapper(() => (
-  <div id={EMBEDDING_SDK_PORTAL_CONTAINER_ELEMENT_ID}></div>
-));
+const PortalContainer = () => (
+  <PublicComponentWrapper>
+    <div id={EMBEDDING_SDK_PORTAL_CONTAINER_ELEMENT_ID}></div>
+  </PublicComponentWrapper>
+);
