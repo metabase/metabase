@@ -323,35 +323,42 @@
   [id]
   ((get-dashboard-fn *dashboard-load-id*) id))
 
-(defn- cards-to-copy
+(mu/defn- cards-to-copy :- [:map
+                            [:discard [:sequential :any]]
+                            [:copy [:map-of ms/PositiveInt :any]]
+                            [:reference [:map-of ms/PositiveInt :any]]]
   "Returns a map of which cards we need to copy, which cards we need to reference, and which are not to be copied. The
   `:copy` and `:reference` keys are maps from id to card. The `:discard` key is a vector of cards which were not
-  copied due to permissions."
-  [deep-copy? dashcards]
+  copied due to permissions.
+
+  If we're making a deep copy, we copy all cards that we have necessary permissions on. Otherwise, we copy Dashboard
+  Questions (questions stored 'in' the dashboard rather than a collection) and reference the rest (assuming
+  permissions)."
+  [deep-copy? :- ms/MaybeBooleanValue
+   dashcards :- [:sequential :any]]
   (letfn [(card->cards [{:keys [card series]}] (into [card] series))
           (readable? [card] (and (mi/model card) (mi/can-read? card)))
           (card->decision [parent-card card]
             (cond
-              (not (readable? parent-card))
+              (or
+               (not (readable? parent-card))
+               (not (readable? card)))
+
               :discard
 
-              (not (readable? card))
-              :discard
+              (or (:dashboard_id card)
+                  (and deep-copy? (not= :model (:type card))))
+              :copy
 
-              (and (not deep-copy?)
-                   (not (:dashboard_id card)))
-              :reference
-
-              (readable? card)
-              :retain))
+              :else :reference))
           (split-cards [{:keys [card] :as db-card}]
             (let [cards (card->cards db-card)]
               (group-by (partial card->decision card) cards)))]
     (reduce (fn [acc db-card]
-              (let [{:keys [retain discard reference]} (split-cards db-card)]
+              (let [{:keys [discard copy reference]} (split-cards db-card)]
                 (-> acc
                     (update :reference merge (m/index-by :id reference))
-                    (update :copy merge (m/index-by :id retain))
+                    (update :copy merge (m/index-by :id copy))
                     (update :discard concat discard))))
             {:reference {}
              :copy {}
@@ -359,34 +366,26 @@
             dashcards)))
 
 (defn- maybe-duplicate-cards
-  "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries. Returns a map of
-  {:copied {old-card-id duplicated-card} :uncopied [card]} so that the new dashboard can adjust accordingly.
+  "Takes a dashboard id, and duplicates the cards both on the dashboard's cards and dashcardseries as necessary.
+
+  Returns a map of {:copied {old-card-id duplicated-card} :uncopied [card]} so that the new dashboard can adjust accordingly.
 
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection? (= (:collection_id old-dashboard) dest-coll-id)
         {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
-    (reduce (fn [m [[id card] copy-or-reference]]
-              (assoc-in m
-                        [(case copy-or-reference :copy :copied :reference :referenced) id]
-                        (if (or (= copy-or-reference :reference)
-                                (= (:type card) :model))
-                          card
-                          (card/create-card!
-                           (cond-> (assoc card :collection_id dest-coll-id)
-                             same-collection?
-                             (update :name #(str % " - " (tru "Duplicate")))
-
-                             (:dashboard_id card)
-                             (assoc :dashboard_id (u/the-id new-dashboard)))
-                           @api/*current-user*
-                           ;; creating cards from a transaction. wait until tx complete to signal event
-                           true))))
-            {:copied {}
-             :referenced {}
-             :uncopied discard}
-            (concat (zipmap copy (repeat :copy))
-                    (zipmap reference (repeat :reference))))))
+    {:copied (into {} (for [[id to-copy] copy]
+                        [id (card/create-card!
+                             (cond-> to-copy
+                               true (assoc :collection_id dest-coll-id)
+                               same-collection? (update :name #(str % " - " (tru "Duplicate")))
+                               (:dashboard_id to-copy)
+                               (assoc :dashboard_id (u/the-id new-dashboard)))
+                             @api/*current-user*
+                             ;; creating cards from a transaction. wait until tx complete to signal event
+                             true)]))
+     :discarded discard
+     :referenced reference}))
 
 (defn- duplicate-tabs
   [new-dashboard existing-tabs]
@@ -469,7 +468,7 @@
                          (let [dash (first (t2/insert-returning-instances! :model/Dashboard dashboard-data))
                                {id->new-card :copied
                                 id->referenced-card :referenced
-                                uncopied :uncopied}
+                                uncopied :discarded}
                                (maybe-duplicate-cards is_deep_copy dash existing-dashboard collection_id)
 
                                id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
