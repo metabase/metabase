@@ -11,6 +11,7 @@ import {
   entityPickerModalItem,
   entityPickerModalTab,
   getNotebookStep,
+  getStepPreviewButton,
   modal,
   newButton,
   onlyOnOSS,
@@ -72,7 +73,7 @@ describe("issue 23023", () => {
 
     openNotebook();
 
-    cy.icon("play").eq(1).click();
+    getStepPreviewButton("join").click();
 
     cy.findAllByTestId("header-cell").contains("Products → Category");
     cy.findAllByTestId("header-cell").contains("Tax").should("not.exist");

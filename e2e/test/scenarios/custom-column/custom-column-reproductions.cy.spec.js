@@ -13,6 +13,7 @@ import {
   filterWidget,
   getDashboardCard,
   getNotebookStep,
+  getStepPreviewButton,
   main,
   modal,
   multiAutocompleteInput,
@@ -643,7 +644,7 @@ describe("issue 21135", () => {
   function previewCustomColumnNotebookStep() {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    cy.findByTestId("step-expression-0-0").find(".Icon-play").click();
+    getStepPreviewButton("expression").click();
 
     cy.wait("@dataset");
   }
