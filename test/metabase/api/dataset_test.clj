@@ -245,8 +245,7 @@
             ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
             native-sub-query (with-redefs [lib.util/truncate-alias
                                            (fn mock-truncate-alias
-                                             ([ss] ss)
-                                             ([ss _] ss))]
+                                             [ss & _] ss)]
                                (-> (mt/mbql-query people
                                      {:source-table $$people
                                       :aggregation  [[:aggregation-options [:count] {:name short-col-name}]]
