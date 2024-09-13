@@ -42,7 +42,6 @@ export interface SearchScore {
     | "text-total-occurrences"
     | "text-fullness";
   match?: string;
-  "match-context-thunk"?: string;
   column?: string;
 }
 

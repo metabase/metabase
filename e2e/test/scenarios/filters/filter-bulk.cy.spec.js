@@ -15,7 +15,7 @@ import {
 } from "e2e/support/helpers";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
-const { ORDERS_ID, ORDERS, PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PEOPLE_ID, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const rawQuestionDetails = {
   dataset_query: {
@@ -70,6 +70,27 @@ const aggregatedQuestionDetails = {
       "source-table": ORDERS_ID,
       breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
       aggregation: [["count"]],
+    },
+  },
+};
+
+const multiStageQuestionDetails = {
+  name: "Test question",
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-query": {
+        "source-query": {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+        aggregation: [["count"]],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
+      },
+      aggregation: [["count"]],
+      breakout: [["field", PRODUCTS.CATEGORY, null]],
     },
   },
 };
@@ -201,6 +222,68 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.findByText("Quantity is less than 30").should("not.exist");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 138 rows").should("be.visible");
+  });
+
+  it("should be able to add and remove filters for all query stages", () => {
+    visitQuestionAdhoc(multiStageQuestionDetails);
+
+    cy.log("add filters for all stages in the filter modal");
+    filter();
+    modal().within(() => {
+      cy.log("stage 0");
+      cy.findByText("Products").click();
+      cy.findByLabelText("Gadget").click();
+
+      cy.log("stage 1");
+      cy.findByText("Summaries").click();
+      cy.findByLabelText("Widget").click();
+
+      cy.log("stage 2");
+      cy.findByText("Summaries (2)").click();
+      cy.findByLabelText("Gizmo").click();
+
+      cy.log("stage 3");
+      cy.findByText("Summaries (3)").click();
+      cy.findByLabelText("Doohickey").click();
+    });
+    applyFilters();
+
+    cy.log("check filters from all stages to be present in the filter panel");
+    cy.findByTestId("qb-filters-panel").within(() => {
+      cy.findByText("Category is Gadget").should("be.visible");
+      cy.findByText("Category is Widget").should("be.visible");
+      cy.findByText("Category is Gizmo").should("be.visible");
+      cy.findByText("Category is Doohickey").should("be.visible");
+    });
+
+    cy.log("check filters from all stages to be present in the filter modal");
+    filter();
+    modal().within(() => {
+      cy.log("stage 0");
+      cy.findByText("Products").click();
+      cy.findByLabelText("Gadget").should("be.checked");
+      cy.findByLabelText("Widget").should("not.be.checked");
+
+      cy.log("stage 1");
+      cy.findByText("Summaries").click();
+      cy.findByLabelText("Widget").should("be.checked");
+      cy.findByLabelText("Gizmo").should("not.be.checked");
+
+      cy.log("stage 2");
+      cy.findByText("Summaries (2)").click();
+      cy.findByLabelText("Gizmo").should("be.checked");
+      cy.findByLabelText("Doohickey").should("not.be.checked");
+
+      cy.log("stage 3");
+      cy.findByText("Summaries (3)").click();
+      cy.findByLabelText("Doohickey").should("be.checked");
+      cy.findByLabelText("Gadget").should("not.be.checked");
+    });
+
+    cy.log("clear all filters");
+    modal().button("Clear all filters").click();
+    applyFilters();
+    cy.findByTestId("qb-filters-panel").should("not.exist");
   });
 
   describe("segment filters", () => {
@@ -630,9 +713,6 @@ describe("scenarios > filters > bulk filtering", () => {
 });
 
 const applyFilters = () => {
-  modal().within(() => {
-    cy.findByTestId("apply-filters").click();
-  });
-
+  modal().findByTestId("apply-filters").click();
   cy.wait("@dataset");
 };

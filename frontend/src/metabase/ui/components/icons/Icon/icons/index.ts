@@ -161,6 +161,8 @@ import gear_component from "./gear.svg?component";
 import gear_source from "./gear.svg?source";
 import gem_component from "./gem.svg?component";
 import gem_source from "./gem.svg?source";
+import globe_component from "./globe.svg?component";
+import globe_source from "./globe.svg?source";
 import google_component from "./google.svg?component";
 import google_source from "./google.svg?source";
 import grabber_component from "./grabber.svg?component";
@@ -708,6 +710,10 @@ export const Icons = {
   gem: {
     component: gem_component,
     source: gem_source,
+  },
+  globe: {
+    component: globe_component,
+    source: globe_source,
   },
   grabber: {
     component: grabber_component,

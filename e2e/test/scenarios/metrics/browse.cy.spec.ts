@@ -8,6 +8,7 @@ import {
 import {
   type StructuredQuestionDetails,
   assertIsEllipsified,
+  createNativeQuestion,
   createQuestion,
   describeEE,
   getSidebarSectionTitle,
@@ -90,6 +91,53 @@ const NON_NUMERIC_METRIC: StructuredQuestionDetailsWithName = {
   display: "scalar",
 };
 
+const TEMPORAL_METRIC_WITH_SORT: StructuredQuestionDetailsWithName = {
+  name: "Count of orders over time",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "month" },
+      ],
+    ],
+    "order-by": [["asc", ["aggregation", 0]]],
+  },
+};
+
+const SCALAR_METRIC_WITH_NO_VALUE: StructuredQuestionDetailsWithName = {
+  name: "Scalar metric with no value",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["max", ["field", ORDERS.TOTAL, {}]]],
+    filter: ["=", ["field", ORDERS.TOTAL, {}], 3.333],
+  },
+};
+
+const TIMESERIES_METRIC_WITH_NO_VALUE: StructuredQuestionDetailsWithName = {
+  name: "Timeseries metric with no value",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["max", ["field", ORDERS.TOTAL, {}]]],
+    filter: ["=", ["field", ORDERS.TOTAL, {}], 3.333],
+    breakout: [
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "month" },
+      ],
+    ],
+  },
+};
+
 const ALL_METRICS = [
   ORDERS_SCALAR_METRIC,
   ORDERS_SCALAR_MODEL_METRIC,
@@ -124,6 +172,12 @@ function shouldHaveBookmark(name: string) {
 function shouldNotHaveBookmark(name: string) {
   getSidebarSectionTitle(/Bookmarks/).should("not.exist");
   navigationSidebar().findByText(name).should("not.exist");
+}
+
+function checkMetricValueAndTooltipExist(value: string, label: string) {
+  metricsTable().findByText(value).should("be.visible");
+  metricsTable().findByText(value).realHover();
+  tooltip().should("contain", label);
 }
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -380,9 +434,7 @@ describe("scenarios > browse > metrics", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
       cy.visit("/browse/metrics");
 
-      metricsTable().findByText("18,760").should("be.visible");
-      metricsTable().findByText("18,760").realHover();
-      tooltip().should("contain", "Overall");
+      checkMetricValueAndTooltipExist("18,760", "Overall");
     });
 
     it("should render a scalar metric's value in the table even when it's not a number", () => {
@@ -391,9 +443,7 @@ describe("scenarios > browse > metrics", () => {
       createMetrics([NON_NUMERIC_METRIC]);
       cy.visit("/browse/metrics");
 
-      metricsTable().findByText("Widget").should("be.visible");
-      metricsTable().findByText("Widget").realHover();
-      tooltip().should("contain", "Overall");
+      checkMetricValueAndTooltipExist("Widget", "Overall");
     });
   });
 
@@ -459,6 +509,94 @@ describe("scenarios > browse > metrics", () => {
         findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
         findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
       });
+    });
+  });
+
+  describe("temporal metric value", () => {
+    it("should show the last value of a temporal metric", () => {
+      cy.signInAsAdmin();
+      createMetrics([ORDERS_TIMESERIES_METRIC]);
+      cy.visit("/browse/metrics");
+
+      checkMetricValueAndTooltipExist("344", "April 2026");
+    });
+
+    it("should show the last value of a temporal metric with a sort clause", () => {
+      cy.signInAsAdmin();
+      createMetrics([TEMPORAL_METRIC_WITH_SORT]);
+      cy.visit("/browse/metrics");
+
+      checkMetricValueAndTooltipExist("584", "January 2025");
+    });
+
+    it("should render an empty value for a scalar metric with no value", () => {
+      cy.signInAsAdmin();
+      createMetrics([SCALAR_METRIC_WITH_NO_VALUE]);
+      cy.visit("/browse/metrics");
+
+      findMetric(SCALAR_METRIC_WITH_NO_VALUE.name).should("be.visible");
+      cy.findByTestId("metric-value").should("be.empty");
+    });
+
+    it("should render an empty value for a timeseries metric with no value", () => {
+      cy.signInAsAdmin();
+      createMetrics([TIMESERIES_METRIC_WITH_NO_VALUE]);
+      cy.visit("/browse/metrics");
+
+      findMetric(TIMESERIES_METRIC_WITH_NO_VALUE.name).should("be.visible");
+      cy.findByTestId("metric-value").should("be.empty");
+    });
+
+    it("should render an empty value for metric with errors", () => {
+      cy.signInAsAdmin();
+
+      createNativeQuestion(
+        {
+          name: "Question with error",
+          native: {
+            query: "SELECT __syntax_error__;",
+          },
+        },
+        { wrapId: true },
+      ).then(id => {
+        createMetrics([
+          {
+            name: "Metric with error",
+            type: "metric",
+            description: "A metric",
+            query: {
+              "source-table": `card__${id}`,
+              aggregation: [["count"]],
+            },
+          },
+        ]);
+      });
+
+      cy.visit("/browse/metrics");
+
+      findMetric("Metric with error").should("be.visible");
+      cy.findByTestId("metric-value").should("be.empty");
+    });
+  });
+
+  describeEE("temporal metric value", () => {
+    it("should not render a temporal metric's value when the user does not have permissions to see it", () => {
+      cy.signInAsAdmin();
+      createMetrics([ORDERS_TIMESERIES_METRIC]);
+
+      setTokenFeatures("all");
+      cy.updatePermissionsGraph({
+        [ALL_USERS_GROUP_ID]: {
+          [SAMPLE_DB_ID]: {
+            "view-data": DataPermissionValue.BLOCKED,
+          },
+        },
+      });
+
+      cy.signInAsNormalUser();
+      cy.visit("/browse/metrics");
+
+      metricsTable().findByText("344").should("not.exist");
     });
   });
 });
