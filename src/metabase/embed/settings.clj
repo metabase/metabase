@@ -5,6 +5,7 @@
    [crypto.random :as crypto-random]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
@@ -71,7 +72,6 @@
 
 (defsetting embedding-app-origins-sdk
   (deferred-tru "Allow this origin to embed Metabase SDK")
-  :feature    :embedding-sdk
   :type       :string
   :export?    false
   :visibility :public
@@ -81,14 +81,17 @@
                (when (enable-embedding-sdk)
                  (add-localhost (setting/get-value-of-type :string :embedding-app-origins-sdk))))
   :setter   (fn embedding-app-origins-sdk-setter [new-value]
-              (->> new-value
-                   ignore-localhost
-                   (setting/set-value-of-type! :string :embedding-app-origins-sdk)
-                   add-localhost)))
+              (or (when (premium-features/has-feature? :embedding-sdk)
+                    (->> new-value
+                         ignore-localhost
+                         (setting/set-value-of-type! :string :embedding-app-origins-sdk)
+                         add-localhost))
+                  (add-localhost nil))))
 
 (defsetting enable-embedding-static
   (deferred-tru "Allow admins to embed Metabase via static embedding?")
   :type       :boolean
+  :feature    :embedding
   :default    false
   :visibility :authenticated
   :export?    false
