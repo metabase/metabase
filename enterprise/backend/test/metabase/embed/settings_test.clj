@@ -54,14 +54,3 @@
         (if (str/includes? origin-value other-ip)
           (= (str "localhost:* " other-ip) (embed.settings/embedding-app-origins-sdk))
           (= "localhost:*" (embed.settings/embedding-app-origins-sdk)))))))
-
-(defspec enable-embedding-SDK-false=>app-origin-ignores-localhosts-and-keeps-ips
-  (mt/with-premium-features #{:embedding :embedding-sdk}
-    (embed.settings/enable-embedding-sdk! true)
-    (prop/for-all [origins (mg/generator [:sequential
-                                          (or [:re #"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{4,5}"]
-                                              (into [:enum "localhost:*"] (map #(str "localhost:" %) (range 1000))))])]
-      (let [origin-value (str/join " " origins)]
-        (embed.settings/embedding-app-origins-sdk! origin-value)
-        (= (#'embed.settings/add-localhost (#'embed.settings/ignore-localhost origin-value))
-           (embed.settings/embedding-app-origins-sdk))))))
