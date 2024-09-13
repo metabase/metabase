@@ -114,7 +114,11 @@
   (for [recipient recipients
         :let [email (case (:type recipient)
                       :notification-recipient/user
-                      (-> recipient :user :email))]
+                      (-> recipient :user :email)
+                      :notification-recipient/group
+                      (->> recipient :permissions_group :members (map :email))
+                      :notification-recipient/external-email
+                      (-> recipient :details :email))]
         :when email]
     email))
 

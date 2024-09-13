@@ -122,7 +122,7 @@
                 schema-or-validator
                 (mc/validator schema-or-validator))
               value)
-       (throw (ex-info "Value does not match schema" {:value value :schema schema-or-validator}))
+       (throw (ex-info "Value does not match schema" {:error (explain schema-or-validator value)}))
        value)))
 
 (core/defn map-schema-assoc

@@ -6,6 +6,8 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -16,31 +18,6 @@
 (methodical/defmethod t2/table-name :model/NotificationHandler      [_model] :notification_handler)
 (methodical/defmethod t2/table-name :model/NotificationRecipient    [_model] :notification_recipient)
 
-(def notification-types
-  "Set of valid notification types."
-  #{:notification/system-event})
-
-(def ^:private subscription-types
-  #{:notification-subscription/system-event})
-
-(def ^:private notification-recipient-types
-  #{:notification-recipient/user
-    :notification-recipient/group
-    :notification-recipient/external-email})
-
-(t2/deftransforms :model/Notification
-  {:payload_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-types))})
-
-(t2/deftransforms :model/NotificationSubscription
-  {:type       (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-types))
-   :event_name (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))})
-
-(t2/deftransforms :model/NotificationHandler
-  {:channel_type (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))})
-
-(t2/deftransforms :model/NotificationRecipient
-  {:type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-recipient-types))})
-
 (doseq [model [:model/Notification
                :model/NotificationSubscription
                :model/NotificationHandler
@@ -50,6 +27,17 @@
     (derive (if (= model :model/NotificationSubscription)
               :hook/created-at-timestamped?
               :hook/timestamped?))))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                       :model/Notification                                       ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(def notification-types
+  "Set of valid notification types."
+  #{:notification/system-event})
+
+(t2/deftransforms :model/Notification
+  {:payload_type (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-types))})
 
 (methodical/defmethod t2/batched-hydrate [:model/Notification :subscriptions]
   "Batch hydration NotificationSubscriptions for a list of Notifications."
@@ -71,6 +59,25 @@
    :id
    {:default nil}))
 
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                               :model/NotificationSubscription                                   ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(def ^:private subscription-types
+  #{:notification-subscription/system-event})
+
+(t2/deftransforms :model/NotificationSubscription
+  {:type       (mi/transform-validator mi/transform-keyword (partial mi/assert-enum subscription-types))
+   :event_name (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "event"))})
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                  :model/NotificationHandler                                     ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(t2/deftransforms :model/NotificationHandler
+  {:channel_type (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))})
+
 (methodical/defmethod t2/batched-hydrate [:model/NotificationHandler :channel]
   "Batch hydration Channels for a list of NotificationHandlers"
   [_model k notification-handlers]
@@ -91,8 +98,6 @@
                       :id [:in (map :template_id notification-handlers)])
    :template_id
    {:default nil}))
-
-
 
 (methodical/defmethod t2/batched-hydrate [:model/NotificationHandler :recipients]
   "Batch hydration NotificationRecipients for a list of NotificationHandlers"
@@ -139,6 +144,60 @@
             (contains? (t2/changes instance) :template_id))
     (cross-check-channel-type-and-template-type instance)
     instance))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                   :model/NotificationRecipient                                  ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(def ^:private notification-recipient-types
+  #{:notification-recipient/user
+    :notification-recipient/group
+    :notification-recipient/external-email})
+
+(t2/deftransforms :model/NotificationRecipient
+  {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-recipient-types))
+   :details mi/transform-json})
+
+(def ^:private NotificationRecipient
+  [:merge [:map
+           [:type (into [:enum] notification-recipient-types)]
+           [:notification_handler_id ms/PositiveInt]]
+   [:multi {:dispatch :type}
+    [:notification-recipient/user
+     [:map
+      [:user_id                               ms/PositiveInt]
+      [:permissions_group_id {:optional true} [:fn nil?]]
+      [:details              {:optional true} [:fn empty?]]]]
+    [:notification-recipient/group
+     [:map
+      [:permissions_group_id                  ms/PositiveInt]
+      [:user_id              {:optional true} [:fn nil?]]
+      [:details              {:optional true} [:fn empty?]]]]
+    [:notification-recipient/external-email
+     [:map
+      [:details                               [:map {:closed true}
+                                               [:email ms/Email]]]
+      [:user_id              {:optional true} [:fn nil?]]
+      [:permissions_group_id {:optional true} [:fn nil?]]]]]])
+
+
+(defn- check-valid-recipient
+  [recipient]
+  (mu/validate-throw NotificationRecipient recipient))
+
+(t2/define-before-insert :model/NotificationRecipient
+  [instance]
+  (check-valid-recipient instance)
+  instance)
+
+(t2/define-before-update :model/NotificationRecipient
+  [instance]
+  (check-valid-recipient instance)
+  instance)
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                         Public APIs                                             ;;
+;; ------------------------------------------------------------------------------------------------;;
 
 (defn notifications-for-event
   "Find all active notifications for a given event."

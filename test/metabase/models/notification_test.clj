@@ -163,3 +163,71 @@
                                                           :template_id     (:id slack-tmpl)}]
       (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
                             (t2/update! :model/NotificationHandler (:id handler) {:template_id (:id email-tmpl)}))))))
+
+(deftest notification-recipient-types-test
+  (mt/with-temp [:model/Notification        {n-id :id}       {}
+                 :model/NotificationHandler {handler-id :id} {:notification_id n-id
+                                                              :channel_type    :channel/email}]
+    (let [insert! (fn [info]
+                    (t2/insert-returning-instance! :model/NotificationRecipient
+                                                   (merge {:notification_handler_id handler-id}
+                                                          info)))]
+      (testing "notifciation-recipient/user"
+        (testing "success with user_id"
+          (is (some? (insert! {:type :notification-recipient/user
+                               :user_id (mt/user->id :rasta)}))))
+
+        (testing "fail without user_id"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type :notification-recipient/user}))))
+        (testing "fail if has group_id"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type                 :notification-recipient/user
+                                          :user_id              (mt/user->id :rasta)
+                                          :permissions_group_id 1}))))
+        (testing "fail if has details"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type    :notification-recipient/user
+                                          :user_id (mt/user->id :rasta)
+                                          :details {:something :new}})))))
+      (testing "notifciation-recipient/group"
+        (testing "success with group_id"
+          (is (some? (insert! {:type                 :notification-recipient/group
+                               :permissions_group_id (t2/select-one-pk :model/PermissionsGroup)}))))
+
+        (testing "fail without group_id"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type :notification-recipient/group}))))
+        (testing "fail if has user_id"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type                 :notification-recipient/group
+                                          :permissions_group_id (t2/select-one-pk :model/PermissionsGroup)
+                                          :user_id              1}))))
+        (testing "fail if has details"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type                 :notification-recipient/group
+                                          :permissions_group_id (t2/select-one-pk :model/PermissionsGroup)
+                                          :details              {:something :new}})))))
+      (testing "notifciation-recipient/external-email"
+        (testing "success with email"
+          (is (some? (insert! {:type    :notification-recipient/external-email
+                               :details {:email "ngoc@metabase.com"}}))))
+
+       (testing "fail if details does not match schema"
+                 (is (thrown-with-msg? Exception #"Value does not match schema"
+                                       (insert! {:type    :notification-recipient/external-email
+                                                 :details {:email     "ngoc@metabase.com"
+                                                           :not-email true}}))))
+       (testing "fail without email"
+         (is (thrown-with-msg? Exception #"Value does not match schema"
+                               (insert! {:type :notification-recipient/external-email}))))
+       (testing "if has user_id"
+         (is (thrown-with-msg? Exception #"Value does not match schema"
+                               (insert! {:type    :notification-recipient/external-email
+                                         :user_id 1
+                                         :details {:email "ngoc@metabase.com"}}))))
+       (testing "if has permissions_group_id"
+         (is (thrown-with-msg? Exception #"Value does not match schema"
+                               (insert! {:type                 :notification-recipient/external-email
+                                         :permissions_group_id 1
+                                         :details              {:email "ngoc@metabase.com"}}))))))))
