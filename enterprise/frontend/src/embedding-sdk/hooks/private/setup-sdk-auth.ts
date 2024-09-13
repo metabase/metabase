@@ -34,7 +34,7 @@ const setupLocalApiKey = (
   dispatch(setLoginStatus({ status: "validated" }));
 };
 
-export const getAuthConfiguration = (config: SDKConfig, dispatch: Dispatch) =>
+export const setupSdkAuth = (config: SDKConfig, dispatch: Dispatch) =>
   match<[SDKConfig, string], string | void>([config, window.location.hostname])
     .with(
       [

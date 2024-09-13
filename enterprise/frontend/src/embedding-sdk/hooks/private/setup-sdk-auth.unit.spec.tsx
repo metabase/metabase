@@ -1,5 +1,5 @@
 import type { SDKConfig } from "embedding-sdk";
-import { getAuthConfiguration } from "embedding-sdk/hooks";
+import { setupSdkAuth } from "embedding-sdk/hooks";
 import {
   createMockApiKeyConfig,
   createMockJwtConfig,
@@ -12,13 +12,13 @@ const API_KEY_CONFIG = createMockApiKeyConfig();
 const setup = ({ config }: { config: SDKConfig }) => {
   const dispatch = jest.fn();
 
-  return getAuthConfiguration(config, dispatch);
+  return setupSdkAuth(config, dispatch);
 };
 
 jest.mock("metabase/lib/api");
 global.console = { ...global.console, warn: jest.fn() };
 
-describe("getAuthConfiguration", () => {
+describe("setupSdkAuth", () => {
   beforeEach(() => {
     jest.resetAllMocks();
     api.onBeforeRequest = undefined;

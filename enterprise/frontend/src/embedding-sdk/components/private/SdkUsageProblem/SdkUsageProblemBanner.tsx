@@ -71,7 +71,7 @@ export const SdkUsageProblemBanner = ({ problem }: Props) => {
               name={isError ? "warning_round_filled" : "warning"}
               size={14}
               fill={unthemedTextDark}
-              stroke={isError ? unthemedTextDark : ""}
+              stroke={isError ? unthemedTextDark : undefined}
             />
 
             <Text transform="capitalize" c={unthemedTextMedium} ff={fontFamily}>

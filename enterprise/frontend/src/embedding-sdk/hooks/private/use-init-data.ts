@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import _ from "underscore";
 
 import { getEmbeddingSdkVersion } from "embedding-sdk/config";
-import { getAuthConfiguration } from "embedding-sdk/hooks/private/get-auth-configuration";
+import { setupSdkAuth } from "embedding-sdk/hooks";
 import { COULD_NOT_AUTHENTICATE_MESSAGE } from "embedding-sdk/lib/user-warnings";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
@@ -57,7 +57,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
 
     api.basename = config.metabaseInstanceUrl;
 
-    getAuthConfiguration(config, dispatch);
+    setupSdkAuth(config, dispatch);
   }, [config, dispatch, loginStatus.status]);
 
   useEffect(() => {

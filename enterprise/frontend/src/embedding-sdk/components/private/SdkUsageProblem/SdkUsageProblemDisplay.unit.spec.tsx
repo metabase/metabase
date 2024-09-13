@@ -27,13 +27,13 @@ jest.mock("metabase/visualizations/register", () => jest.fn(() => {}));
 
 interface Options {
   config: SDKConfig;
-  tokenFeatureEnabled?: boolean;
+  hasEmbeddingFeature?: boolean;
 }
 
 const setup = (options: Options) => {
   const tokenFeatures = createMockTokenFeatures({
     // TODO: change to "embedding_sdk" once the token feature PR landed.
-    embedding: options.tokenFeatureEnabled ?? true,
+    embedding: options.hasEmbeddingFeature ?? true,
   });
 
   const settingValues = createMockSettings({ "token-features": tokenFeatures });
@@ -60,7 +60,7 @@ const PROBLEM_INDICATOR_TEST_ID = "sdk-usage-problem-indicator";
 
 describe("SdkUsageProblemDisplay", () => {
   it("does not show an error when JWT is provided with a license", () => {
-    setup({ config: createMockJwtConfig(), tokenFeatureEnabled: true });
+    setup({ config: createMockJwtConfig(), hasEmbeddingFeature: true });
 
     expect(
       screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
@@ -68,7 +68,7 @@ describe("SdkUsageProblemDisplay", () => {
   });
 
   it("shows an error when JWT is used without a license", async () => {
-    setup({ config: createMockJwtConfig(), tokenFeatureEnabled: false });
+    setup({ config: createMockJwtConfig(), hasEmbeddingFeature: false });
 
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
@@ -85,7 +85,7 @@ describe("SdkUsageProblemDisplay", () => {
   it("shows a warning when API keys are used in localhost", async () => {
     expect(window.location.origin).toBe("http://localhost");
 
-    setup({ config: createMockApiKeyConfig(), tokenFeatureEnabled: true });
+    setup({ config: createMockApiKeyConfig(), hasEmbeddingFeature: true });
 
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
 
@@ -106,7 +106,7 @@ describe("SdkUsageProblemDisplay", () => {
 
     setup({
       config: createMockApiKeyConfig(),
-      tokenFeatureEnabled: true,
+      hasEmbeddingFeature: true,
     });
 
     await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
