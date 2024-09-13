@@ -66,7 +66,7 @@
        (str/join " ")
        str/trim))
 
-(mu/defn- add-localhost [s :- [:maybe :string]] :- :string
+(mu/defn- add-localhost :- :string [s :- [:maybe :string]]
   (->> s ignore-localhost (str "localhost:* ") str/trim))
 
 (defsetting embedding-app-origins-sdk

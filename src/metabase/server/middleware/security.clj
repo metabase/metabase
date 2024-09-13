@@ -112,7 +112,6 @@
                   :manifest-src ["'self'"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
-
 (defn- content-security-policy-header-with-frame-ancestors
   [allow-iframes? nonce]
   (update (content-security-policy-header nonce)
