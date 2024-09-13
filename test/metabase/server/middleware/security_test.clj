@@ -194,7 +194,7 @@
       (is (= nil (get (mw.security/access-control-headers "http://localhost:8080") "Access-Control-Allow-Origin")))))
 
   (testing "Should work with embedding-app-origin"
-    (mt/with-premium-features #{:embedding-sdk}
+    (mt/with-premium-features #{:embedding}
       (tu/with-temporary-setting-values [enable-embedding     true
                                          embedding-app-origin "example.com"]
         (is (= "https://example.com" (get (mw.security/access-control-headers "https://example.com") "Access-Control-Allow-Origin")))))))
