@@ -12,24 +12,23 @@ export const SdkFontsGlobalStyles = ({ baseUrl }: { baseUrl: string }) => {
   const fontFiles = useSelector(getFontFiles);
 
   const fontStyles = useMemo(
-    () =>
-      css`
-        // built in fonts
-        ${defaultFontFiles({ baseUrl })}
+    () => css`
+      // built in fonts
+      ${defaultFontFiles({ baseUrl })}
 
-        // custom fonts
+      // custom fonts
       ${fontFiles?.map(
-          file => css`
-            @font-face {
-              font-family: "Custom";
-              src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
-              font-weight: ${file.fontWeight};
-              font-style: normal;
-              font-display: swap;
-            }
-          `,
-        )}
-      `,
+        file => css`
+          @font-face {
+            font-family: "Custom";
+            src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
+            font-weight: ${file.fontWeight};
+            font-style: normal;
+            font-display: swap;
+          }
+        `,
+      )}
+    `,
     [fontFiles, baseUrl],
   );
 
