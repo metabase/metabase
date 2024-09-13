@@ -1,13 +1,13 @@
 import { useWindowEvent } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePreviousDistinct } from "react-use";
+import { useDebounce, usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useListRecentsQuery } from "metabase/api";
+import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
-import { Modal } from "metabase/ui";
+import { Icon, Modal, TextInput } from "metabase/ui";
 import type {
   RecentContexts,
   RecentItem,
@@ -17,6 +17,7 @@ import type {
 } from "metabase-types/api";
 
 import { RECENTS_TAB_ID, SEARCH_TAB_ID } from "../../constants";
+import { useScopedSearchResults } from "../../hooks";
 import type {
   EntityPickerOptions,
   EntityPickerSearchScope,
@@ -28,13 +29,11 @@ import type {
 import {
   computeInitialTabId,
   getFolderModels,
-  getScopedSearchResults,
   getSearchInputPlaceholder,
   getSearchModels,
   getSearchTabText,
 } from "../../utils";
 import { RecentsTab } from "../RecentsTab";
-import { SearchInput } from "../SearchInput";
 import { SearchTab } from "../SearchTab";
 
 import { ButtonBar } from "./ButtonBar";
@@ -126,9 +125,8 @@ export function EntityPickerModal<
         refetchOnMountOrArgChange: true,
       },
     );
-  const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
-    null,
-  );
+  const searchModels = useMemo(() => getSearchModels(passedTabs), [passedTabs]);
+  const folderModels = useMemo(() => getFolderModels(passedTabs), [passedTabs]);
   const [selectedTabId, setSelectedTabId] = useState<EntityPickerTabId>("");
   const previousTabId = usePreviousDistinct(selectedTabId);
   const [tabFolderState, setTabFolderState] = useState<
@@ -140,9 +138,11 @@ export function EntityPickerModal<
         ? (previousTabId ?? selectedTabId)
         : selectedTabId
     ];
-  const scopedSearchResults = useMemo(
-    () => getScopedSearchResults(searchResults, searchScope, selectedFolder),
-    [searchResults, searchScope, selectedFolder],
+  const scopedSearchResults = useScopedSearchResults(
+    searchQuery,
+    searchModels,
+    searchScope,
+    selectedFolder,
   );
   const hydratedOptions = useMemo(
     () => ({ ...defaultOptions, ...options }),
@@ -153,8 +153,31 @@ export function EntityPickerModal<
 
   const { open } = useModalOpen();
 
-  const searchModels = useMemo(() => getSearchModels(passedTabs), [passedTabs]);
-  const folderModels = useMemo(() => getFolderModels(passedTabs), [passedTabs]);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
+
+  const { data, isFetching } = useSearchQuery(
+    {
+      q: debouncedSearchQuery,
+      models: searchModels,
+      context: "entity-picker",
+      ...searchParams,
+    },
+    {
+      skip: !debouncedSearchQuery || searchScope === "folder",
+    },
+  );
+
+  const searchResults = useMemo(() => {
+    if (isFetching || !data) {
+      return null;
+    }
+
+    return searchResultFilter ? searchResultFilter(data.data) : data.data;
+  }, [isFetching, data, searchResultFilter]);
+
+  const finalSearchResults =
+    (searchScope === "folder" ? scopedSearchResults : searchResults) ?? [];
 
   const filteredRecents = useMemo(() => {
     if (!recentItems) {
@@ -205,14 +228,14 @@ export function EntityPickerModal<
         id: SEARCH_TAB_ID,
         model: null,
         folderModels: [],
-        displayName: getSearchTabText(scopedSearchResults, searchQuery),
+        displayName: getSearchTabText(finalSearchResults, searchQuery),
         icon: "search",
         render: ({ onItemSelect }) => (
           <SearchTab
             folder={selectedFolder}
-            isLoading={searchResults == null}
+            isLoading={isFetching}
             searchScope={searchScope}
-            searchResults={scopedSearchResults}
+            searchResults={finalSearchResults}
             selectedItem={selectedItem}
             onItemSelect={onItemSelect}
             onSearchScopeChange={setSearchScope}
@@ -316,14 +339,14 @@ export function EntityPickerModal<
           <GrowFlex justify="space-between">
             <Modal.Title lh="2.5rem">{title}</Modal.Title>
             {hydratedOptions.showSearch && (
-              <SearchInput
-                models={searchModels}
+              <TextInput
+                type="search"
+                icon={<Icon name="search" size={16} />}
+                miw={400}
+                mr="2rem"
                 placeholder={getSearchInputPlaceholder(selectedFolder)}
-                setSearchResults={setSearchResults}
-                searchQuery={searchQuery}
-                setSearchQuery={handleQueryChange}
-                searchFilter={searchResultFilter}
-                searchParams={searchParams}
+                value={searchQuery}
+                onChange={e => handleQueryChange(e.target.value ?? "")}
               />
             )}
           </GrowFlex>

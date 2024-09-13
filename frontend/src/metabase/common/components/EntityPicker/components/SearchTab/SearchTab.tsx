@@ -4,6 +4,7 @@ import { Box, Flex, SegmentedControl, Stack, Text } from "metabase/ui";
 import type { SearchResult, SearchResultId } from "metabase-types/api";
 
 import type { EntityPickerSearchScope, TypeWithModel } from "../../types";
+import { isSchemaItem } from "../../utils";
 import { DelayedLoadingSpinner } from "../LoadingSpinner";
 
 import { SearchResults } from "./SearchResults";
@@ -47,7 +48,10 @@ export const SearchTab = <
             <SegmentedControl
               data={[
                 { label: t`Everywhere`, value: "everywhere" as const },
-                { label: `“${folder.name}”`, value: "folder" as const },
+                {
+                  label: `“${getFolderName(folder)}”`,
+                  value: "folder" as const,
+                },
               ]}
               value={searchScope}
               onChange={value =>
@@ -82,4 +86,18 @@ export const SearchTab = <
       </Box>
     </Stack>
   );
+};
+
+const getFolderName = <
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>(
+  folder: Item,
+) => {
+  if (isSchemaItem(folder) && !folder.name) {
+    return folder.dbName;
+  }
+
+  return folder.name;
 };

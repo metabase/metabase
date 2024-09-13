@@ -83,8 +83,14 @@ export const TablePicker = ({
   );
 
   const selectedSchemaItem = useMemo(
-    () => getSchemaItem(schemaName),
-    [schemaName],
+    () =>
+      getSchemaItem(
+        dbId,
+        selectedDbItem?.name,
+        schemaName,
+        schemas?.length === 1,
+      ),
+    [dbId, selectedDbItem, schemaName, schemas],
   );
 
   const selectedTableItem = useMemo(
@@ -121,9 +127,14 @@ export const TablePicker = ({
       if (folder.model === "schema") {
         const newPath: TablePickerStatePath = [dbId, folder.id, undefined];
         setSchemaName(folder.id);
-        onItemSelect(
-          selectedDbItem && schemas?.length === 1 ? selectedDbItem : folder,
-        );
+        onItemSelect({
+          ...folder,
+          name:
+            // use database name if there is only 1 schema, as user won't even see the schema in the UI
+            selectedDbItem && schemas?.length === 1
+              ? selectedDbItem.name
+              : folder.name,
+        });
         onPathChange(newPath);
       }
 
@@ -145,22 +156,64 @@ export const TablePicker = ({
   const handleFolderSelectRef = useLatest(handleFolderSelect);
 
   useEffect(
-    function ensureFolderSelected() {
-      if (initialDbId == null && databases && databases.length > 0) {
+    function ensureDbSelected() {
+      const hasDbs = !isLoadingDatabases && databases && databases.length > 0;
+
+      if (hasDbs && !selectedDbItem) {
         const firstDatabase = databases[0];
+        const item = getDbItem(databases, firstDatabase.id);
 
-        handleFolderSelectRef.current({
-          id: firstDatabase.id,
-          model: "database",
-          name: firstDatabase.name,
-        });
+        if (item) {
+          handleFolderSelectRef.current(item);
+        }
       }
+    },
+    [
+      dbId,
+      isLoadingDatabases,
+      databases,
+      handleFolderSelectRef,
+      selectedDbItem,
+    ],
+  );
 
+  useEffect(
+    function ensureSchemaSelected() {
+      const hasSchemas = !isLoadingSchemas && schemas && schemas.length > 0;
+
+      if (hasSchemas && !selectedSchemaItem) {
+        const firstSchema = schemas[0];
+        const item = getSchemaItem(
+          dbId,
+          selectedDbItem?.name,
+          firstSchema,
+          schemas.length === 1,
+        );
+
+        if (item) {
+          handleFolderSelectRef.current(item);
+        }
+      }
+    },
+    [
+      dbId,
+      selectedDbItem,
+      isLoadingSchemas,
+      schemas,
+      handleFolderSelectRef,
+      selectedSchemaItem,
+    ],
+  );
+
+  useEffect(
+    function ensureFolderSelected() {
       if (initialDbId != null) {
-        const item =
-          initialSchemaId == null || schemas?.length === 1
-            ? getDbItem(databases, initialDbId)
-            : getSchemaItem(initialSchemaId);
+        const item = getSchemaItem(
+          initialDbId,
+          selectedDbItem?.name,
+          initialSchemaId,
+          schemas?.length === 1,
+        );
 
         if (item) {
           onItemSelectRef.current(item);
@@ -170,7 +223,7 @@ export const TablePicker = ({
     [
       databases,
       schemas,
-      handleFolderSelectRef,
+      selectedDbItem,
       onItemSelectRef,
       initialDbId,
       initialSchemaId,
@@ -202,6 +255,8 @@ export const TablePicker = ({
 
         {isNotNull(dbId) && (
           <SchemaList
+            dbId={dbId}
+            dbName={selectedDbItem?.name}
             error={errorSchemas}
             isCurrentLevel={!tableId}
             isLoading={isLoadingSchemas}
