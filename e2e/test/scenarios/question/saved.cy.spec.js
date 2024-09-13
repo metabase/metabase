@@ -250,35 +250,26 @@ describe("scenarios > question > saved", () => {
     cy.signIn("readonly");
     visitQuestion(ORDERS_QUESTION_ID);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tax")
-      .closest(".test-TableInteractive-headerCellData")
+    cy.findAllByTestId("header-cell")
+      .filter(":contains(Tax)")
       .as("headerCell")
       .then($cell => {
         const originalWidth = $cell[0].getBoundingClientRect().width;
-
-        // Retries the assertion a few times to ensure it waits for DOM changes
-        // More context: https://github.com/metabase/metabase/pull/21823#discussion_r855302036
-        function assertColumnResized(attempt = 0) {
-          cy.get("@headerCell").then($newCell => {
-            const newWidth = $newCell[0].getBoundingClientRect().width;
-            if (newWidth === originalWidth && attempt < 3) {
-              cy.wait(100);
-              assertColumnResized(++attempt);
-            } else {
-              expect(newWidth).to.be.gt(originalWidth);
-            }
-          });
-        }
-
-        cy.wrap($cell)
-          .find(".react-draggable")
-          .trigger("mousedown", 0, 0, { force: true })
-          .trigger("mousemove", 100, 0, { force: true })
-          .trigger("mouseup", 100, 0, { force: true });
-
-        assertColumnResized();
+        cy.wrap(originalWidth).as("originalWidth");
       });
+
+    cy.get("@headerCell")
+      .find(".react-draggable")
+      .trigger("mousedown", { which: 1 })
+      .trigger("mousemove", { clientX: 100, clientY: 0 })
+      .trigger("mouseup", { force: true });
+
+    cy.get("@originalWidth").then(originalWidth => {
+      cy.get("@headerCell").should($newCell => {
+        const newWidth = $newCell[0].getBoundingClientRect().width;
+        expect(newWidth).to.be.gt(originalWidth);
+      });
+    });
   });
 
   it("should always be possible to view the full title text of the saved question", () => {
