@@ -4,7 +4,7 @@ import { Provider } from "react-redux";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import {
-  EMBEDDING_SDK_PORTAL_CONTAINER_ELEMENT_ID,
+  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
   EMBEDDING_SDK_ROOT_ELEMENT_ID,
 } from "embedding-sdk/config";
 import { useInitData } from "embedding-sdk/hooks";
@@ -111,6 +111,6 @@ export const MetabaseProvider = memo(function MetabaseProvider(
  */
 const PortalContainer = () => (
   <PublicComponentWrapper>
-    <div id={EMBEDDING_SDK_PORTAL_CONTAINER_ELEMENT_ID}></div>
+    <div id={EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}></div>
   </PublicComponentWrapper>
 );
