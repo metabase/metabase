@@ -1,11 +1,12 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/metrics_bot.svg";
 import { skipToken } from "metabase/api";
-import { useHasTokenFeature } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import EmptyState from "metabase/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
@@ -20,8 +21,11 @@ import {
 } from "./BrowseContainer.styled";
 import { MetricsTable } from "./MetricsTable";
 
-const { MetricFilterControls, useMetricFilterSettings } =
-  PLUGIN_CONTENT_VERIFICATION;
+const {
+  contentVerificationEnabled,
+  MetricFilterControls,
+  getDefaultMetricFilters,
+} = PLUGIN_CONTENT_VERIFICATION;
 
 export function BrowseMetrics() {
   const [metricFilters, setMetricFilters] = useMetricFilterSettings();
@@ -100,11 +104,14 @@ function MetricsEmptyState() {
   );
 }
 
-function useHasVerifiedMetrics() {
-  const hasVerification = useHasTokenFeature("content_verification");
+function useMetricFilterSettings() {
+  const defaultMetricFilters = useSelector(getDefaultMetricFilters);
+  return useState(defaultMetricFilters);
+}
 
+function useHasVerifiedMetrics() {
   const result = useFetchMetrics(
-    hasVerification
+    contentVerificationEnabled
       ? {
           filter_items_in_personal_collection: "exclude",
           model_ancestors: false,
@@ -114,7 +121,7 @@ function useHasVerifiedMetrics() {
       : skipToken,
   );
 
-  if (!hasVerification) {
+  if (!contentVerificationEnabled) {
     return {
       isLoading: false,
       error: null,
@@ -134,10 +141,7 @@ function useHasVerifiedMetrics() {
 function useFilteredMetrics(metricFilters: MetricFilterSettings) {
   const hasVerifiedMetrics = useHasVerifiedMetrics();
 
-  const filters = { ...metricFilters };
-  if (!hasVerifiedMetrics.result) {
-    delete filters.verified;
-  }
+  const filters = cleanMetricFilters(metricFilters, hasVerifiedMetrics.result);
 
   const metricsResult = useFetchMetrics(
     hasVerifiedMetrics.isLoading || hasVerifiedMetrics.error
@@ -159,4 +163,17 @@ function useFilteredMetrics(metricFilters: MetricFilterSettings) {
     hasVerifiedMetrics: hasVerifiedMetrics.result,
     metrics,
   };
+}
+
+function cleanMetricFilters(
+  metricFilters: MetricFilterSettings,
+  hasVerifiedMetrics: boolean,
+) {
+  const filters = { ...metricFilters };
+  if (!hasVerifiedMetrics || !filters.verified) {
+    // we cannot pass false or undefined to the backend
+    // delete the key instead
+    delete filters.verified;
+  }
+  return filters;
 }

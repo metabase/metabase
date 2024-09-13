@@ -521,13 +521,11 @@ export const PLUGIN_CONTENT_VERIFICATION = {
       Dispatch<SetStateAction<ActualModelFilters>>,
     ],
 
-  MetricFilterControls: (() =>
-    null) as ComponentType<MetricFilterControlsProps>,
-  useMetricFilterSettings: () =>
-    [{}, _.noop] as [
-      MetricFilterSettings,
-      (settings: MetricFilterSettings) => void,
-    ],
+  contentVerificationEnabled: false,
+  getDefaultMetricFilters: (_state: State): MetricFilterSettings => ({
+    verified: false,
+  }),
+  MetricFilterControls: (_props: MetricFilterControlsProps) => null,
 };
 
 export const PLUGIN_DASHBOARD_HEADER = {
