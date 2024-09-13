@@ -213,6 +213,13 @@ export function provideModelIndexListTags(
   ];
 }
 
+export function provideModeratedItemTags(
+  itemType: TagType,
+  itemId: number,
+): TagDescription<TagType>[] {
+  return [idTag(itemType, itemId)];
+}
+
 export function provideChannelTags(
   channel: NotificationChannel,
 ): TagDescription<TagType>[] {
