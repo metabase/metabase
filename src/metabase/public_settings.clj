@@ -459,7 +459,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting login-page-illustration
   (deferred-tru "Options for displaying the illustration on the login page.")
-  :visibility :authenticated
+  :visibility :public
   :export?    true
   :type       :string
   :audit      :getter
@@ -468,7 +468,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting login-page-illustration-custom
   (deferred-tru "The custom illustration for the login page.")
-  :visibility :authenticated
+  :visibility :public
   :export?    true
   :type       :string
   :audit      :getter
