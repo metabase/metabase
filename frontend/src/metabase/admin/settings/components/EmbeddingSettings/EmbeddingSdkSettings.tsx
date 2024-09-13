@@ -204,7 +204,7 @@ export function EmbeddingSdkSettings({
             <Button
               compact
               variant="outline"
-              leftIcon={<Icon size={12} name="mail" />}
+              leftIcon={<Icon size={12} name="mail" aria-hidden />}
               component={ExternalLink}
               fz="0.75rem"
               href="mailto:help@metabase.com"
