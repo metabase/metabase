@@ -625,7 +625,5 @@
   ;; [path to table "fields" "field-name___fieldvalues"] since there's zero or one FieldValues per Field, and Fields
   ;; don't have their own directories.
   (let [hierarchy    (serdes/path fv)
-        field        (last (drop-last hierarchy))
-        table-prefix (serdes/storage-table-path-prefix (drop-last 2 hierarchy))]
-    (concat table-prefix
-            ["fields" (str (:id field) field-values-slug)])))
+        field-path   (serdes/storage-path-prefixes (drop-last hierarchy))]
+    (update field-path (dec (count field-path)) str field-values-slug)))
