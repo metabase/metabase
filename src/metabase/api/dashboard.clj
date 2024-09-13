@@ -624,13 +624,12 @@
     dashboard-cards))
 
 (defn- assert-no-invalid-dashboard-internal-dashcards [dashboard to-create]
-  (api/check-400 (not
-                  (seq
-                   (->> to-create
-                        ;; FIXME: this isn't the right check, we don't have a `:card` on the new dashcards.
-                        (map :card)
-                        (keep :dashboard_id)
-                        (remove #(= % (u/the-id dashboard))))))))
+  (when-let [card-ids (seq (keep :card_id to-create))]
+    (api/check-400 (not (t2/exists? :model/Card
+                         {:where [:and
+                                  [:not= :dashboard_id (u/the-id dashboard)]
+                                  [:not= :dashboard_id nil]
+                                  [:in :id card-ids]]})))))
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]

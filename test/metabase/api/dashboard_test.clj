@@ -4878,11 +4878,11 @@
   ;; - another dashboard in the root collection
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}
-                 :model/Dashboard {_other-dash-id :id} {}
+                 :model/Dashboard {other-dash-id :id} {}
                  :model/Card {card-id :id} {:dashboard_id dash-id}
                  :model/DashboardCard {_dashcard-id :id} {:card_id card-id
                                                           :dashboard_id dash-id}]
-    #_(testing "Cannot add a dashboard internal card to another dashboard"
+    (testing "Cannot add a dashboard internal card to another dashboard"
         (mt/user-http-request :crowberto :put 400 (str "dashboard/" other-dash-id)
                               {:dashcards [{:id -1
                                             :size_x 1
