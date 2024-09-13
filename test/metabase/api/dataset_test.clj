@@ -232,71 +232,70 @@
 
 (deftest native-query-with-truncated-column-alias
   (testing "nested native query with long truncated column alias (metabase#47584)"
-    (mt/with-temp-copy-of-db
-      (let [short-col-name "coun"
-            long-col-name  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+    (let [short-col-name "coun"
+          long-col-name  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
 
-            ;; Lightly validate the native form that comes back. Resist the urge to check for exact equality.
-            validate-native-form (fn [native-form-lines]
-                                   (and (some #(str/includes? % short-col-name) native-form-lines)
-                                        (some #(str/includes? % long-col-name) native-form-lines)))
+          ;; Lightly validate the native form that comes back. Resist the urge to check for exact equality.
+          validate-native-form (fn [native-form-lines]
+                                 (and (some #(str/includes? % short-col-name) native-form-lines)
+                                      (some #(str/includes? % long-col-name) native-form-lines)))
 
-            ;; Disable truncate-alias when compiling the native query to ensure we don't truncate the column.
-            ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
-            native-sub-query (with-redefs [lib.util/truncate-alias
-                                           (fn mock-truncate-alias
-                                             [ss & _] ss)]
-                               (-> (mt/mbql-query people
-                                     {:source-table $$people
-                                      :aggregation  [[:aggregation-options [:count] {:name short-col-name}]]
-                                      :breakout     [[:field %state {:name long-col-name}]]
-                                      :limit        5})
-                                   qp.compile/compile
-                                   :query))
+          ;; Disable truncate-alias when compiling the native query to ensure we don't truncate the column.
+          ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
+          native-sub-query (with-redefs [lib.util/truncate-alias
+                                         (fn mock-truncate-alias
+                                           [ss & _] ss)]
+                             (-> (mt/mbql-query people
+                                   {:source-table $$people
+                                    :aggregation  [[:aggregation-options [:count] {:name short-col-name}]]
+                                    :breakout     [[:field %state {:name long-col-name}]]
+                                    :limit        5})
+                                 qp.compile/compile
+                                 :query))
 
-            native-query (mt/native-query {:query native-sub-query})
+          native-query (mt/native-query {:query native-sub-query})
 
-            ;; Let metadata-provider-with-cards-with-metadata-for-queries calculate the result-metadata.
-            metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])]
-        (t2.with-temp/with-temp
-          [Card card (assoc {:dataset_query native-query}
-                            :result_metadata
-                            (-> (lib.metadata.protocols/metadatas metadata-provider :metadata/card [1])
-                                first
-                                :result-metadata))]
-          (let [card-query {:database (mt/id)
-                            :type     "query"
-                            :query    {:source-table (str "card__" (u/the-id card))}}]
-            (mt/with-native-query-testing-context card-query
-              (testing "POST /api/dataset/native"
-                (is (=? {:query  validate-native-form
-                         :params nil}
-                        (-> (mt/user-http-request :crowberto :post 200 "dataset/native" card-query)
-                            (update :query #(str/split-lines (or (driver/prettify-native-form :h2 %)
-                                                                 "error: no query generated")))))))
-              (testing "POST /api/dataset"
-                (is (=?
-                     {:data        {:rows             [["AK" 68] ["AL" 56] ["AR" 49] ["AZ" 20] ["CA" 90]]
-                                    :cols             [{:name         long-col-name
-                                                        :display_name long-col-name
-                                                        :field_ref    ["field" long-col-name {}]
-                                                        :source       "fields"}
-                                                       {:name         short-col-name
-                                                        :display_name short-col-name
-                                                        :field_ref    ["field" short-col-name {}]
-                                                        :source       "fields"}]
-                                    :native_form      {:query  validate-native-form
-                                                       :params nil}
-                                    :results_timezone "UTC"}
-                      :row_count   5
-                      :status      "completed"
-                      :context     "ad-hoc"
-                      :json_query  (merge query-defaults card-query)
-                      :database_id (mt/id)}
-                     (-> (mt/user-http-request :crowberto :post 202 "dataset" card-query)
-                         (update-in [:data :native_form :query]
-                                    #(str/split-lines (or (driver/prettify-native-form :h2 %)
-                                                          "error: no query generated"))))))))))))))
+          ;; Let metadata-provider-with-cards-with-metadata-for-queries calculate the result-metadata.
+          metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])]
+      (t2.with-temp/with-temp
+        [Card card (assoc {:dataset_query native-query}
+                          :result_metadata
+                          (-> (lib.metadata.protocols/metadatas metadata-provider :metadata/card [1])
+                              first
+                              :result-metadata))]
+        (let [card-query {:database (mt/id)
+                          :type     "query"
+                          :query    {:source-table (str "card__" (u/the-id card))}}]
+          (mt/with-native-query-testing-context card-query
+            (testing "POST /api/dataset/native"
+              (is (=? {:query  validate-native-form
+                       :params nil}
+                      (-> (mt/user-http-request :crowberto :post 200 "dataset/native" card-query)
+                          (update :query #(str/split-lines (or (driver/prettify-native-form :h2 %)
+                                                               "error: no query generated")))))))
+            (testing "POST /api/dataset"
+              (is (=?
+                   {:data        {:rows             [["AK" 68] ["AL" 56] ["AR" 49] ["AZ" 20] ["CA" 90]]
+                                  :cols             [{:name         long-col-name
+                                                      :display_name long-col-name
+                                                      :field_ref    ["field" long-col-name {}]
+                                                      :source       "fields"}
+                                                     {:name         short-col-name
+                                                      :display_name short-col-name
+                                                      :field_ref    ["field" short-col-name {}]
+                                                      :source       "fields"}]
+                                  :native_form      {:query  validate-native-form
+                                                     :params nil}
+                                  :results_timezone "UTC"}
+                    :row_count   5
+                    :status      "completed"
+                    :context     "ad-hoc"
+                    :json_query  (merge query-defaults card-query)
+                    :database_id (mt/id)}
+                   (-> (mt/user-http-request :crowberto :post 202 "dataset" card-query)
+                       (update-in [:data :native_form :query]
+                                  #(str/split-lines (or (driver/prettify-native-form :h2 %)
+                                                        "error: no query generated")))))))))))))
 
 (deftest formatted-results-ignore-query-constraints
   (testing "POST /api/dataset/:format"
