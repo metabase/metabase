@@ -234,6 +234,12 @@
                              [:and
                               [:= :bookmark.card_id :card.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
+      (sql.helpers/where [:or
+                          [:= nil :card.dashboard_id]
+                          [:exists
+                           {:select 1
+                            :from [:report_dashboardcard]
+                            :where [:= :card_id :card.id]}]])
       (add-collection-join-and-where-clauses "card" search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
       (with-last-editing-info "card")
