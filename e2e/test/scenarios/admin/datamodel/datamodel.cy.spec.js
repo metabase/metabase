@@ -813,7 +813,9 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.wait(["@metadata", "@metadata", "@metadata"]);
 
       cy.get("@emptyStateMessage").should("not.exist");
-      cy.findByRole("heading", { name: "Foo" }).should("be.visible");
+      cy.findByTestId("data-reference-list-item")
+        .findByText("Foo")
+        .should("be.visible");
     });
 
     it("should update that segment", () => {
