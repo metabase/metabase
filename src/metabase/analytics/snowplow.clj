@@ -215,7 +215,7 @@
    (track-event! schema data api/*current-user-id*))
 
   ([schema :- SnowplowSchema data user-id]
-   (when (snowplow-enabled)
+   (when true #_(snowplow-enabled)
      (try
        (let [^SelfDescribing$Builder2 builder (-> (. SelfDescribing builder)
                                                   (.eventData (payload schema (schema->version schema) data))

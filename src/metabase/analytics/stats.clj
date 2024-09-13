@@ -503,27 +503,30 @@
 
 (defn- sufficient-users?
   "Returns a Boolean indicating whether the number of non-internal users created within `activation-days` is greater
-  than `num-users`"
+  than or equal to `num-users`"
   [num-users]
   (let [users-in-activation-period
         (t2/count :model/User {:where [:and
-                                       [:not= :id config/internal-mb-user-id]
                                        [:<=
                                         :date_joined
                                         (t/plus (t/offset-date-time (setting/get :instance-creation))
-                                                (t/days activation-days))]]
+                                                (t/days activation-days))]
+                                       (mi/exclude-internal-content-hsql :model/User)]
                                :limit (inc num-users)})]
-    (> (count users-in-activation-period) num-users)))
+    (>= users-in-activation-period num-users)))
 
 (defn- sufficient-queries?
-  "Returns a Boolean indicating whether the number of queries recorded over non-sample content is greater than
-  `num-queries`"
+  "Returns a Boolean indicating whether the number of queries recorded over non-sample content is greater than or equal
+  to `num-queries`"
   [num-queries]
   (let [sample-db-id (t2/select-one-pk :model/Database :is_sample true)
+        ;; QueryExecution can be large, so let's avoid counting everything
         queries      (t2/select-fn-set :id :model/QueryExecution
-                                       {:where [:not= :database_id sample-db-id]
+                                       {:where [:or
+                                                [:not= :database_id sample-db-id]
+                                                [:= :database_id nil]]
                                         :limit (inc num-queries)})]
-    (> (count queries) num-queries)))
+    (>= (count queries) num-queries)))
 
 (defn- completed-activation-signals?
   "If the current plan is Pro or Starter, returns a Boolean indicating whether the instance should be considered to have
@@ -534,10 +537,10 @@
         starter? (str/starts-with? plan "starter")]
     (cond
       pro?
-      (or (sufficient-users? 3) (sufficient-queries? 200))
+      (or (sufficient-users? 4) (sufficient-queries? 201))
 
       starter?
-      (or (sufficient-users? 1) (sufficient-queries? 100))
+      (or (sufficient-users? 2) (sufficient-queries? 101))
 
       :else
       nil)))
@@ -668,12 +671,8 @@
           :available (premium-features/enable-cache-granular-controls?)
           :enabled   (t2/exists? :model/CacheConfig)}
          {:name      :attached_dwh
-          :available (and (premium-features/has-attached-dwh?)
-                          (>= (config/current-major-version) 50))
-          :enabled   (t2/exists? :model/CacheConfig)}
-         {:name      :auto_cleanup ;; TODO: is this the right key?
-          :available (premium-features/enable-collection-cleanup?)
-          :enabled   true}
+          :available (premium-features/has-attached-dwh?)
+          :enabled   (premium-features/has-attached-dwh?)}
          {:name      :config_text_file
           :available (premium-features/enable-config-text-file?)
           :enabled   (some? (get env/env :mb-config-file-path))}

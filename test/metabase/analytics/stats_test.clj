@@ -370,3 +370,22 @@
                 :public             {}
                 :embedded           {}}
                (#'stats/dashboard-metrics)))))))
+
+(deftest activation-signals-test
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? true)
+
+    (testing "sufficient-users? correctly counts the number of users within three days of instance creation"
+      (is (false? (@#'stats/sufficient-users? 1)))
+
+      (mt/with-temp [:model/User _ {:date_joined
+                                    (t/plus (t/offset-date-time) (t/days 4))}]
+        (is (false? (@#'stats/sufficient-users? 1))))
+
+      (mt/with-temp [:model/User _ {:date_joined (t/offset-date-time)}]
+        (is (true? (@#'stats/sufficient-users? 1)))))
+
+    (testing "sufficient-queries? correctly counts the number of queries"
+      (is (false? (@#'stats/sufficient-queries? 1)))
+      (mt/with-temp [:model/QueryExecution _ query-execution-defaults]
+        (is (true? (@#'stats/sufficient-queries? 1)))))))
