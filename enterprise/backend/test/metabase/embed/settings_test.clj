@@ -59,6 +59,6 @@
                                             (into [:enum "localhost:*"] (map #(str "localhost:" %) (range 1000))))])]
     (let [origin-value (str/join " " origins)]
       (embed.settings/enable-embedding-sdk! true)
-      (embed.settings/embedding-app-origins-sdk! #p origin-value)
+      (embed.settings/embedding-app-origins-sdk! origin-value)
       (=(#'embed.settings/add-localhost (#'embed.settings/ignore-localhost origin-value))
           (embed.settings/embedding-app-origins-sdk)))))
