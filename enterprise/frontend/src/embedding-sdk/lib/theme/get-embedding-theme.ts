@@ -26,7 +26,7 @@ const SDK_BASE_FONT_SIZE = `${DEFAULT_SDK_FONT_SIZE}px`;
  */
 export function getEmbeddingThemeOverride(
   theme: MetabaseTheme,
-  font?: string,
+  font: string | undefined,
 ): MantineThemeOverride {
   const components: MetabaseComponentTheme = merge(
     DEFAULT_EMBEDDED_COMPONENT_THEME,
