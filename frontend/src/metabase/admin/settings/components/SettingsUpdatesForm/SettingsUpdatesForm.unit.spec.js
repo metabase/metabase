@@ -51,17 +51,17 @@ function setup({
 }
 
 describe("SettingsUpdatesForm", () => {
-  it("shows custom message for Cloud installations", () => {
+  it("shows custom message for Cloud installations", async () => {
     setup({ isHosted: true });
     expect(
-      screen.getByText(/Metabase Cloud keeps your instance up-to-date/),
+      await screen.findByText(/Metabase Cloud keeps your instance up-to-date/),
     ).toBeInTheDocument();
   });
 
-  it("shows correct message when latest version is installed", () => {
+  it("shows correct message when latest version is installed", async () => {
     setup({ currentVersion: "v1.0.0", latestVersion: "v1.0.0" });
     expect(
-      screen.getByText(/You're running Metabase 1.0.0/),
+      await screen.findByText(/You're running Metabase 1.0.0/),
     ).toBeInTheDocument();
   });
 

@@ -22,32 +22,33 @@ export const AdHocQuestionDescription = ({
     aggregations.length === 0
       ? null
       : aggregations.length > 2
-      ? ngettext(
-          msgid`${aggregations.length} metric`,
-          `${aggregations.length} metrics`,
-          aggregations.length,
-        )
-      : aggregations
-          .map(
-            aggregation =>
-              Lib.displayInfo(query, STAGE_INDEX, aggregation).longDisplayName,
+        ? ngettext(
+            msgid`${aggregations.length} metric`,
+            `${aggregations.length} metrics`,
+            aggregations.length,
           )
-          .join(t` and `);
+        : aggregations
+            .map(
+              aggregation =>
+                Lib.displayInfo(query, STAGE_INDEX, aggregation)
+                  .longDisplayName,
+            )
+            .join(t` and `);
   const breakoutDescription =
     breakouts.length === 0
       ? null
       : breakouts.length > 2
-      ? ngettext(
-          msgid`${breakouts.length} breakout`,
-          `${breakouts.length} breakouts`,
-          breakouts.length,
-        )
-      : breakouts
-          .map(
-            breakout =>
-              Lib.displayInfo(query, STAGE_INDEX, breakout).longDisplayName,
+        ? ngettext(
+            msgid`${breakouts.length} breakout`,
+            `${breakouts.length} breakouts`,
+            breakouts.length,
           )
-          .join(t` and `);
+        : breakouts
+            .map(
+              breakout =>
+                Lib.displayInfo(query, STAGE_INDEX, breakout).longDisplayName,
+            )
+            .join(t` and `);
 
   if (aggregationDescription || breakoutDescription) {
     return (

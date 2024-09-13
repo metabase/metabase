@@ -51,8 +51,8 @@ export const getDataPickerValue = (
       model: displayInfo.isModel
         ? "dataset"
         : displayInfo.isMetric
-        ? "metric"
-        : "card",
+          ? "metric"
+          : "card",
     };
   }
 

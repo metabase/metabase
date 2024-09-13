@@ -54,6 +54,13 @@ export function stageCount(query: Query): number {
   return ML.stage_count(query);
 }
 
+export function stageIndexes(query: Query): number[] {
+  return Array.from(
+    { length: stageCount(query) },
+    (_, stageIndex) => stageIndex,
+  );
+}
+
 export const hasClauses = (query: Query, stageIndex: number): boolean => {
   return ML.has_clauses(query, stageIndex);
 };

@@ -170,7 +170,7 @@ export const tokenFeatures = [
   "query_reference_validation",
 ] as const;
 
-export type TokenFeature = typeof tokenFeatures[number];
+export type TokenFeature = (typeof tokenFeatures)[number];
 export type TokenFeatures = Record<TokenFeature, boolean>;
 
 export type PasswordComplexity = {
@@ -246,6 +246,7 @@ interface AdminSettings {
   "premium-embedding-token": string | null;
   "saml-configured"?: boolean;
   "saml-enabled"?: boolean;
+  "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
   "version-info": VersionInfo | null;
