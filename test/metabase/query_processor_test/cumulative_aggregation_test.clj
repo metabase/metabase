@@ -398,3 +398,33 @@
                  (mt/formatted-rows
                   [->local-date str int int]
                   (qp/process-query query)))))))))
+
+(deftest ^:parallel cumulative-sum-ordered-by-aggregation-expression-test
+  (testing "Ordering by an expression used in cumulative sum works as expected (#47613)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            orders            (lib.metadata/table metadata-provider (mt/id :orders))
+            orders-subtotal   (lib.metadata/field metadata-provider (mt/id :orders :subtotal))
+            products-category (m/find-first (fn [col]
+                                              (= (:id col) (mt/id :products :category)))
+                                            (lib/visible-columns (lib/query metadata-provider orders)))
+            _                 (assert (some? products-category))
+            base-query        (-> (lib/query metadata-provider orders)
+                                  (lib/breakout products-category)
+                                  (lib/aggregate (lib/sum orders-subtotal))
+                                  (lib/aggregate (lib/cum-sum orders-subtotal)))
+            sum-subtotal      (m/find-first (fn [col]
+                                              (= (:display-name col) "Sum of Subtotal"))
+                                            (lib/returned-columns base-query))
+            _                 (assert (some? sum-subtotal))
+            query             (-> base-query
+                                  (lib/order-by sum-subtotal :desc)
+                                  (assoc-in [:middleware :format-rows?] false))]
+        (mt/with-native-query-testing-context query
+          (is (= [["Widget"    406109.05  406109.05]
+                  ["Gadget"    389812.65  795921.7]
+                  ["Gizmo"     367220.16 1163141.86]
+                  ["Doohickey" 285042.38 1448184.24]]
+                 (mt/formatted-rows
+                  [str 2.0 2.0]
+                  (qp/process-query query)))))))))
