@@ -93,6 +93,7 @@
    :template_id
    {:default nil}))
 
+(methodical/defmethod t2/model-for-automagic-hydration [:model/NotificationRecipient :group] [_original-model _k] :model/PermissionsGroup)
 (methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration [:model/NotificationRecipient :group :default]
   [_original-model _dest-key _hydrating-model]
   [:permissions_group_id])

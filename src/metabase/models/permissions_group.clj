@@ -27,7 +27,6 @@
   :model/PermissionsGroup)
 
 (methodical/defmethod t2/table-name :model/PermissionsGroup [_model] :permissions_group)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :group] [_original-model _k] :model/PermissionsGroup)
 
 (doto :model/PermissionsGroup
   (derive :metabase/model)
