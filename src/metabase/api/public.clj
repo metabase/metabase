@@ -309,11 +309,13 @@
 (api/defendpoint POST ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
                        :export-format api.dataset/export-format-regex]
   "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the export formats. Does not require auth credentials. Public sharing must be enabled."
-  [uuid card-id dashcard-id parameters export-format :as {{:keys [format-rows pivot-results]} :body}]
+  [uuid card-id dashcard-id parameters export-format :as {{:keys [format_rows pivot_results]} :params}]
   {uuid          ms/UUIDString
    dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
+   format_rows   [:maybe ms/BooleanValue]
+   pivot_results [:maybe ms/BooleanValue]
    export-format (into [:enum] api.dataset/export-formats)}
   (validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
@@ -326,8 +328,8 @@
               :parameters    parameters
               :constraints   nil
               :middleware    {:process-viz-settings? true
-                              :format-rows?          (boolean format-rows)
-                              :pivot?                (boolean pivot-results)}))))
+                              :format-rows?          (or format_rows false)
+                              :pivot?                (or pivot_results false)}))))
 
 (api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."

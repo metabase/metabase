@@ -52,8 +52,8 @@
   [{:keys [id] :as _card} {:keys [export-format format-rows pivot]}]
   (->> (mt/user-http-request :crowberto :post 200
                              (format "card/%d/query/%s" id (name export-format))
-                             {:format-rows   format-rows
-                              :pivot-results pivot})
+                             :format_rows   format-rows
+                             :pivot_results pivot)
        (process-results export-format)))
 
 (defn- unsaved-card-download
@@ -90,8 +90,8 @@
                                 dashboard-id :dashboard_id}]
             (->> (mt/user-http-request :crowberto :post 200
                                        (format "dashboard/%d/dashcard/%d/card/%d/query/%s" dashboard-id dashcard-id card-id (name export-format))
-                                       {:format-rows   format-rows
-                                        :pivot-results pivot})
+                                       :format_rows   format-rows
+                                       :pivot_results pivot)
                  (process-results export-format)))]
     (if (contains? card-or-dashcard :dashboard_id)
       (dashcard-download* card-or-dashcard)
@@ -108,8 +108,8 @@
               (->> (mt/user-http-request :crowberto :post 200
                                          (format "public/dashboard/%s/dashcard/%d/card/%d/%s"
                                                  public-uuid dashcard-id card-id (name export-format))
-                                         {:format-rows   format-rows
-                                          :pivot-results pivot})
+                                         :format_rows   format-rows
+                                         :pivot_results pivot)
                    (process-results export-format)))]
       (if (contains? card-or-dashcard :dashboard_id)
         (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid public-uuid}]
@@ -502,8 +502,8 @@
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
         (let [result (->> (mt/user-http-request :crowberto :post 200
                                                 (format "card/%d/query/csv" pivot-card-id)
-                                                {:format-rows   true
-                                                 :pivot-results true})
+                                                :format_rows   true
+                                                :pivot_results true)
                           csv/read-csv)]
           (is (= [["Created At" "Category" "Sum of Price"]
                   ["April, 2016" "Doohickey" ""]
@@ -530,8 +530,8 @@
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
         (let [result (->> (mt/user-http-request :crowberto :post 200
                                                 (format "card/%d/query/csv" pivot-card-id)
-                                                {:format-rows   false
-                                                 :pivot-results true})
+                                                :format_rows   false
+                                                :pivot_results true)
                           csv/read-csv)]
           (is (= [["Category" "Doohickey" "Gadget" "Gizmo" "Widget" "Row totals"]
                   ["" "2185.89" "3019.2" "2834.88" "3109.31" ""]
@@ -560,8 +560,8 @@
                                                                                                       :temporal-unit :year}]]}}}]
         (let [result (->> (mt/user-http-request :crowberto :post 200
                                                 (format "card/%d/query/csv" pivot-card-id)
-                                                {:format-rows   true
-                                                 :pivot-results true})
+                                                :format_rows   true
+                                                :pivot_results true)
                           csv/read-csv)]
           (is (= [["Category" "Created At" "Sum of Price" "Count"]
                   ["Doohickey" "2016" "632.14" "13"]
@@ -607,8 +607,8 @@
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
         (let [result (mt/user-http-request :crowberto :post 200
                                            (format "card/%d/query/xlsx" pivot-card-id)
-                                           {:format-rows   true
-                                            :pivot-results true})
+                                           :format_rows   true
+                                           :pivot_results true)
               pivot  (with-open [in (io/input-stream result)]
                        (->> (spreadsheet/load-workbook in)
                             (spreadsheet/select-sheet "pivot")
@@ -634,8 +634,8 @@
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
         (let [result       (mt/user-http-request :crowberto :post 200
                                                  (format "card/%d/query/xlsx" pivot-card-id)
-                                                 {:format-rows   true
-                                                  :pivot-results true})
+                                                 :format_rows   true
+                                                 :pivot_results true)
               [pivot data] (with-open [in (io/input-stream result)]
                              (let [wb    (spreadsheet/load-workbook in)
                                    pivot (.getPivotTables ^XSSFSheet (spreadsheet/select-sheet "pivot" wb))
@@ -670,8 +670,8 @@
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
         (let [result       (mt/user-http-request :crowberto :post 200
                                                  (format "card/%d/query/xlsx" pivot-card-id)
-                                                 {:format-rows   true
-                                                  :pivot-results true})
+                                                 :format_rows   true
+                                                 :pivot_results true)
               [pivot data] (with-open [in (io/input-stream result)]
                              (let [wb    (spreadsheet/load-workbook in)
                                    pivot (.getPivotTables ^XSSFSheet (spreadsheet/select-sheet "pivot" wb))
@@ -708,7 +708,7 @@
                                                                  [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
           (let [result (->> (mt/user-http-request :crowberto :post 200
                                                   (format "card/%d/query/csv" pivot-card-id)
-                                                  {:format-rows true})
+                                                  :format_rows true)
                             csv/read-csv)]
             (is (= [["Category" "Created At" "Sum of Price"]
                     ["Doohickey" "May, 2016" "144.12"]
@@ -956,7 +956,7 @@
             ;; for now, don't try to read xlsx back in, it will not be correct since we end up writing
             ;; a json blob to the output stream, it creates an invalid xlsx anyway.
             ;; This is not new behaviour, we'll just fix it when a better solution to 'errors in downloaded files' comes along
-            (let [results (mt/user-http-request :rasta :post 200 (format "card/%d/query/%s" card-id export-format) {:format-rows true})
+            (let [results (mt/user-http-request :rasta :post 200 (format "card/%d/query/%s" card-id export-format) :format_rows true)
                   results-string (if (= "xlsx" export-format)
                                    (read-xlsx results)
                                    (str results))]
