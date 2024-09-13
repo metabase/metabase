@@ -377,7 +377,7 @@ export const PLUGIN_MODERATION = {
     _usersById: Record<string, UserListResult>,
     _currentUser: User | null,
   ) => [] as RevisionOrModerationEvent[],
-  getMenuItems: (
+  useMenuItems: (
     _question?: Question,
     _isModerator?: boolean,
     _reload?: () => void,

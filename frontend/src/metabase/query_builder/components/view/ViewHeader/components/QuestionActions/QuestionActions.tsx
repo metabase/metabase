@@ -2,8 +2,6 @@ import type { ChangeEvent } from "react";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { Api } from "metabase/api/api";
-import { listTag } from "metabase/api/tags";
 import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
 import { UploadInput } from "metabase/components/upload";
@@ -85,10 +83,7 @@ export const QuestionActions = ({
 
   const dispatch = useDispatch();
 
-  const reload = () => {
-    dispatch(softReloadCard());
-    dispatch(Api.util.invalidateTags([listTag("card")]));
-  };
+  const reload = () => dispatch(softReloadCard());
   const onOpenSettingsSidebar = () => dispatch(onOpenQuestionSettings());
 
   const infoButtonColor = isShowingQuestionInfoSidebar
@@ -143,9 +138,12 @@ export const QuestionActions = ({
     });
   }
 
-  extraButtons.push(
-    ...PLUGIN_MODERATION.getMenuItems(question, isModerator, reload),
+  const moderationItems = PLUGIN_MODERATION.useMenuItems(
+    question,
+    isModerator,
+    reload,
   );
+  extraButtons.push(...moderationItems);
 
   if (hasCollectionPermissions) {
     if (isModelOrMetric && hasDataPermissions) {
