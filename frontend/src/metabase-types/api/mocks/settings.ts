@@ -201,7 +201,7 @@ export const createMockSettings = (
   "openai-organization": null,
   "openai-model": null,
   "openai-available-models": [],
-  "other-sso-enabled?": null,
+  "other-sso-enabled?": false,
   "password-complexity": { total: 6, digit: 1 },
   "persisted-models-enabled": false,
   "persisted-model-refresh-cron-schedule": "0 0 0/6 * * ? *",

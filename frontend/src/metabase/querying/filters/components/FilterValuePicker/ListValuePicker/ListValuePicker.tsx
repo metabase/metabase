@@ -57,9 +57,19 @@ function CheckboxListPicker({
     elevatedValues,
   );
   const visibleOptions = searchOptions(options, searchValue);
+  const isAll = options.length === selectedValues.length;
+  const isNone = selectedValues.length === 0;
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     setSearchValue(event.currentTarget.value);
+  };
+
+  const handleToggleAll = () => {
+    if (isAll) {
+      onChange([]);
+    } else {
+      onChange(options.map(option => option.value));
+    }
   };
 
   return (
@@ -70,24 +80,34 @@ function CheckboxListPicker({
         autoFocus={autoFocus}
         onChange={handleInputChange}
       />
-      <Checkbox.Group value={selectedValues} onChange={onChange}>
-        {visibleOptions.length > 0 ? (
-          <Stack>
-            {visibleOptions.map(option => (
-              <Checkbox
-                key={option.value}
-                value={option.value}
-                label={option.label}
-              />
-            ))}
-          </Stack>
-        ) : (
-          <Stack c="text-light" justify="center" align="center">
-            <Icon name="search" size={40} />
-            <Text c="text-medium" fw="bold">{t`Didn't find anything`}</Text>
-          </Stack>
-        )}
-      </Checkbox.Group>
+      {visibleOptions.length > 0 ? (
+        <Stack>
+          <Checkbox
+            variant="stacked"
+            label={isAll ? `Select none` : t`Select all`}
+            checked={isAll}
+            indeterminate={!isAll && !isNone}
+            fw="bold"
+            onChange={handleToggleAll}
+          />
+          <Checkbox.Group value={selectedValues} onChange={onChange}>
+            <Stack>
+              {visibleOptions.map(option => (
+                <Checkbox
+                  key={option.value}
+                  value={option.value}
+                  label={option.label}
+                />
+              ))}
+            </Stack>
+          </Checkbox.Group>
+        </Stack>
+      ) : (
+        <Stack c="text-light" justify="center" align="center">
+          <Icon name="search" size={40} />
+          <Text c="text-medium" fw="bold">{t`Didn't find anything`}</Text>
+        </Stack>
+      )}
     </Stack>
   );
 }
