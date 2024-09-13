@@ -104,7 +104,9 @@
          (fn [[measure-key agg]]
            (let [agg-fn (get agg-fns measure-key +) ; default aggregation is just summation
                  new-v  (get new-values measure-key)]
-             [measure-key (agg-fn agg new-v)])))
+             [measure-key (if new-v
+                            (agg-fn agg new-v)
+                            agg)])))
         measure-aggregations))
 
 (defn add-row
