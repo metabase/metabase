@@ -476,4 +476,59 @@ describe("[OSS] embedding settings", () => {
     expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
     expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
   });
+
+  describe("self-hosted (OSS)", () => {
+    beforeEach(async () => {
+      await setupEmbedding({
+        isHosted: false,
+        settingValues: { "is-hosted?": false },
+      });
+
+      // Go to embedding SDK settings page
+      await userEvent.click(
+        within(
+          screen.getByRole("article", {
+            name: "Embedded analytics SDK",
+          }),
+        ).getByRole("button", { name: "Try it out" }),
+      );
+    });
+
+    describe("Embedding SDK settings page", () => {
+      it("should show API key banner", () => {
+        const apiKeyBanner = screen.getByText(
+          /You can test Embedded analytics SDK/,
+        );
+        expect(apiKeyBanner).toHaveTextContent(
+          "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, switch Metabase binaries, upgrade to Metabase Pro and implement JWT SSO.",
+        );
+
+        const withinApiKeyBanner = within(apiKeyBanner);
+        expect(
+          withinApiKeyBanner.getByRole("link", {
+            name: "switch Metabase binaries",
+          }),
+        ).toHaveProperty(
+          "href",
+          "https://www.metabase.com/docs/latest/paid-features/activating-the-enterprise-edition?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=oss",
+        );
+        expect(
+          withinApiKeyBanner.getByRole("link", {
+            name: "upgrade to Metabase Pro",
+          }),
+        ).toHaveProperty(
+          "href",
+          "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=oss",
+        );
+        expect(
+          withinApiKeyBanner.getByRole("link", {
+            name: "implement JWT SSO",
+          }),
+        ).toHaveProperty(
+          "href",
+          "https://www.metabase.com/learn/metabase-basics/embedding/securing-embeds?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=oss",
+        );
+      });
+    });
+  });
 });

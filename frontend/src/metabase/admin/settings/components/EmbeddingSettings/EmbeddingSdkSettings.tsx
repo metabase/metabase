@@ -1,12 +1,14 @@
 import type { ChangeEvent } from "react";
+import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
+import { getPlan } from "metabase/common/utils/plan";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import { getUpgradeUrl } from "metabase/selectors/settings";
+import { getSetting, getUpgradeUrl } from "metabase/selectors/settings";
 import { Alert, Box, Button, Icon, Stack, Switch, Text } from "metabase/ui";
 
 import SettingHeader from "../SettingHeader";
@@ -28,7 +30,7 @@ export function EmbeddingSdkSettings({
   const upgradeUrl = useSelector(state =>
     getUpgradeUrl(state, {
       utm_campaign: "embedding-sdk",
-      utm_content: "embedding-sdk-settings",
+      utm_content: "embedding-sdk-admin",
     }),
   );
 
@@ -58,6 +60,64 @@ export function EmbeddingSdkSettings({
 
   function handleToggleEmbeddingSdk(event: ChangeEvent<HTMLInputElement>) {
     updateSetting({ key: "enable-embedding-sdk" }, event.target.checked);
+  }
+
+  const switchMetabaseBinariesUrl = useDocsUrl(
+    "https://www.metabase.com/docs/latest/paid-features/activating-the-enterprise-edition",
+  );
+  const implementJwtUrl = useDocsUrl(
+    "https://www.metabase.com/learn/metabase-basics/embedding/securing-embeds",
+  );
+  const quickStartUrl = useDocsUrl("https://metaba.se/sdk-quick-start");
+  const documentationUrl = useDocsUrl("https://metaba.se/sdk-docs");
+  function getApiKeyBannerText() {
+    const isOSS = !isEE && !isHosted;
+    const isCloudStarter = !isEE && isHosted;
+
+    return match({ isOSS, isCloudStarter, isEE })
+      .with(
+        { isOSS: true },
+        () =>
+          jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(
+            <ExternalLink
+              key="switch-metabase-binaries"
+              href={switchMetabaseBinariesUrl}
+            >
+              switch Metabase binaries
+            </ExternalLink>
+          )}, ${(
+            <ExternalLink key="upgrade-url" href={upgradeUrl}>
+              {t`upgrade to Metabase Pro`}
+            </ExternalLink>
+          )} and ${(
+            <ExternalLink key="implement-jwt" href={implementJwtUrl}>
+              {t`implement JWT SSO`}
+            </ExternalLink>
+          )}.`,
+      )
+      .with(
+        { isCloudStarter: true },
+        () =>
+          jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(
+            <ExternalLink key="upgrade-url" href={upgradeUrl}>
+              {t`upgrade to Metabase Pro`}
+            </ExternalLink>
+          )} and ${(
+            <ExternalLink key="implement-jwt" href={implementJwtUrl}>
+              {t`implement JWT SSO`}
+            </ExternalLink>
+          )}.`,
+      )
+      .with(
+        { isEE: true },
+        () =>
+          jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(
+            <ExternalLink key="implement-jwt" href={implementJwtUrl}>
+              {t`implement JWT SSO`}
+            </ExternalLink>
+          )}.`,
+      )
+      .otherwise(() => null);
   }
 
   return (
@@ -92,15 +152,7 @@ export function EmbeddingSdkSettings({
           py="md"
           maw={620}
         >
-          <Text size="sm">
-            {!isEE
-              ? jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, switch Metabase binaries, ${(
-                  <ExternalLink key="upgrade-url" href={upgradeUrl}>
-                    {t`upgrade to Metabase Pro`}
-                  </ExternalLink>
-                )} and implement JWT SSO.`
-              : jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, implement JWT SSO.`}
-          </Text>
+          <Text size="sm">{getApiKeyBannerText()}</Text>
         </Alert>
 
         <Box>
@@ -120,7 +172,7 @@ export function EmbeddingSdkSettings({
           <Button
             variant="outline"
             component={ExternalLink}
-            href="https://www.npmjs.com/package/@metabase/embedding-sdk-react"
+            href={quickStartUrl}
           >{t`Check out the Quick Start`}</Button>
         </Box>
 
@@ -162,10 +214,7 @@ export function EmbeddingSdkSettings({
 
         <Text>
           {jt`Check out the ${(
-            <ExternalLink
-              key="sdk-doc"
-              href="https://www.npmjs.com/package/@metabase/embedding-sdk-react"
-            >
+            <ExternalLink key="sdk-doc" href={documentationUrl}>
               {t`documentation`}
             </ExternalLink>
           )} for more.`}
@@ -173,4 +222,17 @@ export function EmbeddingSdkSettings({
       </Stack>
     </Box>
   );
+}
+
+function useDocsUrl(url: string) {
+  const plan = useSelector(state =>
+    getPlan(getSetting(state, "token-features")),
+  );
+  return `${url}?${new URLSearchParams({
+    utm_source: "product",
+    utm_medium: "docs",
+    utm_campaign: "embedding-sdk",
+    utm_content: "embedding-sdk-admin",
+    source_plan: plan,
+  })}`;
 }

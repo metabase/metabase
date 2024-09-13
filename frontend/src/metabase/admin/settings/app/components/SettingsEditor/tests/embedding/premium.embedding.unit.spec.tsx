@@ -516,4 +516,82 @@ describe("[EE, with token] embedding settings", () => {
       screen.queryByText("Embedded analytics SDK"),
     ).not.toBeInTheDocument();
   });
+
+  describe("self-hosted (pro)", () => {
+    beforeEach(async () => {
+      await setupPremium({
+        isHosted: false,
+        settingValues: { "is-hosted?": false },
+      });
+
+      // Go to embedding SDK settings page
+      await userEvent.click(
+        within(
+          screen.getByRole("article", {
+            name: "Embedded analytics SDK",
+          }),
+        ).getByRole("button", { name: "Configure" }),
+      );
+    });
+
+    describe("Embedding SDK settings page", () => {
+      it("should show API key banner", () => {
+        const apiKeyBanner = screen.getByText(
+          /You can test Embedded analytics SDK/,
+        );
+        expect(apiKeyBanner).toHaveTextContent(
+          "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, implement JWT SSO.",
+        );
+
+        const withinApiKeyBanner = within(apiKeyBanner);
+        expect(
+          withinApiKeyBanner.getByRole("link", {
+            name: "implement JWT SSO",
+          }),
+        ).toHaveProperty(
+          "href",
+          "https://www.metabase.com/learn/metabase-basics/embedding/securing-embeds?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-self-hosted",
+        );
+      });
+    });
+  });
+
+  describe("cloud (Pro)", () => {
+    beforeEach(async () => {
+      await setupPremium({
+        isHosted: true,
+        settingValues: { "is-hosted?": true },
+      });
+
+      // Go to embedding SDK settings page
+      await userEvent.click(
+        within(
+          screen.getByRole("article", {
+            name: "Embedded analytics SDK",
+          }),
+        ).getByRole("button", { name: "Configure" }),
+      );
+    });
+
+    describe("Embedding SDK settings page", () => {
+      it("should show API key banner", () => {
+        const apiKeyBanner = screen.getByText(
+          /You can test Embedded analytics SDK/,
+        );
+        expect(apiKeyBanner).toHaveTextContent(
+          "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, implement JWT SSO.",
+        );
+
+        const withinApiKeyBanner = within(apiKeyBanner);
+        expect(
+          withinApiKeyBanner.getByRole("link", {
+            name: "implement JWT SSO",
+          }),
+        ).toHaveProperty(
+          "href",
+          "https://www.metabase.com/learn/metabase-basics/embedding/securing-embeds?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-cloud",
+        );
+      });
+    });
+  });
 });
