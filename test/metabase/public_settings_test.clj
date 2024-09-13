@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase.public-settings-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -372,6 +373,18 @@
         (is (= true (public-settings/show-metabase-links)))))))
 
 (def prevent? #'public-settings/prevent-upgrade?)
+
+(deftest upgrade-threshold-test
+  (testing "it is stable but changes across releases"
+    (letfn [(threshold [version]
+              (with-redefs [config/current-major-version (constantly version)]
+                (public-settings/upgrade-threshold)))]
+      ;; asserting that across 10 versions we have at leaset 5 distinct values
+      (let [thresholds (into [] (map threshold) (range 50 60))]
+        ;; kinda the same but very explicit: it's not the same value across versions
+        (is (> (count (distinct thresholds)) 1) "value should change between versions")
+        (is (< 5 (count (set thresholds))) "value should be decently random between versions")
+        (is (every? (fn [x] (and (integer? x) (<= 0 x 100))) thresholds) "should always be an integer between 0 and 100")))))
 
 (deftest prevent-upgrade?-test
   ;; verify that the base value works

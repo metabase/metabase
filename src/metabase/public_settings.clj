@@ -85,7 +85,9 @@
   :type       :integer
   :setter     :none
   :getter     (fn []
-                (-> (site-uuid) hash (mod 100))))
+                ;; site-uuid is stable, current-major lets the threshold randomize during each major revision. So they
+                ;; might be early one release, and then later the next.
+                (-> (site-uuid) (str "-" (config/current-major-version)) hash (mod 100))))
 
 (defn- prevent-upgrade?
   "On a major upgrade, we check the rollout threshold to indicate whether we should remove the latest release from the
