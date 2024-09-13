@@ -64,6 +64,7 @@
   [s :- [:maybe :string]]
   (->> (str/split (or s "") #"\s+")
        (remove #(re-matches #"localhost:(\*|\d+)" %))
+       distinct
        (str/join " ")
        str/trim))
 
