@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import {
   skipToken,
+  useGetDatabaseQuery,
   useListCollectionItemsQuery,
   useListDatabaseSchemaTablesQuery,
 } from "metabase/api";
@@ -22,7 +23,6 @@ import type { EntityPickerSearchScope, TypeWithModel } from "../types";
  * TODO:
  * - loading state
  * - error state
- * - no parent item data in scoped results
  * - disable global search when scoped search is enabled
  */
 export const useScopedSearchResults = <
@@ -46,11 +46,7 @@ export const useScopedSearchResults = <
     // error,
     // isLoading,
   } = useListCollectionItemsQuery(
-    shouldFetchCollectionItems
-      ? {
-          id: folder.id as CollectionId,
-        }
-      : skipToken,
+    shouldFetchCollectionItems ? { id: folder.id as CollectionId } : skipToken,
   );
 
   const dbId =
@@ -63,18 +59,25 @@ export const useScopedSearchResults = <
     // error: errorTables,
     // isFetching: isLoadingTables,
   } = useListDatabaseSchemaTablesQuery(
-    isNotNull(dbId) && isNotNull(schemaName)
+    shouldFetchTables && isNotNull(dbId) && isNotNull(schemaName)
       ? { id: dbId, schema: schemaName as string }
       : skipToken,
   );
 
+  const { data: database } = useGetDatabaseQuery(
+    shouldFetchTables && isNotNull(dbId) ? { id: dbId } : skipToken,
+  );
+
   const collectionItems = useMemo(() => {
-    return collectionItemsToSearchResults(collectionItemsData?.data ?? []);
-  }, [collectionItemsData]);
+    return collectionItemsToSearchResults(
+      collectionItemsData?.data ?? [],
+      folder,
+    );
+  }, [collectionItemsData, folder]);
 
   const tableItems = useMemo(() => {
-    return tablesToSearchResults(tables ?? []);
-  }, [tables]);
+    return tablesToSearchResults(tables ?? [], database?.name);
+  }, [tables, database]);
 
   const scopedSearchResults: SearchResult[] | undefined = useMemo(() => {
     if (!isScopedSearchEnabled) {
@@ -103,27 +106,30 @@ export const useScopedSearchResults = <
   return scopedSearchResults;
 };
 
-const collectionItemsToSearchResults = (
-  items: CollectionItem[],
-): SearchResult[] => {
-  return items as unknown as SearchResult[];
-};
-
-const tablesToSearchResults = (tables: Table[]): SearchResult[] => {
-  return tables.map(table => ({
-    ...table,
-    model: "table",
-  })) as unknown as SearchResult[];
-};
-
-const isSchemaItem = <
+const collectionItemsToSearchResults = <
   Id extends SearchResultId,
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 >(
-  item: Item,
-): item is Item & { dbId: DatabaseId } => {
-  return isObject(item) && "dbId" in item && typeof item.dbId === "number";
+  items: CollectionItem[],
+  folder: Item | undefined,
+): SearchResult[] => {
+  return items.map(item => ({
+    ...item,
+    collection: folder,
+  })) as unknown as SearchResult[];
+};
+
+const tablesToSearchResults = (
+  tables: Table[],
+  dbName: string | undefined,
+): SearchResult[] => {
+  return tables.map(table => ({
+    ...table,
+    model: "table",
+    database_name: dbName,
+    table_schema: table.schema,
+  })) as unknown as SearchResult[];
 };
 
 const filterSearchResults = (
@@ -138,4 +144,14 @@ const filterSearchResults = (
     const matchesModel = searchModels.includes(result.model);
     return matchesQuery && matchesModel;
   });
+};
+
+const isSchemaItem = <
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>(
+  item: Item,
+): item is Item & { dbId: DatabaseId } => {
+  return isObject(item) && "dbId" in item && typeof item.dbId === "number";
 };
