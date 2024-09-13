@@ -225,6 +225,7 @@ export const TablePicker = ({
 
         {isNotNull(dbId) && (
           <SchemaList
+            dbId={dbId}
             error={errorSchemas}
             isCurrentLevel={!tableId}
             isLoading={isLoadingSchemas}

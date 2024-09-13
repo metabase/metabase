@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { SchemaName } from "metabase-types/api";
+import type { DatabaseId, SchemaName } from "metabase-types/api";
 
 import { ItemList, ListBox } from "../../EntityPicker";
 import { useAutoSelectOnlyItem } from "../hooks";
@@ -8,6 +8,7 @@ import type { DataPickerFolderItem } from "../types";
 import { getSchemaDisplayName } from "../utils";
 
 interface Props {
+  dbId: DatabaseId;
   error: unknown;
   isCurrentLevel: boolean;
   isLoading: boolean;
@@ -19,6 +20,7 @@ interface Props {
 const isFolder = () => true;
 
 export const SchemaList = ({
+  dbId,
   error,
   isCurrentLevel,
   isLoading,
@@ -31,8 +33,9 @@ export const SchemaList = ({
       id: schema,
       model: "schema",
       name: getSchemaDisplayName(schema),
+      dbId,
     }));
-  }, [schemas]);
+  }, [schemas, dbId]);
 
   const hasOnly1Item = useAutoSelectOnlyItem({
     disabled: Boolean(selectedItem),
