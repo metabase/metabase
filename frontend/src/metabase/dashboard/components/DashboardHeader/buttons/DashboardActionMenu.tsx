@@ -51,18 +51,18 @@ export const getExtraButtons = ({
     action: (e: MouseEvent) => onFullscreenChange(!isFullscreen, !e.altKey),
   });
 
-  extraButtons.push({
-    title: t`Edit settings`,
-    icon: "gear",
-    action: openSettingsSidebar,
-  });
-
-  extraButtons.push({
-    separator: true,
-    key: "separator-after-edit-settings",
-  });
-
   if (canEdit) {
+    extraButtons.push({
+      title: t`Edit settings`,
+      icon: "gear",
+      action: openSettingsSidebar,
+    });
+
+    extraButtons.push({
+      separator: true,
+      key: "separator-after-edit-settings",
+    });
+
     extraButtons.push({
       title: t`Move`,
       icon: "move",
