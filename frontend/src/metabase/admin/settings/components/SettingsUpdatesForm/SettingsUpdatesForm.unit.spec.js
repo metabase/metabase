@@ -65,9 +65,11 @@ describe("SettingsUpdatesForm", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows correct message when no version checks have been run", () => {
-    setup({ currentVersion: null, latestVersion: null });
-    expect(screen.getByText("No successful checks yet.")).toBeInTheDocument();
+  it("shows current version when latest version info is missing", () => {
+    setup({ currentVersion: "v1.0.0", latestVersion: null });
+    expect(
+      screen.getByText(/You're running Metabase 1.0.0/),
+    ).toBeInTheDocument();
   });
 
   it("shows upgrade call-to-action if not in Enterprise plan", () => {
