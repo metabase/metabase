@@ -267,7 +267,7 @@ const getAttributeValues = (values, defaults) => {
   return Object.fromEntries(
     Object.entries(IS_SAML_ATTR_DEFAULTABLE).map(([key, isDefaultable]) => [
       key,
-      isDefaultable ? values[key] ?? defaults[key] : values[key],
+      isDefaultable ? (values[key] ?? defaults[key]) : values[key],
     ]),
   );
 };

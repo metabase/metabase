@@ -32,7 +32,7 @@ const THEME_OPTIONS = [
   { label: t`Light`, value: "light" },
   { label: t`Dark`, value: "night" },
 ] as const;
-type ThemeOptions = typeof THEME_OPTIONS[number]["value"];
+type ThemeOptions = (typeof THEME_OPTIONS)[number]["value"];
 
 interface AppearanceSettingsProps {
   resourceType: EmbedResourceType;

@@ -9,10 +9,7 @@
         {
           "display_name": "Sum of Discount",
           "settings": null,
-          "field_ref": [
-            "aggregation",
-            0
-          ],
+          "field_ref": ["aggregation", 0],
           "name": "sum",
           "base_type": "type/Float",
           "effective_type": "type/Float",
@@ -84,10 +81,7 @@
           "name": "sum",
           "display_name": "Sum of Discount",
           "source": "aggregation",
-          "field_ref": [
-            "aggregation",
-            0
-          ],
+          "field_ref": ["aggregation", 0],
           "aggregation_index": 0,
           "effective_type": "type/Float"
         }
@@ -106,10 +100,7 @@
           {
             "display_name": "Sum of Discount",
             "settings": null,
-            "field_ref": [
-              "aggregation",
-              0
-            ],
+            "field_ref": ["aggregation", 0],
             "name": "sum",
             "base_type": "type/Float",
             "effective_type": "type/Float",
@@ -134,11 +125,7 @@
         ]
       },
       "insights": null,
-      "rows": [
-        [
-          9954.822827272128
-        ]
-      ]
+      "rows": [[9954.822827272128]]
     }
   },
   {
@@ -151,10 +138,7 @@
         {
           "display_name": "Count",
           "semantic_type": "type/Quantity",
-          "field_ref": [
-            "aggregation",
-            0
-          ],
+          "field_ref": ["aggregation", 0],
           "name": "count",
           "base_type": "type/BigInteger",
           "effective_type": "type/BigInteger",
@@ -191,11 +175,7 @@
         "type": "query",
         "query": {
           "source-table": 5,
-          "aggregation": [
-            [
-              "count"
-            ]
-          ]
+          "aggregation": [["count"]]
         }
       },
       "id": 135,
@@ -218,10 +198,7 @@
           "display_name": "Count",
           "semantic_type": "type/Quantity",
           "source": "aggregation",
-          "field_ref": [
-            "aggregation",
-            0
-          ],
+          "field_ref": ["aggregation", 0],
           "aggregation_index": 0,
           "effective_type": "type/BigInteger"
         }
@@ -240,10 +217,7 @@
           {
             "display_name": "Count",
             "semantic_type": "type/Quantity",
-            "field_ref": [
-              "aggregation",
-              0
-            ],
+            "field_ref": ["aggregation", 0],
             "name": "count",
             "base_type": "type/BigInteger",
             "effective_type": "type/BigInteger",
@@ -267,11 +241,7 @@
         ]
       },
       "insights": null,
-      "rows": [
-        [
-          18760
-        ]
-      ]
+      "rows": [[18760]]
     }
   }
 ]

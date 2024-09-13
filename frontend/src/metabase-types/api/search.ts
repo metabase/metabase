@@ -23,9 +23,9 @@ const ENABLED_SEARCH_MODELS = [
 
 export const SEARCH_MODELS = [...ENABLED_SEARCH_MODELS, "segment"] as const;
 
-export type EnabledSearchModel = typeof ENABLED_SEARCH_MODELS[number];
+export type EnabledSearchModel = (typeof ENABLED_SEARCH_MODELS)[number];
 
-export type SearchModel = typeof SEARCH_MODELS[number];
+export type SearchModel = (typeof SEARCH_MODELS)[number];
 
 export interface SearchScore {
   weight: number;
