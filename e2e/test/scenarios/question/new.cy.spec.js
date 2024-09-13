@@ -292,6 +292,24 @@ describe("scenarios > question > new", () => {
         assertEntityPickerModalItemActive(0, PERSONAL_COLLECTION_NAME);
       });
     });
+
+    it("returns to previous tab when search input is cleared", () => {
+      startNewQuestion();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByPlaceholderText("Search this database or everywhere…").type(
+          "ord",
+        );
+        assertEntityPickerModalTabActive('1 result for "ord"');
+        cy.findByPlaceholderText("Search this database or everywhere…").clear();
+
+        assertEntityPickerModalTabActive("Tables");
+        assertEntityPickerSearchInputPlaceholder(
+          "Search this database or everywhere…",
+        );
+      });
+    });
   });
 
   it("composite keys should act as filters on click (metabase#13717)", () => {
