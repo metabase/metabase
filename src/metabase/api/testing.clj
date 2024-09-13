@@ -178,6 +178,7 @@
 (api/defendpoint POST "/stats"
   "Triggers a send of instance usage stats"
   []
-  (stats/phone-home-stats!))
+  (stats/phone-home-stats!)
+  {:success true})
 
 (api/define-routes)
