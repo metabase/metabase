@@ -256,8 +256,7 @@ describe("scenarios > question > saved", () => {
     visitQuestion(ORDERS_QUESTION_ID);
 
     cy.findAllByTestId("header-cell")
-      .contains("Tax")
-      .closest(".test-TableInteractive-headerCellData")
+      .filter(":contains(Tax)")
       .as("headerCell")
       .then($cell => {
         const originalWidth = $cell[0].getBoundingClientRect().width;
