@@ -36,9 +36,7 @@ export function getStepPreviewButton(
   type: Exclude<NotebookStepType, "aggregate" | "breakout">,
   { stage = 0, index = 0 } = {},
 ): Cypress.Chainable<JQuery<HTMLElement>> {
-  return getNotebookStep(type, { stage, index }).findByTestId(
-    "step-preview-button",
-  );
+  return getNotebookStep(type, { stage, index }).icon("eye");
 }
 
 /**
