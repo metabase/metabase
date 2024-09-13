@@ -64,6 +64,7 @@
         "description": "Metadata about the anonymous stats collection",
         "type": "object",
         "additionalProperties": {
+          "description": "Individual metadataproperties",
           "type": ["string", "integer"],
           "maxLength": 255,
           "minimum": 0,
