@@ -1,13 +1,19 @@
 import { useWindowEvent } from "@mantine/hooks";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { usePreviousDistinct } from "react-use";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useDebounce, usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useListRecentsQuery } from "metabase/api";
+import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
-import { Modal } from "metabase/ui";
+import { Icon, Modal, TextInput } from "metabase/ui";
 import type {
   RecentContexts,
   RecentItem,
@@ -34,7 +40,6 @@ import {
   getSearchTabText,
 } from "../../utils";
 import { RecentsTab } from "../RecentsTab";
-import { SearchInput } from "../SearchInput";
 import { SearchTab } from "../SearchTab";
 
 import { ButtonBar } from "./ButtonBar";
@@ -157,6 +162,31 @@ export function EntityPickerModal<
   assertValidProps(hydratedOptions, onConfirm);
 
   const { open } = useModalOpen();
+
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
+
+  const { data, isFetching } = useSearchQuery(
+    {
+      q: debouncedSearchQuery,
+      models: searchModels,
+      context: "entity-picker",
+      ...searchParams,
+    },
+    {
+      skip: !debouncedSearchQuery || searchScope === "folder",
+    },
+  );
+
+  useLayoutEffect(() => {
+    if (data && !isFetching) {
+      setSearchResults(
+        searchResultFilter ? searchResultFilter(data.data) : data.data,
+      );
+    } else {
+      setSearchResults(null);
+    }
+  }, [data, isFetching, searchResultFilter, setSearchResults]);
 
   const filteredRecents = useMemo(() => {
     if (!recentItems) {
@@ -318,14 +348,14 @@ export function EntityPickerModal<
           <GrowFlex justify="space-between">
             <Modal.Title lh="2.5rem">{title}</Modal.Title>
             {hydratedOptions.showSearch && (
-              <SearchInput
-                models={searchModels}
+              <TextInput
+                type="search"
+                icon={<Icon name="search" size={16} />}
+                miw={400}
+                mr="2rem"
                 placeholder={getSearchInputPlaceholder(selectedFolder)}
-                setSearchResults={setSearchResults}
-                searchQuery={searchQuery}
-                setSearchQuery={handleQueryChange}
-                searchFilter={searchResultFilter}
-                searchParams={searchParams}
+                value={searchQuery}
+                onChange={e => handleQueryChange(e.target.value ?? "")}
               />
             )}
           </GrowFlex>

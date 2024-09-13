@@ -19,12 +19,6 @@ import { isObject } from "metabase-types/guards";
 
 import type { EntityPickerSearchScope, TypeWithModel } from "../types";
 
-/**
- * TODO:
- * - loading state
- * - error state
- * - disable global search when scoped search is enabled
- */
 export const useScopedSearchResults = <
   Id extends SearchResultId,
   Model extends string,
@@ -37,35 +31,29 @@ export const useScopedSearchResults = <
 ): SearchResult[] | undefined => {
   const isScopedSearchEnabled = searchScope === "folder" && folder != null;
 
-  const shouldFetchCollectionItems =
+  const shouldUseCollectionItems =
     isScopedSearchEnabled && folder.model === "collection";
-  const shouldFetchTables = isScopedSearchEnabled && folder.model === "schema";
+  const shouldUseTables = isScopedSearchEnabled && folder.model === "schema";
 
-  const {
-    data: collectionItemsData,
-    // error,
-    // isLoading,
-  } = useListCollectionItemsQuery(
-    shouldFetchCollectionItems ? { id: folder.id as CollectionId } : skipToken,
-  );
+  const { data: collectionItemsData, isFetching: isFetchingCollectionItems } =
+    useListCollectionItemsQuery(
+      shouldUseCollectionItems ? { id: folder.id as CollectionId } : skipToken,
+    );
 
   const dbId =
-    shouldFetchTables && isSchemaItem(folder) ? folder.dbId : undefined;
+    shouldUseTables && isSchemaItem(folder) ? folder.dbId : undefined;
   const schemaName =
-    shouldFetchTables && isSchemaItem(folder) ? folder.id : undefined;
+    shouldUseTables && isSchemaItem(folder) ? folder.id : undefined;
 
-  const {
-    data: tables,
-    // error: errorTables,
-    // isFetching: isLoadingTables,
-  } = useListDatabaseSchemaTablesQuery(
-    shouldFetchTables && isNotNull(dbId) && isNotNull(schemaName)
-      ? { id: dbId, schema: schemaName as string }
-      : skipToken,
-  );
+  const { data: tables, isFetching: isFetchingTables } =
+    useListDatabaseSchemaTablesQuery(
+      shouldUseTables && isNotNull(dbId) && isNotNull(schemaName)
+        ? { id: dbId, schema: schemaName as string }
+        : skipToken,
+    );
 
   const { data: database } = useGetDatabaseQuery(
-    shouldFetchTables && isNotNull(dbId) ? { id: dbId } : skipToken,
+    shouldUseTables && isNotNull(dbId) ? { id: dbId } : skipToken,
   );
 
   const collectionItems = useMemo(() => {
@@ -84,18 +72,20 @@ export const useScopedSearchResults = <
       return undefined;
     }
 
-    if (shouldFetchCollectionItems) {
+    if (shouldUseCollectionItems && !isFetchingCollectionItems) {
       return filterSearchResults(collectionItems, searchQuery, searchModels);
     }
 
-    if (shouldFetchTables) {
+    if (shouldUseTables && !isFetchingTables) {
       return filterSearchResults(tableItems, searchQuery, searchModels);
     }
 
     return [];
   }, [
-    shouldFetchCollectionItems,
-    shouldFetchTables,
+    isFetchingTables,
+    isFetchingCollectionItems,
+    shouldUseCollectionItems,
+    shouldUseTables,
     collectionItems,
     tableItems,
     searchQuery,
