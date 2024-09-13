@@ -97,7 +97,7 @@
         (let [stats (legacy-anonymous-usage-stats)]
           (is (partial= {:running_on                           :unknown
                          :check_for_updates                    true
-                         :startup_time_millis                  1234.0
+                         :startup_time_millis                  1234
                          :friendly_names                       false
                          :email_configured                     false
                          :slack_configured                     false
@@ -146,7 +146,7 @@
           (let [stats (legacy-anonymous-usage-stats)]
             (is (partial= {:running_on                           :unknown
                            :check_for_updates                    true
-                           :startup_time_millis                  1234.0
+                           :startup_time_millis                  1234
                            :friendly_names                       false
                            :email_configured                     false
                            :slack_configured                     false
