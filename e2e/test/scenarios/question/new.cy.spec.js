@@ -72,6 +72,7 @@ describe("scenarios > question > new", () => {
         cy.findByPlaceholderText("Search this collection or everywhere…")
           .type("  ")
           .blur();
+        cy.findByText("Everywhere").click();
         cy.findByPlaceholderText("Search this collection or everywhere…").type(
           "ord",
         );
