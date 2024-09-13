@@ -1,4 +1,4 @@
-import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
@@ -21,7 +21,9 @@ import {
   pickEntity,
   popover,
   queryBuilderHeader,
+  resetTestTable,
   restore,
+  resyncDatabase,
   saveQuestion,
   shouldDisplayTabs,
   startNewQuestion,
@@ -172,21 +174,21 @@ describe("scenarios > question > new", () => {
 
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").click();
-        assertDataPickerEntitySelected(0, "Our analytics");
+        assertEntityPickerModalItemActive(0, "Our analytics");
         cy.findByText("First collection").should("exist");
         cy.findByText("Second collection").should("not.exist");
         cy.findByText("Third collection").should("not.exist");
 
         cy.findByText("First collection").click();
-        assertDataPickerEntitySelected(0, "Our analytics");
-        assertDataPickerEntitySelected(1, "First collection");
+        assertEntityPickerModalItemActive(0, "Our analytics");
+        assertEntityPickerModalItemActive(1, "First collection");
         cy.findByText("Second collection").should("exist");
         cy.findByText("Third collection").should("not.exist");
 
         cy.findByText("Second collection").click();
-        assertDataPickerEntitySelected(0, "Our analytics");
-        assertDataPickerEntitySelected(1, "First collection");
-        assertDataPickerEntitySelected(2, "Second collection");
+        assertEntityPickerModalItemActive(0, "Our analytics");
+        assertEntityPickerModalItemActive(1, "First collection");
+        assertEntityPickerModalItemActive(2, "Second collection");
         cy.findByText("Third collection").should("not.exist");
       });
     });
@@ -209,6 +211,86 @@ describe("scenarios > question > new", () => {
         cy.findByText("Personal question").click();
       });
       visualize();
+    });
+  });
+
+  describe("data picker search", () => {
+    const PERSONAL_COLLECTION_NAME = "Bobby Tables's Personal Collection";
+    beforeEach(() => {
+      resetTestTable({ type: "postgres", table: "multi_schema" });
+      restore("postgres-writable");
+
+      cy.signInAsAdmin();
+
+      resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+      });
+    });
+
+    it("preserves tab state when navigating to a different tab", () => {
+      startNewQuestion();
+
+      entityPickerModal().within(() => {
+        assertEntityPickerSearchInputPlaceholder(
+          "Search this collection or everywhere…",
+        );
+        assertEntityPickerModalTabActive("Models");
+        assertEntityPickerModalItemActive(0, "Our analytics");
+        assertEntityPickerModalItemVisible(0, PERSONAL_COLLECTION_NAME);
+        assertEntityPickerModalItemVisible(0, "All personal collections");
+        entityPickerModalItem(0, PERSONAL_COLLECTION_NAME).click();
+        assertEntityPickerModalItemActive(0, PERSONAL_COLLECTION_NAME);
+
+        entityPickerModalTab("Tables").click();
+        assertEntityPickerSearchInputPlaceholder(
+          "Search this database or everywhere…",
+        );
+        assertEntityPickerModalTabActive("Tables");
+        assertEntityPickerModalItemActive(0, "Sample Database");
+        assertEntityPickerModalItemVisible(2, "Orders");
+        assertEntityPickerModalItemVisible(2, "People");
+        assertEntityPickerModalItemVisible(2, "Products");
+        assertEntityPickerModalItemVisible(2, "Reviews");
+
+        entityPickerModalItem(0, "Writable Postgres12").click();
+        assertEntityPickerSearchInputPlaceholder(
+          "Search this schema or everywhere…",
+        );
+        assertEntityPickerModalItemActive(0, "Writable Postgres12");
+        assertEntityPickerModalItemActive(1, "Domestic");
+        assertEntityPickerModalItemInactive(2, "Animals");
+
+        entityPickerModalItem(1, "Wild").click();
+        assertEntityPickerModalItemActive(1, "Wild");
+        assertEntityPickerModalItemInactive(2, "Animals");
+
+        entityPickerModalTab("Saved questions").click();
+        assertEntityPickerSearchInputPlaceholder(
+          "Search this collection or everywhere…",
+        );
+        assertEntityPickerModalTabActive("Saved questions");
+        assertEntityPickerModalItemActive(0, "Our analytics");
+        assertEntityPickerModalItemVisible(0, PERSONAL_COLLECTION_NAME);
+        assertEntityPickerModalItemVisible(0, "All personal collections");
+
+        cy.findByPlaceholderText("Search this collection or everywhere…").type(
+          "ord",
+        );
+
+        assertEntityPickerSearchToggleValue("“Our analytics”");
+
+        // all above was setup, now we can reopen the tabs and assert if state is actually the same
+        entityPickerModalTab("Saved questions").click();
+        assertEntityPickerModalItemActive(0, "Our analytics");
+
+        entityPickerModalTab("Tables").click();
+        assertEntityPickerModalItemActive(0, "Writable Postgres12");
+        assertEntityPickerModalItemActive(1, "Wild");
+        assertEntityPickerModalItemInactive(2, "Animals");
+
+        entityPickerModalTab("Models").click();
+        assertEntityPickerModalItemActive(0, PERSONAL_COLLECTION_NAME);
+      });
     });
   });
 
@@ -561,6 +643,32 @@ describe(
   },
 );
 
-function assertDataPickerEntitySelected(level, name) {
+function assertEntityPickerModalTabActive(name) {
+  entityPickerModalTab(name).should("have.attr", "data-active", "true");
+}
+
+function assertEntityPickerModalItemVisible(level, name) {
+  entityPickerModalItem(level, name).should("be.visible");
+}
+
+function assertEntityPickerModalItemNotExists(level, name) {
+  entityPickerModalItem(level, name).should("not.exist");
+}
+
+function assertEntityPickerModalItemActive(level, name) {
   entityPickerModalItem(level, name).should("have.attr", "data-active", "true");
+}
+
+function assertEntityPickerModalItemInactive(level, name) {
+  entityPickerModalItem(level, name).should("not.have.attr", "data-active");
+}
+
+function assertEntityPickerSearchInputPlaceholder(placeholder) {
+  cy.findByPlaceholderText(placeholder).should("be.visible");
+}
+
+function assertEntityPickerSearchToggleValue(value) {
+  cy.findByLabelText(value)
+    .next("label")
+    .should("have.attr", "data-active", "true");
 }
