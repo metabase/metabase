@@ -1,69 +1,69 @@
 {
-    "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
     "description": "Schema for daily stats ping, tracking instance metrics and settings",
     "self": {
-        "vendor": "com.metabase",
-        "name": "instance_stats",
-        "format": "jsonschema",
-        "version": "1-0-0"
+      "vendor": "com.metabase",
+      "name": "instance_stats",
+      "format": "jsonschema",
+      "version": "1-0-0"
     },
     "type": "object",
     "properties": {
-        "instance_attributes": {
-            "description": "Key-value pairs of instance attributes",
-            "type": "array",
-            "items": {
-               "type": "object",
-               "properties": {
-                 "key": {
-                    "description": "The key for this attribute",
-                    "type": "string",
-                    "maxLength": 255
-                 },
-                 "value": {
-                    "description": "The value of this attribute",
-                    "type": ["string", "boolean", "integer", "null"],
-                    "maxLength": 255
-                 }
-               }
+      "instance_attributes": {
+        "description": "Key-value pairs of instance attributes",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "description": "The key for this attribute",
+              "type": "string",
+              "maxLength": 255
+            },
+            "value": {
+              "description": "The value of this attribute",
+              "type": ["string", "boolean", "integer", "null"],
+              "maxLength": 255
             }
-        },
-        "features": {
-            "description": "Features",
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "description": "The unique name of the feature",
-                        "type": "string",
-                        "maxLength": 255
-                    },
-                    "available": {
-                        "description": "Whether the feature is available, i.e. can it be enabled/disabled or is it always on",
-                        "type": "boolean"
-                    },
-                    "enabled": {
-                        "description": "Whether the feature is enabled, i.e. can it be used by the users/instance",
-                        "type": "boolean"
-                    }
-                },
-                "required": [
-                    "name",
-                    "available",
-                    "enabled"
-                ],
-                "additionalProperties": true
-            }
+          }
         }
-    },
-    "metadata": {
+      },
+      "features": {
+        "description": "Features",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "description": "The unique name of the feature",
+              "type": "string",
+              "maxLength": 255
+            },
+            "available": {
+              "description": "Whether the feature is available, i.e. can it be enabled/disabled or is it always on",
+              "type": "boolean"
+            },
+            "enabled": {
+              "description": "Whether the feature is enabled, i.e. can it be used by the users/instance",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "name",
+          "available",
+          "enabled"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "metadata": {
         "description": "Metadata about the anonymous stats collection",
-        "type": "object",
-        "additionalProperties": {
-            "type": "string"
-        }
+          "type": "object",
+          "additionalProperties": {
+            "type": ["string", "integer"]
+          }
+      }
     },
     "additionalProperties": false,
-    required: ["instance_attributes", "features", "metadata"]
+    "required": ["instance_attributes", "features", "metadata"]
 }

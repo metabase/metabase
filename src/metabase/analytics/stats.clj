@@ -5,6 +5,7 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [environ.core :as env]
    [java-time.api :as t]
    [medley.core :as m]
@@ -119,7 +120,7 @@
   []
   {:version                              (config/mb-version-info :tag)
    :running_on                           (environment-type)
-   :startup_time_millis                  (public-settings/startup-time-millis)
+   :startup_time_millis                  (int (public-settings/startup-time-millis))
    :application_database                 (config/config-str :mb-db-type)
    :check_for_updates                    (public-settings/check-for-updates)
    :report_timezone                      (driver/report-timezone)
@@ -555,7 +556,9 @@
           :startup_time_millis              (-> stats :startup_time_millis)
           :has_activation_signals_completed (completed-activation-signals?)})]
     (mapv
-     (fn [[k v]] {:key k :value v})
+     (fn [[k v]]
+       {"key"   (name k)
+        "value" v})
      instance-attributes)))
 
 (defn- whitelabeling-in-use?
@@ -600,7 +603,7 @@
   (let [features [:sso_jwt :sso_saml :scim :sandboxes :email_allow_list]]
     (map
      (fn [feature]
-       {:key       feature
+       {:name      feature
         :available false
         :enabled   false})
      features)))
@@ -611,88 +614,93 @@
         [{:name      :email
           :available true
           :enabled   (-> stats :email_configured)}
-         {:key       :slack
+         {:name      :slack
           :available true
           :enabled   (-> stats :slack_configured)}
-         {:key       :sso_google
+         {:name      :sso_google
           :available (premium-features/enable-sso-google?)
           :enabled   (google/google-auth-configured)}
-         {:key       :sso_ldap
+         {:name      :sso_ldap
           :available (premium-features/enable-sso-ldap?)
           :enabled   (public-settings/ldap-enabled?)}
-         {:key       :sample_data
+         {:name      :sample_data
           :available true
           :enabled   (-> stats :has_sample_data)}
-         {:key       :interactive_embedding
+         {:name      :interactive_embedding
           :available (premium-features/hide-embed-branding?)
           :enabled   (and
                       (embed.settings/enable-embedding)
                       (boolean (embed.settings/embedding-app-origin))
                       (public-settings/sso-enabled?))}
-         {:key       :static_embedding
+         {:name      :static_embedding
           :available true
           :enabled   (and
                       (embed.settings/enable-embedding)
                       (or
                        (t2/exists? :model/Dashboard :enable_embedding true)
                        (t2/exists? :model/Card :enable_embedding true)))}
-         {:key       :public_sharing
+         {:name      :public_sharing
           :available true
           :enabled   (and
                       (public-settings/enable-public-sharing)
                       (or
                        (t2/exists? :model/Dashboard :public_uuid [:not= nil])
                        (t2/exists? :model/Card :public_uuid [:not= nil])))}
-         {:key       :whitelabel
+         {:name      :whitelabel
           :available (premium-features/enable-whitelabeling?)
           :enabled   (whitelabeling-in-use?)}
-         {:key       :csv_upload
+         {:name      :csv_upload
           :available (csv-upload-available?)
           :enabled   (t2/exists? :model/Database :uploads_enabled true)}
-         {:key       :mb_analytics
+         {:name      :mb_analytics
           :available (premium-features/enable-audit-app?)
           :enabled   true}
-         {:key       :advanced_permissions
+         {:name      :advanced_permissions
           :available (premium-features/enable-advanced-permissions?)
           :enabled   true}
-         {:key       :advanced_permissions
+         {:name      :advanced_permissions
           :available (premium-features/enable-serialization?)
           :enabled   true}
-         {:key       :official_collections
+         {:name      :official_collections
           :available (premium-features/enable-official-collections?)
           :enabled   (t2/exists? :model/Collection :authority_level "official")}
-         {:key       :cache_granular_controls
+         {:name      :cache_granular_controls
           :available (premium-features/enable-cache-granular-controls?)
           :enabled   (t2/exists? :model/CacheConfig)}
-         {:key       :attached_dwh
+         {:name      :attached_dwh
           :available (and (premium-features/has-attached-dwh?)
                           (>= (config/current-major-version) 50))
           :enabled   (t2/exists? :model/CacheConfig)}
-         {:key       :auto_cleanup ;; TODO: is this the right key?
+         {:name      :auto_cleanup ;; TODO: is this the right key?
           :available (premium-features/enable-collection-cleanup?)
           :enabled   true}
-         {:key       :config_text_file
+         {:name      :config_text_file
           :available (premium-features/enable-config-text-file?)
           :enabled   (some? (get env/env :mb-config-file-path))}
-         {:key       :content_verification
+         {:name      :content_verification
           :available (premium-features/enable-content-verification?)
           :enabled   (t2/exists? :model/ModerationReview)}
-         {:key       :dashboard_subscription_filters
+         {:name      :dashboard_subscription_filters
           :available (premium-features/enable-content-verification?)
           :enabled   (t2/exists? :model/Pulse {:where [:not= :parameters "[]"]})}
-         {:key       :disable_password_login
+         {:name      :disable_password_login
           :available (premium-features/can-disable-password-login?)
           :enabled   (not (public-settings/enable-password-login))}
-         {:key       :email_restrict_recipients
+         {:name      :email_restrict_recipients
           :available (premium-features/enable-email-restrict-recipients?)
           :enabled   (not= (setting/get-value-of-type :keyword :user-visibility) :all)}
-         {:key       :upload_management
+         {:name      :upload_management
           :available (premium-features/enable-upload-management?)
           :enabled   (t2/exists? :model/Table :is_upload true)}
-         {:key       :snippet_collections
+         {:name      :snippet_collections
           :available (premium-features/enable-snippet-collections?)
           :enabled   (t2/exists? :model/Collection :namespace "snippets")}]]
-    (concat features (enterprise-snowplow-features))))
+    (mapv
+     ;; Convert keys and feature names to strings to match expected Snowplow scheml
+     (fn [feature]
+       (-> (update feature :name name)
+           (walk/stringify-keys)))
+     (concat features (enterprise-snowplow-features)))))
 
 (defn- snowplow-anonymous-usage-stats
   "Send stats to Metabase's snowplow collector. Transforms stats into the format required by the Snowplow schema."
@@ -706,7 +714,11 @@
   "Collect usage stats and phone them home"
   []
   (when (public-settings/anon-tracking-enabled)
-    (let [stats          (legacy-anonymous-usage-stats)
-          snowplow-stats (snowplow-anonymous-usage-stats stats)]
+    (let [start-time-ms  (System/currentTimeMillis)
+          stats          (legacy-anonymous-usage-stats)
+          snowplow-stats (snowplow-anonymous-usage-stats stats)
+          end-time-ms    (System/currentTimeMillis)
+          elapsed-secs   (quot (- end-time-ms start-time-ms) 1000)]
       (send-stats-deprecated! stats)
-      (snowplow/track-event! ::snowplow/instance_stats snowplow-stats))))
+      (snowplow/track-event! ::snowplow/instance_stats
+                             (assoc-in snowplow-stats [:metadata "stats_export_time_seconds"] elapsed-secs)))))
