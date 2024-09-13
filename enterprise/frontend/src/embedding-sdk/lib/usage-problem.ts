@@ -48,7 +48,7 @@ export function getSdkUsageProblem(
    * TODO: these checks for non-localhost environments are pending on
    *       the "allowing CORS for /api/session/properties" PR to be merged
    *
-   * 1: (isSSO: true, isEnabled: false) -> EMBEDDING_SDK_NOT_ENABLED
+   * 1: (isSSO: true, isEnabled: false) -> PROBLEMS.EMBEDDING_SDK_NOT_ENABLED
    * 2: (isSSO: true, hasTokenFeature: false) -> PROBLEMS.SSO_WITHOUT_LICENSE
    * 3: (isApiKey: true, hasTokenFeature: false) -> PROBLEMS.API_KEYS_WITHOUT_LICENSE
    */
