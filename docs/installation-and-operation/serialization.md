@@ -142,7 +142,9 @@ See [export parameters in CLI commands](#export-options) or [export parameters i
 
 ### Example of a serialized question
 
-Questions can be found in the `cards` directory of a collection directory. Here's an example card YAML file for a question written with SQL that uses a field filter and has an area chart visualization:
+Questions can be found in the `cards` directory of a collection directory. Here's an example card YAML file for a question written with SQL that uses a field filter and has an area chart visualization.
+
+> If your native query has trailing whitespace, YAML will convert your query to a single string literal (this only affects presentation, not functionality). Remove trailing whitespace from native queries to keep multi-line format.
 
 ```yml
 name: Products by week
