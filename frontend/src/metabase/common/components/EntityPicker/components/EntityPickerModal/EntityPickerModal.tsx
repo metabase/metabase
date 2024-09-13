@@ -17,6 +17,7 @@ import type {
 } from "metabase-types/api";
 
 import { RECENTS_TAB_ID, SEARCH_TAB_ID } from "../../constants";
+import { useScopedSearchResults } from "../../hooks";
 import type {
   EntityPickerOptions,
   EntityPickerSearchScope,
@@ -28,7 +29,6 @@ import type {
 import {
   computeInitialTabId,
   getFolderModels,
-  getScopedSearchResults,
   getSearchInputPlaceholder,
   getSearchModels,
   getSearchTabText,
@@ -140,9 +140,10 @@ export function EntityPickerModal<
         ? (previousTabId ?? selectedTabId)
         : selectedTabId
     ];
-  const scopedSearchResults = useMemo(
-    () => getScopedSearchResults(searchResults, searchScope, selectedFolder),
-    [searchResults, searchScope, selectedFolder],
+  const scopedSearchResults = useScopedSearchResults(
+    searchResults,
+    searchScope,
+    selectedFolder,
   );
   const hydratedOptions = useMemo(
     () => ({ ...defaultOptions, ...options }),
