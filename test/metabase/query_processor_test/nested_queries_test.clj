@@ -380,11 +380,12 @@
                                  (-> (mt/mbql-query people
                                        {:source-table $$people
                                         :aggregation  [[:aggregation-options [:count] {:name coun-col-name}]]
-                                        :breakout     [[:field %state {:name long-col-name}]]})
+                                        :breakout     [[:field %state {:name long-col-name}]]
+                                        :limit        5})
                                      qp.compile/compile
                                      :query))
 
-            query              (query-with-source-card 1 (mt/$ids people {:limit 5}))]
+            query              (query-with-source-card 1)]
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                                           [(mt/native-query {:query native-sub-query})])
           (mt/with-native-query-testing-context query

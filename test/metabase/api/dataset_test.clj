@@ -250,7 +250,8 @@
                                (-> (mt/mbql-query people
                                      {:source-table $$people
                                       :aggregation  [[:aggregation-options [:count] {:name short-col-name}]]
-                                      :breakout     [[:field %state {:name long-col-name}]]})
+                                      :breakout     [[:field %state {:name long-col-name}]]
+                                      :limit        5})
                                    qp.compile/compile
                                    :query))
 
@@ -266,8 +267,7 @@
                                 :result-metadata))]
           (let [card-query {:database (mt/id)
                             :type     "query"
-                            :query    {:source-table (str "card__" (u/the-id card))
-                                       :limit        5}}]
+                            :query    {:source-table (str "card__" (u/the-id card))}}]
             (mt/with-native-query-testing-context card-query
               (testing "POST /api/dataset/native"
                 (is (=? {:query  validate-native-form
