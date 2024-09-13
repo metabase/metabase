@@ -1,5 +1,6 @@
 (ns metabase.search.postgres.core
   (:require
+   [cheshire.core :as json]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
@@ -78,6 +79,17 @@
                      (t2/query <>)
                      (filter (comp (set ids) :id) <>)))))))
 
+(defn search-minimal
+  "Perform a basic search that only uses the index"
+  [search-ctx]
+  (when-not @#'search.index/initialized?
+    (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
+                    {:search-engine :postgres})))
+  (->> (assoc (search.index/search-query (:search-string search-ctx)) :select [:legacy_input])
+       (t2/query)
+       (map :legacy_input)
+       (map #(json/parse-string % keyword))))
+
 (defn search
   "Return a reducible-query corresponding to searching the entities via a tsvector."
   [search-ctx]
@@ -99,4 +111,5 @@
   (search.index/activate-pending!))
 
 (comment
-  (init! true))
+  (init! true)
+  (t2/select-fn-vec :legacy_input :search_index))

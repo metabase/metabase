@@ -51,3 +51,11 @@
         (testing term
           (is (= (hybrid term)
                  (hybrid-multi term))))))))
+
+(deftest minimal-test
+  (with-setup
+    (testing "consistent results between both hybrid implementations"
+      (doseq [term ["satisfaction" "e-commerce" "example" "rasta" "new" "revenue" "collection"]]
+        (testing term
+          (is (= (hybrid term)
+                 (hybrid-multi term))))))))
