@@ -288,7 +288,7 @@
                :db_id      (serdes/fk :model/Database :name)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
-  (concat (serdes/storage-table-path-prefix (serdes/path table))
+  (concat (serdes/storage-path-prefixes (serdes/path table))
           [(:name table)]))
 
 ;;; -------------------------------------------------- Audit Log Table -------------------------------------------------
