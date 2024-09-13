@@ -23,6 +23,7 @@ export type DatabaseItem = {
 
 export type SchemaItem = {
   id: SchemaName;
+  dbId: DatabaseId;
   name: string;
   model: "schema";
 };

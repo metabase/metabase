@@ -80,15 +80,16 @@ export const getDbItem = (
 };
 
 export const getSchemaItem = (
+  dbId: DatabaseId | undefined,
   schemaName: SchemaName | undefined,
 ): DataPickerFolderItem | null => {
-  if (typeof schemaName === "undefined") {
+  if (typeof schemaName === "undefined" || typeof dbId === "undefined") {
     return null;
   }
 
   const name = getSchemaDisplayName(schemaName);
 
-  return { model: "schema", id: schemaName, name };
+  return { model: "schema", id: schemaName, name, dbId };
 };
 
 export const getTableItem = (

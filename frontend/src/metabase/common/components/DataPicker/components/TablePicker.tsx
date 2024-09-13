@@ -83,8 +83,8 @@ export const TablePicker = ({
   );
 
   const selectedSchemaItem = useMemo(
-    () => getSchemaItem(schemaName),
-    [schemaName],
+    () => getSchemaItem(dbId, schemaName),
+    [dbId, schemaName],
   );
 
   const selectedTableItem = useMemo(
@@ -121,9 +121,14 @@ export const TablePicker = ({
       if (folder.model === "schema") {
         const newPath: TablePickerStatePath = [dbId, folder.id, undefined];
         setSchemaName(folder.id);
-        onItemSelect(
-          selectedDbItem && schemas?.length === 1 ? selectedDbItem : folder,
-        );
+        onItemSelect({
+          ...folder,
+          name:
+            // use database name if there is only 1 schema, as user won't even see the schema in the UI
+            selectedDbItem && schemas?.length === 1
+              ? selectedDbItem.name
+              : folder.name,
+        });
         onPathChange(newPath);
       }
 
@@ -145,10 +150,28 @@ export const TablePicker = ({
   const handleFolderSelectRef = useLatest(handleFolderSelect);
 
   useEffect(
+    function ensureSchemaSelectedInMultiSchemaDb() {
+      if (
+        !isLoadingSchemas &&
+        schemas &&
+        schemas.length > 1 &&
+        schemaName == null
+      ) {
+        const firstSchema = schemas[0];
+        const item = getSchemaItem(dbId, firstSchema);
+
+        if (item) {
+          handleFolderSelectRef.current(item);
+        }
+      }
+    },
+    [dbId, isLoadingSchemas, schemas, schemaName, handleFolderSelectRef],
+  );
+
+  useEffect(
     function ensureFolderSelected() {
       if (initialDbId == null && databases && databases.length > 0) {
         const firstDatabase = databases[0];
-
         handleFolderSelectRef.current({
           id: firstDatabase.id,
           model: "database",
@@ -160,7 +183,7 @@ export const TablePicker = ({
         const item =
           initialSchemaId == null || schemas?.length === 1
             ? getDbItem(databases, initialDbId)
-            : getSchemaItem(initialSchemaId);
+            : getSchemaItem(initialDbId, initialSchemaId);
 
         if (item) {
           onItemSelectRef.current(item);
