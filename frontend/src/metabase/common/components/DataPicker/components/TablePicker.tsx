@@ -83,8 +83,14 @@ export const TablePicker = ({
   );
 
   const selectedSchemaItem = useMemo(
-    () => getSchemaItem(dbId, schemaName),
-    [dbId, schemaName],
+    () =>
+      getSchemaItem(
+        dbId,
+        selectedDbItem?.name,
+        schemaName,
+        schemas?.length === 1,
+      ),
+    [dbId, selectedDbItem, schemaName, schemas],
   );
 
   const selectedTableItem = useMemo(
@@ -150,40 +156,64 @@ export const TablePicker = ({
   const handleFolderSelectRef = useLatest(handleFolderSelect);
 
   useEffect(
-    function ensureSchemaSelectedInMultiSchemaDb() {
-      if (
-        !isLoadingSchemas &&
-        schemas &&
-        schemas.length > 1 &&
-        schemaName == null
-      ) {
-        const firstSchema = schemas[0];
-        const item = getSchemaItem(dbId, firstSchema);
+    function ensureDbSelected() {
+      const hasDbs = !isLoadingDatabases && databases && databases.length > 0;
+
+      if (hasDbs && !selectedDbItem) {
+        const firstDatabase = databases[0];
+        const item = getDbItem(databases, firstDatabase.id);
 
         if (item) {
           handleFolderSelectRef.current(item);
         }
       }
     },
-    [dbId, isLoadingSchemas, schemas, schemaName, handleFolderSelectRef],
+    [
+      dbId,
+      isLoadingDatabases,
+      databases,
+      handleFolderSelectRef,
+      selectedDbItem,
+    ],
+  );
+
+  useEffect(
+    function ensureSchemaSelected() {
+      const hasSchemas = !isLoadingSchemas && schemas && schemas.length > 0;
+
+      if (hasSchemas && !selectedSchemaItem) {
+        const firstSchema = schemas[0];
+        const item = getSchemaItem(
+          dbId,
+          selectedDbItem?.name,
+          firstSchema,
+          schemas.length === 1,
+        );
+
+        if (item) {
+          handleFolderSelectRef.current(item);
+        }
+      }
+    },
+    [
+      dbId,
+      selectedDbItem,
+      isLoadingSchemas,
+      schemas,
+      handleFolderSelectRef,
+      selectedSchemaItem,
+    ],
   );
 
   useEffect(
     function ensureFolderSelected() {
-      if (initialDbId == null && databases && databases.length > 0) {
-        const firstDatabase = databases[0];
-        handleFolderSelectRef.current({
-          id: firstDatabase.id,
-          model: "database",
-          name: firstDatabase.name,
-        });
-      }
-
       if (initialDbId != null) {
-        const item =
-          initialSchemaId == null || schemas?.length === 1
-            ? getDbItem(databases, initialDbId)
-            : getSchemaItem(initialDbId, initialSchemaId);
+        const item = getSchemaItem(
+          initialDbId,
+          selectedDbItem?.name,
+          initialSchemaId,
+          schemas?.length === 1,
+        );
 
         if (item) {
           onItemSelectRef.current(item);
@@ -193,7 +223,7 @@ export const TablePicker = ({
     [
       databases,
       schemas,
-      handleFolderSelectRef,
+      selectedDbItem,
       onItemSelectRef,
       initialDbId,
       initialSchemaId,
@@ -226,6 +256,7 @@ export const TablePicker = ({
         {isNotNull(dbId) && (
           <SchemaList
             dbId={dbId}
+            dbName={selectedDbItem?.name}
             error={errorSchemas}
             isCurrentLevel={!tableId}
             isLoading={isLoadingSchemas}

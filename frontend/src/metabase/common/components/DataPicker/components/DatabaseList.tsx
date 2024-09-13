@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import type { Database } from "metabase-types/api";
 
 import { ItemList, ListBox } from "../../EntityPicker";
-import { useAutoSelectOnlyItem } from "../hooks";
 import type { DataPickerFolderItem } from "../types";
 
 interface Props {
@@ -33,11 +32,7 @@ export const DatabaseList = ({
     }));
   }, [databases]);
 
-  const hasOnly1Item = useAutoSelectOnlyItem({
-    disabled: Boolean(selectedItem),
-    items,
-    onChange: onClick,
-  });
+  const hasOnly1Item = items?.length === 1;
 
   if (!isLoading && !error && hasOnly1Item) {
     return null;

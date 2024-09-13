@@ -24,6 +24,8 @@ export type DatabaseItem = {
 export type SchemaItem = {
   id: SchemaName;
   dbId: DatabaseId;
+  dbName: string | undefined;
+  isOnlySchema: boolean;
   name: string;
   model: "schema";
 };

@@ -81,7 +81,9 @@ export const getDbItem = (
 
 export const getSchemaItem = (
   dbId: DatabaseId | undefined,
+  dbName: string | undefined,
   schemaName: SchemaName | undefined,
+  isOnlySchema: boolean,
 ): DataPickerFolderItem | null => {
   if (typeof schemaName === "undefined" || typeof dbId === "undefined") {
     return null;
@@ -89,7 +91,7 @@ export const getSchemaItem = (
 
   const name = getSchemaDisplayName(schemaName);
 
-  return { model: "schema", id: schemaName, name, dbId };
+  return { model: "schema", id: schemaName, name, dbId, dbName, isOnlySchema };
 };
 
 export const getTableItem = (

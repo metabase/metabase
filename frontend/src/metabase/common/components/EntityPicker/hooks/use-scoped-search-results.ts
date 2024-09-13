@@ -10,14 +10,13 @@ import { isNotNull } from "metabase/lib/types";
 import type {
   CollectionId,
   CollectionItem,
-  DatabaseId,
   SearchResult,
   SearchResultId,
   Table,
 } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
 
 import type { EntityPickerSearchScope, TypeWithModel } from "../types";
+import { isSchemaItem } from "../utils";
 
 export const useScopedSearchResults = <
   Id extends SearchResultId,
@@ -68,24 +67,16 @@ export const useScopedSearchResults = <
   }, [tables, database]);
 
   const scopedSearchResults: SearchResult[] | null = useMemo(() => {
-    if (!isScopedSearchEnabled) {
-      return null;
+    if (isScopedSearchEnabled && shouldUseCollectionItems) {
+      return isFetchingCollectionItems
+        ? null
+        : filterSearchResults(collectionItems, searchQuery, searchModels);
     }
 
-    if (shouldUseCollectionItems) {
-      if (isFetchingCollectionItems) {
-        return null;
-      }
-
-      return filterSearchResults(collectionItems, searchQuery, searchModels);
-    }
-
-    if (shouldUseTables) {
-      if (isFetchingTables) {
-        return null;
-      }
-
-      return filterSearchResults(tableItems, searchQuery, searchModels);
+    if (isScopedSearchEnabled && shouldUseTables) {
+      return isFetchingTables
+        ? null
+        : filterSearchResults(tableItems, searchQuery, searchModels);
     }
 
     return null;
@@ -142,14 +133,4 @@ const filterSearchResults = (
     const matchesModel = searchModels.includes(result.model);
     return matchesQuery && matchesModel;
   });
-};
-
-const isSchemaItem = <
-  Id extends SearchResultId,
-  Model extends string,
-  Item extends TypeWithModel<Id, Model>,
->(
-  item: Item,
-): item is Item & { dbId: DatabaseId } => {
-  return isObject(item) && "dbId" in item && typeof item.dbId === "number";
 };
