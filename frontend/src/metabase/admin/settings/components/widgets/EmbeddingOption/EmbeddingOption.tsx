@@ -134,7 +134,7 @@ export function EmbeddingSdkOptionCard({ onToggle }: EmbeddingOptionCardProps) {
           })}
         />
       }
-      title={t`Embedding SDK for React`}
+      title={t`Embedded analytics SDK`}
       label={
         <Flex gap="sm">
           <Label>{t`PRO & ENTERPRISE`}</Label>

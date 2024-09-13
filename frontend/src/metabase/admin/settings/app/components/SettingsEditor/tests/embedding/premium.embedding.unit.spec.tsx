@@ -115,13 +115,13 @@ describe("[EE, with token] embedding settings", () => {
       it("should show info about embedding SDK", async () => {
         const withinEmbeddingSdkCard = within(
           screen.getByRole("article", {
-            name: "Embedding SDK for React",
+            name: "Embedded analytics SDK",
           }),
         );
 
         expect(
           withinEmbeddingSdkCard.getByRole("heading", {
-            name: "Embedding SDK for React",
+            name: "Embedded analytics SDK",
           }),
         ).toBeInTheDocument();
         expect(
@@ -140,16 +140,16 @@ describe("[EE, with token] embedding settings", () => {
         await userEvent.click(
           within(
             screen.getByRole("article", {
-              name: "Embedding SDK for React",
+              name: "Embedded analytics SDK",
             }),
           ).getByRole("button", { name: "Configure" }),
         );
 
         expect(
-          screen.getByLabelText("Enable Embedding SDK for React"),
+          screen.getByLabelText("Enable Embedded analytics SDK"),
         ).not.toBeChecked();
         expect(
-          screen.getByLabelText("Enable Embedding SDK for React"),
+          screen.getByLabelText("Enable Embedded analytics SDK"),
         ).toBeEnabled();
         expect(
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
@@ -343,13 +343,13 @@ describe("[EE, with token] embedding settings", () => {
       it("should show info about embedding SDK", async () => {
         const withinEmbeddingSdkCard = within(
           screen.getByRole("article", {
-            name: "Embedding SDK for React",
+            name: "Embedded analytics SDK",
           }),
         );
 
         expect(
           withinEmbeddingSdkCard.getByRole("heading", {
-            name: "Embedding SDK for React",
+            name: "Embedded analytics SDK",
           }),
         ).toBeInTheDocument();
         expect(
@@ -366,16 +366,16 @@ describe("[EE, with token] embedding settings", () => {
         await userEvent.click(
           within(
             screen.getByRole("article", {
-              name: "Embedding SDK for React",
+              name: "Embedded analytics SDK",
             }),
           ).getByRole("button", { name: "Configure" }),
         );
 
         expect(
-          screen.getByLabelText("Enable Embedding SDK for React"),
+          screen.getByLabelText("Enable Embedded analytics SDK"),
         ).toBeChecked();
         expect(
-          screen.getByLabelText("Enable Embedding SDK for React"),
+          screen.getByLabelText("Enable Embedded analytics SDK"),
         ).toBeEnabled();
         expect(
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
@@ -511,7 +511,7 @@ describe("[EE, with token] embedding settings", () => {
 
     expect(screen.queryByText("Static embedding")).not.toBeInTheDocument();
     expect(
-      screen.queryByText("Embedding SDK for React"),
+      screen.queryByText("Embedded analytics SDK"),
     ).not.toBeInTheDocument();
   });
 });

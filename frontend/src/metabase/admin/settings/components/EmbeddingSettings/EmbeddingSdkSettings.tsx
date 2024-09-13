@@ -72,7 +72,7 @@ export function EmbeddingSdkSettings({
         />
 
         <Switch
-          label={t`Enable Embedding SDK for React`}
+          label={t`Enable Embedded analytics SDK`}
           labelPosition="left"
           size="sm"
           checked={isEmbeddingSdkEnabled}
