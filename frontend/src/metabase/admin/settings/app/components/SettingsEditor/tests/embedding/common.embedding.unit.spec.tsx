@@ -529,6 +529,22 @@ describe("[OSS] embedding settings", () => {
           "https://www.metabase.com/learn/metabase-basics/embedding/securing-embeds?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=oss",
         );
       });
+
+      it("should show quick start section", () => {
+        expect(
+          screen.getByText("Try Embedded analytics SDK"),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText("Use the SDK with API keys for development."),
+        ).toBeInTheDocument();
+
+        expect(
+          screen.getByRole("link", { name: "Check out the Quick Start" }),
+        ).toHaveProperty(
+          "href",
+          "https://metaba.se/sdk-quick-start?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=oss",
+        );
+      });
     });
   });
 });

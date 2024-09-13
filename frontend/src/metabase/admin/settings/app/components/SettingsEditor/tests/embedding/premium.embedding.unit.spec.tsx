@@ -553,6 +553,20 @@ describe("[EE, with token] embedding settings", () => {
           "https://www.metabase.com/learn/metabase-basics/embedding/securing-embeds?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-self-hosted",
         );
       });
+
+      it("should show quick start section", () => {
+        expect(screen.getByText("Get started")).toBeInTheDocument();
+        expect(
+          screen.queryByText("Use the SDK with API keys for development."),
+        ).not.toBeInTheDocument();
+
+        expect(
+          screen.getByRole("link", { name: "Check out the Quick Start" }),
+        ).toHaveProperty(
+          "href",
+          "https://metaba.se/sdk-quick-start?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-self-hosted",
+        );
+      });
     });
   });
 
@@ -590,6 +604,20 @@ describe("[EE, with token] embedding settings", () => {
         ).toHaveProperty(
           "href",
           "https://www.metabase.com/learn/metabase-basics/embedding/securing-embeds?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-cloud",
+        );
+      });
+
+      it("should show quick start section", () => {
+        expect(screen.getByText("Get started")).toBeInTheDocument();
+        expect(
+          screen.queryByText("Use the SDK with API keys for development."),
+        ).not.toBeInTheDocument();
+
+        expect(
+          screen.getByRole("link", { name: "Check out the Quick Start" }),
+        ).toHaveProperty(
+          "href",
+          "https://metaba.se/sdk-quick-start?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-cloud",
         );
       });
     });
