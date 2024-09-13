@@ -123,7 +123,7 @@
                                    :email "rasta@metabase.com"}}
                        {:type                 :notification-recipient/group
                         :permissions_group_id (:id group)
-                        :group                {:name "Rasta and Lucky"
+                        :permissions_group    {:name "Rasta and Lucky"
                                                :members [{:id    (mt/user->id :lucky)
                                                           :email "lucky@metabase.com"}
                                                          {:id    (mt/user->id :rasta)

@@ -7,8 +7,7 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -93,10 +92,7 @@
    :template_id
    {:default nil}))
 
-(methodical/defmethod t2/model-for-automagic-hydration [:model/NotificationRecipient :group] [_original-model _k] :model/PermissionsGroup)
-(methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration [:model/NotificationRecipient :group :default]
-  [_original-model _dest-key _hydrating-model]
-  [:permissions_group_id])
+
 
 (methodical/defmethod t2/batched-hydrate [:model/NotificationHandler :recipients]
   "Batch hydration NotificationRecipients for a list of NotificationHandlers"
@@ -115,7 +111,7 @@
                     (update :notification-recipient/group
                             (fn [recipients]
                               (when (seq recipients)
-                                (t2/hydrate recipients [:group :members]))))
+                                (t2/hydrate recipients [:permissions_group :members]))))
                     vals
                     flatten)))
    :id

@@ -19,7 +19,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (def PermissionsGroup
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
@@ -27,6 +28,10 @@
   :model/PermissionsGroup)
 
 (methodical/defmethod t2/table-name :model/PermissionsGroup [_model] :permissions_group)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :permissions_group] [_original-model _k] :model/PermissionsGroup)
+(methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration [:default :permissions_group :default]
+  [_original-model _dest-key _hydrating-model]
+  [:permissions_group_id])
 
 (doto :model/PermissionsGroup
   (derive :metabase/model)
