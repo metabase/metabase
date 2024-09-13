@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -43,7 +42,6 @@ const setup = (options: Options) => {
     sdk: createMockSdkState(),
   });
 
-  setupEnterprisePlugins();
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settingValues);
 
