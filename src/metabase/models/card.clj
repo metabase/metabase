@@ -411,11 +411,16 @@
   `(binding [*updating-dashboard* true]
      ~@body))
 
+(defn- was-dashboard-question? [card changes]
+  (or (dashboard-internal-card? card)
+      (and (contains? changes :dashboard_id)
+           (not (:dashboard_id changes)))))
+
 (defn- is-valid-dashboard-internal-card-for-update [card changes]
-  (or (and (not (dashboard-internal-card? card))
+  (or (and (not (was-dashboard-question? card changes))
            (not (contains? changes :dashboard_id)))
       (and
-       (dashboard-internal-card? card)
+       (was-dashboard-question? card changes)
        (or *updating-dashboard* (not (contains? changes :collection_id)))
        (not (contains? changes :collection_position))
        (or (not (contains? changes :type))
