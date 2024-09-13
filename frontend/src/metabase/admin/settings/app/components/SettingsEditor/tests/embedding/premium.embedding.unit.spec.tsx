@@ -567,6 +567,18 @@ describe("[EE, with token] embedding settings", () => {
           "https://metaba.se/sdk-quick-start?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-self-hosted",
         );
       });
+
+      it("should show CORS settings", () => {
+        expect(
+          screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
+        ).toBeInTheDocument();
+
+        expect(
+          screen.getByText(
+            "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included.",
+          ),
+        ).toBeInTheDocument();
+      });
     });
   });
 
@@ -619,6 +631,18 @@ describe("[EE, with token] embedding settings", () => {
           "href",
           "https://metaba.se/sdk-quick-start?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-cloud",
         );
+      });
+
+      it("should show CORS settings", () => {
+        expect(
+          screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
+        ).toBeInTheDocument();
+
+        expect(
+          screen.getByText(
+            "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included.",
+          ),
+        ).toBeInTheDocument();
       });
     });
   });

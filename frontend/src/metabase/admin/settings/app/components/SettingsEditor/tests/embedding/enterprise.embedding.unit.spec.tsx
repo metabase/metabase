@@ -544,6 +544,27 @@ describe("[EE, no token] embedding settings", () => {
           "https://metaba.se/sdk-quick-start?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=starter",
         );
       });
+
+      it("should show CORS settings", () => {
+        expect(
+          screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
+        ).toBeInTheDocument();
+        const corsSettingDescription = screen.getByText(
+          /Try out the SDK on localhost. To enable other sites/,
+        );
+        expect(corsSettingDescription).toHaveTextContent(
+          "Try out the SDK on localhost. To enable other sites, upgrade to Metabase Pro and Enter the origins for the websites or apps where you want to allow SDK embedding.",
+        );
+
+        expect(
+          within(corsSettingDescription).getByRole("link", {
+            name: "upgrade to Metabase Pro",
+          }),
+        ).toHaveProperty(
+          "href",
+          "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=starter",
+        );
+      });
     });
   });
 });
