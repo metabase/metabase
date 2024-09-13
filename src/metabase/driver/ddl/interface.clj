@@ -4,7 +4,7 @@
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
   (:import
@@ -66,9 +66,9 @@
     ;; "2023-03-29T14:01:27.871697Z"
     :value (.format DateTimeFormatter/ISO_INSTANT (Instant/now))}
    {:key   "instance-uuid"
-    :value (public-settings/site-uuid)}
+    :value (settings/site-uuid)}
    {:key   "instance-name"
-    :value (public-settings/site-name)}])
+    :value (settings/site-name)}])
 
 (defn populate-kv-table-honey-sql-form
   "The honeysql form that populates the persisted schema `cache_info` table."

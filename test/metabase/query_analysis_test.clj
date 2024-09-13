@@ -6,8 +6,8 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models :refer [Card]]
    [metabase.models.persisted-info :as persisted-info]
-   [metabase.public-settings :as public-settings]
    [metabase.query-analysis :as query-analysis]
+   [metabase.settings :as settings]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -16,10 +16,10 @@
 (deftest native-query-enabled-test
   (mt/discard-setting-changes [sql-parsing-enabled]
     (testing "sql parsing enabled"
-      (public-settings/sql-parsing-enabled! true)
+      (settings/sql-parsing-enabled! true)
       (is (true? (query-analysis/enabled-type? :native))))
     (testing "sql parsing disabled"
-      (public-settings/sql-parsing-enabled! false)
+      (settings/sql-parsing-enabled! false)
       (is (false? (query-analysis/enabled-type? :native))))))
 
 (deftest non-native-query-enabled-test

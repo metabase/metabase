@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util :as u])
   (:import
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock HardLineBreak
@@ -205,7 +205,7 @@
                               (cond-> s
                                 (not (str/ends-with? s "/")) (str "/"))))]
     (when uri
-      (if-let [^String site-url (ensure-slash (public-settings/site-url))]
+      (if-let [^String site-url (ensure-slash (settings/site-url))]
         (.. (URI. site-url) (resolve uri) toString)
         uri))))
 

@@ -8,7 +8,7 @@
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.user :refer [User]]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
@@ -84,7 +84,7 @@
   :type       :boolean
   :setter     :none
   :getter     (fn [] (and (snowplow-available)
-                          (public-settings/anon-tracking-enabled)))
+                          (settings/anon-tracking-enabled)))
   :visibility :public
   :doc        false)
 
@@ -180,8 +180,8 @@
   (new SelfDescribingJson
        (str "iglu:com.metabase/instance/jsonschema/" (schema->version ::instance))
        {"id"                           (analytics-uuid)
-        "version"                      {"tag" (:tag (public-settings/version))}
-        "token_features"               (m/map-keys name (public-settings/token-features))
+        "version"                      {"tag" (:tag (settings/version))}
+        "token_features"               (m/map-keys name (settings/token-features))
         "created_at"                   (instance-creation)
         "application_database"         (app-db-type)
         "application_database_version" (app-db-version)}))

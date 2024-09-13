@@ -7,7 +7,7 @@
    [metabase.events :as events]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.user :refer [User]]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -34,7 +34,7 @@
   [user-provisioning-type]
   (when (not user-provisioning-type)
     (throw (ex-info (trs "Sorry, but you''ll need a {0} account to view this page. Please contact your administrator."
-                         (u/slugify (public-settings/site-name))) {}))))
+                         (u/slugify (settings/site-name))) {}))))
 
 (defmulti check-user-provisioning
   "If `user-provisioning-enabled?` is false, then we should throw an error when attempting to create a new user."
@@ -103,7 +103,7 @@
   [redirect-url]
   (try
     (let [redirect (some-> redirect-url (URI.))
-          our-host (some-> (public-settings/site-url) (URI.) (.getHost))]
+          our-host (some-> (settings/site-url) (URI.) (.getHost))]
       (api/check-400 (or (nil? redirect-url)
                          (relative-uri? redirect)
                          (= (.getHost redirect) our-host))))

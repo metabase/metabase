@@ -27,7 +27,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util.date-2 :as u.date]))
 
 (defn- utc-date
@@ -40,7 +40,7 @@
    (unique-prefix* (utc-date)))
   ([local-date]
    {:pre [(instance? java.time.LocalDate local-date)]}
-   (-> (format "%s_%s_" local-date (public-settings/site-uuid))
+   (-> (format "%s_%s_" local-date (settings/site-uuid))
        (str/replace  #"-" "_"))))
 
 (def ^{:arglists '([])} unique-prefix

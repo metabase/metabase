@@ -7,12 +7,12 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.models :refer [Card]]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
+   [metabase.settings :as settings]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [toucan2.core :as t2])
@@ -44,7 +44,7 @@
             (is success? (str "Not able to persist on " driver/*driver*))
             (is (= :persist.check/valid error)))
           (testing "Populates the `cache_info` table with v1 information"
-            (let [schema-name (ddl.i/schema-name (mt/db) (public-settings/site-uuid))
+            (let [schema-name (ddl.i/schema-name (mt/db) (settings/site-uuid))
                   query       {:query
                                (first
                                 (sql/format {:select [:key :value]
@@ -52,7 +52,7 @@
                                             {:dialect (can-persist-test-honeysql-quote-style driver/*driver*)}))}
                   values      (into {} (->> query mt/native-query qp/process-query mt/rows))]
               (is (partial= {"settings-version" "1"
-                             "instance-uuid"    (public-settings/site-uuid)}
+                             "instance-uuid"    (settings/site-uuid)}
                             (into {} (->> query mt/native-query qp/process-query mt/rows))))
               (let [[low high]       [(.minus (Instant/now) 1 ChronoUnit/MINUTES)
                                       (.plus (Instant/now) 1 ChronoUnit/MINUTES)]
@@ -143,7 +143,7 @@
                                       (fn [x]
                                         (swap! bad-refs conj x))]
                               (qp/process-query query))
-                    persisted-schema (ddl.i/schema-name (mt/db) (public-settings/site-uuid))]
+                    persisted-schema (ddl.i/schema-name (mt/db) (settings/site-uuid))]
                 (testing "Was persisted"
                   (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
                 (testing "Did not find bad field clauses"
@@ -169,7 +169,7 @@
                            :database (mt/id)
                            :query {:source-table (str "card__" (:id model))}}
                   results (qp/process-query query)
-                  persisted-schema (ddl.i/schema-name (mt/db) (public-settings/site-uuid))]
+                  persisted-schema (ddl.i/schema-name (mt/db) (settings/site-uuid))]
               (testing "Was persisted"
                 (is (str/includes? (-> results :data :native_form :query) persisted-schema))))
             (let [query {:type :query
@@ -178,7 +178,7 @@
                                  :aggregation [[:count]]
                                  :breakout [(mt/$ids $products.category)]}}
                   results (qp/process-query query)
-                  persisted-schema (ddl.i/schema-name (mt/db) (public-settings/site-uuid))]
+                  persisted-schema (ddl.i/schema-name (mt/db) (settings/site-uuid))]
               (testing "Was persisted"
                 (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
               (is (= {"Doohickey" 3976, "Gadget" 4939,

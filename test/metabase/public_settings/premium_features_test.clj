@@ -8,10 +8,10 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.user :refer [User]]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise defenterprise-schema]]
+   [metabase.settings :as settings]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -21,7 +21,7 @@
   (http-fake/with-fake-routes-in-isolation
     {{:address      (#'premium-features/token-status-url token @#'premium-features/token-check-url)
       :query-params {:users      (str (#'premium-features/cached-active-users-count))
-                     :site-uuid  (public-settings/site-uuid-for-premium-features-token-checks)
+                     :site-uuid  (settings/site-uuid-for-premium-features-token-checks)
                      :mb-version (:tag config/mb-version-info)}}
      (constantly premium-features-response)}
     (#'premium-features/fetch-token-status* token)))

@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util.i18n :refer [tru]])
   (:import
    (java.text NumberFormat ParsePosition)
@@ -20,7 +20,7 @@
   Includes:
     - number-separators: Decimal delimiter defaults to `.` and group delimiter defaults to `,`. Stored/returned as a string."
   []
-  {:number-separators (get-in (public-settings/custom-formatting) [:type/Number :number_separators] ".,")})
+  {:number-separators (get-in (settings/custom-formatting) [:type/Number :number_separators] ".,")})
 
 (defn- parse-bool
   "Parses a boolean value (true/t/yes/y/1 and false/f/no/n/0). Case-insensitive."

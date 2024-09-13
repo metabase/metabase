@@ -715,7 +715,7 @@
     (when-let [{email :email, google-auth? :google_auth, is-active? :is_active}
                (t2/select-one [User :email :google_auth :is_active] :id user-id)]
       (let [reset-token        (user/set-password-reset-token! user-id)
-            site-url           (public-settings/site-url)
+            site-url           (settings/site-url)
             password-reset-url (str site-url "/auth/reset_password/" reset-token)
             ;; in a web server context, the server-name ultimately comes from ServletRequest/getServerName
             ;; (i.e. the Java class, via Ring); this is the closest approximation in our batch context

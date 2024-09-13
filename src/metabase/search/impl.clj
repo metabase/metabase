@@ -15,7 +15,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.permissions.util :as perms.u]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config
     :as search.config
@@ -23,6 +22,7 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.scoring :as scoring]
    [metabase.search.util :as search.util]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru deferred-tru]]
@@ -548,7 +548,7 @@
 (defn- allowed-engine? [engine]
   (case engine
     :in-place true
-    :fulltext (public-settings/experimental-fulltext-search-enabled)))
+    :fulltext (settings/experimental-fulltext-search-enabled)))
 
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)

@@ -5,8 +5,8 @@
    [java-time.api :as t]
    [metabase.models :refer [LoginHistory User]]
    [metabase.models.login-history :as login-history]
-   [metabase.public-settings :as public-settings]
    [metabase.server.request.util :as req.util]
+   [metabase.settings :as settings]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -75,7 +75,7 @@
                                                       [:content :string]]]]]]]
                               @mt/inbox))
                   (let [message  (-> @mt/inbox (get email) first :body first :content)
-                        site-url (public-settings/site-url)]
+                        site-url (settings/site-url)]
                     (testing (format "\nMessage = %s\nsite-url = %s" (pr-str message) (pr-str site-url))
                       (is (string? message))
                       (when (string? message)

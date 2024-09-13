@@ -21,11 +21,11 @@
    [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :as user]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as req.util]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.schema :as ms]
@@ -324,8 +324,8 @@
 (defn add-custom-homepage-info
   "Adds custom homepage dashboard information to the current user."
   [user]
-  (let [enabled? (public-settings/custom-homepage)
-        id       (public-settings/custom-homepage-dashboard)
+  (let [enabled? (settings/custom-homepage)
+        id       (settings/custom-homepage-dashboard)
         dash     (t2/select-one Dashboard :id id)
         valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
     (assoc user

@@ -24,8 +24,8 @@
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.metadata :as qp.metadata]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -181,7 +181,7 @@
   [dashboard]
   (-> dashboard
       migrate-parameters-list
-      public-settings/remove-public-uuid-if-public-sharing-is-disabled))
+      settings/remove-public-uuid-if-public-sharing-is-disabled))
 
 (defmethod serdes/hash-fields :model/Dashboard
   [_dashboard]

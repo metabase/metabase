@@ -43,7 +43,7 @@
   e.g. [[metabase.driver.snowflake-test/report-timezone-test]].
 
   This is a function because [[unique-prefix]] can't be calculated until the application database is initialized
-  because it relies on [[public-settings/site-uuid]]."
+  because it relies on [[settings/site-uuid]]."
   #'sql.tu.unique-prefix/unique-prefix)
 
 (defn qualified-db-name

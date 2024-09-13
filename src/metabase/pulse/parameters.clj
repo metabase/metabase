@@ -2,8 +2,8 @@
   "Utilities for processing parameters for inclusion in dashboard subscriptions."
   (:require
    [clojure.string :as str]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.settings :as settings]
    [metabase.shared.parameters.parameters :as shared.params]
    [metabase.util :as u]
    [metabase.util.urls :as urls]
@@ -35,7 +35,7 @@
   [parameter]
   (let [tyype  (:type parameter)
         values (param-val-or-default parameter)]
-    (try (shared.params/formatted-value tyype values (public-settings/site-locale))
+    (try (shared.params/formatted-value tyype values (settings/site-locale))
          (catch Throwable _
            (shared.params/formatted-list (u/one-or-many values))))))
 
@@ -71,4 +71,4 @@
                                        (assoc m tag-name (get param-id->param param-id))))
                                    {}
                                    tag-names)]
-    (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (public-settings/site-locale) (escape-markdown-chars? dashcard))))
+    (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (settings/site-locale) (escape-markdown-chars? dashcard))))

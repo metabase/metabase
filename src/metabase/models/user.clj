@@ -19,8 +19,8 @@
    [metabase.models.session :refer [Session]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.settings :as settings]
    [metabase.setup :as setup]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -321,10 +321,10 @@
 
 (defn- send-welcome-email! [new-user invitor sent-from-setup?]
   (let [reset-token               (set-password-reset-token! (u/the-id new-user))
-        should-link-to-login-page (and (public-settings/sso-enabled?)
-                                       (not (public-settings/enable-password-login)))
+        should-link-to-login-page (and (settings/sso-enabled?)
+                                       (not (settings/enable-password-login)))
         join-url                  (if should-link-to-login-page
-                                    (str (public-settings/site-url) "/auth/login")
+                                    (str (settings/site-url) "/auth/login")
                                     ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
                                     (str (form-password-reset-url reset-token) "#new"))]
     (classloader/require 'metabase.email.messages)
@@ -426,7 +426,7 @@
   "Generate a properly formed password reset url given a password reset token."
   [reset-token]
   {:pre [(string? reset-token)]}
-  (str (public-settings/site-url) "/auth/reset_password/" reset-token))
+  (str (settings/site-url) "/auth/reset_password/" reset-token))
 
 (defn set-permissions-groups!
   "Set the user's group memberships to equal the supplied group IDs. Returns `true` if updates were made, `nil`

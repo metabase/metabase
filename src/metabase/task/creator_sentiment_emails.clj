@@ -10,8 +10,8 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.settings :as settings]
    [metabase.task :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -90,7 +90,7 @@
           all-creators  (fetch-creators (premium-features/enable-whitelabeling?))
           this-week?    (fn [c] (= current-week (-> c :email hash (mod 52))))
           recipients    (filter this-week? all-creators)
-          blob          (if (public-settings/anon-tracking-enabled)
+          blob          (if (settings/anon-tracking-enabled)
                           (fn [creator]
                             (user-instance-info instance-data creator))
                           (constantly nil))]

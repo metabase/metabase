@@ -10,9 +10,9 @@
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.settings :as settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -458,7 +458,7 @@
                (let [req-options (saml-post-request-options (saml-test-response) relay-state)
                      response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                  (is (successful-login? response))
-                 (is (= (public-settings/site-url)
+                 (is (= (settings/site-url)
                         (get-in response [:headers "Location"])))
                  (is (= (some-saml-attributes "rasta")
                         (saml-login-attributes "rasta@metabase.com"))))))))))))
@@ -699,7 +699,7 @@
     (with-other-sso-types-disabled!
       (with-saml-default-setup!
         (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
-                      public-settings/site-name (constantly "test")]
+                      settings/site-name (constantly "test")]
           (is
            (thrown-with-msg?
             clojure.lang.ExceptionInfo

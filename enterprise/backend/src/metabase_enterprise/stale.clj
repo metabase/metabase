@@ -1,7 +1,7 @@
 (ns metabase-enterprise.stale
   (:require [malli.experimental.time]
             [metabase.embed.settings :as embed.settings]
-            [metabase.public-settings :as public-settings]
+            [metabase.settings :as settings]
             [metabase.util.honey-sql-2 :as h2x]
             [metabase.util.malli :as mu]
             [toucan2.core :as t2]))
@@ -46,7 +46,7 @@
            [:<= :report_card.last_used_at (-> args :cutoff-date)]
            (when (embed.settings/enable-embedding)
              [:= :report_card.enable_embedding false])
-           (when (public-settings/enable-public-sharing)
+           (when (settings/enable-public-sharing)
              [:= :report_card.public_uuid nil])
            [:or
             (when (contains? (:collection-ids args) nil)
@@ -69,7 +69,7 @@
            [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
            (when (embed.settings/enable-embedding)
              [:= :report_dashboard.enable_embedding false])
-           (when (public-settings/enable-public-sharing)
+           (when (settings/enable-public-sharing)
              [:= :report_dashboard.public_uuid nil])
            [:or
             (when (contains? (:collection-ids args) nil)

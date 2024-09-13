@@ -5,14 +5,14 @@
    [crypto.random :as crypto-random]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
 (defsetting embedding-app-origin
   (deferred-tru "Allow this origin to embed the full {0} application"
-                (public-settings/application-name-for-setting-descriptions))
+                (settings/application-name-for-setting-descriptions))
   :feature    :embedding
   :visibility :public
   :audit      :getter)

@@ -10,9 +10,9 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
-   [metabase.public-settings :as public-settings]
    [metabase.query-analysis.native-query-analyzer :as nqa]
    [metabase.query-analysis.native-query-analyzer.replacement :as nqa.replacement]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.queue :as queue]
@@ -74,9 +74,9 @@
 (defn enabled-type?
   "Is analysis of the given query type enabled?"
   [query-type]
-  (and (public-settings/query-analysis-enabled)
+  (and (settings/query-analysis-enabled)
        (case query-type
-         :native     (public-settings/sql-parsing-enabled)
+         :native     (settings/sql-parsing-enabled)
          :query      true
          :mbql/query true
          false)))

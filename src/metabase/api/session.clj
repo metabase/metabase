@@ -17,9 +17,9 @@
    [metabase.models.session :refer [Session]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
-   [metabase.public-settings :as public-settings]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as req.util]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -81,7 +81,7 @@
    user         :- CreateSessionUserInfo
    device-info  :- req.util/DeviceInfo]
   ;; this is actually the same as `create-session!` for `:sso` but we check whether password login is enabled.
-  (when-not (public-settings/enable-password-login)
+  (when-not (settings/enable-password-login)
     (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
   ((get-method create-session! :sso) session-type user device-info))
 
@@ -228,7 +228,7 @@
         ;; If user uses any SSO method to log in, no need to generate a reset token
         (messages/send-password-reset-email! email sso-source nil is-active?)
         (let [reset-token        (user/set-password-reset-token! user-id)
-              password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
+              password-reset-url (str (settings/site-url) "/auth/reset_password/" reset-token)]
           (log/info password-reset-url)
           (messages/send-password-reset-email! email nil password-reset-url is-active?)))
       (events/publish-event! :event/password-reset-initiated

@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.formatter.datetime :as datetime]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]))
 
@@ -143,7 +143,7 @@
       (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style      "MMMM D, YYYY"
                                                                             :date_abbreviate true}}]
         (let [global-settings (m/map-vals mb.viz/db->norm-column-settings-entries
-                                          (public-settings/custom-formatting))]
+                                          (settings/custom-formatting))]
           (is (= "Jul 16, 2020"
                  (datetime/format-temporal-str "UTC" now
                                                {:effective_type :type/Date}
@@ -151,7 +151,7 @@
       (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style     "M/DD/YYYY"
                                                                             :date_separator "-"}}]
         (let [global-settings (m/map-vals mb.viz/db->norm-column-settings-entries
-                                          (public-settings/custom-formatting))]
+                                          (settings/custom-formatting))]
           (is (= "7-16-2020, 6:04 PM"
                  (datetime/format-temporal-str
                   "UTC"

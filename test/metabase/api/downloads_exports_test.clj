@@ -17,11 +17,11 @@
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.formatter :as formatter]
-   [metabase.public-settings :as public-settings]
    [metabase.pulse :as pulse]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.streaming.csv :as qp.csv]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
+   [metabase.settings :as settings]
    [metabase.test :as mt])
   (:import
    (org.apache.poi.ss.usermodel DataFormatter)
@@ -632,7 +632,7 @@
 
 (deftest downloads-row-limit-test
   (testing "Downloads row limit works."
-    (mt/with-temporary-setting-values [public-settings/download-row-limit 1050000]
+    (mt/with-temporary-setting-values [settings/download-row-limit 1050000]
       (mt/dataset test-data
         (mt/with-temp [:model/Card card {:display       :table
                                          :dataset_query {:database (mt/id)

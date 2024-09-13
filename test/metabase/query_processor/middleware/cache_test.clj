@@ -10,7 +10,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.query :as query :refer [Query]]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
@@ -22,6 +21,7 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.settings :as settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -458,7 +458,7 @@
                                    (#'cache/save-results-xform (System/currentTimeMillis) {} (byte 0) (ttl-strategy) conj)
                                    (repeat 10000 [1]))))))
   (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
-    (let [max-bytes (* (public-settings/query-caching-max-kb) 1024)]
+    (let [max-bytes (* (settings/query-caching-max-kb) 1024)]
       (is (= max-bytes (count (transduce identity
                                          (#'cache/save-results-xform 0 {} (byte 0) (ttl-strategy) conj)
                                          (repeat max-bytes [1]))))))))

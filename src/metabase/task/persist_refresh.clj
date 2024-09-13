@@ -17,9 +17,9 @@
     :as persisted-info
     :refer [PersistedInfo]]
    [metabase.models.task-history :as task-history]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.settings :as settings]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -399,10 +399,10 @@
 
 (defn reschedule-refresh!
   "Reschedule refresh for all enabled databases. Removes all existing triggers, and schedules refresh for databases with
-  `:persist-models-enabled` in the settings at interval [[public-settings/persisted-model-refresh-cron-schedule]]."
+  `:persist-models-enabled` in the settings at interval [[settings/persisted-model-refresh-cron-schedule]]."
   []
   (let [dbs-with-persistence (filter (comp :persist-models-enabled :settings) (t2/select Database))
-        cron-schedule        (public-settings/persisted-model-refresh-cron-schedule)]
+        cron-schedule        (settings/persisted-model-refresh-cron-schedule)]
     (unschedule-all-refresh-triggers! refresh-job-key)
     (doseq [db dbs-with-persistence]
       (schedule-persistence-for-database! db cron-schedule))))
@@ -440,5 +440,5 @@
 (defmethod task/init! ::PersistPrune
   [_]
   (task/add-job! prune-job)
-  (when (public-settings/persisted-models-enabled)
+  (when (settings/persisted-models-enabled)
     (enable-persisting!)))

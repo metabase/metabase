@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.formatter :as formatter]
    [metabase.models.timeline-event :as timeline-event]
-   [metabase.public-settings :as public-settings]
    [metabase.pulse.render.color :as color]
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.js-svg :as js-svg]
@@ -13,6 +12,7 @@
    [metabase.pulse.render.table :as table]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as common]
+   [metabase.settings :as settings]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.types :as types]
    [metabase.util :as u]
@@ -174,7 +174,7 @@
        timezone-id
        remapping-lookup
        cols
-       (take (min (public-settings/attachment-table-row-limit) 100) rows)
+       (take (min (settings/attachment-table-row-limit) 100) rows)
        viz-settings
        data-attributes)))))
 
@@ -239,7 +239,7 @@
                                       {:cols-for-color-lookup (mapv :name ordered-cols)
                                        :col-names             (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
                                       (prep-for-html-rendering timezone-id card data))
-                                     (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
+                                     (render-truncation-warning (settings/attachment-table-row-limit) (count rows))]]
     {:attachments
      nil
 
@@ -308,7 +308,7 @@
   [x-col y-col {::mb.viz/keys [column-settings] :as viz-settings}]
   (let [x-col-settings (settings-from-column x-col column-settings)
         y-col-settings (settings-from-column y-col column-settings)]
-    (cond-> {:colors (public-settings/application-colors)
+    (cond-> {:colors (settings/application-colors)
              :visualization_settings (or viz-settings {})}
       x-col-settings
       (assoc :x x-col-settings)
@@ -320,7 +320,7 @@
   is an optional string of decimal and grouping symbols to be used, ie \".,\". There will soon be a values.clj file
   that will handle this but this is here in the meantime."
   ([value]
-   (format-percentage value (get-in (public-settings/custom-formatting) [:type/Number :number_separators])))
+   (format-percentage value (get-in (settings/custom-formatting) [:type/Number :number_separators])))
   ([value [decimal grouping]]
    (let [base "#,###.##%"
          fmt (if (or decimal grouping)

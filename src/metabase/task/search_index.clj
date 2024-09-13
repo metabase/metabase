@@ -2,8 +2,8 @@
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.public-settings :as public-settings]
    [metabase.search :as search]
+   [metabase.settings :as settings]
    [metabase.task :as task]
    [metabase.util.log :as log])
   (:import
@@ -15,7 +15,7 @@
 (jobs/defjob ^{DisallowConcurrentExecution false
                :doc                        "Populate Search Index"}
   SearchIndexing [_ctx]
-  (when (public-settings/experimental-fulltext-search-enabled)
+  (when (settings/experimental-fulltext-search-enabled)
     (log/info "Recreating search index from latest schema")
     (search/init-index! {:force-reset? true})
     (log/info "Populating search index")

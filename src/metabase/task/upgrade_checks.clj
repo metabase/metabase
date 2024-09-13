@@ -8,7 +8,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.config :as config]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.task :as task]
    [metabase.util.log :as log]))
 
@@ -20,22 +20,22 @@
         {:keys [status body]} (http/get version-info-url (merge
                                                           {:content-type "application/json"}
                                                           (when config/is-prod?
-                                                            {:query-params {"instance" (public-settings/site-uuid-for-version-info-fetching)}})))]
+                                                            {:query-params {"instance" (settings/site-uuid-for-version-info-fetching)}})))]
     (when (not= status 200)
       (throw (Exception. (format "[%d]: %s" status body))))
     (json/parse-string body keyword)))
 
 (jobs/defjob ^{:doc "Simple job which looks up all databases and runs a sync on them"} CheckForNewVersions [_]
-  (when (public-settings/check-for-updates)
+  (when (settings/check-for-updates)
     (log/debug "Checking for new Metabase version info.")
     (try
       ;; TODO: add in additional request params if anonymous tracking is enabled
-      (public-settings/version-info-last-checked! (t/zoned-date-time))
+      (settings/version-info-last-checked! (t/zoned-date-time))
       (when-let [version-info (get-version-info)]
-        (public-settings/version-info! version-info))
+        (settings/version-info! version-info))
       (catch Throwable e
         (log/error e "Error fetching version info; setting version-info value to nil")
-        (public-settings/version-info! nil)))))
+        (settings/version-info! nil)))))
 
 (def ^:private job-key     "metabase.task.upgrade-checks.job")
 (def ^:private trigger-key "metabase.task.upgrade-checks.trigger")

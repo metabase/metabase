@@ -12,8 +12,8 @@
    [metabase.models.persisted-info
     :as persisted-info
     :refer [PersistedInfo]]
-   [metabase.public-settings :as public-settings]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.settings :as settings]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -27,7 +27,7 @@
 (defn- fetch-persisted-info
   "Returns a list of persisted info, annotated with database_name, card_name, and schema_name."
   [{:keys [persisted-info-id card-id db-ids]} limit offset]
-  (let [site-uuid-str    (public-settings/site-uuid)
+  (let [site-uuid-str    (settings/site-uuid)
         db-id->fire-time (task.persist-refresh/job-info-by-db-id)
         query            (cond-> {:select    [:p.id :p.database_id :p.definition
                                               :p.active :p.state :p.error
@@ -119,7 +119,7 @@
                    (str/ends-with? cron "*"))
       (throw (ex-info (tru "Must be a valid cron string not specifying a year")
                       {:status-code 400})))
-    (public-settings/persisted-model-refresh-cron-schedule! cron))
+    (settings/persisted-model-refresh-cron-schedule! cron))
   (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
 
@@ -128,7 +128,7 @@
   []
   (validation/check-has-application-permission :setting)
   (log/info "Enabling model persistence")
-  (public-settings/persisted-models-enabled! true)
+  (settings/persisted-models-enabled! true)
   (task.persist-refresh/enable-persisting!)
   api/generic-204-no-content)
 
@@ -151,12 +151,12 @@
   that option from databases which might have it enabled, and delete all cached tables."
   []
   (validation/check-has-application-permission :setting)
-  (when (public-settings/persisted-models-enabled)
-    (try (public-settings/persisted-models-enabled! false)
+  (when (settings/persisted-models-enabled)
+    (try (settings/persisted-models-enabled! false)
          (disable-persisting)
          (catch Exception e
            ;; re-enable so can continue to attempt to clean up
-           (public-settings/persisted-models-enabled! true)
+           (settings/persisted-models-enabled! true)
            (throw e))))
   api/generic-204-no-content)
 

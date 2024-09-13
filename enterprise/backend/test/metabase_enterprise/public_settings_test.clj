@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.embed.settings :as embed.settings]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]))
@@ -19,13 +19,13 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Setting enable-password-login is not enabled because feature :disable-password-login is not available"
-             (public-settings/enable-password-login! false))))
+             (settings/enable-password-login! false))))
 
       (testing "can change enable-password-login setting if jwt enabled and have disabled-password-login feature"
         (mt/with-additional-premium-features #{:disable-password-login}
-          (public-settings/enable-password-login! false)
+          (settings/enable-password-login! false)
           (is (= false
-                 (public-settings/enable-password-login))))))))
+                 (settings/enable-password-login))))))))
 
 (deftest toggle-full-app-embedding-test
   (mt/discard-setting-changes [embedding-app-origin]

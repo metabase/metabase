@@ -11,10 +11,10 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.walk :as lib.walk]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -49,7 +49,7 @@
     (when persisted?
       (log/infof "Found substitute cached query for card %s from %s.%s"
                  card-id
-                 (ddl.i/schema-name {:id (:database-id card)} (public-settings/site-uuid))
+                 (ddl.i/schema-name {:id (:database-id card)} (settings/site-uuid))
                  (:table-name persisted-info)))
     (letfn [(update-stages [stages]
               (let [stages        (fix-mongodb-first-stage stages)
@@ -100,7 +100,7 @@
   (when (and (= (:lib/type stage) :mbql.stage/mbql)
              (:source-card stage))
     ;; make sure nested queries are enabled before resolving them.
-    (when-not (public-settings/enable-nested-queries)
+    (when-not (settings/enable-nested-queries)
       (throw (ex-info (trs "Nested queries are disabled")
                       {:type qp.error-type/disabled-feature, :card-id (:source-card stage)})))
     ;; If the first stage came from a different source card (i.e., we are doing recursive resolution) record the

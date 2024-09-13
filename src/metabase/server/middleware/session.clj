@@ -33,9 +33,9 @@
     :as setting
     :refer [*user-local-values* defsetting]]
    [metabase.models.user :as user :refer [User]]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.request.util :as req.util]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -174,7 +174,7 @@
 (defn- use-permanent-cookies?
   "Check if we should use permanent cookies for a given request, which are not cleared when a browser sesion ends."
   [request]
-  (if (public-settings/session-cookies)
+  (if (settings/session-cookies)
     ;; Disallow permanent cookies if MB_SESSION_COOKIES is set
     false
     ;; Otherwise check whether the user selected "remember me" during login

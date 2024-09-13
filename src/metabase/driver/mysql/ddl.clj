@@ -8,8 +8,8 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.ddl :as sql.ddl]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.settings :as settings]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
@@ -98,7 +98,7 @@
 
 (defmethod ddl.i/check-can-persist :mysql
   [{driver :engine, :as database}]
-  (let [schema-name (ddl.i/schema-name database (public-settings/site-uuid))
+  (let [schema-name (ddl.i/schema-name database (settings/site-uuid))
         table-name (format "persistence_check_%s" (rand-int 10000))
         db-spec (sql-jdbc.conn/db->pooled-connection-spec database)
         steps [[:persist.check/create-schema

@@ -5,7 +5,7 @@
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.integrations.ldap :as ldap]
    [metabase.models.user :as user :refer [User]]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.test :as mt]
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util.malli.schema :as ms]
@@ -255,7 +255,7 @@
     (ldap.test/with-ldap-server!
       (testing "an error is thrown when a new user is fetched and user provisioning is not enabled"
         (with-redefs [sso-settings/ldap-user-provisioning-enabled? (constantly false)
-                      public-settings/site-name (constantly "test")]
+                      settings/site-name (constantly "test")]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Sorry, but you'll need a test account to view this page. Please contact your administrator."

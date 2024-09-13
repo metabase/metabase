@@ -11,13 +11,13 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
@@ -42,8 +42,8 @@
 
 (defn- purge! [backend]
   (try
-    (log/tracef "Purging cache entries older than %s" (u/format-seconds (public-settings/query-caching-max-ttl)))
-    (i/purge-old-entries! backend (public-settings/query-caching-max-ttl))
+    (log/tracef "Purging cache entries older than %s" (u/format-seconds (settings/query-caching-max-ttl)))
+    (i/purge-old-entries! backend (settings/query-caching-max-ttl))
     (log/trace "Successfully purged old cache entries.")
     :done
     (catch Throwable e
@@ -84,7 +84,7 @@
     :done
     (catch Throwable e
       (if (= (:type (ex-data e)) ::impl/max-bytes)
-        (log/debugf e "Not caching results: results are larger than %s KB" (public-settings/query-caching-max-kb))
+        (log/debugf e "Not caching results: results are larger than %s KB" (settings/query-caching-max-kb))
         (log/errorf e "Error saving query results to cache: %s" (ex-message e))))))
 
 (defn- save-results-xform [start-time-ns metadata query-hash strategy rf]
@@ -214,7 +214,7 @@
                 (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))))
 
 (defn- is-cacheable? {:arglists '([query])} [{:keys [cache-strategy]}]
-  (and (public-settings/enable-query-caching)
+  (and (settings/enable-query-caching)
        (some? cache-strategy)
        (not= (:type cache-strategy) :nocache)))
 

@@ -3,9 +3,9 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.settings :as settings]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.shared.util.currency :as currency]
    [metabase.util.date-2 :as u.date])
@@ -70,7 +70,7 @@
   "Merge format settings defined in the localization preferences into the format settings
   for a single column."
   [format-settings global-settings-key]
-  (let [global-settings (get (public-settings/custom-formatting) global-settings-key)
+  (let [global-settings (get (settings/custom-formatting) global-settings-key)
         normalized      (mb.viz/db->norm-column-settings-entries global-settings)]
     (merge normalized format-settings)))
 
@@ -172,14 +172,14 @@
     {}))
 
 (defn- ensure-global-viz-settings
-  "The ::mb.viz/global-column-settings comes from (public-settings/custom-formatting) and is provided by the query
+  "The ::mb.viz/global-column-settings comes from (settings/custom-formatting) and is provided by the query
   processor in the `metabase.query-processor.middleware.visualization-settings` middleware _if_ `process-viz-settings?`
   is truthy. This function checks to see if those settings have been provided and adds them if they are not present."
   [{::mb.viz/keys [global-column-settings] :as viz-settings}]
   (cond-> viz-settings
     (nil? global-column-settings)
     (assoc ::mb.viz/global-column-settings
-           (update-vals (public-settings/custom-formatting)
+           (update-vals (settings/custom-formatting)
                         mb.viz/db->norm-column-settings-entries))))
 
 (defn viz-settings-for-col

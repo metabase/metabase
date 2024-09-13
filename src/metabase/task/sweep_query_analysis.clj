@@ -4,8 +4,8 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.public-settings :as public-settings]
    [metabase.query-analysis :as query-analysis]
+   [metabase.settings :as settings]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -86,7 +86,7 @@
 (jobs/defjob ^{DisallowConcurrentExecution true
                :doc                        "Backfill QueryField for cards created earlier. Runs once per instance."}
   SweepQueryAnalysis [_ctx]
-  (when (public-settings/query-analysis-enabled)
+  (when (settings/query-analysis-enabled)
     (sweep-query-analysis-loop!)))
 
 (defmethod task/init! ::SweepQueryAnalysis [_]

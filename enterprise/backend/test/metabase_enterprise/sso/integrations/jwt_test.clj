@@ -14,8 +14,8 @@
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.settings :as settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -336,7 +336,7 @@
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-jwt-default-setup!
       (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
-                    public-settings/site-name (constantly "test")]
+                    settings/site-name (constantly "test")]
         (is
          (thrown-with-msg?
           clojure.lang.ExceptionInfo

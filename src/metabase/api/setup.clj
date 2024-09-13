@@ -17,9 +17,9 @@
    [metabase.models.session :refer [Session]]
    [metabase.models.setting.cache :as setting.cache]
    [metabase.models.user :as user :refer [User]]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.settings :as settings]
    [metabase.setup :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
@@ -84,12 +84,12 @@
 
 (defn- setup-set-settings! [{:keys [email site-name site-locale]}]
   ;; set a couple preferences
-  (public-settings/site-name! site-name)
-  (public-settings/admin-email! email)
+  (settings/site-name! site-name)
+  (settings/admin-email! email)
   (when site-locale
-    (public-settings/site-locale! site-locale))
+    (settings/site-locale! site-locale))
   ;; default to `true` the setting will set itself correctly whether a boolean or boolean string is specified
-  (public-settings/anon-tracking-enabled! true))
+  (settings/anon-tracking-enabled! true))
 
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and

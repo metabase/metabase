@@ -24,9 +24,9 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Table]]
    [metabase.models.database :refer [Database]]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
+   [metabase.settings :as settings]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -697,7 +697,7 @@
   (testing "Queries should have a remark formatted as JSON appended to them with additional metadata"
     (mt/test-driver :snowflake
       (let [expected-map {"pulseId" nil
-                          "serverId" (public-settings/site-uuid)
+                          "serverId" (settings/site-uuid)
                           "client" "Metabase"
                           "queryHash" "cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2"
                           "queryType" "query"

@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.models.setting :as setting]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -214,7 +214,7 @@
   {:name   "cloud-ip-address-info"
    :type   :info
    :getter (fn []
-             (when-let [ips (public-settings/cloud-gateway-ips)]
+             (when-let [ips (settings/cloud-gateway-ips)]
                (str (deferred-tru
                      (str "If your database is behind a firewall, you may need to allow connections from our Metabase "
                           "[Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"))
@@ -321,13 +321,13 @@
   [:monday :tuesday :wednesday :thursday :friday :saturday :sunday])
 
 (def ^:dynamic *start-of-week*
-  "Used to override the [[metabase.public-settings/start-of-week]] settings.
+  "Used to override the [[metabase.settings/start-of-week]] settings.
   Primarily being used to calculate week-of-year in US modes where the start-of-week is always Sunday.
   More in (defmethod date [:sql :week-of-year-us])."
   nil)
 
 (mu/defn start-of-week->int :- [:int {:min 0, :max 6, :error/message "Start of week integer"}]
-  "Returns the int value for the current [[metabase.public-settings/start-of-week]] Setting value, which ranges from
+  "Returns the int value for the current [[metabase.settings/start-of-week]] Setting value, which ranges from
   `0` (`:monday`) to `6` (`:sunday`). This is guaranteed to return a value."
   {:added "0.42.0"}
   []
@@ -336,7 +336,7 @@
 (defn start-of-week-offset-for-day
   "Like [[start-of-week-offset]] but takes a `start-of-week` keyword like `:sunday` rather than ` driver`. Returns the
   offset (as a negative number) needed to adjust a day of week in the range 1..7 with `start-of-week` as one to a day
-  of week in the range 1..7 with [[metabase.public-settings/start-of-week]] as 1."
+  of week in the range 1..7 with [[metabase.settings/start-of-week]] as 1."
   [start-of-week]
   (let [db-start-of-week     (.indexOf days-of-week start-of-week)
         target-start-of-week (start-of-week->int)
@@ -346,13 +346,13 @@
 
 (mu/defn start-of-week-offset :- :int
   "Return the offset needed to adjust a day of the week (in the range 1..7) returned by the `driver`, with `1`
-  corresponding to [[driver/db-start-of-week]], so that `1` corresponds to [[metabase.public-settings/start-of-week]] in
+  corresponding to [[driver/db-start-of-week]], so that `1` corresponds to [[metabase.settings/start-of-week]] in
   results.
 
   e.g.
 
   If `:my-driver` returns [[driver/db-start-of-week]] as `:sunday` (1 is Sunday, 2 is Monday, and so forth),
-  and [[metabase.public-settings/start-of-week]] is `:monday` (the results should have 1 as Monday, 2 as Tuesday... 7 is
+  and [[metabase.settings/start-of-week]] is `:monday` (the results should have 1 as Monday, 2 as Tuesday... 7 is
   Sunday), then the offset should be `-1`, because `:monday` returned by the driver (`2`) minus `1` = `1`."
   [driver]
   (start-of-week-offset-for-day (driver/db-start-of-week driver)))

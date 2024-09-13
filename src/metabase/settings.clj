@@ -1,4 +1,4 @@
-(ns metabase.public-settings
+(ns metabase.settings
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]

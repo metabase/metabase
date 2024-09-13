@@ -6,9 +6,9 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.public-settings :as public-settings]
    [metabase.query-analysis :as query-analysis]
    [metabase.query-analysis.failure-map :as failure-map]
+   [metabase.settings :as settings]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -44,7 +44,7 @@
             card-id    (u/the-id card-or-id)
             timer      (u/start-timer)
             card       (query-analysis/->analyzable card-or-id)]
-        (when (public-settings/query-analysis-enabled)
+        (when (settings/query-analysis-enabled)
           (if (failure-map/non-retryable? card)
             (log/warnf "Skipping analysis of Card %s as its query has caused failures in the past." card-id)
             (try

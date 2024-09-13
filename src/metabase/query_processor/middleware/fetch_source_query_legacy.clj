@@ -9,9 +9,9 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -70,7 +70,7 @@
      (when (and persisted? log?)
        (log/infof "Found substitute cached query for card %s from %s.%s"
                   card-id
-                  (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
+                  (ddl.i/schema-name {:id database-id} (settings/site-uuid))
                   (:table-name persisted-info)))
      ;; log the query at this point, it's useful for some purposes
      (log/debugf "Fetched source query from Card %s:\n%s" card-id (u/pprint-to-str 'yellow source-query))

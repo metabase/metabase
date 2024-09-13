@@ -350,6 +350,7 @@
                                      metabase.server.protocols
                                      metabase.server.request.util}                                  ; TODO -- consolidate these into a real API namespace.
     metabase.setup                 #{metabase.setup}
+    metabase.settings              #{metabase.settings}
     metabase.shared                #{metabase.shared.dashboards.constants
                                      metabase.shared.formatting.constants
                                      metabase.shared.formatting.date
@@ -418,14 +419,13 @@
     metabase.moderation            :any
     metabase.permissions           :any
     metabase.plugins               :any
-    metabase.public-settings       :any
     metabase.pulse                 :any
     metabase.query-analysis        #{metabase.config
                                      metabase.driver
                                      metabase.legacy-mbql
                                      metabase.lib
                                      metabase.models
-                                     metabase.public-settings
+                                     metabase.settings
                                      metabase.query-processor
                                      metabase.util}
     metabase.query-processor       :any
@@ -433,6 +433,7 @@
     metabase.sample-data           :any
     metabase.search                :any
     metabase.server                :any
+    metabase.settings              :any
     metabase.setup                 :any
     metabase.shared                :any
     metabase.sync                  :any
@@ -630,7 +631,7 @@
     metabase.analysis.native-query-analyzer                       nqa
     metabase.analysis.native-query-analyzer.parameter-substitution nqa.sub
     metabase.plugins.initialize                                   plugins.init
-    metabase.public-settings                                      public-settings
+    metabase.settings                                             settings
     metabase.public-settings.premium-features                     premium-features
     metabase.pulse                                                pulse ; NB some conflicts with metabase.models.pulse
     metabase.pulse.markdown                                       markdown

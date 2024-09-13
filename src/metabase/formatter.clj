@@ -7,8 +7,8 @@
    [clojure.string :as str]
    [hiccup.util]
    [metabase.formatter.datetime :as datetime]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming.common :as common]
+   [metabase.settings :as settings]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.shared.util.currency :as currency]
    [metabase.types :as types]
@@ -137,7 +137,7 @@
         percent?           (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
         scientific?        (= number-style "scientific")
         [decimal grouping] (or number-separators
-                               (get-in (public-settings/custom-formatting) [:type/Number :number_separators])
+                               (get-in (settings/custom-formatting) [:type/Number :number_separators])
                                ".,")
         symbols            (doto (DecimalFormatSymbols.)
                              (cond-> decimal (.setDecimalSeparator decimal))

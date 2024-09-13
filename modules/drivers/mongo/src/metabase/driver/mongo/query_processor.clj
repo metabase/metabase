@@ -21,13 +21,13 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -324,7 +324,7 @@
                   {:$dateTrunc {:date column
                                 :unit (name unit)
                                 :timezone (qp.timezone/results-timezone-id)
-                                :startOfWeek (name (public-settings/start-of-week))}}
+                                :startOfWeek (name (settings/start-of-week))}}
                   (truncate-to-resolution column unit)))]
         (case unit
           :default          column

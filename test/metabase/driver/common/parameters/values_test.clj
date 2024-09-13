@@ -17,10 +17,10 @@
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
+   [metabase.settings :as settings]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -403,7 +403,7 @@
                                       []))))
                     (testing "query hits persisted table"
                       (let [persisted-schema (ddl.i/schema-name {:id (mt/id)}
-                                                                (public-settings/site-uuid))
+                                                                (settings/site-uuid))
                             update-query     (format "update %s.%s set name = name || ' from cached table'"
                                                      persisted-schema (:table_name pi))
                             model-query (format "select c_orig.name, c_cached.name

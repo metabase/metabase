@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.cache.impl
   (:require
    [flatland.ordered.map :as ordered-map]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -70,7 +70,7 @@
           (in obj))
         (result)))"
   ([f]
-   (do-with-serialization f {:max-bytes (* (public-settings/query-caching-max-kb) 1024)}))
+   (do-with-serialization f {:max-bytes (* (settings/query-caching-max-kb) 1024)}))
 
   ([f {:keys [max-bytes]}]
    (with-open [bos (ByteArrayOutputStream.)]

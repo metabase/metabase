@@ -6,7 +6,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.config :as config]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -83,10 +83,10 @@
   (some-> request (get-in [:headers "x-metabase-embedded"]) Boolean/parseBoolean))
 
 (defn ip-address
-  "The IP address a Ring `request` came from. Looks at the `public-settings/source-address-header` header (by default
+  "The IP address a Ring `request` came from. Looks at the `settings/source-address-header` header (by default
   `X-Forwarded-For`, or the `(:remote-addr request)` if not set."
   [{:keys [headers remote-addr]}]
-  (some-> (or (some->> (public-settings/source-address-header) (get headers))
+  (some-> (or (some->> (settings/source-address-header) (get headers))
               remote-addr)
           ;; first IP (if there are multiple) is the actual client -- see
           ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For

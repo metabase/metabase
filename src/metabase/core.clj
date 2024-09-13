@@ -15,16 +15,16 @@
    [metabase.events :as events]
    [metabase.logger :as logger]
    [metabase.models.cloud-migration :as cloud-migration]
-   [metabase.models.setting :as settings]
+   [metabase.models.setting :as setting]
    [metabase.plugins :as plugins]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
    [metabase.sample-data :as sample-data]
    [metabase.server :as server]
    [metabase.server.handler :as handler]
+   [metabase.settings :as settings]
    [metabase.setup :as setup]
    [metabase.task :as task]
    [metabase.troubleshooting :as troubleshooting]
@@ -62,7 +62,7 @@
   []
   (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
         port      (config/config-int :mb-jetty-port)
-        site-url  (or (public-settings/site-url)
+        site-url  (or (settings/site-url)
                       (str "http://"
                            hostname
                            (when-not (= 80 port) (str ":" port))))
@@ -108,7 +108,7 @@
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
-  (settings/validate-settings-formatting!)
+  (setting/validate-settings-formatting!)
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info "Setting up and migrating Metabase DB. Please sit tight, this may take a minute...")
   ;; Cal 2024-04-03:
@@ -156,7 +156,7 @@
   (ensure-audit-db-installed!)
   (init-status/set-progress! 0.95)
 
-  (settings/migrate-encrypted-settings!)
+  (setting/migrate-encrypted-settings!)
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   ;; load the channels
@@ -172,7 +172,7 @@
   []
   (let [start-time (t/zoned-date-time)]
     (init!*)
-    (public-settings/startup-time-millis!
+    (settings/startup-time-millis!
      (.toMillis (t/duration start-time (t/zoned-date-time))))))
 
 ;;; -------------------------------------------------- Normal Start --------------------------------------------------

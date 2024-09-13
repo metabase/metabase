@@ -13,8 +13,8 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
+   [metabase.settings :as settings]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
@@ -90,7 +90,7 @@
                                  "LIMIT"
                                  "  2000"]]
                        (-> line
-                           (str/replace #"\Q{{site-uuid}}\E" (public-settings/site-uuid))
+                           (str/replace #"\Q{{site-uuid}}\E" (settings/site-uuid))
                            (str/replace #"\Q{{schema}}\E" (redshift.test/unique-session-schema))))]
         (is (= expected
                (sql->lines

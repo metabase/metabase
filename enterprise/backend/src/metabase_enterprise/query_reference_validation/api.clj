@@ -6,8 +6,8 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.collection :as collection]
    [metabase.models.query-analysis :as query-analysis]
-   [metabase.public-settings :as public-settings]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.settings :as settings]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -119,7 +119,7 @@
   [handler]
   (with-meta
    (fn [request respond raise]
-     (if (public-settings/query-analysis-enabled)
+     (if (settings/query-analysis-enabled)
        (handler request respond raise)
        (respond {:status 429 :body "Query Analysis must be enabled to use the Query Reference Validator"})))
    (meta handler)))

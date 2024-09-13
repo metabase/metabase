@@ -41,10 +41,10 @@
    [metabase.api.common :as api]
    [metabase.api.session :as api.session]
    [metabase.integrations.common :as integrations.common]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as req.util]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -114,7 +114,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- acs-url []
-  (str (public-settings/site-url) "/auth/sso"))
+  (str (settings/site-url) "/auth/sso"))
 
 (defn- sp-cert-keystore-details []
   (when-let [path (sso-settings/saml-keystore-path)]
@@ -138,9 +138,9 @@
         redirect-url (if (nil? redirect)
                        (do
                          (log/warn "Warning: expected `redirect` param, but none is present")
-                         (public-settings/site-url))
+                         (settings/site-url))
                        (if (sso-utils/relative-uri? redirect)
-                         (str (public-settings/site-url) redirect)
+                         (str (settings/site-url) redirect)
                          redirect))]
     (sso-utils/check-sso-redirect redirect-url)
     (try
@@ -224,7 +224,7 @@
                           :group-names     groups
                           :user-attributes attrs
                           :device-info     (req.util/device-info request)})
-          response      (response/redirect (or continue-url (public-settings/site-url)))]
+          response      (response/redirect (or continue-url (settings/site-url)))]
       (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
 
 (def ^:private saml2-success-status "urn:oasis:names:tc:SAML:2.0:status:Success")

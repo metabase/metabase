@@ -3,9 +3,9 @@
    [compojure.core :refer [GET]]
    [java-time.api :as t]
    [metabase.api.common :as api]
-   [metabase.public-settings :as public-settings]
    [metabase.search :as search]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
@@ -42,7 +42,7 @@
   []
   (api/check-superuser)
   (cond
-    (not (public-settings/experimental-fulltext-search-enabled))
+    (not (settings/experimental-fulltext-search-enabled))
     {:status-code 501, :message "Search index is not enabled."}
 
     (search/supports-index?)

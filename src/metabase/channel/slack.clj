@@ -5,10 +5,10 @@
    [metabase.channel.shared :as channel.shared]
    ;; TODO: integrations.slack should be migrated to channel.slack
    [metabase.integrations.slack :as slack]
-   [metabase.public-settings :as public-settings]
    [metabase.pulse.markdown :as markdown]
    [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.render :as render]
+   [metabase.settings :as settings]
    [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]))
 
@@ -128,7 +128,7 @@
                          :fields [{:type "mrkdwn"
                                    :text (format "<%s | *Sent from %s by %s*>"
                                                  (pulse-params/dashboard-url (:id dashboard) (pulse-params/parameters pulse dashboard))
-                                                 (public-settings/site-name)
+                                                 (settings/site-name)
                                                  (-> pulse :creator :common_name))}]}
         filters         (pulse-params/parameters pulse dashboard)
         filter-fields   (for [filter filters]

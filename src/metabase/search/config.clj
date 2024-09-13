@@ -6,14 +6,14 @@
    [metabase.api.common :as api]
    [metabase.models.setting :refer [defsetting]]
    [metabase.permissions.util :as perms.u]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
 (defsetting search-typeahead-enabled
   (deferred-tru "Enable typeahead search in the {0} navbar?"
-                (public-settings/application-name-for-setting-descriptions))
+                (settings/application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
   :visibility :authenticated

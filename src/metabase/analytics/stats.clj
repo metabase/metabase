@@ -21,7 +21,7 @@
             Table User]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -103,21 +103,21 @@
 (defn appearance-ui-colors-changed?
   "Returns true if the 'User Interface Colors' have been customized"
   []
-  (boolean (seq (select-keys (public-settings/application-colors) ui-colors))))
+  (boolean (seq (select-keys (settings/application-colors) ui-colors))))
 
 (defn appearance-chart-colors-changed?
   "Returns true if the 'Chart Colors' have been customized"
   []
-  (boolean (seq (apply dissoc (public-settings/application-colors) ui-colors))))
+  (boolean (seq (apply dissoc (settings/application-colors) ui-colors))))
 
 (defn- instance-settings
   "Figure out global info about this instance"
   []
   {:version                              (config/mb-version-info :tag)
    :running_on                           (environment-type)
-   :startup_time_millis                  (public-settings/startup-time-millis)
+   :startup_time_millis                  (settings/startup-time-millis)
    :application_database                 (config/config-str :mb-db-type)
-   :check_for_updates                    (public-settings/check-for-updates)
+   :check_for_updates                    (settings/check-for-updates)
    :report_timezone                      (driver/report-timezone)
    ; We deprecated advanced humanization but have this here anyways
    :friendly_names                       (= (humanization/humanization-strategy) "advanced")
@@ -128,19 +128,19 @@
    :has_sample_data                      (t2/exists? Database, :is_sample true)
    :enable_embedding                     (embed.settings/enable-embedding)
    :embedding_app_origin_set             (boolean (embed.settings/embedding-app-origin))
-   :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
-   :appearance_help_link                 (public-settings/help-link)
-   :appearance_logo                      (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
-   :appearance_favicon                   (not= (public-settings/application-favicon-url) "app/assets/img/favicon.ico")
-   :appearance_loading_message           (not= (public-settings/loading-message) :doing-science)
-   :appearance_metabot_greeting          (not (public-settings/show-metabot))
-   :appearance_login_page_illustration   (public-settings/login-page-illustration)
-   :appearance_landing_page_illustration (public-settings/landing-page-illustration)
-   :appearance_no_data_illustration      (public-settings/no-data-illustration)
-   :appearance_no_object_illustration    (public-settings/no-object-illustration)
+   :appearance_site_name                 (not= (settings/site-name) "Metabase")
+   :appearance_help_link                 (settings/help-link)
+   :appearance_logo                      (not= (settings/application-logo-url) "app/assets/img/logo.svg")
+   :appearance_favicon                   (not= (settings/application-favicon-url) "app/assets/img/favicon.ico")
+   :appearance_loading_message           (not= (settings/loading-message) :doing-science)
+   :appearance_metabot_greeting          (not (settings/show-metabot))
+   :appearance_login_page_illustration   (settings/login-page-illustration)
+   :appearance_landing_page_illustration (settings/landing-page-illustration)
+   :appearance_no_data_illustration      (settings/no-data-illustration)
+   :appearance_no_object_illustration    (settings/no-object-illustration)
    :appearance_ui_colors                 (appearance-ui-colors-changed?)
    :appearance_chart_colors              (appearance-chart-colors-changed?)
-   :appearance_show_mb_links             (not (public-settings/show-metabase-links))})
+   :appearance_show_mb_links             (not (settings/show-metabase-links))})
 
 (defn- user-metrics
   "Get metrics based on user records.
@@ -452,7 +452,7 @@
   "generate a map of the usage stats for this instance"
   []
   (merge (instance-settings)
-         {:uuid      (public-settings/site-uuid)
+         {:uuid      (settings/site-uuid)
           :timestamp (t/offset-date-time)
           :stats     {:cache      (cache-metrics)
                       :collection (collection-metrics)
@@ -481,5 +481,5 @@
 (defn phone-home-stats!
   "Collect usage stats and phone them home"
   []
-  (when (public-settings/anon-tracking-enabled)
+  (when (settings/anon-tracking-enabled)
     (send-stats! (anonymous-usage-stats))))

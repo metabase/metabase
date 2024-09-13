@@ -7,9 +7,9 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [metabase.config :as config]
-   [metabase.public-settings :as public-settings]
    [metabase.pulse.render.js-engine :as js]
-   [metabase.pulse.render.style :as style])
+   [metabase.pulse.render.style :as style]
+   [metabase.settings :as settings])
   (:import
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
@@ -151,7 +151,7 @@
   (let [response (.asString (js/execute-fn-name (context) "javascript_visualization"
                                                 (json/generate-string cards-with-data)
                                                 (json/generate-string dashcard-viz-settings)
-                                                (json/generate-string (public-settings/application-colors))))]
+                                                (json/generate-string (settings/application-colors))))]
     (-> response
         (json/parse-string true)
         (update :type (fnil keyword "unknown")))))
@@ -162,7 +162,7 @@
   (let [svg-string (.asString (js/execute-fn-name (context) "row_chart"
                                                   (json/generate-string settings)
                                                   (json/generate-string data)
-                                                  (json/generate-string (public-settings/application-colors))))]
+                                                  (json/generate-string (settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
 (defn gauge
@@ -180,7 +180,7 @@
   (let [js-res (js/execute-fn-name (context) "progress"
                                    (json/generate-string {:value value :goal goal})
                                    (json/generate-string settings)
-                                   (json/generate-string (public-settings/application-colors)))
+                                   (json/generate-string (settings/application-colors)))
         svg-string (.asString js-res)]
     (svg-string->bytes svg-string)))
 

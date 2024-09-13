@@ -9,7 +9,7 @@
    [metabase.email.messages :as messages]
    [metabase.models.setting :as setting]
    [metabase.models.user :as user :refer [User]]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.task :as task]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
@@ -34,11 +34,11 @@
   []
   ;; we need access to email AND the instance must be opted into anonymous tracking AND have surveys enabled. Make sure email hasn't been sent yet
   (when (and (email/email-configured?)
-             (public-settings/anon-tracking-enabled)
+             (settings/anon-tracking-enabled)
              (email/surveys-enabled)
              (not (follow-up-email-sent)))
     ;; grab the oldest admins email address (likely the user who created this MB instance), that's who we'll send to
-    ;; TODO - Does it make to send to this user instead of `(public-settings/admin-email)`?
+    ;; TODO - Does it make to send to this user instead of `(settings/admin-email)`?
     (when-let [admin (t2/select-one User :is_superuser true, :is_active true, {:order-by [:date_joined]})]
       (try
         (messages/send-follow-up-email! (:email admin))

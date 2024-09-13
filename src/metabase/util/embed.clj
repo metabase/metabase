@@ -8,8 +8,8 @@
    [hiccup.core :refer [html]]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [ring.util.codec :as codec]))
@@ -23,10 +23,10 @@
 
      (oembed-url \"/x\") -> \"http://localhost:3000/api/public/oembed?url=x&format=json\""
   ^String [^String relative-url]
-  (str (public-settings/site-url)
+  (str (settings/site-url)
        "/api/public/oembed"
        ;; NOTE: some oEmbed consumers require `url` be the first param???
-       "?url=" (codec/url-encode (str (public-settings/site-url) relative-url))
+       "?url=" (codec/url-encode (str (settings/site-url) relative-url))
        "&format=json"))
 
 (defn- oembed-link

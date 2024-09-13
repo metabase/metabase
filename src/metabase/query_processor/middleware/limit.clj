@@ -2,9 +2,9 @@
   "Middleware that handles limiting the maximum number of rows returned by a query."
   (:require
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.interface :as qp.i]
-   [metabase.query-processor.util :as qp.util]))
+   [metabase.query-processor.util :as qp.util]
+   [metabase.settings :as settings]))
 
 ;;;; Pre-processing
 
@@ -39,7 +39,7 @@
   [query]
   (when-not (disable-max-results? query)
     (cond-> (or (mbql.u/query->max-rows-limit query)
-                (public-settings/download-row-limit)
+                (settings/download-row-limit)
                 qp.i/absolute-max-results)
       (xlsx-export? query)
       (min qp.i/absolute-max-results))))

@@ -10,13 +10,13 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.settings :as settings]
    [metabase.test :as mt]))
 
 (defn resolve-source-cards* [query]
@@ -115,14 +115,14 @@
   (testing "respects `enable-nested-queries` server setting when true"
     (qp.store/with-metadata-provider mock-metadata-provider
       ;; by default nested queries are enabled:
-      (is (true? (public-settings/enable-nested-queries)))
+      (is (true? (settings/enable-nested-queries)))
       (is (some? (resolve-source-cards (lib.tu.macros/mbql-query nil {:source-table "card__1"})))))))
 
 (deftest resolve-mbql-queries-test-5
   (testing "respects `enable-nested-queries` server setting when false"
     ;; if the env var is set, the setting respects it:
     (mt/with-temp-env-var-value! ["MB_ENABLE_NESTED_QUERIES" "false"]
-      (is (false? (public-settings/enable-nested-queries))))
+      (is (false? (settings/enable-nested-queries))))
     (qp.store/with-metadata-provider mock-metadata-provider
 
 ;; resolve-source-cards doesn't respect [[mt/with-temp-env-var-value!]], so set it inside the thunk:

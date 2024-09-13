@@ -34,10 +34,10 @@
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-analysis :as query-analysis]
    [metabase.query-processor.util :as qp.util]
+   [metabase.settings :as settings]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -540,7 +540,7 @@
   (-> card
       (dissoc :dataset_query_metrics_v2_migration_backup)
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
-      public-settings/remove-public-uuid-if-public-sharing-is-disabled))
+      settings/remove-public-uuid-if-public-sharing-is-disabled))
 
 (t2/define-before-insert :model/Card
   [card]

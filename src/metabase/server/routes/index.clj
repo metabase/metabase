@@ -9,7 +9,7 @@
    [hiccup.util]
    [metabase.core.initialization-status :as init-status]
    [metabase.models.setting :as setting]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -21,7 +21,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- base-href []
-  (let [path (some-> (public-settings/site-url) io/as-url .getPath)]
+  (let [path (some-> (settings/site-url) io/as-url .getPath)]
     (str path "/")))
 
 (defn- escape-script [s]
@@ -83,11 +83,11 @@
       :bootstrapJSON        (escape-script (json/generate-string public-settings))
       :assetOnErrorJS       (load-inline-js "asset_loading_error")
       :userLocalizationJSON (escape-script (load-localization (:locale params)))
-      :siteLocalizationJSON (escape-script (load-localization (public-settings/site-locale)))
+      :siteLocalizationJSON (escape-script (load-localization (settings/site-locale)))
       :nonceJSON            (escape-script (json/generate-string nonce))
-      :language             (hiccup.util/escape-html (public-settings/site-locale))
-      :favicon              (hiccup.util/escape-html (public-settings/application-favicon-url))
-      :applicationName      (hiccup.util/escape-html (public-settings/application-name))
+      :language             (hiccup.util/escape-html (settings/site-locale))
+      :favicon              (hiccup.util/escape-html (settings/application-favicon-url))
+      :applicationName      (hiccup.util/escape-html (settings/application-name))
       :uri                  (hiccup.util/escape-html uri)
       :baseHref             (hiccup.util/escape-html (base-href))
       :embedCode            (when embeddable? (embed/head uri))

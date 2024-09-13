@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.models.setting :as setting]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
    [metabase.util.i18n.impl :as i18n.impl]
@@ -134,8 +134,8 @@
           (testing "since the encrypted string is an invalid value for a Locale, high-level functions should return nil"
             (is (nil? (i18n/site-locale))
                 `i18n/site-locale)
-            (is (nil? (public-settings/site-locale))
-                `public-settings/site-locale))
+            (is (nil? (settings/site-locale))
+                `settings/site-locale))
           (testing "we should still be able to (no-op) i18n stuff"
             (is (= "Testing"
                    (i18n/trs "Testing")))))))))

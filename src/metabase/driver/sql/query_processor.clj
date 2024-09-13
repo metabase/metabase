@@ -318,7 +318,7 @@
   [driver _ honeysql-expr]
   (week-of-year driver honeysql-expr :us))
 
-;; First week begins on 1st Jan, the 2nd week will begins on the 1st [[metabase.public-settings/start-of-week]]
+;; First week begins on 1st Jan, the 2nd week will begins on the 1st [[metabase.settings/start-of-week]]
 (defmethod date [:sql :week-of-year-instance]
   [driver _ honeysql-expr]
   (week-of-year driver honeysql-expr :instance))
@@ -351,7 +351,7 @@
       (truncate-fn expr))))
 
 (mu/defn adjust-day-of-week
-  "Adjust day of week to respect the [[metabase.public-settings/start-of-week]] Setting.
+  "Adjust day of week to respect the [[metabase.settings/start-of-week]] Setting.
 
   The value a `:day-of-week` extract should return depends on the value of `start-of-week`, by default Sunday.
 

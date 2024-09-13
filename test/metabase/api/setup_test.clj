@@ -15,7 +15,7 @@
    [metabase.models :refer [Database User]]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.setup :as setup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -80,7 +80,7 @@
             (testing "new User should be created"
               (is (t2/exists? User :email email)))
             (testing "Creating a new admin user should set the `admin-email` Setting"
-              (is (= email (public-settings/admin-email))))
+              (is (= email (settings/admin-email))))
             (testing "Should record :user-joined in the Audit Log (#12933)"
               (let [user-id (u/the-id (t2/select-one User :email email))]
                 (is (= {:topic    :user-joined
@@ -332,9 +332,9 @@
                     (t2/exists? Database :engine "h2", :name db-name))))
            (testing "Settings should not be changed"
              (is (not= site-name
-                       (public-settings/site-name)))
+                       (settings/site-name)))
              (is (= "en"
-                    (public-settings/site-locale))))
+                    (settings/site-locale))))
            (testing "Setup token should still be set"
              (is (= setup-token
                     (setup/setup-token))))))))))

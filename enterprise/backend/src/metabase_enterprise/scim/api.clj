@@ -6,7 +6,7 @@
    [metabase.api.common :as api :refer [defendpoint]]
    [metabase.models.api-key :as api-key]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
@@ -28,7 +28,7 @@
   :audit      :never
   :export?    false
   :getter     (fn []
-                (str (public-settings/site-url) "/api/ee/scim/v2")))
+                (str (settings/site-url) "/api/ee/scim/v2")))
 
 (defn- scim-api-key-name
   []

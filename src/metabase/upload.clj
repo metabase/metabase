@@ -26,8 +26,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.table :as table]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.settings :as settings]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -436,7 +436,7 @@
                        [:= [:lower :name] [:lower :display_name]]]})))
 
 (defn- uploads-enabled? []
-  (some? (:db_id (public-settings/uploads-settings))))
+  (some? (:db_id (settings/uploads-settings))))
 
 (defn- can-use-uploads-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database for the subset of reasons common to all uploads

@@ -6,12 +6,12 @@
    Functions for generating URLs not related to Metabase *objects* generally do not belong here, unless they are used in many places in the
    codebase; one-off URL-generation functions should go in the same namespaces or modules where they are used."
   (:require
-   [metabase.public-settings :as public-settings]))
+   [metabase.settings :as settings]))
 
 (defn site-url
   "Return the Notification Link Base URL if set by enterprise env var, or Site URL."
   []
-  (or (public-settings/notification-link-base-url) (public-settings/site-url)))
+  (or (settings/notification-link-base-url) (settings/site-url)))
 
 (defn archive-url
   "Return an appropriate URL to view the archive page."

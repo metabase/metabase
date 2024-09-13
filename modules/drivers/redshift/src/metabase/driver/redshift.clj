@@ -17,10 +17,10 @@
    [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
+   [metabase.settings :as settings]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -472,7 +472,7 @@
        (json/generate-string {:dashboard_id        dashboard-id
                               :chart_id            card-id
                               :optional_user_id    executed-by
-                              :optional_account_id (public-settings/site-uuid)
+                              :optional_account_id (settings/site-uuid)
                               :filter_values       (field->parameter-value query)})
        " */ "
        (qp.util/default-query->remark query)))

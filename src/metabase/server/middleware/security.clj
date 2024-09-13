@@ -7,8 +7,8 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.config :as config]
    [metabase.embed.settings :as embed.settings]
-   [metabase.public-settings :as public-settings]
    [metabase.server.request.util :as req.util]
+   [metabase.settings :as settings]
    [metabase.util.log :as log]
    [ring.util.codec :refer [base64-encode]])
   (:import
@@ -65,7 +65,7 @@
                                  ["'self'"
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
-                                  (when (public-settings/anon-tracking-enabled)
+                                  (when (settings/anon-tracking-enabled)
                                     "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
                                   (when config/is-dev?
@@ -102,7 +102,7 @@
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
                                  ;; Snowplow analytics
-                                 (when (public-settings/anon-tracking-enabled)
+                                 (when (settings/anon-tracking-enabled)
                                    (snowplow/snowplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?

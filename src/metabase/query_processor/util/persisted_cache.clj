@@ -7,7 +7,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.persisted-info :as persisted-info]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util.malli :as mu]))
 
 (mu/defn can-substitute?
@@ -37,7 +37,7 @@
             (sql.u/quote-name
              driver
              :table
-             (ddl.i/schema-name {:id database-id} (public-settings/site-uuid)))
+             (ddl.i/schema-name {:id database-id} (settings/site-uuid)))
             (sql.u/quote-name
              driver
              :table

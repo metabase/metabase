@@ -3,7 +3,7 @@
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.task.upgrade-checks :as upgrade-checks]))
 
 (deftest site-uuid-test
@@ -11,7 +11,7 @@
     (with-redefs [config/is-prod? true]
       (http-fake/with-fake-routes-in-isolation
         {{:address #"https://static.metabase.com/version-info(-ee)?.json.*"
-          :query-params {:instance (public-settings/site-uuid-for-version-info-fetching)}}
+          :query-params {:instance (settings/site-uuid-for-version-info-fetching)}}
          (constantly {:status 200 :body "{}"})}
         (is (= {} (@#'upgrade-checks/get-version-info))))))
 

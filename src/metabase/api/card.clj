@@ -33,11 +33,11 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.settings :as settings]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.upload :as upload]
    [metabase.util :as u]
@@ -879,7 +879,7 @@
   "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."
   [{:keys [collection-id filename file]}]
   (try
-    (let [uploads-db-settings (public-settings/uploads-settings)
+    (let [uploads-db-settings (settings/uploads-settings)
           model (upload/create-csv-upload! {:collection-id collection-id
                                             :filename      filename
                                             :file          file

@@ -3,7 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.public-settings :as public-settings]
+   [metabase.settings :as settings]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
@@ -65,12 +65,12 @@
 (defn primary-color
   "Primary color to use in Pulses; normally 'classic' MB blue, but customizable when whitelabeling is enabled."
   []
-  (public-settings/application-color))
+  (settings/application-color))
 
 (defn secondary-color
   "Secondary color to use in Pulse charts; normally red, but customizable when whitelabeling is enabled."
   []
-  (public-settings/secondary-chart-color))
+  (settings/secondary-chart-color))
 
 (defn font-style
   "Font family to use in rendered Pulses."

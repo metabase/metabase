@@ -6,8 +6,8 @@
    [metabase.api.common :as api]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.util :as qp.util]
+   [metabase.settings :as settings]
    [metabase.util.log :as log]
    [metabase.xrays.automagic-dashboards.filters :as filters]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
@@ -48,7 +48,7 @@
       (create-collection! "Automatically Generated Dashboards" nil nil)))
 
 (defn colors
-  "A vector of colors used for coloring charts. Uses [[public-settings/application-colors]] for user choices."
+  "A vector of colors used for coloring charts. Uses [[settings/application-colors]] for user choices."
   []
   (let [order [:brand :accent1 :accent2 :accent3 :accent4 :accent5 :accent6 :accent7]
         colors-map (merge {:brand   "#509EE3"
@@ -59,7 +59,7 @@
                            :accent5 "#F2A86F"
                            :accent6 "#98D9D9"
                            :accent7 "#7172AD"}
-                          (public-settings/application-colors))]
+                          (settings/application-colors))]
     (into [] (map colors-map) order)))
 
 (defn- ensure-distinct-colors

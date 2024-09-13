@@ -13,8 +13,8 @@
     :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Pulse
             PulseChannel Session User]]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.public-settings :as public-settings]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.settings :as settings]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -144,7 +144,7 @@
   (testing "Test that source based throttling kicks in after the login failure threshold (50) has been reached"
     (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
                                                                             [:username :ip-address])
-                  public-settings/source-address-header (constantly "x-forwarded-for")]
+                  settings/source-address-header (constantly "x-forwarded-for")]
       (dotimes [n 50]
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})
@@ -165,7 +165,7 @@
   (testing "The same as above, but ensure that throttling is done on a per request source basis."
     (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
                                                                             [:username :ip-address])
-                  public-settings/source-address-header (constantly "x-forwarded-for")]
+                  settings/source-address-header (constantly "x-forwarded-for")]
       (dotimes [n 50]
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})

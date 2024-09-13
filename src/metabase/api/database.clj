@@ -30,12 +30,12 @@
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
    [metabase.sample-data :as sample-data]
    [metabase.server.middleware.session :as mw.session]
+   [metabase.settings :as settings]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.schedules :as sync.schedules]
@@ -198,7 +198,7 @@
 (mu/defn- saved-cards-virtual-db-metadata
   [card-type :- ::card/type
    & {:keys [include-tables? include-fields?]}]
-  (when (public-settings/enable-nested-queries)
+  (when (settings/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
              :id                 lib.schema.id/saved-questions-virtual-database-id
              :features           #{:basic-aggregations}
@@ -871,7 +871,7 @@
   "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
   [id]
   {id ms/PositiveInt}
-  (api/check (public-settings/persisted-models-enabled)
+  (api/check (settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
   (api/let-404 [database (t2/select-one Database :id id)]
@@ -880,13 +880,13 @@
       ;; todo: some other response if already persisted?
       api/generic-204-no-content
       (let [[success? error] (ddl.i/check-can-persist database)
-            schema           (ddl.i/schema-name database (public-settings/site-uuid))]
+            schema           (ddl.i/schema-name database (settings/site-uuid))]
         (if success?
           ;; do secrets require special handling to not clobber them or mess up encryption?
           (do (t2/update! Database id {:settings (assoc (:settings database) :persist-models-enabled true)})
               (task.persist-refresh/schedule-persistence-for-database!
                database
-               (public-settings/persisted-model-refresh-cron-schedule))
+               (settings/persisted-model-refresh-cron-schedule))
               api/generic-204-no-content)
           (throw (ex-info (ddl.i/error->message error schema)
                           {:error error
@@ -1152,7 +1152,7 @@
                       :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the schemas found for the saved questions virtual database."
   []
-  (when (public-settings/enable-nested-queries)
+  (when (settings/enable-nested-queries)
     (->> (cards-virtual-tables :question)
          (map :schema)
          distinct
@@ -1162,7 +1162,7 @@
                       :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of all the datasets found for the saved questions virtual database."
   []
-  (when (public-settings/enable-nested-queries)
+  (when (settings/enable-nested-queries)
     (->> (cards-virtual-tables :model)
          (map :schema)
          distinct
@@ -1222,7 +1222,7 @@
                       :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
   [schema]
-  (when (public-settings/enable-nested-queries)
+  (when (settings/enable-nested-queries)
     (->> (source-query-cards
           :question
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
@@ -1234,7 +1234,7 @@
                       :virtual-db (re-pattern (str lib.schema.id/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the datasets virtual database."
   [schema]
-  (when (public-settings/enable-nested-queries)
+  (when (settings/enable-nested-queries)
     (->> (source-query-cards
           :model
           :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
