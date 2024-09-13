@@ -177,7 +177,7 @@
     (-> metric
         :table_id
         serdes/table->path
-        serdes/storage-table-path-prefix
+        serdes/storage-path-prefixes
         (concat ["metrics" (serdes/storage-leaf-file-name id label)]))))
 
 (defmethod serdes/make-spec "LegacyMetric" [_model-name _opts]

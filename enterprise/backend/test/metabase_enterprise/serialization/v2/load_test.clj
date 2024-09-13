@@ -1422,3 +1422,37 @@
                     (testing (format "%s has identity hash in the db" model)
                       (is (= (serdes/identity-hash e)
                              (serdes/entity-id (name model) e))))))))))))))
+
+(deftest identically-named-fields-test
+  (mt/with-empty-h2-app-db
+    (let [db (ts/create! Database :name "mydb")
+          t  (ts/create! Table :name "table" :db_id (:id db))
+          f1 (ts/create! Field :name "field" :table_id (:id t))
+          ;; name is the same, but parent_id is different
+          f2 (ts/create! Field :name "field" :table_id (:id t) :parent_id (:id f1))
+          f3 (ts/create! Field :name "field" :table_id (:id t) :parent_id (:id f2)
+                         :description "desc")
+
+          ser (into [] (serdes.extract/extract {}))]
+
+      (is (=? {:parent_id   ["mydb" nil "table" "field"]
+               :serdes/meta [{:model "Database" :id "mydb"}
+                             {:model "Table" :id "table"}
+                             {:model "Field" :id "field"}
+                             {:model "Field" :id "field"}]}
+              (ts/extract-one "Field" (:id f2))))
+
+      (is (=? {:parent_id   ["mydb" nil "table" "field" "field"],
+               :serdes/meta [{:model "Database" :id "mydb"}
+                             {:model "Table" :id "table"}
+                             {:model "Field" :id "field"}
+                             {:model "Field" :id "field"}
+                             {:model "Field" :id "field"}]}
+              (ts/extract-one "Field" (:id f3))))
+
+      (t2/update! :model/Field (:id f3) {:description "some new one"})
+
+      (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+
+      (is (= "desc"
+             (t2/select-one-fn :description :model/Field (:id f3)))))))
