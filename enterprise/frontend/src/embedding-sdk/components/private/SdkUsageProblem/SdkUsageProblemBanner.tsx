@@ -49,7 +49,14 @@ export const SdkUsageProblemBanner = ({ problem }: Props) => {
   const fontFamily = `${theme.fontFamily}, sans-serif`;
 
   return (
-    <Popover position="top-start" opened={expanded} onChange={setExpanded}>
+    <Popover
+      position="top-start"
+      opened={expanded}
+      onChange={setExpanded}
+      // We don't want to render the popover within the portal,
+      // as this is used within a fixed-position container in a portal.
+      withinPortal={false}
+    >
       <Popover.Target>
         <Flex
           onClick={() => setExpanded(!expanded)}
@@ -130,6 +137,7 @@ export const SdkUsageProblemBanner = ({ problem }: Props) => {
                   variant="outline"
                   rightIcon={<Icon name="external" size={10} />}
                   ff={fontFamily}
+                  className={S.DocsButton}
                   compact
                 >
                   View documentation

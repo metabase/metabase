@@ -41,3 +41,7 @@
 .Indicator.Error .Content {
   background: #fdf0f0;
 }
+
+.DocsButton:not([data-css-specificity-hack="🤣"]) {
+  border: 1px solid var(--mb-color-brand);
+}
