@@ -14,6 +14,7 @@
         "type": "array",
         "items": {
           "type": "object",
+          "description": "A single instance attribute",
           "properties": {
             "key": {
               "description": "The key for this attribute",
@@ -23,7 +24,9 @@
             "value": {
               "description": "The value of this attribute",
               "type": ["string", "boolean", "integer", "null"],
-              "maxLength": 255
+              "maxLength": 255,
+              "minimum": 0,
+              "maximum": 2147483647
             }
           }
         }
@@ -33,6 +36,7 @@
         "type": "array",
         "items": {
           "type": "object",
+          "description": "A single instance attribute",
           "properties": {
             "name": {
               "description": "The unique name of the feature",
@@ -58,10 +62,13 @@
       },
       "metadata": {
         "description": "Metadata about the anonymous stats collection",
-          "type": "object",
-          "additionalProperties": {
-            "type": ["string", "integer"]
-          }
+        "type": "object",
+        "additionalProperties": {
+          "type": ["string", "integer"],
+          "maxLength": 255,
+          "minimum": 0,
+          "maximum": 2147483647
+        }
       }
     },
     "additionalProperties": false,
