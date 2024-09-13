@@ -1262,15 +1262,14 @@
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [dashboard-id dashcard-id card-id export-format :as {{:keys [parameters format_rows] :as request-parameters} :params
-                                                       {:keys [format-rows]}                                   :body}]
+  [dashboard-id dashcard-id card-id export-format :as {{:keys [parameters] :as request-parameters} :params
+                                                       {:keys [format_rows]}                       :body}]
   {dashboard-id  ms/PositiveInt
    dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
    export-format api.dataset/ExportFormat
-   format_rows   [:maybe :boolean]
-   format-rows   [:maybe :boolean]}
+   format_rows   [:maybe :boolean]}
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              request-parameters
@@ -1287,7 +1286,7 @@
               :middleware    {:process-viz-settings?  true
                               :skip-results-metadata? true
                               :ignore-cached-results? true
-                              :format-rows?           (or format-rows false)
+                              :format-rows?           (or format_rows false)
                               :js-int-to-string?      false}})))
 
 (api/defendpoint POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
