@@ -2,8 +2,10 @@ import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
 import * as Urls from "metabase/lib/urls";
+import type { BaseEntityId } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCollection,
   createMockModerationReview,
 } from "metabase-types/api/mocks";
 
@@ -49,6 +51,96 @@ describe("QuestionInfoSidebar", () => {
       const input = screen.getByPlaceholderText("Add description");
       expect(input).toHaveValue(card.description);
       expect(input).toBeDisabled();
+    });
+  });
+
+  describe("question details", () => {
+    it("should show last edited", () => {
+      const card = createMockCard({
+        name: "Question",
+        "last-edit-info": {
+          first_name: "Ash",
+          last_name: "Ketchum",
+          timestamp: "2024-04-11T00:00:00Z",
+          email: "Ashboy@example.com",
+          id: 19,
+        },
+      });
+      setup({ card });
+      expect(screen.getByText("April 11, 2024")).toBeInTheDocument();
+      expect(screen.getByText("by Ash Ketchum")).toBeInTheDocument();
+    });
+
+    it("should show creation information", () => {
+      const card = createMockCard({
+        name: "Question",
+        creator: {
+          first_name: "Ash",
+          last_name: "Ketchum",
+          email: "Ashboy@example.com",
+          common_name: "Ash Ketchum",
+          id: 19,
+        },
+        created_at: "2024-04-13T00:00:00Z",
+      });
+      setup({ card });
+      expect(screen.getByText("April 13, 2024")).toBeInTheDocument();
+      expect(screen.getByText("by Ash Ketchum")).toBeInTheDocument();
+    });
+
+    it("should show save location", () => {
+      const card = createMockCard({
+        name: "Question",
+        collection: createMockCollection({ name: "My Big Collection" }),
+      });
+      setup({ card });
+
+      expect(screen.getByText("My Big Collection")).toBeInTheDocument();
+    });
+
+    it("should show source information", () => {
+      const card = createMockCard({
+        name: "Question",
+      });
+      setup({ card });
+
+      expect(screen.getByText("Sample Database")).toBeInTheDocument();
+      expect(screen.getByText("/")).toBeInTheDocument();
+      expect(screen.getByText("Products")).toBeInTheDocument();
+    });
+
+    it("should show entity id", () => {
+      const card = createMockCard({
+        name: "Question",
+        entity_id: "jenny8675309" as BaseEntityId,
+      });
+      setup({ card });
+
+      expect(screen.getByText("Entity ID")).toBeInTheDocument();
+      expect(screen.getByText("jenny8675309")).toBeInTheDocument();
+    });
+
+    it("should show if a public link is enabled", () => {
+      const card = createMockCard({
+        name: "Question",
+        public_uuid: "watch-me-please",
+      });
+      setup({ card });
+
+      expect(screen.getByLabelText("globe icon")).toBeInTheDocument();
+      expect(screen.getByText("Shared publicly")).toBeInTheDocument();
+      expect(screen.getByLabelText("link icon")).toBeInTheDocument();
+    });
+
+    it("should show if a embedding is enabled", () => {
+      const card = createMockCard({
+        name: "Question",
+        enable_embedding: true,
+      });
+      setup({ card });
+
+      expect(screen.getByLabelText("embed icon")).toBeInTheDocument();
+      expect(screen.getByText("Embedded")).toBeInTheDocument();
     });
   });
 
