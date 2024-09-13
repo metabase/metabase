@@ -4,15 +4,15 @@ redirect_from:
   - /docs/latest/users-guide/08-dashboard-filters
 ---
 
-# Dashboard filters
+# Dashboard filters and parameters
 
 ![Dashboard Filters](./images/filters.png)
 
 Have you ever found yourself in a situation where it seems like you need to create nearly identical copies of the same dashboard, with just one different variable? Maybe you have an Earnings dashboard, but you want to see the data for each city your business is in, or maybe you have a KPI dashboard that you want to see broken out by month.
 
-Instead of creating duplicate dashboards, you can add filter widgets to let people change variables for cards on a dashboard.
+Instead of creating duplicate dashboards, you can add filter or parameter widgets to let people change variables for cards on a dashboard.
 
-## Adding a new filter
+## Adding a filter or parameter
 
 ![Add a Filter](./images/add-filter.png)
 
@@ -25,21 +25,25 @@ Instead of creating duplicate dashboards, you can add filter widgets to let peop
 
 Metabase will display the filter only if the filter is connected to a card on the current dashboard tab.
 
-## Filter types
+## Filter and parameter types
 
-You can choose from a number of filter types:
+The type of filter or parameter widget you choose will determine how the widget works, as well as which fields you’ll be able to filter your cards by.
 
-- [Time](#time-filters)
+### Filter widgets
+
+- [Date picker](#data-picker-filters)
 - [Location](#location-filters)
 - [ID](#id-filter)
 - [Number](#number-filter)
-- [Text or categories](#text-or-category-filter)
+- [Text or category](#text-or-category-filter)
 
-The type of filter you choose will determine how the filter works, as well as which fields you’ll be able to filter your cards by.
+### Parameters widget
 
-### Time filters
+- [Time grouping](#time-grouping)
 
-When picking a Time filter, Metabase will prompt you to pick a specific type of filter widget:
+## Date picker filters
+
+When picking a Time filter, Metabase will prompt you to pick a specific type of date picker widget:
 
 - Month and Year
 - Quarter and Year
@@ -50,7 +54,25 @@ When picking a Time filter, Metabase will prompt you to pick a specific type of 
 
 Single Date and Date Range will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values. To get a widget that's just like the time filter in the query builder, choose All options.
 
-### Location filters
+## Time grouping parameter
+
+![Time grouping](./images/time-grouping.png)
+
+You can add a time grouping widget to a dashboard to change how charts are grouped by time. For example, you may want to look at the time series charts grouped by month by default, but give people the option to filter by other groupings: by week, by quarter, etc.
+
+This widget doesn't filter data in the charts; it just changes the time granularity for any cards that have a datetime field connected to the widget.
+
+You can group by:
+
+- Minute (or minute of hour)
+- Hour (or hour of day)
+- Day (or day of week, month, or year)
+- Week (or week of year)
+- Month (or month of year)
+- Quarter (or quarter of year)
+- Year
+
+## Location filters
 
 There are four types of Location filters to choose from:
 
@@ -59,11 +81,11 @@ There are four types of Location filters to choose from:
 - ZIP or Postal Code
 - Country
 
-### ID filter
+## ID filter
 
 The ID filter provides a simple input box where you can type the ID of a user, order, etc.
 
-### Number filter
+## Number filter
 
 You can choose from:
 
@@ -73,7 +95,7 @@ You can choose from:
 - Greater than or equal to
 - Less than or equal to
 
-### Text or category filter
+## Text or category filter
 
 A flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards. Options include:
 
@@ -84,9 +106,11 @@ A flexible filter type that will let you create either a dropdown menu or an inp
 - **Starts with**. Match values that begin with the entered text.
 - **Ends with**. Match values that end with the entered text.
 
-## Connecting a filter to dashboard cards
+## Connecting a filter or parameter widget to dashboard cards
 
-Dashboard filters apply across all [dashboard tabs](./introduction.md#dashboard-tabs), though for each filter you add, you'll need to tell Metabase which column the filter should update for each card.
+Dashboard widgets apply across all [dashboard tabs](./introduction.md#dashboard-tabs), though they'll only be displayed when a tab has cards connected to the widget.
+
+For each widget that you add, you'll need to tell Metabase which column the filter should update for each card.
 
 Click on a card's dropdown menu to select the field that you want the widget to filter on.
 
