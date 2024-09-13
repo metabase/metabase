@@ -24,7 +24,7 @@ import type { MetabaseTheme } from "embedding-sdk/types/theme";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 
-import { withPublicComponentWrapper } from "../private/PublicComponentWrapper";
+import { PublicComponentWrapper } from "../private/PublicComponentWrapper";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
 
 import "metabase/css/index.module.css";
