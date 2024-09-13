@@ -130,11 +130,13 @@ export function renderWithProviders(
   const wrapper = (props: any) => {
     if (mode === "sdk") {
       return (
-        <MetabaseProviderInternal
-          {...props}
-          {...sdkProviderProps}
-          store={store}
-        />
+        <Provider store={store}>
+          <MetabaseProviderInternal
+            {...props}
+            {...sdkProviderProps}
+            store={store}
+          />
+        </Provider>
       );
     }
 
