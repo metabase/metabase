@@ -1590,13 +1590,15 @@
                   (Thread/sleep 200)
                   (recur (dec attempts-left))))))))))
 
-(deftest dashboard-id-is-returned-for-dashboard-internal-cards
-  (testing "Dashboard internal cards get a dashboard_id when searched"
+(deftest dashboard-questions
+  (testing "Dashboard questions get a dashboard_id when searched"
     (let [search-name (random-uuid)
           named #(str search-name "-" %)]
       (mt/with-temp [:model/Dashboard {dash-id :id} {:name (named "dashboard")}
                      :model/Card {card-id :id} {:dashboard_id dash-id :name (named "dashboard card")}
-                     :model/Card {reg-card-id :id} {:name (named "regular card")}]
+                     :model/Card {reg-card-id :id} {:name (named "regular card")}
+                     ;; DQs aren't searchable without a DashboardCard (see later test)
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
         (testing "The card data includes the `dashboard_id`"
           (is (= dash-id
                  (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
@@ -1610,4 +1612,14 @@
                     :data
                     (filter #(= reg-card-id (:id %)))
                     first
-                    :dashboard_id))))))))
+                    :dashboard_id)))))))
+  (testing "Dashboard questions aren't searchable without a DashboardCard"
+    (let [search-name (random-uuid)
+          named #(str search-name "-" %)]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dashboard"}
+                     :model/Card _ {:dashboard_id dash-id :name (named "dashboard card")}]
+        (is (= {:total 0
+                :data []}
+               (select-keys
+                (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                [:total :data])))))))
