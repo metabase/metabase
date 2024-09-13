@@ -333,7 +333,7 @@
                   (let [results (mt/user-http-request user :post 200
                                                       (format "dataset/%s" (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                      {:format-rows true}
+                                                      :format_rows true
                                                       :query query-json
                                                       :visualization_settings viz-settings-json)]
                     ((-> assertions export-format) results))
@@ -342,7 +342,7 @@
                   (let [results (mt/user-http-request user :post 200
                                                       (format "card/%d/query/%s" (u/the-id card) (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                      {:format-rows true})]
+                                                      :format_rows true)]
                     ((-> assertions export-format) results))
 
                   :dashboard
@@ -353,7 +353,7 @@
                                                               (u/the-id card)
                                                               (name export-format))
                                                       {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                      {:format-rows true})]
+                                                      :format_rows true)]
                     ((-> assertions export-format) results))
 
                   :public

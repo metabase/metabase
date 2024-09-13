@@ -466,8 +466,8 @@
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
         (let [result (->> (mt/user-http-request :crowberto :post 200
                                                 (format "card/%d/query/csv" pivot-card-id)
-                                                {:format-rows   true
-                                                 :pivot-results true})
+                                                :format_rows   true
+                                                :pivot_results true)
                           csv/read-csv)]
           (is (= [["Created At"
                    "Doohickey" "Doohickey"
