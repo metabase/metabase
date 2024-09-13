@@ -308,6 +308,27 @@ describe("scenarios > question > new", () => {
         assertEntityPickerSearchInputPlaceholder(
           "Search this database or everywhere…",
         );
+
+        cy.findByPlaceholderText("Search this database or everywhere…").type(
+          "ord",
+        );
+        assertEntityPickerModalTabActive('1 result for "ord"');
+        getEntityPickerSearchToggleValue("Everywhere").click();
+        assertEntityPickerSearchToggleValue("Everywhere");
+        assertEntityPickerModalTabActive('5 results for "ord"');
+
+        entityPickerModalTab("Saved questions").click();
+        entityPickerModalTab('4 results for "ord"').click();
+        assertEntityPickerSearchToggleValue("“Our analytics”");
+
+        cy.findByPlaceholderText(
+          "Search this collection or everywhere…",
+        ).clear();
+
+        assertEntityPickerModalTabActive("Saved questions");
+        assertEntityPickerSearchInputPlaceholder(
+          "Search this collection or everywhere…",
+        );
       });
     });
   });
@@ -686,7 +707,13 @@ function assertEntityPickerSearchInputPlaceholder(placeholder) {
 }
 
 function assertEntityPickerSearchToggleValue(value) {
-  cy.findByLabelText(value)
-    .next("label")
-    .should("have.attr", "data-active", "true");
+  getEntityPickerSearchToggleValue(value).should(
+    "have.attr",
+    "data-active",
+    "true",
+  );
+}
+
+function getEntityPickerSearchToggleValue(value) {
+  return cy.findByLabelText(value).next("label");
 }
