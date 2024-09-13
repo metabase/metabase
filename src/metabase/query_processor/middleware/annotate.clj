@@ -14,7 +14,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.humanization :as humanization]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -79,19 +78,20 @@
                          :type             qp.error-type/qp}))))))
 
 (defn- annotate-native-cols [cols]
-  (let [unique-name-fn (lib.util/unique-name-generator (qp.store/metadata-provider))]
-    (vec (for [{col-name :name, base-type :base_type, :as driver-col-metadata} cols]
-           (let [col-name (name col-name)]
-             (merge
-              {:display_name (u/qualified-name col-name)
-               :source       :native}
-              ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does
-              ;; this for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank
-              ;; names in MBQL `:field` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a
-              ;; valid `:field`, omit the `:field_ref`.
-              (when-not (str/blank? col-name)
-                {:field_ref [:field (unique-name-fn col-name) {:base-type base-type}]})
-              driver-col-metadata))))))
+  (let [unique-name-fn (mbql.u/unique-name-generator)]
+    (mapv (fn [{col-name :name, base-type :base_type, :as driver-col-metadata}]
+            (let [col-name (name col-name)]
+              (merge
+               {:display_name (u/qualified-name col-name)
+                :source       :native}
+               ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does
+               ;; this for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank
+               ;; names in MBQL `:field` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a
+               ;; valid `:field`, omit the `:field_ref`.
+               (when-not (str/blank? col-name)
+                 {:field_ref [:field (unique-name-fn col-name) {:base-type base-type}]})
+               driver-col-metadata)))
+          cols)))
 
 (defmethod column-info :native
   [_query {:keys [cols rows] :as _results}]
