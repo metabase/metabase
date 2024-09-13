@@ -111,16 +111,16 @@
 
 (defn- notification-recipients->emails
   [recipients]
-  (for [recipient recipients
-        :let [email (case (:type recipient)
-                      :notification-recipient/user
-                      (-> recipient :user :email)
-                      :notification-recipient/group
-                      (->> recipient :permissions_group :members (map :email))
-                      :notification-recipient/external-email
-                      (-> recipient :details :email))]
-        :when email]
-    email))
+  (flatten (for [recipient recipients
+                 :let [emails (case (:type recipient)
+                                :notification-recipient/user
+                                [(-> recipient :user :email)]
+                                :notification-recipient/group
+                                (->> recipient :permissions_group :members (map :email))
+                                :notification-recipient/external-email
+                                [(-> recipient :details :email)])]
+                 :when (seq emails)]
+             emails)))
 
 (defmethod channel/render-notification
   [:channel/email :notification/system-event]
