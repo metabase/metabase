@@ -542,6 +542,7 @@
                {:where    [:and
                            [:= :report_card.database_id database-id]
                            [:= :report_card.archived false]
+                           [:= :report_card.dashboard_id nil]
                            (cond
                              ;; e.g. search-string = "123"
                              (and (not-empty search-id) (empty? search-name))
