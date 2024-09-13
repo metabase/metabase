@@ -167,8 +167,8 @@ export const QuestionPickerModal = ({
         options.showRootCollection === false
           ? { filter_items_in_personal_collection: "only" }
           : options.showPersonalCollections === false
-          ? { filter_items_in_personal_collection: "exclude" }
-          : undefined
+            ? { filter_items_in_personal_collection: "exclude" }
+            : undefined
       }
       searchResultFilter={results => results}
       actionButtons={[]}

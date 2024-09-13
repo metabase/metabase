@@ -171,8 +171,8 @@ export const CollectionPickerModal = ({
           canSelectItem(selectedItem)
             ? selectedItem.id
             : canSelectItem(value)
-            ? value.id
-            : "root"
+              ? value.id
+              : "root"
         }
         onNewCollection={handleNewCollectionCreate}
         namespace={options.namespace}
