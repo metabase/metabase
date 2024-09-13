@@ -63,5 +63,5 @@
       (let [origin-value (str/join " " origins)]
         (embed.settings/enable-embedding-sdk! true)
         (embed.settings/embedding-app-origins-sdk! origin-value)
-        (=(#'embed.settings/add-localhost (#'embed.settings/ignore-localhost origin-value))
-          (embed.settings/embedding-app-origins-sdk))))))
+        (= (#'embed.settings/add-localhost (#'embed.settings/ignore-localhost origin-value))
+           (embed.settings/embedding-app-origins-sdk))))))
