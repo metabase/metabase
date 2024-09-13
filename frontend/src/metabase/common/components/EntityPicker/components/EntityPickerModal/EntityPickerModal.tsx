@@ -1,11 +1,5 @@
 import { useWindowEvent } from "@mantine/hooks";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDebounce, usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
@@ -131,9 +125,6 @@ export function EntityPickerModal<
         refetchOnMountOrArgChange: true,
       },
     );
-  const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
-    null,
-  );
   const searchModels = useMemo(() => getSearchModels(passedTabs), [passedTabs]);
   const folderModels = useMemo(() => getFolderModels(passedTabs), [passedTabs]);
   const [selectedTabId, setSelectedTabId] = useState<EntityPickerTabId>("");
@@ -153,7 +144,6 @@ export function EntityPickerModal<
     searchScope,
     selectedFolder,
   );
-  const finalSearchResults = scopedSearchResults ?? searchResults ?? [];
   const hydratedOptions = useMemo(
     () => ({ ...defaultOptions, ...options }),
     [options],
@@ -178,15 +168,16 @@ export function EntityPickerModal<
     },
   );
 
-  useLayoutEffect(() => {
-    if (data && !isFetching) {
-      setSearchResults(
-        searchResultFilter ? searchResultFilter(data.data) : data.data,
-      );
-    } else {
-      setSearchResults(null);
+  const searchResults = useMemo(() => {
+    if (isFetching || !data) {
+      return null;
     }
-  }, [data, isFetching, searchResultFilter, setSearchResults]);
+
+    return searchResultFilter ? searchResultFilter(data.data) : data.data;
+  }, [isFetching, data, searchResultFilter]);
+
+  const finalSearchResults =
+    (searchScope === "folder" ? scopedSearchResults : searchResults) ?? [];
 
   const filteredRecents = useMemo(() => {
     if (!recentItems) {
@@ -242,7 +233,7 @@ export function EntityPickerModal<
         render: ({ onItemSelect }) => (
           <SearchTab
             folder={selectedFolder}
-            isLoading={searchResults == null}
+            isLoading={isFetching}
             searchScope={searchScope}
             searchResults={finalSearchResults}
             selectedItem={selectedItem}

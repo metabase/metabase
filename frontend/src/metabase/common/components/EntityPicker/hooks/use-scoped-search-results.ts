@@ -28,7 +28,7 @@ export const useScopedSearchResults = <
   searchModels: string[],
   searchScope: EntityPickerSearchScope,
   folder: Item | undefined,
-): SearchResult[] | undefined => {
+): SearchResult[] | null => {
   const isScopedSearchEnabled = searchScope === "folder" && folder != null;
 
   const shouldUseCollectionItems =
@@ -67,20 +67,28 @@ export const useScopedSearchResults = <
     return tablesToSearchResults(tables ?? [], database?.name);
   }, [tables, database]);
 
-  const scopedSearchResults: SearchResult[] | undefined = useMemo(() => {
+  const scopedSearchResults: SearchResult[] | null = useMemo(() => {
     if (!isScopedSearchEnabled) {
-      return undefined;
+      return null;
     }
 
-    if (shouldUseCollectionItems && !isFetchingCollectionItems) {
+    if (shouldUseCollectionItems) {
+      if (isFetchingCollectionItems) {
+        return null;
+      }
+
       return filterSearchResults(collectionItems, searchQuery, searchModels);
     }
 
-    if (shouldUseTables && !isFetchingTables) {
+    if (shouldUseTables) {
+      if (isFetchingTables) {
+        return null;
+      }
+
       return filterSearchResults(tableItems, searchQuery, searchModels);
     }
 
-    return [];
+    return null;
   }, [
     isFetchingTables,
     isFetchingCollectionItems,
