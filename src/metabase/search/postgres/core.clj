@@ -79,16 +79,20 @@
                      (t2/query <>)
                      (filter (comp (set ids) :id) <>)))))))
 
-(defn search-minimal
-  "Perform a basic search that only uses the index"
-  [search-ctx]
+(defn- minimal [search-term & {:as _search-ctx}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
-  (->> (assoc (search.index/search-query (:search-string search-ctx)) :select [:legacy_input])
+  (->> (assoc (search.index/search-query search-term) :select [:legacy_input])
        (t2/query)
        (map :legacy_input)
        (map #(json/parse-string % keyword))))
+
+(defn search-minimal
+  "Perform a basic search that only uses the index"
+  [search-ctx]
+  (minimal (:search-string search-ctx)
+           (dissoc search-ctx :search-string)))
 
 (defn search
   "Return a reducible-query corresponding to searching the entities via a tsvector."
