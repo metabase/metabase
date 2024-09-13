@@ -34,7 +34,9 @@ export function getEmbeddingThemeOverride(
   );
 
   const override: MantineThemeOverride = {
-    fontFamily: theme.fontFamily ?? font ?? DEFAULT_FONT,
+    // font is coming from either redux, where we store theme.fontFamily,
+    // or from the instance settings, we're adding a default to be used while loading the settings
+    fontFamily: font ?? DEFAULT_FONT,
 
     ...(theme.lineHeight && { lineHeight: theme.lineHeight }),
 
