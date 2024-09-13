@@ -217,7 +217,7 @@ export function provideModeratedItemTags(
   itemType: TagType,
   itemId: number,
 ): TagDescription<TagType>[] {
-  return [idTag(itemType, itemId)];
+  return [listTag(itemType), idTag(itemType, itemId)];
 }
 
 export function provideChannelTags(
