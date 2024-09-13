@@ -7,14 +7,12 @@ import { getSdkUsageProblem } from "embedding-sdk/lib/usage-problem";
 import { setUsageProblem } from "embedding-sdk/store/reducer";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import { getTokenFeature } from "metabase/setup/selectors";
 
 export function useSdkUsageProblem(config: SDKConfig) {
   const { allowConsoleLog = true } = config;
 
   const hasLoggedRef = useRef(false);
-  const appName = useSelector(getApplicationName);
 
   const dispatch = useDispatch();
 
@@ -45,10 +43,10 @@ export function useSdkUsageProblem(config: SDKConfig) {
 
     // Log the problem to the console once.
     if (!hasLoggedRef.current && allowConsoleLog) {
-      printUsageProblemToConsole(usageProblem, appName);
+      printUsageProblemToConsole(usageProblem);
       hasLoggedRef.current = true;
     }
-  }, [usageProblem, appName, allowConsoleLog, dispatch]);
+  }, [usageProblem, allowConsoleLog, dispatch]);
 
   return usageProblem;
 }

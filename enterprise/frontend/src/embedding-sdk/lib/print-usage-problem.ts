@@ -7,10 +7,7 @@ const TEXT_STYLE = "font-size: 14px;";
 const LINK_STYLE =
   "color: #509ee3; font-size: 14px; text-decoration: underline;";
 
-export function printUsageProblemToConsole(
-  problem: SdkUsageProblem | null,
-  appName: string,
-) {
+export function printUsageProblemToConsole(problem: SdkUsageProblem | null) {
   if (!problem) {
     return;
   }
@@ -20,13 +17,12 @@ export function printUsageProblemToConsole(
     .with("error", () => console.error)
     .exhaustive();
 
-  logger(
-    `%c${appName} Embedding SDK for React\n\n` +
-      `%c${problem.message}\n` +
-      `See the documentation for more information:\n\n` +
-      `%chttps://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/README.md#authenticate-users-from-your-back-end\n\n`,
-    HEADER_STYLE,
-    TEXT_STYLE,
-    LINK_STYLE,
-  );
+  const message =
+    // eslint-disable-next-line no-literal-metabase-strings -- console messages should not be white-labelled
+    `%cMetabase Embedding SDK for React\n\n` +
+    `%c${problem.message}\n` +
+    `See the documentation for more information:\n\n` +
+    `%chttps://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/README.md#authenticate-users-from-your-back-end\n\n`;
+
+  logger(message, HEADER_STYLE, TEXT_STYLE, LINK_STYLE);
 }
