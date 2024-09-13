@@ -123,7 +123,7 @@ export function DashboardInfoSidebar({
             defaultValue={Tab.Overview}
             className={SidesheetS.FlexScrollContainer}
           >
-            <Tabs.List mx="lg">
+            <Tabs.List mx="xl">
               <Tabs.Tab value={Tab.Overview}>{t`Overview`}</Tabs.Tab>
               <Tabs.Tab value={Tab.History}>{t`History`}</Tabs.Tab>
             </Tabs.List>

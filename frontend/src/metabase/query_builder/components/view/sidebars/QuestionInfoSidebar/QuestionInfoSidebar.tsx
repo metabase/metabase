@@ -59,12 +59,13 @@ export const QuestionInfoSidebar = ({
       isOpen={isOpen}
       removeBodyPadding
       data-testid="question-info-sidebar"
+      size="md"
     >
       <Tabs
         defaultValue="overview"
         className={SidesheetStyles.FlexScrollContainer}
       >
-        <Tabs.List mx="lg">
+        <Tabs.List mx="xl">
           <Tabs.Tab value="overview">{t`Overview`}</Tabs.Tab>
           <Tabs.Tab value="history">{t`History`}</Tabs.Tab>
         </Tabs.List>
