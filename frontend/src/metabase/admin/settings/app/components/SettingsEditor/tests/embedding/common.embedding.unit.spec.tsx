@@ -120,6 +120,7 @@ describe("[OSS] embedding settings", () => {
             name: "Embedded analytics SDK",
           }),
         ).toBeInTheDocument();
+        expect(withinEmbeddingSdkCard.getByText("BETA")).toBeInTheDocument();
         expect(
           withinEmbeddingSdkCard.getByText(
             /Interactive embedding with full, granular control./,
@@ -331,6 +332,7 @@ describe("[OSS] embedding settings", () => {
             name: "Embedded analytics SDK",
           }),
         ).toBeInTheDocument();
+        expect(withinEmbeddingSdkCard.getByText("BETA")).toBeInTheDocument();
         expect(
           withinEmbeddingSdkCard.getByText(
             /Interactive embedding with full, granular control./,
