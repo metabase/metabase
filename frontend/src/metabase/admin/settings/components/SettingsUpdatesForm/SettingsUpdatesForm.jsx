@@ -8,7 +8,7 @@ import { Flex } from "metabase/ui";
 
 import { SettingsSetting } from "../SettingsSetting";
 
-import VersionUpdateNotice from "./VersionUpdateNotice/VersionUpdateNotice";
+import { VersionUpdateNotice } from "./VersionUpdateNotice/VersionUpdateNotice";
 export default function SettingsUpdatesForm({ elements, updateSetting }) {
   const settings = elements.map((setting, index) => (
     <SettingsSetting
