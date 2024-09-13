@@ -26,8 +26,7 @@ import { createMockState } from "metabase-types/store/mocks";
 export const setupSdkState = ({
   currentUser = createMockUser(),
   settingValues = createMockSettings(),
-  // TODO: change this to "embedding_sdk" once the token feature PR landed.
-  tokenFeatures = createMockTokenFeatures({ embedding: true }),
+  tokenFeatures = createMockTokenFeatures({ embedding_sdk: true }),
   settingDefinitions = [],
   sdkState = createMockSdkState({
     loginStatus: createMockLoginStatusState({ status: "success" }),

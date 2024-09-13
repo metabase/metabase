@@ -150,7 +150,7 @@ export const tokenFeatures = [
   "disable_password_login",
   "content_verification",
   "embedding",
-  "embedding-sdk",
+  "embedding_sdk",
   "hosting",
   "llm_autodescription",
   "official_collections",
@@ -171,7 +171,7 @@ export const tokenFeatures = [
   "query_reference_validation",
 ] as const;
 
-export type TokenFeature = typeof tokenFeatures[number];
+export type TokenFeature = (typeof tokenFeatures)[number];
 export type TokenFeatures = Record<TokenFeature, boolean>;
 
 export type PasswordComplexity = {

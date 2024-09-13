@@ -32,8 +32,7 @@ interface Options {
 
 const setup = (options: Options) => {
   const tokenFeatures = createMockTokenFeatures({
-    // TODO: change to "embedding_sdk" once the token feature PR landed.
-    embedding: options.hasEmbeddingFeature ?? true,
+    embedding_sdk: options.hasEmbeddingFeature ?? true,
   });
 
   const settingValues = createMockSettings({ "token-features": tokenFeatures });

@@ -19,7 +19,7 @@ export function useSdkUsageProblem(config: SDKConfig) {
   // When the setting haven't been loaded or failed to query, we assume that the
   // feature is _enabled_ first. Otherwise, when a user's instance is temporarily down,
   // their customer would see an alarming error message on production.
-  // TODO: replace this with "enable-embedding-sdk" once the feature flag PR landed.
+  // TODO: replace this with "enable-embedding-sdk" once the settings PR landed.
   const isEnabled = useSetting("enable-embedding") ?? true;
 
   const hasTokenFeature = useSelector(state => {
@@ -29,8 +29,7 @@ export function useSdkUsageProblem(config: SDKConfig) {
       return true;
     }
 
-    // TODO: replace this with "embedding-sdk" once the token feature PR landed.
-    return getTokenFeature(state, "embedding");
+    return getTokenFeature(state, "embedding_sdk");
   });
 
   const usageProblem = useMemo(() => {

@@ -378,7 +378,7 @@
 
 (define-premium-feature enable-embedding-sdk-origins?
   "Should we allow users embed the SDK in sites other than localhost?"
-  :embedding-sdk)
+  :embedding_sdk)
 
 (define-premium-feature enable-whitelabeling?
   "Should we allow full whitelabel embedding (reskinning the entire interface?)"
