@@ -554,7 +554,9 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.log("verify click behavior with a valid temporal unit");
         getDashboardCard(1).findByText("year", { timeout: 10000 }).click();
         filterWidget().findByText("Year").should("be.visible");
-        getDashboardCard(0).findByText("Created At: Year").should("be.visible");
+        getDashboardCard(0)
+          .findByText("Created At: Year", { timeout: 10000 })
+          .should("be.visible");
 
         cy.log("verify that invalid temporal units are ignored");
         getDashboardCard(1).findByText("invalid").click();
