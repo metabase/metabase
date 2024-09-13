@@ -120,7 +120,7 @@ describe("SdkUsageProblemDisplay", () => {
     mock.mockRestore();
   });
 
-  it("should show an error when neither JWT or API keys are provided", async () => {
+  it("shows an error when neither JWT or API keys are provided", async () => {
     setup({
       // @ts-expect-error - we're intentionally passing neither to simulate bad usage
       config: { metabaseInstanceUrl: "http://localhost" },
@@ -135,7 +135,7 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
   });
 
-  it("should show an error when both JWT and API keys are provided", async () => {
+  it("shows an error when both JWT and API keys are provided", async () => {
     setup({
       // @ts-expect-error - we're intentionally passing both to simulate bad usage
       config: {
