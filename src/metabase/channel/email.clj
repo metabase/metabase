@@ -111,10 +111,12 @@
 
 (defn- notification-recipients->emails
   [recipients]
-  (for [recipient recipients]
-    (case (:type recipient)
-      :notification-recipient/user
-      (-> recipient :user :email))))
+  (for [recipient recipients
+        :let [email (case (:type recipient)
+                      :notification-recipient/user
+                      (-> recipient :user :email))]
+        :when email]
+    email))
 
 (defmethod channel/render-notification
   [:channel/email :notification/system-event]

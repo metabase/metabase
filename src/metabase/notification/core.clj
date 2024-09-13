@@ -28,14 +28,18 @@
                                    [:event-info [:maybe :map]]
                                    [:settings   :map]]]]]]])
 
+(defn- hydrate-notification-handler
+  [notification-handlers]
+  (t2/hydrate notification-handlers
+              :channel
+              :template
+              :recipients))
+
 (mu/defn send-notification!
   "Send the notification to all handlers synchronously."
   [notification :- NotificationInfo]
-  (let [noti-handlers (t2/hydrate (t2/select :model/NotificationHandler :notification_id (:id notification))
-                                  :channel
-                                  :template
-                                  [:recipients :user])]
-    (log/infof "[Notification %d] Found %d destinations" (:id notification) (count noti-handlers))
+  (let [noti-handlers (hydrate-notification-handler (t2/select :model/NotificationHandler :notification_id (:id notification)))]
+    (log/infof "[Notification %d] Found %d handlers" (:id notification) (count noti-handlers))
     (doseq [handler noti-handlers]
       (let [channel-type (:channel_type handler)
             messages     (channel/render-notification

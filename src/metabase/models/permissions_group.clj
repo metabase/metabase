@@ -10,7 +10,6 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase.db :as mdb]
-   [metabase.db.query :as mdb.query]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -28,6 +27,7 @@
   :model/PermissionsGroup)
 
 (methodical/defmethod t2/table-name :model/PermissionsGroup [_model] :permissions_group)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :group] [_original-model _k] :model/PermissionsGroup)
 
 (doto :model/PermissionsGroup
   (derive :metabase/model)
@@ -132,24 +132,30 @@
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
-(mi/define-simple-hydration-method members
-  :members
-  "Return `Users` that belong to `group-or-id`, ordered by their name (case-insensitive)."
-  [group-or-id]
-  (mdb.query/query (cond-> {:select    [:user.first_name
-                                        :user.last_name
-                                        :user.email
-                                        [:user.id :user_id]
-                                        [:pgm.id :membership_id]]
-                            :from      [[:core_user :user]]
-                            :left-join [[:permissions_group_membership :pgm] [:= :user.id :pgm.user_id]]
-                            :where     [:and [:= :user.is_active true]
-                                        [:= :pgm.group_id (u/the-id group-or-id)]]
-                            :order-by  [[[:lower :user.first_name] :asc]
-                                        [[:lower :user.last_name] :asc]]}
-
-                     (premium-features/enable-advanced-permissions?)
-                     (sql.helpers/select [:pgm.is_group_manager :is_group_manager]))))
+(methodical/defmethod t2/batched-hydrate [:model/PermissionsGroup :members]
+  "Batch hydration Users for a list of PermissionsGroups"
+  [_model k groups]
+  (mi/instances-with-hydrated-data
+   groups k
+   #(group-by :group_id (cond-> (t2/select :model/User {:select    [:u.id
+                                                                    ;; user_id is for legacy reasons, we should remove it
+                                                                    [:u.id :user_id]
+                                                                    :u.first_name
+                                                                    :u.last_name
+                                                                    :u.email
+                                                                    :pgm.group_id
+                                                                    [:pgm.id :membership_id]]
+                                                        :from      [[:core_user :u]]
+                                                        :left-join [[:permissions_group_membership :pgm] [:= :u.id :pgm.user_id]]
+                                                        :where     [:and
+                                                                    [:= :u.is_active true]
+                                                                    [:in :pgm.group_id (map :id groups)]]
+                                                        :order-by  [[[:lower :u.first_name] :asc]
+                                                                    [[:lower :u.last_name] :asc]]})
+                          (premium-features/enable-advanced-permissions?)
+                          (sql.helpers/select [:pgm.is_group_manager :is_group_manager])))
+   :id
+   {:default []}))
 
 (defn non-admin-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
