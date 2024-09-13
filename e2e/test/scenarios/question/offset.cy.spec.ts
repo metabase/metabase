@@ -7,6 +7,7 @@ import {
   entityPickerModal,
   entityPickerModalTab,
   getNotebookStep,
+  getStepPreviewButton,
   modal,
   openNotebook,
   popover,
@@ -316,7 +317,7 @@ describe("scenarios > question > offset", () => {
       ]);
 
       openNotebook();
-      getNotebookStep("summarize").icon("play").should("be.visible");
+      getStepPreviewButton("summarize").should("be.visible");
     });
 
     it("works with a single breakout and sorting by breakout", () => {
