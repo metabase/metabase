@@ -129,6 +129,8 @@ export function EntityPickerModal<
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
     null,
   );
+  const searchModels = useMemo(() => getSearchModels(passedTabs), [passedTabs]);
+  const folderModels = useMemo(() => getFolderModels(passedTabs), [passedTabs]);
   const [selectedTabId, setSelectedTabId] = useState<EntityPickerTabId>("");
   const previousTabId = usePreviousDistinct(selectedTabId);
   const [tabFolderState, setTabFolderState] = useState<
@@ -141,10 +143,12 @@ export function EntityPickerModal<
         : selectedTabId
     ];
   const scopedSearchResults = useScopedSearchResults(
-    searchResults,
+    searchQuery,
+    searchModels,
     searchScope,
     selectedFolder,
   );
+  const finalSearchResults = scopedSearchResults ?? searchResults ?? [];
   const hydratedOptions = useMemo(
     () => ({ ...defaultOptions, ...options }),
     [options],
@@ -153,9 +157,6 @@ export function EntityPickerModal<
   assertValidProps(hydratedOptions, onConfirm);
 
   const { open } = useModalOpen();
-
-  const searchModels = useMemo(() => getSearchModels(passedTabs), [passedTabs]);
-  const folderModels = useMemo(() => getFolderModels(passedTabs), [passedTabs]);
 
   const filteredRecents = useMemo(() => {
     if (!recentItems) {
@@ -206,14 +207,14 @@ export function EntityPickerModal<
         id: SEARCH_TAB_ID,
         model: null,
         folderModels: [],
-        displayName: getSearchTabText(scopedSearchResults, searchQuery),
+        displayName: getSearchTabText(finalSearchResults, searchQuery),
         icon: "search",
         render: ({ onItemSelect }) => (
           <SearchTab
             folder={selectedFolder}
             isLoading={searchResults == null}
             searchScope={searchScope}
-            searchResults={scopedSearchResults}
+            searchResults={finalSearchResults}
             selectedItem={selectedItem}
             onItemSelect={onItemSelect}
             onSearchScopeChange={setSearchScope}
