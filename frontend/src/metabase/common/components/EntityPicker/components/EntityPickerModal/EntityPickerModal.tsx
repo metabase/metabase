@@ -137,7 +137,7 @@ export function EntityPickerModal<
   const selectedFolder =
     tabFolderState[
       selectedTabId === SEARCH_TAB_ID
-        ? previousTabId ?? selectedTabId
+        ? (previousTabId ?? selectedTabId)
         : selectedTabId
     ];
   const scopedSearchResults = useMemo(
