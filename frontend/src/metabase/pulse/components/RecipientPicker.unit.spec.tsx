@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { renderWithProviders, screen } from "__support__/ui";
 import { RecipientPicker } from "metabase/pulse/components/RecipientPicker";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -18,7 +18,7 @@ const TEST_USERS = [
 describe("recipient picker", () => {
   describe("focus", () => {
     it("should be focused if there are no recipients", async () => {
-      render(
+      renderWithProviders(
         <RecipientPicker
           recipients={[]}
           users={TEST_USERS}
@@ -31,7 +31,7 @@ describe("recipient picker", () => {
       expect(await screen.findByText("Dustin")).toBeInTheDocument();
     });
     it("should not be focused if there are existing recipients", () => {
-      render(
+      renderWithProviders(
         <RecipientPicker
           recipients={[TEST_USERS[0]]}
           users={TEST_USERS}
@@ -49,7 +49,7 @@ describe("recipient picker", () => {
     it("should track additions", async () => {
       const onRecipientsChange = jest.fn();
 
-      render(
+      renderWithProviders(
         <RecipientPicker
           recipients={[TEST_USERS[0]]}
           users={TEST_USERS}
@@ -70,7 +70,7 @@ describe("recipient picker", () => {
     it("should track removals", async () => {
       const onRecipientsChange = jest.fn();
 
-      render(
+      renderWithProviders(
         <RecipientPicker
           recipients={[TEST_USERS[0], TEST_USERS[1], TEST_USERS[2]]}
           users={TEST_USERS}
@@ -80,9 +80,7 @@ describe("recipient picker", () => {
       );
 
       await userEvent.click(
-        (
-          await screen.findAllByRole("img", { name: /close/ })
-        )[2],
+        (await screen.findAllByRole("img", { name: /close/ }))[2],
       );
 
       expect(onRecipientsChange).toHaveBeenCalledWith([
@@ -94,7 +92,7 @@ describe("recipient picker", () => {
     it("should support adding emails", async () => {
       const onRecipientsChange = jest.fn();
 
-      render(
+      renderWithProviders(
         <RecipientPicker
           recipients={[TEST_USERS[0]]}
           users={TEST_USERS}

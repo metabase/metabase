@@ -49,17 +49,22 @@
   position: relative;
   align-items: center;
   display: flex;
+  gap: var(--padding-1);
 }
 
 .itemBody {
-  max-width: 100%;
-  flex: 1 0 auto;
+  display: flex 1 1 auto;
+  overflow: hidden;
 }
 
 .itemTitle {
   composes: textBold from "style";
   max-width: 100%;
-  overflow: hidden;
+  font-size: 1rem;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
 }
 
 .itemSubtitle {
@@ -69,7 +74,6 @@
 }
 
 .leftIcons {
-  composes: mr2 from "style";
   align-self: flex-start;
   flex-shrink: 0;
   flex-direction: row;

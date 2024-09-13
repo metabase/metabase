@@ -491,7 +491,8 @@
                       collection_authority_level collection_type collection_effective_ancestors effective_parent
                       archived_directly model]}]
   (let [matching-columns    (into #{} (remove nil? (map :column relevant-scores)))
-        match-context-thunk (first (keep :match-context-thunk relevant-scores))]
+        match-context-thunk (first (keep :match-context-thunk relevant-scores))
+        remove-thunks       (partial mapv #(dissoc % :match-context-thunk))]
     (-> result
         (assoc
          :name           (if (and (contains? matching-columns :display_name) display_name)
@@ -512,7 +513,7 @@
                                   effective_parent
                                   (when collection_effective_ancestors
                                     {:effective_ancestors collection_effective_ancestors})))
-         :scores          all-scores)
+         :scores          (remove-thunks all-scores))
         (update :dataset_query (fn [dataset-query]
                                  (when-let [query (some-> dataset-query json/parse-string)]
                                    (if (get query "type")

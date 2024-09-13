@@ -19,20 +19,6 @@ const ruleTester = new RuleTester({
 const VALID_CASES = [
   {
     code: `
-import MetabaseSettings from "metabase/lib/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-
-const docsUrl = MetabaseSettings.docsUrl("permissions/data")`,
-  },
-  {
-    code: `
-import MetabaseSettings from "metabase/lib/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-
-const docsUrl = MetabaseSettings.learnUrl("permissions/data")`,
-  },
-  {
-    code: `
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
@@ -97,33 +83,6 @@ const { url } = useDocsUrl("permissions/data");`,
   },
 ];
 const INVALID_CASES = [
-  {
-    name: 'Detect any name of the default import of "metabase/lib/settings"',
-    code: `
-import Settings from "metabase/lib/settings";
-
-const docsUrl = Settings.docsUrl("permissions/data")`,
-    error:
-      /Metabase links must be rendered conditionally\.(.|\n)*Please import `getShowMetabaseLinks`(.|\n)*Or add comment to indicate the reason why this rule needs to be disabled/,
-  },
-  {
-    name: "Detect MetabaseSettings.docsUrl()",
-    code: `
-import MetabaseSettings from "metabase/lib/settings";
-
-const docsUrl = MetabaseSettings.docsUrl("permissions/data")`,
-    error:
-      /Metabase links must be rendered conditionally\.(.|\n)*Please import `getShowMetabaseLinks`(.|\n)*Or add comment to indicate the reason why this rule needs to be disabled/,
-  },
-  {
-    name: "Detect MetabaseSettings.learn()",
-    code: `
-import MetabaseSettings from "metabase/lib/settings";
-
-const docsUrl = MetabaseSettings.learnUrl("permissions/data")`,
-    error:
-      /Metabase links must be rendered conditionally\.(.|\n)*Please import `getShowMetabaseLinks`(.|\n)*Or add comment to indicate the reason why this rule needs to be disabled/,
-  },
   {
     name: "Detect getDocsUrl()",
     code: `

@@ -58,7 +58,14 @@
       (doseq [[a b] [["revenue" "revenues"]
                      ["collect" "collection"]]]
         (is (= (search.index/search a)
-               (search.index/search b)))))))
+               (search.index/search b)))))
+
+    (testing "Or we match a completion of the final word"
+      (is (seq (search.index/search "ras")))
+      (is (seq (search.index/search "rasta coll")))
+      (is (seq (search.index/search "collection ras")))
+      (is (empty? (search.index/search "coll rasta")))
+      (is (empty? (search.index/search "ras collection"))))))
 
 (deftest either-test
   (with-index
@@ -99,3 +106,35 @@
     (testing "legacy search has a bunch of results"
       (is (= 3 (legacy-hits "projected revenue")))
       (is (= 0 (legacy-hits "\"projected revenue\""))))))
+
+;; lower level search expression tests
+
+(def search-expr #'search.index/to-tsquery-expr)
+
+(deftest to-tsquery-expr-test
+  (is (= "a & b & c:*"
+         (search-expr "a b c")))
+
+  (is (= "a & b & c:*"
+         (search-expr "a AND b AND c")))
+
+  (is (= "a & b & c"
+         (search-expr "a b \"c\"")))
+
+  (is (= "a & b | c:*"
+         (search-expr "a b or c")))
+
+  (is (= "this & !that:*"
+         (search-expr "this -that")))
+
+  (is (= "a & b & c <-> d & e | b & e:*"
+         (search-expr "a b \" c d\" e or b e")))
+
+  (is  (= "ab <-> and <-> cde <-> f | !abc & def & ghi | jkl <-> mno <-> or <-> pqr"
+          (search-expr "\"ab and cde f\" or -abc def AND ghi OR \"jkl mno OR pqr\"")))
+
+  (is (= "big & data | business <-> intelligence | data & wrangling:*"
+         (search-expr "Big Data oR \"Business Intelligence\" OR data and wrangling")))
+
+  (is (= "partial <-> quoted <-> and <-> or <-> -split:*"
+         (search-expr "\"partial quoted AND OR -split"))))

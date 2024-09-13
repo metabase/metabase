@@ -154,7 +154,8 @@
   color: var(--mb-color-text-dark);
 }
 
-.textBrand {
+.textBrand,
+.textBrandHover:hover {
   color: var(--mb-color-brand);
 }
 
