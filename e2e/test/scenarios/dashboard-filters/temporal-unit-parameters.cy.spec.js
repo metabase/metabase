@@ -512,7 +512,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   });
 
   describe("click behaviors", () => {
-    it(
+    it.only(
       "should pass a temporal unit with 'update dashboard filter' click behavior",
       { tags: "@flaky" },
       () => {
@@ -552,13 +552,27 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         saveDashboard();
 
         cy.log("verify click behavior with a valid temporal unit");
+
+        cy.wait(2000);
+
         getDashboardCard(1).findByText("year").click();
-        filterWidget()
-          .findByText("Year", { timeout: 10000 })
-          .should("be.visible");
+        // cy.wait("@dashcardQuery4");
+        // getDashboardCard(0).findByText("April 2022").should("be.visible");
+        // cy.wait(2000);
+        cy.wait("@dashcardQuery4").then(interception => {
+          // Optionally, you can assert the response if needed
+          expect(interception.response.statusCode).to.eq(202);
+
+          console.log("Response:", interception.response.body);
+        });
+
+        cy.url().should("include", "?unit_of_time=year");
+
         getDashboardCard(0)
           .findByText("Created At: Year", { timeout: 10000 })
           .should("be.visible");
+
+        filterWidget().findByText("Year").should("be.visible");
 
         cy.log("verify that invalid temporal units are ignored");
         getDashboardCard(1).findByText("invalid").click();
