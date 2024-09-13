@@ -579,6 +579,22 @@ describe("[EE, with token] embedding settings", () => {
           ),
         ).toBeInTheDocument();
       });
+
+      it("should show documentation link", () => {
+        const documentationText = screen.getByTestId("sdk-documentation");
+        expect(documentationText).toHaveTextContent(
+          "Check out the documentation for more.",
+        );
+
+        expect(
+          within(documentationText).getByRole("link", {
+            name: "documentation",
+          }),
+        ).toHaveProperty(
+          "href",
+          "https://metaba.se/sdk-docs?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-self-hosted",
+        );
+      });
     });
   });
 
@@ -643,6 +659,22 @@ describe("[EE, with token] embedding settings", () => {
             "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included.",
           ),
         ).toBeInTheDocument();
+      });
+
+      it("should show documentation link", () => {
+        const documentationText = screen.getByTestId("sdk-documentation");
+        expect(documentationText).toHaveTextContent(
+          "Check out the documentation for more.",
+        );
+
+        expect(
+          within(documentationText).getByRole("link", {
+            name: "documentation",
+          }),
+        ).toHaveProperty(
+          "href",
+          "https://metaba.se/sdk-docs?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-cloud",
+        );
       });
     });
   });

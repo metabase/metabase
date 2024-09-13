@@ -212,7 +212,7 @@ export function EmbeddingSdkSettings({
           </Box>
         )}
 
-        <Text>
+        <Text data-testid="sdk-documentation">
           {jt`Check out the ${(
             <ExternalLink key="sdk-doc" href={documentationUrl}>
               {t`documentation`}

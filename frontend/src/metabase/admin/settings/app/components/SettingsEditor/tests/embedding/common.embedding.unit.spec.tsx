@@ -566,6 +566,22 @@ describe("[OSS] embedding settings", () => {
           "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=oss",
         );
       });
+
+      it("should show documentation link", () => {
+        const documentationText = screen.getByTestId("sdk-documentation");
+        expect(documentationText).toHaveTextContent(
+          "Check out the documentation for more.",
+        );
+
+        expect(
+          within(documentationText).getByRole("link", {
+            name: "documentation",
+          }),
+        ).toHaveProperty(
+          "href",
+          "https://metaba.se/sdk-docs?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=oss",
+        );
+      });
     });
   });
 });
