@@ -32,6 +32,13 @@ export function getNotebookStep(
   return cy.findByTestId(`step-${type}-${stage}-${index}`);
 }
 
+export function getStepPreviewButton(
+  type: Exclude<NotebookStepType, "aggregate" | "breakout">,
+  { stage = 0, index = 0 } = {},
+): Cypress.Chainable<JQuery<HTMLElement>> {
+  return getNotebookStep(type, { stage, index }).icon("eye");
+}
+
 /**
  * @summary Visualize notebook query results.
  *

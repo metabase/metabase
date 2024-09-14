@@ -17,6 +17,7 @@ import {
   getDashboardCard,
   getDraggableElements,
   getNotebookStep,
+  getStepPreviewButton,
   getTable,
   join,
   leftSidebar,
@@ -372,14 +373,14 @@ describe("issue 39102", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
     openNotebook();
 
-    getNotebookStep("data", { stage: 0 }).icon("play").click();
+    getStepPreviewButton("data", { stage: 0 }).click();
     cy.wait("@dataset");
     cy.findByTestId("preview-root").within(() => {
       cy.findByText("Tax").should("be.visible");
       cy.icon("close").click();
     });
 
-    getNotebookStep("summarize", { stage: 0 }).icon("play").click();
+    getStepPreviewButton("summarize", { stage: 0 }).click();
     cy.wait("@dataset");
     cy.findByTestId("preview-root").within(() => {
       cy.findByText("Count").should("be.visible");
@@ -388,7 +389,7 @@ describe("issue 39102", () => {
       cy.icon("close").click();
     });
 
-    getNotebookStep("filter", { stage: 1 }).icon("play").click();
+    getStepPreviewButton("filter", { stage: 1 }).click();
     cy.wait("@dataset");
     cy.findByTestId("preview-root").within(() => {
       cy.findByText("Count").should("be.visible");
@@ -397,7 +398,7 @@ describe("issue 39102", () => {
       cy.icon("close").click();
     });
 
-    getNotebookStep("summarize", { stage: 1 }).icon("play").click();
+    getStepPreviewButton("summarize", { stage: 1 }).click();
     cy.wait("@dataset");
     cy.findByTestId("preview-root").within(() => {
       cy.findByText("Count").should("be.visible");
@@ -639,14 +640,11 @@ describe(
             cy.button("Add filter").click();
           });
 
-          cy.findByTestId("step-filter-0-0").within(() => {
-            cy.findByText(`ID is ${id}`);
-
-            cy.log(
-              "Scenario 2.1 - Trigger the preview to make sure it reflects the filter correctly",
-            );
-            cy.icon("play").click();
-          });
+          getNotebookStep("filter").findByText(`ID is ${id}`);
+          cy.log(
+            "Scenario 2.1 - Trigger the preview to make sure it reflects the filter correctly",
+          );
+          getStepPreviewButton("filter").click();
 
           // The preview should show only one row
           const ordersColumns = 10;
@@ -1312,15 +1310,16 @@ describe("issue 40399", () => {
 
     openNotebook();
 
-    getNotebookStep("filter", { stage: 0 }).within(() => {
-      cy.icon("play").click();
+    getStepPreviewButton("filter").click();
+    getNotebookStep("filter").within(() => {
       cy.findByTestId("preview-root")
         .findAllByText("Widget")
         .should("be.visible");
     });
 
-    getNotebookStep("join", { stage: 0 }).within(() => {
-      cy.icon("play").click();
+    getStepPreviewButton("join").click();
+    getNotebookStep("join").within(() => {
+      // cy.icon("play").click();
       cy.findByTestId("preview-root")
         .findAllByText("Gizmo")
         .should("be.visible");
@@ -1328,8 +1327,8 @@ describe("issue 40399", () => {
       cy.findByTestId("preview-root").findByText("Widget").should("not.exist");
     });
 
-    getNotebookStep("data", { stage: 0 }).within(() => {
-      cy.icon("play").click();
+    getStepPreviewButton("data").click();
+    getNotebookStep("data").within(() => {
       cy.findByTestId("preview-root")
         .findAllByText("Gizmo")
         .should("be.visible");
