@@ -84,7 +84,7 @@ export default class EmailAttachmentPicker extends Component {
     const { pulse, setPulse } = this.props;
     const { isFormattingEnabled, isPivotingEnabled } = this.state;
 
-    const isXls = attachmentType === "xls",
+    const isXls = attachmentType === "xlsx",
       isCsv = attachmentType === "csv";
 
     this.setState({ selectedAttachmentType: attachmentType });
@@ -113,7 +113,7 @@ export default class EmailAttachmentPicker extends Component {
 
   attachmentTypeFor(cards) {
     if (cards.some(c => c.include_xls)) {
-      return "xls";
+      return "xlsx";
     } else if (cards.some(c => c.include_csv)) {
       return "csv";
     } else {

@@ -5,7 +5,7 @@ import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsW
 import type { ExportFormat } from "metabase/common/types/export";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Button, Icon, Stack, Text, Title } from "metabase/ui";
+import { Box, Button, Icon, Stack, Text, Title } from "metabase/ui";
 import { canSavePng } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
@@ -67,9 +67,9 @@ export const QueryDownloadPopover = ({
         onTogglePivoting={() => setIsPivoted(prev => !prev)}
       />
       {hasTruncatedResults && (
-        <Text size="sm">
-          <div>{t`Your answer has a large number of rows so it could take a while to download.`}</div>
-          <div>{limitedDownloadSizeText}</div>
+        <Text size="sm" color="text-medium">
+          <Box mb="1rem">{t`Your answer has a large number of rows so it could take a while to download.`}</Box>
+          <Box>{limitedDownloadSizeText}</Box>
         </Text>
       )}
       <Button
