@@ -6,6 +6,7 @@ import {
   describeWithSnowplowEE,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
+  exportFromDashcard,
   getDashboardCardMenu,
   main,
   popover,
@@ -109,9 +110,7 @@ describeWithSnowplowEE(
 
         showDashboardCardActions();
         getDashboardCardMenu().click();
-        popover().findByText("Download results").click();
-        popover().findByText(".csv").click();
-
+        exportFromDashcard(".csv");
         cy.verifyDownload(".csv", { contains: true });
 
         expectGoodSnowplowEvent({
@@ -171,7 +170,10 @@ describeWithSnowplowEE(
         waitLoading();
 
         cy.findByTestId("download-button").click();
-        popover().findByText(".png").click();
+        popover().within(() => {
+          cy.findByText(".png").click();
+          cy.findByTestId("download-results-button").click();
+        });
 
         cy.verifyDownload(".png", { contains: true });
 
@@ -200,7 +202,10 @@ describeWithSnowplowEE(
 
         cy.findByTestId("download-button").click();
 
-        popover().findByText(".csv").click();
+        popover().within(() => {
+          cy.findByText(".csv").click();
+          cy.findByTestId("download-results-button").click();
+        });
 
         cy.verifyDownload(".csv", { contains: true });
 

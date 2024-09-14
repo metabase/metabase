@@ -16,6 +16,7 @@ import {
   entityPickerModalTab,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
+  exportFromDashcard,
   filterWidget,
   getDashboardCard,
   getDashboardCardMenu,
@@ -278,10 +279,7 @@ describe("scenarios > question > download", () => {
       getDashboardCard(0).findByText("Created At").should("be.visible");
       getDashboardCardMenu(0).click();
 
-      popover().within(() => {
-        cy.findByText("Download results").click();
-        cy.findByText(".png").click();
-      });
+      exportFromDashcard(".png");
 
       showDashboardCardActions(1);
       getDashboardCard(1).findByText("User ID").should("be.visible");
@@ -302,6 +300,7 @@ describe("scenarios > question > download", () => {
 
       popover().within(() => {
         cy.findByText(".png").click();
+        cy.findByTestId("download-results-button").click();
       });
 
       cy.verifyDownload(".png", { contains: true });
@@ -377,10 +376,7 @@ describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
     getDashboardCard(0).findByText("Created At").should("be.visible");
     getDashboardCardMenu(0).click();
 
-    popover().within(() => {
-      cy.findByText("Download results").click();
-      cy.findByText(".png").click();
-    });
+    exportFromDashcard(".png");
 
     expectGoodSnowplowEvent({
       event: "download_results_clicked",

@@ -26,6 +26,14 @@ interface DownloadAndAssertParams {
   enablePivoting?: boolean;
 }
 
+export const exportFromDashcard = (format: string) => {
+  popover().within(() => {
+    cy.findByText("Download results").click();
+    cy.findByText(format).click();
+    cy.findByTestId("download-results-button").click();
+  });
+};
+
 /**
  * Trigger the download of CSV or XLSX files and assert on the results in the related sheet.
  * It applies to both unsaved questions (queries) and the saved ones.

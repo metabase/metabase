@@ -11,6 +11,7 @@ import {
   describeEE,
   entityPickerModal,
   entityPickerModalTab,
+  exportFromDashcard,
   getDashboardCard,
   getDashboardCardMenu,
   getNextUnsavedDashboardCardId,
@@ -563,8 +564,8 @@ describeEE("scenarios > embedding > full app", () => {
 
       getDashboardCard().realHover();
       getDashboardCardMenu().click();
-      popover().findByText("Download results").click();
-      popover().findByText(".csv").click();
+
+      exportFromDashcard(".csv");
 
       cy.wait("@CsvDownload").then(interception => {
         expect(
