@@ -3,9 +3,7 @@
   (:require
    [metabase.channel.core :as channel]
    [metabase.events.notification :as events.notification]
-   [metabase.test :as mt]
    [metabase.util :as u]))
-
 
 (def test-channel-type
   "The channel type for the test channel."
@@ -83,12 +81,6 @@
    :details      {:type    :email/mustache
                   :subject "Welcome {{event-info.object.first_name}} to {{settings.site-name}}"
                   :body    "Hello {{event-info.object.first_name}}! Welcome to {{settings.site-name}}!"}})
-
-;; :model/NotifcationRecipient
-(def notification-recipient-user-rasta
-  "A :model/NotificationRecipient for user Rasta."
-  {:type    :notification-recipient/user
-   :user_id (mt/user->id :rasta)})
 
 ;; notification info
 (def notification-info-user-joined-event
