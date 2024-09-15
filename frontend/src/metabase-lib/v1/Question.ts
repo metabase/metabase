@@ -47,10 +47,12 @@ import type {
   DatasetData,
   DatasetQuery,
   Field,
+  LastEditInfo,
   ParameterId,
   Parameter as ParameterObject,
   ParameterValues,
   TableId,
+  UserInfo,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -227,11 +229,11 @@ class Question {
   /**
    * The visualization type of the question
    */
-  display(): string {
+  display(): CardDisplayType {
     return this._card && this._card.display;
   }
 
-  setDisplay(display) {
+  setDisplay(display: CardDisplayType) {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
@@ -526,7 +528,7 @@ class Question {
     return this.setCard(assoc(this.card(), "description", description));
   }
 
-  lastEditInfo() {
+  lastEditInfo(): LastEditInfo {
     return this._card && this._card["last-edit-info"];
   }
 
@@ -811,7 +813,7 @@ class Question {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
 
-  getCreator(): string {
+  getCreator(): UserInfo {
     return getIn(this, ["_card", "creator"]) || "";
   }
 

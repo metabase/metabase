@@ -1,14 +1,56 @@
+;; -*- outline-regexp: "[; ]+#+[[:space:]]+" -*-
 (ns metabase.models.serialization
-  "Defines several helper functions and multimethods for the serialization system.
-  Serialization is an enterprise feature, but in the interest of keeping all the code for an entity in one place, these
-  methods are defined here and implemented for all the exported models.
+  "Defines core interfaces for serialization.
 
-  Whether to export a new model:
-  - Generally, the high-profile user facing things (databases, questions, dashboards, snippets, etc.) are exported.
-  - Internal or automatic things (users, activity logs, permissions) are not.
+  Serialization is an enterprise feature, but in the interest of keeping all the code for an entity in one place,
+  these methods are defined here and implemented for all the exported models.
 
-  If the model is not exported, add it to the exclusion lists in the tests. Every model should be explicitly listed as
-  exported or not, and a test enforces this so serialization isn't forgotten for new models."
+  ## Whether to export a new model
+
+  Export if it's a high-profile user facing entity: Database, Question, Dashboard, Snippet, etc.
+  Do not export if it's internal or automatic: Users (created automatically), logs, revisions, cache, permissions.
+
+  ## How to deal with serialization for a new model
+
+  - Add it to the appropriate list in [[metabase-enterprise.serialization.v2.models]]
+  - If it is in the `excluded-models` list, then your job is done
+  - If it's not, you probably want `entity_id` field autopopulated (that's a most common way to make model
+    transportable between instances), add `(derive :model/Model :hook/entity-id)` to your model
+  - Define serialization multi-methods on a model (see `Card` and `Collection` for more complex examples or `Action`
+    and `Segment` for less involved stuff)
+    - `serdes/make-spec` - this is the main entry point. Should list every field in the model (this is checked in
+      tests)
+    - `serdes/descendants` - if model should be extracted along with some support (like Collection and all its
+      children), you need to specify what to fetch - see `Card` for an example (used during export)
+    - `serdes/dependencies` - if model references other models, you need to declare which ones, see `Action` for an
+      example (used during import)
+  - Write tests
+    - basic layout (that all entity fields are mentioned, fks are marked as such) is tested automatically
+    - see [[metabase-enterprise.serialization.v2.extract-test]] and [[metabase-enterprise.serialization.v2.load-test]]
+      for examples
+    - basically try to think what special stuff is happening and test for corner cases
+    - do you store mbql? some other json structure? See `Card` for examples
+
+  ## Existing transformations
+
+  - `(serdes/fk :model/Card)` or `(serdes/fk :model/Database :name)` - export foreign key in a portable way
+  - `(serdes/nested :model/DashboardCard :dashboard_id opts)` - include some entities in your entity export
+  - `(serdes/parent-ref)` - symmetrical call for `serdes/nested` to handle parent ids (you'd use it on `:dashboard_id`
+    in that case)
+  - `(serdes/date)` - format/parse dates with a stable format
+  - `(serdes/kw)` - de/keywordize values during de/serialization
+  - `(serdes/as :parent_id)` - store value as a different key
+  - `(serdes/compose inner outer)` - compose two transformations
+
+  ## Use cases
+
+  ### Skip value depending on data
+
+  See `Database/details`, but overall:
+  - Put it in `:skip` if this column shouldn't be synchronized
+  - You have to make decisions inside `:transform` column `:export` function (or `:import`)
+  - To prevent value being serialized, return `::serdes/skip` instead of `nil` (the reason being that serialization
+    format distinguishes between `nil` and absence)"
   (:refer-clojure :exclude [descendants])
   (:require
    [cheshire.core :as json]
@@ -70,8 +112,6 @@
 ;;;    - Populate it `on-insert` with a randomly-generated NanoID like `"V1StGXR8_Z5jdHi6B-myT"`.
 ;;;    - For entities that existed before the column was added, have a portable way to rebuild them (see below on
 ;;;      hashing).
-
-(def ^:dynamic *current* "Instance/map being exported/imported currently" nil)
 
 (defmulti entity-id
   "Given the model name and an entity, returns its entity ID (which might be nil).
@@ -311,11 +351,18 @@
   "Return specification for serialization. This should be a map of three keys: `:copy`, `:skip`, `:transform`.
 
   `:copy` and `:skip` are vectors of field names. `:skip` is only used in tests to check that all fields were
-  mentioned.
-  j
-  serialize/deserialize data.
+  mentioned. `:transform` is a map from field name to an `{:import (fn [v] ...) :export (fn [v] ...)}` map.
 
-  For behavior, see `extract-one` and `xform-one`."
+  For behavior, see `extract-one` and `xform-one`. Two fields - `id` and `updated_at` - are always skipped, no need to
+  mention them in `:skip`.
+
+  Example:
+
+  (defmethod serdes/make-spec \"ModelName\" [_model-name _opts]
+    {:copy [:name :description]
+     :skip [;; it's nice to comment why it's skipped
+            :internal_data]
+     :transform {:card_id (serdes/fk :model/Card)}})"
   (fn [model-name _opts] model-name))
 
 (defmethod make-spec :default [_ _] nil)
@@ -348,6 +395,13 @@
   {:arglists '([model-name opts])}
   (fn [model-name _opts] model-name))
 
+(defn- assert-one-defined [m k1 k2]
+  (if (contains? m k1)
+    (assert (not (contains? m k2))
+            (format "Transform must not define both %s and %s" k1 k2))
+    (assert (contains? m k2)
+            (format "Transform must define one of %s or %s" k1 k2))))
+
 (defn extract-one
   "Extracts a single entity retrieved from the database into a portable map with `:serdes/meta` attached.
   `(extract-one \"ModelName\" opts entity)`
@@ -358,24 +412,27 @@
   - Replace any foreign keys with portable values (eg. entity IDs, or a user ID with their email, etc.)"
   [model-name opts instance]
   (try
-    (binding [*current* instance]
-      (let [spec (make-spec model-name opts)]
-        (assert spec (str "No serialization spec defined for model " model-name))
-        (-> (select-keys instance (:copy spec))
-            ;; won't assoc if `generate-path` returned `nil`
-            (m/assoc-some :serdes/meta (generate-path model-name instance))
-            (into (for [[k transform] (:transform spec)
-                        :let  [export-k (:as transform k)
-                               res ((:export transform) (get instance k))]
-                        :when (not= res ::skip)]
-                    (do
-                      (when-not (contains? instance k)
-                        (throw (ex-info (format "Key %s not found, make sure it was hydrated" k)
-                                        {:model    model-name
-                                         :key      k
-                                         :instance instance})))
+    (let [spec (make-spec model-name opts)]
+      (assert spec (str "No serialization spec defined for model " model-name))
+      (-> (select-keys instance (:copy spec))
+          ;; won't assoc if `generate-path` returned `nil`
+          (m/assoc-some :serdes/meta (generate-path model-name instance))
+          (into (for [[k transform] (:transform spec)
+                      :let [_         (assert-one-defined transform :export :export-with-context)
+                            export-k  (:as transform k)
+                            input     (get instance k)
+                            f         (:export transform)
+                            f-context (:export-with-context transform)
+                            res       (if f (f input) (f-context instance k input))]
+                      :when (not= res ::skip)]
+                  (do
+                    (when-not (contains? instance k)
+                      (throw (ex-info (format "Key %s not found, make sure it was hydrated" k)
+                                      {:model    model-name
+                                       :key      k
+                                       :instance instance})))
 
-                      [export-k res]))))))
+                    [export-k res])))))
     (catch Exception e
       (throw (ex-info (format "Error extracting %s %s" model-name (:id instance))
                       (assoc (ex-data e) :model model-name :id (:id instance))
@@ -644,33 +701,39 @@
 (defn- xform-one [model-name ingested]
   (let [spec (make-spec model-name nil)]
     (assert spec (str "No serialization spec defined for model " model-name))
-    (binding [*current* ingested]
-      (-> (select-keys ingested (:copy spec))
-          (into (for [[k transform] (:transform spec)
-                      :when         (not (::nested transform))
-                      :let          [import-k (:as transform k)
-                                     res ((:import transform) (get ingested import-k))]
-                      :when         (and (not= res ::skip)
-                                         (or (some? res)
-                                             (contains? ingested import-k)))]
-                  [k res]))))))
+    (-> (select-keys ingested (:copy spec))
+        (into (for [[k transform] (:transform spec)
+                    :when (not (::nested transform))
+                    :let [_         (assert-one-defined transform :import :import-with-context)
+                          import-k  (:as transform k)
+                          input     (get ingested import-k)
+                          f         (:import transform)
+                          f-context (:import-with-context transform)
+                          res       (if f (f input) (f-context ingested k input))]
+                    :when (and (not= res ::skip)
+                               (or (some? res)
+                                   (contains? ingested import-k)))]
+                [k res])))))
 
 (defn- spec-nested! [model-name ingested instance]
-  (binding [*current* instance]
-    (let [spec (make-spec model-name nil)]
-      (doseq [[k transform] (:transform spec)
-              :when         (::nested transform)]
-        ((:import transform) (get ingested k))))))
+  (let [spec (make-spec model-name nil)]
+    (doseq [[k transform] (:transform spec)
+            :when (::nested transform)
+            :let [_         (assert-one-defined transform :import :import-with-context)
+                  input     (get ingested k)
+                  f         (:import transform)
+                  f-context (:import-with-context transform)]]
+      (if f (f input) (f-context instance k input)))))
 
 (defn default-load-one!
   "Default implementation of `load-one!`"
   [ingested maybe-local]
   (let [model-name (ingested-model ingested)
         adjusted   (xform-one model-name ingested)
-        instance (binding [mi/*deserializing?* true]
-                   (if (nil? maybe-local)
-                     (load-insert! model-name adjusted)
-                     (load-update! model-name adjusted maybe-local)))]
+        instance   (binding [mi/*deserializing?* true]
+                     (if (nil? maybe-local)
+                       (load-insert! model-name adjusted)
+                       (load-update! model-name adjusted maybe-local)))]
     (spec-nested! model-name ingested instance)
     instance))
 
@@ -880,7 +943,12 @@
                   (when schema {:model "Schema" :id schema})
                   {:model "Table" :id table-name}]))
 
-(defn storage-table-path-prefix
+(def ^:private STORAGE-DIRS {"Database" "databases"
+                             "Schema"   "schemas"
+                             "Table"    "tables"
+                             "Field"    "fields"})
+
+(defn storage-path-prefixes
   "The [[serdes/storage-path]] for Table is a bit tricky, and shared with Fields and FieldValues, so it's
   factored out here.
   Takes the :serdes/meta value for a `Table`!
@@ -889,32 +957,57 @@
   With a schema: `[\"databases\" \"db_name\" \"schemas\" \"public\" \"tables\" \"customers\"]`
   No schema:     `[\"databases\" \"db_name\" \"tables\" \"customers\"]`"
   [path]
-  (let [db-name    (-> path first :id)
-        schema     (when (= (count path) 3)
-                     (-> path second :id))
-        table-name (-> path last :id)]
-    (concat ["databases" db-name]
-            (when schema ["schemas" schema])
-            ["tables" table-name])))
+  (into [] cat
+        (for [entry path]
+          [(or (get STORAGE-DIRS (:model entry))
+               (throw (ex-info "Could not find dir name" {:entry entry})))
+           (:id entry)])))
 
 ;;; ## Fields
+
+(defn- field-hierarchy [id]
+  (reverse
+   (t2/select :model/Field
+              {:with-recursive [[[:parents {:columns [:id :name :parent_id :table_id]}]
+                                 {:union-all [{:from   [[:metabase_field :mf]]
+                                               :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
+                                               :where  [:= :id id]}
+                                              {:from   [[:metabase_field :pf]]
+                                               :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
+                                               :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
+               :from           [:parents]
+               :select         [:name :table_id]})))
+
+(defn recursively-find-field-q
+  "Build a query to find a field among parents (should start with bottom-most field first), i.e.:
+
+  `(recursively-find-field-q 1 [\"inner\" \"outer\"])`"
+  [table-id [field & rest]]
+  (when field
+    {:from   [:metabase_field]
+     :select [:id]
+     :where  [:and
+              [:= :table_id table-id]
+              [:= :name field]
+              [:= :parent_id (recursively-find-field-q table-id rest)]]}))
 
 (defn ^:dynamic ^::cache *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
-  [[import-field-fk]] is the inverse."
+  [[*import-field-fk*]] is the inverse."
   [field-id]
   (when field-id
-    (let [{:keys [name table_id]}     (t2/select-one 'Field :id field-id)
-          [db-name schema field-name] (*export-table-fk* table_id)]
-      [db-name schema field-name name])))
+    (let [fields                      (field-hierarchy field-id)
+          [db-name schema field-name] (*export-table-fk* (:table_id (first fields)))]
+      (into [db-name schema field-name] (map :name fields)))))
 
 (defn ^:dynamic ^::cache *import-field-fk*
-  "Given a `field_id` as exported by [[export-field-fk]], resolve it back into a numeric `field_id`."
-  [[db-name schema table-name field-name :as field-id]]
+  "Given a `field_id` as exported by [[*export-field-fk*]], resolve it back into a numeric `field_id`."
+  [[db-name schema table-name & fields :as field-id]]
   (when field-id
-    (let [table_id (*import-table-fk* [db-name schema table-name])]
-      (t2/select-one-pk 'Field :table_id table_id :name field-name))))
+    (let [table-id (*import-table-fk* [db-name schema table-name])
+          field-q  (recursively-find-field-q table-id (reverse fields))]
+      (t2/select-one-pk :model/Field field-q))))
 
 (defn field->path
   "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.
@@ -1028,7 +1121,7 @@
   [entity]
   (lib.util.match/replace entity
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
-    ;; and also *current* expresion forms used in parameter mapping dimensions
+    ;; and also *current* expression forms used in parameter mapping dimensions
     ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
     [(:or :field-id "field-id") fully-qualified-name]
     (mbql-fully-qualified-names->ids* [:field fully-qualified-name])
@@ -1479,55 +1572,55 @@
   (let [model-name (name model)
         sorter     (:sort-by opts :created_at)
         key-field  (:key-field opts :entity_id)]
-    {::nested     true
-     :model       model
-     :backward-fk backward-fk
-     :opts        opts
-     :export      (fn [data]
-                    (assert (every? #(t2/instance-of? model %) data)
-                            (format "Nested data is expected to be a %s, not %s" model (t2/model (first data))))
-                    ;; `nil? data` check is for `extract-one` case in tests; make sure to add empty vectors in
-                    ;; `extract-query` implementations for nested collections
-                    (try
-                      (->> (sort-by sorter data)
-                           (mapv #(extract-one model-name opts %)))
-                      (catch Exception e
-                        (throw (ex-info (format "Error exporting nested %s" model)
-                                        {:model     model
-                                         :parent-id (:id *current*)}
-                                        e)))))
-     :import      (fn [lst]
-                    (let [parent-id (:id *current*)
-                          first-eid (some->> (first lst)
-                                             (entity-id model-name))
-                          enrich    (fn [ingested]
-                                      (-> ingested
-                                          (assoc backward-fk parent-id)
-                                          (update :serdes/meta #(or % [{:model model-name :id (get ingested key-field)}]))))]
-                      (cond
-                        (nil? first-eid) ; no entity id, just drop existing stuff
-                        (do (t2/delete! model backward-fk parent-id)
-                            (doseq [ingested lst]
-                              (load-one! (enrich ingested) nil)))
+    {::nested             true
+     :model               model
+     :backward-fk         backward-fk
+     :opts                opts
+     :export-with-context (fn [current _ data]
+                            (assert (every? #(t2/instance-of? model %) data)
+                                    (format "Nested data is expected to be a %s, not %s" model (t2/model (first data))))
+                            ;; `nil? data` check is for `extract-one` case in tests; make sure to add empty vectors in
+                            ;; `extract-query` implementations for nested collections
+                            (try
+                              (->> (sort-by sorter data)
+                                   (mapv #(extract-one model-name opts %)))
+                              (catch Exception e
+                                (throw (ex-info (format "Error exporting nested %s" model)
+                                                {:model     model
+                                                 :parent-id (:id current)}
+                                                e)))))
+     :import-with-context (fn [current _ lst]
+                            (let [parent-id (:id current)
+                                  first-eid (some->> (first lst)
+                                                     (entity-id model-name))
+                                  enrich    (fn [ingested]
+                                              (-> ingested
+                                                  (assoc backward-fk parent-id)
+                                                  (update :serdes/meta #(or % [{:model model-name :id (get ingested key-field)}]))))]
+                              (cond
+                                (nil? first-eid)            ; no entity id, just drop existing stuff
+                                (do (t2/delete! model backward-fk parent-id)
+                                    (doseq [ingested lst]
+                                      (load-one! (enrich ingested) nil)))
 
-                        (entity-id? first-eid) ; proper entity id, match by them
-                        (do (t2/delete! model backward-fk parent-id :entity_id [:not-in (map :entity_id lst)])
-                            (doseq [ingested lst
-                                    :let     [ingested (enrich ingested)
-                                              local    (lookup-by-id model (entity-id model-name ingested))]]
-                              (load-one! ingested local)))
+                                (entity-id? first-eid)      ; proper entity id, match by them
+                                (do (t2/delete! model backward-fk parent-id :entity_id [:not-in (map :entity_id lst)])
+                                    (doseq [ingested lst
+                                            :let [ingested (enrich ingested)
+                                                  local    (lookup-by-id model (entity-id model-name ingested))]]
+                                      (load-one! ingested local)))
 
-                        :else           ; identity hash
-                        (let [incoming  (set (map #(entity-id model-name %) lst))
-                              local     (->> (t2/reducible-select model backward-fk parent-id)
-                                             (into [] (map t2.realize/realize))
-                                             (m/index-by identity-hash))
-                              to-delete (into [] (comp (filter #(contains? incoming (key %)))
-                                                       (map #(:id (val %))))
-                                              local)]
-                          (t2/delete! model :id [:in (map :id to-delete)])
-                          (doseq [ingested lst]
-                            (load-one! (enrich ingested) (get local (entity-id model-name ingested))))))))}))
+                                :else                       ; identity hash
+                                (let [incoming  (set (map #(entity-id model-name %) lst))
+                                      local     (->> (t2/reducible-select model backward-fk parent-id)
+                                                     (into [] (map t2.realize/realize))
+                                                     (m/index-by identity-hash))
+                                      to-delete (into [] (comp (filter #(contains? incoming (key %)))
+                                                               (map #(:id (val %))))
+                                                      local)]
+                                  (t2/delete! model :id [:in (map :id to-delete)])
+                                  (doseq [ingested lst]
+                                    (load-one! (enrich ingested) (get local (entity-id model-name ingested))))))))}))
 
 (def parent-ref "Transformer for parent id for nested entities."
   (constantly
@@ -1548,11 +1641,41 @@
   [k xform]
   (assoc xform :as k))
 
+(defn- compose*
+  "Given two functions that transform the value at `k` within `x`, return their composition."
+  [f g]
+  (fn [m k x]
+    (let [y (g m k x)]
+      (f (assoc m k y) k y))))
+
+(defn- maybe-lift [m k k-context]
+  (let [f         (m k)
+        f-context (m k-context)]
+    (or f-context (fn [_ _ x] (f x)))))
+
 (defn compose
   "Compose two transformations."
   [inner-xform outer-xform]
-  {:export (comp (:export inner-xform) (:export outer-xform))
-   :import (comp (:import outer-xform) (:import inner-xform))})
+  {:export-with-context (compose* (maybe-lift inner-xform :export :export-with-context)
+                                  (maybe-lift outer-xform :export :export-with-context))
+   :import-with-context (compose* (maybe-lift outer-xform :import :import-with-context)
+                                  (maybe-lift inner-xform :import :import-with-context))})
+
+;;; ## Utilities
+
+(defn strip-error
+  "Transforms the error in a list of strings to log"
+  [e prefix]
+  (->> (for [[e prefix] (map vector
+                             (take-while some? (iterate #(.getCause ^Exception %) e))
+                             (cons prefix (repeat "  caused by")))]
+         (str (when prefix (str prefix ": "))
+              (ex-message e)
+              (when-let [data (-> (ex-data e)
+                                  (dissoc :toucan2/context-trace)
+                                  not-empty)]
+                (str " " (pr-str data)))))
+       (str/join "\n")))
 
 ;;; ## Memoizing appdb lookups
 
@@ -1563,6 +1686,6 @@
     `(binding ~(reduce into []
                        (for [[var-sym var] (ns-interns ns*)
                              :when (::cache (meta var))
-                             :let  [fq-sym (symbol (name ns*) (name var-sym))]]
+                             :let [fq-sym (symbol (name ns*) (name var-sym))]]
                          [fq-sym `(memoize ~fq-sym)]))
        ~@body)))

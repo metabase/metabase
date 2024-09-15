@@ -166,7 +166,7 @@ const getAttributeValues = (
     JWT_ATTRS.map(key => [
       key,
       DEFAULTABLE_JWT_ATTRS.has(key)
-        ? values[key] ?? settings[key]?.default
+        ? (values[key] ?? settings[key]?.default)
         : values[key],
     ]),
   );

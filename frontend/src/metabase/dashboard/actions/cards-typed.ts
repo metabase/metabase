@@ -243,12 +243,12 @@ export const replaceCard =
 export const removeCardFromDashboard = createThunkAction(
   REMOVE_CARD_FROM_DASH,
   ({
-      dashcardId,
-      cardId,
-    }: {
-      dashcardId: DashCardId;
-      cardId: DashboardCard["card_id"];
-    }) =>
+    dashcardId,
+    cardId,
+  }: {
+    dashcardId: DashCardId;
+    cardId: DashboardCard["card_id"];
+  }) =>
     dispatch => {
       dispatch(closeAddCardAutoWireToasts());
 

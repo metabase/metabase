@@ -1,0 +1,12 @@
+name: Snippet 2
+description: null
+entity_id: WyQWnT23PF-SfbYLROllJ
+created_at: '2024-08-28T14:36:15.328717Z'
+archived: false
+collection_id: null
+content: 1 = 1
+creator_id: ann@heart.band
+serdes/meta:
+- id: WyQWnT23PF-SfbYLROllJ
+  label: snippet_2
+  model: NativeQuerySnippet

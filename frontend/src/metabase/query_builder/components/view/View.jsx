@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { connect } from "react-redux";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -19,6 +20,7 @@ import {
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
+import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import { Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -46,8 +48,9 @@ import {
 import { ViewFooter } from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
-import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
+import { ChartTypeSidebar } from "./sidebars/ChartTypeSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
+import { QuestionSettingsSidebar } from "./sidebars/QuestionSettingsSidebar";
 import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
 
@@ -60,10 +63,11 @@ const fadeIn = {
 class View extends Component {
   getLeftSidebar = () => {
     const {
+      question,
+      result,
       isShowingChartSettingsSidebar,
       isShowingChartTypeSidebar,
       onCloseChartSettings,
-      onCloseChartType,
     } = this.props;
 
     if (isShowingChartSettingsSidebar) {
@@ -93,7 +97,7 @@ class View extends Component {
     }
 
     if (isShowingChartTypeSidebar) {
-      return <ChartTypeSidebar {...this.props} onClose={onCloseChartType} />;
+      return <ChartTypeSidebar question={question} result={result} />;
     }
 
     return null;
@@ -106,6 +110,7 @@ class View extends Component {
       isShowingSummarySidebar,
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
+      isShowingQuestionSettingsSidebar,
       updateQuestion,
       visibleTimelineEventIds,
       selectedTimelineEventIds,
@@ -117,6 +122,7 @@ class View extends Component {
       onOpenModal,
       onCloseSummary,
       onCloseTimelines,
+      onCloseQuestionInfo,
       onSave,
     } = this.props;
 
@@ -156,7 +162,17 @@ class View extends Component {
     }
 
     if (isSaved && isShowingQuestionInfoSidebar) {
-      return <QuestionInfoSidebar question={question} onSave={onSave} />;
+      return (
+        <QuestionInfoSidebar
+          question={question}
+          onSave={onSave}
+          onClose={onCloseQuestionInfo}
+        />
+      );
+    }
+
+    if (isSaved && isShowingQuestionSettingsSidebar) {
+      return <QuestionSettingsSidebar question={question} />;
     }
 
     return null;
@@ -169,6 +185,7 @@ class View extends Component {
       isShowingSnippetSidebar,
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
+      isShowingQuestionSettingsSidebar,
       toggleTemplateTagsEditor,
       toggleDataReference,
       toggleSnippetSidebar,
@@ -178,6 +195,7 @@ class View extends Component {
       selectTimelineEvents,
       deselectTimelineEvents,
       onCloseTimelines,
+      onCloseQuestionInfo,
       onSave,
       question,
     } = this.props;
@@ -215,7 +233,17 @@ class View extends Component {
     }
 
     if (isShowingQuestionInfoSidebar) {
-      return <QuestionInfoSidebar question={question} onSave={onSave} />;
+      return (
+        <QuestionInfoSidebar
+          question={question}
+          onSave={onSave}
+          onClose={onCloseQuestionInfo}
+        />
+      );
+    }
+
+    if (isShowingQuestionSettingsSidebar) {
+      return <QuestionSettingsSidebar question={question} />;
     }
 
     return null;
@@ -356,31 +384,7 @@ class View extends Component {
           updateQuestion={this.props.updateQuestion}
           className={CS.flexNoShrink}
         />
-        <ViewFooter
-          question={this.props.question}
-          result={this.props.result}
-          isShowingChartTypeSidebar={this.props.isShowingChartTypeSidebar}
-          isShowingChartSettingsSidebar={
-            this.props.isShowingChartSettingsSidebar
-          }
-          isShowingRawTable={this.props.isShowingRawTable}
-          onOpenChartType={this.props.onOpenChartType}
-          onOpenModal={this.props.onOpenModal}
-          onCloseChartType={this.props.onCloseChartType}
-          onOpenChartSettings={this.props.onOpenChartSettings}
-          onCloseChartSettings={this.props.onCloseChartSettings}
-          setUIControls={this.props.setUIControls}
-          isObjectDetail={this.props.isObjectDetail}
-          questionAlerts={this.props.questionAlerts}
-          visualizationSettings={this.props.visualizationSettings}
-          canManageSubscriptions={this.props.canManageSubscriptions}
-          isVisualized={this.props.isVisualized}
-          isTimeseries={this.props.isTimeseries}
-          isShowingTimelineSidebar={this.props.isShowingTimelineSidebar}
-          onOpenTimelines={this.props.onOpenTimelines}
-          onCloseTimelines={this.props.onCloseTimelines}
-          className={CS.flexNoShrink}
-        />
+        <ViewFooter className={CS.flexNoShrink} />
       </QueryBuilderMain>
     );
   };
@@ -388,6 +392,8 @@ class View extends Component {
   render() {
     const {
       question,
+      result,
+      rawSeries,
       databases,
       isShowingNewbModal,
       isShowingTimelineSidebar,
@@ -401,11 +407,19 @@ class View extends Component {
       reportTimezone,
       readOnly,
       isDirty,
+      isRunning,
       isRunnable,
       isResultDirty,
       hasVisualizeButton,
       runQuestionQuery,
+      cancelQuery,
       setQueryBuilderMode,
+      isShowingQuestionInfoSidebar,
+      isShowingQuestionSettingsSidebar,
+      cancelQuestionChanges,
+      onCreate,
+      onSave,
+      onChangeLocation,
     } = this.props;
 
     // if we don't have a question at all or no databases then we are initializing, so keep it simple
@@ -417,13 +431,43 @@ class View extends Component {
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
     const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
-    const isModelOrMetric =
-      question.type() === "model" || question.type() === "metric";
+    const isModel = question.type() === "model";
+    const isMetric = question.type() === "metric";
 
-    if (isModelOrMetric && queryBuilderMode === "dataset") {
+    if ((isModel || isMetric) && queryBuilderMode === "dataset") {
       return (
         <>
-          <DatasetEditor {...this.props} />
+          {isModel && <DatasetEditor {...this.props} />}
+          {isMetric && (
+            <MetricEditor
+              question={question}
+              result={result}
+              rawSeries={rawSeries}
+              reportTimezone={reportTimezone}
+              isDirty={isDirty}
+              isResultDirty={isResultDirty}
+              isRunning={isRunning}
+              onChange={updateQuestion}
+              onCreate={async question => {
+                await onCreate(question);
+                setQueryBuilderMode("view");
+              }}
+              onSave={async question => {
+                await onSave(question);
+                setQueryBuilderMode("view");
+              }}
+              onCancel={question => {
+                cancelQuestionChanges();
+                if (question.isSaved()) {
+                  setQueryBuilderMode("view");
+                } else {
+                  onChangeLocation("/");
+                }
+              }}
+              onRunQuery={runQuestionQuery}
+              onCancelQuery={cancelQuery}
+            />
+          )}
           <QueryModals
             questionAlerts={this.props.questionAlerts}
             user={this.props.user}
@@ -449,9 +493,16 @@ class View extends Component {
 
     const leftSidebar = this.getLeftSidebar();
     const rightSidebar = this.getRightSidebar();
-    const rightSidebarWidth = isShowingTimelineSidebar
-      ? SIDEBAR_SIZES.TIMELINE
-      : SIDEBAR_SIZES.NORMAL;
+
+    const rightSidebarWidth = match({
+      isShowingTimelineSidebar,
+      isShowingQuestionInfoSidebar,
+      isShowingQuestionSettingsSidebar,
+    })
+      .with({ isShowingTimelineSidebar: true }, () => SIDEBAR_SIZES.TIMELINE)
+      .with({ isShowingQuestionInfoSidebar: true }, () => 0)
+      .with({ isShowingQuestionSettingsSidebar: true }, () => 0)
+      .otherwise(() => SIDEBAR_SIZES.NORMAL);
 
     return (
       <div className={CS.fullHeight}>

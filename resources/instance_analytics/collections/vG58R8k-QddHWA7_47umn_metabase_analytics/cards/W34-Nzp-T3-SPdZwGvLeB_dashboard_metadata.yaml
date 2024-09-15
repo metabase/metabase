@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -99,15 +98,15 @@ dataset_query:
 result_metadata: null
 visualization_settings:
   column_settings:
-    '["name","model_id"]':
+    '["ref",["field",["Internal Metabase Database","public","v_audit_log","model_id"],null]]':
       column_title: Content ID
-    '["name","timestamp"]':
+    '["ref",["field",["Internal Metabase Database","public","v_audit_log","timestamp"],null]]':
       column_title: Creation Date
-    '["name","description"]':
+    '["ref",["field",["Internal Metabase Database","public","v_content","description"],{"join-alias":"Question 35"}]]':
       column_title: Description
-    '["name","name"]':
+    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]':
       column_title: Name
-    '["name","full_name"]':
+    '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"join-alias":"Question 1"}]]':
       column_title: Creator Name
   table.cell_column: model_id
   table.columns:
@@ -208,6 +207,7 @@ serdes/meta:
 - id: W34-Nzp-T3-SPdZwGvLeB
   label: dashboard_metadata
   model: Card
-initially_published_at: null
+archived_directly: false
 metabase_version: null
+source_card_id: AxSackBiyXVRUzM_TyyQY
 type: question

@@ -18,6 +18,7 @@ import {
   getCanResetFilters,
   getIsEditing,
   getIsHeaderVisible,
+  getIsShowDashboardInfoSidebar,
   getIsSidebarOpen,
 } from "metabase/dashboard/selectors";
 import type {
@@ -85,6 +86,8 @@ export function DashboardHeaderView({
 
   const canResetFilters = useSelector(getCanResetFilters);
   const isSidebarOpen = useSelector(getIsSidebarOpen);
+  const isInfoSidebarOpen = useSelector(getIsShowDashboardInfoSidebar);
+
   const isDashboardHeaderVisible = useSelector(getIsHeaderVisible);
   const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
@@ -163,7 +166,7 @@ export function DashboardHeaderView({
       )}
       <HeaderContainer
         isFixedWidth={dashboard?.width === "fixed"}
-        isSidebarOpen={isSidebarOpen}
+        offsetSidebar={isSidebarOpen && !isInfoSidebarOpen}
       >
         {isDashboardHeaderVisible && (
           <HeaderRow

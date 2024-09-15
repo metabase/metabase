@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: 14
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -132,7 +131,11 @@ result_metadata:
     - v_subscriptions
     - creator_id
   - null
-  fk_target_field_id: 739
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - user_id
   id:
   - Internal Metabase Database
   - public
@@ -176,7 +179,11 @@ result_metadata:
     - v_subscriptions
     - dashboard_qualified_id
   - null
-  fk_target_field_id: 1484
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_qualified_id
   id:
   - Internal Metabase Database
   - public
@@ -354,7 +361,7 @@ serdes/meta:
 - id: 5ojUtU9iE-DCggHdFPIll
   label: dashboard_subscriptions
   model: Card
-initially_published_at: null
-last_used_at: '2024-05-16T21:01:37.986341Z'
+archived_directly: false
 metabase_version: null
+source_card_id: null
 type: model

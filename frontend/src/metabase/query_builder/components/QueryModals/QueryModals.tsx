@@ -140,7 +140,8 @@ export function QueryModals({
           initialCollectionId={initialCollectionId}
           onSave={handleSaveAndClose}
           onCreate={handleSaveModalCreate}
-          onCancel={onCloseModal}
+          onClose={onCloseModal}
+          opened={true}
         />
       );
     case MODAL_TYPES.SAVED:
@@ -168,7 +169,8 @@ export function QueryModals({
             await onCreate(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
-          onCancel={onCloseModal}
+          onClose={onCloseModal}
+          opened={true}
           multiStep
         />
       );
@@ -202,7 +204,8 @@ export function QueryModals({
             await onCreate(question);
             showAlertsAfterQuestionSaved();
           }}
-          onCancel={onCloseModal}
+          onClose={onCloseModal}
+          opened={true}
           multiStep
           initialCollectionId={initialCollectionId}
         />
@@ -214,7 +217,8 @@ export function QueryModals({
           originalQuestion={originalQuestion}
           onSave={handleSaveAndClose}
           onCreate={handleCreateAndClose}
-          onCancel={onCloseModal}
+          onClose={onCloseModal}
+          opened={true}
           multiStep
           initialCollectionId={initialCollectionId}
         />

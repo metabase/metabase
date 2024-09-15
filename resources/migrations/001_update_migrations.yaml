@@ -6726,6 +6726,165 @@ databaseChangeLog:
       rollback: # No rollback needed since this is backward compatible
 
   - changeSet:
+      id: v49.2024-08-21T08:33:06
+      author: johnswanson
+      comment: Add permissions.perm_value
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: permissions
+                columnName: perm_value
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: perm_value
+                  type: varchar(64)
+                  remarks: The value of the permission
+                  constraints:
+                    nullable: true
+            tableName: permissions
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:07
+      author: johnswanson
+      comment: Add permissions.perm_type
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: permissions
+                columnName: perm_type
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: perm_type
+                  type: varchar(64)
+                  remarks: The type of the permission
+                  constraints:
+                    nullable: true
+            tableName: permissions
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:08
+      author: johnswanson
+      comment: Add permissions.collection_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: permissions
+                columnName: collection_id
+      changes:
+        - addColumn:
+            tableName: permissions
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The linked collection, if applicable
+                  constraints:
+                    nullable: true
+
+  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
+  - changeSet:
+      id: v49.2024-08-21T08:33:09
+      author: johnswanson
+      comment: Add `permissions.collection_id` foreign key constraint
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                - foreignKeyName: fk_permissions_ref_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: permissions
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_permissions_ref_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:10
+      author: johnswanson
+      comment: Populate `perm_value`, `perm_type`, and `collection_id` on permissions
+      rollback: # not needed.
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: permissions/collection-access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/collection-access-mariadb.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/collection-access-h2.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:11
+      author: johnswanson
+      comment: Create index on `permissions.collection_id`
+      rollback: # deleted with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: permissions
+                indexName: idx_permissions_collection_id
+      changes:
+        - createIndex:
+            tableName: permissions
+            columns:
+              - column:
+                  name: collection_id
+            indexName: idx_permissions_collection_id
+
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:12
+      author: johnswanson
+      comment: Index on `permissions.perm_type`
+      rollback: # deleted with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: permissions
+                indexName: idx_permissions_perm_type
+      changes:
+        - createIndex:
+            tableName: permissions
+            columns:
+              - column:
+                  name: perm_type
+            indexName: idx_permissions_perm_type
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:13
+      author: johnswanson
+      comment: Index on `permissions.perm_value`
+      rollback: # deleted with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: permissions
+                indexName: idx_permissions_perm_value
+      changes:
+        - createIndex:
+            tableName: permissions
+            columns:
+              - column:
+                  name: perm_value
+            indexName: idx_permissions_perm_value
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
@@ -8173,6 +8332,28 @@ databaseChangeLog:
       rollback: # not needed, columns will be deleted
 
   - changeSet:
+      id: v50.2024-05-30T16:04:20
+      author: escherize
+      comment: Add context to recent views table
+      changes:
+        - addColumn:
+            tableName: recent_views
+            columns:
+              - column:
+                  name: context
+                  remarks: The contextual action that netted a recent view.
+                  type: varchar(256)
+                  defaultValue: "view"
+                  constraints:
+                    nullable: false
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: recent_views
+              columnName: context
+
+  - changeSet:
       id: v50.2024-06-12T12:33:07
       author: piranha
       comment: 'Decrypt some settings so the next migration runs well'
@@ -8351,6 +8532,28 @@ databaseChangeLog:
                   name: parameter_id
 
   - changeSet:
+      id: v50.2024-08-27T00:00:00
+      author: devurandom
+      comment: Add is_attached_dwh to metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: is_attached_dwh
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_attached_dwh
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: 'This is an attached data warehouse, do not serialize it and hide its details from the UI'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v51.2024-05-13T15:30:57
       author: metamben
       comment: Backup of dataset_query rewritten by the metrics v2 migration
@@ -8371,23 +8574,6 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateMetricsToV2"
-
-  - changeSet:
-      id: v51.2024-05-30T16:04:20
-      author: escherize
-      comment: Add context to recent views table
-      changes:
-        - addColumn:
-            tableName: recent_views
-            columns:
-              - column:
-                  name: context
-                  remarks: The contextual action that netted a recent view.
-                  type: varchar(256)
-                  defaultValue: "view"
-                  constraints:
-                    nullable: false
-      preConditions:
 
   - changeSet:
       id: v51.2024-06-07T12:37:36
@@ -8437,6 +8623,113 @@ databaseChangeLog:
             tableName: login_history
             indexName: idx_user_id_device_id
       preConditions:
+
+  - changeSet:
+      id: v51.2024-07-08T10:00:00
+      author: qnkhuat
+      comment: Create channel table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: channel
+      changes:
+        - createTable:
+            tableName: channel
+            remarks: Channel configurations
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: channel name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: description
+                  remarks: channel description
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: type
+                  remarks: Channel type
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  remarks: Channel details, used to store authentication information or channel-specific settings
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: whether the channel is active
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: Timestamp when the channel was inserted
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: Timestamp when the channel was updated
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-07-08T10:00:01
+      author: qnkhuat
+      comment: Create pulse_channel.channel_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: pulse_channel
+                columnName: channel_id
+      changes:
+        - addColumn:
+            tableName: pulse_channel
+            columns:
+              - column:
+                  name: channel_id
+                  type: integer
+                  remarks: The channel ID
+
+  - changeSet:
+      id: v51.2024-07-08T10:00:02
+      author: qnkhuat
+      comment: Add fk constraint to pulse_channel.channel_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_pulse_channel_channel_id
+                foreignKyeTableName: pulse_channel
+
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_channel
+            baseColumnNames: channel_id
+            referencedTableName: channel
+            referencedColumnNames: id
+            constraintName: fk_pulse_channel_channel_id
+            nullable: true
+            deleteCascade: true
 
   - changeSet:
       id: v51.2024-07-09T17:15:43
@@ -8960,158 +9253,6 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInDashboardCardVizSettings"
 
   - changeSet:
-      id: v51.2024-08-21T08:33:06
-      author: johnswanson
-      comment: Add permissions.perm_value
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: permissions
-                columnName: perm_value
-      changes:
-        - addColumn:
-            columns:
-              - column:
-                  name: perm_value
-                  type: varchar(64)
-                  remarks: The value of the permission
-                  constraints:
-                    nullable: true
-            tableName: permissions
-
-  - changeSet:
-      id: v51.2024-08-21T08:33:07
-      author: johnswanson
-      comment: Add permissions.perm_type
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: permissions
-                columnName: perm_type
-      changes:
-        - addColumn:
-            columns:
-              - column:
-                  name: perm_type
-                  type: varchar(64)
-                  remarks: The type of the permission
-                  constraints:
-                    nullable: true
-            tableName: permissions
-
-  - changeSet:
-      id: v51.2024-08-21T08:33:08
-      author: johnswanson
-      comment: Add permissions.collection_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: permissions
-                columnName: collection_id
-      changes:
-        - addColumn:
-            tableName: permissions
-            columns:
-              - column:
-                  name: collection_id
-                  type: int
-                  remarks: The linked collection, if applicable
-                  constraints:
-                    nullable: true
-
-  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
-  - changeSet:
-      id: v51.2024-08-21T08:33:09
-      author: johnswanson
-      comment: Add `permissions.collection_id` foreign key constraint
-      preConditions:
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: permissions
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_permissions_ref_collection_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v51.2024-08-21T08:33:10
-      author: johnswanson
-      comment: Populate `perm_value`, `perm_type`, and `collection_id` on permissions
-      rollback: # not needed.
-      changes:
-        - sqlFile:
-            dbms: postgresql
-            path: permissions/collection-access.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: mysql,mariadb
-            path: permissions/collection-access-mariadb.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: h2
-            path: permissions/collection-access-h2.sql
-            relativeToChangelogFile: true
-
-  - changeSet:
-      id: v51.2024-08-21T08:33:11
-      author: johnswanson
-      comment: Create index on `permissions.collection_id`
-      rollback: # deleted with the column
-      preConditions:
-        - not:
-            - indexExists:
-                tableName: permissions
-                indexName: idx_permissions_collection_id
-      changes:
-        - createIndex:
-            tableName: permissions
-            columns:
-              - column:
-                  name: collection_id
-            indexName: idx_permissions_collection_id
-
-
-  - changeSet:
-      id: v51.2024-08-21T08:33:12
-      author: johnswanson
-      comment: Index on `permissions.perm_type`
-      rollback: # deleted with the column
-      preConditions:
-        - not:
-            - indexExists:
-                tableName: permissions
-                indexName: idx_permissions_perm_type
-      changes:
-        - createIndex:
-            tableName: permissions
-            columns:
-              - column:
-                  name: perm_type
-            indexName: idx_permissions_perm_type
-
-  - changeSet:
-      id: v51.2024-08-21T08:33:13
-      author: johnswanson
-      comment: Index on `permissions.perm_value`
-      rollback: # deleted with the column
-      preConditions:
-        - not:
-            - indexExists:
-                tableName: permissions
-                indexName: idx_permissions_perm_value
-      changes:
-        - createIndex:
-            tableName: permissions
-            columns:
-              - column:
-                  name: perm_value
-            indexName: idx_permissions_perm_value
-
-  - changeSet:
       id: v51.2024-08-26T08:53:46
       author: crisptrutski
       comment: Add a status column to track the progress and outcome of query analysis
@@ -9129,6 +9270,24 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: running, failed, or completed
 
+  - changeSet:
+      id: v51.2024-09-09T15:11:16
+      author: johnswanson
+      comment: add an index for `collection.type`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: collection
+                indexName: idx_collection_type
+      changes:
+        - createIndex:
+            tableName: collection
+            columns:
+              - column:
+                  name: type
+            indexName: idx_collection_type
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
@@ -9138,25 +9297,27 @@ databaseChangeLog:
 # 1) Think through some of these points when writing a migration, learn from our past mistakes:
 #    - Do you really need a migration? Could the feature work without it? Prefer not to if possible.
 #      Data in the wild can be vastly different from what you expect, and it's hard to get right.
-#    - If you still need to, make sure it works when Metabase is encrypted. Fields like `metabase_database.details`
-#      or `setting.value` can be encrypted, so you need to decrypt them in your migration. See #42617, #44048.
-#    - Prefer SQL migrations over custom migrations.
-#    - Still, make sure your migration is backward compatible: it might not be possible to add a constraint back
-#      if you are dropping it in a migration.
+#    - Make sure your migration is backward compatible: it might not be possible to add a constraint back
+#      if you drop it in a migration.
 #    - Postgres, MySQL and H2 have their differences. Make sure your migration works for all.
-#    - Custom migrations and their tests demand a high level of reliability. They should only use code from the standard library.
-#      Requiring code from the Metabase codebase is a bad idea because it can change and break your migration.
-#      More in `metabase.db.custom_migrations` namespace doc.
-#    - Custom migrations shouldn't use Toucan models; work directly with the table names.
+#    - Database encryption is a major issue:
+#      - Fields like `metabase_database.details` or `setting.value` can be encrypted, so you need to decrypt them in
+#        your migration. See #42617, #44048.
+#      - Database could be partially encrypted, see https://www.notion.so/72575933ef2a446bafd16909e05a7387
+#    - Custom migrations:
+#      - Prefer SQL migrations when possible.
+#      - Never use application code: it can change and *will* break your migration.
+#      - Do not use Toucan models - refer table names directly.
+#      - If it's a big change, consider using Quartz, see #42279
+#      - More in `metabase.db.custom_migrations` namespace doc.
+#    - Never delete a migration: users won't be able to downgrade. If you really need to, see #44908
+#    - Migration id (`vXX.<date>`) must match its earliest released version:
+#      - Do not backport `v51....` to version 50, Metabase will try to downgrade it.
+#      - Instead, write a migration with an oldest target you plan to backport to in mind.
 #
 # 2) Run ./bin/lint-migrations-file.sh to run core.spec checks against any changes you make here. Liquibase is pretty
 #    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
 #    this check but it's nicer to know now instead of waiting for CI.
-#
-#   1a) Ensure your changes are compatible with Liquibase rollback. See comments starting with
-#       0.45 migrations for more notes. Rollback to 0.44 and forwards to the latest migration is tested
-#       automatically and the migrations linter will check for the presence of rollback where required as
-#       much as possible.
 #
 # 3) Migration IDs should follow the format
 #

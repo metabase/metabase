@@ -487,6 +487,11 @@
 (defn- query-table [table]
   (query (:db_id table) (:id table)))
 
+(defn- column-display-names-for-table [table]
+  (->> (query-table table)
+       mt/cols
+       (map :display_name)))
+
 (defn- column-names-for-table [table]
   (->> (query-table table)
        mt/cols
@@ -559,6 +564,21 @@
             (testing "Check the data was uploaded into the table"
               (is (= 2
                      (count (rows-for-table table)))))))))))
+
+(deftest create-from-csv-display-name-encodings-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (with-mysql-local-infile-on-and-off
+      (doseq [filename ["csv/iso-8859-1.csv"
+                        "csv/utf-8.csv"
+                        "csv/utf-16.csv"]]
+        (testing (str "Filename: " filename "\n")
+          (with-upload-table!
+            [table (create-from-csv-and-sync-with-defaults!
+                    :file (io/file (io/resource filename))
+                    :auxiliary-sync-steps :synchronous)]
+            (testing "Headers are displayed correctly"
+              (is (= (header-with-auto-pk ["Dirección" "País"])
+                     (column-display-names-for-table table))))))))))
 
 (deftest infer-separator-catch-exception-test
   (testing "errors in [[upload/infer-separator]] should not prevent the upload (#44034)"
@@ -757,13 +777,8 @@
                                         "4,山田次郎,35,プロジェクトマネージャー,福岡"
                                         "5,中村美咲,32,データサイエンティスト,札幌"]))]
           (testing "Check the data was uploaded into the table correctly"
-            (is (= #_(header-with-auto-pk ["ID" "名前" "年齢" "職業" "都市"])
-                 (header-with-auto-pk ["id"
-                                       "%e5%90%8d%e5%89%8d"
-                                       "%e5%b9%b4%e9%bd%a2"
-                                       "%e8%81%b7%e6%a5%ad"
-                                       "%e9%83%bd%e5%b8%82"])
-                   (column-names-for-table table)))
+            (is (= (header-with-auto-pk ["ID" "名前" "年齢" "職業" "都市"])
+                   (column-display-names-for-table table)))
             (is (= (rows-with-auto-pk
                     [[1 "佐藤太郎" 25 "エンジニア" "東京"]
                      [2 "鈴木花子" 30 "デザイナー" "大阪"]
@@ -781,8 +796,8 @@
                                       "1,Serenity,Malcolm Reynolds"
                                       "2,Millennium Falcon, Han Solo"]))]
         (testing "Check the data was uploaded into the table correctly"
-          (is (= (header-with-auto-pk ["unnamed_column" "ship_name" "unnamed_column_2"])
-                 (column-names-for-table table))))))))
+          (is (= (header-with-auto-pk ["Unnamed Column" "Ship Name" "Unnamed Column 2"])
+                 (column-display-names-for-table table))))))))
 
 (deftest create-from-csv-duplicate-names-test
   (testing "Upload a CSV file with duplicate column names"
@@ -796,7 +811,9 @@
           (testing "Table and Fields exist after sync"
             (testing "Check the data was uploaded into the table correctly"
               (is (= (header-with-auto-pk ["unknown" "unknown_2" "unknown_3" "unknown_2_2"])
-                     (column-names-for-table table))))))))))
+                     (column-names-for-table table)))
+              (is (= (header-with-auto-pk ["Unknown" "Unknown 2" "Unknown 3" "Unknown 2 2"])
+                     (column-display-names-for-table table))))))))))
 
 (deftest create-from-csv-sanitize-to-duplicate-names-test
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
@@ -808,6 +825,10 @@
                                         "$123,12.3, 100"]))]
           (testing "Table and Fields exist after sync"
             (testing "Check the data was uploaded into the table correctly"
+              (is (= #_[@#'upload/auto-pk-column-name "Cost $" "Cost %" "Cost #"]
+                   ;; Blame it on humanization/name->human-readable-name
+                   (header-with-auto-pk ["Cost" "Cost 2" "Cost 3"])
+                     (column-display-names-for-table table)))
               (is (= [@#'upload/auto-pk-column-name "cost__" "cost___2" "cost___3"]
                      (column-names-for-table table))))))))))
 
@@ -1926,6 +1947,28 @@
                          (set (rows-for-table table)))))
                 (io/delete-file file)))))))))
 
+(deftest update-new-non-ascii-column-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (doseq [action (actions-to-test driver/*driver*)]
+      (testing (action-testing-str action)
+        (with-uploads-enabled!
+          (testing "Append should handle new non-ascii columns being added in the latest CSV"
+            (with-upload-table! [table (create-upload-table!)]
+              (column-display-names-for-table table)
+             ;; Reorder as well for good measure
+              (let [csv-rows ["α,name"
+                              "omega,Everything"]
+                    file     (csv-file-with csv-rows)]
+                (testing "The new row is inserted with the values correctly reordered"
+                  (is (= {:row-count 1} (update-csv! action {:file file, :table-id (:id table)})))
+                  (is (= ["name" "α"]
+                         (rest (column-display-names-for-table table))))
+                  (is (= (set (updated-contents action
+                                                [["Obi-Wan Kenobi" nil]]
+                                                [["Everything" "omega"]]))
+                         (set (rows-for-table table)))))
+                (io/delete-file file)))))))))
+
 (deftest update-type-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
@@ -2294,5 +2337,12 @@
 
 (deftest unique-long-column-names-test
   (let [original ["αbcdεf_αbcdεf"     "αbcdεfg_αbcdεf"   "αbc_2_etc_αbcdεf" "αbc_3_xyz_αbcdεf"]
-        expected [:%CE%B1bcd%  :%_852c229f :%CE%B1bc_2 :%CE%B1bc_3]]
-    (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))))
+        expected [:%CE%B1bcd%  :%_852c229f :%CE%B1bc_2 :%CE%B1bc_3]
+        displays ["αbcdεf" "αbcdεfg" "αbc 2 etc" "αbc 3 xyz"]]
+    (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))
+    (mt/with-dynamic-redefs [upload/max-bytes (constantly 10)]
+      (is (= displays
+             ;; The whitespace linter rejects capital greek characters that look like their roman equivalents.
+             ;; This is the easiest way to work around the capitalization of alpha.
+             (map u/lower-case-en
+                  (#'upload/derive-display-names ::short-column-test-driver original)))))))

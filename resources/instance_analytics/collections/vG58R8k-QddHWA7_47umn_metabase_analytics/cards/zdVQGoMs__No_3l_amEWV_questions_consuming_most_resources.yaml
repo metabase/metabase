@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -133,7 +132,7 @@ serdes/meta:
 - id: zdVQGoMs__No_3l_amEWV
   label: questions_consuming_most_resources
   model: Card
-initially_published_at: null
-last_used_at: '2024-05-15T20:34:48.199297Z'
+archived_directly: false
 metabase_version: vUNKNOWN (901f705)
+source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

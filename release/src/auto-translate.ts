@@ -19,6 +19,7 @@ const google_only_languages = [
   'fa',
   'he',
   'id',
+  'ms',
   'sq',
   'sr',
   'vi',

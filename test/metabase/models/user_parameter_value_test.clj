@@ -6,44 +6,53 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(deftest user-parameter-value-batch-upsert-test
-  (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
-    (let [value!   (fn [parameters]
-                     (upv/batched-upsert! (mt/user->id :rasta) dashboard-id parameters))
-          value-fn (fn []
-                     (t2/select-fn->fn :parameter_id :value
-                                       :model/UserParameterValue
-                                       :user_id (mt/user->id :rasta) :dashboard_id dashboard-id))]
+(set! *warn-on-reflection* true)
 
-      (testing "insert upv if value is non-nil"
-        (value! [{:id "param1" :value 1}
-                 {:id "param2" :value "string"}
-                 {:id "param3" :value ["A" "B" "C"]}])
-        (is (= {"param1" 1
-                "param2" "string"
-                "param3" ["A" "B" "C"]}
-               (value-fn))))
+(deftest user-parameter-value-store-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+        (let [store!      (fn [parameters]
+                            (upv/store! (mt/user->id :rasta) dashboard-id parameters))
+              retrieve-fn (fn []
+                            (t2/select-fn->fn :parameter_id :value
+                                              :model/UserParameterValue
+                                              :user_id (mt/user->id :rasta) :dashboard_id dashboard-id))]
+          (testing "insert upv if value is non-nil"
+            (store! [{:id "param1" :value 1}
+                     {:id "param2" :value "string"}
+                     {:id "param3" :value ["A" "B" "C"]}])
+            (is (= {"param1" 1
+                    "param2" "string"
+                    "param3" ["A" "B" "C"]}
+                   (retrieve-fn))))
 
-      (testing "delete if value is nil"
-        (value! [{:id "param1" :value "foo"} {:id "param2" :value nil}])
-        (is (= {"param1" "foo"
-                "param3" ["A" "B" "C"]}
-               (value-fn))))
+          (testing "delete if value is nil"
+            (store! [{:id "param1" :value "foo"} {:id "param2" :value nil}])
+            (is (= {"param1" "foo"
+                    "param3" ["A" "B" "C"]}
+                   (retrieve-fn))))
 
-      (testing "update existing param and insert new param"
-        (value! [{:id "param1", :value "new-value"} {:id "param2", :value "new-value"}])
-        (is (= {"param1" "new-value"
-                "param2" "new-value"
-                "param3" ["A" "B" "C"]}
-               (value-fn))))
+          (testing "last value wins"
+            (store! [{:id "param1" :value "bar"} {:id "param1" :value "baz"}])
+            (is (= {"param1" "baz"
+                    "param3" ["A" "B" "C"]}
+                   (retrieve-fn))))
 
-      (testing "insert nil if param has default value"
-        (value! [{:id "param4" :value nil :default "default"}])
-        (is (= {"param1" "new-value"
-                "param2" "new-value"
-                "param3" ["A" "B" "C"]
-                "param4" nil}
-               (value-fn)))))))
+          (testing "update existing param and insert new param"
+            (store! [{:id "param1", :value "new-value"} {:id "param2", :value "new-value"}])
+            (is (= {"param1" "new-value"
+                    "param2" "new-value"
+                    "param3" ["A" "B" "C"]}
+                   (retrieve-fn))))
+
+          (testing "insert nil if param has default value"
+            (store! [{:id "param4" :value nil :default "default"}])
+            (is (= {"param1" "new-value"
+                    "param2" "new-value"
+                    "param3" ["A" "B" "C"]
+                    "param4" nil}
+                   (retrieve-fn)))))))))
 
 (deftest hydrate-last-used-param-values-test
   (let [rasta-id (mt/user->id :rasta)

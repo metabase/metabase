@@ -1,4 +1,4 @@
-export type TagType = typeof TAG_TYPES[number];
+export type TagType = (typeof TAG_TYPES)[number];
 
 export const TAG_TYPES = [
   "action",
@@ -7,6 +7,7 @@ export const TAG_TYPES = [
   "bookmark",
   "card",
   "cloud-migration",
+  "channel",
   "collection",
   "dashboard",
   "database",

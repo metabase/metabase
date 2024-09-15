@@ -6,6 +6,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  createSegment,
   entityPickerModal,
   entityPickerModalTab,
   filter,
@@ -26,7 +27,6 @@ import {
   visitQuestionAdhoc,
   withDatabase,
 } from "e2e/support/helpers";
-import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, REVIEWS, REVIEWS_ID, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -596,7 +596,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
       cy.get("[data-element-id=list-section-header]").should("have.length", 3);
       cy.get("[data-element-id=list-section-header]")
         .eq(0)
-        .should("have.text", "Review");
+        .should("have.text", "Reviews");
       cy.get("[data-element-id=list-section-header]")
         .eq(1)
         .should("have.text", "Product");
@@ -817,7 +817,9 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.wait(["@metadata", "@metadata", "@metadata"]);
 
       cy.get("@emptyStateMessage").should("not.exist");
-      cy.findByRole("heading", { name: "Foo" }).should("be.visible");
+      cy.findByTestId("data-reference-list-item")
+        .findByText("Foo")
+        .should("be.visible");
     });
 
     it("should update that segment", () => {

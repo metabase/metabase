@@ -27,6 +27,14 @@ export const askForTenancyColumns: CliStepMethod = async state => {
   const tenancyColumnNames: Record<string, string> = {};
   let lastTenancyColumnName: string;
 
+  printHelperText(
+    `no tenancy column: all rows in this table will be visible to all users.`,
+  );
+
+  printHelperText(
+    `selecting a tenancy column: the user will only see rows where its tenant matches the user attribute set via SSO.`,
+  );
+
   for (const table of state.chosenTables) {
     const fieldChoices = [
       // if the user's table of choice does not have any tenant id column, they can skip.

@@ -3,7 +3,6 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.common :as api]
    [metabase.metabot.settings :as metabot-settings]))
 
 (def ^:private snowplow-keys [:entity_type :prompt_template_versions :feedback_type])
@@ -30,7 +29,6 @@
   and more detailed values in a separate endpoint."
   [feedback]
   (let [snowplow-feedback (select-keys feedback snowplow-keys)]
-    (snowplow/track-event!
-     ::snowplow/metabot-feedback-received api/*current-user-id*
-     snowplow-feedback)
+    (snowplow/track-event! ::snowplow/metabot
+                           (assoc snowplow-feedback :event :metabot-feedback-received))
     (store-detailed-feedback feedback)))

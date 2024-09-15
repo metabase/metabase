@@ -1,11 +1,11 @@
 import type { ComponentType } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { jt, t } from "ttag";
 
+import { useDocsUrl } from "metabase/common/hooks";
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import Settings from "metabase/lib/settings";
 
 import SlackAppsLink from "../SlackAppsLink";
 import SlackBadge from "../SlackBadge";
@@ -43,9 +43,7 @@ const SlackStatus = ({
     setIsOpened(false);
   }, []);
 
-  const docsUrl = useMemo(() => {
-    return Settings.docsUrl("configuring-metabase/slack");
-  }, []);
+  const { url: docsUrl } = useDocsUrl("configuring-metabase/slack");
 
   return (
     <StatusRoot>

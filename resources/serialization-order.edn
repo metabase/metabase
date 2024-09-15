@@ -85,6 +85,7 @@
                                   :is_on_demand
                                   :is_sample
                                   :is_audit
+                                  :is_attached_dwh
                                   :metadata_sync_schedule
                                   :cache_field_values_schedule
                                   :settings

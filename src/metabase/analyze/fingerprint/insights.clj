@@ -4,7 +4,6 @@
    [java-time.api :as t]
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
-   [kixi.stats.protocols :as p]
    [medley.core :as m]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -19,16 +18,20 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- last-n
-  [n]
-  (fn
-    ([] [])
-    ([acc]
-     (concat (repeat (- n (count acc)) nil) acc))
-    ([acc x]
-     (if (< (count acc) n)
-       (conj acc x)
-       (conj (subvec acc 1) x)))))
+(defn- last-2 []
+  (let [none (Object.)]
+    (fn
+      ([] (object-array [none none]))
+      ([^objects acc]
+       (let [a (aget acc 0)
+             b (aget acc 1)]
+         (cond (identical? b none) [nil nil]
+               (identical? a none) [nil b]
+               :else [a b])))
+      ([^objects acc, x]
+       (aset acc 0 (aget acc 1))
+       (aset acc 1 x)
+       acc))))
 
 (defn change
   "Relative difference between `x1` an `x2`."
@@ -42,22 +45,73 @@
         (neg? x1)                 (- (change x2 (- x1)))
         :else                     (/ (- x2 x1) x1)))))
 
-(defn reservoir-sample
+(defn- reservoir-sample
   "Transducer that samples a fixed number `n` of samples consistently.
    https://en.wikipedia.org/wiki/Reservoir_sampling. Uses java.util.Random
-  with a seed of `n` to ensure a consistent sample if a dataset has not changed."
-  [n]
-  (let [rng (Random. n)]
+  with a seed of `n` to ensure a consistent sample if a dataset has not changed.
+  The returned instance is mutable, so don't reuse it. `f` is invoked on the element before adding it to the sample."
+  [n f]
+  (let [n (int n)
+        rng (Random. n)
+        counter (int-array 1) ;; A box for a mutable primitive int.
+        reservoir (object-array n)]
     (fn
-      ([] [[] 0])
-      ([[reservoir c] x]
-       (let [c   (inc c)
-             idx (.nextInt rng c)]
+      ([] nil)
+      ([_]
+       (let [count (aget counter 0)]
+         (vec (if (< count n)
+                (java.util.Arrays/copyOfRange reservoir 0 count)
+                reservoir))))
+      ([_ x]
+       (let [c   (aget counter (unchecked-int 0))
+             c+1 (inc c)
+             idx (.nextInt rng c+1)]
+         (aset counter 0 c+1)
          (cond
-           (<= c n)  [(conj reservoir x) c]
-           (< idx n) [(assoc reservoir idx x) c]
-           :else     [reservoir c])))
-      ([[reservoir _]] reservoir))))
+           (< c n)   (aset reservoir c (f x))
+           (< idx n) (aset reservoir idx (f x))))))))
+
+(defn- simple-linear-regression
+  "Faster and more efficient implementation of `kixi.stats.estimate/simple-linear-regression`. Computes some of squares
+  on each step, and on the completing step returns `[offset slope]`. Additionally accepts `x-scale` and `y-scale`
+  which should either be `:linear` or `:log`."
+  [fx fy x-scale y-scale]
+  (fn
+    ([] (double-array 6))
+    ([^doubles arr e]
+     (let [x (fx e)
+           y (fy e)]
+       (if (or (nil? x) (nil? y))
+         arr
+         (let [x    (cond-> (double x)
+                      (identical? x-scale :log) Math/log)
+               y    (cond-> (double y)
+                      (identical? y-scale :log) Math/log)
+               c    (aget arr 0)
+               mx   (aget arr 1)
+               my   (aget arr 2)
+               ssx  (aget arr 3)
+               ssy  (aget arr 4)
+               ssxy (aget arr 5)
+               c'   (inc c)
+               mx'  (+ mx (/ (- x mx) c'))
+               my'  (+ my (/ (- y my) c'))]
+           (aset arr 0 c')
+           (aset arr 1 mx')
+           (aset arr 2 my')
+           (aset arr 3 (+ ssx  (* (- x mx') (- x mx))))
+           (aset arr 4 (+ ssy  (* (- y my') (- y my))))
+           (aset arr 5 (+ ssxy (* (- x mx') (- y my))))
+           arr))))
+    ([^doubles arr]
+     (let [mx (aget arr 1)
+           my (aget arr 2)
+           ssx (aget arr 3)
+           ssxy (aget arr 5)]
+       (when-not (zero? ssx)
+         (let [slope (/ ssxy ssx)
+               offset (- my (* mx slope))]
+           [offset slope]))))))
 
 (defn mae
   "Given two functions: (fŷ input) and (fy input), returning the predicted and actual values of y
@@ -71,32 +125,32 @@
 
 (def ^:private trendline-function-families
   ;; http://mathworld.wolfram.com/LeastSquaresFitting.html
-  [{:x-link-fn identity
-    :y-link-fn identity
+  [{:x-scale   :linear
+    :y-scale   :linear
     :model     (fn [offset slope]
                  (fn [x]
                    (+ offset (* slope x))))
     :formula   (fn [offset slope]
                  [:+ offset [:* slope :x]])}
    ;; http://mathworld.wolfram.com/LeastSquaresFittingExponential.html
-   {:x-link-fn identity
-    :y-link-fn math/log
+   {:x-scale   :linear
+    :y-scale   :log
     :model     (fn [offset slope]
                  (fn [x]
                    (* (math/exp offset) (math/exp (* slope x)))))
     :formula   (fn [offset slope]
                  [:* (math/exp offset) [:exp [:* slope :x]]])}
    ;; http://mathworld.wolfram.com/LeastSquaresFittingLogarithmic.html
-   {:x-link-fn math/log
-    :y-link-fn identity
+   {:x-scale   :log
+    :y-scale   :identity
     :model     (fn [offset slope]
                  (fn [x]
-                   (+ offset (* slope (math/log x)))))
+                   (+ offset (* slope (Math/log x)))))
     :formula   (fn [offset slope]
                  [:+ offset [:* slope [:log :x]]])}
    ;; http://mathworld.wolfram.com/LeastSquaresFittingPowerLaw.html
-   {:x-link-fn math/log
-    :y-link-fn math/log
+   {:x-scale   :log
+    :y-scale   :log
     :model     (fn [offset slope]
                  (fn [x]
                    (* (math/exp offset) (math/pow x slope))))
@@ -112,22 +166,17 @@
   [fx fy]
   (redux/post-complete
    (fingerprinters/robust-fuse
-    {:fits           (->> (for [{:keys [x-link-fn y-link-fn formula model]} trendline-function-families]
+    {:fits           (->> (for [{:keys [x-scale y-scale formula model]} trendline-function-families]
                             (redux/post-complete
-                             (stats/simple-linear-regression (comp (stats/somef x-link-fn) fx)
-                                                             (comp (stats/somef y-link-fn) fy))
-                             (fn [fit]
-                               (let [[offset slope] (some-> fit p/parameters)]
-                                 (when (every? u/real-number? [offset slope])
-                                   {:model   (model offset slope)
-                                    :formula (formula offset slope)})))))
-                          (apply redux/juxt))
-     :validation-set ((keep (fn [row]
-                              (let [x (fx row)
-                                    y (fy row)]
-                                (when (and x y)
-                                  [x y]))))
-                      (reservoir-sample validation-set-size))})
+                             (simple-linear-regression fx fy x-scale y-scale)
+                             (fn [[offset slope]]
+                               (when (every? u/real-number? [offset slope])
+                                 {:model   (model offset slope)
+                                  :formula (formula offset slope)}))))
+                          redux/juxt*)
+     :validation-set ((filter (fn [row] (and (fx row) (fy row))))
+                      (reservoir-sample validation-set-size
+                                        (fn [row] [(fx row) (fy row)])))})
    (fn [{:keys [validation-set fits]}]
      (some->> fits
               (remove nil?)
@@ -190,42 +239,42 @@
   [{:keys [numbers datetimes]}]
   (let [datetime   (first datetimes)
         x-position (:position datetime)
-        xfn        #(some-> %
-                            (nth x-position)
-                            ;; at this point in the pipeline, dates are still strings
-                            fingerprinters/->temporal
-                            ->millis-from-epoch
-                            ms->day)]
+        xfn        #(nth % x-position)]
     (fingerprinters/with-error-handling
-      (apply redux/juxt
-             (for [number-col numbers]
-               (redux/post-complete
-                (let [y-position (:position number-col)
-                      yfn        #(nth % y-position)]
-                  ((filter (comp u/real-number? yfn))
-                   (redux/juxt ((map yfn) (last-n 2))
-                               ((map xfn) (last-n 2))
-                               (stats/simple-linear-regression xfn yfn)
-                               (best-fit xfn yfn))))
-                (fn [[[y-previous y-current] [x-previous x-current] fit best-fit-equation]]
-                  (let [[offset slope] (some-> fit p/parameters)
-                        unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
-                                       (if (or (nil? unit)
-                                               (= unit :default))
-                                         (infer-unit x-previous x-current)
-                                         unit))
-                        show-change? (valid-period? x-previous x-current unit)]
-                    (fingerprinters/robust-map
-                     :last-value     y-current
-                     :previous-value (when show-change?
-                                       y-previous)
-                     :last-change    (when show-change?
-                                       (change y-current y-previous))
-                     :slope          slope
-                     :offset         offset
-                     :best-fit       best-fit-equation
-                     :col            (:name number-col)
-                     :unit           unit))))))
+      ((map (fn [row]
+              ;; Convert string datetime into days-from-epoch early.
+              (update (vec row) x-position #(some-> %
+                                                    fingerprinters/->temporal
+                                                    ->millis-from-epoch
+                                                    ms->day))))
+       (redux/juxt*
+        (for [number-col numbers]
+          (redux/post-complete
+           (let [y-position (:position number-col)
+                 yfn        #(nth % y-position)]
+             ((filter (comp u/real-number? yfn))
+              (redux/juxt ((map yfn) (last-2))
+                          ((map xfn) (last-2))
+                          (simple-linear-regression xfn yfn :linear :linear)
+                          (best-fit xfn yfn))))
+           (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit-equation]]
+             (let [unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
+                                  (if (or (nil? unit)
+                                          (= unit :default))
+                                    (infer-unit x-previous x-current)
+                                    unit))
+                   show-change? (valid-period? x-previous x-current unit)]
+               (fingerprinters/robust-map
+                :last-value     y-current
+                :previous-value (when show-change?
+                                  y-previous)
+                :last-change    (when show-change?
+                                  (change y-current y-previous))
+                :slope          slope
+                :offset         offset
+                :best-fit       best-fit-equation
+                :col            (:name number-col)
+                :unit           unit)))))))
       (format "Error generating timeseries insight keyed by: %s"
               (sync-util/name-for-logging (mi/instance :model/Field datetime))))))
 

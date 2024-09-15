@@ -106,6 +106,7 @@ export const createMockTokenFeatures = (
   disable_password_login: false,
   content_verification: false,
   embedding: false,
+  embedding_sdk: false,
   hosting: false,
   official_collections: false,
   llm_autodescription: false,
@@ -123,6 +124,7 @@ export const createMockTokenFeatures = (
   email_restrict_recipients: false,
   collection_cleanup: false,
   upload_management: false,
+  query_reference_validation: false,
   ...opts,
 });
 
@@ -199,7 +201,7 @@ export const createMockSettings = (
   "openai-organization": null,
   "openai-model": null,
   "openai-available-models": [],
-  "other-sso-enabled?": null,
+  "other-sso-enabled?": false,
   "password-complexity": { total: 6, digit: 1 },
   "persisted-models-enabled": false,
   "persisted-model-refresh-cron-schedule": "0 0 0/6 * * ? *",

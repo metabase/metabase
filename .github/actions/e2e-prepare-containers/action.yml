@@ -10,24 +10,27 @@ inputs:
   maildev:
     description: Maildev container
     required: true
-    default: 'false'
+    default: false
   openldap:
     description: OpenLDAP container
     required: true
-    default: 'false'
+    default: false
   postgres:
     description: Postgres container
     required: true
-    default: 'false'
+    default: false
   mysql:
     description: MySQL container
     required: true
-    default: 'false'
+    default: false
   mongo:
     description: Mongo container
     required: true
-    default: 'false'
-
+    default: false
+  webhook:
+    description: Webhook tester container
+    required: false
+    default: false
 
 runs:
   using: "composite"
@@ -83,5 +86,12 @@ runs:
           docker run -d -p 27004:27017 metabase/qa-databases:mongo-sample-4.4 &&
           while ! nc -z localhost 27004; do sleep 1; done &&
           echo -e "${G}Mongo is up and running!"
+        fi
+
+        if ${{ inputs.webhook }}; then
+          echo -e "${Y}Starting webhook test container..." &&
+          docker run -d -p 9080:8080/tcp tarampampam/webhook-tester serve --create-session 00000000-0000-0000-0000-000000000000 &&
+          while ! nc -z localhost 9080; do sleep 1; done &&
+          echo -e "${G}Webhook tester is up and running!"
         fi
       shell: bash

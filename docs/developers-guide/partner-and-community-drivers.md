@@ -43,9 +43,8 @@ To qualify as a partner driver, the driver must:
 Current partner drivers:
 
 - [ClickHouse](https://github.com/ClickHouse/metabase-clickhouse-driver)
-- [DuckDB](https://github.com/MotherDuck-Open-Source/metabase_duckdb_driver)
+- [DuckDB](https://github.com/MotherDuck-Open-Source/metabase_duckdb_driver) (for now, only available for self-hosted Metabases)
 - [Exasol](https://github.com/exasol/metabase-driver)
-- [Firebolt](https://docs.firebolt.io/integrations/business-intelligence/connecting-to-metabase.html)
 - [Materialize](https://github.com/MaterializeInc/metabase-materialize-driver)
 - [Ocient](https://github.com/Xeograph/metabase-ocient-driver)
 - [Starburst (compatible with Trino)](https://github.com/starburstdata/metabase-driver)

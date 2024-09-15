@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.channel.http-test :as channel.http-test]
    [metabase.email-test :as et]
    [metabase.http-client :as client]
    [metabase.models
@@ -286,7 +287,8 @@
                                  :updated_at    true
                                  :pulse_id      true
                                  :id            true
-                                 :created_at    true})]
+                                 :created_at    true
+                                 :channel_id    false})]
    :skip_if_empty       true
    :collection_id       false
    :collection_position nil
@@ -410,6 +412,34 @@
                (et/regex-email-bodies #"https://metabase.com/testmb"
                                       #"meets its goal"
                                       #"My question")))))))
+
+(defn- default-http-channel
+  [id]
+  {:enabled       true
+   :channel_type  "http"
+   :channel_id    id
+   :details       {}
+   :schedule_type "daily"
+   :schedule_hour 12
+   :schedule_day  nil})
+
+(deftest create-alert-with-http-channel-test
+  (testing "Creating an alert with a HTTP channel"
+    (mt/with-model-cleanup [:model/Pulse]
+      (channel.http-test/with-server [url [channel.http-test/get-200]]
+        (mt/with-temp [:model/Channel channel {:type    :channel/http
+                                               :details {:auth-method "none"
+                                                         :url         (str url (:path channel.http-test/get-200))}}
+                       :model/Card    {card-id :id} {}]
+          (let [pulse (mt/user-http-request :crowberto :post 200 "alert"
+                                            {:alert_condition  "rows"
+                                             :alert_first_only false
+                                             :card             {:id card-id, :include_csv false, :include_xls false, :dashboard_card_id nil}
+                                             :channels         [(default-http-channel (:id channel))]})]
+            (is (=? {:pulse_id     (:id pulse)
+                     :channel_type :http
+                     :channel_id   (:id channel)}
+                    (t2/select-one :model/PulseChannel :pulse_id (:id pulse))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               PUT /api/alert/:id                                               |
@@ -626,6 +656,26 @@
           (testing "but not allowed to edit the card"
             (mt/user-http-request :rasta :put 403 (alert-url alert)
                                   (dissoc (default-alert-req card pc {} []) :channels))))))))
+
+(deftest update-alert-enable-http-channel-test
+  (mt/with-temp [:model/Pulse     alert (basic-alert)
+                 :model/Card      card  {}
+                 :model/PulseCard _     (pulse-card alert card)
+                 :model/Channel   {channel-id :id} {:type    :channel/http
+                                                    :details {:auth-method "none"
+                                                              :url         "https://metabasetest.com"}}]
+    (testing "PUT /api/channel/:id can enable a HTTP channel for an alert"
+      (is (=? {:channels [{:channel_type "http"
+                           :channel_id   channel-id
+                           :enabled true}]}
+              (mt/user-http-request :crowberto :put 200 (alert-url alert)
+                                    (default-alert-req card (u/the-id alert) {:channels [(default-http-channel channel-id)]} nil))))
+
+      (testing "make sure it's in the database"
+        (is (=? {:pulse_id     (:id alert)
+                 :channel_type :http
+                 :channel_id   channel-id}
+                (t2/select-one :model/PulseChannel :pulse_id (:id alert))))))))
 
 (deftest alert-event-test
   (mt/with-premium-features #{:audit-app}

@@ -81,11 +81,11 @@ export const OPERATOR_FORMATTER_FACTORIES = {
     typeof value === "number" && v >= value ? color : null,
   ">": (value, color) => v =>
     typeof value === "number" && v > value ? color : null,
-  "=": (value, color) => v => v === value ? color : null,
+  "=": (value, color) => v => (v === value ? color : null),
   "!=": (value, color) => v =>
     !isEmptyString(value) && v !== value ? color : null,
-  "is-null": (_value, color) => v => v === null ? color : null,
-  "not-null": (_value, color) => v => v !== null ? color : null,
+  "is-null": (_value, color) => v => (v === null ? color : null),
+  "not-null": (_value, color) => v => (v !== null ? color : null),
   contains: (value, color) => v =>
     canCompareSubstrings(value, v) && v.indexOf(value) >= 0 ? color : null,
   "does-not-contain": (value, color) => v =>
@@ -94,8 +94,8 @@ export const OPERATOR_FORMATTER_FACTORIES = {
     canCompareSubstrings(value, v) && v.startsWith(value) ? color : null,
   "ends-with": (value, color) => v =>
     canCompareSubstrings(value, v) && v.endsWith(value) ? color : null,
-  "is-true": (_value, color) => v => v ? color : null,
-  "is-false": (_value, color) => v => v ? null : color,
+  "is-true": (_value, color) => v => (v ? color : null),
+  "is-false": (_value, color) => v => (v ? null : color),
 };
 
 export function compileFormatter(
@@ -125,14 +125,14 @@ export function compileFormatter(
       format.min_type === "custom"
         ? parseFloat(format.min_value)
         : format.min_type === "all"
-        ? Math.min(...format.columns.map(columnMin))
-        : columnMin(columnName);
+          ? Math.min(...format.columns.map(columnMin))
+          : columnMin(columnName);
     const max =
       format.max_type === "custom"
         ? parseFloat(format.max_value)
         : format.max_type === "all"
-        ? Math.max(...format.columns.map(columnMax))
-        : columnMax(columnName);
+          ? Math.max(...format.columns.map(columnMax))
+          : columnMax(columnName);
 
     if (typeof max !== "number" || typeof min !== "number") {
       console.warn("Invalid range min/max", min, max);

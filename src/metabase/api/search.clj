@@ -1,26 +1,71 @@
 (ns metabase.api.search
   (:require
    [compojure.core :refer [GET]]
+   [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.public-settings :as public-settings]
    [metabase.search :as search]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private engine-cookie-name "metabase.SEARCH_ENGINE")
+
+(defn- cookie-expiry []
+  ;; 20 years should be long enough to trial an experimental search engine
+  (t/format :rfc-1123-date-time (t/plus (t/zoned-date-time) (t/years 20))))
+
+(defn- set-engine-cookie! [respond engine]
+  (fn [response]
+    (respond
+     (response/set-cookie response
+                          engine-cookie-name
+                          engine
+                          {:http-only true
+                           :path      "/"
+                           :expires   (cookie-expiry)}))))
+
+(defn- +engine-cookie [handler]
+  (fn [request respond raise]
+    (if-let [new-engine (get-in request [:params :search_engine])]
+      (handler request (set-engine-cookie! respond new-engine) raise)
+      (handler (->> (get-in request [:cookies engine-cookie-name :value])
+                    (assoc-in request [:params :search_engine]))
+               respond
+               raise))))
+
+(api/defendpoint POST "/force-reindex"
+  "If fulltext search is enabled, this will trigger a synchronous reindexing operation."
+  []
+  (api/check-superuser)
+  (cond
+    (not (public-settings/experimental-fulltext-search-enabled))
+    {:status-code 501, :message "Search index is not enabled."}
+
+    (search/supports-index?)
+    (do
+      (search/reindex!)
+      {:status-code 200})
+
+    :else
+    {:status-code 501, :message "Search index is not supported for this installation."}))
 
 ;; TODO maybe deprecate this and make it as a parameter in `GET /api/search/models`
 ;; so we don't have to keep the arguments between 2 API in sync
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
   [q archived table-db-id created_at created_by last_edited_at last_edited_by
-   filter_items_in_personal_collection search_native_query verified]
+   filter_items_in_personal_collection search_engine search_native_query verified]
   {archived            [:maybe ms/BooleanValue]
    table-db-id         [:maybe ms/PositiveInt]
    created_at          [:maybe ms/NonBlankString]
    created_by          [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    last_edited_at      [:maybe ms/PositiveInt]
    last_edited_by      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
+   search_engine       [:maybe string?]
    search_native_query [:maybe true?]
    verified            [:maybe true?]}
   (search/query-model-set
@@ -28,10 +73,12 @@
                            :created-at                          created_at
                            :created-by                          (set (u/one-or-many created_by))
                            :current-user-id                     api/*current-user-id*
+                           :is-superuser?                       api/*is-superuser?*
                            :current-user-perms                  @api/*current-user-permissions-set*
                            :filter-items-in-personal-collection filter_items_in_personal_collection
                            :last-edited-at                      last_edited_at
                            :last-edited-by                      (set (u/one-or-many last_edited_by))
+                           :search-engine                       search_engine
                            :models                              search/all-models
                            :search-native-query                 search_native_query
                            :search-string                       q
@@ -61,7 +108,8 @@
 
   A search query that has both filters applied will only return models and cards."
   [q archived created_at created_by table_db_id models last_edited_at last_edited_by
-   filter_items_in_personal_collection model_ancestors search_native_query verified ids]
+   filter_items_in_personal_collection model_ancestors search_engine search_native_query
+   verified ids]
   {q                                   [:maybe ms/NonBlankString]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
@@ -72,19 +120,21 @@
    last_edited_at                      [:maybe ms/NonBlankString]
    last_edited_by                      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    model_ancestors                     [:maybe :boolean]
+   search_engine                       [:maybe string?]
    search_native_query                 [:maybe true?]
    verified                            [:maybe true?]
    ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
-  (let  [models-set           (if (seq models)
-                                (set models)
-                                search/all-models)]
+  (let  [models-set (if (seq models)
+                      (set models)
+                      search/all-models)]
     (search/search
      (search/search-context
       {:archived                            archived
        :created-at                          created_at
        :created-by                          (set created_by)
        :current-user-id                     api/*current-user-id*
+       :is-superuser?                       api/*is-superuser?*
        :current-user-perms                  @api/*current-user-permissions-set*
        :filter-items-in-personal-collection filter_items_in_personal_collection
        :last-edited-at                      last_edited_at
@@ -93,10 +143,11 @@
        :model-ancestors?                    model_ancestors
        :models                              models-set
        :offset                              mw.offset-paging/*offset*
+       :search-engine                       search_engine
        :search-native-query                 search_native_query
        :search-string                       q
        :table-db-id                         table_db_id
        :verified                            verified
        :ids                                 (set ids)}))))
 
-(api/define-routes)
+(api/define-routes +engine-cookie)

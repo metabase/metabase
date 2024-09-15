@@ -83,13 +83,18 @@
 ;;; |                                            with-task-history macro                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private TaskHistoryCallBackInfo
+  [:map {:closed true}
+   [:status                        (into [:enum] task-history-status)]
+   [:task_details {:optional true} [:maybe :map]]])
+
 (def ^:private TaskHistoryInfo
   "Schema for `info` passed to the `with-task-history` macro."
   [:map {:closed true}
    [:task                             ms/NonBlankString] ; task name, i.e. `send-pulses`. Conventionally lisp-cased
    [:db_id           {:optional true} [:maybe :int]]     ; DB involved, for sync operations or other tasks where this is applicable.
-   ;; a function that takes the result of the task and returns a map of additional info to update task history when the task succeeds
-   [:on-success-info {:optional true} [:maybe [:=> [:cat :any] :map]]]
+   [:on-success-info {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
+   [:on-fail-info    {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
    [:task_details    {:optional true} [:maybe :map]]])   ; additional map of details to include in the recorded row
 
 (def ^:private ns->ms #(int (/ % 1e6)))
@@ -104,8 +109,9 @@
 (mu/defn do-with-task-history
   "Impl for `with-task-history` macro; see documentation below."
   [info :- TaskHistoryInfo f]
-  (let [on-success-info (:on-success-info info)
-        info            (dissoc info :on-success-info)
+  (let [on-success-info (or (:on-success-info info) (fn [& args] (first args)))
+        on-fail-info    (or (:on-fail-info info) (fn [& args] (first args)))
+        info            (dissoc info :on-success-info :on-fail-info)
         start-time-ns   (System/nanoTime)
         th-id           (t2/insert-returning-pk! :model/TaskHistory
                                                  (assoc info
@@ -113,28 +119,37 @@
                                                         :started_at (t/instant)))]
     (try
       (u/prog1 (f)
-        (update-task-history! th-id start-time-ns (cond-> {:status :success}
-                                                    (some? on-success-info)
-                                                    (merge (on-success-info <>)))))
+        (update-task-history! th-id start-time-ns (on-success-info {:status       :success
+                                                                    :task_details (:task_details info)}
+                                                                   <>)))
       (catch Throwable e
-        (update-task-history! th-id start-time-ns {:task_details {:status        :failed
-                                                                  :exception     (class e)
-                                                                  :message       (.getMessage e)
-                                                                  :stacktrace    (u/filtered-stacktrace e)
-                                                                  :ex-data       (ex-data e)
-                                                                  :original-info (:task_details info)}
-                                                   :status       :failed})
+        (update-task-history! th-id start-time-ns
+                              (on-fail-info {:task_details {:status        :failed
+                                                            :exception     (class e)
+                                                            :message       (.getMessage e)
+                                                            :stacktrace    (u/filtered-stacktrace e)
+                                                            :ex-data       (ex-data e)
+                                                            :original-info (:task_details info)}
+                                             :status       :failed}
+                                            e))
         (throw e)))))
 
 (defmacro with-task-history
   "Record a TaskHistory before executing the body, updating TaskHistory accordingly when the body completes.
-  `info` should contain at least a name for the task (conventionally
-  lisp-cased) as `:task`; see the `TaskHistoryInfo` schema in this namespace for other optional keys.
+  `info` should contain at least a name for the task (conventionally lisp-cased) as `:task`;
+  see the `TaskHistoryInfo` schema in this namespace for other optional keys.
 
     (with-task-history {:task \"send-pulses\"
                         :db_id 1
-                        :on-success-info (fn [thunk-result] {:status :failed})}
-      ...)"
+                        :on-success-info (fn [info thunk-result] (assoc-in info [:task-details :thunk-result] thunk-result)})
+                        :on-fail-info (fn [info e] (assoc-in info [:task-details :exception-class] (class e)))}
+      ...)
+
+  Optionally takes:
+    - on-success-info: a function that takes the updated task history and the result of the task,
+      returns a map of task history info to update when the task succeeds.
+    - on-fail-info: a function that takes the updated task history and the exception thrown by the task,
+      returns a map of task history info to update when the task fails."
   {:style/indent 1}
   [info & body]
   `(do-with-task-history ~info (fn [] ~@body)))

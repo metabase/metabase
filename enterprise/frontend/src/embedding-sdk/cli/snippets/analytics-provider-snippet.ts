@@ -25,7 +25,7 @@ export const AnalyticsContext = createContext({})
 
 const AUTH_SERVER_DOWN_MESSAGE = \`
   Auth server is down.
-  Please start the server with 'node server.js'
+  Please start the server with 'npm run start'
 \`
 
 export const AnalyticsProvider = ({children}) => {

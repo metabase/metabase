@@ -175,7 +175,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -520,3 +520,10 @@
   [group-or-id :- MapOrID collection-or-id :- MapOrID]
   (check-is-modifiable-collection collection-or-id)
   (grant-permissions! (u/the-id group-or-id) (collection-read-path collection-or-id)))
+
+(defenterprise current-user-has-application-permissions?
+  "Check if `*current-user*` has permissions for a application permissions of type `perm-type`.
+  This is a paid feature so it's `false` for OSS instances."
+  metabase-enterprise.advanced-permissions.common
+  [_instance]
+  false)

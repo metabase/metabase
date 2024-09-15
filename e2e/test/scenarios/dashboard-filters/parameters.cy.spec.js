@@ -5,6 +5,7 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  changeSynchronousBatchUpdateSetting,
   disconnectDashboardFilter,
   editDashboard,
   filterWidget,
@@ -46,6 +47,12 @@ describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(true);
+  });
+
+  afterEach(() => {
+    cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(false);
   });
 
   it("one filter should search across multiple fields", () => {
@@ -634,7 +641,7 @@ describe("scenarios > dashboard > parameters", () => {
       editDashboard();
 
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("Date Filter")
+        .findByText("All Options")
         .click();
 
       selectDashboardFilter(getDashboardCard(0), "Created At");
@@ -650,7 +657,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       editDashboard();
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("Date Filter")
+        .findByText("All Options")
         .click();
       selectDashboardFilter(getDashboardCard(0), "Created At");
 
@@ -663,7 +670,7 @@ describe("scenarios > dashboard > parameters", () => {
       editDashboard();
 
       cy.findByTestId("edit-dashboard-parameters-widget-container")
-        .findByText("Date Filter")
+        .findByText("All Options")
         .click();
 
       disconnectDashboardFilter(getDashboardCard(0));

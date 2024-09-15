@@ -161,6 +161,8 @@ import gear_component from "./gear.svg?component";
 import gear_source from "./gear.svg?source";
 import gem_component from "./gem.svg?component";
 import gem_source from "./gem.svg?source";
+import globe_component from "./globe.svg?component";
+import globe_source from "./globe.svg?source";
 import google_component from "./google.svg?component";
 import google_source from "./google.svg?source";
 import grabber_component from "./grabber.svg?component";
@@ -383,8 +385,12 @@ import view_archive_component from "./view_archive.svg?component";
 import view_archive_source from "./view_archive.svg?source";
 import warning_component from "./warning.svg?component";
 import warning_source from "./warning.svg?source";
+import warning_round_filled_component from "./warning_round_filled.svg?component";
+import warning_round_filled_source from "./warning_round_filled.svg?source";
 import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
+import webhook_component from "./webhook.svg?component";
+import webhook_source from "./webhook.svg?source";
 import zoom_in_component from "./zoom_in.svg?component";
 import zoom_in_source from "./zoom_in.svg?source";
 import zoom_out_component from "./zoom_out.svg?component";
@@ -706,6 +712,10 @@ export const Icons = {
   gem: {
     component: gem_component,
     source: gem_source,
+  },
+  globe: {
+    component: globe_component,
+    source: globe_source,
   },
   grabber: {
     component: grabber_component,
@@ -1153,9 +1163,17 @@ export const Icons = {
     component: warning_component,
     source: warning_source,
   },
+  warning_round_filled: {
+    component: warning_round_filled_component,
+    source: warning_round_filled_source,
+  },
   waterfall: {
     component: waterfall_component,
     source: waterfall_source,
+  },
+  webhook: {
+    component: webhook_component,
+    source: webhook_source,
   },
   "10k": {
     component: ten_thousand_component,

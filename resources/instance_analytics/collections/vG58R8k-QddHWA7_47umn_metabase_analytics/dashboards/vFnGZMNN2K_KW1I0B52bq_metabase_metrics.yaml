@@ -6,7 +6,6 @@ creator_id: internal@metabase.com
 archived: false
 collection_id: vG58R8k-QddHWA7_47umn
 auto_apply_filters: true
-cache_ttl: null
 collection_position: 1
 position: null
 enable_embedding: false
@@ -35,6 +34,7 @@ serdes/meta:
 - id: vFnGZMNN2K_KW1I0B52bq
   label: metabase_metrics
   model: Dashboard
+archived_directly: false
 dashcards:
 - entity_id: Qv9D3jXGGbsyLURLlKoIG
   card_id: gYt6bo9DFKz6tSeDLxYVs
@@ -59,6 +59,11 @@ dashcards:
   series: []
   visualization_settings:
     column_settings: null
+  serdes/meta:
+  - id: vFnGZMNN2K_KW1I0B52bq
+    model: Dashboard
+  - id: Qv9D3jXGGbsyLURLlKoIG
+    model: DashboardCard
 - entity_id: 8KV2R5mzQZ5ZqcSBAZhpi
   card_id: t-4MnpU-Nn7Ph9GQT6zYb
   created_at: '2023-06-14T19:34:35.785887Z'
@@ -82,6 +87,11 @@ dashcards:
   series: []
   visualization_settings:
     column_settings: null
+  serdes/meta:
+  - id: vFnGZMNN2K_KW1I0B52bq
+    model: Dashboard
+  - id: 8KV2R5mzQZ5ZqcSBAZhpi
+    model: DashboardCard
 - entity_id: eMu8T8shqP6OiB_orPQb8
   card_id: kd1-A_wWOvlSuLDTFUpyb
   created_at: '2023-06-14T19:38:20.75091Z'
@@ -116,6 +126,11 @@ dashcards:
   series: []
   visualization_settings:
     column_settings: null
+  serdes/meta:
+  - id: vFnGZMNN2K_KW1I0B52bq
+    model: Dashboard
+  - id: eMu8T8shqP6OiB_orPQb8
+    model: DashboardCard
 - entity_id: vIa5qU52qmci1wnR4rYWm
   card_id: p8ZML2ebd3ItzCyWsKXLa
   created_at: '2023-06-14T19:39:23.643935Z'
@@ -150,6 +165,11 @@ dashcards:
   series: []
   visualization_settings:
     column_settings: null
+  serdes/meta:
+  - id: vFnGZMNN2K_KW1I0B52bq
+    model: Dashboard
+  - id: vIa5qU52qmci1wnR4rYWm
+    model: DashboardCard
 - entity_id: cbYziqfyj3Vo_-TDwjB_y
   card_id: DnNyT6EtIn-Zx8bHRFHbV
   created_at: '2023-06-14T19:51:12.234537Z'
@@ -173,6 +193,11 @@ dashcards:
   series: []
   visualization_settings:
     column_settings: null
+  serdes/meta:
+  - id: vFnGZMNN2K_KW1I0B52bq
+    model: Dashboard
+  - id: cbYziqfyj3Vo_-TDwjB_y
+    model: DashboardCard
 - entity_id: ttTLsz8CSqwKhpabUPhX4
   card_id: G7fFejjb7cgwYlUXSvf3K
   created_at: '2023-06-14T19:54:37.614341Z'
@@ -196,6 +221,11 @@ dashcards:
   series: []
   visualization_settings:
     column_settings: null
+  serdes/meta:
+  - id: vFnGZMNN2K_KW1I0B52bq
+    model: Dashboard
+  - id: ttTLsz8CSqwKhpabUPhX4
+    model: DashboardCard
 - entity_id: KOytsZjicYh1zDDRGbzeM
   card_id: ybsNZp-876qEMoA1U51dc
   created_at: '2023-06-14T19:55:41.37213Z'
@@ -219,6 +249,11 @@ dashcards:
   series: []
   visualization_settings:
     column_settings: null
+  serdes/meta:
+  - id: vFnGZMNN2K_KW1I0B52bq
+    model: Dashboard
+  - id: KOytsZjicYh1zDDRGbzeM
+    model: DashboardCard
 - entity_id: GlI9CJywLBzdGgNkmhVWn
   card_id: fBr2cU-86t14YWbaS3r6-
   created_at: '2023-06-14T20:01:45.178516Z'
@@ -253,6 +288,11 @@ dashcards:
   series: []
   visualization_settings:
     column_settings: null
+  serdes/meta:
+  - id: vFnGZMNN2K_KW1I0B52bq
+    model: Dashboard
+  - id: GlI9CJywLBzdGgNkmhVWn
+    model: DashboardCard
 - entity_id: 9QohNXoERBN4aKd--9LS7
   card_id: T1vsVJUAfg30Fqiw4Dywa
   created_at: '2023-06-14T20:04:21.059679Z'
@@ -287,6 +327,11 @@ dashcards:
   series: []
   visualization_settings:
     column_settings: null
+  serdes/meta:
+  - id: vFnGZMNN2K_KW1I0B52bq
+    model: Dashboard
+  - id: 9QohNXoERBN4aKd--9LS7
+    model: DashboardCard
 - entity_id: Z4dzLFWHFKEEymbqcM2PA
   card_id: FUuJSuFo7wM6EoddmNsHf
   created_at: '2023-06-15T02:19:50.336395Z'
@@ -324,8 +369,8 @@ dashcards:
       '["name","count"]':
         column_title: Question views
         show_mini_bar: true
-      ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - User"}]]'
-      : click_behavior:
+      '["name","full_name"]':
+        click_behavior:
           linkType: dashboard
           parameterMapping:
             6b3da96f:
@@ -341,9 +386,9 @@ dashcards:
           targetId: DHMhMa1FYxiyIgM7_xdgR
           type: link
         column_title: Person Name
+      '["name","user_id"]': {}
       ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
       : column_title: User
-      '["ref",["field",["Internal Metabase Database","public","v_view_log","user_id"],{"base-type":"type/Integer"}]]': {}
     table.cell_column: model_id
     table.columns:
     - enabled: true
@@ -371,6 +416,11 @@ dashcards:
       - 0
       name: count
     table.pivot_column: end_timestamp
+  serdes/meta:
+  - id: vFnGZMNN2K_KW1I0B52bq
+    model: Dashboard
+  - id: Z4dzLFWHFKEEymbqcM2PA
+    model: DashboardCard
 - entity_id: _iLvtXz7cnTL6NrcNxEtQ
   card_id: p-z74CSp1IOs1rXwAcwcS
   created_at: '2023-06-15T02:23:27.106361Z'
@@ -408,7 +458,7 @@ dashcards:
       '["name","count"]':
         column_title: Questions created
         show_mini_bar: true
-      '["ref",["field",["Internal Metabase Database","public","v_audit_log","user_id"],{"base-type":"type/Integer"}]]':
+      '["name","full_name"]':
         click_behavior:
           linkType: dashboard
           parameterMapping:
@@ -424,8 +474,9 @@ dashcards:
           tabId: 1
           targetId: DHMhMa1FYxiyIgM7_xdgR
           type: link
-      ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - User"}]]'
-      : click_behavior:
+        column_title: Person Name
+      '["name","user_id"]':
+        click_behavior:
           linkType: dashboard
           parameterMapping:
             6b3da96f:
@@ -440,7 +491,6 @@ dashcards:
           tabId: 1
           targetId: DHMhMa1FYxiyIgM7_xdgR
           type: link
-        column_title: Person Name
       ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
       : column_title: User
     table.cell_column: model_id
@@ -470,6 +520,11 @@ dashcards:
       - 0
       name: count
     table.pivot_column: end_timestamp
+  serdes/meta:
+  - id: vFnGZMNN2K_KW1I0B52bq
+    model: Dashboard
+  - id: _iLvtXz7cnTL6NrcNxEtQ
+    model: DashboardCard
 initially_published_at: null
 tabs: []
 width: full

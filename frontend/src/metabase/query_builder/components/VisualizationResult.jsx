@@ -130,6 +130,7 @@ export default class VisualizationResult extends Component {
             isQueryBuilder={true}
             queryBuilderMode={queryBuilderMode}
             showTitle={false}
+            canToggleSeriesVisibility
             metadata={question.metadata()}
             timelineEvents={timelineEvents}
             selectedTimelineEventIds={selectedTimelineEventIds}

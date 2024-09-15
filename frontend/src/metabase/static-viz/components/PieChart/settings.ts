@@ -1,3 +1,4 @@
+import { formatStaticValue } from "metabase/static-viz/lib/format";
 import {
   fillWithDefaultValue,
   getCommonStaticVizSettings,
@@ -12,15 +13,16 @@ import {
   getDefaultShowLegend,
   getDefaultShowTotal,
   getDefaultSliceThreshold,
+  getDefaultSortRows,
+  getPieRows,
 } from "metabase/visualizations/shared/settings/pie";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { RawSeries, VisualizationSettings } from "metabase-types/api";
+import type { RawSeries } from "metabase-types/api";
 
 export function computeStaticPieChartSettings(
   rawSeries: RawSeries,
-  dashcardSettings: VisualizationSettings,
 ): ComputedVisualizationSettings {
-  const settings = getCommonStaticVizSettings(rawSeries, dashcardSettings);
+  const settings = getCommonStaticVizSettings(rawSeries);
   const { dimension: defaultDimension, metric: defaultMetric } =
     getDefaultDimensionAndMetric(rawSeries);
 
@@ -40,6 +42,21 @@ export function computeStaticPieChartSettings(
     dimensionIsValid,
   );
   fillWithDefaultValue(settings, "pie.metric", defaultMetric, metricIsValid);
+
+  fillWithDefaultValue(settings, "pie.sort_rows", getDefaultSortRows);
+
+  fillWithDefaultValue(
+    settings,
+    "pie.slice_threshold",
+    getDefaultSliceThreshold(),
+  );
+
+  settings["pie.colors"] = getColors(rawSeries, settings);
+
+  settings["pie.rows"] = getPieRows(rawSeries, settings, (value, options) =>
+    formatStaticValue(value, options ?? {}),
+  );
+
   fillWithDefaultValue(settings, "pie.show_legend", getDefaultShowLegend());
   fillWithDefaultValue(settings, "pie.show_total", getDefaultShowTotal());
   fillWithDefaultValue(
@@ -47,12 +64,6 @@ export function computeStaticPieChartSettings(
     "pie.percent_visibility",
     getDefaultPercentVisibility(),
   );
-  fillWithDefaultValue(
-    settings,
-    "pie.slice_threshold",
-    getDefaultSliceThreshold(),
-  );
-  settings["pie.colors"] = getColors(rawSeries, settings);
 
   return settings;
 }

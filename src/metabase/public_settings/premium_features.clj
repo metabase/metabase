@@ -134,9 +134,9 @@
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 (declare decode-airgap-token)
 
-(mu/defn max-users-allowed
+(mu/defn max-users-allowed :- [:maybe pos-int?]
   "Returns the max users value from an airgapped key, or nil indicating there is no limt."
-  [] :- [:or pos-int? :nil]
+  []
   (when-let [token (premium-embedding-token)]
     (when (str/starts-with? token "airgap_")
       (let [max-users (:max-users (decode-airgap-token token))]
@@ -375,6 +375,10 @@
   ;; This specific feature DOES NOT require the EE code to be present in order for it to return truthy, unlike
   ;; everything else.
   :getter #(has-feature? :embedding))
+
+(define-premium-feature enable-embedding-sdk-origins?
+  "Should we allow users embed the SDK in sites other than localhost?"
+  :embedding-sdk)
 
 (define-premium-feature enable-whitelabeling?
   "Should we allow full whitelabel embedding (reskinning the entire interface?)"

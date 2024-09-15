@@ -232,6 +232,34 @@
                   (is (= :query-builder (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1)))
                   (is (zero? (call-count))))))))))))
 
+(deftest inactive-table-permission-test
+  (testing "An inactive table appears as if it has no permissions, and is not cached"
+    (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}  {}
+                   :model/User                       {user-id   :id}   {}
+                   :model/PermissionsGroupMembership {}                {:user_id  user-id
+                                                                        :group_id group-id-1}
+                   :model/Database                   {database-id :id} {}
+                   :model/Table                      {table-id-1 :id}  {:db_id database-id}]
+      ;; Revoke All Users perms so that it doesn't override perms in the new groups
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! group-id-1 database-id :perms/view-data :blocked)
+        (data-perms/set-table-permission! group-id-1 table-id-1 :perms/view-data :unrestricted)
+        (is (= :unrestricted
+               (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))
+        (t2/update! :model/Table table-id-1 {:active false})
+
+        ;; Deactivated table has minimum permissions when reading straight from DB
+        (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))
+
+        ;; Deactivated table has minimum permissions when reading from cache
+        (data-perms/with-relevant-permissions-for-user user-id
+          (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1))))
+
+        ;; Reactivating the table allows the perms to be read again
+        (t2/update! :model/Table table-id-1 {:active true})
+        (is (= :unrestricted
+               (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))))))
+
 (deftest permissions-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
                  :model/PermissionsGroup           {group-id-2 :id}    {}

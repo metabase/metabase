@@ -790,7 +790,7 @@ const getTimeseriesDataInterval = createSelector(
     const columns = series[0]?.data?.cols ?? [];
     const dimensions = settings?.["graph.dimensions"] ?? [];
     const dimensionColumns = dimensions.map(dimension =>
-      columns.find(column => column.name === dimension),
+      columns.find(column => column != null && column.name === dimension),
     );
     const columnUnits = dimensionColumns
       .map(column =>
@@ -1053,8 +1053,8 @@ export const getDataReferenceStack = createSelector(
     uiControls.dataReferenceStack
       ? uiControls.dataReferenceStack
       : dbId
-      ? [{ type: "database", item: { id: dbId } }]
-      : [],
+        ? [{ type: "database", item: { id: dbId } }]
+        : [],
 );
 
 export const getDashboardId = state => {

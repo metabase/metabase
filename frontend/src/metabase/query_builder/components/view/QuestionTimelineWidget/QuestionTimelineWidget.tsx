@@ -1,25 +1,33 @@
 import { t } from "ttag";
 
 import { ViewFooterButton } from "metabase/components/ViewFooterButton";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import {
+  onCloseTimelines,
+  onOpenTimelines,
+} from "metabase/query_builder/actions";
+import { getUiControls } from "metabase/query_builder/selectors";
 
 export interface QuestionTimelineWidgetProps {
   className?: string;
-  isShowingTimelineSidebar?: boolean;
-  onOpenTimelines?: () => void;
-  onCloseTimelines?: () => void;
 }
 
 const QuestionTimelineWidget = ({
   className,
-  isShowingTimelineSidebar,
-  onOpenTimelines,
-  onCloseTimelines,
 }: QuestionTimelineWidgetProps): JSX.Element => {
+  const { isShowingTimelineSidebar } = useSelector(getUiControls);
+
+  const dispatch = useDispatch();
+  const handleOpenTimelines = () => dispatch(onOpenTimelines());
+  const handleCloseTimelines = () => dispatch(onCloseTimelines());
+
   return (
     <ViewFooterButton
       icon="calendar"
       tooltipLabel={t`Events`}
-      onClick={isShowingTimelineSidebar ? onCloseTimelines : onOpenTimelines}
+      onClick={
+        isShowingTimelineSidebar ? handleCloseTimelines : handleOpenTimelines
+      }
       className={className}
     />
   );

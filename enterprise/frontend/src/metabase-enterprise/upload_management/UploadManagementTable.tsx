@@ -24,11 +24,11 @@ import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { getDateDisplay } from "./utils";
 
 const columns = [
-  { key: "checkbox", name: "" },
+  { key: "checkbox", name: "", sortable: false },
   { key: "name", name: t`Table name` },
   { key: "created_at", name: t`Created at` },
   { key: "schema", name: t`Schema` },
-  { key: "actions", name: "" },
+  { key: "actions", name: "", sortable: false },
 ];
 
 export function UploadManagementTable() {

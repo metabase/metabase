@@ -11,6 +11,7 @@ import {
   addOrUpdateDashboardCard,
   appBar,
   assertQueryBuilderRowCount,
+  changeSynchronousBatchUpdateSetting,
   commandPalette,
   commandPaletteSearch,
   createDashboardWithTabs,
@@ -1241,7 +1242,7 @@ describe("issue 22482", () => {
 
 describe("issue 22788", () => {
   const ccName = "Custom Category";
-  const ccDisplayName = "Product.Custom Category";
+  const ccDisplayName = "Products.Custom Category";
 
   const questionDetails = {
     name: "22788",
@@ -1459,6 +1460,12 @@ describe("issues 15279 and 24500", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(true);
+  });
+
+  afterEach(() => {
+    cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(false);
   });
 
   it("corrupted dashboard filter should still appear in the UI without breaking other filters (metabase#15279, metabase#24500)", () => {
@@ -1717,7 +1724,7 @@ describe("issue 25248", () => {
     popover().findAllByText("Created At").first().click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Order.Created At").should("be.visible");
+    cy.findByText("Orders.Created At").should("be.visible");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").should("be.visible");
   });
@@ -1834,56 +1841,68 @@ describe("issue 25374", () => {
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
   });
 
-  it("should retain comma-separated values when reverting to default (metabase#25374-3)", () => {
-    editDashboard();
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .findByText("Equal to")
-      .click();
-    dashboardParameterSidebar().findByLabelText("Default value").type("1,2,3");
-    saveDashboard();
+  it(
+    "should retain comma-separated values when reverting to default (metabase#25374-3)",
+    { tags: "@flaky" },
+    () => {
+      editDashboard();
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText("Equal to")
+        .click();
+      dashboardParameterSidebar()
+        .findByLabelText("Default value")
+        .type("1,2,3");
+      saveDashboard();
 
-    cy.button("Clear").click();
-    cy.location("search").should("eq", "?equal_to=");
+      cy.button("Clear").click();
+      cy.location("search").should("eq", "?equal_to=");
 
-    cy.button("Reset filter to default state").click();
-    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+      cy.button("Reset filter to default state").click();
+      cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
 
-    // Drill-through and go to the question
-    getDashboardCard(0).findByText(questionDetails.name).click();
-    cy.wait("@cardQuery");
+      // Drill-through and go to the question
+      getDashboardCard(0).findByText(questionDetails.name).click();
+      cy.wait("@cardQuery");
 
-    cy.get("[data-testid=cell-data]")
-      .should("contain", "COUNT(*)")
-      .and("contain", "3");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "COUNT(*)")
+        .and("contain", "3");
 
-    cy.location("search").should("eq", "?num=1%2C2%2C3");
-  });
+      cy.location("search").should("eq", "?num=1%2C2%2C3");
+    },
+  );
 
-  it("should retain comma-separated values when reverting to default via 'Reset all filters' (metabase#25374-4)", () => {
-    editDashboard();
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .findByText("Equal to")
-      .click();
-    dashboardParameterSidebar().findByLabelText("Default value").type("1,2,3");
-    saveDashboard();
+  it(
+    "should retain comma-separated values when reverting to default via 'Reset all filters' (metabase#25374-4)",
+    { tags: "@flaky" },
+    () => {
+      editDashboard();
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText("Equal to")
+        .click();
+      dashboardParameterSidebar()
+        .findByLabelText("Default value")
+        .type("1,2,3");
+      saveDashboard();
 
-    cy.button("Clear").click();
-    cy.location("search").should("eq", "?equal_to=");
+      cy.button("Clear").click();
+      cy.location("search").should("eq", "?equal_to=");
 
-    cy.button("Move, trash, and more…").click();
-    popover().findByText("Reset all filters").should("be.visible").click();
-    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+      cy.button("Move, trash, and more…").click();
+      popover().findByText("Reset all filters").should("be.visible").click();
+      cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
 
-    // Drill-through and go to the question
-    getDashboardCard(0).findByText(questionDetails.name).click();
-    cy.wait("@cardQuery");
+      // Drill-through and go to the question
+      getDashboardCard(0).findByText(questionDetails.name).click();
+      cy.wait("@cardQuery");
 
-    cy.get("[data-testid=cell-data]")
-      .should("contain", "COUNT(*)")
-      .and("contain", "3");
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "COUNT(*)")
+        .and("contain", "3");
 
-    cy.location("search").should("eq", "?num=1%2C2%2C3");
-  });
+      cy.location("search").should("eq", "?num=1%2C2%2C3");
+    },
+  );
 });
 
 describe("issue 25908", () => {
@@ -2173,7 +2192,7 @@ describe("issue 27768", () => {
 
     getDashboardCard().within(() => {
       cy.findByText("Select…").should("not.exist");
-      cy.contains("Product.CCategory");
+      cy.contains("Products.CCategory");
     });
   });
 });

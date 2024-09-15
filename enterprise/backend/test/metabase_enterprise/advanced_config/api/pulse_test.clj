@@ -3,8 +3,11 @@
    [clojure.test :refer :all]
    [metabase.models :refer [Card]]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(use-fixtures :once (fixtures/initialize :plugins))
 
 (deftest test-pulse-endpoint-should-respect-email-domain-allow-list-test
   (testing "POST /api/pulse/test"

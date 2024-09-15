@@ -1,5 +1,5 @@
-import type { CardDisplayType } from "./card";
 import type { DatabaseId, InitialSyncStatus } from "./database";
+import type { CardDisplayType } from "./visualization";
 
 export const ACTIVITY_MODELS = [
   "table",
@@ -10,7 +10,7 @@ export const ACTIVITY_MODELS = [
   "collection",
 ] as const;
 
-export type ActivityModel = typeof ACTIVITY_MODELS[number];
+export type ActivityModel = (typeof ACTIVITY_MODELS)[number];
 
 export const isActivityModel = (model: string): model is ActivityModel =>
   (ACTIVITY_MODELS as unknown as string[]).includes(model);

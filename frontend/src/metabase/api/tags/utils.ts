@@ -25,6 +25,7 @@ import type {
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
+  NotificationChannel,
   PopularItem,
   RecentItem,
   Revision,
@@ -154,6 +155,12 @@ export function provideCardQueryMetadataTags(
   return [idTag("card", id), ...provideAdhocQueryMetadataTags(metadata)];
 }
 
+export function provideCardQueryTags(
+  cardId: CardId,
+): TagDescription<TagType>[] {
+  return [idTag("card", cardId)];
+}
+
 export function provideCloudMigrationTags(
   migration: CloudMigration,
 ): TagDescription<TagType>[] {
@@ -203,6 +210,21 @@ export function provideModelIndexListTags(
   return [
     listTag("model-index"),
     ...modelIndexes.flatMap(modelIndex => provideModelIndexTags(modelIndex)),
+  ];
+}
+
+export function provideChannelTags(
+  channel: NotificationChannel,
+): TagDescription<TagType>[] {
+  return [idTag("channel", channel.id)];
+}
+
+export function provideChannelListTags(
+  channels: NotificationChannel[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("channel"),
+    ...channels.flatMap(channel => provideChannelTags(channel)),
   ];
 }
 

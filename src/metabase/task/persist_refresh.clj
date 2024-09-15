@@ -114,7 +114,7 @@
   [task-type db-id thunk]
   (task-history/with-task-history {:task            task-type
                                    :db_id           db-id
-                                   :on-success-info (fn [task-details]
+                                   :on-success-info (fn [_update-map task-details]
                                                       (let [error (error-details task-details)]
                                                         (when (and error (= "persist-refresh" task-type))
                                                           (send-persist-refresh-email-if-error! db-id task-details))

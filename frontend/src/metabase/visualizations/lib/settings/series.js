@@ -26,11 +26,7 @@ export function keyForSingleSeries(single) {
 
 const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
 
-export function seriesSetting({
-  readDependencies = [],
-  noPadding,
-  ...def
-} = {}) {
+export function seriesSetting({ readDependencies = [], def } = {}) {
   const COMMON_SETTINGS = {
     // title, and color don't need widgets because they're handled directly in ChartNestedSettingSeries
     title: {
