@@ -1,12 +1,14 @@
 (ns metabase.events.notification-test
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [metabase.events :as events]
    [metabase.events.notification :as events.notification]
    [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (def supported-topics @#'events.notification/supported-topics)
 
@@ -74,3 +76,29 @@
                   :settings   {:application-name "Metabase Test"
                                :site-name        "Metabase Test"}}
                  (#'events.notification/enriched-event-info event-info))))))))
+
+(def rasta-id (mt/user->id :rasta))
+(def user-hydra-model [:model/User :id :first_name])
+(def rasta (t2/select-one user-hydra-model rasta-id))
+
+(deftest hydrate-event-notifcation-test
+  (are [expected schema value]
+    (= expected (notification/do-hydrate schema value))
+
+    ;; single map
+    {:user_id (mt/user->id :rasta)
+     :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}
+    [:map
+     [:user_id (#'notification/hydra :user user-hydra-model) :int]]
+    {:user_id (mt/user->id :rasta)}
+
+    ;; seq of maps
+    [{:user_id (mt/user->id :rasta)
+      :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}
+     {:user_id (mt/user->id :crowberto)
+      :user    (t2/select-one user-hydra-model (mt/user->id :crowberto))}]
+    [:sequential
+     [:map
+      [:user_id (#'notification/hydra :user user-hydra-model) :int]]]
+    [{:user_id (mt/user->id :rasta)}
+     {:user_id (mt/user->id :crowberto)}]))
