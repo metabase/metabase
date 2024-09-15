@@ -1,9 +1,9 @@
 (ns metabase.events.notification-test
   (:require
    [clojure.test :refer :all]
-   [malli.core :as mc]
    [metabase.events :as events]
    [metabase.events.notification :as events.notification]
+   [metabase.events.schema :as events.schema]
    [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
    [metabase.notification.test-util :as notification.tu]
@@ -77,28 +77,38 @@
                                :site-name        "Metabase Test"}}
                  (#'events.notification/enriched-event-info event-info))))))))
 
-(def rasta-id (mt/user->id :rasta))
 (def user-hydra-model [:model/User :id :first_name])
-(def rasta (t2/select-one user-hydra-model rasta-id))
 
 (deftest hydrate-event-notifcation-test
-  (are [expected schema value]
-    (= expected (notification/do-hydrate schema value))
-
-    ;; single map
-    {:user_id (mt/user->id :rasta)
-     :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}
-    [:map
-     [:user_id (#'notification/hydra :user user-hydra-model) :int]]
-    {:user_id (mt/user->id :rasta)}
-
-    ;; seq of maps
-    [{:user_id (mt/user->id :rasta)
-      :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}
-     {:user_id (mt/user->id :crowberto)
-      :user    (t2/select-one user-hydra-model (mt/user->id :crowberto))}]
-    [:sequential
-     [:map
-      [:user_id (#'notification/hydra :user user-hydra-model) :int]]]
-    [{:user_id (mt/user->id :rasta)}
-     {:user_id (mt/user->id :crowberto)}]))
+  (doseq [[context schema value expected]
+          [["single map"
+            [:map
+             [:user_id (#'events.schema/with-hydration :user user-hydra-model) :int]]
+            {:user_id (mt/user->id :rasta)}
+            {:user_id (mt/user->id :rasta)
+             :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
+           ["seq of maps"
+            [:sequential
+             [:map
+              [:user_id (#'events.schema/with-hydration :user user-hydra-model) :int]]]
+            [{:user_id (mt/user->id :rasta)}
+             {:user_id (mt/user->id :crowberto)}]
+            [{:user_id (mt/user->id :rasta)
+              :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}
+             {:user_id (mt/user->id :crowberto)
+              :user    (t2/select-one user-hydra-model (mt/user->id :crowberto))}]]
+           ["ignore keys that don't need hydration"
+            [:map
+             [:user_id (#'events.schema/with-hydration :user user-hydra-model) :int]
+             [:topic   [:= :user-joined]]]
+            {:user_id (mt/user->id :rasta)
+             :topic   :user-joined}
+            {:user_id (mt/user->id :rasta)
+             :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
+           ["respect the options"
+            [:map
+             [:user_id (#'events.schema/with-hydration :user user-hydra-model {:optional true}) :int]]
+            {}
+            {}]]]
+    (testing context
+      (= expected (#'events.notification/hydrate! schema value)))))

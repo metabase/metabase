@@ -5,6 +5,20 @@
    [metabase.models.view-log :as view-log]
    [toucan2.core :as t2]))
 
+(defn- with-hydration
+  "Add options to malli schemas to hydrate information when sending system event notifications.
+
+    (events.notification/hydrate! [:map
+                                    [:user_id (with-hydration :user [:model/User :email]) :int]]
+                                  {:user_id 1})
+    ;; => {:user_id 1
+           :user    {:email \"ngoc@metabase.com\"}}"
+  ([k model]
+   (with-hydration k model {}))
+  ([k model opts]
+   (assoc opts :hydrate {:key     k
+                         :model model})))
+
 ;; collection events
 (let [default-schema (mc/schema
                       [:map {:closed true}

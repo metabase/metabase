@@ -1,7 +1,5 @@
 (ns metabase.notification.core
   (:require
-   [malli.core :as mc]
-   [malli.transform :as mtx]
    [metabase.channel.core :as channel]
    [metabase.models.notification :as models.notification]
    [metabase.util.log :as log]
@@ -18,39 +16,6 @@
    [:active       {:optional true} :boolean]
    [:created_at   {:optional true} :any]
    [:updated_at   {:optional true} :any]])
-
-(defn- hydra
-  ([k model]
-   (hydra k model {}))
-  ([k model opts]
-   (assoc opts :hydrate {:key     k
-                         :model model})))
-
-(def ^:private hydrate-transformer
-  (mtx/transformer
-   {:decoders {:map {:compile (fn [schema _]
-                                (let [hydrates (into {}
-                                                     (keep (fn [[k {:keys [hydrate] :as _p} _v]]
-                                                             [k hydrate]))
-                                                     (mc/children schema))]
-                                  (when (seq hydrates)
-                                    (fn [x]
-                                      (if (map? x)
-                                        (reduce-kv
-                                         (fn [_acc k {:keys [key model] :as _hydrate-prop}]
-                                           (assoc x key (t2/select-one model (get x k))))
-                                         x
-                                         hydrates)
-                                        x)))))}}}))
-
-(defn do-hydrate
-  [schema value]
-  (mc/decode schema value hydrate-transformer))
-
-(do-hydrate
- [:map [:user_id (hydra :user [:model/User :first_name :last_name] {:optional true})
-        pos-int?]]
- {:user_id 1})
 
 (def NotificationInfo
   "Schema for the notificaiton info."
