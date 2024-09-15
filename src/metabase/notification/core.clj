@@ -11,13 +11,14 @@
 
 (def ^:private Notification
   [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:active       :boolean]
    [:payload_type (into [:enum] models.notification/notification-types)]
-   [:created_at   :any]
-   [:updated_at   :any]])
+   [:id           {:optional true} ms/PositiveInt]
+   [:active       {:optional true} :boolean]
+   [:created_at   {:optional true} :any]
+   [:updated_at   {:optional true} :any]])
 
-(def ^:private NotificationInfo
+(def NotificationInfo
+  "Schema for the notificaiton info."
   [:multi {:dispatch :payload_type}
    [:notification/system-event [:merge
                                 Notification
@@ -25,6 +26,7 @@
                                  [:payload
                                   [:map {:closed true}
                                    ;; TODO: event-info schema for each event type
+                                   [:event-topic [:fn #(= "event" (-> % keyword namespace))]]
                                    [:event-info [:maybe :map]]
                                    [:settings   :map]]]]]]])
 
@@ -37,17 +39,17 @@
 
 (mu/defn send-notification!
   "Send the notification to all handlers synchronously."
-  [notification :- NotificationInfo]
-  (let [noti-handlers (hydrate-notification-handler (t2/select :model/NotificationHandler :notification_id (:id notification)))]
-    (log/infof "[Notification %d] Found %d handlers" (:id notification) (count noti-handlers))
+  [notification-info :- NotificationInfo]
+  (let [noti-handlers (hydrate-notification-handler (t2/select :model/NotificationHandler :notification_id (:id notification-info)))]
+    (log/infof "[Notification %d] Found %d handlers" (:id notification-info) (count noti-handlers))
     (doseq [handler noti-handlers]
       (let [channel-type (:channel_type handler)
             messages     (channel/render-notification
                           channel-type
-                          notification
+                          notification-info
                           (:template handler)
                           (:recipients handler))]
-        (log/infof "[Notification %d] Got %d messages for channel %s" (:id notification) (count messages) (:channel_type handler))
+        (log/infof "[Notification %d] Got %d messages for channel %s" (:id notification-info) (count messages) (:channel_type handler))
         (doseq [message messages]
           (channel/send! (or (:channel handler)
                              {:type channel-type}) message))))))

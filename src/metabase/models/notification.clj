@@ -158,7 +158,8 @@
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-recipient-types))
    :details mi/transform-json})
 
-(def ^:private NotificationRecipient
+(def NotificationRecipient
+  "Schema for :model/NotificationRecipient."
   [:merge [:map
            [:type (into [:enum] notification-recipient-types)]
            [:notification_handler_id ms/PositiveInt]]

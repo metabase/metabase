@@ -63,6 +63,7 @@
   [_model-name _opts]
   {:copy      [:name :description :type :details :active]
    :transform {:created_at (serdes/date)}})
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/ChannelTemplate                                    ;;
 ;; ------------------------------------------------------------------------------------------------;;
@@ -88,7 +89,8 @@
      [:map
       [:body string?]]]]])
 
-(def ^:private ChannelTemplate
+(def ChannelTemplate
+  "Channel Template schema."
   [:merge
    [:map
     [:channel_type [:fn #(= "channel" (-> % keyword namespace))]]]
