@@ -64,4 +64,6 @@
  "org.openid4java"             {"openid4java-nodeps" {:resource "apache2_0.txt"}}
  "org.quartz-scheduler"        {"quartz" {:resource "apache2_0.txt"}}
  "org.slf4j"                   {"slf4j-api" {:resource "MIT.txt"}}
- "stencil"                     {"stencil" {:resource "EPL.txt"}}}
+ "stencil"                     {"stencil" {:resource "EPL.txt"}}
+ "com.slack.api"               {"slack-api-model" {:resource "apache2_0.txt"}
+                                "slack-api-client" {:resource "apache2_0.txt"}}}
