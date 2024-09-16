@@ -1,3 +1,4 @@
+import "./mock-environment";
 import "fast-text-encoding";
 
 import { setPlatformAPI } from "echarts/core";
@@ -18,13 +19,13 @@ import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/sett
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
+import { registerStaticVisualizations } from "./register";
+
+registerStaticVisualizations();
 
 setPlatformAPI({
   measureText: measureTextEChartsAdapter,
 });
-
-// stub setTimeout because GraalVM does not provide it
-global.setTimeout = () => {};
 
 /**
  * @deprecated use RenderChart instead
