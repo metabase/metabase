@@ -162,7 +162,7 @@ export default class Dimension {
    */
   // TODO Atte Keinänen 5/21/17: Rename either this or the static method with the same name
   // Also making it clear in the method name that we're working with sub-dimensions would be good
-  dimensions(DimensionTypes?: typeof Dimension[]): Dimension[] {
+  dimensions(DimensionTypes?: (typeof Dimension)[]): Dimension[] {
     const dimensionOptions = this.field().dimension_options;
 
     if (!DimensionTypes && dimensionOptions) {
@@ -915,7 +915,7 @@ export class FieldDimension extends Dimension {
     return this.field().icon();
   }
 
-  dimensions(DimensionTypes?: typeof Dimension[]): FieldDimension[] {
+  dimensions(DimensionTypes?: (typeof Dimension)[]): FieldDimension[] {
     let dimensions = super.dimensions(DimensionTypes);
     const joinAlias = this.joinAlias();
 
@@ -1667,7 +1667,7 @@ export class TemplateTagDimension extends FieldDimension {
   }
 }
 
-const DIMENSION_TYPES: typeof Dimension[] = [
+const DIMENSION_TYPES: (typeof Dimension)[] = [
   FieldDimension,
   ExpressionDimension,
   AggregationDimension,

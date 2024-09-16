@@ -11,7 +11,7 @@
 (comment
   (#'search.index/drop-table! @#'search.index/active-table)
   (search.index/reset-index!)
-  (search.index/create-pending!)
+  (search.index/maybe-create-pending!)
   (search.index/activate-pending!)
 
   {:initialized? @@#'search.index/initialized? :reindexing? @@#'search.index/reindexing?}

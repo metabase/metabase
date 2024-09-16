@@ -303,6 +303,8 @@
    ;; if this is a Column, is it an implicitly joinable one? I.e. is it from a different table that we have not
    ;; already joined, but could implicitly join against?
    [:is-implicitly-joinable {:optional true} [:maybe :boolean]]
+   ;; if this is a ColumnGroup, is it the main one?
+   [:is-main-group {:optional true} [:maybe :boolean]]
    ;; For the `:table` field of a Column, is this the source table, or a joined table?
    [:is-source-table {:optional true} [:maybe :boolean]]
    ;; does this column occur in the breakout clause?

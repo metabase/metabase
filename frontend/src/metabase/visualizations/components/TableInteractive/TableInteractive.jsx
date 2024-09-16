@@ -8,7 +8,7 @@ import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import Button from "metabase/core/components/Button";
@@ -180,7 +180,7 @@ class TableInteractive extends Component {
 
     if (this.props.isEmbeddingSdk) {
       const rootElement = document.getElementById(
-        EMBEDDING_SDK_ROOT_ELEMENT_ID,
+        EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
       );
 
       if (rootElement) {

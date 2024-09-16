@@ -61,7 +61,9 @@ const SidebarCacheForm_Base = ({
       onBack={() =>
         isStrategyFormDirty ? askBeforeDiscardingChanges(onBack) : onBack()
       }
-      onClose={onClose}
+      onClose={() => {
+        isStrategyFormDirty ? askBeforeDiscardingChanges(onClose) : onClose();
+      }}
     >
       <Stack
         align="space-between"

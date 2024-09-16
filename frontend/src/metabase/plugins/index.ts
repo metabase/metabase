@@ -405,7 +405,6 @@ export const PLUGIN_CACHING = {
   isGranularCachingEnabled: () => false,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
   GranularControlsExplanation: PluginPlaceholder as any,
-  DashboardStrategySidebar: PluginPlaceholder as any,
   SidebarCacheSection:
     PluginPlaceholder as ComponentType<SidebarCacheSectionProps>,
   SidebarCacheForm: PluginPlaceholder as ComponentType<

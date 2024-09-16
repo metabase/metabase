@@ -59,8 +59,8 @@ export const dateFilterOptions = [
   },
 ] as const;
 
-export type DateFilter = typeof dateFilterOptions[number]["value"];
-export type DateDurations = typeof dateFilterOptions[number]["duration"];
+export type DateFilter = (typeof dateFilterOptions)[number]["value"];
+export type DateDurations = (typeof dateFilterOptions)[number]["duration"];
 export type DateFilterOption = {
   label: string;
   value: DateFilter;

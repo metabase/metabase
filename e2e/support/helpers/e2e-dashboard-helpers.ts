@@ -6,7 +6,7 @@ import type {
 } from "metabase-types/api";
 
 import { visitDashboard } from "./e2e-misc-helpers";
-import { menu, popover, sidebar } from "./e2e-ui-elements-helpers";
+import { menu, popover, sidebar, sidesheet } from "./e2e-ui-elements-helpers";
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(
@@ -260,8 +260,11 @@ export function resizeDashboardCard({
   });
 }
 
-export function toggleDashboardInfoSidebar() {
+export function openDashboardInfoSidebar() {
   dashboardHeader().icon("info").click();
+}
+export function closeDashboardInfoSidebar() {
+  sidesheet().findByLabelText("Close").click();
 }
 
 export function openDashboardMenu() {

@@ -94,8 +94,8 @@ function getEntityTypeFromId(entityId: EntityId): [string, string] {
   return isTableEntityId(entityId)
     ? [t`table`, t`tables`]
     : isSchemaEntityId(entityId)
-    ? [t`schema`, t`schemas`]
-    : [t`entity`, t`entities`];
+      ? [t`schema`, t`schemas`]
+      : [t`entity`, t`entities`];
 }
 
 export function getPermissionWarningModal(

@@ -214,6 +214,7 @@ export function DashboardSidebars({
         <DashboardInfoSidebar
           dashboard={dashboard}
           setDashboardAttribute={setDashboardAttribute}
+          onClose={closeSidebar}
         />
       );
     default:

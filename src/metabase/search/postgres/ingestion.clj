@@ -11,6 +11,8 @@
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
+(def ^:private insert-batch-size 50)
+
 (def ^:private model-rankings
   (zipmap search.config/models-search-order (range)))
 
@@ -40,7 +42,7 @@
 
 (defn- search-items-reducible []
   (-> {:search-string      nil
-       :models             search.config/all-models
+       :models             (disj search.config/all-models "indexed-entity")
        ;; we want to see everything
        :is-superuser?      true
        ;; irrelevant, as we're acting as a super user
@@ -62,5 +64,6 @@
        (eduction
         (comp
          (map t2.realize/realize)
-         (map ->entry)))
-       (run! search.index/update!)))
+         (map ->entry)
+         (partition-all insert-batch-size)))
+       (run! search.index/batch-update!)))
