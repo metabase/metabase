@@ -125,14 +125,16 @@ useEffect(() => {
             <ChatGreeting chatType={selectedChatType} />
             {/* <HomeInitialOptions /> REMOVED UNTIL FUNCTIONALITY IS COMPLETED*/}
           </ContentContainer>
-          <ChatSection>
-            <ChatPrompt
-              chatType={selectedChatType}
-              inputValue={inputValue}
-              setInputValue={setInputValue}
-              onSendMessage={handleSendMessage}
-            />
-          </ChatSection>
+          {schema.length > 0 && (
+            <ChatSection>
+              <ChatPrompt
+                chatType={selectedChatType}
+                inputValue={inputValue}
+                setInputValue={setInputValue}
+                onSendMessage={handleSendMessage}
+              />
+            </ChatSection>
+          )}
         </LayoutRoot>
       ) : (
         <BrowseContainer>

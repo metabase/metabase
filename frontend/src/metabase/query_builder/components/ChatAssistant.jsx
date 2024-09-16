@@ -18,7 +18,7 @@ import {
 import { useSelector } from "metabase/lib/redux";
 import { getDBInputValue, getCompanyName } from "metabase/redux/initialDb";
 import { getInitialSchema } from "metabase/redux/initialSchema";
-import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery } from "metabase/api";
+import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipToken } from "metabase/api";
 import { SemanticError } from "metabase/components/ErrorPages";
 import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
 const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message }) => {
@@ -61,8 +61,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [schema, setSchema] = useState([]);
     const [codeIndex, setCodeIndex] = useState(-1);
     const [insightTextIndex, setInsightTextIndex] = useState(-1);
-    const [runId, setRunId] = useState([]);
-    const [codeInterpreterThreadId, setCodeInterpreterThreadId] = useState([]);
+    const [runId, setRunId] = useState('');
+    const [codeInterpreterThreadId, setCodeInterpreterThreadId] = useState('');
+    const [insightStatus, setInsightStatus] = useState([]);
     const [chatLoading, setChatLoading] = useState(false);
     const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
     const databases = data?.data;
@@ -80,10 +81,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         data: databaseMetadata, 
         isLoading: databaseMetadataIsLoading, 
         error: databaseMetadataIsError 
-      } = useGetDatabaseMetadataWithoutParamsQuery({ 
-        id: initialDbName, 
-        skip: !initialDbName
-      });
+    } = useGetDatabaseMetadataWithoutParamsQuery(
+        dbInputValue !== "" ? { id: dbInputValue } : skipToken
+    );
     const databaseMetadataData = databaseMetadata;
     
     useEffect(() => {
@@ -241,9 +241,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     break;
                 case "getCode":
                     await handleGetCode(func);
-                    break;
-                case "getRunIdandCodeInterpreterThreadId":
-                    await handleGetRunIdandCodeInterpreterThreadId(func);
                     break;
                 default:
                     console.log(func);
@@ -504,7 +501,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     };
 
     const handleGetImage = async func => {
-        const { generatedImages } = func.arguments;
+        const { generatedImages, status, runId, codeInterpreterThreadId } = func.arguments;
         try {
             if (generatedImages && generatedImages.type === "Buffer" && Array.isArray(generatedImages.data)) {
                 // Recreate the buffer using the data array (which is an array of numbers)
@@ -526,18 +523,24 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 );
                 return currentIndex;
             });
+            setRunId(runId)
+            setCodeInterpreterThreadId(codeInterpreterThreadId)
+            if(status === "completed") {
+                setChatLoading(false);
+                setToolWaitingResponse("continue")
+            }
         } catch (error) {
             console.error("Error getting image", error);
         }
     }
 
     const handleGetText = async func => {
-        const { generatedTexts } = func.arguments;
+        const { generatedTexts, status, runId  } = func.arguments;
         try {
             setInsightTextIndex(prevIndex => {
                 const currentIndex = prevIndex + 1;
                 addServerMessageWithType(
-                    "Current Step:",
+                    status === "completed" ? "Here is your final result:" : "Current Step:",
                     "text",
                     "insightText",
                     currentIndex
@@ -547,25 +550,25 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             setInsightsText(prevInsightsText => [...prevInsightsText, generatedTexts.value]);
             setIsLoading(false);
             removeLoadingMessage();
+            if(status === "completed") {
+                setChatLoading(false);
+                setToolWaitingResponse("continue")
+            }
         } catch (error) {
             console.error("Error getting text", error);
         }
     }
 
     const handleGetCode = async func => {
-        const { generatedCodes } = func.arguments;
+        const { generatedCodes, status, runId, codeInterpreterThreadId } = func.arguments;
         try {
             setInsightsCode(prevCode => [...prevCode, generatedCodes]);
-        } catch (error) {
-            console.error("Error getting code", error);
-        }
-    }
-
-    const handleGetRunIdandCodeInterpreterThreadId = async func => {
-        const { runId, codeInterpreterThreadId } = func.arguments;
-        try {
-            setRunId(prevRunId => [...prevRunId, runId]);
-            setCodeInterpreterThreadId(prevCodeInterpreterThreadId => [...prevCodeInterpreterThreadId, codeInterpreterThreadId]);
+            setRunId(runId)
+            setCodeInterpreterThreadId(codeInterpreterThreadId)
+            if(status === "completed") {
+                setChatLoading(false);
+                setToolWaitingResponse("continue")
+            }
         } catch (error) {
             console.error("Error getting code", error);
         }
@@ -608,15 +611,45 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     
     const handleInfoMessage = data => {
         if(data.functions.type === "data") {
-            addServerMessage(
-                data.functions.payload.message || "Received a message from the server.",
-                "text",
-            );
+            setMessages(prevMessages => {
+                // Remove the last message with `isInsightData: true`
+                const filteredMessages = [...prevMessages].reverse().filter((message, index, arr) => {
+                    // Keep all messages except the first (from the end) with `isInsightData: true`
+                    return !(message.isInsightData && arr.findIndex(m => m.isInsightData) === index);
+                }).reverse(); // Reverse again to maintain original order
+            
+                // Add the new message
+                return [
+                    ...filteredMessages,
+                    {
+                        id: Date.now() + Math.random(),
+                        text: data.functions.payload.message,
+                        sender: "server",
+                        type: "text",
+                        isInsightData: true
+                    }
+                ];
+            });
         } else if(data.functions.type === "error") {
-            addServerMessage(
-                data.functions.payload.message || "Received a message from the server.",
-                "text",
-            );
+            setMessages(prevMessages => {
+                // Remove the last message with `isInsightError: true`
+                const filteredMessages = [...prevMessages].reverse().filter((message, index, arr) => {
+                    // Keep all messages except the first (from the end) with `isInsightError: true`
+                    return !(message.isInsightError && arr.findIndex(m => m.isInsightError) === index);
+                }).reverse(); // Reverse again to maintain original order
+            
+                // Add the new message
+                return [
+                    ...filteredMessages,
+                    {
+                        id: Date.now() + Math.random(),
+                        text: data.functions.payload.message,
+                        sender: "server",
+                        type: "text",
+                        isInsightError: true
+                    }
+                ];
+            });
         }
     }
 
@@ -693,15 +726,36 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 setIsLoading(true)
                 setChatLoading(true);
             }
-            ws.send(
-                JSON.stringify({
-                    type: "toolResponse",
-                    response: {
-                        function_name: toolWaitingResponse,
-                        response: JSON.stringify(inputValue),
-                    },
-                })
-            );
+            if(toolWaitingResponse === "continue") {
+                setMessages(prevMessages => [
+                    ...prevMessages,
+                    {
+                        id: Date.now() + Math.random(),
+                        text: "Please wait until we generate the response....",
+                        sender: "server",
+                        type: "text"
+                    }
+                ]);
+                setIsLoading(true)
+                setChatLoading(true);
+                const response = {
+                    type: "query",
+                    task: inputValue,
+                    thread_id: threadId,
+                    appType: chatType,
+                };
+                ws && ws.send(JSON.stringify(response));
+            } else {
+                ws.send(
+                    JSON.stringify({
+                        type: "toolResponse",
+                        response: {
+                            function_name: toolWaitingResponse,
+                            response: JSON.stringify(inputValue),
+                        },
+                    })
+                );
+            }
             setToolWaitingResponse(null);
             setInputValue("");
             return;
@@ -794,8 +848,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     };
 
     const stopStream = async () => {
-        const thread_id = codeInterpreterThreadId[0];
-        const run_id = runId[0];
+        const thread_id = codeInterpreterThreadId;
+        const run_id = runId;
         ws.send(
             JSON.stringify({
                 type: "stopStreaming",
@@ -805,13 +859,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 },
             })
         );
-        setRunId([]);
-        setCodeInterpreterThreadId([]);
+        setRunId('');
+        setCodeInterpreterThreadId('');
         setChatLoading(false);
     };
 
     const stopMessage = async () => {
-        if (runId.length > 0 && codeInterpreterThreadId.length > 0) {
+        if (runId && codeInterpreterThreadId) {
             await stopStream();
         }
     }
@@ -929,7 +983,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                             />
                                             <Button
                                                 variant="filled"
-                                                disabled={!isConnected || selectedThreadId}
+                                                disabled={!isConnected || schema.length < 1 || selectedThreadId}
                                                 onClick={chatLoading ? stopMessage : sendMessage}
                                                 style={{
                                                     position: "absolute",
@@ -940,10 +994,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                                     height: "30px",
                                                     padding: "0",
                                                     minWidth: "0",
-                                                    backgroundColor: isConnected ? "#8A64DF" : "#F1EBFF",
+                                                    backgroundColor: isConnected && schema.length > 0 ? "#8A64DF" : "#F1EBFF",
                                                     color: "#FFF",
                                                     border: "none",
-                                                    cursor: isConnected ? "pointer" : "not-allowed",
+                                                    cursor: isConnected && schema.length > 0 ? "pointer" : "not-allowed",
                                                     display: "flex",
                                                     justifyContent: "center",
                                                     alignItems: "center",
