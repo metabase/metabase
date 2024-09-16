@@ -19,7 +19,12 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [ring.util.response :as response]))
+   [ring.util.response :as response])
+  (:import
+   (com.slack.api Slack)
+   (com.slack.api.methods.request.files FilesUploadV2Request FilesSharedPublicURLRequest)))
+
+(set! *warn-on-reflection* true)
 
 (api/defendpoint POST "/password_check"
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
@@ -98,5 +103,47 @@
   [:as {{:keys [entity_ids]} :body}]
   {entity_ids :map}
   {:entity_ids (api.embed.common/model->entity-ids->ids entity_ids)})
+
+;; token and Slack channel ID of the Metabase #bug-reports-internal
+(def ^:private slack-bot-token (env :mb-slack-bot-token))
+(def ^:private slack-channel-id "C07MSLAUVK2")
+
+(api/defendpoint POST "/send-to-slack"
+  "Send bug report data to a Slack channel using the Slack API."
+  [:as {{:keys [xhrEvents rrwebEvents]} :body}]
+  {xhrEvents [:maybe [:sequential :map]]
+   rrwebEvents [:maybe [:sequential :map]]}
+  (try
+    (let [slack (Slack/getInstance)
+          methods (.methods slack)
+          formatted-body (json/generate-string {:xhrEvents xhrEvents
+                                                :rrwebEvents rrwebEvents} {:pretty true})
+          file-upload-request (.. (FilesUploadV2Request/builder)
+                                  (token slack-bot-token)
+                                  (channel slack-channel-id)
+                                  (content formatted-body)
+                                  (filename "bug_report.json")
+                                  (initialComment "New bug report uploaded")
+                                  (requestFileInfo true)
+                                  build)
+          upload-response (.filesUploadV2 methods file-upload-request)]
+      (if (.isOk upload-response)
+        (let [file (first (.getFiles upload-response))
+              file-id (.getId file)
+              _ (.filesSharedPublicURL methods (.. (FilesSharedPublicURLRequest/builder)
+                                                   (token slack-bot-token)
+                                                   (file file-id)
+                                                   build))]
+          {:status 200
+           :body {:success true
+                  :file-url (.getPermalinkPublic file)}})
+        {:status 400
+         :body {:success false
+                :error (.getError upload-response)}}))
+    (catch Exception e
+      (log/error e "Unexpected error sending data to Slack")
+      {:status 500
+       :body {:success false
+              :message "Unexpected error sending data to Slack"}})))
 
 (api/define-routes)

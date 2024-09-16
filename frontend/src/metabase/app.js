@@ -36,6 +36,7 @@ import { Router, useRouterHistory } from "react-router";
 import { syncHistoryWithStore } from "react-router-redux";
 
 import { RRWebDownloadButton } from "metabase/components/RRWebDownloadButton";
+import { isInternalBuild } from "metabase/env";
 import { createTracker } from "metabase/lib/analytics";
 import api from "metabase/lib/api";
 import { initializeEmbedding } from "metabase/lib/embed";
@@ -70,9 +71,6 @@ function _init(reducers, getRoutes, callback) {
 
   initializeEmbedding(store);
 
-  // DO NOT RELEASE THIS IN PRODUCTION
-  const enableRRWeb = true;
-
   const root = createRoot(document.getElementById("root"));
 
   root.render(
@@ -82,7 +80,7 @@ function _init(reducers, getRoutes, callback) {
           <ThemeProvider>
             <GlobalStyles />
             <Router history={history}>{routes}</Router>
-            {enableRRWeb && <RRWebDownloadButton />}
+            {isInternalBuild && <RRWebDownloadButton />}
           </ThemeProvider>
         </DragDropContextProvider>
       </EmotionCacheProvider>
@@ -90,7 +88,7 @@ function _init(reducers, getRoutes, callback) {
   );
 
   registerVisualizations();
-  enableRRWeb && initRRWebRecorder();
+  isInternalBuild && initRRWebRecorder();
 
   store.dispatch(refreshSiteSettings());
 

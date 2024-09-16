@@ -286,6 +286,7 @@ const config = {
     new rspack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
+      MB_INTERNAL_BUILD: process.env.MB_INTERNAL_BUILD || "false",
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new rspack.ProvidePlugin({ process: "process/browser.js" }),

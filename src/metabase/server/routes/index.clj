@@ -92,7 +92,8 @@
       :baseHref             (hiccup.util/escape-html (base-href))
       :embedCode            (when embeddable? (embed/head uri))
       :enableGoogleAuth     (boolean google-auth-client-id)
-      :enableAnonTracking   (boolean anon-tracking-enabled)})))
+      :enableAnonTracking   (boolean anon-tracking-enabled)
+      :internalBuild        (= "true" (System/getenv "MB_INTERNAL_BUILD"))})))
 
 (defn- load-init-template []
   (load-template

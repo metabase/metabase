@@ -39,8 +39,10 @@
       {{{nonceJSON}}}
     </script>
 
-    <!-- rrweb record script -->
-    <script src="https://cdn.jsdelivr.net/npm/@rrweb/record@latest/dist/record.umd.min.cjs"></script>
+    {{#internalBuild}}
+      <!-- rrweb record script -->
+      <script src="app/record.umd.min.js"></script>
+    {{/internalBuild}}
 
     <!-- If you modify this script, make sure you update the whitelisted Content-Security-Policy hash in metabase.server.middleware.security -->
     <script type="text/javascript">{{{bootstrapJS}}}</script>

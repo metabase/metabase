@@ -13,3 +13,5 @@ export const isChartsDebugLoggingEnabled =
   process.env.MB_LOG_CHARTS_DEBUG === "true";
 
 export const isEmbeddingSdk = !!process.env.IS_EMBEDDING_SDK_BUILD;
+
+export const isInternalBuild = process.env.MB_INTERNAL_BUILD === "true";
