@@ -678,6 +678,7 @@
                                                     :source-card 3}]})]
       (is (= [{:lib/type                 :metadata/column
                :base-type                :type/*
+               :effective-type           :type/*
                :id                       4
                :name                     "Field 4"
                :fk-target-field-id       nil
