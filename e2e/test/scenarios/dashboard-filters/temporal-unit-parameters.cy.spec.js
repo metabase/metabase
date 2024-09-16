@@ -512,83 +512,71 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   });
 
   describe("click behaviors", () => {
-    it.only(
-      "should pass a temporal unit with 'update dashboard filter' click behavior",
-      { tags: "@flaky" },
-      () => {
-        createDashboardWithMappedQuestion({
-          extraQuestions: [nativeUnitQuestionDetails],
-        }).then(dashboard => visitDashboard(dashboard.id));
+    it("should pass a temporal unit with 'update dashboard filter' click behavior", () => {
+      createDashboardWithMappedQuestion({
+        extraQuestions: [nativeUnitQuestionDetails],
+      }).then(dashboard => {
+        cy.wrap(dashboard.id).as("dashboardId");
+        visitDashboard(dashboard.id);
+      });
 
-        cy.log("unsupported column types are ignored");
-        editDashboard();
-        getDashboardCard(0)
-          .findByLabelText("Click behavior")
-          .click({ force: true });
-        sidebar().within(() => {
-          cy.log("datetime columns cannot be mapped");
-          cy.findByText("Created At").click();
-          cy.findByText("Update a dashboard filter").click();
-          cy.findByText("No available targets").should("be.visible");
-          cy.icon("chevronleft").click();
+      cy.log("unsupported column types are ignored");
+      editDashboard();
+      getDashboardCard(0)
+        .findByLabelText("Click behavior")
+        .click({ force: true });
+      sidebar().within(() => {
+        cy.log("datetime columns cannot be mapped");
+        cy.findByText("Created At").click();
+        cy.findByText("Update a dashboard filter").click();
+        cy.findByText("No available targets").should("be.visible");
+        cy.icon("chevronleft").click();
 
-          cy.log("number columns cannot be mapped");
-          cy.findByText("Count").click();
-          cy.findByText("Update a dashboard filter").click();
-          cy.findByText("No available targets").should("be.visible");
-          cy.button("Cancel").click();
-        });
+        cy.log("number columns cannot be mapped");
+        cy.findByText("Count").click();
+        cy.findByText("Update a dashboard filter").click();
+        cy.findByText("No available targets").should("be.visible");
+        cy.button("Cancel").click();
+      });
 
-        cy.log("setup a valid click behavior with a text column");
-        getDashboardCard(1)
-          .findByLabelText("Click behavior")
-          .click({ force: true });
-        sidebar().within(() => {
-          cy.findByText("UNIT").click();
-          cy.findByText("Update a dashboard filter").click();
-          cy.findByText(parameterDetails.name).click();
-        });
-        popover().findByText("UNIT").click();
-        saveDashboard();
+      cy.log("setup a valid click behavior with a text column");
+      getDashboardCard(1)
+        .findByLabelText("Click behavior")
+        .click({ force: true });
+      sidebar().within(() => {
+        cy.findByText("UNIT").click();
+        cy.findByText("Update a dashboard filter").click();
+        cy.findByText(parameterDetails.name).click();
+      });
+      popover().findByText("UNIT").click();
+      saveDashboard();
 
-        cy.log("verify click behavior with a valid temporal unit");
+      cy.log("verify click behavior with a valid temporal unit");
 
-        cy.wait(2000);
+      // this is done to bypass race condition problem, the root cause for it is
+      // described in `updateDashboardAndCards` from frontend/src/metabase/dashboard/actions/save.js
+      visitDashboard("@dashboardId");
 
-        getDashboardCard(1).findByText("year").click();
-        // cy.wait("@dashcardQuery4");
-        // getDashboardCard(0).findByText("April 2022").should("be.visible");
-        // cy.wait(2000);
-        cy.wait("@dashcardQuery4").then(interception => {
-          // Optionally, you can assert the response if needed
-          expect(interception.response.statusCode).to.eq(202);
+      getDashboardCard(1).findByText("year").click();
 
-          console.log("Response:", interception.response.body);
-        });
+      getDashboardCard(0)
+        .findByText("Created At: Year", { timeout: 10000 })
+        .should("be.visible");
 
-        cy.url().should("include", "?unit_of_time=year");
+      filterWidget().findByText("Year").should("be.visible");
 
-        getDashboardCard(0)
-          .findByText("Created At: Year", { timeout: 10000 })
-          .should("be.visible");
+      cy.log("verify that invalid temporal units are ignored");
+      getDashboardCard(1).findByText("invalid").click();
+      filterWidget()
+        .findByText(/invalid/i)
+        .should("not.exist");
+      getDashboardCard(0).findByText("Created At: Month").should("be.visible");
 
-        filterWidget().findByText("Year").should("be.visible");
-
-        cy.log("verify that invalid temporal units are ignored");
-        getDashboardCard(1).findByText("invalid").click();
-        filterWidget()
-          .findByText(/invalid/i)
-          .should("not.exist");
-        getDashboardCard(0)
-          .findByText("Created At: Month")
-          .should("be.visible");
-
-        cy.log("verify that recovering from an invalid temporal unit works");
-        getDashboardCard(1).findByText("year").click();
-        filterWidget().findByText("Year").should("be.visible");
-        getDashboardCard(0).findByText("Created At: Year").should("be.visible");
-      },
-    );
+      cy.log("verify that recovering from an invalid temporal unit works");
+      getDashboardCard(1).findByText("year").click();
+      filterWidget().findByText("Year").should("be.visible");
+      getDashboardCard(0).findByText("Created At: Year").should("be.visible");
+    });
 
     it("should pass a temporal unit 'custom destination -> dashboard' click behavior", () => {
       createDashboardWithMappedQuestion({
