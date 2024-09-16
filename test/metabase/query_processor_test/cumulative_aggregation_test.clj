@@ -384,7 +384,7 @@
 
 (deftest ^:parallel cumulative-sum-ordered-by-aggregation-expression-test
   (testing "Ordering by an expression used in cumulative sum works as expected (#47613)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative :foreign-keys)
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-subtotal   (lib.metadata/field metadata-provider (mt/id :orders :subtotal))
