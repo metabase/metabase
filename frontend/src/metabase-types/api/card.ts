@@ -1,7 +1,7 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 
-import type { Collection, CollectionId } from "./collection";
+import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type { DashCardId, DashboardId } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
@@ -14,8 +14,12 @@ import type { Table } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
-
 export type CardType = "model" | "question" | "metric";
+
+type CreatorInfo = Pick<
+  UserInfo,
+  "first_name" | "last_name" | "email" | "id" | "common_name"
+>;
 
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
@@ -53,7 +57,8 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   archived: boolean;
 
-  creator?: UserInfo;
+  creator?: CreatorInfo;
+  "last-edit-info"?: LastEditInfo;
 }
 
 export interface PublicCard {
@@ -119,13 +124,14 @@ export type PivotTableCollapsedRowsSetting = {
 export type TableColumnOrderSetting = {
   name: string;
   enabled: boolean;
+  fieldRef?: FieldReference;
 };
 
 export type StackType = "stacked" | "normalized" | null;
 export type StackValuesDisplay = "total" | "all" | "series";
 
 export const numericScale = ["linear", "pow", "log"] as const;
-export type NumericScale = typeof numericScale[number];
+export type NumericScale = (typeof numericScale)[number];
 
 export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
 

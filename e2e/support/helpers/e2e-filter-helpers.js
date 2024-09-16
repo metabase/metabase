@@ -81,3 +81,9 @@ export function setConnectedFieldSource(table, field) {
   popover().findByText(table).click();
   popover().findByText(field).click();
 }
+
+export function changeSynchronousBatchUpdateSetting(value) {
+  cy.request("PUT", "/api/setting/synchronous-batch-updates", {
+    value: value,
+  });
+}

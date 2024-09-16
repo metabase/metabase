@@ -35,6 +35,23 @@
                     search.impl/in-place))
     :in-place search.impl/in-place))
 
+(defn supports-index?
+  "Does this instance support a search index, e.g. has the right kind of AppDb"
+  []
+  (is-postgres?))
+
+(defn init-index!
+  "Ensure there is an index ready to be populated."
+  [& {:keys [force-reset?]}]
+  (when (is-postgres?)
+    (search.postgres/init! force-reset?)))
+
+(defn reindex!
+  "Populate a new index, and make it active. Simultaneously updates the current index."
+  []
+  (when (is-postgres?)
+    (search.postgres/reindex!)))
+
 (mu/defn search
   "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- search.config/SearchContext]

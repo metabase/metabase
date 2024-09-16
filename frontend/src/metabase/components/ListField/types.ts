@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import type { RowValue } from "metabase-types/api";
 export type Option = any[];
 

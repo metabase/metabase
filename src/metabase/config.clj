@@ -124,12 +124,18 @@
    Looks something like `Metabase v0.25.0.RC1`."
   (str "Metabase " (mb-version-info :tag)))
 
+(defn major-version
+  "Detect major version from a version string.
+  ex: (major-version \"v1.50.25\") -> 50"
+  [version-string]
+  (some-> (second (re-find #"\d+\.(\d+)" version-string))
+          parse-long))
+
 (defn current-major-version
   "Returns the major version of the running Metabase JAR.
   When the version.properties file is missing (e.g., running in local dev), returns nil."
   []
-  (some-> (second (re-find #"\d+\.(\d+)" (:tag mb-version-info)))
-          parse-long))
+  (major-version (:tag mb-version-info)))
 
 (defonce ^{:doc "This UUID is randomly-generated upon launch and used to identify this specific Metabase instance during
                 this specifc run. Restarting the server will change this UUID, and each server in a horizontal cluster

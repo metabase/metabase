@@ -25,7 +25,7 @@ import type {
   PieSliceData,
 } from "./types";
 
-function getColDescs(
+export function getPieColumns(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ): PieColumnDescriptors {
@@ -71,7 +71,7 @@ export function getPieChartModel(
       data: { rows: dataRows },
     },
   ] = rawSeries;
-  const colDescs = getColDescs(rawSeries, settings);
+  const colDescs = getPieColumns(rawSeries, settings);
 
   const rowIndiciesByKey = new Map<string | number, number>();
   dataRows.forEach((row, index) => {

@@ -9270,6 +9270,24 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: running, failed, or completed
 
+  - changeSet:
+      id: v51.2024-09-09T15:11:16
+      author: johnswanson
+      comment: add an index for `collection.type`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: collection
+                indexName: idx_collection_type
+      changes:
+        - createIndex:
+            tableName: collection
+            columns:
+              - column:
+                  name: type
+            indexName: idx_collection_type
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
