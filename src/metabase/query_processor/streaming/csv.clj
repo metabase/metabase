@@ -95,7 +95,8 @@
                      (vec (repeat (count ordered-cols) identity))))
           ;; write the column names for non-pivot tables
           (when-not opts
-            (let [modified-row (m/remove-nth (or @pivot-grouping-idx (inc (count col-names))) col-names)]
+            (let [modified-row (cond->> col-names
+                                  @pivot-grouping-idx (m/remove-nth @pivot-grouping-idx))]
               (write-csv writer [modified-row]))
             (.flush writer))))
 
