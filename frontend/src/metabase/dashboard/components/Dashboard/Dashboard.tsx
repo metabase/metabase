@@ -197,7 +197,6 @@ function Dashboard(props: DashboardProps) {
     parameterQueryParams,
     location,
   } = props;
-
   const dispatch = useDispatch();
 
   const [isInitialized, setIsInitialized] = useState(false);

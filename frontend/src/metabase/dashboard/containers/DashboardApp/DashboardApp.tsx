@@ -111,7 +111,6 @@ type DashboardAppProps = OwnProps & ReduxProps & WithRouterProps;
 const DashboardApp = (props: DashboardAppProps) => {
   const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty, route } =
     props;
-
   const {
     documentTitle: _documentTitle,
     pageFavicon: _pageFavicon,
@@ -234,7 +233,7 @@ const DashboardApp = (props: DashboardAppProps) => {
   );
 };
 
-function getDashboardId({ dashboardId, params }: DashboardAppProps) {
+export function getDashboardId({ dashboardId, params }: DashboardAppProps) {
   if (dashboardId) {
     return dashboardId;
   }

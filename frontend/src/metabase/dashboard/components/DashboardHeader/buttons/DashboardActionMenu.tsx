@@ -56,6 +56,13 @@ export const getExtraButtons = ({
     },
   });
 
+  extraButtons.push({
+    title: "Экспортировать для печати",
+    icon: "folder",
+    link: `${pathname}/export-pdf`,
+    event: "Dashboard;ExportPDF",
+  });
+
   if (canEdit) {
     extraButtons.push({
       title: t`Move`,

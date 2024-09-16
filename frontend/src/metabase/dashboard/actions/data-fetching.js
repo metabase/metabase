@@ -307,7 +307,12 @@ export const fetchCardData = createThunkAction(
 );
 
 export const fetchDashboardCardData =
-  ({ isRefreshing = false, reload = false, clearCache = false } = {}) =>
+  ({
+    isRefreshing = false,
+    reload = false,
+    clearCache = false,
+    loadAllCards = false,
+  } = {}) =>
   (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
     const selectedTabId = getSelectedTabId(getState());
@@ -317,6 +322,7 @@ export const fetchDashboardCardData =
     const nonVirtualDashcards = getCurrentTabDashboardCards(
       dashboard,
       selectedTabId,
+      loadAllCards,
     ).filter(({ dashcard }) => !isVirtualDashCard(dashcard));
 
     let nonVirtualDashcardsToFetch = [];

@@ -145,9 +145,11 @@ export function getAllDashboardCards(dashboard: Dashboard) {
 export function getCurrentTabDashboardCards(
   dashboard: Dashboard,
   selectedTabId: SelectedTabId,
+  loadAllCards = false,
 ) {
   return getAllDashboardCards(dashboard).filter(
     ({ dashcard }) =>
+      loadAllCards ||
       (dashcard.dashboard_tab_id == null && selectedTabId == null) ||
       dashcard.dashboard_tab_id === selectedTabId,
   );

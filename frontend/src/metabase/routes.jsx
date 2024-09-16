@@ -55,6 +55,7 @@ import { BrowseDatabases } from "./browse/components/BrowseDatabases";
 import { BrowseModels } from "./browse/components/BrowseModels";
 import BrowseSchemas from "./browse/components/BrowseSchemas";
 import { BrowseTables } from "./browse/components/BrowseTables";
+import { ExportPDF } from "./dashboard/components/ExportPDF/ExportPDF";
 import {
   CanAccessMetabot,
   CanAccessSettings,
@@ -158,6 +159,11 @@ export const getRoutes = store => {
             <ModalRoute path="copy" modal={DashboardCopyModalConnected} />
             <ModalRoute path="archive" modal={ArchiveDashboardModalConnected} />
           </Route>
+          <Route
+            path="dashboard/:slug/export-pdf"
+            title="ExportPDF"
+            component={ExportPDF}
+          />
 
           <Route path="/question">
             <IndexRoute component={QueryBuilder} />
