@@ -136,6 +136,7 @@ export const EditVizPage = ({
       const maybeQuery = isStringifiedQuery(response);
       if (maybeQuery) {
         const completeQuery = { dataset_query: query, ...maybeQuery };
+        console.log("returned query", maybeQuery);
         const { adhocQuestionURL } = adhockifyURL(completeQuery);
 
         response = `[See results](${adhocQuestionURL})`;
