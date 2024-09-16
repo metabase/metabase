@@ -297,9 +297,8 @@
   [_driver _unit expr]
   (if (= (h2x/database-type expr) "date")
     expr
-    (date-trunc :day expr))
-  (-> [:to_date (date-trunc :day expr)]
-      (h2x/with-database-type-info "date")))
+    (-> [:to_date [:to_timestamp_ltz expr]]
+        (h2x/with-database-type-info "date"))))
 
 ;; these don't need to be adjusted for start of week, since we're Setting the WEEK_START connection parameter
 (defmethod sql.qp/date [:snowflake :week]
