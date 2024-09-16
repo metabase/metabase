@@ -77,7 +77,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     createTestQuestion();
 
     // Switch to "ordinary" table
-    cy.findByTestId("view-footer").findByText("Visualization").click();
+    cy.findByTestId("viz-type-button").click();
     sidebar().icon("table2").should("be.visible").click();
 
     cy.findByTestId("app-bar").within(() => {
@@ -805,8 +805,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       display: "line",
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").click();
+    cy.findByTestId("viz-type-button").click();
     leftSidebar().within(() => {
       // This part is still failing. Uncomment when fixed.
       // cy.findByText("Pivot Table")

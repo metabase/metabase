@@ -299,8 +299,7 @@ describe("UI elements that make no sense for users without data permissions (met
     visitQuestion(ORDERS_QUESTION_ID);
 
     cy.findByTestId("viz-settings-button");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").click();
+    cy.findByTestId("viz-type-button").click();
 
     cy.findByTestId("display-options-sensible");
     cy.icon("line").click();
@@ -353,8 +352,7 @@ describe("UI elements that make no sense for users without data permissions (met
     cy.findByTextEnsureVisible("There was a problem with your question");
 
     cy.findByTestId("viz-settings-button").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").should("not.exist");
+    cy.findByTestId("viz-type-button").should("not.exist");
 
     cy.findByTestId("qb-header-action-panel").within(() => {
       cy.icon("refresh").should("not.exist");

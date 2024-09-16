@@ -1487,7 +1487,7 @@ describe("issue 44637", () => {
 
     assertQueryBuilderRowCount(0);
     queryBuilderMain().findByText("No results!").should("exist");
-    queryBuilderFooter().button("Visualization").click();
+    cy.findByTestId("viz-type-button").click();
     leftSidebar().icon("bar").click();
     queryBuilderMain().within(() => {
       cy.findByText("No results!").should("exist");
