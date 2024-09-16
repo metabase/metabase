@@ -698,6 +698,32 @@
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
 
+(defn- aggregation-order-bys
+  [order-bys]
+  (filter (fn [[_direction expr]]
+            (and (vector? expr)
+                 (> (count expr) 1)
+                 (= (first expr) :aggregation)
+                 (int? (second expr))))
+          order-bys))
+
+(defn- unwrap-aggregation-option
+  [agg]
+  (cond-> agg
+    (and (vector? agg) (= (first agg) :aggregation-options)) second))
+
+(defn- over-aggregations
+  "Returns a vector containing the `aggregations` specified by `aggregation-order-bys` compiled to
+  honeysql expressions for `driver` suitable for ordering in the over clause of a window function."
+  [driver aggregations aggregation-order-bys]
+  (let [aggregations (vec aggregations)]
+    (into []
+          (keep (fn [[direction [_aggregation index]]]
+                  (let [agg (unwrap-aggregation-option (aggregations index))]
+                    (when-not (#{:cum-count :cum-sum :offset} (first agg))
+                      [(->honeysql driver agg) direction]))))
+          aggregation-order-bys)))
+
 (defn- window-aggregation-over-expr-for-query-with-breakouts
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
@@ -706,13 +732,16 @@
         group-bys       (:group-by (apply-top-level-clause driver :breakout {} inner-query))
         partition-exprs (when (> num-breakouts 1)
                           (rest group-bys))
-        order-expr      (first group-bys)]
+        order-expr      (first group-bys)
+        over-order-bys  (->> (:order-by inner-query)
+                             aggregation-order-bys
+                             (over-aggregations driver (:aggregation inner-query)))]
     (merge
      (when (seq partition-exprs)
        {:partition-by (mapv (fn [expr]
                               [expr])
                             partition-exprs)})
-     {:order-by [[order-expr :asc]]})))
+     {:order-by (conj over-order-bys [order-expr :asc])})))
 
 (defn- window-aggregation-over-expr-for-query-without-breakouts [driver inner-query]
   (when-let [order-bys (not-empty (:order-by (apply-top-level-clause driver :order-by {} inner-query)))]
@@ -750,7 +779,7 @@
 (defn- cumulative-aggregation-over-rows
   "Generate an OVER (...) expression for stuff like cumulative sum or cumulative count.
 
-  For a single breakout the generate SQL will look something like:
+  For a single breakout the generated SQL will look something like:
 
     OVER (
       ORDER BY created_at
