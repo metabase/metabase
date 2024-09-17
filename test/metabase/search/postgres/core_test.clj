@@ -53,11 +53,14 @@
           (is (= (hybrid term)
                  (hybrid-multi term))))))))
 
+(defn- remove-time [m]
+  (dissoc m :create_at))
+
 (deftest minimal-test
   (with-setup
     (testing "consistent results between both hybrid implementations"
       (doseq [term ["satisfaction" "e-commerce" "example" "rasta" "new" "revenue" "collection"]]
         (testing term
           ;; Timestamps aren't parsed properly, but this doesn't matter
-          (is (= (remove :created_at (hybrid term))
-                 (remove :created_at (minimal term)))))))))
+          (is (= (map remove-time (hybrid term))
+                 (map remove-time (minimal term)))))))))
