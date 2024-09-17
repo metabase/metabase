@@ -11,18 +11,17 @@ import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/util
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import type { StaticChartProps } from "../StaticVisualization";
-
-import { WaterfallChart } from "./WaterfallChart";
+import { StaticVisualization } from "../StaticVisualization";
 
 export default {
   title: "static-viz/WaterfallChart",
-  component: WaterfallChart,
+  component: StaticVisualization,
 };
 
 const Template: StoryFn<StaticChartProps> = args => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
-      <WaterfallChart {...args} isStorybook />
+      <StaticVisualization {...args} isStorybook />
     </div>
   );
 };
