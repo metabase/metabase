@@ -79,7 +79,6 @@ export type ComputedVisualizationSettings = VisualizationSettings & {
 
 export interface StaticVisualizationProps {
   rawSeries: RawSeries;
-  dashcardSettings: VisualizationSettings;
   renderingContext: RenderingContext;
 }
 
@@ -236,8 +235,7 @@ export type VisualizationDefinition = {
   placeHolderSeries?: Series;
 
   transformSeries?: (series: Series) => TransformedSeries;
-  // TODO: remove dependency on metabase-lib
-  isSensible: (data: DatasetData, query?: Query) => boolean;
+  isSensible: (data: DatasetData) => boolean;
   // checkRenderable throws an error if a visualization is not renderable
   checkRenderable: (
     series: Series,

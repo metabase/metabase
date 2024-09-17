@@ -22,7 +22,6 @@ registerEChartsModules();
 
 export const ComboChart = ({
   rawSeries,
-  dashcardSettings,
   renderingContext,
   width = WIDTH,
   height = HEIGHT,
@@ -37,7 +36,6 @@ export const ComboChart = ({
 
   const computedVisualizationSettings = computeStaticComboChartSettings(
     rawSeries,
-    dashcardSettings,
     renderingContext,
   );
 

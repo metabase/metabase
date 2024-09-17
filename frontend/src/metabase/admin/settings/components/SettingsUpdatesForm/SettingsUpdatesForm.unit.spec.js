@@ -51,23 +51,25 @@ function setup({
 }
 
 describe("SettingsUpdatesForm", () => {
-  it("shows custom message for Cloud installations", () => {
+  it("shows custom message for Cloud installations", async () => {
     setup({ isHosted: true });
     expect(
-      screen.getByText(/Metabase Cloud keeps your instance up-to-date/),
+      await screen.findByText(/Metabase Cloud keeps your instance up-to-date/),
     ).toBeInTheDocument();
   });
 
-  it("shows correct message when latest version is installed", () => {
+  it("shows correct message when latest version is installed", async () => {
     setup({ currentVersion: "v1.0.0", latestVersion: "v1.0.0" });
+    expect(
+      await screen.findByText(/You're running Metabase 1.0.0/),
+    ).toBeInTheDocument();
+  });
+
+  it("shows current version when latest version info is missing", () => {
+    setup({ currentVersion: "v1.0.0", latestVersion: null });
     expect(
       screen.getByText(/You're running Metabase 1.0.0/),
     ).toBeInTheDocument();
-  });
-
-  it("shows correct message when no version checks have been run", () => {
-    setup({ currentVersion: null, latestVersion: null });
-    expect(screen.getByText("No successful checks yet.")).toBeInTheDocument();
   });
 
   it("shows upgrade call-to-action if not in Enterprise plan", () => {

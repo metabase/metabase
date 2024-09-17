@@ -44,8 +44,8 @@ export const StrategyFormLauncher = ({
     isBeingEdited || hovered
       ? "filled"
       : inheritsRootStrategy || forRoot
-      ? "default"
-      : "outline";
+        ? "default"
+        : "outline";
   const shortStrategyLabel = getShortStrategyLabel(
     inheritsRootStrategy ? rootStrategy : strategy,
   );
@@ -53,10 +53,10 @@ export const StrategyFormLauncher = ({
   const ariaLabel = forRoot
     ? t`Edit default policy (currently: ${shortStrategyLabel})`
     : inheritsRootStrategy
-    ? t`Edit policy for database '${title}' (currently inheriting the default policy, ${getShortStrategyLabel(
-        rootStrategy,
-      )})`
-    : t`Edit policy for database '${title}' (currently: ${shortStrategyLabel})`;
+      ? t`Edit policy for database '${title}' (currently inheriting the default policy, ${getShortStrategyLabel(
+          rootStrategy,
+        )})`
+      : t`Edit policy for database '${title}' (currently: ${shortStrategyLabel})`;
 
   const launchForm = () => {
     if (targetId !== forId) {

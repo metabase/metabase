@@ -206,15 +206,8 @@ function databaseSupportsPivotTables(query: StructuredQuery) {
   return database.supportsPivots();
 }
 
-export function isSensible(
-  { cols }: { cols: DatasetColumn[] },
-  query: StructuredQuery,
-) {
-  return (
-    cols.length >= 2 &&
-    cols.every(isColumnValid) &&
-    databaseSupportsPivotTables(query)
-  );
+export function isSensible({ cols }: { cols: DatasetColumn[] }) {
+  return cols.length >= 2 && cols.every(isColumnValid);
 }
 
 export function checkRenderable(

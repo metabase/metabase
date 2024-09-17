@@ -1,11 +1,19 @@
-import { modal } from "e2e/support/helpers";
+import { match } from "ts-pattern";
+
+import { modal, popover } from "e2e/support/helpers";
 import {
   type ScheduleComponentType,
   getScheduleComponentLabel,
 } from "metabase/components/Schedule/constants";
-import type { CacheStrategyType, CacheableModel } from "metabase-types/api";
+import type {
+  CacheStrategyType,
+  CacheableModel,
+  DoNotCacheStrategy,
+  InheritStrategy,
+} from "metabase-types/api";
 
-import { databaseCachingPage } from "./e2e-performance-helpers";
+import { databaseCachingPage, log } from "./e2e-performance-helpers";
+import type { SelectCacheStrategyOptions, StrategyBearer } from "./types";
 
 /** Save the cache strategy form and wait for a response from the relevant endpoint */
 export const saveCacheStrategyForm = (options?: {
@@ -77,18 +85,31 @@ export const openStrategyFormForDatabaseOrDefaultPolicy = (
 export const getScheduleComponent = (componentType: ScheduleComponentType) =>
   cacheStrategyForm().findByLabelText(getScheduleComponentLabel(componentType));
 
-export const openSidebar = () => {
-  cy.findByLabelText("info icon").click();
+export const openSidebar = (type: "question" | "dashboard") => {
+  // this will change when we move to having a dashboard settings sidesheet
+  if (type === "dashboard") {
+    cy.icon("info").click();
+    return;
+  }
+
+  if (type === "question") {
+    cy.findByTestId("qb-header").icon("ellipsis").click();
+  }
+
+  popover().findByText("Edit settings").click();
 };
+
 export const closeSidebar = () => {
-  cy.findByLabelText("info icon").click();
+  cy.findByLabelText("Close").click();
 };
 
 /** Open the sidebar form that lets you set the caching strategy.
  * This works on dashboards and questions */
-export const openSidebarCacheStrategyForm = () => {
+export const openSidebarCacheStrategyForm = (
+  type: "question" | "dashboard",
+) => {
   cy.log("Open the cache strategy form in the sidebar");
-  openSidebar();
+  openSidebar(type);
   cy.wait("@getCacheConfig");
   cy.findByLabelText("Caching policy").click();
 };
@@ -98,4 +119,97 @@ export const cancelConfirmationModal = () => {
     cy.findByText("Discard your changes?");
     cy.button("Cancel").click();
   });
+};
+
+export const getRadioButtonForStrategyType = (
+  strategyType: CacheStrategyType,
+) =>
+  match(strategyType)
+    .with("duration", () => durationRadioButton())
+    .with("ttl", () => adaptiveRadioButton())
+    .with("schedule", () => scheduleRadioButton())
+    .with("inherit", () => useDefaultRadioButton())
+    .with("nocache", () => dontCacheResultsRadioButton())
+    .exhaustive();
+
+/** Select a cache invalidation strategy for an item.
+ * The item can be a question, dashboard, database,
+ * or the instance-wide default policy (the "root"). */
+export const selectCacheStrategy = ({
+  item,
+  strategy,
+  oss = false,
+}: SelectCacheStrategyOptions) => {
+  log(`Selecting ${strategy.type} strategy for ${item.model}`);
+
+  // On OSS, you can only set the root policy, so there's no need to open a
+  // specific strategy form
+  if (oss) {
+    cy.visit("/admin/performance");
+    cacheStrategyForm();
+  } else {
+    openStrategyFormFor(item);
+  }
+
+  getRadioButtonForStrategyType(strategy.type).click();
+
+  if ("multiplier" in strategy && strategy.multiplier) {
+    cy.findByLabelText(/Multiplier/).type(`${strategy.multiplier}`);
+  }
+
+  if ("min_duration_ms" in strategy && strategy.min_duration_ms) {
+    cy.findByLabelText(/Minimum query duration/).type(
+      `${strategy.min_duration_ms / 1000}`,
+    );
+  }
+
+  if ("duration" in strategy && strategy.duration) {
+    cy.findByLabelText("Cache results for this many hours").type(
+      `${strategy.duration}`,
+    );
+  }
+
+  if ("schedule" in strategy && strategy.schedule) {
+    if (strategy.schedule !== "0 0 * * * ?") {
+      throw new Error(
+        `The schedule ${strategy.schedule} is not supported in this test. Only an hourly schedule ("0 0 * * * ?") is supported`,
+      );
+    }
+  }
+
+  saveCacheStrategyForm({ strategyType: strategy.type, model: item?.model });
+};
+
+export const disableCaching = (
+  options: Omit<SelectCacheStrategyOptions<DoNotCacheStrategy>, "strategy">,
+) =>
+  selectCacheStrategy({
+    ...options,
+    strategy: { type: "nocache" },
+  });
+
+/** Set the cache invalidation strategy to 'Use default' */
+export const useDefaultCacheStrategy = (
+  options: Omit<SelectCacheStrategyOptions<InheritStrategy>, "strategy">,
+) =>
+  selectCacheStrategy({
+    ...options,
+    strategy: { type: "inherit" },
+  });
+
+const openStrategyFormFor = (item: StrategyBearer) => {
+  return match(item)
+    .with({ model: "database" }, ({ name }) => {
+      openStrategyFormForDatabaseOrDefaultPolicy(name);
+    })
+    .with({ model: "root" }, () => {
+      openStrategyFormForDatabaseOrDefaultPolicy("default policy");
+    })
+    .with({ model: "question" }, () => {
+      openSidebarCacheStrategyForm("question");
+    })
+    .with({ model: "dashboard" }, () => {
+      openSidebarCacheStrategyForm("dashboard");
+    })
+    .exhaustive();
 };

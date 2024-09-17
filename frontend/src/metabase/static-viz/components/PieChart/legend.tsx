@@ -1,7 +1,4 @@
-import {
-  DIMENSIONS,
-  OTHER_SLICE_KEY,
-} from "metabase/visualizations/echarts/pie/constants";
+import { DIMENSIONS } from "metabase/visualizations/echarts/pie/constants";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -22,22 +19,16 @@ export function getPieChartLegend(
   } = calculateLegendRowsWithColumns({
     items: chartModel.slices
       .filter(s => s.data.includeInLegend)
-      .map(s => {
-        const label = s.data.isOther
-          ? OTHER_SLICE_KEY // need to use this instead of `s.data.key` to ensure type is string
-          : s.data.name;
-
-        return {
-          name: label,
-          percent:
-            settings["pie.percent_visibility"] === "legend" ||
-            settings["pie.percent_visibility"] === "both"
-              ? formatters.formatPercent(s.data.normalizedPercentage, "legend")
-              : undefined,
-          color: s.data.color,
-          key: String(s.data.key),
-        };
-      }),
+      .map(s => ({
+        name: s.data.name,
+        percent:
+          settings["pie.percent_visibility"] === "legend" ||
+          settings["pie.percent_visibility"] === "both"
+            ? formatters.formatPercent(s.data.normalizedPercentage, "legend")
+            : undefined,
+        color: s.data.color,
+        key: String(s.data.key),
+      })),
     width: DIMENSIONS.maxSideLength,
     horizontalPadding: DIMENSIONS.padding.side,
   });

@@ -6,7 +6,6 @@ import { EditableDashboard } from "./EditableDashboard";
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || 1;
 
-// eslint-disable-next-line import/no-default-export
 export default {
   title: "EmbeddingSDK/EditableDashboard",
   component: EditableDashboard,

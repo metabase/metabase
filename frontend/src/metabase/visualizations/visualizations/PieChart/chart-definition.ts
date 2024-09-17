@@ -2,7 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
-import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import {
   ChartSettingsError,
@@ -20,6 +20,7 @@ import {
   getDefaultSliceThreshold,
   getDefaultSortRows,
   getPieRows,
+  getPieSortRowsDimensionSetting,
 } from "metabase/visualizations/shared/settings/pie";
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
 import { getDefaultShowTotal } from "metabase/visualizations/shared/settings/waterfall";
@@ -92,7 +93,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     }),
     "pie.rows": {
       section: t`Data`,
-      widget: ChartSettingOrderedSimple,
+      widget: ChartSettingSeriesOrder,
       getHidden: (_rawSeries, settings) => settings["pie.dimension"] == null,
       getValue: (rawSeries, settings) => {
         return getPieRows(rawSeries, settings, (value, options) =>
@@ -107,6 +108,8 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         onChangeSettings,
       ) => {
         return {
+          addButtonLabel: t`Add another row`,
+          searchPickerPlaceholder: t`Select a row`,
           onChangeSeriesColor: (sliceKey: string, color: string) => {
             const pieRows = vizSettings["pie.rows"];
             if (pieRows == null) {
@@ -126,6 +129,8 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
             onChangeSettings({
               "pie.sort_rows": false,
               "pie.rows": newPieRows,
+              "pie.sort_rows_dimension":
+                getPieSortRowsDimensionSetting(vizSettings),
             }),
         };
       },
@@ -136,6 +141,13 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         "pie.sort_rows",
         "pie.slice_threshold",
       ],
+      writeDependencies: ["pie.sort_rows_dimension"],
+    },
+    "pie.sort_rows_dimension": {
+      getValue: (_series, settings) => getPieSortRowsDimensionSetting(settings),
+      // This read dependency is set so that "pie.sort_rows" is computed *before* this value, ensuring that
+      // that it uses the stored value if one exists. This is needed to check if the dimension has actually changed
+      readDependencies: ["pie.sort_rows", "pie.dimension"],
     },
     "pie.sort_rows": {
       hidden: true,

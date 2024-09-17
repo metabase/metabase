@@ -12,7 +12,7 @@ const mockPaletteActionImpl = (opts: Partial<PaletteActionImpl>) =>
     ancestors: [],
     children: [],
     ...opts,
-  } as PaletteActionImpl);
+  }) as PaletteActionImpl;
 
 const setup = ({
   active = false,

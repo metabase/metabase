@@ -53,7 +53,9 @@
 }
 
 .SummarizeButton {
-  transition: background 300ms linear, border 300ms linear;
+  transition:
+    background 300ms linear,
+    border 300ms linear;
 
   &:hover:not([data-active="true"]) {
     color: var(--mb-color-summarize);

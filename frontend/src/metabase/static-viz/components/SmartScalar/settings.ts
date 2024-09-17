@@ -7,13 +7,12 @@ import {
   getDefaultComparison,
   isSuitableScalarColumn,
 } from "metabase/visualizations/visualizations/SmartScalar/utils";
-import type { RawSeries, VisualizationSettings } from "metabase-types/api";
+import type { RawSeries } from "metabase-types/api";
 
 export const computeSmartScalarSettings = (
   rawSeries: RawSeries,
-  dashcardSettings: VisualizationSettings,
 ): ComputedVisualizationSettings => {
-  const settings = getCommonStaticVizSettings(rawSeries, dashcardSettings);
+  const settings = getCommonStaticVizSettings(rawSeries);
 
   settings["scalar.field"] ??= getDefaultColumn(
     rawSeries,

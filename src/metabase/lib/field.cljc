@@ -167,8 +167,8 @@
                   {:display-name (or (:display-name opts)
                                      (lib.metadata.calculation/display-name query stage-number field-ref))})]
     (cond-> metadata
+      base-type      (assoc :base-type base-type, :effective-type base-type)
       effective-type (assoc :effective-type effective-type)
-      base-type      (assoc :base-type base-type)
       temporal-unit  (assoc ::temporal-unit temporal-unit)
       binning        (assoc ::binning binning)
       source-field   (assoc :fk-field-id source-field)

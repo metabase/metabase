@@ -205,52 +205,54 @@ export function getPieChartOption(
   };
 
   // Series data
-  const data = chartModel.slices.map(s => {
-    const labelColor = getTextColorForBackground(
-      s.data.color,
-      renderingContext.getColor,
-    );
-    const label = formatSlicePercent(s.data.key);
-    const isLabelVisible = getIsLabelVisible(
-      label,
-      s,
-      innerRadius,
-      outerRadius,
-      fontSize,
-      renderingContext,
-    );
+  const data = chartModel.slices
+    .filter(s => s.data.visible)
+    .map(s => {
+      const labelColor = getTextColorForBackground(
+        s.data.color,
+        renderingContext.getColor,
+      );
+      const label = formatSlicePercent(s.data.key);
+      const isLabelVisible = getIsLabelVisible(
+        label,
+        s,
+        innerRadius,
+        outerRadius,
+        fontSize,
+        renderingContext,
+      );
 
-    return {
-      value: s.data.value,
-      name: s.data.key,
-      itemStyle: { color: s.data.color },
-      label: {
-        color: labelColor,
-        formatter: () => (isLabelVisible ? label : " "),
-      },
-      emphasis: {
-        itemStyle: {
-          color: s.data.color,
-          borderColor: renderingContext.theme.pie.borderColor,
-        },
-      },
-      blur: {
-        itemStyle: {
-          // We have to fade the slices through `color` rather than `opacity`
-          // becuase echarts' will apply the opacity to the white border,
-          // causing the underlying color to leak. It is safe to use non-hex
-          // values here, since this value will never be used in batik
-          // (there's no emphasis/blur for static viz).
-          color: Color(s.data.color).fade(0.7).rgb().string(),
-          opacity: 1,
-        },
+      return {
+        value: s.data.value,
+        name: s.data.name,
+        itemStyle: { color: s.data.color },
         label: {
-          opacity:
-            labelColor === renderingContext.getColor("text-dark") ? 0.3 : 1,
+          color: labelColor,
+          formatter: () => (isLabelVisible ? label : " "),
         },
-      },
-    };
-  });
+        emphasis: {
+          itemStyle: {
+            color: s.data.color,
+            borderColor: renderingContext.theme.pie.borderColor,
+          },
+        },
+        blur: {
+          itemStyle: {
+            // We have to fade the slices through `color` rather than `opacity`
+            // becuase echarts' will apply the opacity to the white border,
+            // causing the underlying color to leak. It is safe to use non-hex
+            // values here, since this value will never be used in batik
+            // (there's no emphasis/blur for static viz).
+            color: Color(s.data.color).fade(0.7).rgb().string(),
+            opacity: 1,
+          },
+          label: {
+            opacity:
+              labelColor === renderingContext.getColor("text-dark") ? 0.3 : 1,
+          },
+        },
+      };
+    });
 
   return {
     // Unlike the cartesian chart, `animationDuration: 0` does not prevent the
