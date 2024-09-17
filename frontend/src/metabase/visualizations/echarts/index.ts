@@ -1,12 +1,14 @@
 import {
   BarChart,
   CustomChart,
+  TreemapChart,
   LineChart,
   ScatterChart,
   SunburstChart,
 } from "echarts/charts";
 import {
   BrushComponent,
+  CalendarComponent,
   DataZoomComponent,
   DatasetComponent,
   GraphicComponent,
@@ -14,6 +16,7 @@ import {
   MarkLineComponent,
   ToolboxComponent,
   TooltipComponent,
+  VisualMapComponent,
 } from "echarts/components";
 import { use } from "echarts/core";
 import { LabelLayout } from "echarts/features";
@@ -26,6 +29,7 @@ export const registerEChartsModules = () => {
     ScatterChart,
     CustomChart,
     SunburstChart,
+    TreemapChart,
     GraphicComponent,
     GridComponent,
     BarChart,
@@ -37,5 +41,7 @@ export const registerEChartsModules = () => {
     DatasetComponent,
     LabelLayout,
     TooltipComponent,
+    CalendarComponent,
+    VisualMapComponent,
   ]);
 };
