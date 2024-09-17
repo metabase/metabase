@@ -27,12 +27,14 @@ const QuestionDisplayToggle = ({
     >
       <ToggleIcon active={isShowingRawTable} aria-label={t`Switch to data`}>
         <Icon name="table2" />
+        {t`Results`}
       </ToggleIcon>
       <ToggleIcon
         active={!isShowingRawTable}
         aria-label={t`Switch to visualization`}
       >
         <Icon name={vizIcon} />
+        {t`Visualization`}
       </ToggleIcon>
     </Well>
   );
