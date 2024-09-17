@@ -18,6 +18,7 @@ import {
   HeaderContainer,
   Root,
 } from "./QuestionInfoSidebar.styled";
+import { useMessages } from "./hooks/useMessages";
 
 interface QuestionInfoSidebarProps {
   question: Question;
@@ -33,6 +34,8 @@ export const QuestionInfoSidebar = ({
   const [pageId, setPageId] = useState<AnalysisPageId>("edit_viz");
   const scrollableStackRef = useRef<HTMLDivElement | null>(null);
 
+  const { messages, clearMessages, addMessage } = useMessages();
+
   const page = match(pageId)
     .with("default", () => (
       <DefaultPage question={question} onSave={onSave} setPageId={setPageId} />
@@ -42,6 +45,8 @@ export const QuestionInfoSidebar = ({
       <EditVizPage
         question={question}
         scrollableStackRef={scrollableStackRef}
+        messages={messages}
+        addMessage={addMessage}
       />
     ))
     .with("caching", () => (
@@ -63,15 +68,30 @@ export const QuestionInfoSidebar = ({
             ref={scrollableStackRef}
           >
             <Flex gap="sm" p="1rem">
-              <Button onClick={() => setPageId("default")}>
+              <Button
+                c={pageId === "default" ? "var(--mb-color-brand)" : undefined}
+                onClick={() => setPageId("default")}
+              >
                 <Icon name="info" />
               </Button>
+              {/*
               <Button onClick={() => setPageId("describe")}>
                 <Icon name="gear" />
               </Button>
+                */}
               <Tooltip label={t`Edit visualization with AI`}>
-                <Button onClick={() => setPageId("edit_viz")}>
+                <Button
+                  c={
+                    pageId === "edit_viz" ? "var(--mb-color-brand)" : undefined
+                  }
+                  onClick={() => setPageId("edit_viz")}
+                >
                   <Icon name="palette" />
+                </Button>
+              </Tooltip>
+              <Tooltip label={t`Clear AI history`}>
+                <Button onClick={clearMessages}>
+                  <Icon name="trash" />
                 </Button>
               </Tooltip>
             </Flex>

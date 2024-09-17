@@ -5,6 +5,8 @@ import _ from "underscore";
 
 import Markdown from "metabase/core/components/Markdown";
 import MetabotLogo from "metabase/core/components/MetabotLogo";
+import { useDispatch } from "metabase/lib/redux";
+import { updateQuestion } from "metabase/query_builder/actions";
 import {
   Box,
   Button,
@@ -16,75 +18,28 @@ import {
   Stack,
   Text,
   Textarea,
+  Tooltip,
 } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
+import type { FieldReference } from "metabase-types/api";
 
 import Styles from "./EditVizPage.module.css";
-import type { PydanticModelSchemaName, QueryField } from "./types";
-import { adhockifyURL, getLLMResponse, isStringifiedQuery } from "./utils";
-import { FieldReference } from "metabase-types/api";
-
-type Author = "user" | "llm";
-
-type Message = {
-  content: string;
-  author: Author;
-};
-
-const isAuthor = (author: unknown): author is Author => {
-  return author === "user" || author === "llm";
-};
-
-const isMessage = (message: unknown): message is Message => {
-  if (!_.isObject(message)) {
-    return false;
-  }
-  if (!("content" in message)) {
-    return false;
-  }
-  if (!("author" in message)) {
-    return false;
-  }
-  if (!isAuthor(message.author)) {
-    return false;
-  }
-  if (!_.isString(message.content)) {
-    return false;
-  }
-  return true;
-};
+import type { Message, QueryField } from "./types";
+import { getColumnsWithSampleValues, getLLMResponse } from "./utils";
 
 export const EditVizPage = ({
   scrollableStackRef,
   question,
+  messages,
+  addMessage,
 }: {
   question: Question;
   scrollableStackRef: React.RefObject<HTMLDivElement>;
+  messages: Message[];
+  addMessage: (message: Message) => void;
 }) => {
   const query = question._card.dataset_query;
   const visualizationSettings = question._card.visualization_settings;
-
-  const savedMessages = useMemo(() => {
-    const messagesJson = localStorage.getItem("messages");
-    if (!messagesJson) {
-      return [];
-    }
-    try {
-      const messages = JSON.parse(messagesJson);
-      if (!Array.isArray(messages)) {
-        throw "Saved messages are not an array";
-      }
-      if (!messages.every(m => isMessage(m))) {
-        throw "Saved messages do not all conform to the Message type";
-      }
-      return messages as Message[];
-    } catch (e) {
-      console.error(e, messagesJson);
-      return [];
-    }
-  }, []);
-
-  const [messages, setMessages] = useState<Message[]>(savedMessages);
 
   const scrollMessagesToBottom = useCallback(
     () =>
@@ -94,26 +49,32 @@ export const EditVizPage = ({
     [scrollableStackRef],
   );
 
-  useEffect(() => {
-    localStorage.setItem("messages", JSON.stringify(messages));
-  }, [messages]);
-
-  const addMessage = useCallback(
-    (message: Message) => {
-      setMessages(messages => [...messages, message]);
-    },
-    [setMessages],
-  );
-
   const [isAwaitingLLMResponse, setIsAwaitingLLMResponse] = useState(false);
 
+  const data = (window as { questionData?: any }).questionData[0]?.data;
+  const { cols, rows } = data;
+  const fieldsWithSampleValues = useMemo(() => {
+    return getColumnsWithSampleValues(cols, rows);
+  }, [cols, rows]);
+
+  // So that the LLM has better information, we're going to concatenate the id
+  // with the field name and remove this name later.
   const fields = useMemo(
     () =>
       question._card.result_metadata
         .filter(field => field.field_ref)
         .map(field => [
-          ...(field.field_ref as FieldReference),
-          { base_type: field.base_type },
+          ...([
+            field.field_ref?.[0],
+            // Concatenate the id with the field name
+            `${field.field_ref?.[1]}.${field.display_name}`,
+            ...(field.field_ref as FieldReference)?.slice(2),
+          ] as FieldReference),
+          {
+            name: field.name,
+            display_name: field.display_name,
+            base_type: field.base_type,
+          },
         ]) as QueryField[],
     [question],
   );
@@ -130,77 +91,81 @@ export const EditVizPage = ({
         return;
       }
       setIsAwaitingLLMResponse(true);
-      let systemPrompt = "Your name is Metabot. ";
-      let modelSchemaName: PydanticModelSchemaName | undefined = undefined;
-      if (/^\[query\]/.test(content)) {
-        systemPrompt += `
-        JSON for the currently viewed question: ${JSON.stringify(query)}.
-        JSON for the question's fields: ${JSON.stringify(fields)}.
-        JSON for the question's visualization settings: ${JSON.stringify(
-          visualizationSettings,
-        )}
-        `;
-        modelSchemaName = "QueryWithViz";
-      }
-      let response = await getLLMResponse(
-        content,
-        modelSchemaName,
+      const systemPrompt = `Your name is Metabot.
+
+      * Title of the currently viewed question: ${question.displayName()}.
+      *
+      * JSON for the currently viewed question: ${JSON.stringify(query)}.
+
+      * JSON for the question's fields: ${JSON.stringify(fields)}.
+
+      * Sample values for each field: ${fieldsWithSampleValues}.
+
+      * JSON for the question's visualization settings: ${JSON.stringify(
+        visualizationSettings,
+      )}
+      `;
+      let { tool_output, assistant_output: response } = await getLLMResponse(
+        `${content}
+
+        ${systemPrompt}`,
         systemPrompt,
         fields,
       );
-      const maybeQuery = isStringifiedQuery(response);
-      if (maybeQuery) {
-        console.log("query", query);
-        console.log("maybeQuery", maybeQuery);
-        // Simplify
+      let completeNewQuery = null;
 
+      if (tool_output) {
+        const newQuery = JSON.parse(tool_output);
         // If the filter is an "and" with only one clause, remove the "and"
         if (
-          maybeQuery.query.filter[0][0] === "and" &&
-          maybeQuery.query.filter[0].length === 2
+          newQuery.query.filter[0][0] === "and" &&
+          newQuery.query.filter[0].length === 2
         ) {
-          maybeQuery.query.filter = maybeQuery.query.filter[0][1];
+          newQuery.query.filter = newQuery.query.filter[0][1];
         }
 
-        const completeQuery = {
+        completeNewQuery = {
           dataset_query: {
             ...query,
-            ...maybeQuery,
+            ...newQuery,
             query: {
               ...("query" in query ? query.query : {}),
-              ...maybeQuery.query,
+              ...newQuery.query,
             },
           },
-          display: maybeQuery.display,
+          display: newQuery.display,
         };
-        console.log("completeQuery", completeQuery);
-        const { adhocQuestionURL } = adhockifyURL(completeQuery);
+        //const { adhocQuestionURL } = adhockifyURL(completeNewQuery);
 
-        const proseResponse = await getLLMResponse(
+        const { assistant_output: proseResponse } = await getLLMResponse(
           `You are an excellent author of website copy. You know the currently viewed question. Here is a modified version of that question: ${JSON.stringify(
-            completeQuery,
-          )}. Provide text for a link that leads from the current question to the modified question. It should be a short, descriptive, specific phrase in sentence case. Do not add quotation marks around the phrase.`,
-          undefined,
+            completeNewQuery,
+          )}. Provide text for a link that leads from the current question to the modified question. It should be a short, descriptive, specific phrase in sentence case. Do not add quotation marks around the phrase. Just provide the phrase itself with no other text.`,
           systemPrompt,
         );
-        response = `[${proseResponse}](${adhocQuestionURL})`;
+        //response = [${proseResponse}](${adhocQuestionURL})`;
+        response = proseResponse;
       }
       addMessage({
         content: response,
         author: "llm",
+        newQuery: completeNewQuery,
       });
+
       setIsAwaitingLLMResponse(false);
     };
     sendMessageToLLM();
   }, [
+    addMessage,
+    fields,
+    fieldsWithSampleValues,
     messages,
     query,
-    fields,
-    visualizationSettings,
-    addMessage,
-    scrollableStackRef,
+    question,
     scrollMessagesToBottom,
+    scrollableStackRef,
     setIsAwaitingLLMResponse,
+    visualizationSettings,
   ]);
 
   return (
@@ -212,7 +177,7 @@ export const EditVizPage = ({
         pos="relative"
         justify="flex-end"
       >
-        <Messages messages={messages} />
+        <Messages messages={messages} question={question} />
       </Stack>
       <Box
         pos="absolute"
@@ -313,18 +278,62 @@ const WriteMessage = ({
   );
 };
 
-const AIMessageDisplay = ({ message }: { message: Message }) => {
+const AIMessageDisplay = ({
+  message,
+  question,
+}: {
+  message: Message;
+  question: Question;
+}) => {
+  const markdown = (
+    <Markdown linkTarget="" className={Styles.AIMessageMarkdown}>
+      {message.content}
+    </Markdown>
+  );
   return (
     <Flex justify="flex-start">
-      <Flex maw="100%">
+      <Stack maw="100%" spacing="xs">
         <Group noWrap align="flex-start" spacing="sm">
           <MetabotLogo style={{ width: "1.5rem" }} />
-          <Markdown linkTarget="" className={Styles.AIMessageMarkdown}>
-            {message.content}
-          </Markdown>
+          {message.newQuery ? (
+            <LoadNewQuestionButton message={message} question={question}>
+              {markdown}
+            </LoadNewQuestionButton>
+          ) : (
+            markdown
+          )}
         </Group>
-      </Flex>
+      </Stack>
     </Flex>
+  );
+};
+
+const LoadNewQuestionButton = ({
+  message,
+  question,
+  children,
+}: {
+  message: Message;
+  question: Question;
+  children: React.ReactNode;
+}) => {
+  const dispatch = useDispatch();
+  return (
+    <Tooltip label={children}>
+      <Button
+        px="md"
+        py="xs"
+        variant="filled"
+        onClick={() => {
+          const nextQuestion = question.setDatasetQuery(
+            message.newQuery.dataset_query,
+          );
+          dispatch(updateQuestion(nextQuestion, { run: true }));
+        }}
+      >
+        {children}
+      </Button>
+    </Tooltip>
   );
 };
 
@@ -338,25 +347,33 @@ const UserMessageDisplay = ({ message }: { message: Message }) => {
   );
 };
 
-const MessageDisplay = ({ message }: { message: Message }) => {
+const MessageDisplay = ({
+  message,
+  question,
+}: {
+  message: Message;
+  question: Question;
+}) => {
   return match(message.author)
-    .with("llm", () => <AIMessageDisplay message={message} />)
+    .with("llm", () => (
+      <AIMessageDisplay message={message} question={question} />
+    ))
     .with("user", () => <UserMessageDisplay message={message} />)
     .exhaustive();
 };
 
-const Messages = ({ messages }: { messages: Message[] }) => {
+const Messages = ({
+  messages,
+  question,
+}: {
+  messages: Message[];
+  question: Question;
+}) => {
   return (
     <Stack spacing="lg" pb="7rem">
       {messages.map((message, index) => (
-        <MessageDisplay key={index} message={message} />
+        <MessageDisplay key={index} message={message} question={question} />
       ))}
     </Stack>
   );
 };
-
-// {"dataset_query":{"database":8,"type":"query","query":{"source-table":"card__256"}},"display":"line","displayIsLocked":true,"parameters":[],"visualization_settings":{"table.pivot_column":"year_being_forecast","table.cell_column":"month_of_forecast","graph.dimensions":["month_of_forecast"],"graph.series_order_dimension":null,"graph.series_order":null,"graph.metrics":["forecast_percent_change"]},"original_card_id":283,"type":"question"}
-
-// Expected:
-// {"dataset_query":{"database":1,"type":"query","query":{"source-table":6,"filter":["=",["field",15,{"base-type":"type/Text"}],"AG"]}},"display":"table","visualization_settings":{}}
-// Actual: {"dataset_query":{"database":1,"type":"query","query":{"source-table":6}},"display":"table","query":{"aggregation":[["field",7,null,{"base_type":"type/BigInteger"}],["field",12,null,{"base_type":"type/Text"}],["field",9,null,{"base_type":"type/Text"}],["field",10,null,{"base_type":"type/Text"}],["field",4,null,{"base_type":"type/Text"}],["field",11,null,{"base_type":"type/Text"}],["field",1,null,{"base_type":"type/Integer"}],["field",13,{"temporal-unit":"default"},{"base_type":"type/DateTime"}],["field",2,{"temporal-unit":"default"},{"base_type":"type/DateTime"}],["field",3,{"temporal-unit":"default"},{"base_type":"type/DateTime"}],["field",14,null,{"base_type":"type/Boolean"}],["field",5,null,{"base_type":"type/Boolean"}],["field",8,null,{"base_type":"type/Boolean"}],["field",6,null,{"base_type":"type/Float"}],["field",16,null,{"base_type":"type/Float"}],["field",15,null,{"base_type":"type/Text"}]],"breakout":[["field",4,null,{"base_type":"type/Text"}]],"filter":[["and",["=",["field",4,null,{"base_type":"type/Text"}],"AG"]]]}}
