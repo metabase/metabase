@@ -140,10 +140,6 @@
    template          :- models.channel/ChannelTemplate
    recipients        :- [:sequential models.notification/NotificationRecipient]]
   (assert (some? template) "Template is required for system event notifications")
-  (def notification-info notification-info)
-  (def template template)
-  (def recipients recipients)
-  (def payload (:payload notification-info))
   (let [payload (:payload notification-info)]
     [(construct-email (channel.params/substitute-params (-> template :details :subject) payload)
                       (notification-recipients->emails recipients)
