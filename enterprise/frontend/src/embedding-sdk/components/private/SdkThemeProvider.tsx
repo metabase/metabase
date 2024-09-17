@@ -19,6 +19,7 @@ interface Props {
 }
 
 export const SdkThemeProvider = ({ theme, children }: Props) => {
+  const font = useSelector(getFont);
   const appColors = useSelector(state =>
     getApplicationColors(getSettings(state)),
   );
@@ -28,18 +29,18 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
     // This must be done before ThemeProvider calls getThemeOverrides.
     setGlobalEmbeddingColors(theme?.colors, appColors);
 
-    return theme && getEmbeddingThemeOverride(theme);
-  }, [appColors, theme]);
+    return theme && getEmbeddingThemeOverride(theme, font);
+  }, [appColors, theme, font]);
 
   return (
     <ThemeProvider theme={themeOverride}>
-      <SDKGlobalStyles />
+      <GlobalSdkCssVariables />
       {children}
     </ThemeProvider>
   );
 };
 
-function SDKGlobalStyles() {
+function GlobalSdkCssVariables() {
   const theme = useMantineTheme();
   const font = useSelector(getFont);
 

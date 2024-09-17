@@ -36,7 +36,6 @@
           "name": "text-exact-match",
           "weight": 4,
           "match": "waterfall quarter bucket native",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@1310237b",
           "column": "name"
         },
         {
@@ -44,7 +43,6 @@
           "name": "text-consecutivity",
           "weight": 2,
           "match": "waterfall quarter bucket native",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@4b65a3ce",
           "column": "name"
         },
         {
@@ -52,7 +50,6 @@
           "name": "text-total-occurrences",
           "weight": 2,
           "match": "waterfall quarter bucket native",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@794e8bd7",
           "column": "name"
         },
         {
@@ -60,7 +57,6 @@
           "name": "text-fullness",
           "weight": 1,
           "match": "waterfall quarter bucket native",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@4a0c822f",
           "column": "name"
         },
         {
@@ -68,7 +64,6 @@
           "name": "text-prefix",
           "weight": 1,
           "match": "waterfall quarter bucket native",
-          "match-context-thunk": "metabase.search.scoring$text_scores_with$iter__126238__126244$fn__126245$iter__126240__126246$fn__126247$fn__126248$fn__126251@58957bee",
           "column": "name"
         }
       ],

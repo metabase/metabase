@@ -26,7 +26,6 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
 import { trackPageView } from "metabase/lib/analytics";
-import MetabaseSettings from "metabase/lib/settings";
 import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
 import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
@@ -52,6 +51,7 @@ import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import { BrowseDatabases } from "./browse/components/BrowseDatabases";
+import { BrowseMetrics } from "./browse/components/BrowseMetrics";
 import { BrowseModels } from "./browse/components/BrowseModels";
 import BrowseSchemas from "./browse/components/BrowseSchemas";
 import { BrowseTables } from "./browse/components/BrowseTables";
@@ -62,10 +62,13 @@ import {
   IsAuthenticated,
   IsNotAuthenticated,
 } from "./route-guards";
+import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
 export const getRoutes = store => {
   const applicationName = getApplicationName(store.getState());
+  const hasUserSetup = getSetting(store.getState(), "has-user-setup");
+
   return (
     <Route title={applicationName} component={App}>
       {/* SETUP */}
@@ -73,7 +76,7 @@ export const getRoutes = store => {
         path="/setup"
         component={Setup}
         onEnter={(nextState, replace) => {
-          if (MetabaseSettings.hasUserSetup()) {
+          if (hasUserSetup) {
             replace("/");
           }
           trackPageView(location.pathname);
@@ -206,6 +209,7 @@ export const getRoutes = store => {
 
           <Route path="browse">
             <IndexRedirect to="/browse/models" />
+            <Route path="metrics" component={BrowseMetrics} />
             <Route path="models" component={BrowseModels} />
             <Route path="databases" component={BrowseDatabases} />
             <Route path="databases/:slug" component={BrowseSchemas} />

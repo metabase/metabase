@@ -24,7 +24,7 @@ Summarize a question.
 
 -  **`collection_position`** nullable value must be an integer greater than zero.
 
--  **`result_metadata`** nullable :metabase.analyze.query-results/ResultsMetadata.
+-  **`result_metadata`** nullable value must be an array of valid results column metadata maps.
 
 -  **`collection_id`** nullable value must be an integer greater than zero.
 

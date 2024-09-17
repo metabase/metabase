@@ -91,7 +91,7 @@ export const COLLECTION_ITEM_MODELS = [
   "collection",
   "indexed-entity",
 ] as const;
-export type CollectionItemModel = typeof COLLECTION_ITEM_MODELS[number];
+export type CollectionItemModel = (typeof COLLECTION_ITEM_MODELS)[number];
 
 export type CollectionItemId = number;
 
@@ -129,8 +129,6 @@ export interface CollectionItem {
   setCollectionPreview?: (isEnabled: boolean) => void;
 }
 
-export type StaleCollectionItem = CollectionItem & { last_used_at: string };
-
 export interface CollectionListQuery {
   archived?: boolean;
   "exclude-other-user-collections"?: boolean;
@@ -157,17 +155,6 @@ export type ListCollectionItemsRequest = {
 export type ListCollectionItemsResponse = {
   data: CollectionItem[];
   models: CollectionItemModel[] | null;
-} & PaginationResponse;
-
-export type ListStaleCollectionItemsRequest = {
-  id: CollectionId;
-  before_date?: string;
-  is_recursive?: boolean;
-} & PaginationRequest &
-  Partial<SortingOptions>;
-
-export type ListStaleCollectionItemsResponse = {
-  data: StaleCollectionItem[];
 } & PaginationResponse;
 
 export interface UpdateCollectionRequest {

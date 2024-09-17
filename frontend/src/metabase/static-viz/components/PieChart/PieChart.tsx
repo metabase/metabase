@@ -14,17 +14,14 @@ import { computeStaticPieChartSettings } from "./settings";
 
 export function PieChart({
   rawSeries,
-  dashcardSettings,
   renderingContext,
   isStorybook,
 }: StaticChartProps) {
-  const computedVizSettings = computeStaticPieChartSettings(
-    rawSeries,
-    dashcardSettings,
-  );
+  const computedVizSettings = computeStaticPieChartSettings(rawSeries);
   const chartModel = getPieChartModel(
     rawSeries,
     computedVizSettings,
+    [],
     renderingContext,
   );
   const formatters = getPieChartFormatters(

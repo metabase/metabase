@@ -50,6 +50,7 @@ import type {
   Group,
   GroupPermissions,
   GroupsPermissions,
+  ModelCacheRefreshStatus,
   Revision,
   SearchResult,
   User,
@@ -364,6 +365,7 @@ export const PLUGIN_MODERATION = {
   QuestionModerationSection: PluginPlaceholder,
   QuestionModerationButton: PluginPlaceholder,
   ModerationReviewBanner: PluginPlaceholder,
+  ModerationReviewText: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
   getQuestionIcon: PluginPlaceholder,
   getStatusIcon: (_moderated_status?: string): string | IconProps | undefined =>
@@ -396,17 +398,18 @@ export type SidebarCacheSectionProps = {
 export type SidebarCacheFormProps = {
   item: CacheableDashboard | Question;
   model: CacheableModel;
-  setPage: (page: "default" | "caching") => void;
+  onClose: () => void;
 } & GroupProps;
 
 export const PLUGIN_CACHING = {
   isGranularCachingEnabled: () => false,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
   GranularControlsExplanation: PluginPlaceholder as any,
-  DashboardStrategySidebar: PluginPlaceholder as any,
   SidebarCacheSection:
     PluginPlaceholder as ComponentType<SidebarCacheSectionProps>,
-  SidebarCacheForm: PluginPlaceholder as ComponentType<SidebarCacheFormProps>,
+  SidebarCacheForm: PluginPlaceholder as ComponentType<
+    SidebarCacheFormProps & { onBack: () => void }
+  >,
   InvalidateNowButton:
     PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
   hasQuestionCacheSection: (_question: Question) => false,
@@ -486,8 +489,13 @@ export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
 
 export const PLUGIN_MODEL_PERSISTENCE = {
   isModelLevelPersistenceEnabled: () => false,
-  ModelCacheControl: PluginPlaceholder as any,
-  getMenuItems: (_question?: any, _onChange?: any) => ({}),
+  ModelCacheToggle: PluginPlaceholder as ({
+    persistedModel,
+    model,
+  }: {
+    persistedModel?: ModelCacheRefreshStatus;
+    model: Question;
+  }) => JSX.Element,
 };
 
 export const PLUGIN_EMBEDDING = {

@@ -25,12 +25,17 @@
   color: var(--mb-color-text-light);
 }
 
+.Row {
+  font-size: 14px;
+}
+
+.SecondaryRow {
+  color: var(--mb-color-text-light);
+  font-size: 12px;
+}
+
 .RowFocused {
-  background-color: color-mix(
-    in srgb,
-    var(--mb-color-bg-black) 50%,
-    #000
-  ) !important;
+  background-color: color-mix(in srgb, var(--mb-color-bg-black) 50%, #000);
 }
 
 .Cell {
@@ -59,13 +64,11 @@
 .NameCell {
   padding-left: 0.375rem;
   font-weight: 400;
-  font-size: 14px;
   text-align: left;
 }
 
 .MainValueCell {
   width: 1px;
-  font-size: 14px;
 }
 
 .SecondaryValueCell {
@@ -89,4 +92,8 @@
 
 .FooterRow .Cell {
   padding-top: 0.75rem;
+}
+
+.SecondaryRow .NameCell {
+  color: color-mix(in srgb, #fff 90%, var(--mb-color-bg-black));
 }

@@ -21,11 +21,14 @@ interface SortableItem {
   enabled: boolean;
   name: string;
   color?: string;
+  hidden?: boolean;
 }
 
 interface ChartSettingSeriesOrderProps {
   onChange: (rows: SortableItem[]) => void;
   value: SortableItem[];
+  addButtonLabel: string;
+  searchPickerPlaceholder: string;
   onShowWidget: (
     widget: { props: { seriesKey: string } },
     ref: HTMLElement | undefined,
@@ -33,19 +36,27 @@ interface ChartSettingSeriesOrderProps {
   series: Series;
   hasEditSettings: boolean;
   onChangeSeriesColor: (seriesKey: string, color: string) => void;
+  onSortEnd: (newItems: SortableItem[]) => void;
 }
 
 export const ChartSettingSeriesOrder = ({
   onChange,
   value: orderedItems,
+  addButtonLabel = t`Add another series`,
+  searchPickerPlaceholder = t`Select a series`,
   onShowWidget,
   hasEditSettings = true,
   onChangeSeriesColor,
+  onSortEnd,
 }: ChartSettingSeriesOrderProps) => {
   const [isSeriesPickerVisible, setSeriesPickerVisible] = useState(false);
 
   const [visibleItems, hiddenItems] = useMemo(
-    () => _.partition(orderedItems, item => item.enabled),
+    () =>
+      _.partition(
+        orderedItems.filter(item => !item.hidden),
+        item => item.enabled,
+      ),
     [orderedItems],
   );
 
@@ -64,9 +75,14 @@ export const ChartSettingSeriesOrder = ({
   const handleSortEnd = useCallback(
     ({ id, newIndex }: DragEndEvent) => {
       const oldIndex = orderedItems.findIndex(item => item.key === id);
-      onChange(arrayMove(orderedItems, oldIndex, newIndex));
+
+      if (onSortEnd != null) {
+        onSortEnd(arrayMove(orderedItems, oldIndex, newIndex));
+      } else {
+        onChange(arrayMove(orderedItems, oldIndex, newIndex));
+      }
     },
-    [orderedItems, onChange],
+    [orderedItems, onChange, onSortEnd],
   );
 
   const getItemTitle = useCallback((item: SortableItem) => {
@@ -126,13 +142,15 @@ export const ChartSettingSeriesOrder = ({
             <Button
               variant="subtle"
               onClick={() => setSeriesPickerVisible(true)}
-            >{t`Add another series`}</Button>
+            >
+              {addButtonLabel}
+            </Button>
           )}
           {isSeriesPickerVisible && (
             <Select
               initiallyOpened
               searchable
-              placeholder={t`Select a series`}
+              placeholder={searchPickerPlaceholder}
               data={hiddenItems.map(item => ({
                 value: item.key,
                 label: getItemTitle(item),

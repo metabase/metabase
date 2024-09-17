@@ -48,7 +48,7 @@ const defaultDatasetEditorProps = {
   updateQuestion: noop,
   handleResize: noop,
   onCancelCreateNewModel: noop,
-  onCancelDatasetChanges: noop,
+  cancelQuestionChanges: noop,
   onOpenModal: noop,
   onSave: noop,
   runQuestionQuery: noop,

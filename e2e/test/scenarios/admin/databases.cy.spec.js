@@ -9,6 +9,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  createSegment,
   isEE,
   modal,
   popover,
@@ -17,7 +18,6 @@ import {
   tooltip,
   typeAndBlurUsingLabel,
 } from "e2e/support/helpers";
-import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 import { visitDatabase } from "./helpers/e2e-database-helpers";
 

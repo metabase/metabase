@@ -1,5 +1,5 @@
 .BorderedButton {
-    border: var(--border-size) var(--border-style) var(--mb-color-border) !important;
+  border: var(--border-size) var(--border-style) var(--mb-color-border) !important;
 }
 
 .SettingsButton {

@@ -20,7 +20,7 @@ import type {
   WritebackAction,
   WritebackActionId,
 } from "./actions";
-import type { Card, CardId } from "./card";
+import type { Card, CardId, VisualizationSettings } from "./card";
 import type { Dataset } from "./dataset";
 import type { SearchModel } from "./search";
 
@@ -121,7 +121,7 @@ export type VirtualCard = Partial<
   name: null;
   dataset_query: Record<string, never>;
   display: VirtualCardDisplay;
-  visualization_settings: Record<string, never>;
+  visualization_settings: VisualizationSettings;
 };
 
 export type ActionDashboardCard = Omit<
