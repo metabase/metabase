@@ -623,6 +623,8 @@
         cell-styles        (volatile! nil)
         typed-cell-styles  (volatile! nil)
         pivot-data!        (atom {:rows []})
+        ;; if we're processing results from a pivot query, there will be a column 'pivot-grouping' that we don't want to include
+        ;; in the final results, so we get the idx into the row in order to remove it
         pivot-grouping-idx (volatile! nil)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols format-rows? pivot-export-options]} :data}
@@ -663,6 +665,8 @@
               group                   (get ordered-row pivot-grouping-key)
               cleaned-row             (cond->> ordered-row
                                         pivot-grouping-key (m/remove-nth pivot-grouping-key))]
+          ;; when a pivot-grouping col exists, we check its group number. When it's zero,
+          ;; we keep it, otherwise don't include it in the results as it's a row representing a subtotal of some kind
           (when (or (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP group)
                     (not group))
             (if pivot-options
