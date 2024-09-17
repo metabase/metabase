@@ -9,20 +9,22 @@ import {
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
-import type { StaticChartProps } from "../StaticVisualization";
+import {
+  type StaticChartProps,
+  StaticVisualization,
+} from "../StaticVisualization";
 
-import { ScatterPlot } from "./ScatterPlot";
 import { data } from "./stories-data";
 
 export default {
   title: "static-viz/ScatterPlot",
-  component: ScatterPlot,
+  component: StaticVisualization,
 };
 
 const Template: StoryFn<StaticChartProps> = args => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
-      <ScatterPlot {...args} isStorybook />
+      <StaticVisualization {...args} isStorybook />
     </div>
   );
 };

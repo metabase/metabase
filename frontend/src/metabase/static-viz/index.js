@@ -19,9 +19,6 @@ import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/sett
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 
 import { LegacyStaticChart } from "./containers/LegacyStaticChart";
-import { registerStaticVisualizations } from "./register";
-
-registerStaticVisualizations();
 
 setPlatformAPI({
   measureText: measureTextEChartsAdapter,

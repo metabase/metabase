@@ -12,7 +12,7 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
-import { SmartScalar } from "./SmartScalar";
+import { StaticVisualization } from "../StaticVisualization";
 
 const COLS = [
   createMockColumn({
@@ -98,7 +98,7 @@ function createSmartScalarSeries({
 
 export default {
   title: "static-viz/SmartScalar",
-  component: SmartScalar,
+  component: StaticVisualization,
   args: {
     "scalar.field": "Count",
     "scalar.comparisons": [{ id: "1", type: "previousPeriod" }],
@@ -130,7 +130,7 @@ const createTemplate = ({ rows, vizSettings }: SmartScalarSeriesOpts) =>
     });
 
     return (
-      <SmartScalar
+      <StaticVisualization
         rawSeries={[series]}
         renderingContext={{
           fontFamily: "Lato",
