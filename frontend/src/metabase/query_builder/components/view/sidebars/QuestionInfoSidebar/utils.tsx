@@ -1,4 +1,8 @@
-import { AdhocQuestionData, PydanticModelSchemaName } from "./types";
+import {
+  AdhocQuestionData,
+  PydanticModelSchemaName,
+  QueryField,
+} from "./types";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 const progressIntervalDelay = 200;
 
@@ -6,12 +10,14 @@ const getBody = ({
   content,
   modelSchemaName,
   systemPrompt,
+  fields,
 }: {
   content: string;
   modelSchemaName?: PydanticModelSchemaName;
   systemPrompt?: string;
-}) =>
-  JSON.stringify({
+  fields?: QueryField[];
+}) => {
+  return JSON.stringify({
     // model: "meta.llama3-1-8b-instruct-v1:0",
     // model: "meta.llama3-1-70b-instruct-v1:0",
     // model: "mistral.mixtral-8x7b-instruct-v0:1",
@@ -32,25 +38,34 @@ const getBody = ({
       },
     ],
     ...(modelSchemaName ? { response_schema_model: modelSchemaName } : {}),
+    ...(fields?.length ? { fields: JSON.stringify(fields) } : {}),
   });
+};
 
 const sendPrompt = async (
   prompt: string,
   modelSchemaName?: PydanticModelSchemaName,
   systemPrompt?: string,
+  fields?: QueryField[],
 ) => {
   console.log(
     `%cPrompt sent to LLM:%c\n ${prompt}`,
     "padding: .25rem .5rem; margin-top: 1rem; font-weight: bold; color: #065A82; background: #f3f3e3; width: 100%; display: block; border-bottom: .25rem solid #F9D45C",
     "margin-left: 2rem;",
   );
-
+  const body = getBody({
+    content: prompt,
+    modelSchemaName,
+    systemPrompt,
+    fields,
+  });
+  console.log("body", body);
   const results = await fetch("http://0.0.0.0:8000/v1/chat/", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: getBody({ content: prompt, modelSchemaName, systemPrompt }),
+    body,
   });
   return results;
 };
@@ -59,8 +74,14 @@ export const getLLMResponse = async (
   prompt: string,
   modelSchemaName?: PydanticModelSchemaName,
   systemPrompt?: string,
+  fields?: QueryField[],
 ) => {
-  const response = await sendPrompt(prompt, modelSchemaName, systemPrompt);
+  const response = await sendPrompt(
+    prompt,
+    modelSchemaName,
+    systemPrompt,
+    fields,
+  );
   const responseContent = ((await response.json()) as { response: string })
     .response;
   console.log("LLM says", responseContent);

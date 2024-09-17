@@ -20,8 +20,9 @@ import {
 import type Question from "metabase-lib/v1/Question";
 
 import Styles from "./EditVizPage.module.css";
-import type { PydanticModelSchemaName } from "./types";
+import type { PydanticModelSchemaName, QueryField } from "./types";
 import { adhockifyURL, getLLMResponse, isStringifiedQuery } from "./utils";
+import { FieldReference } from "metabase-types/api";
 
 type Author = "user" | "llm";
 
@@ -106,6 +107,17 @@ export const EditVizPage = ({
 
   const [isAwaitingLLMResponse, setIsAwaitingLLMResponse] = useState(false);
 
+  const fields = useMemo(
+    () =>
+      question._card.result_metadata
+        .filter(field => field.field_ref)
+        .map(field => [
+          ...(field.field_ref as FieldReference),
+          { base_type: field.base_type },
+        ]) as QueryField[],
+    [question],
+  );
+
   useEffect(() => {
     scrollMessagesToBottom();
     const sendMessageToLLM = async () => {
@@ -121,25 +133,57 @@ export const EditVizPage = ({
       let systemPrompt = "Your name is Metabot. ";
       let modelSchemaName: PydanticModelSchemaName | undefined = undefined;
       if (/^\[query\]/.test(content)) {
-        systemPrompt += `Here is a json object representing the currently viewed question: ${JSON.stringify(
-          query,
-        )}. Here's a json object representing this question's visualization settings: ${JSON.stringify(
+        systemPrompt += `
+        JSON for the currently viewed question: ${JSON.stringify(query)}.
+        JSON for the question's fields: ${JSON.stringify(fields)}.
+        JSON for the question's visualization settings: ${JSON.stringify(
           visualizationSettings,
-        )}`;
+        )}
+        `;
         modelSchemaName = "QueryWithViz";
       }
       let response = await getLLMResponse(
         content,
         modelSchemaName,
         systemPrompt,
+        fields,
       );
       const maybeQuery = isStringifiedQuery(response);
       if (maybeQuery) {
-        const completeQuery = { dataset_query: query, ...maybeQuery };
-        console.log("returned query", maybeQuery);
+        console.log("query", query);
+        console.log("maybeQuery", maybeQuery);
+        // Simplify
+
+        // If the filter is an "and" with only one clause, remove the "and"
+        if (
+          maybeQuery.query.filter[0][0] === "and" &&
+          maybeQuery.query.filter[0].length === 2
+        ) {
+          maybeQuery.query.filter = maybeQuery.query.filter[0][1];
+        }
+
+        const completeQuery = {
+          dataset_query: {
+            ...query,
+            ...maybeQuery,
+            query: {
+              ...("query" in query ? query.query : {}),
+              ...maybeQuery.query,
+            },
+          },
+          display: maybeQuery.display,
+        };
+        console.log("completeQuery", completeQuery);
         const { adhocQuestionURL } = adhockifyURL(completeQuery);
 
-        response = `[See results](${adhocQuestionURL})`;
+        const proseResponse = await getLLMResponse(
+          `You are an excellent author of website copy. You know the currently viewed question. Here is a modified version of that question: ${JSON.stringify(
+            completeQuery,
+          )}. Provide text for a link that leads from the current question to the modified question. It should be a short, descriptive, specific phrase in sentence case. Do not add quotation marks around the phrase.`,
+          undefined,
+          systemPrompt,
+        );
+        response = `[${proseResponse}](${adhocQuestionURL})`;
       }
       addMessage({
         content: response,
@@ -151,6 +195,7 @@ export const EditVizPage = ({
   }, [
     messages,
     query,
+    fields,
     visualizationSettings,
     addMessage,
     scrollableStackRef,
@@ -311,3 +356,7 @@ const Messages = ({ messages }: { messages: Message[] }) => {
 };
 
 // {"dataset_query":{"database":8,"type":"query","query":{"source-table":"card__256"}},"display":"line","displayIsLocked":true,"parameters":[],"visualization_settings":{"table.pivot_column":"year_being_forecast","table.cell_column":"month_of_forecast","graph.dimensions":["month_of_forecast"],"graph.series_order_dimension":null,"graph.series_order":null,"graph.metrics":["forecast_percent_change"]},"original_card_id":283,"type":"question"}
+
+// Expected:
+// {"dataset_query":{"database":1,"type":"query","query":{"source-table":6,"filter":["=",["field",15,{"base-type":"type/Text"}],"AG"]}},"display":"table","visualization_settings":{}}
+// Actual: {"dataset_query":{"database":1,"type":"query","query":{"source-table":6}},"display":"table","query":{"aggregation":[["field",7,null,{"base_type":"type/BigInteger"}],["field",12,null,{"base_type":"type/Text"}],["field",9,null,{"base_type":"type/Text"}],["field",10,null,{"base_type":"type/Text"}],["field",4,null,{"base_type":"type/Text"}],["field",11,null,{"base_type":"type/Text"}],["field",1,null,{"base_type":"type/Integer"}],["field",13,{"temporal-unit":"default"},{"base_type":"type/DateTime"}],["field",2,{"temporal-unit":"default"},{"base_type":"type/DateTime"}],["field",3,{"temporal-unit":"default"},{"base_type":"type/DateTime"}],["field",14,null,{"base_type":"type/Boolean"}],["field",5,null,{"base_type":"type/Boolean"}],["field",8,null,{"base_type":"type/Boolean"}],["field",6,null,{"base_type":"type/Float"}],["field",16,null,{"base_type":"type/Float"}],["field",15,null,{"base_type":"type/Text"}]],"breakout":[["field",4,null,{"base_type":"type/Text"}]],"filter":[["and",["=",["field",4,null,{"base_type":"type/Text"}],"AG"]]]}}
