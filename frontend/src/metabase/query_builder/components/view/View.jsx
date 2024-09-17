@@ -309,7 +309,7 @@ class View extends Component {
 
     const legacyQuery = question.legacyQuery();
 
-    // Normally, when users open native models,
+    // Normally, when users open native models
     // they open an ad-hoc GUI question using the model as a data source
     // (using the `/dataset` endpoint instead of the `/card/:id/query`)
     // However, users without data permission open a real model as they can't use the `/dataset` endpoint
