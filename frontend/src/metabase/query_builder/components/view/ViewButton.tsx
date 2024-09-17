@@ -33,8 +33,8 @@ const ViewButton = styled(Button)<Props>`
     opacity: 0.6;
   }
 
-  .Icon + div {
-    ${props => props.iconWithText && "margin-left: 0.25rem"};
+  .Icon:not(:last-child) {
+    margin-right: 0.25rem;
   }
 `;
 

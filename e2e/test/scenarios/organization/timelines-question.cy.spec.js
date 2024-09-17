@@ -88,7 +88,7 @@ describe("scenarios > organization > timelines > question", () => {
 
       visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
       cy.wait("@getCollection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+
       cy.findByTestId("viz-type-button").should("be.visible");
 
       cy.findByLabelText("calendar icon").click();
