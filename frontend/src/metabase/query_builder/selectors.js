@@ -1053,8 +1053,8 @@ export const getDataReferenceStack = createSelector(
     uiControls.dataReferenceStack
       ? uiControls.dataReferenceStack
       : dbId
-      ? [{ type: "database", item: { id: dbId } }]
-      : [],
+        ? [{ type: "database", item: { id: dbId } }]
+        : [],
 );
 
 export const getDashboardId = state => {

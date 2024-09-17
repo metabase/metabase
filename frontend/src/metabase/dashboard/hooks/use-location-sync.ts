@@ -18,14 +18,14 @@ const DEFAULT_SYNCED_DASHBOARD_OPTIONS = {
 } as const;
 
 const getDefaultDisplayOption = <
-  Value extends typeof DEFAULT_SYNCED_DASHBOARD_OPTIONS[Key],
+  Value extends (typeof DEFAULT_SYNCED_DASHBOARD_OPTIONS)[Key],
   Key extends SYNCED_KEY,
 >(
   key: Key,
 ): Value => DEFAULT_SYNCED_DASHBOARD_OPTIONS[key] as Value;
 
 const isEmptyOrDefault = <
-  Value extends typeof DEFAULT_SYNCED_DASHBOARD_OPTIONS[Key],
+  Value extends (typeof DEFAULT_SYNCED_DASHBOARD_OPTIONS)[Key],
   Key extends SYNCED_KEY,
 >(
   value: Value,
@@ -33,7 +33,7 @@ const isEmptyOrDefault = <
 ) => isNullOrUndefined(value) || value === getDefaultDisplayOption(key);
 
 export const useLocationSync = <
-  Value extends typeof DEFAULT_SYNCED_DASHBOARD_OPTIONS[Key],
+  Value extends (typeof DEFAULT_SYNCED_DASHBOARD_OPTIONS)[Key],
   Key extends SYNCED_KEY = any,
 >({
   key,
