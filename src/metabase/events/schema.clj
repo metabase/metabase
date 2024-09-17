@@ -16,7 +16,7 @@
   ([k model]
    (with-hydration k model {}))
   ([k model opts]
-   (assoc opts :hydrate {:key     k
+   (assoc opts :hydrate {:key   k
                          :model model})))
 
 ;; collection events
