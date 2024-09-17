@@ -49,12 +49,14 @@ import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisi
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
+import { Center } from "metabase/ui";
 
 import { BrowseDatabases } from "./browse/components/BrowseDatabases";
 import { BrowseMetrics } from "./browse/components/BrowseMetrics";
 import { BrowseModels } from "./browse/components/BrowseModels";
 import BrowseSchemas from "./browse/components/BrowseSchemas";
 import { BrowseTables } from "./browse/components/BrowseTables";
+import { CommentHtml } from "./comments/components/comment/Comment";
 import {
   CanAccessMetabot,
   CanAccessSettings,
@@ -64,6 +66,14 @@ import {
 } from "./route-guards";
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
+
+const Playground = ({ children }) => {
+  return (
+    <Center>
+      <CommentHtml />
+    </Center>
+  );
+};
 
 export const getRoutes = store => {
   const applicationName = getApplicationName(store.getState());
@@ -110,6 +120,8 @@ export const getRoutes = store => {
           <Route path="forgot_password" component={ForgotPassword} />
           <Route path="reset_password/:token" component={ResetPassword} />
         </Route>
+
+        <Route path="/playground" component={Playground} />
 
         {/* MAIN */}
         <Route component={IsAuthenticated}>
