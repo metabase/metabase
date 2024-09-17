@@ -6,6 +6,7 @@ import { alpha, color } from "metabase/lib/colors";
 type Props = {
   active?: boolean;
   color?: string;
+  iconWithText?: boolean;
 };
 
 // NOTE: some of this is duplicated from NotebookCell.jsx
@@ -30,6 +31,10 @@ const ViewButton = styled(Button)<Props>`
 
   > .Icon {
     opacity: 0.6;
+  }
+
+  .Icon:not(:last-child) {
+    margin-right: 0.25rem;
   }
 `;
 
