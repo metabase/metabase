@@ -42,9 +42,9 @@
             (events/publish-event! topic {::hi true})
             (is (=? [[(:id n-1) {:event-info {::hi true}}]
                      [(:id n-2) {:event-info {::hi true}}]]
-                   (->> @sent-notis
-                        (map (juxt :id :payload))
-                        (sort-by first))))))))))
+                    (->> @sent-notis
+                         (map (juxt :id :payload))
+                         (sort-by first))))))))))
 
 (deftest unsupported-events-will-not-send-notification-test
   (mt/with-model-cleanup [:model/Notification]
