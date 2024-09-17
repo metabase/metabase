@@ -305,7 +305,7 @@ describe("UI elements that make no sense for users without data permissions (met
     cy.findByTestId("display-options-sensible");
     cy.icon("line").click();
     cy.findByTestId("Line-button").realHover();
-    cy.findByTestId("Line-button").within(() => {
+    cy.findByTestId("Line-container").within(() => {
       cy.icon("gear").click();
     });
 
