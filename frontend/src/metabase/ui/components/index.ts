@@ -9,3 +9,4 @@ export * from "./overlays";
 export * from "./theme";
 export * from "./typography";
 export * from "./utils";
+export {Avatar} from "@mantine/core"

@@ -67,7 +67,7 @@ import {
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
-const Playground = ({ children }) => {
+const Playground = () => {
   return (
     <Center>
       <CommentHtml />

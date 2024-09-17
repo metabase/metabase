@@ -1,7 +1,7 @@
-import { Avatar } from "@mantine/core";
-import EditableText from "metabase/core/components/EditableText";
-import { Text, Group, Paper } from "metabase/ui";
 import { useState } from "react";
+
+import EditableText from "metabase/core/components/EditableText";
+import { Avatar, Group, Paper, Text } from "metabase/ui";
 
 export function CommentHtml() {
   const [text, setText] = useState();
