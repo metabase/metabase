@@ -36,7 +36,6 @@ export type ExpressionEditorHelpTextProps =
 export const ExpressionEditorHelpTextContent = ({
   helpText,
 }: ExpressionEditorHelpTextContentProps) => {
-  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   if (!helpText) {
     return null;
@@ -83,15 +82,7 @@ export const ExpressionEditorHelpTextContent = ({
 
         <BlockSubtitleText>{t`Example`}</BlockSubtitleText>
         <ExampleCode>{helpText.example}</ExampleCode>
-        {showMetabaseLinks && (
-          <DocumentationLink
-            href={MetabaseSettings.docsUrl(getHelpDocsUrl(helpText))}
-            target="_blank"
-          >
-            <LearnMoreIcon name="reference" size={12} />
-            {t`Learn more`}
-          </DocumentationLink>
-        )}
+      
       </Container>
     </>
   );
