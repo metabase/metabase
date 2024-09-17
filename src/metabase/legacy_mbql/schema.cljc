@@ -1291,6 +1291,12 @@
      :description   "`card__<id>` string Table ID"}
     source-table-card-id-regex]])
 
+(def ^:private SourceNative
+  "Schema for native stage of an mbql query"
+  [:map
+   [:query ::lib.schema.common/non-blank-string]
+   [:metadata :any]])
+
 (def join-strategies
   "Valid values of the `:strategy` key in a join map."
   #{:left-join :right-join :inner-join :full-join})
@@ -1432,6 +1438,7 @@
    [:map
     [:source-query    {:optional true} SourceQuery]
     [:source-table    {:optional true} SourceTable]
+    [:source-native   {:optional true} SourceNative]
     [:aggregation     {:optional true} [:sequential {:min 1} Aggregation]]
     [:breakout        {:optional true} [:sequential {:min 1} Field]]
     [:expressions     {:optional true} [:map-of ::lib.schema.common/non-blank-string [:ref ::FieldOrExpressionDef]]]
@@ -1451,9 +1458,9 @@
    ;; CONSTRAINTS
    ;;
    [:fn
-    {:error/message "Query must specify either `:source-table` or `:source-query`, but not both."}
+    {:error/message "Query must specify exactly one of `:source-table`, `source-native` or `:source-query`, but not both."}
     (fn [query]
-      (core/= 1 (core/count (select-keys query [:source-query :source-table]))))]
+      (core/= 1 (core/count (select-keys query [:source-query :source-table :source-native]))))]
    [:fn
     {:error/message "Fields specified in `:breakout` should not be specified in `:fields`; this is implied."}
     (fn [{:keys [breakout fields]}]

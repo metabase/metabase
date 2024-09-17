@@ -375,7 +375,7 @@
    :map
    [:fn
     {:error/message "legacy inner-query with :source-table or :source-query"}
-    (some-fn :source-table :source-query)]])
+    (some-fn :source-native :source-table :source-query)]])
 
 (mu/defn aggregation-name :- ::lib.schema.common/non-blank-string
   "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation

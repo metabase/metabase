@@ -181,7 +181,8 @@
     [:order-by     {:optional true} [:ref ::order-by/order-bys]]
     [:source-table {:optional true} [:ref ::id/table]]
     [:source-card  {:optional true} [:ref ::id/card]]
-    [:page         {:optional true} [:ref ::page]]]
+    [:page         {:optional true} [:ref ::page]]
+    [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]
@@ -225,8 +226,8 @@
            :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
    [:mbql.stage/native :map]
    [:mbql.stage/mbql   [:fn
-                        {:error/message "An initial MBQL stage of a query must have :source-table or :source-card"}
-                        (some-fn :source-table :source-card)]]])
+                        {:error/message "An initial MBQL stage of a query must have :source-table, :source-native, or :source-card"}
+                        (some-fn :source-native :source-table :source-card)]]])
 
 (mr/def ::stage.additional
   [:multi {:dispatch      lib-type
