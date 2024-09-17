@@ -13,8 +13,6 @@ import type Question from "metabase-lib/v1/Question";
 
 import { trackNotebookNativePreviewShown } from "../../../../../analytics";
 
-import CS from "./ToggleNativeQueryPreview.module.css";
-
 const BUTTON_TEXT = {
   sql: t`View the SQL`,
   json: t`View the native query`,
@@ -55,8 +53,11 @@ export const ToggleNativeQueryPreview = ({
   };
 
   return (
-    <Button onClick={handleClick} aria-label={buttonText}>
-      <Icon size="1rem" name="sql" className={CS.icon} />
+    <Button
+      leftIcon={<Icon name="sql" />}
+      onClick={handleClick}
+      aria-label={buttonText}
+    >
       {buttonText}
     </Button>
   );
