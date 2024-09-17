@@ -1,5 +1,6 @@
 (ns ^{:added "0.51.0"} metabase.models.channel
   (:require
+   [malli.core :as mc]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -13,8 +14,6 @@
 
 (methodical/defmethod t2/table-name :model/Channel         [_model] :channel)
 (methodical/defmethod t2/table-name :model/ChannelTemplate [_model] :channel_template)
-
-
 
 (doto :model/Channel
   (derive :metabase/model)
@@ -97,7 +96,8 @@
    [:multi {:dispatch :channel_type}
     [:channel/email
      [:map
-      [:details ChannelTemplateEmailDetails]]]]])
+      [:details ChannelTemplateEmailDetails]]]
+    [::mc/default :any]]])
 
 (defn- check-valid-channel-template
   [channel-template]

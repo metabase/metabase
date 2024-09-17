@@ -25,8 +25,9 @@
                                    :channel_id   (:id chn-2)
                                    :recipients   [{:type    :notification-recipient/user
                                                    :user_id (mt/user->id :rasta)}]}])
-              notification-info (assoc n :payload {:event-info {:test true}
-                                                   :settings {:test true}})
+              notification-info (assoc n :payload {:event-info  {:test true}
+                                                   :event-topic :event/test
+                                                   :settings    {:test true}})
               renders           (atom [])]
           (mt/with-dynamic-redefs [channel/render-notification (fn [channel-type notification template recipients]
                                                                  (swap! renders conj {:channel-type channel-type
