@@ -213,24 +213,6 @@ export const QuestionActions = ({
     });
   }
 
-  if (hasCollectionPermissions) {
-    if (isQuestion) {
-      extraButtons.push({
-        title: t`Turn into a model`,
-        icon: "model",
-        action: handleTurnToModel,
-        testId: TURN_INTO_DATASET_TESTID,
-      });
-    }
-    if (isModel) {
-      extraButtons.push({
-        title: t`Turn back to saved question`,
-        icon: "insight",
-        action: onTurnModelIntoQuestion,
-      });
-    }
-  }
-
   extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
 
   if (hasCollectionPermissions) {
