@@ -82,7 +82,7 @@
         (let [opts           (when (and *pivot-export-post-processing-enabled* pivot-export-options)
                                (assoc pivot-export-options :column-titles (mapv :display_name ordered-cols)))
               ;; col-names are created later when exporting a pivot table, so only create them if there are no pivot options
-              col-names      (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
+              col-names      (when-not opts (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
               pivot-grouping (qp.pivot.postprocess/pivot-grouping-key col-names)]
           ;; when pivot options exist, we want to save them to access later when processing the complete set of results for export.
           (when pivot-grouping (vreset! pivot-grouping-idx pivot-grouping))
@@ -96,7 +96,7 @@
           ;; write the column names for non-pivot tables
           (when-not opts
             (let [modified-row (cond->> col-names
-                                  @pivot-grouping-idx (m/remove-nth @pivot-grouping-idx))]
+                                 @pivot-grouping-idx (m/remove-nth @pivot-grouping-idx))]
               (write-csv writer [modified-row]))
             (.flush writer))))
 
@@ -115,10 +115,9 @@
             (swap! rows! conj xf-row)
             (let [pivot-grouping-key @pivot-grouping-idx
                   group              (get ordered-row pivot-grouping-key)
-                  cleaned-row        (if pivot-grouping-key
-                                       (m/remove-nth pivot-grouping-key xf-row)
-                                       xf-row)]
-              (when (or (= 0 group)
+                  cleaned-row        (cond->> xf-row
+                                       pivot-grouping-key (m/remove-nth pivot-grouping-key))]
+              (when (or (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP group)
                         (not group))
                 (write-csv writer [cleaned-row])
                 (.flush writer))))))

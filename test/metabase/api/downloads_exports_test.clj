@@ -42,13 +42,12 @@
                  (->>  (spreadsheet/cell-seq r)
                        (mapv read-cell-with-formatting)))))))
 
-(defn- read-json
+(defn- tabulate-maps
   [result]
-  (let [ks (keys (first result))
-        header (map name ks)]
-    (concat
-     [(vec header)]
-     (map (fn [row] (mapv #(get row %) ks)) result))))
+  (let [ks (keys (first result))]
+    (cons
+     (mapv name ks)
+     (map #(mapv % ks) result))))
 
 (defn- process-results
   [export-format results]
@@ -56,7 +55,7 @@
     (case export-format
       :csv  (csv/read-csv results)
       :xlsx (read-xlsx results)
-      :json (read-json results))))
+      :json (tabulate-maps results))))
 
 (defn- card-download
   [{:keys [id] :as _card} export-format format-rows?]

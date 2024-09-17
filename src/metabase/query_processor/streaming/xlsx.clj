@@ -631,7 +631,6 @@
                                (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                                :pivot-rows []}
                                                               pivot-export-options) ordered-cols))
-              ;; col-names are created later when exporting a pivot table, so only create them if there are no pivot options
               col-names      (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
               pivot-grouping (qp.pivot.postprocess/pivot-grouping-key col-names)]
           (when pivot-grouping (vreset! pivot-grouping-idx pivot-grouping))
@@ -649,9 +648,8 @@
             (doseq [i (range (count ordered-cols))]
               (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
             (setup-header-row! sheet (count ordered-cols))
-            (let [modified-row (m/remove-nth
-                                (or @pivot-grouping-idx (inc (count col-names)))
-                                (common/column-titles ordered-cols col-settings true))]
+            (let [modified-row (cond->> col-names
+                                 @pivot-grouping-idx (m/remove-nth @pivot-grouping-idx))]
               (spreadsheet/add-row! sheet modified-row)))))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
@@ -663,10 +661,9 @@
               {:keys [pivot-options]} @pivot-data!
               pivot-grouping-key      @pivot-grouping-idx
               group                   (get ordered-row pivot-grouping-key)
-              cleaned-row             (if pivot-grouping-key
-                                        (m/remove-nth pivot-grouping-key ordered-row)
-                                        ordered-row)]
-          (when (or (= 0 group)
+              cleaned-row             (cond->> ordered-row
+                                        pivot-grouping-key (m/remove-nth pivot-grouping-key))]
+          (when (or (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP group)
                     (not group))
             (if pivot-options
               ;; TODO: right now, the way I'm building up the native pivot,

@@ -994,8 +994,8 @@
                                                 :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
-         (mt/with-current-user (mt/user->id :rasta)
-           (let [card-doc        (render.tu/render-pivot-card-as-hickory! card-id)
-                 card-header-els (hik.s/select (hik.s/tag :th) card-doc)]
-              (is (=  ["Category" "Created At" "Sum of Price"]
-                      (mapv (comp first :content )card-header-els)))))))))
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [card-doc        (render.tu/render-pivot-card-as-hickory! card-id)
+                card-header-els (hik.s/select (hik.s/tag :th) card-doc)]
+            (is (=  ["Category" "Created At" "Sum of Price"]
+                    (mapv (comp first :content) card-header-els)))))))))
