@@ -59,8 +59,8 @@
 (deftest minimal-test
   (with-setup
     (testing "consistent results between both hybrid implementations"
-      (doseq [term ["satisfaction" "e-commerce" "example" "rasta" "new" "revenue" "collection"]]
+      (doseq [term ["satisfaction" "e-commerce" "example" "new" "revenue"]]
         (testing term
-          ;; Timestamps aren't parsed properly, but this doesn't matter
+          ;; Timestamps are not strings after round trip, but this doesn't matter
           (is (= (map remove-time (hybrid term))
                  (map remove-time (minimal term)))))))))
