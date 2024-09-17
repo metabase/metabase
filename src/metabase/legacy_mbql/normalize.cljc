@@ -378,6 +378,8 @@
   (cond-> row
     (map? row) (update-keys u/qualified-name)))
 
+(declare canonicalize-native-query)
+
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
@@ -386,6 +388,7 @@
    ;; don't normalize native queries
    :native          normalize-native-query
    :query           {:aggregation     normalize-ag-clause-tokens
+                     :source-native   {:template-tags normalize-template-tags}
                      :expressions     normalize-expressions-tokens
                      :order-by        normalize-order-by-tokens
                      :source-query    normalize-source-query

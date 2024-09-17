@@ -98,7 +98,8 @@
    stage     :- ::lib.schema/stage
    dep-graph :- (lib.schema.common/instance-of-class clojure.lang.Volatile)]
   (when (and (= (:lib/type stage) :mbql.stage/mbql)
-             (:source-card stage))
+             (or (:source-card stage)
+                 (:source-native stage)))
     ;; make sure nested queries are enabled before resolving them.
     (when-not (public-settings/enable-nested-queries)
       (throw (ex-info (trs "Nested queries are disabled")
@@ -113,17 +114,25 @@
                        (tru "Card {0}" (:source-card stage)))
         ;; This will throw if there's a cycle
         (dep/topo-sort <>)))
-    (let [card         (card query (:source-card stage))
-          card-stages  (get-in card [:dataset-query :stages])
-          ;; this information is used by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]]
-          stage'        (-> stage
-                            ;; these keys are used by the [[metabase.query-processor.middleware.annotate]] middleware to
-                            ;; decide whether to "flow" the Card's metadata or not (whether to use it preferentially over
-                            ;; the metadata associated with Fields themselves)
-                            (assoc :qp/stage-had-source-card (:id card)
-                                   :source-query/model?      (= (:type card) :model))
-                            (dissoc :source-card))]
-      (into (vec card-stages) [stage']))))
+    (if (:source-card stage)
+      (let [card         (card query (:source-card stage))
+            card-stages  (get-in card [:dataset-query :stages])
+            ;; this information is used by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]]
+            stage'        (-> stage
+                              ;; these keys are used by the [[metabase.query-processor.middleware.annotate]] middleware to
+                              ;; decide whether to "flow" the Card's metadata or not (whether to use it preferentially over
+                              ;; the metadata associated with Fields themselves)
+                              (assoc :qp/stage-had-source-card (:id card)
+                                     :source-query/model?      (= (:type card) :model))
+                              (dissoc :source-card))]
+        (into (vec card-stages) [stage']))
+      (vector {:lib/type :mbql.stage/native
+               :template-tags (or (-> stage :source-native :template-tags) {})
+               :native (-> stage :source-native :query)
+               :lib/stage-metadata (-> stage :source-native :metadata)}
+              (merge
+               (dissoc stage :lib/type :source-native)
+               {:lib/type :mbql.stage/mbql})))))
 
 (def ^:private max-recursion-depth 50)
 
