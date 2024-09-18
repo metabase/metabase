@@ -65,7 +65,7 @@
       [:model/Card    {card-id :id}    {}
        :model/Comment {comment-id :id} {:model "card" :model_id card-id :text "first!"}]
       (let [result (mt/user-http-request :rasta :put 200 (format "comment/%d" comment-id) {:resolved true})]
-        (is (=? {:resolved true :text "first!" :author {:first_name "Rasta"}}
+        (is (=? {:resolved true :text "first!" :author {:first_name "Rasta"} :resolved_by {:first_name "Rasta"}}
                 result))
         (is (true? (t2/select-one-fn :resolved :model/Comment :id comment-id))))))
   (testing "PUT /api/comment text"
