@@ -627,7 +627,7 @@
   (let [workbook-data      (volatile! nil)
         cell-styles        (volatile! nil)
         typed-cell-styles  (volatile! nil)
-        pivot-grouping-key (atom nil)]
+        pivot-grouping-idx (volatile! nil)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols format-rows? pivot? pivot-export-options]
                    :or   {format-rows? true
@@ -636,7 +636,9 @@
         (let [opts (when (and pivot? pivot-export-options)
                      (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                      :pivot-rows []}
-                                                    pivot-export-options) ordered-cols))]
+                                                    pivot-export-options) ordered-cols))
+              col-names          (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
+              pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
           (if opts
             (let [wb (init-native-pivot opts
                                         {:ordered-cols ordered-cols
@@ -644,8 +646,9 @@
                                          :viz-settings viz-settings
                                          :format-rows? format-rows?})]
               (vreset! workbook-data wb)
-              (reset! pivot-grouping-key (:pivot-grouping-key opts)))
-            (let [wb (init-workbook {:ordered-cols ordered-cols
+              (when pivot-grouping-key (vreset! pivot-grouping-idx pivot-grouping-key)))
+            (let [wb (init-workbook {:ordered-cols (cond->> ordered-cols
+                                                     pivot-grouping-key (m/remove-nth pivot-grouping-key))
                                      :col-settings col-settings
                                      :format-rows? true})]
               (vreset! workbook-data wb)))
@@ -662,7 +665,7 @@
                                      (for [i output-order] (row-v i)))
                                    row)
               col-settings       (::mb.viz/column-settings viz-settings)
-              pivot-grouping-key @pivot-grouping-key
+              pivot-grouping-key @pivot-grouping-idx
               group              (get row pivot-grouping-key)
               modified-row       (if pivot-grouping-key
                                    (vec (m/remove-nth pivot-grouping-key ordered-row))
