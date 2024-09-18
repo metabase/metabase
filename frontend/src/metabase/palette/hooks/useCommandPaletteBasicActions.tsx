@@ -2,7 +2,6 @@ import { type Action, useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
-import { redirect } from "metabase/lib/dom";
 import { t } from "ttag";
 
 import {
@@ -10,6 +9,7 @@ import {
   useSearchListQuery,
 } from "metabase/common/hooks";
 import Collections from "metabase/entities/collections/collections";
+import { redirect } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
@@ -124,35 +124,42 @@ export const useCommandPaletteBasicActions = ({
       ...[
         {
           id: "make_kitchen_sink_1",
-          name: t`Kitchen Sink One`,
+          name: t`Kitchen Sink: Orders`,
           section: "admin",
           icon: "beaker",
           perform: async () => {
-            location = await KitchenSinkAPI.makeKitchenSink({ sink: "a_look_at_orders" })["goto"];
-            redirect(location);
+            const resp = await KitchenSinkAPI.makeKitchenSink({
+              sink: "a_look_at_orders",
+            });
+            const loc = resp["goto"];
+            redirect(loc);
           },
         },
         {
           id: "make_kitchen_sink_2",
-          name: t`Kitchen Sink Two`,
+          name: t`Kitchen Sink: Invoices`,
           section: "admin",
           icon: "cloud",
           perform: async () => {
-            location = await KitchenSinkAPI.makeKitchenSink({
-              sink: "a_look_at_invoices",
-            })["goto"];
+            const location = (
+              await KitchenSinkAPI.makeKitchenSink({
+                sink: "a_look_at_invoices",
+              })
+            )["goto"];
             redirect(location);
           },
         },
         {
           id: "make_kitchen_sink_3",
-          name: t`Make big ol' kitchen sink`,
+          name: t`Kitchen Sink: Actions`,
           section: "admin",
           icon: "cloud",
           perform: async () => {
-            location = await KitchenSinkAPI.makeKitchenSink({
-              sink: "dash_with_actions",
-            })["goto"];
+            const location = (
+              await KitchenSinkAPI.makeKitchenSink({
+                sink: "dash_with_actions",
+              })
+            )["goto"];
             redirect(location);
           },
         },
@@ -162,9 +169,9 @@ export const useCommandPaletteBasicActions = ({
           section: "admin",
           icon: "lightning",
           perform: async () => {
-            await KitchenSinkAPI.makeMeASandbox({})
+            await KitchenSinkAPI.makeMeASandbox({});
             redirect(window.location.href);
-          }
+          },
         },
         {
           id: "admin_me",
@@ -172,10 +179,10 @@ export const useCommandPaletteBasicActions = ({
           section: "admin",
           icon: "lightning",
           perform: async () => {
-            await KitchenSinkAPI.makeMeAnAdmin({})
+            await KitchenSinkAPI.makeMeAnAdmin({});
             redirect(window.location.href);
-          }
-        }
+          },
+        },
       ],
     );
 
