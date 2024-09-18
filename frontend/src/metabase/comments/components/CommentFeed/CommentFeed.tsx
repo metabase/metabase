@@ -37,7 +37,7 @@ export function CommentFeed({
       model_id: modelId,
     },
     {
-      pollingInterval: 10000,
+      pollingInterval: 2000,
       skipPollingIfUnfocused: true,
     },
   );
