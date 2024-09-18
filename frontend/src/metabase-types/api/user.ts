@@ -34,6 +34,7 @@ export interface User extends BaseUser {
   custom_homepage: {
     dashboard_id: DashboardId;
   } | null;
+  avatar: string | null;
 }
 
 export interface UserListResult {
@@ -113,4 +114,5 @@ export type UpdateUserRequest = {
   is_superuser?: boolean;
   login_attributes?: Record<UserAttribute, UserAttribute> | null;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
+  avatar?: string;
 };

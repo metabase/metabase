@@ -1,0 +1,19 @@
+.uploadIcon {
+  --icon-size: 25px;
+
+  position: absolute;
+  right: 0;
+  bottom: 15px;
+  background: var(--mb-color-background-brand);
+  color: white;
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 0;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid white;
+  cursor: pointer;
+}

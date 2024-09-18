@@ -47,6 +47,7 @@ export const HeaderAvatar = styled(UserAvatar)`
   width: 3em;
   height: 3em;
   margin-bottom: ${space(1)};
+  cursor: pointer;
 
   ${breakpointMinSmall} {
     width: 4em;
