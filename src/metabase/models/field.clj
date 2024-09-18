@@ -359,6 +359,18 @@
                (map (fn [n] {:model "Field" :id n}) fields))
          (filterv some?))))
 
+(defmethod serdes/descendants "Field" [_model field-id]
+  (let [{:keys [fk_target_field_id parent_id]} (t2/select-one :model/Field :id field-id)]
+    (into #{} cat [(when fk_target_field_id
+                     [["Field" fk_target_field_id]])
+                   (when parent_id
+                     [["Field" parent_id]])
+                   (for [dim-id (t2/select-pks-set :model/Dimension :field_id field-id)]
+                     ["Dimension" dim-id])])))
+
+(defmethod serdes/ascendants "Field" [_model field-id]
+  #{["Table" (t2/select-one-fn :table_id :model/Field :id field-id)]})
+
 (defmethod serdes/entity-id "Field" [_ {:keys [name]}]
   name)
 

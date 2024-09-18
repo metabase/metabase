@@ -898,6 +898,8 @@
       (when (and (string? source-table)
                  (str/starts-with? source-table "card__"))
         [["Card" (parse-long (subs source-table 6))]])
+      (when-let [db-id (:database_id card)]
+        [["Database" db-id]])
       (for [card-id template-tags]
         ["Card" card-id])
       (for [card-id parameters-card-id]

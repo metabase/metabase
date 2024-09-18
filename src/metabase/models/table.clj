@@ -260,6 +260,13 @@
 (defmethod serdes/dependencies "Table" [table]
   [[{:model "Database" :id (:db_id table)}]])
 
+(defmethod serdes/descendants "Table" [_model table-id]
+  (into #{} (map #(vector "Field" %))
+        (t2/select-fn-set :id :model/Field :table_id table-id)))
+
+(defmethod serdes/ascendants "Table" [_model table-id]
+  #{["Database" (t2/select-one-fn :db_id :model/Table :id table-id)]})
+
 (defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]
     (filterv some? [{:model "Database" :id db-name}

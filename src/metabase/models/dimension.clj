@@ -42,3 +42,9 @@
    :transform {:created_at              (serdes/date)
                :human_readable_field_id (serdes/fk :model/Field)
                :field_id                (serdes/parent-ref)}})
+
+(defmethod serdes/ascendants "Dimension" [_model-name dim-id]
+  (let [{:keys [field_id human_readable_field_id]} (t2/select-one :model/Dimension :id dim-id)]
+    (set (for [id [field_id human_readable_field_id]
+               :when id]
+           ["Field" id]))))

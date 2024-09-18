@@ -475,6 +475,10 @@
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
 
+(defmethod serdes/descendants "Database" [_model db-id]
+  (into #{} (map #(vector "Table" %))
+        (t2/select-fn-set :id :model/Table :db_id db-id)))
+
 (defmethod audit-log/model-details Database
   [database _event-type]
   (select-keys database [:id :name :engine]))

@@ -156,7 +156,7 @@
 Eg. if Dashboard B includes a Card A that is derived from a
   Card C that's in an alien collection, warnings will be emitted for C, A and B, and all three will be excluded from the
   serialized output."
-  [{:keys [targets] :as opts}]
+  [{:keys [selective-metadata targets] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
   (let [targets  (->> targets
                       (mapv (fn [[model-name id :as target]]
@@ -182,8 +182,9 @@ Eg. if Dashboard B includes a Card A that is derived from a
                           (serdes/extract-all model (merge opts {:where [:in :id ids]})))]
         (eduction cat
                   [(eduction (map extract-ids) cat by-model)
-                   ;; extract all non-content entities like data model and settings if necessary
-                   (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))])))))
+                   (when-not selective-metadata
+                     ;; extract all non-content entities like data model and settings if necessary
+                     (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models)))])))))
 
 (defn extract
   "Returns a reducible stream of entities to serialize"
@@ -192,3 +193,11 @@ Eg. if Dashboard B includes a Card A that is derived from a
   (if (seq targets)
     (extract-subtrees opts)
     (extract-metabase opts)))
+
+(comment
+  ;; For Kitchen Sink exports:
+  ;; - :include-database-secrets so the Database export is self-starting
+  ;; - :selective-metadata so we only dump the relevant database(s)
+  (into [] (extract {:include-database-secrets true
+                     :selective-metadata       true
+                     :targets [["Collection" 584]]})))
