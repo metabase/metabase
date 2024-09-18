@@ -22,8 +22,10 @@ export const ChatWidget = () => {
             <MetabotLogo className={Styles.MetabotLogo} />
           </Flex>
         </Popover.Target>
-        <Popover.Dropdown>
-          <Paper mah="70dvh" maw="20rem">
+        <Popover.Dropdown
+          style={{ boxShadow: "0px 4px 20px 0px rgba(0, 0, 0, 0.2)" }}
+        >
+          <Paper shadow="md" mah="70dvh" maw="25rem">
             <div ref={scrollableStackRef}>
               <Chat scrollableStackRef={scrollableStackRef} />
             </div>

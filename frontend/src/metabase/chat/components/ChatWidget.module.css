@@ -14,7 +14,4 @@
   &:hover {
     background-color: color-mix(in srgb, var(--mb-color-brand) 90%, white);
   }
-  &:active {
-    transform: scale(0.96);
-  }
 }
