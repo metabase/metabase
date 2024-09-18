@@ -49,11 +49,6 @@ export function CommentInput({
         singleLine
         className="mentions"
         classNames={CommentInputStyle}
-        style={{
-          suggestions: {
-            background: "red",
-          },
-        }}
       >
         <Mention
           markup="@[__display__](__id__)"
