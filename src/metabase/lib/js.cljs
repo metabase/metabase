@@ -2251,7 +2251,7 @@
       (.log js/console (with-out-str (cljs.pprint/pprint a-query))))
   (let [temporal-column (legacy-column->metadata a-query stage-number temporal-column)]
     ;; (lib.drill-thru.common/prepare-query query stage-number card-id)
-    (lib.core/update-temporal-filter (lib.drill-thru.common/prepare-query query stage-number card-id)
+    (lib.core/update-temporal-filter (lib.drill-thru.common/prepare-query a-query stage-number card-id)
                                      stage-number temporal-column start end)))
 
 (defn ^:export valid-filter-for?
