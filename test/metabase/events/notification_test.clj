@@ -70,7 +70,8 @@
         (mt/with-temporary-setting-values
           [application-name "Metabase Test"
            site-name        "Metabase Test"]
-          (is (= {:event-info {:foo :bar}
-                  :settings   {:application-name "Metabase Test"
-                               :site-name        "Metabase Test"}}
-                 (#'events.notification/enriched-event-info event-info))))))))
+          (is (= {:event-info  {:foo :bar}
+                  :event-topic :event/user-joined
+                  :settings    {:application-name "Metabase Test"
+                                :site-name        "Metabase Test"}}
+                 (#'events.notification/enriched-event-info :event/user-joined event-info))))))))
