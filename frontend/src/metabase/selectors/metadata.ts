@@ -96,6 +96,7 @@ const getNormalizedQuestions = (
         1000: {
           ...state.qb.sourceCard,
           id: 1000,
+          name: "Native query",
         } as any,
       }
     : {}),
