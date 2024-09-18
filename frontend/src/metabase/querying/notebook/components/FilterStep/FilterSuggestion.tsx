@@ -64,7 +64,13 @@ export const FilterSuggestion = ({
             background: "linear-gradient(to left, #8DC0ED33, #8F90EA33)",
             marginLeft: "0.5rem",
           }}
-          onClick={() => setOpened(true)}
+          onClick={() => {
+            if (filter) {
+              handleAddFilter(filter);
+            } else {
+              setOpened(true);
+            }
+          }}
         >
           <Icon className={CS.mr1} name="sparkles" />
           {generateFilterLabel(field)}
