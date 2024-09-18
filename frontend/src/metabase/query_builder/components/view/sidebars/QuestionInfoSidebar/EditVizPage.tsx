@@ -26,6 +26,8 @@ import type { FieldReference } from "metabase-types/api";
 import Styles from "./EditVizPage.module.css";
 import type { Message, QueryField } from "./types";
 import { getColumnsWithSampleValues, getLLMResponse } from "./utils";
+import { useMetabotAgentTool } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/hooks/useMetabotAgentTool";
+import { METABOT_AGENT_TOOLS_SPEC } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
 
 export const EditVizPage = ({
   scrollableStackRef,
@@ -38,6 +40,8 @@ export const EditVizPage = ({
   messages: Message[];
   addMessage: (message: Message) => void;
 }) => {
+  const { runAgentAction } = useMetabotAgentTool();
+
   const query = question._card.dataset_query;
   const visualizationSettings = question._card.visualization_settings;
 
@@ -59,6 +63,10 @@ export const EditVizPage = ({
 
   // So that the LLM has better information, we're going to concatenate the id
   // with the field name and remove this name later.
+
+  // table_name: string
+  // table_id: number
+  // fields: id, name, description
   const fields = useMemo(
     () =>
       question._card.result_metadata
@@ -81,75 +89,58 @@ export const EditVizPage = ({
 
   useEffect(() => {
     scrollMessagesToBottom();
+
     const sendMessageToLLM = async () => {
       const lastMessage = _.last(messages);
+
       if (!lastMessage || lastMessage.author !== "user") {
         return;
       }
-      const content = lastMessage.content;
-      if (!content) {
+
+      const userMessage = lastMessage.content;
+      if (!userMessage) {
         return;
       }
+
       setIsAwaitingLLMResponse(true);
-      const systemPrompt = `Your name is Metabot.
 
-      * Title of the currently viewed question: ${question.displayName()}.
-      *
-      * JSON for the currently viewed question: ${JSON.stringify(query)}.
+      const prompt = `
+        <context>
+          available fields: ${JSON.stringify(fields)}.
+        </context>
 
-      * JSON for the question's fields: ${JSON.stringify(fields)}.
-
-      * Sample values for each field: ${fieldsWithSampleValues}.
-
-      * JSON for the question's visualization settings: ${JSON.stringify(
-        visualizationSettings,
-      )}
+        <user_ask>
+          ${userMessage}
+        </user_ask>
       `;
-      let { tool_output, assistant_output: response } = await getLLMResponse(
-        `${content}
 
-        ${systemPrompt}`,
-        systemPrompt,
-        fields,
-      );
-      let completeNewQuery = null;
-
-      if (tool_output) {
-        const newQuery = JSON.parse(tool_output);
-        // If the filter is an "and" with only one clause, remove the "and"
-        if (
-          newQuery.query.filter[0][0] === "and" &&
-          newQuery.query.filter[0].length === 2
-        ) {
-          newQuery.query.filter = newQuery.query.filter[0][1];
-        }
-
-        completeNewQuery = {
-          dataset_query: {
-            ...query,
-            ...newQuery,
-            query: {
-              ...("query" in query ? query.query : {}),
-              ...newQuery.query,
-            },
+      const results = await fetch(
+        `http://0.0.0.0:8000/experimental/viz-agent/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-          display: newQuery.display,
-        };
-        //const { adhocQuestionURL } = adhockifyURL(completeNewQuery);
+          body: JSON.stringify({
+            messages: [{ content: prompt, role: "user" }],
+            tools: METABOT_AGENT_TOOLS_SPEC,
+          }),
+        },
+      );
 
-        const { assistant_output: proseResponse } = await getLLMResponse(
-          `You are an excellent author of website copy. You know the currently viewed question. Here is a modified version of that question: ${JSON.stringify(
-            completeNewQuery,
-          )}. Provide text for a link that leads from the current question to the modified question. It should be a short, descriptive, specific phrase in sentence case. Do not add quotation marks around the phrase. Just provide the phrase itself with no other text.`,
-          systemPrompt,
-        );
-        //response = [${proseResponse}](${adhocQuestionURL})`;
-        response = proseResponse;
+      const json = await results.json();
+      const { content: agentResponse, tool_calls } = json.message;
+
+      if (tool_calls) {
+        tool_calls.forEach(toolCall => {
+          runAgentAction(toolCall);
+        });
       }
+
       addMessage({
-        content: response,
+        content: agentResponse,
         author: "llm",
-        newQuery: completeNewQuery,
+        // newQuery: completeNewQuery,
       });
 
       setIsAwaitingLLMResponse(false);
