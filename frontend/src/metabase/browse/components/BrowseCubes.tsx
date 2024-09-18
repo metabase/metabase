@@ -32,7 +32,6 @@ import { CubeHeader } from "./CubeHeader";
 import { BrowseHeaderContent } from "./BrowseHeader.styled";
 import { CubeDataItem, GetCubeDataRequest } from "metabase-types/api";
 import { CubePreviewTable } from "metabase/components/Cube/CubePreviewTable";
-import { BrowseValidation } from "./BrowseValidation";
 import { useSelector } from "react-redux";
 import {
   useListCubesRequestDetailsQuery,
