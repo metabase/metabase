@@ -120,6 +120,11 @@
    :model/Collection
    (fn [_] (default-created-at-timestamped {:name (u.random/random-name)}))
 
+   :model/Comment
+   (fn [_] (default-timestamped
+            {:author_id (rasta-id)
+             :text      (u.random/random-name)}))
+
    :model/Action
    (fn [_] {:creator_id (rasta-id)})
 

@@ -9288,6 +9288,75 @@ databaseChangeLog:
                   name: type
             indexName: idx_collection_type
 
+  - changeSet:
+      id: v51.2024-09-18T09:29:12
+      author: tsmacdonald
+      comment: Add the metabase_comment table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - tableExists:
+              tableName: metabase_comment
+      changes:
+        - createTable:
+            tableName: metabase_comment
+            remarks: 'Comments. For Metabase!'
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: text
+                  type: ${text.type}
+                  remarks: Comment body
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Is the comment resolved
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: 'The card/dashboard/etc the comment is attached to'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(16)
+                  remarks: 'The type of model that the comment is attached to'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: author_id
+                  type: int
+                  remarks: 'The author ID'
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabase_comment_user_id
+              - column:
+                  remarks: The timestamp of when the comment was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the comment was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
