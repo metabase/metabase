@@ -1,5 +1,5 @@
-import Markdown from "metabase/core/components/Markdown";
 import { useReactToCommentMutation } from "metabase/api";
+import Markdown from "metabase/core/components/Markdown";
 import {
   ActionIcon,
   Avatar,
@@ -77,24 +77,14 @@ export const Comment = ({
       </Box>
       <Box className={CommentS.Avatar}>
         <Stack h="100%" align="center" spacing="sm">
-          <Avatar radius="xl" c="text-light" size="1.5rem" color="brand">
-            <Text c="white" size="0.65rem">
-              {comment?.author?.first_name?.at?.(0) ?? "😁"}
-              {comment?.author?.last_name?.at?.(0) ?? ""}
-            </Text>
-          </Avatar>
+          <UserIcon user={comment.author} />
           <Box style={{ flex: 1 }}>
             <Divider h="100%" orientation="vertical" />
           </Box>
         </Stack>
       </Box>
       <Box ml="2px" className={CommentS.CommentText}>
-        <EditableText
-          isMultiline={true}
-          initialValue={comment.text}
-          isEditing={false}
-          placeholder="put something here ya ding dong"
-        />
+        <Markdown>{comment.text}</Markdown>
       </Box>
       <Box ml="4px" pt="xs" className={CommentS.Reactions}>
         <ReactionList
@@ -108,22 +98,8 @@ export const Comment = ({
         />
       </Box>
     </Box>
-    <Box className={CommentS.Avatar}>
-      <Stack h="100%" align="center" spacing="sm">
-        <UserIcon user={comment.author} />
-        <Box style={{ flex: 1 }}>
-          <Divider h="100%" orientation="vertical" />
-        </Box>
-      </Stack>
-    </Box>
-    <Box ml="2px" className={CommentS.CommentText}>
-      <Markdown>{comment.text}</Markdown>
-    </Box>
-    <Box ml="4px" pt="xs" className={CommentS.Reactions}>
-      <ReactionList reactions={comment.reactions} />
-    </Box>
-  </Box>
-);
+  );
+};
 
 export function UserIcon({ user }: { user: User }) {
   if (user?.avatar) {
