@@ -134,9 +134,18 @@ export const Treemap = ({ rawSeries, settings }: VisualizationProps) => {
   };
 
   const treemapTooltip: TooltipOption = {
+    textStyle: {
+      color: "white",
+    },
+    backgroundColor: "#2e353b",
+    borderColor: "transparent",
+    padding: 10,
     formatter: (info: any) => {
+      // Build the breadcrumb by traversing ancestors
+      const breadcrumb = info.treePathInfo.map((n: any) => n.name).join(" > ");
       const value = info.data.value;
-      return String(value);
+
+      return `${breadcrumb}<br/>Value: ${value}`;
     },
   };
 
