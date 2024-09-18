@@ -455,7 +455,7 @@ const ChatMenu = ({ clearMessages }: { clearMessages: () => void }) => {
                 clearMessages();
                 setOpened(false);
               }}
-            >{t`Clear chat`}</Button>
+            >{t`Clear chat history`}</Button>
           </Stack>
         </Paper>
       </Popover.Dropdown>
