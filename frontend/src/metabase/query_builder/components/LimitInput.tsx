@@ -21,6 +21,7 @@ const LimitInput = ({
   ...props
 }: LimitInputProps) => (
   <input
+    min="0"
     className={cx(CS.input, className, {
       // HACK: reuse Button styles
       [ButtonsS.ButtonSmall]: small,
