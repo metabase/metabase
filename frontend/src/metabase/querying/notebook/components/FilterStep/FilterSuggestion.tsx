@@ -73,7 +73,7 @@ export const FilterSuggestion = ({
           }}
         >
           <Icon className={CS.mr1} name="sparkles" />
-          {generateFilterLabel(field)}
+          {generateFilterLabel(query, stageIndex, filter, field)}
           <Icon className={CS.ml1} name="add" />
         </NotebookCellItem>
       </Popover.Target>
@@ -94,13 +94,10 @@ export const FilterSuggestion = ({
   );
 };
 
-function generateFilterLabel(field) {
-  const args = field[field.attribute + "_most_used_args"];
-  const operator = field[field.attribute + "_most_used_op"];
-
-  if (args && operator) {
-    return `${field.display_name} ${operator === "between" ? `is between` : operator} ${args?.join(" and ")}`;
-  } else {
-    return field.display_name;
+function generateFilterLabel(query, stageIndex, filter, field) {
+  if (filter) {
+    return Lib.displayInfo(query, stageIndex, filter).longDisplayName;
   }
+
+  return field.display_name;
 }
