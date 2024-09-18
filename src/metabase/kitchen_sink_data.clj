@@ -8,7 +8,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.plugins :as plugins]
-   [metabase.sync :as sync]
+   [metabase.plugins.classloader :as classloader]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -103,7 +103,9 @@
                                                       :details   details
                                                       :engine    :h2)))]
       (log/debug "Syncing Kitchen-Sink Database...")
-      (sync/sync-database! db))
+
+      (classloader/require 'metabase.sync)
+      ((resolve 'metabase.sync/sync-database!) db))
     (log/debug "Finished adding Kitchen-Sink Database.")
     (catch Throwable e
       (log/error e "Failed to load kitchen-sink database"))))
