@@ -384,17 +384,19 @@
                                   (lib/limit 10)
                                   (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
+          ;; Even though created_at is the first breakout it should come as second
+          ;; in the sort order, so that the accumulation is easy to follow.
           ;;       YEAR            CATEGORY   COUNT CUM-COUNT
-          (is (= [[#t "2016-01-01" "Doohickey" 131  131]
-                  [#t "2016-01-01" "Gadget"    145  145]
-                  [#t "2016-01-01" "Gizmo"     115  115]
-                  [#t "2016-01-01" "Widget"    146  146]
-                  [#t "2017-01-01" "Doohickey" 617  748] ; 131 + 617 = 748
-                  [#t "2017-01-01" "Gadget"    690  835] ; 145 + 690 = 835
-                  [#t "2017-01-01" "Gizmo"     616  731]
-                  [#t "2017-01-01" "Widget"    718  864]
-                  [#t "2018-01-01" "Doohickey" 865  1613]
-                  [#t "2018-01-01" "Gadget"    1109 1944]]
+          (is (= [[#t "2016-01-01" "Doohickey"  131  131]
+                  [#t "2017-01-01" "Doohickey"  617  748]
+                  [#t "2018-01-01" "Doohickey"  865 1613]
+                  [#t "2019-01-01" "Doohickey"  990 2603]
+                  [#t "2020-01-01" "Doohickey"  312 2915]
+                  [#t "2016-01-01" "Gadget"     145  145]
+                  [#t "2017-01-01" "Gadget"     690  835]
+                  [#t "2018-01-01" "Gadget"    1109 1944]
+                  [#t "2019-01-01" "Gadget"    1328 3272]
+                  [#t "2020-01-01" "Gadget"     369 3641]]
                  (mt/formatted-rows
                   [->local-date str int int]
                   (qp/process-query query)))))))))

@@ -7,6 +7,7 @@
    [honey.sql.helpers :as sql.helpers]
    [honey.sql.protocols]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
@@ -787,50 +788,100 @@
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
 
-(defn- aggregation-order-bys
-  [order-bys]
-  (filter (fn [[_direction expr]]
-            (and (vector? expr)
-                 (> (count expr) 1)
-                 (= (first expr) :aggregation)
-                 (int? (second expr))))
-          order-bys))
+(def ^:private granularity
+  {:minute 0
+   :minute-of-hour 0
+   :hour 1
+   :hour-of-day 1
+   :time-default 1
+   :day 2
+   :day-of-week 2
+   :day-of-month 2
+   :day-of-year 2
+   :date-default 2
+   :week 3
+   :week-of-year 3
+   :month 4
+   :month-of-year 4
+   :quarter 5
+   :quarter-of-year 5
+   :year 6
+   :year-of-era 6})
+
+(defn- column-granularity
+  [temporal-attributes]
+  (let [effective-type ((some-fn :effective-type :base-type) temporal-attributes)
+        temporal-unit (:temporal-unit temporal-attributes)]
+    (when temporal-unit
+      (-> (if (= temporal-unit :default)
+            (cond
+              (isa? effective-type :type/DateTime) :date-default
+              (isa? effective-type :type/Date)     :date-default
+              (isa? effective-type :type/Time)     :time-default
+              :else                                nil)
+            temporal-unit)
+          granularity))))
+
+(defn- aggregation?
+  [expr]
+  (and (vector? expr)
+       (> (count expr) 1)
+       (= (first expr) :aggregation)
+       (int? (second expr))))
 
 (defn- unwrap-aggregation-option
   [agg]
   (cond-> agg
     (and (vector? agg) (= (first agg) :aggregation-options)) second))
 
-(defn- over-aggregations
-  "Returns a vector containing the `aggregations` specified by `aggregation-order-bys` compiled to
+(defn- over-order-bys
+  "Returns a vector containing the `aggregations` specified by `order-bys` compiled to
   honeysql expressions for `driver` suitable for ordering in the over clause of a window function."
-  [driver aggregations aggregation-order-bys]
+  [driver aggregations order-bys]
   (let [aggregations (vec aggregations)]
     (into []
-          (keep (fn [[direction [_aggregation index]]]
-                  (let [agg (unwrap-aggregation-option (aggregations index))]
-                    (when-not (#{:cum-count :cum-sum :offset} (first agg))
-                      [(->honeysql driver agg) direction]))))
-          aggregation-order-bys)))
+          (keep (fn [[direction expr]]
+                  (if (aggregation? expr)
+                    (let [[_aggregation index] expr
+                          agg (unwrap-aggregation-option (aggregations index))]
+                      (when-not (#{:cum-count :cum-sum :offset} (first agg))
+                        [(->honeysql driver agg) direction]))
+                    [(->honeysql driver expr) direction])))
+          order-bys)))
+
+(defn- finest-temporal-breakout-index
+  "Returns the index of leftmost breakout among the breakouts with the finest temporal granularity."
+  [breakouts]
+  (loop [bs (seq breakouts)
+         i 0
+         min-granularity (inc (apply max (vals granularity)))
+         finest-index nil]
+    (if-not bs
+      finest-index
+      (let [b (first bs)
+            granularity (-> b (get 2) column-granularity)]
+        (if (and granularity (< granularity min-granularity))
+          (recur (next bs) (inc i) granularity     i)
+          (recur (next bs) (inc i) min-granularity finest-index))))))
 
 (defn- window-aggregation-over-expr-for-query-with-breakouts
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
-  (let [num-breakouts   (count (:breakout inner-query))
-        group-bys       (:group-by (apply-top-level-clause driver :breakout {} inner-query))
-        partition-exprs (when (> num-breakouts 1)
-                          (rest group-bys))
-        order-expr      (first group-bys)
-        over-order-bys  (->> (:order-by inner-query)
-                             aggregation-order-bys
-                             (over-aggregations driver (:aggregation inner-query)))]
+  (let [breakouts (:breakout inner-query)
+        group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
+        finest-temp-breakout (finest-temporal-breakout-index breakouts)
+        partition-exprs (when (> (count breakouts) 1)
+                          (if finest-temp-breakout
+                            (m/remove-nth finest-temp-breakout group-bys)
+                            (butlast group-bys)))
+        order-bys (over-order-bys driver (:aggregation inner-query) (:order-by inner-query))]
     (merge
      (when (seq partition-exprs)
        {:partition-by (mapv (fn [expr]
                               [expr])
                             partition-exprs)})
-     {:order-by (conj over-order-bys [order-expr :asc])})))
+     {:order-by order-bys})))
 
 (defn- window-aggregation-over-expr-for-query-without-breakouts [driver inner-query]
   (when-let [order-bys (not-empty (:order-by (apply-top-level-clause driver :order-by {} inner-query)))]
@@ -1794,6 +1845,24 @@
         lib.convert/->legacy-MBQL
         :query)))
 
+(mu/defn- add-implicit-breakouts :- mbql.s/MBQLQuery
+  [inner-query :- mbql.s/MBQLQuery]
+  (if-let [breakouts (:breakout inner-query)]
+    (let [finest-temp-breakout (finest-temporal-breakout-index breakouts)
+          breakout-exprs (if finest-temp-breakout
+                           (concat (m/remove-nth finest-temp-breakout breakouts)
+                                   [(nth breakouts finest-temp-breakout)])
+                           breakouts)
+          explicit-order-bys (vec (:order-by inner-query))
+          explicit-order-by-exprs (into #{} (map second) explicit-order-bys)
+          order-bys (into explicit-order-bys
+                          (comp (remove explicit-order-by-exprs)
+                                (map (fn [expr]
+                                       [:asc expr])))
+                          breakout-exprs)]
+      (assoc inner-query :order-by order-bys))
+    inner-query))
+
 ;;; [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation]] already does
 ;;; basically the same check, this is here mostly to avoid the performance hit of converting to pMBQL and back in
 ;;; queries that have no cumulative aggregations at all. Once we convert the SQL QP to pMBQL we can remove this.
@@ -1804,9 +1873,13 @@
       (when-let [source-query (:source-query inner-query)]
         (has-window-function-aggregations? source-query))))
 
-(defn- maybe-nest-breakouts-in-queries-with-window-fn-aggregations [inner-query]
+(defn- maybe-nest-breakouts-in-queries-with-window-fn-aggregations
+  [inner-query]
   (cond-> inner-query
-    (has-window-function-aggregations? inner-query) nest-breakouts-in-queries-with-window-fn-aggregations))
+    (has-window-function-aggregations? inner-query)
+    (-> #_inner-query
+        nest-breakouts-in-queries-with-window-fn-aggregations
+        add-implicit-breakouts)))
 
 (defmethod preprocess :sql
   [_driver inner-query]
