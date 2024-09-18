@@ -1,49 +1,68 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { findWithIndex } from "metabase/lib/arrays";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import {
+  dimensionSetting,
+  metricSetting,
+} from "metabase/visualizations/lib/settings/utils";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 // Defines supported visualization settings
-const SETTINGS_DEFINITIONS = {};
+const SETTING_DEFINITIONS = {
+  // Column formatting settings
+  ...columnSettings({ hidden: true }),
+  // // Treemap dimension column
+  ...dimensionSetting("treemap.name", {
+    section: t`Data`,
+    title: t`Name`,
+    showColumnSetting: true,
+  }),
+  ...dimensionSetting("treemap.parent", {
+    section: t`Data`,
+    title: t`Parent`,
+    showColumnSetting: true,
+  }),
+  // Heatmap metric column
+  ...metricSetting("treemap.metric", {
+    section: t`Data`,
+    title: t`Measure`,
+    showColumnSetting: true,
+  }),
+};
 
 export const Treemap = ({ rawSeries, settings }: VisualizationProps) => {
+  console.log(rawSeries);
+
+  const [{ data }] = rawSeries;
+
+  const dimension = findWithIndex(
+    data.cols,
+    col => col.name === settings["treemap.dimension"],
+  );
+
+  const metric = findWithIndex(
+    data.cols,
+    col => col.name === settings["treemap.metric"],
+  );
+
+  const echartsData = data.rows.map(row => {
+    const dimensionValue = row[dimension.index];
+    const metricValue = row[metric.index];
+    return {
+      name: dimensionValue,
+      value: metricValue,
+    };
+  });
+
   const option = {
     series: [
       {
         type: "treemap",
-        data: [
-          {
-            name: "nodeA",
-            value: 10,
-            children: [
-              {
-                name: "nodeAa",
-                value: 4,
-              },
-              {
-                name: "nodeAb",
-                value: 6,
-              },
-            ],
-          },
-          {
-            name: "nodeB",
-            value: 20,
-            children: [
-              {
-                name: "nodeBa",
-                value: 20,
-                children: [
-                  {
-                    name: "nodeBa1",
-                    value: 20,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
+        name: t`ALL`,
+        data: echartsData,
       },
     ],
   };
@@ -56,5 +75,5 @@ Object.assign(Treemap, {
   identifier: "treemap",
   iconName: "grid",
   noun: t`Treemap`,
-  settings: SETTINGS_DEFINITIONS,
+  settings: SETTING_DEFINITIONS,
 });
