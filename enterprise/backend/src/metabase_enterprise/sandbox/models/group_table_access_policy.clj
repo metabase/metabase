@@ -181,7 +181,10 @@
   [sandboxes]
   (doall
    (for [sandbox sandboxes]
-     (if-let [id (:id sandbox)]
+     (if-let [id (or (:id sandbox)
+                     (t2/select-one-pk GroupTableAccessPolicy
+                                       :group_id (:group_id sandbox)
+                                       :table_id (:table_id sandbox)))]
        ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
        ;; This allows existing values to be "cleared" by being set to nil
        (do

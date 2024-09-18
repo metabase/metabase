@@ -12,6 +12,7 @@
    [metabase.api.common :as api]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.config :as config]
+   [metabase.kitchen-sink-data :as kitchen-sink-data]
    [metabase.logger :as logger]
    [metabase.models.serialization :as serdes]
    [metabase.public-settings :as public-settings]
@@ -22,7 +23,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.random :as u.random]
-   [ring.core.protocols :as ring.protocols])
+   [ring.core.protocols :as ring.protocols]
+   [toucan2.core :as t2])
   (:import
    (java.io ByteArrayOutputStream File)))
 
@@ -295,20 +297,17 @@
                         {:status-code 400
                          :sink        sink})))
       (log/infof "Importing kitchen sink %s from %s" sink (str path))
-      (serdes/with-cache
-        (-> (v2.ingest/ingest-yaml (.getPath path))
-            (v2.load/load-metabase! {})
-            (select-keys [:errors :seen])
-            ;; TODO: Return redirect URL or details to the FE so it can navigate to the new KS collection,
-            ;; primary dashboard, etc.
-            (update :seen count))))))
-
-(comment
-  (let [path (io/file kitchen-sink-dir "tester")]
-    (serdes/with-cache
-      (-> (extract/extract {:targets [["Collection" 584]]
-                            :include-database-secrets true
-                            :selective-metadata       true})
-          (storage/store! path)))))
+      (kitchen-sink-data/upsert-kitchen-sink-users!)
+      (let [{:keys [errors seen]} (serdes/with-cache
+                                    (-> (v2.ingest/ingest-yaml (.getPath path))
+                                        (v2.load/load-metabase! {})))
+            db-id (t2/select-one-pk :model/Database :name "The Kitchen-Sink Database")]
+        (when (seq errors)
+          (throw (ex-info "Errors importing kitchen sink"
+                          {:errors errors})))
+        (kitchen-sink-data/set-kitchen-sink-perms! db-id)
+        ;; TODO: Return redirect URL or details to the FE so it can navigate to the new KS collection,
+        ;; primary dashboard, etc.
+        {:seen (count seen)}))))
 
 (api/define-routes +auth)

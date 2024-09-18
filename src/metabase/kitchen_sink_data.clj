@@ -3,7 +3,10 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
+   [metabase.models.data-permissions.graph :as graph]
    [metabase.models.database :refer [Database]]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.plugins :as plugins]
    [metabase.sync :as sync]
    [metabase.util.files :as u.files]
@@ -115,3 +118,84 @@
      (let [intended (try-to-extract-kitchen-sink-database!)]
        (when (not= (:details kitchen-sink-db) intended)
          (t2/update! Database (:id kitchen-sink-db) {:details intended}))))))
+
+
+(defn- upsert-user! [first-name last-name email]
+  (if-let [user (t2/select-one :model/User :email email)]
+    (:id user)
+    (t2/insert-returning-pk! :model/User {:first_name first-name
+                                          :last_name  last-name
+                                          :email      email
+                                          :password   "kitchensink1"})))
+
+(defn- upsert-group-named!
+  "Returns the group's `:id`."
+  [group-name]
+  (if (perms-group/exists-with-name? group-name)
+    (t2/select-one-pk :model/PermissionsGroup :name group-name)
+    (t2/insert-returning-pk! :model/PermissionsGroup {:name group-name})))
+
+(defn- ensure-member-of-group! [user-id group-id]
+  (when-not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)
+    (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})))
+
+(defn- block-all-users-for-db! [db-id]
+  (graph/update-data-perms-graph!
+    {:groups {(:id (perms-group/all-users)) {db-id {:create-queries :no
+                                                    :view-data      :blocked}}}}))
+
+(defn- assoc-login-attribute! [user-id attribute value]
+  (let [existing-attributes (t2/select-one-fn :login_attributes :model/User :id user-id)
+        adjusted            (assoc existing-attributes (name attribute) (str value))]
+    (t2/update! :model/User :id user-id {:login_attributes adjusted})))
+
+(defn upsert-kitchen-sink-users!
+  "Ensures the standard set of groups and users is created.
+
+  Runs **before** any kitchen sink bundle is imported, so the `creator` users exist.
+
+  Groups:
+  - Admin
+  - Kitchen Sink Writers    Write access to everything
+  - Kitchen Sink Readers    Read-only access to kitchen sink databases
+  - Kitchen Sink Sandbox    Sandboxed access to kitchen sink databases
+
+  Users:
+  - (admin)                 The user's own account, User.ID = 1
+  - somebody@kitchen.sink   A regular user - not an admin, but can do all the things to the data
+  - notouchy@kitchen.sink   Read-only access to all the data
+  - sandy@kitchen.sink      Sandboxed access to the Kitchen Sink DB (see below)
+
+  Our sandboxed user can see all Products and Reviews, but can only see Orders with USER_ID=10.
+
+  The password for all three users is kitchensink1"
+  []
+  (let [writers  (upsert-group-named! "Kitchen Sink Writers")
+        readers  (upsert-group-named! "Kitchen Sink Readers")
+        sandbox  (upsert-group-named! "Kitchen Sink Sandbox")
+        somebody (upsert-user! "Some"  "Body"   "somebody@kitchen.sink")
+        notouchy (upsert-user! "No"    "Touchy" "notouchy@kitchen.sink")
+        sandy    (upsert-user! "Sandy" "Boxed"  "sandy@kitchen.sink")]
+    (ensure-member-of-group! somebody writers)
+    (ensure-member-of-group! notouchy readers)
+    (ensure-member-of-group! sandy sandbox)
+    ;; Set up sandboxed user Sandy with the right attribute.
+    (assoc-login-attribute! sandy "kitchen_sink_id" "10")))
+
+(defn set-kitchen-sink-perms!
+  "Runs **after** the kitchen sink bundle is loaded, to set up permissions for possibly-new tables."
+  [db-id]
+  (let [sandbox (upsert-group-named! "Kitchen Sink Sandbox")
+        orders  (t2/select-one :model/Table :db_id db-id :name "ORDERS")
+        user-id (t2/select-one :model/Field :table_id (:id orders) :name "USER_ID")]
+    (block-all-users-for-db! db-id) ;; Or sandboxing isn't meaningful!
+    (gtap/upsert-sandboxes! [{:group_id sandbox
+                              :table_id (:id orders)
+                              :card_id  nil
+                              :attribute_remappings
+                              {"kitchen_sink_id" [:dimension [:field (:id user-id) {:base_type :type/Integer}]]}}])))
+
+(comment
+  (upsert-kitchen-sink-users!)
+  (set-kitchen-sink-perms! 2)
+  )

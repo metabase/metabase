@@ -413,6 +413,10 @@
     metabase.lib                   :any
     metabase.logger                #{metabase.config
                                      metabase.plugins}
+    metabase.kitchen-sink-data     #{metabase.models
+                                     metabase.plugins
+                                     metabase.sync
+                                     metabase.util}
     metabase.metabot               :any
     metabase.models                :any
     metabase.moderation            :any
