@@ -85,7 +85,7 @@ export const Treemap = ({ rawSeries, settings }: VisualizationProps) => {
 Object.assign(Treemap, {
   uiName: t`Treemap`,
   identifier: "treemap",
-  iconName: "grid",
+  iconName: "treemap",
   noun: t`Treemap`,
   settings: SETTING_DEFINITIONS,
 });
