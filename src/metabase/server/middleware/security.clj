@@ -8,6 +8,7 @@
    [metabase.config :as config]
    [metabase.embed.settings :as embed.settings]
    [metabase.public-settings :as public-settings]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as req.util]
    [metabase.util.log :as log]
    [ring.util.codec :refer [base64-encode]])
@@ -184,18 +185,13 @@
                 (approved-port? (:port origin) (:port approved-origin))))
              approved-list)))))
 
-(defn access-control-headers
-  "Returns headers for CORS requests"
+(defn- access-control-headers
   [origin]
-  (merge
-   (when
-    (approved-origin? origin (embedding-app-origin-sdk))
-     {"Access-Control-Allow-Origin" origin
-      "Vary"                        "Origin"})
-
-   {"Access-Control-Allow-Headers"   "*"
-    "Access-Control-Allow-Methods"   "*"
-    "Access-Control-Expose-Headers"  "X-Metabase-Anti-CSRF-Token"}))
+  {"Access-Control-Allow-Origin"   origin
+   "Vary"                          "Origin"
+   "Access-Control-Allow-Headers"  "*"
+   "Access-Control-Allow-Methods"  "*"
+   "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token"})
 
 (defn- first-embedding-app-origin
   "Return only the first embedding app origin."
@@ -206,7 +202,7 @@
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
-  [& {:keys [origin nonce allow-iframes? allow-cache?]
+  [& {:keys [origin nonce allow-iframes? allow-cache? api-key]
       :or   {allow-iframes? false, allow-cache? false}}]
   (merge
    (if allow-cache?
@@ -214,7 +210,12 @@
      (cache-prevention-headers))
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
-   (when (embedding-app-origin-sdk) (access-control-headers origin))
+   (when (approved-origin? origin (embedding-app-origin-sdk))
+     (access-control-headers origin))
+   ;; We trust that the API key is only sent from trusted sources, as unlike the session cookie the header is not
+   ;; "sticky".
+   (when (and origin (mw.session/valid-api-key? api-key))
+     (access-control-headers origin))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 (if (embedding-app-origin)
@@ -230,7 +231,8 @@
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
   (update response :headers #(merge %2 %1) (security-headers
-                                            :origin         ((:headers request) "origin")
+                                            :origin         (get (:headers request) "origin")
+                                            :api-key        (get (:headers request) "x-api-key")
                                             :nonce          (:nonce request)
                                             :allow-iframes? ((some-fn req.util/public? req.util/embed?) request)
                                             :allow-cache?   (req.util/cacheable? request))))

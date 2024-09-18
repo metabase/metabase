@@ -8,6 +8,7 @@
    [metabase.server.middleware.security :as mw.security]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
+   [metabase.util.secret :as u.secret]
    [stencil.core :as stencil]))
 
 (defn- csp-directive
@@ -183,18 +184,27 @@
     (is (true? (mw.security/approved-origin? "http://example.com" "  fpt://something http://example.com ://123  4")))))
 
 (deftest test-access-control-headers?
-  (testing "Should always allow localhost:*"
-    (tu/with-temporary-setting-values [enable-embedding     true
-                                       embedding-app-origin nil]
-      (is (= "http://localhost:8080" (get (mw.security/access-control-headers "http://localhost:8080") "Access-Control-Allow-Origin")))))
-
-  (testing "Should disable CORS when embedding is disabled"
-    (tu/with-temporary-setting-values [enable-embedding     false
-                                       embedding-app-origin nil]
-      (is (= nil (get (mw.security/access-control-headers "http://localhost:8080") "Access-Control-Allow-Origin")))))
-
-  (testing "Should work with embedding-app-origin"
-    (mt/with-premium-features #{:embedding}
+  (let [acao-header #(get (mw.security/security-headers %) "Access-Control-Allow-Origin")]
+    (testing "Should always allow localhost:*"
       (tu/with-temporary-setting-values [enable-embedding     true
-                                         embedding-app-origin "example.com"]
-        (is (= "https://example.com" (get (mw.security/access-control-headers "https://example.com") "Access-Control-Allow-Origin")))))))
+                                         embedding-app-origin nil]
+        (is (= "http://localhost:8080" (acao-header {:origin "http://localhost:8080"})))))
+
+    (testing "Should not enable CORS when embedding is disabled"
+      (tu/with-temporary-setting-values [enable-embedding     false
+                                         embedding-app-origin nil]
+        (is (= nil (acao-header {:origin "http://localhost:8080"})))))
+
+    (testing "Should work with embedding-app-origin"
+      (mt/with-premium-features #{:embedding}
+        (tu/with-temporary-setting-values [enable-embedding     true
+                                           embedding-app-origin "example.com"]
+          (is (= "https://example.com" (acao-header {:origin "https://example.com"}))))))
+
+    (testing "CORS enabled if you pass correct API key"
+      (mt/with-temp [:model/ApiKey _ {:name          "The API Key"
+                                      :user_id       (mt/user->id :lucky)
+                                      :creator_id    (mt/user->id :lucky)
+                                      :updated_by_id (mt/user->id :lucky)
+                                      :unhashed_key  (u.secret/secret "mb_foobar")}]
+        (is (= "https://example.com" (acao-header {:origin "https://example.com" :api-key "mb_foobar"})))))))

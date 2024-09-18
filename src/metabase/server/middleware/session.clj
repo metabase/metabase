@@ -365,6 +365,11 @@
       (when (matching-api-key? user-data api-key)
         (dissoc user-data :api-key)))))
 
+(defn valid-api-key?
+  "Checks that API key is known and valid"
+  [api-key]
+  (boolean (current-user-info-for-api-key api-key)))
+
 (defn- merge-current-user-info
   [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
   (merge
