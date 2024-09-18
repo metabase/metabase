@@ -3,13 +3,13 @@
    [clojure.data :refer [diff]]
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.kitchen-sink :as kitchen-sink]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
+   [metabase.kitchen-sink :as kitchen-sink]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
@@ -595,7 +595,8 @@
                :made_public_by_id      (serdes/fk :model/User)
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
                :tabs                   (serdes/nested :model/DashboardTab :dashboard_id opts)
-               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id opts)}})
+               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id
+                                                      (assoc opts :sort-by (juxt :created_at :entity_id)))}})
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings series]}]
