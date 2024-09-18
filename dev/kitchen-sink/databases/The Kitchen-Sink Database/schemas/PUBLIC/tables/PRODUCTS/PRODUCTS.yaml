@@ -1,0 +1,23 @@
+name: PRODUCTS
+display_name: Products
+description: Includes a catalog of all the products ever sold by the famed Sample Company.
+created_at: '2024-09-18T18:19:51.762684Z'
+db_id: The Kitchen-Sink Database
+schema: PUBLIC
+entity_type: entity/ProductTable
+active: true
+is_upload: false
+field_order: database
+visibility_type: null
+show_in_getting_started: false
+initial_sync_status: complete
+points_of_interest: Is it? You tell us!
+caveats: The rating column is an integer from 1-5 where 1 is dreadful and 5 is the best thing ever.
+serdes/meta:
+- id: The Kitchen-Sink Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: PRODUCTS
+  model: Table
+database_require_filter: null

@@ -3,6 +3,7 @@
    [clojure.data :refer [diff]]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.kitchen-sink :as kitchen-sink]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
@@ -91,11 +92,13 @@
 
 (t2/define-after-insert :model/Dashboard
   [dashboard]
+  (kitchen-sink/maybe-sync-kitchen-sink! dashboard)
   (u/prog1 dashboard
     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))))
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
+  (kitchen-sink/maybe-sync-kitchen-sink! dashboard)
   (let [changes (t2/changes dashboard)]
     (u/prog1 (maybe-populate-initially-published-at dashboard)
       (params/assert-valid-parameters dashboard)

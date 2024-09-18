@@ -2,11 +2,10 @@
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require
-   [metabase.models.serialization :as serdes]
-   [metabase-enterprise.serialization.v2.extract :as extract]
-   [metabase-enterprise.serialization.v2.storage :as storage]
    [clojure.data :as data]
    [clojure.set :as set]
+   [metabase.kitchen-sink :as kitchen-sink]
+   [metabase.models.serialization :as serdes]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
@@ -35,7 +34,6 @@
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
-   [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
@@ -556,6 +554,7 @@
 
 (t2/define-after-insert :model/Card
   [card]
+  (kitchen-sink/maybe-sync-kitchen-sink! card)
   (u/prog1 card
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
@@ -563,20 +562,10 @@
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
     (query-analysis/analyze! card)))
 
-(defn- parent-collection-is-kitchen-sink? [card]
-  (= "Kitchen Sink"
-     (t2/select-one-fn :name :model/Collection :id (:collection_id card))))
-
-(defn- sink-kitchen-sink! [card]
-  (serdes/with-cache
-    (-> (extract/extract {:target [["Collection" (:collection_id card)]]})
-        (storage/store! (io/file "kitchen-sink")))))
-
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
 
-  (when (parent-collection-is-kitchen-sink? card)
-    (sink-kitchen-sink! card))
+  (kitchen-sink/maybe-sync-kitchen-sink! card)
   ;; remove all the unchanged keys from the map, except for `:id`, so the functions below can do the right thing since
   ;; they were written pre-Toucan 2 and don't know about [[t2/changes]]...
   ;;
