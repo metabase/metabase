@@ -31,6 +31,7 @@ type RenderPopoverOpts<T> = {
 };
 
 export type ClauseStepProps<T> = {
+  children: ReactNode;
   color: string;
   items: T[];
   initialAddText?: string;
@@ -47,6 +48,7 @@ export type ClauseStepProps<T> = {
 };
 
 export const ClauseStep = <T,>({
+  children,
   color,
   items,
   initialAddText,
@@ -106,6 +108,7 @@ export const ClauseStep = <T,>({
           renderPopover={onClose => renderPopover({ onClose })}
         />
       )}
+      {children}
     </NotebookCell>
   );
 };

@@ -118,6 +118,10 @@ export interface Field {
   last_analyzed: string;
   created_at: string;
   updated_at: string;
+
+  field_usage_filter_count: number;
+  field_usage_breakout_count: number;
+  field_usage_aggregation_count: number;
 }
 
 export interface FieldFormattingSettings {
