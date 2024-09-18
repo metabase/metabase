@@ -110,8 +110,6 @@ const buildTree = (
 };
 
 export const Treemap = ({ rawSeries, settings }: VisualizationProps) => {
-  // console.log(rawSeries);
-
   const [{ data }] = rawSeries;
 
   const dimensions = settings["treemap.dimensions"].map((dimName: string) => {
@@ -132,6 +130,7 @@ export const Treemap = ({ rawSeries, settings }: VisualizationProps) => {
     itemStyle: {
       gapWidth: 2,
     },
+    colorSaturation: [0.3, 0.8],
   };
 
   const treemapTooltip: TooltipOption = {
