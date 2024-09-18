@@ -23,11 +23,13 @@ export function CommentFeed({
   model,
   modelId,
   autoScroll = false,
+  shadowed = false,
 }: {
   model?: CommentModel;
   modelId?: CardId | DashboardId;
   userId?: UserId;
   autoScroll?: boolean;
+  shadowed?: boolean;
 }) {
   const { data: comments, isLoading } = useListCommentQuery(
     {
@@ -68,12 +70,13 @@ export function CommentFeed({
   }
 
   return (
-    <Stack spacing="md">
+    <Stack spacing="md" pr="md">
       <CommentSection
         comments={comments}
         onReply={saveComment}
         onResolve={handleResolve}
         currentUser={user}
+        shadowed={shadowed}
       />
       {canComment && (
         <CommentInput
@@ -86,8 +89,6 @@ export function CommentFeed({
               model_id: modelId,
             })
           }
-          pos="sticky"
-          bottom={0}
         />
       )}
       <div ref={ref} />

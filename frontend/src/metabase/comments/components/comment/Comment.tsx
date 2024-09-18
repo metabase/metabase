@@ -1,3 +1,4 @@
+import DateTime from "metabase/components/DateTime";
 import { useListUsersQuery, useReactToCommentMutation } from "metabase/api";
 import { toMentionDisplay } from "metabase/comments/utils";
 import Markdown from "metabase/core/components/Markdown";
@@ -45,7 +46,8 @@ export const Comment = ({
           </Text>
 
           <Text span size="md" c="text-medium">
-            {comment.created_at ?? "Apr 20 6:90PM"}
+            <DateTime value={comment.created_at} />
+            {/* {comment.created_at ?? "Apr 20 6:90PM"} */}
           </Text>
         </Group>
       </Box>

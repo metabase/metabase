@@ -10,11 +10,13 @@ export const CommentSection = ({
   onReply,
   onResolve,
   currentUser,
+  shadowed,
 }: {
   comments: CommentType[];
   onReply: (comment: CommentType) => Promise<void>;
   onResolve: (comment: { id: number; resolved: boolean }) => Promise<void>;
   currentUser: User;
+  shadowed?: boolean;
 }) => (
   <>
     {comments.map(comment =>
@@ -23,7 +25,12 @@ export const CommentSection = ({
           This comment has been resolved
         </Text>
       ) : (
-        <Paper key={comment.id} p="lg" withBorder shadow="none">
+        <Paper
+          key={comment.id}
+          p="lg"
+          withBorder
+          shadow={shadowed ? "xl" : "none"}
+        >
           <Comment
             comment={comment}
             onResolve={() =>

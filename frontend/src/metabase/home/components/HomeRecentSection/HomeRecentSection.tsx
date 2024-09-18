@@ -8,7 +8,7 @@ import { getName } from "metabase/lib/name";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUser } from "metabase/selectors/user";
-import { Flex, Paper } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type { RecentItem } from "metabase-types/api";
 
 import { isWithinWeeks } from "../../utils";
@@ -46,9 +46,9 @@ export const HomeRecentSection = () => {
       </div>
       <div style={{ width: "50%" }}>
         <HomeCaption>{t`What people are discussing`}</HomeCaption>
-        <Paper p="lg" mah="20rem" style={{ overflow: "auto" }}>
-          <CommentFeed />
-        </Paper>
+        <div style={{ overflow: "auto", maxHeight: "20rem" }}>
+          <CommentFeed shadowed />
+        </div>
       </div>
     </Flex>
   );
