@@ -32,12 +32,14 @@ const USER_SCHEMA = Yup.object({
 
 interface UserFormProps {
   user?: UserInfo;
+  isHosted: boolean;
   onValidatePassword: (password: string) => Promise<string | undefined>;
   onSubmit: (user: UserInfo) => Promise<void>;
 }
 
 export const UserForm = ({
   user,
+  isHosted,
   onValidatePassword,
   onSubmit,
 }: UserFormProps) => {
@@ -66,7 +68,7 @@ export const UserForm = ({
             title={t`First name`}
             placeholder={t`Johnny`}
             nullable
-            autoFocus
+            autoFocus={!isHosted}
           />
           <FormInput
             name="last_name"
@@ -91,6 +93,7 @@ export const UserForm = ({
           type="password"
           title={t`Create a password`}
           placeholder={t`Shhh...`}
+          autoFocus={isHosted}
         />
         <FormInput
           name="password_confirm"

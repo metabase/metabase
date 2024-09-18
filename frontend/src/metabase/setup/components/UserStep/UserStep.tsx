@@ -59,6 +59,7 @@ export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
       )}
       <UserForm
         user={isHosted ? cloudUser : user}
+        isHosted={isHosted}
         onValidatePassword={validatePassword}
         onSubmit={handleSubmit}
       />
