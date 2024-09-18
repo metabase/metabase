@@ -44,6 +44,9 @@ const SETTING_DEFINITIONS = {
     section: t`Data`,
     title: t`Measure`,
     showColumnSetting: true,
+    getDefault: (rawSeries: RawSeries) =>
+      getDefaultDimensionsAndMetrics(rawSeries, MAX_TREEMAP_DIMENSIONS, 1)
+        .metrics[0],
   }),
 };
 
@@ -69,6 +72,7 @@ const buildTree = (
   rows.forEach((row: RowValues) => {
     let currentNode = root;
     const metricValue = row[metricIndex];
+
     if (typeof metricValue !== "number") {
       throw new Error(t`Treemap visualization requires a numerical metric.`);
     }
@@ -127,8 +131,8 @@ export const Treemap = ({ rawSeries, settings }: VisualizationProps) => {
     type: "treemap",
     name: "All",
     data: echartsData,
-    roam: false,
-    leafDepth: 1,
+    roam: true,
+    leafDepth: dimensions.length > 2 ? 1 : undefined,
     itemStyle: {
       gapWidth: 2,
     },
@@ -150,7 +154,10 @@ export const Treemap = ({ rawSeries, settings }: VisualizationProps) => {
     padding: 10,
     formatter: (info: any) => {
       // Build the breadcrumb by traversing ancestors
-      const breadcrumb = info.treePathInfo.map((n: any) => n.name).join(" > ");
+      const breadcrumb = info.treePathInfo
+        .slice(1)
+        .map((n: any) => n.name)
+        .join(" > ");
       const value = info.data.value;
 
       return `${breadcrumb}<br/>Value: ${value}`;
