@@ -1,5 +1,5 @@
 import { TEST_DATA } from "metabase/comments/data";
-import { Stack } from "metabase/ui";
+import { Paper } from "metabase/ui";
 
 import type { Comment as CommentType } from "../../types";
 
@@ -8,14 +8,18 @@ import { Comment } from "./Comment";
 export const CommentSection = ({
   comments = TEST_DATA,
 }: {
-  comments: CommentType[];
+  comments?: CommentType[];
 }) => (
-  <Stack>
+  <>
     {comments.map((comment, index) => (
-      <Comment
+      <Paper
         key={`${index}: humidity is good for hangovers`}
-        comment={comment}
-      />
+        p="lg"
+        withBorder
+        shadow="none"
+      >
+        <Comment comment={comment} />
+      </Paper>
     ))}
-  </Stack>
+  </>
 );

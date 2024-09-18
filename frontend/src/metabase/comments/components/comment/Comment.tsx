@@ -1,11 +1,8 @@
-import { useDisclosure } from "@mantine/hooks";
-
 import EditableText from "metabase/core/components/EditableText";
 import {
   ActionIcon,
   Avatar,
-  Box,
-  Button,
+  Divider,
   Group,
   Icon,
   Stack,
@@ -14,16 +11,12 @@ import {
 
 import type { Comment as CommentType } from "../../types";
 
-import { CommentSection } from "./CommentSection";
-
 export function Comment({ comment }: { comment: CommentType }) {
-  const [opened, { toggle }] = useDisclosure();
-
   return (
-    <div>
-      <Stack p="sm" spacing="xs">
+    <Stack spacing="xs" my="sm">
+      <Stack spacing="xs">
         <Group position="apart">
-          <Group spacing="xs">
+          <Group spacing="sm">
             <Avatar radius="xl" c="text-light" size="sm" color="brand">
               <Text c="white" size="xs">
                 {comment.author.first_name?.at(0)}
@@ -31,11 +24,13 @@ export function Comment({ comment }: { comment: CommentType }) {
               </Text>
             </Avatar>
 
-            <Text fw="bold" c="text-medium">
+            <Text fw="bold" c="text-dark" size="md">
               {comment.author.first_name} {comment.author.last_name}
             </Text>
 
-            <span>{comment.created_at ?? "Apr 20 6:90PM"}</span>
+            <Text span size="md" c="text-medium">
+              {comment.created_at ?? "Apr 20 6:90PM"}
+            </Text>
           </Group>
           <Group spacing="xs">
             <ActionIcon>
@@ -46,15 +41,27 @@ export function Comment({ comment }: { comment: CommentType }) {
             </ActionIcon>
           </Group>
         </Group>
-        <EditableText
-          isMultiline={true}
-          initialValue={comment.text}
-          isEditing={false}
-          placeholder="put something here ya ding dong"
-        />
+        <Group noWrap>
+          <Divider orientation="vertical" />
+          <EditableText
+            isMultiline={true}
+            initialValue={comment.text}
+            isEditing={false}
+            placeholder="put something here ya ding dong"
+          />
+        </Group>
       </Stack>
 
-      {comment.replies && (
+      {comment.replies &&
+        comment.replies.length > 0 &&
+        comment.replies.map((comment, index) => (
+          <Comment
+            key={`${index}: humidity is good for hangovers`}
+            comment={comment}
+          />
+        ))}
+
+      {/* {comment.replies && (
         <Box ml="md">
           <Box>
             {comment.replies && comment.replies.length > 0 && (
@@ -63,10 +70,13 @@ export function Comment({ comment }: { comment: CommentType }) {
                 onClick={toggle}
                 compact
                 leftIcon={
-                  <Icon name={opened ? "chevrondown" : "chevronright"} />
+                  <Icon
+                    size="0.5rem"
+                    name={opened ? "chevrondown" : "chevronright"}
+                  />
                 }
               >
-                <Text span fw="bold" color="brand">
+                <Text span fw="bold" size="sm" color="brand">
                   View more, because you&apos;re a special boy
                 </Text>
               </Button>
@@ -75,7 +85,7 @@ export function Comment({ comment }: { comment: CommentType }) {
 
           {opened && <CommentSection comments={comment.replies} />}
         </Box>
-      )}
-    </div>
+      )} */}
+    </Stack>
   );
 }

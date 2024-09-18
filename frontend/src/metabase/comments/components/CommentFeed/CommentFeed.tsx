@@ -1,7 +1,7 @@
 import { Stack } from "metabase/ui";
 import type { CardId, DashboardId, UserId } from "metabase-types/api";
 
-import { CommentHtml } from "../comment/Comment";
+import { CommentSection } from "../comment/CommentSection";
 
 export function CommentFeed({
   model,
@@ -15,17 +15,7 @@ export function CommentFeed({
   console.warn({ model, modelId, userId });
   return (
     <Stack spacing="md">
-      <CommentHtml />
-      <CommentHtml />
-      <CommentHtml />
-      <CommentHtml />
-      <CommentHtml />
-      <CommentHtml />
-      <CommentHtml />
-      <CommentHtml />
-      <CommentHtml />
-      <CommentHtml />
-      <CommentHtml />
+      <CommentSection />
     </Stack>
   );
 }
