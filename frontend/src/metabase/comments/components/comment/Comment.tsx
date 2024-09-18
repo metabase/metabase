@@ -75,7 +75,7 @@ export const Comment = ({
       <Box ml="0.5rem" className={CommentS.CommentText}>
         <Markdown>{toMentionDisplay(comment.text, userMapping)}</Markdown>
       </Box>
-      <Box ml="0.35rem" pt="xs" className={CommentS.Reactions}>
+      <Box ml="0.35rem" pt="sm" className={CommentS.Reactions}>
         <ReactionList
           onAddReaction={(reaction: string) => {
             onReact({
