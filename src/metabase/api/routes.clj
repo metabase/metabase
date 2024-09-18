@@ -14,6 +14,7 @@
    [metabase.api.collection :as api.collection]
    [metabase.api.checkpoints :as api.checkpoints]
    [metabase.api.company :as api.company]
+   [metabase.api.cubes_requests :as api.cubes_requests]
    [metabase.api.common :as api :refer [defroutes context]]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.database :as api.database]
@@ -114,6 +115,7 @@
   (context "/collection"           [] (+auth api.collection/routes))
   (context "/checkpoints"          [] (+auth api.checkpoints/routes))
   (context "/company"              [] (+auth api.company/routes))
+  (context "/cubes_requests"       [] (+auth api.cubes_requests/routes))
   (context "/dashboard"            [] (+auth api.dashboard/routes))
   (context "/database"             [] (+auth api.database/routes))
   (context "/dataset"              [] (+auth api.dataset/routes))

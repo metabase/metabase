@@ -9257,7 +9257,58 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
-
+  - changeSet:
+      id: v55.2024-09-17T16:00:00
+      author: flaviust
+      comment: Create table cubes_requests
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: cubes_requests
+      changes:
+        - createTable:
+            tableName: cubes_requests
+            remarks: Table to store requests related to cubes
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: description
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: user
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: admin_user
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: "now()"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: verified_status
+                  type: boolean
+                  constraints:
+                    nullable: true
+              - column:
+                  name: in_semantic_layer
+                  type: boolean
+                  constraints:
+                    nullable: true
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

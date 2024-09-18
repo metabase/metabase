@@ -113,6 +113,8 @@
                                  "metabase.us10.list-manage.com"
                                  ;; Semantic Layer
                                  "https://*.semantic.omniloy.com"
+                                 ;; Semantic Layer Local
+                                 "http://*:3001"
                                  ;; Google analytics
                                  (when (public-settings/anon-tracking-enabled)
                                    "www.google-analytics.com")
