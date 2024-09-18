@@ -128,7 +128,8 @@
   pivot-types]
  [lib.equality
   find-column-for-legacy-ref
-  find-matching-column]
+  find-matching-column
+  is-equal?]
  [lib.expression
   expression
   expressions

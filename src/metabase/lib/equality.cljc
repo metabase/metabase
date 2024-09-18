@@ -445,3 +445,10 @@
          (and (not (contains? matching nil))
               (= (count matching) (count columns))
               (every? #(= (count %) 1) (vals matching))))))
+
+(mu/defn is-equal? :- :boolean
+  "Is `col1` equal to `col2`? Hackathon version!"
+  [col1 col2]
+  (if (string? (:id col1))
+    (= (:name col1) (:name col2))
+    (= (:id col1) (:id col2))))
