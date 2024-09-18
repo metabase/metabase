@@ -37,7 +37,7 @@ export const FilterSuggestion = ({
       });
     }
 
-    if (Lib.isString(field.column)) {
+    if (Lib.isStringOrStringLike(field.column)) {
       const argsAttribute = field.attribute + "_most_used_args";
       const opAttribute = field.attribute + "_most_used_op";
 
