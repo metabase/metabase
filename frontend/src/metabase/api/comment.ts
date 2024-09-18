@@ -47,4 +47,9 @@ export const commentApi = Api.injectEndpoints({
   }),
 });
 
-export const { useListCommentQuery, useCreateCommentMutation } = commentApi;
+export const {
+  useListCommentQuery,
+  useCreateCommentMutation,
+  useReactToCommentMutation,
+  useResolveCommentMutation,
+} = commentApi;
