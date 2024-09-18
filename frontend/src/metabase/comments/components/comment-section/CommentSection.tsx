@@ -7,8 +7,10 @@ import { Comment } from "../comment/Comment";
 
 export const CommentSection = ({
   comments = TEST_DATA,
+  onReply,
 }: {
   comments?: CommentType[];
+  onReply: (comment: CommentType) => Promise<void>;
 }) => (
   <>
     {comments.map((comment, index) => (
@@ -24,17 +26,14 @@ export const CommentSection = ({
         ))}
 
         <CommentInput
-          placeholder="reply..."
+          placeholder="Add a comment ..."
           onSubmit={text =>
-            saveComment({
+            onReply({
               text,
-              model,
-              model_id: modelId,
+              model: "comment",
+              model_id: comment.id,
             })
           }
-          pos="sticky"
-          bottom={0}
-          mt="md"
         />
       </Paper>
     ))}

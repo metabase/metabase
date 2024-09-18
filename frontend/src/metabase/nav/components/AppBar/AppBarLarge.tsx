@@ -83,13 +83,13 @@ const AppBarLarge = ({
           <Popover width="20rem" position="bottom-end">
             <Popover.Target>
               <Icon
-                name="comment"
+                name="bell"
                 onClick={onToggleNavbar}
                 className={cx(CS.cursorPointer, CS.textBrandHover)}
               />
             </Popover.Target>
             <Popover.Dropdown>
-              <Box w="20rem" p="lg" mah="20rem">
+              <Box w="30rem" p="lg" mah="30rem">
                 <CommentFeed />
                 <div style={{ height: "1.5rem" }} />
               </Box>

@@ -60,7 +60,7 @@ export function CommentFeed({
 
   return (
     <Stack spacing="md">
-      <CommentSection comments={comments} />
+      <CommentSection comments={comments} onReply={saveComment} />
       {canComment && (
         <CommentInput
           placeholder="Add a comment..."
