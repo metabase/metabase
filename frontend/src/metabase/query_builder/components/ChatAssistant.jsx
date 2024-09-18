@@ -22,7 +22,7 @@ import { getInitialSchema } from "metabase/redux/initialSchema";
 import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipToken } from "metabase/api";
 import { SemanticError } from "metabase/components/ErrorPages";
 import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
-const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message }) => {
+const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages }) => {
     const initialDbName = useSelector(getDBInputValue);
     const initialCompanyName = useSelector(getCompanyName);
     const initialSchema = useSelector(getInitialSchema);
@@ -31,8 +31,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const dispatch = useDispatch();
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
     const [companyName, setCompanyName] = useState("");
-    const [inputValue, setInputValue] = useState("");
-    const [messages, setMessages] = useState([]);
     const [card, setCard] = useState([]);
     const [reasoning, setReasoning] = useState([]);
     const [sources, setSources] = useState([]);
@@ -47,7 +45,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedTab, setSelectedTab] = useState("reasoning");
     const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
-    const [threadId, setThreadId] = useState('')
     const [insightsList, setInsightsList] = useState([]);
     const [cardHash, setCardHash] = useState([]);
     const [id, setId] = useState(0);
