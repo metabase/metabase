@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.comment :as api.comment]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,3 +42,21 @@
             result      (mt/user-http-request :rasta :post 200 "comment" new-comment)]
         (is (=? (assoc new-comment :author {:first_name "Rasta"})
                 result))))))
+
+(deftest comment-resolution-test
+  (testing "PUT /api/comment resolved"
+    (mt/with-temp
+      [:model/Card    {card-id :id}    {}
+       :model/Comment {comment-id :id} {:model "card" :model_id card-id :text "first!"}]
+      (let [result (mt/user-http-request :rasta :put 200 (format "comment/%d" comment-id) {:resolved true})]
+        (is (=? {:resolved true :text "first!" :author {:first_name "Rasta"}}
+                result))
+        (is (true? (t2/select-one-fn :resolved :model/Comment :id comment-id))))))
+  (testing "PUT /api/comment text"
+    (mt/with-temp
+      [:model/Card    {card-id :id}    {}
+       :model/Comment {comment-id :id} {:model "card" :model_id card-id :text "first!"}]
+      (let [result (mt/user-http-request :rasta :put 200 (format "comment/%d" comment-id) {:text "oops"})]
+        (is (=? {:resolved false :text "oops" :author {:first_name "Rasta"}}
+                result))
+        (is (= "oops" (t2/select-one-fn :text :model/Comment :id comment-id)))))))

@@ -9357,6 +9357,17 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v51.2024-09-18T11:29:12
+      author: tsmacdonald
+      comment: Rename metabase_comment.active to .resolved because I'm tonto
+      changes:
+        - renameColumn:
+            tableName: metabase_comment
+            columnDataType: ${boolean.type}
+            oldColumnName: active
+            newColumnName: resolved
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
