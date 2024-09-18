@@ -1,13 +1,15 @@
 (ns metabase.channel.email
   (:require
    [metabase.channel.core :as channel]
+   [metabase.channel.params :as channel.params]
    [metabase.channel.shared :as channel.shared]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [stencil.core :as stencil]))
 
 (def ^:private EmailMessage
   [:map
@@ -16,7 +18,7 @@
    [:message-type [:enum :attachments :html :text]]
    [:message      :any]])
 
-(defn- construct-pulse-email [subject recipients message]
+(defn- construct-email [subject recipients message]
   {:subject      subject
    :recipients   recipients
    :message-type :attachments
@@ -55,7 +57,7 @@
                                  :bcc?         (email/bcc-enabled?)}))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
-  [_channel-type {:keys [card pulse payload pulse-channel]} recipients]
+  [_channel-type {:keys [card pulse payload pulse-channel]} _template recipients]
   (let [condition-kwd             (messages/pulse->alert-condition-kwd pulse)
         email-subject             (case condition-kwd
                                     :meets (trs "Alert: {0} has reached its goal" (:name card))
@@ -66,14 +68,14 @@
         timezone                  (channel.shared/defaulted-timezone card)
         goal                      (find-goal-value card)
         email-to-users            (when (> (count user-emails) 0)
-                                    (construct-pulse-email
+                                    (construct-email
                                      email-subject user-emails
                                      (messages/render-alert-email timezone pulse pulse-channel
                                                                   [payload]
                                                                   goal
                                                                   nil)))
         email-to-nonusers         (for [non-user-email non-user-emails]
-                                    (construct-pulse-email
+                                    (construct-email
                                      email-subject [non-user-email]
                                      (messages/render-alert-email timezone pulse pulse-channel
                                                                   [payload]
@@ -86,19 +88,40 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
-  [_channel-type {:keys [dashboard payload pulse]} recipients]
+  [_channel-type {:keys [dashboard payload pulse]} _template recipients]
   (let [{:keys [user-emails
                 non-user-emails]} (recipients->emails recipients)
         timezone                  (some->> payload (some :card) channel.shared/defaulted-timezone)
         email-subject             (:name dashboard)
         email-to-users            (when (seq user-emails)
-                                    (construct-pulse-email
+                                    (construct-email
                                      email-subject
                                      user-emails
                                      (messages/render-pulse-email timezone pulse dashboard payload nil)))
         email-to-nonusers         (for [non-user-email non-user-emails]
-                                    (construct-pulse-email
+                                    (construct-email
                                      email-subject
                                      [non-user-email]
                                      (messages/render-pulse-email timezone pulse dashboard payload non-user-email)))]
     (filter some? (conj email-to-nonusers email-to-users))))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                         System Events                                           ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(defn- notification-recipients->emails
+  [recipients]
+  (for [recipient recipients]
+    (case (:type recipient)
+      :notification-recipient/user
+      (-> recipient :user :email))))
+
+(defmethod channel/render-notification
+  [:channel/email :notification/system-event]
+  [_channel-type notification-info template recipients]
+  (assert (some? template) "Template is required for system event notifications")
+  (let [payload (:payload notification-info)]
+    [(construct-email (channel.params/substitute-params (-> template :details :subject) payload)
+                      (notification-recipients->emails recipients)
+                      [{:type    "text/html; charset=utf-8"
+                        :content (stencil/render-string (-> template :details :body) payload)}])]))

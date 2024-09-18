@@ -106,7 +106,7 @@
 (defn- cross-check-channel-type-and-template-type
   [notification-handler]
   (when-let [template-id (:template_id notification-handler)]
-    (let [channel-type  (:channel_type notification-handler)
+    (let [channel-type  (keyword (:channel_type notification-handler))
           template-type (t2/select-one-fn :channel_type [:model/ChannelTemplate :channel_type] template-id)]
       (when (not= channel-type template-type)
         (throw (ex-info "Channel type and template type mismatch"
@@ -145,8 +145,8 @@
   (t2/with-transaction [_conn]
     (let [instance (t2/insert-returning-instance! :model/Notification notification)
           id       (:id instance)]
-
-      (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id id) subcriptions))
+      (when (seq subcriptions)
+        (t2/insert! :model/NotificationSubscription (map #(assoc % :notification_id id) subcriptions)))
       (doseq [handler handlers+recipients]
         (let [recipients (:recipients handler)
               handler    (-> handler

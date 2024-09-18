@@ -9440,11 +9440,11 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  remarks: Random NanoID tag for unique identity.
                   name: entity_id
                   type: char(21)
+                  remarks: Random NanoID tag for unique identity.
                   constraints:
-                    nullable: false
+                    nullable: true
                     unique: true
               - column:
                   name: created_at
@@ -9718,7 +9718,6 @@ databaseChangeLog:
               - column:
                   name: permissions_group_id
             indexName: idx_notification_recipient_permissions_group_id
-
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

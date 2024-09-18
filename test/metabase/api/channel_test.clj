@@ -1,42 +1,23 @@
 (ns metabase.api.channel-test
   (:require
    [clojure.test :refer :all]
-   [metabase.channel.core :as channel]
    [metabase.channel.http-test :as channel.http-test]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defmethod channel/can-connect? :channel/metabase-test
-  [_channel-type {:keys [return-type return-value] :as _details}]
-  (case return-type
-    "throw"
-    (throw (ex-info "Test error" return-value))
-
-    "return-value"
-    return-value))
-
-(def default-test-channel
-  {:name        "Test channel"
-   :description "Test channel description"
-   :type        "channel/metabase-test"
-   :details     {:return-type  "return-value"
-                 :return-value true}
-   :active      true})
+(def default-test-channel notification.tu/default-can-connect-channel)
 
 (deftest CRU-channel-test
   (mt/with-model-cleanup [:model/Channel]
     (let [channel (testing "can create a channel"
-                    (mt/user-http-request :crowberto :post 200 "channel" default-test-channel))]
+                    (mt/user-http-request :crowberto :post 200 "channel"
+                                          default-test-channel))]
       (testing "can get the channel"
-        (is (=? {:name        "Test channel"
-                 :description "Test channel description"
-                 :type        "channel/metabase-test"
-                 :details     {:return-type  "return-value"
-                               :return-value true}
-                 :active      true}
+        (is (=? default-test-channel
                 (mt/user-http-request :crowberto :get 200 (str "channel/" (:id channel))))))
 
       (testing "can update channel name"
@@ -73,10 +54,9 @@
         (is (= false (t2/select-one-fn :active :model/Channel (:id channel))))))))
 
 (deftest create-channel-with-existing-name-error-test
-  (let [channel-details default-test-channel]
-    (mt/with-temp [:model/Channel _chn channel-details]
-      (is (= {:errors {:name "Channel with that name already exists"}}
-             (mt/user-http-request :crowberto :post 409 "channel" default-test-channel))))))
+  (mt/with-temp [:model/Channel _chn default-test-channel]
+    (is (= {:errors {:name "Channel with that name already exists"}}
+           (mt/user-http-request :crowberto :post 409 "channel" default-test-channel)))))
 
 (def ns-keyword->str #(str (.-sym %)))
 
@@ -175,7 +155,7 @@
               (is (= {:details  {:description "Test channel description"
                                  :id          id
                                  :name        "Test channel"
-                                 :type        "channel/metabase-test"
+                                 :type        notification.tu/test-channel-type
                                  :active      true}
                       :model    "Channel"
                       :model_id id

@@ -633,6 +633,7 @@
     metabase.models.timeline                                      timeline
     metabase.models.timeline-event                                timeline-event
     metabase.notification.core                                    notification
+    metabase.notification.test-util                               notification.tu
     metabase.plugins.initialize                                   plugins.init
     metabase.public-settings                                      public-settings
     metabase.public-settings.premium-features                     premium-features

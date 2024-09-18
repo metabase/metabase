@@ -244,7 +244,7 @@
 (defn- get-notification-info
   [pulse parts pulse-channel]
   (let [alert? (nil? (:dashboard_id pulse))]
-    (merge {:payload-type  (if alert?
+    (merge {:payload_type  (if alert?
                              :notification/alert
                              :notification/dashboard-subscription)
             :payload       (if alert? (first parts) parts)
@@ -352,6 +352,7 @@
                      (let [channel  (pc->channel pulse-channel)
                            messages (channel/render-notification (:type channel)
                                                                  (get-notification-info pulse parts pulse-channel)
+                                                                 nil
                                                                  (channel-recipients pulse-channel))]
                        (log/debugf "Rendered %d messages for %s %d to channel %s"
                                    (count messages)
