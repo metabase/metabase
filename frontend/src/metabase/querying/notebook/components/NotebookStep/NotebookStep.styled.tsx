@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { alpha, color, darken } from "metabase/lib/colors";
+import { alpha, color, darken, lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 const getPercentage = (number: number): string => {
@@ -38,16 +38,19 @@ export const StepActionsContainer = styled.div`
 
 interface ColorButtonProps {
   color: string;
+  transparent?: boolean;
 }
 
 export const ColorButton = styled(Button)<ColorButtonProps>`
   border: none;
   color: ${({ color }) => color};
-  background-color: ${({ color }) => alpha(color, 0.2)};
+  background-color: ${({ color, transparent }) =>
+    transparent ? null : alpha(color, 0.2)};
 
   &:hover {
     color: ${({ color }) => darken(color, 0.115)};
-    background-color: ${({ color }) => alpha(color, 0.35)};
+    background-color: ${({ color, transparent }) =>
+      transparent ? lighten(color, 0.5) : alpha(color, 0.35)};
   }
 
   transition: background 300ms;
@@ -55,6 +58,7 @@ export const ColorButton = styled(Button)<ColorButtonProps>`
 
 interface PreviewButtonProps {
   icon?: string;
+  transparent?: boolean;
   hasPreviewButton?: boolean;
 }
 
