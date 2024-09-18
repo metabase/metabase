@@ -72,7 +72,7 @@ export const Chat = ({
 
   const data = questionData[0]?.data;
   const { cols, rows } = data;
-  const _fieldsWithSampleValues = useMemo(() => {
+  const fieldsWithSampleValues = useMemo(() => {
     return getColumnsWithSampleValues(cols, rows);
   }, [cols, rows]);
 
@@ -105,9 +105,14 @@ export const Chat = ({
     const prompt = `
       <context>
         table id: ${question._card.dataset_query.database}.
+
         table name: ${table?.name}.
+
         table display name: ${table?.display_name}.
+
         available fields: ${JSON.stringify(fields)}.
+
+        distinct values in each field: ${fieldsWithSampleValues}
       </context>
 
       <user_ask>
