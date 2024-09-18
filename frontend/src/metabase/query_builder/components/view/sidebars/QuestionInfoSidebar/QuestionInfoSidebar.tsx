@@ -62,7 +62,7 @@ export const QuestionInfoSidebar = ({
       data-testid="question-info-sidebar"
     >
       <Tabs
-        defaultValue="overview"
+        defaultValue="comments"
         className={SidesheetStyles.FlexScrollContainer}
       >
         <Tabs.List mx="lg">

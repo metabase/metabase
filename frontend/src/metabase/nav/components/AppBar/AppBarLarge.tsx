@@ -1,5 +1,9 @@
+import cx from "classnames";
 import { t } from "ttag";
 
+import { CommentFeed } from "metabase/comments";
+import CS from "metabase/css/core/index.css";
+import { Box, Icon, Popover } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
@@ -76,6 +80,21 @@ const AppBarLarge = ({
         <AppBarRightContainer>
           {isSearchVisible && (isEmbedded ? <SearchBar /> : <SearchButton />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
+          <Popover width="20rem" position="bottom-end">
+            <Popover.Target>
+              <Icon
+                name="comment"
+                onClick={onToggleNavbar}
+                className={cx(CS.cursorPointer, CS.textBrandHover)}
+              />
+            </Popover.Target>
+            <Popover.Dropdown>
+              <Box w="20rem" p="lg" mah="20rem">
+                <CommentFeed />
+                <div style={{ height: "1.5rem" }} />
+              </Box>
+            </Popover.Dropdown>
+          </Popover>
           {isProfileLinkVisible && (
             <AppBarProfileLinkContainer aria-label={t`Settings menu`}>
               <ProfileLink onLogout={onLogout} />
