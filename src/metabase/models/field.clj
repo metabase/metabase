@@ -258,9 +258,9 @@
       (seq (for [field fields]
              (let [used-in->cnt (get field-id->field-usages-cnt (:id field))]
                (assoc field
-                      :field_usage_filter_count (get used-in->cnt :filter)
-                      :field_usage_aggregation_count (get used-in->cnt :aggregation)
-                      :field_usage_breakout_count (get used-in->cnt :breakout))))))))
+                      :field_usage_filter_count (get used-in->cnt :filter 0)
+                      :field_usage_aggregation_count (get used-in->cnt :aggregation 0)
+                      :field_usage_breakout_count (get used-in->cnt :breakout 0))))))))
 
 (mi/define-batched-hydration-method with-dimensions
   :dimensions
