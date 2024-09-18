@@ -319,7 +319,7 @@ export class NativeQueryEditor extends Component<
 
   componentWillUnmount() {
     if (this.props.cancelQueryOnLeave) {
-      this.props.cancelQuery?.();
+      // this.props.cancelQuery?.();
     }
     window.cancelAnimationFrame(this._focusFrame);
     this._editor?.destroy?.();
