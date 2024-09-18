@@ -59,7 +59,6 @@
    :id
    {:default nil}))
 
-
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                               :model/NotificationSubscription                                   ;;
 ;; ------------------------------------------------------------------------------------------------;;
@@ -180,7 +179,6 @@
                                                [:email ms/Email]]]
       [:user_id              {:optional true} [:fn nil?]]
       [:permissions_group_id {:optional true} [:fn nil?]]]]]])
-
 
 (defn- check-valid-recipient
   [recipient]

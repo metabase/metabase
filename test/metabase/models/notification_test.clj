@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.api.channel-test :as api.channel-test]
    [metabase.models.notification :as models.notification]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -148,14 +149,14 @@
 (deftest cross-check-channel-type-and-template-type-test
   (testing "can't create a handler with a template that has different channel type"
     (mt/with-temp [:model/Channel         chn-1  {:type    :channel/slack}
-                   :model/ChannelTemplate tmpl-1 {:channel_type :channel/email}]
+                   :model/ChannelTemplate tmpl-1 notification.tu/channel-template-email-with-mustatche-body]
       (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
                             (t2/insert! :model/NotificationHandler {:channel_type :channel/slack
                                                                     :channel_id   (:id chn-1)
                                                                     :template_id  (:id tmpl-1)})))))
 
   (testing "can't update a handler with a template that has different channel type"
-    (mt/with-temp [:model/ChannelTemplate     email-tmpl {:channel_type :channel/email}
+    (mt/with-temp [:model/ChannelTemplate     email-tmpl notification.tu/channel-template-email-with-mustatche-body
                    :model/ChannelTemplate     slack-tmpl {:channel_type :channel/slack}
                    :model/Notification        noti       {}
                    :model/NotificationHandler handler    {:channel_type    :channel/slack
@@ -213,21 +214,21 @@
           (is (some? (insert! {:type    :notification-recipient/external-email
                                :details {:email "ngoc@metabase.com"}}))))
 
-       (testing "fail if details does not match schema"
-                 (is (thrown-with-msg? Exception #"Value does not match schema"
-                                       (insert! {:type    :notification-recipient/external-email
-                                                 :details {:email     "ngoc@metabase.com"
-                                                           :not-email true}}))))
-       (testing "fail without email"
-         (is (thrown-with-msg? Exception #"Value does not match schema"
-                               (insert! {:type :notification-recipient/external-email}))))
-       (testing "if has user_id"
-         (is (thrown-with-msg? Exception #"Value does not match schema"
-                               (insert! {:type    :notification-recipient/external-email
-                                         :user_id 1
-                                         :details {:email "ngoc@metabase.com"}}))))
-       (testing "if has permissions_group_id"
-         (is (thrown-with-msg? Exception #"Value does not match schema"
-                               (insert! {:type                 :notification-recipient/external-email
-                                         :permissions_group_id 1
-                                         :details              {:email "ngoc@metabase.com"}}))))))))
+        (testing "fail if details does not match schema"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type    :notification-recipient/external-email
+                                          :details {:email     "ngoc@metabase.com"
+                                                    :not-email true}}))))
+        (testing "fail without email"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type :notification-recipient/external-email}))))
+        (testing "if has user_id"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type    :notification-recipient/external-email
+                                          :user_id 1
+                                          :details {:email "ngoc@metabase.com"}}))))
+        (testing "if has permissions_group_id"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type                 :notification-recipient/external-email
+                                          :permissions_group_id 1
+                                          :details              {:email "ngoc@metabase.com"}}))))))))
