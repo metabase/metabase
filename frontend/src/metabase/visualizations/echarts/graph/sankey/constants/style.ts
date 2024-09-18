@@ -9,7 +9,7 @@ export const SANKEY_CHART_STYLE = {
     size: 14,
   },
   padding: {
-    x: 24,
-    y: 24,
+    x: 34,
+    y: 34,
   },
 };

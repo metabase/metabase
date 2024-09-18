@@ -22,8 +22,6 @@ import type {
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 
-import { SankeyChartRenderer } from "./SankeyChart.styled";
-
 const SETTINGS_DEFINITIONS = {
   ...columnSettings({ hidden: true }),
   ...dimensionSetting("sankey.source", {
