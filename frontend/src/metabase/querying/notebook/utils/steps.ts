@@ -52,7 +52,7 @@ const STEPS: NotebookStepDef[] = [
     revert: (query, _stageIndex) => {
       return query;
     },
-    canRevert: () => true,
+    canRevert: () => false,
   },
   {
     type: "join",
