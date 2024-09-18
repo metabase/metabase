@@ -1295,7 +1295,7 @@
   "Schema for native stage of an mbql query"
   [:map
    [:query ::lib.schema.common/non-blank-string]
-   [:metadata :any]])
+   [:metadata {:optional true} :any]])
 
 (def join-strategies
   "Valid values of the `:strategy` key in a join map."

@@ -37,8 +37,9 @@
 (mr/def ::field
   [:schema {:doc/title "Valid Field ID"} pos-int?])
 
+;; this one
 (mr/def ::card
-  [:schema {:doc/title "Valid Card ID"} pos-int?])
+  [:schema {:doc/title "Valid Card ID"} int?])
 
 (mr/def ::segment
   [:schema {:doc/title "Valid legacy Segment ID"} pos-int?])
