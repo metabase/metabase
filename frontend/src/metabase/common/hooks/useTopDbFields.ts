@@ -24,7 +24,11 @@ export const useTopDbFields = (
 
   const fields =
     database?.tables?.flatMap(table => {
-      return table.fields ?? [];
+      const fields = table.fields ?? [];
+      return fields.map(field => ({
+        ...field,
+        table,
+      }));
     }) ?? [];
 
   const usedFields = fields.filter(field => field[attribute] > 0);
