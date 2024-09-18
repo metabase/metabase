@@ -19,6 +19,9 @@ export const CommentSection = ({
         shadow="none"
       >
         <Comment comment={comment} />
+        {comment.replies?.map((c, idx) => (
+          <Comment key={`${idx} ${c}`} comment={c} />
+        ))}
       </Paper>
     ))}
   </>
