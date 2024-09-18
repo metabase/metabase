@@ -10,6 +10,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import type { User } from "metabase-types/api";
 
 import type { Comment as CommentType } from "../../types";
 import { ReactionList } from "../reaction-list";
@@ -107,5 +108,38 @@ export const Comment = ({
         />
       </Box>
     </Box>
+    <Box className={CommentS.Avatar}>
+      <Stack h="100%" align="center" spacing="sm">
+        <UserIcon user={comment.author} />
+        <Box style={{ flex: 1 }}>
+          <Divider h="100%" orientation="vertical" />
+        </Box>
+      </Stack>
+    </Box>
+    <Box ml="2px" className={CommentS.CommentText}>
+      <EditableText
+        isMultiline={true}
+        initialValue={comment.text}
+        isEditing={false}
+        placeholder="put something here ya ding dong"
+      />
+    </Box>
+    <Box ml="4px" pt="xs" className={CommentS.Reactions}>
+      <ReactionList reactions={comment.reactions} />
+    </Box>
+  </Box>
+);
+
+export function UserIcon({ user }: { user: User }) {
+  if (user?.avatar) {
+    return <Avatar src={user.avatar} radius="xl" size="1.5rem" />;
+  }
+  return (
+    <Avatar radius="xl" c="text-light" size="1.5rem" color="brand">
+      <Text c="white" size="0.65rem">
+        {user?.first_name?.at?.(0) ?? "😁"}
+        {user?.last_name?.at?.(0) ?? ""}
+      </Text>
+    </Avatar>
   );
-};
+}

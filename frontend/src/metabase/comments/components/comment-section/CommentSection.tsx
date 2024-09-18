@@ -1,5 +1,6 @@
 import { TEST_DATA } from "metabase/comments/data";
 import { Paper, Text } from "metabase/ui";
+import type { User } from "metabase-types/api";
 
 import type { Comment as CommentType } from "../../types";
 import { CommentInput } from "../CommentInput/CommentInput";
@@ -9,10 +10,12 @@ export const CommentSection = ({
   comments = TEST_DATA,
   onReply,
   onResolve,
+  currentUser,
 }: {
   comments?: CommentType[];
   onReply: (comment: CommentType) => Promise<void>;
   onResolve: (comment: { id: number; resolved: boolean }) => Promise<void>;
+  currentUser: User;
 }) => (
   <>
     {comments.map(comment =>
@@ -35,6 +38,7 @@ export const CommentSection = ({
 
           <CommentInput
             placeholder="Add a comment ..."
+            user={currentUser}
             onSubmit={text =>
               onReply({
                 text,

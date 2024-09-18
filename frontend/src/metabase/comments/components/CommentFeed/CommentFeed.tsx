@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { usePrevious } from "react-use";
 
+import { useCurrentUser } from "embedding-sdk";
 import {
   useCreateCommentMutation,
   useListCommentQuery,
@@ -39,6 +40,8 @@ export function CommentFeed({
     },
   );
 
+  const user = useCurrentUser();
+
   const previousComments = usePrevious(comments);
 
   const [saveComment] = useCreateCommentMutation();
@@ -70,10 +73,12 @@ export function CommentFeed({
         comments={comments}
         onReply={saveComment}
         onResolve={handleResolve}
+        currentUser={user}
       />
       {canComment && (
         <CommentInput
           placeholder="Add a comment..."
+          user={user}
           onSubmit={text =>
             saveComment({
               text,
