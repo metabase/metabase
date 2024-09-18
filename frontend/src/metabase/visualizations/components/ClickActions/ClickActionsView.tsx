@@ -1,4 +1,7 @@
-import type { RegularClickAction } from "metabase/visualizations/types";
+import type {
+  OnChangeCardAndRun,
+  RegularClickAction,
+} from "metabase/visualizations/types";
 
 import { ClickActionControl } from "./ClickActionControl";
 import { Container, Divider } from "./ClickActionsPopover.styled";
@@ -13,16 +16,16 @@ interface Props {
   clickActions: RegularClickAction[];
   close: () => void;
   onClick: (action: RegularClickAction) => void;
+  onChangeCardAndRun: OnChangeCardAndRun;
 }
 
 export const ClickActionsView = ({
   clickActions,
   close,
   onClick,
+  onChangeCardAndRun,
 }: Props): JSX.Element => {
   const sections = getGroupedAndSortedActions(clickActions);
-
-  console.log(sections);
 
   const hasOnlyOneSection = sections.length === 1;
 
@@ -52,6 +55,7 @@ export const ClickActionsView = ({
                 action={action}
                 close={close}
                 onClick={() => onClick(action)}
+                onChangeCardAndRun={onChangeCardAndRun}
               />
             ))}
             {withBottomDivider && <Divider />}

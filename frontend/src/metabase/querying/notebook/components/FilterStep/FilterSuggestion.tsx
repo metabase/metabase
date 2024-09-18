@@ -94,7 +94,7 @@ export const FilterSuggestion = ({
   );
 };
 
-function generateFilterLabel(query, stageIndex, filter, field) {
+export function generateFilterLabel(query, stageIndex, filter, field) {
   if (filter) {
     return Lib.displayInfo(query, stageIndex, filter).longDisplayName;
   }

@@ -1,10 +1,12 @@
 import { useTopDbFields } from "metabase/common/hooks";
 import Tooltip from "metabase/core/components/Tooltip";
+import { generateFilterLabel } from "metabase/querying/notebook/components/FilterStep/FilterSuggestion";
 import type { IconName } from "metabase/ui";
 import { Button, Icon } from "metabase/ui";
 import {
   type ClickAction,
   type CustomClickAction,
+  type OnChangeCardAndRun,
   isCustomClickAction,
   isCustomClickActionWithView,
 } from "metabase/visualizations/types";
@@ -27,12 +29,14 @@ interface Props {
   action: ClickAction;
   close: () => void;
   onClick: (action: ClickAction) => void;
+  onChangeCardAndRun: OnChangeCardAndRun;
 }
 
 export const ClickActionControl = ({
   action,
   close,
   onClick,
+  onChangeCardAndRun,
 }: Props): JSX.Element | null => {
   const topDbFields = useTopDbFields(__MLv2_query, -1, "field_usage_filter");
 
@@ -58,6 +62,36 @@ export const ClickActionControl = ({
   }
 
   const { buttonType } = action;
+
+  const filter = (() => {
+    if (!suggestion) {
+      return null;
+    }
+    if (Lib.isNumber(suggestion.column)) {
+      const argsAttribute = suggestion.attribute + "_most_used_args";
+      const opAttribute = suggestion.attribute + "_most_used_op";
+
+      return Lib.numberFilterClause({
+        operator: suggestion[opAttribute],
+        column: suggestion.column,
+        values: suggestion[argsAttribute],
+      });
+    }
+
+    if (Lib.isStringOrStringLike(suggestion.column)) {
+      const argsAttribute = suggestion.attribute + "_most_used_args";
+      const opAttribute = suggestion.attribute + "_most_used_op";
+
+      return Lib.stringFilterClause({
+        operator: suggestion[opAttribute],
+        column: suggestion.column,
+        values: suggestion[argsAttribute],
+        options: {},
+      });
+    }
+
+    return null;
+  })();
 
   switch (buttonType) {
     case "token-filter":
@@ -150,7 +184,16 @@ export const ClickActionControl = ({
                   color: "white",
                 }}
                 leftIcon={<Icon name="sparkles" size="12px" />}
-              >{`${suggestion.field_usage_filter_most_used_op} ${suggestion.field_usage_filter_most_used_args?.join(" and ")}`}</Button>
+                onClick={() => {
+                  const nextQuery = Lib.filter(action.query, -1, filter);
+                  const nextQuestion = action.question.setQuery(nextQuery);
+                  const nextCard = nextQuestion.card();
+                  onChangeCardAndRun({ nextCard });
+                }}
+              >
+                {/* {`${suggestion.field_usage_filter_most_used_op} ${suggestion.field_usage_filter_most_used_args?.join(" and ")}`} */}
+                {generateFilterLabel(action.query, -1, filter, suggestion)}
+              </Button>
             )}
         </span>
       );

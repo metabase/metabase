@@ -92,8 +92,6 @@ export class ClickActionsPopover extends Component<
       return null;
     }
 
-    console.log(clickActions);
-
     const { popoverAction } = this.state;
     let popover;
     if (popoverAction && popoverAction.popover) {
@@ -151,6 +149,7 @@ export class ClickActionsPopover extends Component<
               clickActions={clickActions}
               close={this.close}
               onClick={this.handleClickAction}
+              onChangeCardAndRun={onChangeCardAndRun}
             />
           )
         }
