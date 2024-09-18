@@ -384,7 +384,7 @@ export const card = handleActions(
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {
-      next: (state, { payload: { card } }) => ({
+      next: (state, { payload: { card, queryResults } }) => ({
         ...state,
         display: card.display,
         result_metadata: card.result_metadata,
@@ -458,6 +458,18 @@ export const lastRunCard = handleActions(
     [RESET_QB]: { next: (state, { payload }) => null },
     [QUERY_COMPLETED]: { next: (state, { payload }) => payload.card },
     [QUERY_ERRORED]: { next: (state, { payload }) => null },
+  },
+  null,
+);
+
+export const sourceCard = handleActions(
+  {
+    [QUERY_COMPLETED]: {
+      next: (_, { payload: { card, queryResults } }) => ({
+        ...card,
+        result_metadata: queryResults[0].data.results_metadata.columns,
+      }),
+    },
   },
   null,
 );

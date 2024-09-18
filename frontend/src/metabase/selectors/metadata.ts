@@ -17,6 +17,7 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import type {
   Card,
+  NormalizedCard,
   NormalizedDatabase,
   NormalizedField,
   NormalizedForeignKey,
@@ -86,7 +87,19 @@ const getNormalizedFields = createSelector(
 );
 
 const getNormalizedSegments = (state: State) => state.entities.segments;
-const getNormalizedQuestions = (state: State) => state.entities.questions;
+const getNormalizedQuestions = (
+  state: State,
+): Record<number, NormalizedCard> => ({
+  ...state.entities.questions,
+  ...(state.qb?.sourceCard
+    ? {
+        [Number.MAX_SAFE_INTEGER]: {
+          ...state.qb.sourceCard,
+          id: Number.MAX_SAFE_INTEGER,
+        },
+      }
+    : {}),
+});
 
 export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;

@@ -61,6 +61,7 @@ export interface QueryBuilderState {
   card: Card | null;
   originalCard: Card | null;
   lastRunCard: Card | null;
+  sourceCard: Card | null;
 
   parameterValues: Record<string, ParameterValueOrArray>;
 

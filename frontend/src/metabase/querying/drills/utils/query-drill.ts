@@ -16,7 +16,7 @@ export function queryDrill(
   const drills = Lib.availableDrillThrus(
     query,
     stageIndex,
-    question.id(),
+    question.id() ?? Number.MAX_SAFE_INTEGER,
     clicked.column,
     clicked.value,
     clicked.data,
@@ -27,7 +27,7 @@ export function queryDrill(
     const newQuery = Lib.drillThru(
       query,
       stageIndex,
-      question.id(),
+      question.id() ?? Number.MAX_SAFE_INTEGER,
       drill,
       ...args,
     );
