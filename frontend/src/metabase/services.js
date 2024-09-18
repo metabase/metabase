@@ -29,6 +29,10 @@ export const StoreApi = {
   billingInfo: GET("/api/ee/billing"),
 };
 
+export const KitchenSinkAPI = {
+  makeKitchenSink: POST("/api/kitchen-sink")
+};
+
 // Pivot tables need extra data beyond what's described in the MBQL query itself.
 // To fetch that extra data we rely on specific APIs for pivot tables that mirrow the normal endpoints.
 // Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.

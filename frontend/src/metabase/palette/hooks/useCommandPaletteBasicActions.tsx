@@ -8,6 +8,7 @@ import {
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
+import { KitchenSinkAPI } from "metabase/services";
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -115,6 +116,15 @@ export const useCommandPaletteBasicActions = ({
             openNewModal("collection");
           },
         },
+        {
+          id: "make_kitchen_sink",
+          name: t`Kitchen Sink`,
+          section: "basic",
+          icon: "dashboard",
+          perform: async () => {
+            await KitchenSinkAPI.makeKitchenSink({"some": "body"})
+          }
+        }
       ],
     );
 
