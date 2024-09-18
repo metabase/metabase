@@ -124,13 +124,24 @@ export const Chat = ({
 
     console.log(`Prompt:`, prompt);
 
+    const nextMessages = [
+      // ...messages.map(m => ({
+      //   content: m.content,
+      //   role: m.author === "llm" ? "assistant" : "user",
+      // })),
+      {
+        content: prompt,
+        role: "user",
+      },
+    ];
+
     const results = await fetch(`http://0.0.0.0:8000/experimental/viz-agent/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        messages: [{ content: prompt, role: "user" }],
+        messages: nextMessages,
         tools: METABOT_AGENT_TOOLS_SPEC,
       }),
     });
