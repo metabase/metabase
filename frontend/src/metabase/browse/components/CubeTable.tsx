@@ -70,21 +70,12 @@ export interface CubeResult {
 
 export const itemsTableContainerName = "ItemsTableContainer";
 
-type Meta = {
-  verified_status: boolean;
-  in_semantic_layer: boolean;
-  user: string;
-  admin_user: string;
-  updated_at: string;
-};
-
 type Measure = {
   sql?: string;
   type: string;
   title?: string;
   description?: string;
   primaryKey?: boolean;
-  meta?: Meta;
 };
 
 type Dimension = Measure;
@@ -140,8 +131,7 @@ export const CubeTable = ({
   );
 
   const typesWithParts = extractParts(cubeData.content as string);
-  const parsedData = cleanAndParseInputString(cubeData.content as string);
-  const typesWithSql = extractPartsWithSql(parsedData);
+  const typesWithSql = extractPartsWithSql(cubeData.content as string);
 
   const updatedTypesWithSql =
     cubeRequests && cubeRequests.length > 0
@@ -607,8 +597,8 @@ export const extractParts = (inputString: string) => {
         category,
         name: innerMatch[1],
         type: innerMatch[2],
-        title: innerMatch[3] || "",
-        description: innerMatch[4] || "",
+        title: innerMatch[3],
+        description: innerMatch[4],
       });
     }
   }
@@ -616,114 +606,32 @@ export const extractParts = (inputString: string) => {
   return results;
 };
 
-const cleanAndParseInputString = (inputString: string): Cube | null => {
-  let cleanedString = inputString;
+export const extractPartsWithSql = (inputString: string) => {
+  const regex =
+    /(measures|dimensions):\s*{(?:[^}]*?(\w+):\s*{[^}]*?(?:sql:\s*`([^`]+)`)?[^}]*?type:\s*`(\w+)`[^}]*?(?:title:\s*`([^`]+)`)?[^}]*?(?:description:\s*`([^`]+)`)?[^}]*?})+/g;
+  const results = [];
+  let match;
 
-  // Step 1: Remove all redundant cube(...) wrappers using a comprehensive regex
-  const redundantCubeRegex =
-    /cube\(["'`][^"'`]+["'`],\s*cube\(["'`][^"'`]+["'`],\s*{/g;
-  cleanedString = cleanedString.replace(redundantCubeRegex, "");
-
-  // Step 2: Remove the outermost "cube(`...`, {" at the beginning and the ")" at the end
-  cleanedString = cleanedString
-    .replace(/^cube\(["'`][^"'`]+["'`],\s*{/, "{") // Correctly remove the entire "cube(" part including the "{"
-    .replace(/\);\s*$/, "}");
-
-  // Step 3: Remove any "cube(...)" that appears within the first part of the cleaned string
-  cleanedString = cleanedString.replace(/{\s*cube\(["'`][^"'`]+["'`],/g, "{");
-
-  // Step 4: Replace backticks with double quotes for JSON compatibility
-  cleanedString = cleanedString.replace(/`/g, '"');
-
-  // Step 5: Ensure all property names are in double quotes
-  cleanedString = cleanedString.replace(/(\w+):\s*(?=[{\["])/g, '"$1": ');
-
-  // Step 6: Ensure boolean values are correctly formatted (not wrapped in quotes)
-  cleanedString = cleanedString.replace(/:\s*(true|false)\s*(,?)/g, ": $1$2");
-
-  // Step 7: Correct improperly quoted DATE_TRUNC expressions and remove stray commas
-  cleanedString = cleanedString.replace(
-    /"DATE_TRUNC\('(\w+)',\s*\${CUBE}\.(\w+)'\)"/g,
-    "DATE_TRUNC('$1', ${CUBE}.$2)",
-  );
-
-  // Step 8: Remove stray commas inside SQL expressions
-  cleanedString = cleanedString.replace(/,\s*\.(\w+)/g, ".$1");
-
-  // Step 9: Remove trailing commas within property values and after property values
-  cleanedString = cleanedString.replace(/,\s*([}\]])/g, "$1");
-
-  // Step 10: Ensure primaryKey is treated as a boolean and correctly formatted
-  cleanedString = cleanedString.replace(
-    /(?<=\s|,|{)"?primaryKey"?\s*:\s*"?(\w+)"?\s*(,?)/g,
-    '"primaryKey": $1$2',
-  );
-
-  // Step 11: Remove any remaining trailing commas from the end of objects
-  cleanedString = cleanedString.replace(/,\s*([}\]])/g, "$1");
-
-  // Step 12: Ensure only one closing brace at the end of the JSON
-  cleanedString = cleanedString.trim();
-  if (cleanedString.endsWith("}}")) {
-    cleanedString = cleanedString.slice(0, -1);
-  }
-
-  // Step 13: Ensure the cleaned string starts with a '{' to form a valid JSON object
-  if (!cleanedString.trim().startsWith("{")) {
-    cleanedString = `{${cleanedString}`; // Add '{' if it's missing
-  }
-
-  // Step 14: Log the final cleaned string before parsing for debugging
-  // Step 15: Parse the cleaned string into a JSON object
-  try {
-    const parsedObject = JSON.parse(cleanedString) as Cube; // Ensure parsedObject is of type Cube
-    return parsedObject;
-  } catch (error) {
-    console.error("Failed to parse JSON:", error);
-    return null; // Return null if parsing fails
-  }
-};
-
-const extractPartsWithSql = (parsedData: Cube | null): CubeResult[] => {
-  const results: CubeResult[] = []; // Ensure the result array is correctly typed
-
-  if (!parsedData) {
-    console.error("Parsed data is null. Cannot extract parts.");
-    return results; // Return an empty array if parsedData is null
-  }
-
-  // Extract measures
-  if (parsedData.measures) {
-    Object.entries(parsedData.measures).forEach(([name, measure]) => {
-      const typedMeasure = measure as Measure; // Explicitly type 'measure'
+  while ((match = regex.exec(inputString)) !== null) {
+    const category = match[1];
+    const innerMatches = match[0].matchAll(
+      /(\w+):\s*{[^}]*?(?:sql:\s*`([^`]+)`)?[^}]*?type:\s*`(\w+)`(?:[^}]*?title:\s*`([^`]+)`)?(?:[^}]*?description:\s*`([^`]+)`)?(?:[^}]*?primaryKey:\s*(true|false))?[^}]*?}/g,
+    );
+    for (const innerMatch of innerMatches) {
+      let sql = extractSQL(innerMatch[0]);
+      let primaryKey = extractPrimaryKey(innerMatch[0]);
       results.push({
-        category: "measures",
-        name,
-        sql: typedMeasure.sql || "", // Optional property
-        type: typedMeasure.type || "",
-        title: typedMeasure.title || "", // Not present in your example but added for completeness
-        description: typedMeasure.description || "",
-        primaryKey: extractPrimaryKey(`primaryKey: ${typedMeasure.primaryKey}`), // Default to false if not provided
+        category,
+        name: innerMatch[1],
+        sql: sql,
+        type: innerMatch[3],
+        title: innerMatch[4] || "",
+        description: innerMatch[5] || "",
+        primaryKey: primaryKey,
+        user: undefined,
+        verified_status: undefined,
       });
-    });
-  }
-
-  // Extract dimensions
-  if (parsedData.dimensions) {
-    Object.entries(parsedData.dimensions).forEach(([name, dimension]) => {
-      const typedDimension = dimension as Dimension; // Explicitly type 'dimension'
-      results.push({
-        category: "dimensions",
-        name,
-        sql: typedDimension.sql || "", // Optional property
-        type: typedDimension.type || "",
-        title: typedDimension.title || "", // Not present in your example but added for completeness
-        description: typedDimension.description || "",
-        primaryKey: extractPrimaryKey(
-          `primaryKey: ${typedDimension.primaryKey}`,
-        ), // Default to false if not provided
-      });
-    });
+    }
   }
 
   return results;
