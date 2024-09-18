@@ -20,6 +20,7 @@ import {
   TokenActionButton,
   TokenFilterActionButton,
 } from "./ClickActionControl.styled";
+import { useTopDbFields } from "metabase/common/hooks";
 
 interface Props {
   action: ClickAction;
@@ -32,6 +33,9 @@ export const ClickActionControl = ({
   close,
   onClick,
 }: Props): JSX.Element | null => {
+  const topDbFields = useTopDbFields(__MLv2_query, -1, "field_usage_filter");
+
+  console.log(topDbFields);
   if (
     !isRegularClickAction(action) &&
     !isCustomClickAction(action) &&
@@ -100,31 +104,34 @@ export const ClickActionControl = ({
 
     case "horizontal":
       return (
-        <Button
-          classNames={{
-            root: styles.horizontalButton,
-            label: styles.label,
-            inner: styles.inner,
-          }}
-          leftIcon={
-            action.iconText ? (
-              <ClickActionButtonTextIcon className={styles.nested}>
-                {action.iconText}
-              </ClickActionButtonTextIcon>
-            ) : action.icon ? (
-              <ClickActionButtonIcon
-                name={action.icon}
-                className={styles.nested}
-              />
-            ) : null
-          }
-          onClick={handleClick}
-        >
-          {action.title}
-          {action.subTitle && (
-            <Subtitle className={styles.nested}>{action.subTitle}</Subtitle>
-          )}
-        </Button>
+        <>
+          <Button
+            classNames={{
+              root: styles.horizontalButton,
+              label: styles.label,
+              inner: styles.inner,
+            }}
+            leftIcon={
+              action.iconText ? (
+                <ClickActionButtonTextIcon className={styles.nested}>
+                  {action.iconText}
+                </ClickActionButtonTextIcon>
+              ) : action.icon ? (
+                <ClickActionButtonIcon
+                  name={action.icon}
+                  className={styles.nested}
+                />
+              ) : null
+            }
+            onClick={handleClick}
+          >
+            {action.title}
+            {action.subTitle && (
+              <Subtitle className={styles.nested}>{action.subTitle}</Subtitle>
+            )}
+          </Button>
+          {action.name === "column-filter" && <p>appear</p>}
+        </>
       );
 
     case "info":

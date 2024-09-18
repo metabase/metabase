@@ -92,6 +92,8 @@ export class ClickActionsPopover extends Component<
       return null;
     }
 
+    console.log(clickActions);
+
     const { popoverAction } = this.state;
     let popover;
     if (popoverAction && popoverAction.popover) {

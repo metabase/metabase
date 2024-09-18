@@ -11,6 +11,7 @@ export const useTopDbFields = (
   query: Lib.Query,
   stageIndex: number,
   attribute: TopDbAttribute,
+  column?: Lib.ColumnMetadata,
 ) => {
   const dbId = Lib.databaseID(query);
   const { data: database } = useGetDatabaseQuery(

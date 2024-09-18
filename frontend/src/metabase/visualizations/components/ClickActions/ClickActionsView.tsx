@@ -22,6 +22,8 @@ export const ClickActionsView = ({
 }: Props): JSX.Element => {
   const sections = getGroupedAndSortedActions(clickActions);
 
+  console.log(sections);
+
   const hasOnlyOneSection = sections.length === 1;
 
   return (
