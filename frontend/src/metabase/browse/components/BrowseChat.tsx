@@ -3,12 +3,15 @@ import { Flex, Stack } from "metabase/ui";
 import ChatAssistant from "metabase/query_builder/components/ChatAssistant";
 import { BrowseContainer, BrowseMain } from "./BrowseContainer.styled";
 import ChatHistory from "./ChatItems/ChatHistory";
+import { useSelector } from "react-redux";
+import { getInitialMessage } from "metabase/redux/initialMessage";
 
 export const BrowseChat = () => {
   const [selectedChatHistory, setSelectedChatHistory] = useState([]);
   const [selectedThreadId, setSelectedThreadId] = useState(null);
   const [oldCardId, setOldCardId] = useState(null);
   const [insights, setInsights] = useState([]);
+  const initialMessage = useSelector(getInitialMessage);
 
   return (
     <BrowseContainer>
@@ -31,7 +34,7 @@ export const BrowseChat = () => {
               insights={[]}
               setSelectedThreadId={setSelectedThreadId}
               initial_message={{
-                message: "",
+                message: initialMessage.message ?? ""
               }}
             />
           </Stack>

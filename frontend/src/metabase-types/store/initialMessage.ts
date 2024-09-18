@@ -2,4 +2,4 @@ export interface InitialMessage {
   message: string;
 }
 
-export type InitialMessageState = InitialMessage[];
+export type InitialMessageState = InitialMessage;

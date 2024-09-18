@@ -15,6 +15,7 @@ import { generateRandomId } from "metabase/lib/utils";
 import {
     adhocQuestionHash
 } from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
+import { clearInitialMessage } from "metabase/redux/initialMessage";
 import { useSelector } from "metabase/lib/redux";
 import { getDBInputValue, getCompanyName } from "metabase/redux/initialDb";
 import { getInitialSchema } from "metabase/redux/initialSchema";
@@ -801,6 +802,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             ws && ws.send(JSON.stringify(response));
         }
         setInputValue("");
+        dispatch(clearInitialMessage())
     };
 
     const removeLoadingMessage = () => {
