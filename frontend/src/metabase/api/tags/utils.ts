@@ -11,6 +11,7 @@ import type {
   Collection,
   CollectionItem,
   CollectionItemModel,
+  Comment,
   Dashboard,
   DashboardQueryMetadata,
   DashboardSubscription,
@@ -196,6 +197,18 @@ export function provideCollectionTags(
   collection: Collection,
 ): TagDescription<TagType>[] {
   return [idTag("collection", collection.id)];
+}
+
+export function provideCommentListTags(
+  comments: Comment[],
+): TagDescription<TagType>[] {
+  return [listTag("comment"), ...comments.flatMap(provideCommentTags)];
+}
+
+export function provideCommentTags(
+  comment: Comment,
+): TagDescription<TagType>[] {
+  return [idTag("comment", comment.id)];
 }
 
 export function provideModelIndexTags(
