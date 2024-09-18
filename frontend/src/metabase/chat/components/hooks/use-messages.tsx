@@ -12,6 +12,7 @@ export const useMessages = () => {
       if (!Array.isArray(messages)) {
         throw "Saved messages are not an array";
       }
+
       if (!messages.every(m => isMessage(m))) {
         throw "Saved messages do not all conform to the Message type";
       }

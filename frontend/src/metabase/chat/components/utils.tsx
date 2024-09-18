@@ -3,46 +3,29 @@ import _ from "underscore";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 
 import type { AdhocQuestionData, QueryField } from "./types";
+import {
+  METABOT_AGENT_TOOLS_SPEC,
+  Tool,
+} from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
 
 const getBody = ({
   content,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  systemPrompt,
-  fields,
+  tools,
 }: {
   content: string;
   systemPrompt?: string;
   fields?: QueryField[];
+  tools: Tool[];
 }) => {
   const body = JSON.stringify({
     // model: "meta.llama3-1-8b-instruct-v1:0",
     // model: "meta.llama3-1-70b-instruct-v1:0",
     // model: "mistral.mixtral-8x7b-instruct-v0:1",
     // model: "mistral.mistral-large-2402-v1:0",
-    model: "gpt-4o-2024-08-06",
-    messages: [
-      //...(systemPrompt
-      //  ? [
-      //      {
-      //        content: `Your name is Metabot. ${systemPrompt}`,
-      //        role: "system",
-      //      },
-      //    ]
-      //  : []),
-      //...(fields?.length
-      //  ? [
-      //      {
-      //        content: `The fields of the question: ${JSON.stringify(fields)}`,
-      //        role: "user",
-      //      },
-      //    ]
-      //  : []),
-      {
-        content,
-        role: "user",
-      },
-    ],
-    fields: JSON.stringify(fields),
+    // model: "gpt-4o-2024-08-06",
+    messages: [{ content, role: "user" }],
+    // fields: JSON.stringify(fields),
+    tools,
   });
   return body;
 };
@@ -60,6 +43,7 @@ const sendPrompt = async (
     content: prompt,
     systemPrompt,
     fields,
+    tools: METABOT_AGENT_TOOLS_SPEC,
   });
   const results = await fetch(`http://0.0.0.0:8000/${apiPath}`, {
     method: "POST",
