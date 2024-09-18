@@ -31,7 +31,7 @@ const SETTING_DEFINITIONS = {
       const options = data.cols.map(getOptionFromColumn);
       return {
         options,
-        addAnother: true,
+        addAnother: t`Add dimension`,
         columns: data.cols,
       };
     },
