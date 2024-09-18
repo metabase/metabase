@@ -10,7 +10,7 @@ import {
 } from "metabase/visualizations/lib/settings/utils";
 import { getDefaultDimensionsAndMetrics } from "metabase/visualizations/lib/utils";
 import type { VisualizationProps } from "metabase/visualizations/types";
-import type { RawSeries } from "metabase-types/api";
+import type { RawSeries, RowValue, RowValues } from "metabase-types/api";
 
 const MAX_TREEMAP_DIMENSIONS = 100;
 
@@ -27,7 +27,7 @@ const SETTING_DEFINITIONS = {
       getDefaultDimensionsAndMetrics(rawSeries, MAX_TREEMAP_DIMENSIONS, 1)
         .dimensions,
     persistDefault: true,
-    getProps: ([{ data }]) => {
+    getProps: ([{ data }]: any) => {
       const options = data.cols.map(getOptionFromColumn);
       return {
         options,
@@ -45,35 +45,89 @@ const SETTING_DEFINITIONS = {
   }),
 };
 
+interface TreeNode {
+  name: string;
+  value: number;
+  children: TreeNode[];
+  childrenMap: Map<any, TreeNode>;
+}
+
+const buildTree = (
+  rows: RowValues[],
+  dimensions: any,
+  metricIndex: number,
+): TreeNode[] => {
+  const root: TreeNode = {
+    name: "Root",
+    value: 0,
+    children: [],
+    childrenMap: new Map(),
+  };
+
+  rows.forEach((row: RowValues) => {
+    let currentNode = root;
+    const metricValue = row[metricIndex];
+    if (typeof metricValue !== "number") {
+      throw new Error(t`Treemap visualization requires a numerical metric.`);
+    }
+
+    dimensions.forEach((dimension: any) => {
+      const value: RowValue = row[dimension.index];
+
+      let node: TreeNode;
+      if (currentNode.childrenMap.has(value)) {
+        node = currentNode.childrenMap.get(value)!;
+      } else {
+        node = {
+          name: String(value),
+          value: 0,
+          children: [],
+          childrenMap: new Map(),
+        };
+        currentNode.children.push(node);
+        currentNode.childrenMap.set(value, node);
+      }
+
+      node.value += metricValue;
+      currentNode = node;
+    });
+  });
+
+  // Remove the childrenMap property from all nodes to clean up the final output
+  const clean = (node: any) => {
+    delete node.childrenMap;
+    if (node.children.length === 0) {
+      delete node.children;
+    } else {
+      node.children.forEach((child: any) => clean(child));
+    }
+  };
+
+  clean(root);
+  return root.children;
+};
+
 export const Treemap = ({ rawSeries, settings }: VisualizationProps) => {
-  console.log(rawSeries);
+  // console.log(rawSeries);
 
   const [{ data }] = rawSeries;
 
-  const dimension = findWithIndex(
-    data.cols,
-    col => col.name === settings["treemap.dimension"],
-  );
+  const dimensions = settings["treemap.dimensions"].map((dimName: string) => {
+    return findWithIndex(data.cols, col => col.name === dimName);
+  });
 
   const metric = findWithIndex(
     data.cols,
     col => col.name === settings["treemap.metric"],
   );
 
-  const echartsData = data.rows.map(row => {
-    const dimensionValue = row[dimension.index];
-    const metricValue = row[metric.index];
-    return {
-      name: dimensionValue,
-      value: metricValue,
-    };
-  });
+  const echartsData = buildTree(data.rows, dimensions, metric.index);
 
   const option = {
     series: [
       {
         type: "treemap",
-        name: t`ALL`,
+        name: "All",
         data: echartsData,
       },
     ],
