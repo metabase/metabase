@@ -1,6 +1,7 @@
 (ns metabase.models.comment
   (:require
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -32,6 +33,21 @@
   [model-type model-id]
   (hydrate-comment
    (t2/select :model/Comment :model model-type :model_id model-id {:order-by [[:created_at :asc]]})))
+
+(defn user-notifications
+  "All the comments that a given user should care about"
+  [user-or-id]
+  (let [user-id      (u/the-id user-or-id)
+        model-pairs  (distinct (t2/select-fn-vec (juxt :model_id :model) :model/Comment :author_id user-id))
+        model-clause (into [:or] (map (fn [[m-id m]] [:and
+                                                      [:= :model_id m-id]
+                                                      [:= :model m]]) model-pairs))
+        where-clause [:and
+                      [:not= :author_id user-id]
+                      model-clause]]
+    (hydrate-comment
+     (t2/select :model/Comment {:where where-clause
+                                :order-by [[:created_at :desc]]}))))
 
 (defn all
   "All comments"
