@@ -1,4 +1,6 @@
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import type { Reaction as ReactionType } from "metabase/comments/types";
+import { useSelector } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
 
 import { ReactionBadge } from "./ReactionBadge";
@@ -22,34 +24,51 @@ export const Reaction = ({
   userList,
   emoji,
   onAddReaction,
+  isSelected,
 }: {
   userList: ReactionType["author"][];
   emoji: ReactionType["emoji"];
   onAddReaction: (value: string) => void;
-}) => (
-  <ReactionBadge
-    left={
-      <Text span lh={1} c="text-dark" fz="sm">
-        {emoji}
-      </Text>
-    }
-    right={
-      <Text span lh={1} ml="2px" c="text-dark" fz="sm" fw="normal">
-        {userList.length}
-      </Text>
-    }
-    onClick={() => onAddReaction(emoji)}
-    tooltipLabel={
-      <Text fz="sm" span c="text-white">
-        {formatList(
-          userList.map(
-            user => `${user.first_name} ${user.last_name}` || user.email,
-          ),
-        )}
-        <Text fz="sm" span c="text-medium">
-          {` reacted with  ${emoji}`}
+  isSelected: boolean;
+}) => {
+  const currentUser = useSelector(getCurrentUser);
+
+  return (
+    <ReactionBadge
+      isSelected={isSelected}
+      left={
+        <Text span lh={1} c="text-dark" fz="md" mr="xs">
+          {emoji}
         </Text>
-      </Text>
-    }
-  />
-);
+      }
+      right={
+        <Text
+          span
+          lh={1}
+          ml="2px"
+          c="text-dark"
+          fz="sm"
+          fw={isSelected ? "bold" : "normal"}
+        >
+          {userList.length}
+        </Text>
+      }
+      onClick={() => onAddReaction(emoji)}
+      tooltipLabel={
+        <Text fz="sm" span c="text-white">
+          {formatList(
+            userList.map(user => {
+              if (currentUser.email === user.email) {
+                return "You";
+              }
+              return `${user.first_name} ${user.last_name}` || user.email;
+            }),
+          )}
+          <Text fz="sm" span c="text-medium">
+            {` reacted with  ${emoji}`}
+          </Text>
+        </Text>
+      }
+    />
+  );
+};

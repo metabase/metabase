@@ -8,7 +8,7 @@ export const TEST_DATA: Comment[] = [
     resolved: false,
     reactions: [
       {
-        content: "👍",
+        emoji: "👍",
         author: {
           id: 2,
           first_name: "Jane",
@@ -18,7 +18,7 @@ export const TEST_DATA: Comment[] = [
         id: 101,
       },
       {
-        content: "🎉",
+        emoji: "🎉",
         author: {
           id: 3,
           first_name: "Bob",
@@ -55,7 +55,7 @@ export const TEST_DATA: Comment[] = [
         resolved: false,
         reactions: [
           {
-            content: "🤔",
+            emoji: "🤔",
             author: {
               id: 5,
               first_name: "Charlie",
@@ -109,7 +109,7 @@ export const TEST_DATA: Comment[] = [
         resolved: true,
         reactions: [
           {
-            content: "👍",
+            emoji: "👍",
             author: {
               id: 8,
               first_name: "Fiona",
@@ -133,7 +133,7 @@ export const TEST_DATA: Comment[] = [
             resolved: true,
             reactions: [
               {
-                content: "🙏",
+                emoji: "🙏",
                 author: {
                   id: 9,
                   first_name: "George",
@@ -159,7 +159,7 @@ export const TEST_DATA: Comment[] = [
         resolved: true,
         reactions: [
           {
-            content: "❤️",
+            emoji: "❤️",
             author: {
               id: 10,
               first_name: "Hannah",
@@ -185,7 +185,7 @@ export const TEST_DATA: Comment[] = [
     resolved: false,
     reactions: [
       {
-        content: "📊",
+        emoji: "📊",
         author: {
           id: 12,
           first_name: "Julia",
@@ -222,7 +222,7 @@ export const TEST_DATA: Comment[] = [
         resolved: false,
         reactions: [
           {
-            content: "👍",
+            emoji: "👍",
             author: {
               id: 15,
               first_name: "Mike",
@@ -248,7 +248,7 @@ export const TEST_DATA: Comment[] = [
     resolved: false,
     reactions: [
       {
-        content: "👍",
+        emoji: "👍",
         author: {
           id: 17,
           first_name: "Oscar",
@@ -258,7 +258,7 @@ export const TEST_DATA: Comment[] = [
         id: 109,
       },
       {
-        content: "📅",
+        emoji: "📅",
         author: {
           id: 18,
           first_name: "Patricia",
@@ -295,7 +295,7 @@ export const TEST_DATA: Comment[] = [
         resolved: true,
         reactions: [
           {
-            content: "🙏",
+            emoji: "🙏",
             author: {
               id: 20,
               first_name: "Rachel",
@@ -321,7 +321,7 @@ export const TEST_DATA: Comment[] = [
     resolved: false,
     reactions: [
       {
-        content: "🚀",
+        emoji: "🚀",
         author: {
           id: 22,
           first_name: "Tina",
@@ -358,7 +358,7 @@ export const TEST_DATA: Comment[] = [
         resolved: true,
         reactions: [
           {
-            content: "👍",
+            emoji: "👍",
             author: {
               id: 25,
               first_name: "William",

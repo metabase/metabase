@@ -1,4 +1,3 @@
-import { TEST_DATA } from "metabase/comments/data";
 import { Paper, Text } from "metabase/ui";
 
 import type { Comment as CommentType } from "../../types";
@@ -6,11 +5,11 @@ import { CommentInput } from "../CommentInput/CommentInput";
 import { Comment } from "../comment/Comment";
 
 export const CommentSection = ({
-  comments = TEST_DATA,
+  comments,
   onReply,
   onResolve,
 }: {
-  comments?: CommentType[];
+  comments: CommentType[];
   onReply: (comment: CommentType) => Promise<void>;
   onResolve: (comment: { id: number; resolved: boolean }) => Promise<void>;
 }) => (
