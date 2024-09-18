@@ -1,15 +1,20 @@
 import { useCallback, useState } from "react";
 
 import Styles from "metabase/css/core/index.css";
-import { Avatar, Flex, type FlexProps, Icon, Input } from "metabase/ui";
+import { Flex, type FlexProps, Icon, Input } from "metabase/ui";
+import type { User } from "metabase-types/api";
+
+import { UserIcon } from "../comment/Comment";
 
 export function CommentInput({
   onSubmit,
   placeholder,
   autoFocus,
+  user,
   ...flexProps
 }: {
   onSubmit: (text: string) => Promise<void>;
+  user: User;
   placeholder: string;
   autoFocus: boolean;
 } & FlexProps) {
@@ -30,7 +35,7 @@ export function CommentInput({
 
   return (
     <Flex align="center" gap="sm" {...flexProps}>
-      <Avatar radius="xl" c="text-light" size="1.5rem" color="text-light" />
+      <UserIcon user={user} />
 
       <Input
         onKeyDown={handleKeyDown}

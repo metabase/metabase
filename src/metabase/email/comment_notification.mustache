@@ -1,0 +1,29 @@
+{{> metabase/email/_header }}
+  <div class="card-container" style="color: {{colorTextMedium}};">
+    <p style="font-weight: 500; line-height: 1.375em; color: {{colorTextMedium}};">
+      Hi {{recipientFirstName}},
+    </p>
+
+    <p style="font-weight: 500; line-height: 1.375em; color: {{colorTextMedium}};">
+      {{commentAuthorName}} ({{commentAuthorEmail}}) replied to your comment on
+      <a href="{{modelURL}}" style="color:{{applicationColor}}">{{modelTitle}}:</a>
+    </p>
+
+    <p style="font-weight: 600; line-height: 1.375em; color: {{colorTextMedium}}; border-left: {{colorTextMedium}}; padding-left:0.5em">
+      {{commentBody}}
+    </p>
+
+    <div>
+      <a
+        href="{{replyLink}}"
+        style="display: inline-block; padding: 0.75rem 1.125em; background-color: {{applicationColor}}; color: #FFF; border-radius: 6px; font-size: 0.875em; font-weight: 700; text-decoration: none;"
+      >
+        Reply
+      </a>
+    </div>
+
+    <p style="font-weight: 500; line-height: 1.375em; color: {{colorTextMedium}};">
+      Thank you,
+    </p>
+  </div>
+{{> metabase/email/_footer }}

@@ -9438,6 +9438,29 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v51.2024-09-18T15:56:12
+      author: tsmacdonald
+      comment: Add metabase_comment.resolved_by_id
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: metabase_comment
+              columnName: resolved_by_id
+      changes:
+        - addColumn:
+            tableName: metabase_comment
+            columns:
+              - column:
+                  name: resolved_by_id
+                  type: int
+                  remarks: 'As it sounds'
+                  constraints:
+                    nullable: true
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabase_comment_resolved_by_id
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

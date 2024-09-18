@@ -1,5 +1,6 @@
 (ns metabase.models.comment
   (:require
+   [metabase.email.messages :as messages]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -9,6 +10,13 @@
 
 (doto :model/Comment
   (derive :metabase/model))
+
+(declare send-notifications!)
+
+(t2/define-after-insert :model/Comment
+  [comment]
+  (u/prog1 comment
+    (send-notifications! comment)))
 
 (methodical/defmethod t2/batched-hydrate [:default :reactions]
   [_model k comments]
@@ -35,7 +43,7 @@
 
 (defn- hydrate-comment
   [comment-or-comments]
-  (t2/hydrate comment-or-comments :author [:reactions :author] [:replies :author]))
+  (t2/hydrate comment-or-comments :author [:reactions :author] [:replies :author] :resolved_by))
 
 (defn for-model
   "All the comments for the given model"
@@ -58,11 +66,23 @@
      (t2/select :model/Comment {:where where-clause
                                 :order-by [[:created_at :desc]]}))))
 
+(defn- send-notifications!
+  [comment]
+  (let [user-ids (t2/select-fn-set :author_id :model/Comment {:where [:or
+                                                                      [:and
+                                                                       [:= :model_id (:model_id comment)]
+                                                                       [:= :model (:model comment)]]
+                                                                      [:and
+                                                                       [:= :id (:model_id comment)]
+                                                                       [:= :model "comment"]]]})
+        users    (t2/select :model/User :id [:in user-ids])]
+    (messages/send-comment-notification! users comment)))
+
 (defn all
-  "All comments"
+  "All top-level comments"
   []
   (hydrate-comment
-   (t2/select :model/Comment {:order-by [[:created_at :desc]]})))
+   (t2/select :model/Comment :model [:not= "comment"] {:order-by [[:created_at :desc]]})))
 
 (defn create!
   "make the thing"
