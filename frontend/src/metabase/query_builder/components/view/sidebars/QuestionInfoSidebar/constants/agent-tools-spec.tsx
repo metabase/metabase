@@ -18,7 +18,8 @@ export const METABOT_AGENT_TOOLS_SPEC = [
             "type": "object",
             "properties": {
               "name": {
-                "title": "Name",
+                "title": "Column Name",
+                "description": "The name of the column (not the display name)",
                 "type": "string"
               },
               "enabled": {
