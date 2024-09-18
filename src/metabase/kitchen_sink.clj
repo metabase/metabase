@@ -12,18 +12,26 @@
 
 (defn sync-kitchen-sink*
   [vs]
-  (classloader/require 'metabase.models.serialization)
-  (classloader/require 'metabase-enterprise.serialization.v2.extract)
-  (classloader/require 'metabase-enterprise.serialization.v2.storage)
-  (try
-    (-> ((resolve 'metabase-enterprise.serialization.v2.extract/extract)
-         {:include-database-secrets true
-          :selective-metadata true
-          :targets (conj vs ["Collection" (t2/select-one-pk :model/Collection
-                                                            :name "Kitchen Sink")])})
-        ((resolve 'metabase-enterprise.serialization.v2.storage/store!) (io/file "dev/kitchen-sink")))
-    (catch Exception e
-      (prn e))))
+  (let [kitchen-sink-id (t2/select-one-pk :model/Collection :name "Kitchen Sink")
+        to-sync (filter #(= (:collection_id %) kitchen-sink-id) vs)
+        sync-targets (conj
+                      (map (fn [instance]
+                             [(-> instance t2/model name) (:id instance)])
+                           to-sync)
+                      ["Collection" kitchen-sink-id])]
+    (when (seq sync-targets)
+      (classloader/require 'metabase.models.serialization)
+      (classloader/require 'metabase-enterprise.serialization.v2.extract)
+      (classloader/require 'metabase-enterprise.serialization.v2.storage)
+      (try
+        (-> ((resolve 'metabase-enterprise.serialization.v2.extract/extract)
+             {:include-database-secrets true
+              :selective-metadata true
+              :targets (conj vs ["Collection" (t2/select-one-pk :model/Collection
+                                                                :name "Kitchen Sink")])})
+            ((resolve 'metabase-enterprise.serialization.v2.storage/store!) (io/file "dev/kitchen-sink")))
+        (catch Exception e
+          (prn e))))))
 
 (def ^:private
   sync-kitchen-sync-queue
@@ -33,14 +41,7 @@
      :capacity 10
      :interval 2000)))
 
-(defn sync-kitchen-sink!
+(defn maybe-sync-kitchen-sink!
   "Sinks the kitchen sync. Or no, sinks the kitchen sink."
   [v]
-  (grouper/submit! @sync-kitchen-sync-queue
-                   [(-> v t2/model name) (:id v)]))
-
-(defn maybe-sync-kitchen-sink!
-  "Maybe syncs the kitchen sync."
-  [m]
-  (cond-> m
-    (parent-collection-is-kitchen-sink? m) sync-kitchen-sink!))
+  (grouper/submit! @sync-kitchen-sync-queue v))
