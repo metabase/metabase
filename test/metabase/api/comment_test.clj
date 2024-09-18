@@ -16,9 +16,9 @@
        :model/Comment {c2-id :id}   {:model "card" :model_id card-id :text "first!! Edit: dangit"}
        :model/Comment {c3-id :id}   {:model "card" :model_id card-id :text "Here is some actual insight..."}]
       (let [result (mt/user-http-request :rasta :get 200 "comment")]
-        (is (= [c3-id c2-id c1-id] (map :id result)))
-        (is (=? {:model "card" :text "first!" :model_id card-id :author {:first_name "Rasta"}}
-                (last result)))))))
+        (is (= [c3-id c2-id c1-id] (filter #{c3-id c2-id c1-id} (map :id result))))
+        (is (=? {:model "card" :text "Here is some actual insight..." :model_id card-id :author {:first_name "Rasta"}}
+                (first result)))))))
 
 (deftest get-for-model-test
   (testing "GET /api/comment/model=x&model_id=42"
@@ -28,9 +28,9 @@
        :model/Comment {c1-id :id}    {:model "card" :model_id card-id :text "first!"}
        :model/Comment {c2-id :id}    {:model "card" :model_id card-id :text "first!! Edit: dangit"}
        :model/Comment {c3-id :id}    {:model "card" :model_id card-id :text "Here is some actual insight..."}
-       :model/Comment {}             {:model "card" :model_id card2-id :text "Something else"}]
+       :model/Comment {c4-id :id}    {:model "card" :model_id card2-id :text "Something else"}]
       (let [result (mt/user-http-request :rasta :get 200 (format "comment?model=card&model_id=%d" card-id))]
-        (is (= [c1-id c2-id c3-id] (map :id result)))
+        (is (= [c1-id c2-id c3-id] (filter #{c4-id c3-id c2-id c1-id} (map :id result))))
         (is (=? {:model "card" :text "first!" :model_id card-id :author {:first_name "Rasta"}}
                 (first result)))))))
 
