@@ -117,6 +117,7 @@ export function useMetabotAgentTool() {
           const breakout = nextQuery.query.breakout ?? [];
 
           // Apply filter
+          console.log("FILTERS", filters);
 
           // Apply summarizations/breakouts
           if (Array.isArray(args.summarizations)) {

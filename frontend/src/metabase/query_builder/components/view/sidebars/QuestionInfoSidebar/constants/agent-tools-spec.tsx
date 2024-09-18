@@ -6,7 +6,9 @@ export interface Tool {
   description: string;
   parameters: object;
   strict: boolean;
+  $defs?: object;
 }
+
 
 export function getToolSpec(fields: Field[]) {
   return [
@@ -73,6 +75,38 @@ export function getToolSpec(fields: Field[]) {
       "description": "Apply visualization settings including display type, filters, summarizations, and groupings. Leave the field null to keep the setting unchanged.",
       "parameters": {
         "type": "object",
+        $defs: {
+          Field: { enum: getFieldsForJsonSchema(fields)},
+          Filter: {
+            prefixItems: [
+              {
+                enum: [
+                  "=",
+                  "!=",
+                  "<",
+                  ">",
+                  ">=",
+                  "<=",
+                  // These seem to be causing more trouble than they're worth right now:
+                  // "is-null",
+                  // "not-null"
+                ],
+              },
+              {
+                $ref: "#/$defs/Field",
+              },
+            ],
+            items: { anyOf: [{ type: "string" }, { type: "number" }] },
+            type: "array",
+            additionalItems: false,
+          },
+          FilterCombo: {
+            type: "array",
+            prefixItems: [{ enum: ["and", "or"] }],
+            items: { $ref: "#/$defs/Filter" },
+            additionalItems: false,
+          },
+        },
         "properties": {
           "display": {
             "title": "Visualization Display Type",
@@ -87,7 +121,7 @@ export function getToolSpec(fields: Field[]) {
               "scalar"
             ]
           },
-          "filters": getSchemaForFilters(fields),
+          "filters": { $ref: "#/$defs/FilterCombo" },
           "summarizations": {
             "type": ["array", "null"],
             "items": {
@@ -137,71 +171,4 @@ export function getToolSpec(fields: Field[]) {
       "strict": true
     }
   ] as const satisfies Tool[];
-}
-
-const getSchemaForFilters = (fields: Field[]) => {
-  const fieldsForSchema = getFieldsForJsonSchema(fields);
-  const schema = {
-    type: "object",
-    $defs: {
-      Query: {
-        properties: {
-          filter: { $ref: "#/$defs/FilterCombo" },
-        },
-        title: "Query",
-        type: "object",
-        additionalProperties: false,
-        required: ["filter"],
-      },
-      Field: { enum: fieldsForSchema },
-      Filter: {
-        prefixItems: [
-          {
-            enum: [
-              "=",
-              "!=",
-              "<",
-              ">",
-              ">=",
-              "<=",
-              // These seem to be causing more trouble than they're worth right now:
-              // "is-null",
-              // "not-null"
-            ],
-          },
-          {
-            $ref: "#/$defs/Field",
-          },
-        ],
-        items: { anyOf: [{ type: "string" }, { type: "number" }] },
-        type: "array",
-        additionalItems: false,
-      },
-      FilterCombo: {
-        type: "array",
-        prefixItems: [{ enum: ["and", "or"] }],
-        items: { $ref: "#/$defs/Filter" },
-        additionalItems: false,
-      },
-    },
-    properties: {
-      display: {
-        enum: ["bar", "line", "pie", "scatter", "table", "map"],
-        title: "Display",
-        type: "string",
-      },
-      // "visualization_settings": {"$ref": "#/$defs/VisualizationSettings"},
-      query: {
-        anyOf: [{ $ref: "#/$defs/Query" }, { type: "null" }],
-      },
-    },
-    required: [
-      "display",
-      "query",
-      // "visualization_settings"
-    ],
-    additionalProperties: false,
-    title: "QueryWithViz",
-  };
-  return schema;
 }
