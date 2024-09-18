@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useTopDbFields } from "metabase/common/hooks";
-
 import * as Lib from "metabase-lib";
+import Field from "metabase-lib/v1/metadata/Field";
 
 import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
@@ -97,6 +97,7 @@ export function FilterStep({
       >
         {topDbFields.map(field => (
           <FilterSuggestion
+            key={new Field(field).getUniqueId()}
             stageIndex={stageIndex}
             handleAddFilter={handleAddFilter}
             handleUpdateFilter={handleUpdateFilter}
