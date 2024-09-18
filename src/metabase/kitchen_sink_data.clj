@@ -3,7 +3,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap]
    [metabase.models.data-permissions.graph :as graph]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions-group :as perms-group]
@@ -191,11 +190,13 @@
         orders  (t2/select-one :model/Table :db_id db-id :name "ORDERS")
         user-id (t2/select-one :model/Field :table_id (:id orders) :name "USER_ID")]
     (block-all-users-for-db! db-id) ;; Or sandboxing isn't meaningful!
-    (gtap/upsert-sandboxes! [{:group_id sandbox
-                              :table_id (:id orders)
-                              :card_id  nil
-                              :attribute_remappings
-                              {"kitchen_sink_id" [:dimension [:field (:id user-id) {:base_type :type/Integer}]]}}])))
+    (classloader/require 'metabase-enterprise.sandbox.models.group-table-access-policy)
+    ((resolve 'metabase-enterprise.sandbox.models.group-table-access-policy/upsert-sandboxes!)
+     [{:group_id sandbox
+       :table_id (:id orders)
+       :card_id  nil
+       :attribute_remappings
+       {"kitchen_sink_id" [:dimension [:field (:id user-id) {:base_type :type/Integer}]]}}])))
 
 (comment
   (upsert-kitchen-sink-users!)
