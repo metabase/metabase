@@ -145,9 +145,10 @@ type OwnProps = {
   ) => void;
   onEditingChange?: (dashboard: Dashboard | null) => void;
   downloadsEnabled: boolean;
+  className?: string;
 };
 
-type DashboardGridProps = OwnProps &
+export type DashboardGridProps = OwnProps &
   DashboardGridReduxProps &
   ExplicitSizeProps;
 

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import type { ReactNode, PropsWithChildren } from "react";
 import { useCallback } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
@@ -44,7 +44,8 @@ import { ToolbarButton } from "../ToolbarButton";
 import { PermissionsEditBar } from "./PermissionsEditBar";
 import { PermissionsTabs } from "./PermissionsTabs";
 
-type PermissionsPageTab = "data" | "collections";
+export type PermissionsPageTab = "data" | "collections";
+
 type PermissionsPageLayoutProps = {
   children: ReactNode;
   tab: PermissionsPageTab;
@@ -82,7 +83,7 @@ function PermissionsPageLayout({
   toolbarRightContent,
   helpContent,
   showSplitPermsModal: _showSplitPermsModal = false,
-}: PermissionsPageLayoutProps) {
+}: PropsWithChildren<PermissionsPageLayoutProps>) {
   const [showSplitPermsModal, { turnOff: disableSplitPermsModal }] =
     useToggle(_showSplitPermsModal);
 

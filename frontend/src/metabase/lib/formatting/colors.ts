@@ -1,8 +1,8 @@
 import { color } from "metabase/lib/colors";
 
-export function assignUserColors(
-  userIds: string[],
-  currentUserId: string,
+export function assignUserColors<Id extends string | number>(
+  userIds: Id[],
+  currentUserId: Id | null,
   colors = [
     color("brand"),
     color("accent2"),

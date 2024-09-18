@@ -16,7 +16,7 @@ export type ListTasksRequest = PaginationRequest;
 
 export type ListTasksResponse = { data: Task[] } & PaginationResponse;
 
-type Trigger = {
+export type Trigger = {
   description: string | null;
   schedule: string;
   timezone: string;
@@ -33,7 +33,7 @@ type Trigger = {
   data: Record<string, unknown>;
 };
 
-type Job = {
+export type Job = {
   key: string;
   class: string;
   description: string;

@@ -38,7 +38,7 @@ const LegacyImage = ({
     />
   ) : null;
 
-type EmptyStateProps = {
+export type EmptyStateProps = {
   message?: React.ReactNode;
   title?: React.ReactNode;
   action?: React.ReactNode;
