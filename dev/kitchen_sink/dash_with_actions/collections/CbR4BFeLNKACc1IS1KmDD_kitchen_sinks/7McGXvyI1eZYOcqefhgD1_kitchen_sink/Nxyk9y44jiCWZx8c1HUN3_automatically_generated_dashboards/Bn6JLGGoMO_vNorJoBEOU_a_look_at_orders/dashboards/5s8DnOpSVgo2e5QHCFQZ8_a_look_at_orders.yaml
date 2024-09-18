@@ -1,0 +1,681 @@
+name: A look at Orders
+description: Some metrics we found about transactions.
+entity_id: 5s8DnOpSVgo2e5QHCFQZ8
+created_at: '2024-09-18T16:46:42.131331Z'
+creator_id: admin@metabase.local
+archived: false
+collection_id: Bn6JLGGoMO_vNorJoBEOU
+auto_apply_filters: true
+collection_position: 1
+position: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+show_in_getting_started: false
+caveats: null
+points_of_interest: null
+parameters:
+- id: '275026523'
+  name: Created At
+  slug: CREATED_AT
+  type: date/all-options
+- id: '-2124989782'
+  name: Source
+  slug: SOURCE
+  type: category
+- id: '1735009568'
+  name: State
+  slug: STATE
+  type: location/state
+- id: '241800831'
+  name: Category
+  slug: CATEGORY
+  type: category
+serdes/meta:
+- id: 5s8DnOpSVgo2e5QHCFQZ8
+  label: a_look_at_orders
+  model: Dashboard
+archived_directly: false
+dashcards:
+- entity_id: hHTtodTXxSPQ99kvAYh2f
+  card_id: null
+  created_at: '2024-09-18T16:46:42.347235Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# Overview'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: 5s8DnOpSVgo2e5QHCFQZ8
+    model: Dashboard
+  - id: hHTtodTXxSPQ99kvAYh2f
+    model: DashboardCard
+- entity_id: 8W3vqDOVhzCsBti24FIuK
+  card_id: UwlIXoyv4G11bGl58dhmd
+  created_at: '2024-09-18T16:46:42.347235Z'
+  row: 2
+  col: 0
+  size_x: 5
+  size_y: 3
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: UwlIXoyv4G11bGl58dhmd
+    parameter_id: '275026523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: UwlIXoyv4G11bGl58dhmd
+    parameter_id: '-2124989782'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: UwlIXoyv4G11bGl58dhmd
+    parameter_id: '1735009568'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: UwlIXoyv4G11bGl58dhmd
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 5s8DnOpSVgo2e5QHCFQZ8
+    model: Dashboard
+  - id: 8W3vqDOVhzCsBti24FIuK
+    model: DashboardCard
+- entity_id: 67QMc9rfqNh8gQR8zsr-d
+  card_id: BYmOX5yC7_cAxkoYnzeG-
+  created_at: '2024-09-18T16:46:42.347235Z'
+  row: 2
+  col: 5
+  size_x: 5
+  size_y: 3
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: BYmOX5yC7_cAxkoYnzeG-
+    parameter_id: '275026523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: BYmOX5yC7_cAxkoYnzeG-
+    parameter_id: '-2124989782'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: BYmOX5yC7_cAxkoYnzeG-
+    parameter_id: '1735009568'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: BYmOX5yC7_cAxkoYnzeG-
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 5s8DnOpSVgo2e5QHCFQZ8
+    model: Dashboard
+  - id: 67QMc9rfqNh8gQR8zsr-d
+    model: DashboardCard
+- entity_id: Jn5Y_KVjwkRr68D7S7jFA
+  card_id: null
+  created_at: '2024-09-18T16:46:42.347235Z'
+  row: 5
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# How these transactions are distributed'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: 5s8DnOpSVgo2e5QHCFQZ8
+    model: Dashboard
+  - id: Jn5Y_KVjwkRr68D7S7jFA
+    model: DashboardCard
+- entity_id: 7X3m6skssPbcYu_U1V0Wa
+  card_id: -og7Gz7tnKtsfB1h2I9vY
+  created_at: '2024-09-18T16:46:42.347235Z'
+  row: 7
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: -og7Gz7tnKtsfB1h2I9vY
+    parameter_id: '275026523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: -og7Gz7tnKtsfB1h2I9vY
+    parameter_id: '-2124989782'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: -og7Gz7tnKtsfB1h2I9vY
+    parameter_id: '1735009568'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: -og7Gz7tnKtsfB1h2I9vY
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 5s8DnOpSVgo2e5QHCFQZ8
+    model: Dashboard
+  - id: 7X3m6skssPbcYu_U1V0Wa
+    model: DashboardCard
+- entity_id: sHcBBlTf-69SzvSfgJgir
+  card_id: BgJ2kN-vI9p_opGXKDISm
+  created_at: '2024-09-18T16:46:42.347235Z'
+  row: 7
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: BgJ2kN-vI9p_opGXKDISm
+    parameter_id: '275026523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: BgJ2kN-vI9p_opGXKDISm
+    parameter_id: '-2124989782'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: BgJ2kN-vI9p_opGXKDISm
+    parameter_id: '1735009568'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: BgJ2kN-vI9p_opGXKDISm
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 5s8DnOpSVgo2e5QHCFQZ8
+    model: Dashboard
+  - id: sHcBBlTf-69SzvSfgJgir
+    model: DashboardCard
+- entity_id: sitfuvei5mdW4iqW5h9-h
+  card_id: X_O5dz-Iya8-b4H7xSSMt
+  created_at: '2024-09-18T16:46:42.347235Z'
+  row: 13
+  col: 0
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: X_O5dz-Iya8-b4H7xSSMt
+    parameter_id: '275026523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: X_O5dz-Iya8-b4H7xSSMt
+    parameter_id: '-2124989782'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: X_O5dz-Iya8-b4H7xSSMt
+    parameter_id: '1735009568'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: X_O5dz-Iya8-b4H7xSSMt
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 5s8DnOpSVgo2e5QHCFQZ8
+    model: Dashboard
+  - id: sitfuvei5mdW4iqW5h9-h
+    model: DashboardCard
+- entity_id: 3L-b4s_MyurCLn5VHz260
+  card_id: yPbC62nudZXSNK05nRjDV
+  created_at: '2024-09-18T16:46:42.347235Z'
+  row: 15
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: yPbC62nudZXSNK05nRjDV
+    parameter_id: '275026523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: yPbC62nudZXSNK05nRjDV
+    parameter_id: '-2124989782'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: yPbC62nudZXSNK05nRjDV
+    parameter_id: '1735009568'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: yPbC62nudZXSNK05nRjDV
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 5s8DnOpSVgo2e5QHCFQZ8
+    model: Dashboard
+  - id: 3L-b4s_MyurCLn5VHz260
+    model: DashboardCard
+- entity_id: n91rTi6yZH7aYw3I6KRaB
+  card_id: null
+  created_at: '2024-09-18T16:46:42.347235Z'
+  row: 23
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# Where these transactions happened'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: 5s8DnOpSVgo2e5QHCFQZ8
+    model: Dashboard
+  - id: n91rTi6yZH7aYw3I6KRaB
+    model: DashboardCard
+- entity_id: aH0DAqWC9P9sE6JAmEHUm
+  card_id: epL4EgDsZFZcbUDGa301n
+  created_at: '2024-09-18T16:46:42.347235Z'
+  row: 25
+  col: 0
+  size_x: 7
+  size_y: 10
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: epL4EgDsZFZcbUDGa301n
+    parameter_id: '275026523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: epL4EgDsZFZcbUDGa301n
+    parameter_id: '-2124989782'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: epL4EgDsZFZcbUDGa301n
+    parameter_id: '1735009568'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: epL4EgDsZFZcbUDGa301n
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 5s8DnOpSVgo2e5QHCFQZ8
+    model: Dashboard
+  - id: aH0DAqWC9P9sE6JAmEHUm
+    model: DashboardCard
+- entity_id: b8LrIL4x8NqvvA2v1o3nu
+  card_id: dJ6VBlSGUWAy-cTB3Ke1Y
+  created_at: '2024-09-18T16:46:42.347235Z'
+  row: 25
+  col: 7
+  size_x: 11
+  size_y: 10
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: dJ6VBlSGUWAy-cTB3Ke1Y
+    parameter_id: '275026523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: dJ6VBlSGUWAy-cTB3Ke1Y
+    parameter_id: '-2124989782'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: dJ6VBlSGUWAy-cTB3Ke1Y
+    parameter_id: '1735009568'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: dJ6VBlSGUWAy-cTB3Ke1Y
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 5s8DnOpSVgo2e5QHCFQZ8
+    model: Dashboard
+  - id: b8LrIL4x8NqvvA2v1o3nu
+    model: DashboardCard
+initially_published_at: null
+tabs: []
+width: fixed

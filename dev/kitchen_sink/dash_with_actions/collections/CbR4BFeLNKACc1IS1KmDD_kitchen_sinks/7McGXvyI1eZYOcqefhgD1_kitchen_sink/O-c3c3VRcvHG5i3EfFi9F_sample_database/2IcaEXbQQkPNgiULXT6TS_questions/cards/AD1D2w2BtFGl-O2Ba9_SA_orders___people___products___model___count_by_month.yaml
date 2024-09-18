@@ -1,0 +1,75 @@
+name: Orders + People + Products - Model - Count by Month
+description: null
+entity_id: AD1D2w2BtFGl-O2Ba9_SA
+created_at: '2024-09-18T18:34:17.425963Z'
+creator_id: admin@metabase.local
+display: line
+archived: false
+collection_id: 2IcaEXbQQkPNgiULXT6TS
+collection_preview: true
+collection_position: null
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - CREATED_AT
+      - base-type: type/DateTime
+        temporal-unit: month
+    source-table: 1yVkjowSDzv6bGqWP1A_y
+  type: query
+result_metadata:
+- base_type: type/DateTime
+  description: The date and time an order was submitted.
+  display_name: Created At
+  effective_type: type/DateTime
+  field_ref:
+  - field
+  - CREATED_AT
+  - base-type: type/DateTime
+    temporal-unit: month
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - CREATED_AT
+  name: CREATED_AT
+  semantic_type: type/CreationTimestamp
+  unit: month
+  visibility_type: normal
+- base_type: type/BigInteger
+  display_name: Count
+  effective_type: type/BigInteger
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - CREATED_AT
+  graph.metrics:
+  - count
+serdes/meta:
+- id: AD1D2w2BtFGl-O2Ba9_SA
+  label: orders___people___products___model___count_by_month
+  model: Card
+archived_directly: false
+metabase_version: v0.1.37-SNAPSHOT (6469402)
+source_card_id: 1yVkjowSDzv6bGqWP1A_y
+type: question

@@ -1,0 +1,817 @@
+name: A look at Accounts
+description: An exploration of your users to get you started.
+entity_id: GCPcFpCAz64lYCMMxOpBD
+created_at: '2024-09-18T16:46:19.87383Z'
+creator_id: admin@metabase.local
+archived: false
+collection_id: ua9ejVR971EURIh_73vXN
+auto_apply_filters: true
+collection_position: 1
+position: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+show_in_getting_started: false
+caveats: null
+points_of_interest: null
+parameters:
+- id: '-447002199'
+  name: Created At
+  slug: CREATED_AT
+  type: date/all-options
+- id: '-1558815535'
+  name: Source
+  slug: SOURCE
+  type: category
+- id: '-1312859911'
+  name: Plan
+  slug: PLAN
+  type: category
+- id: '409628339'
+  name: Active Subscription
+  slug: ACTIVE_SUBSCRIPTION
+  type: category
+serdes/meta:
+- id: GCPcFpCAz64lYCMMxOpBD
+  label: a_look_at_accounts
+  model: Dashboard
+archived_directly: false
+dashcards:
+- entity_id: kUB4AaganGDdoVs0zYOpU
+  card_id: null
+  created_at: '2024-09-18T16:46:20.071147Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# Overview'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: GCPcFpCAz64lYCMMxOpBD
+    model: Dashboard
+  - id: kUB4AaganGDdoVs0zYOpU
+    model: DashboardCard
+- entity_id: cGAIfzdTbirGRtLiTEKO6
+  card_id: VwN5AuV0yTsBxN8-eu-K6
+  created_at: '2024-09-18T16:46:20.071147Z'
+  row: 2
+  col: 0
+  size_x: 5
+  size_y: 3
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: VwN5AuV0yTsBxN8-eu-K6
+    parameter_id: '-447002199'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - null
+  - card_id: VwN5AuV0yTsBxN8-eu-K6
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - null
+  - card_id: VwN5AuV0yTsBxN8-eu-K6
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - null
+  - card_id: VwN5AuV0yTsBxN8-eu-K6
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: GCPcFpCAz64lYCMMxOpBD
+    model: Dashboard
+  - id: cGAIfzdTbirGRtLiTEKO6
+    model: DashboardCard
+- entity_id: 7t5purilrvtKL_pVOEaAO
+  card_id: ekTjR1kpHC05zPZ53ZJwW
+  created_at: '2024-09-18T16:46:20.071147Z'
+  row: 2
+  col: 5
+  size_x: 5
+  size_y: 3
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: ekTjR1kpHC05zPZ53ZJwW
+    parameter_id: '-447002199'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - null
+  - card_id: ekTjR1kpHC05zPZ53ZJwW
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - null
+  - card_id: ekTjR1kpHC05zPZ53ZJwW
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - null
+  - card_id: ekTjR1kpHC05zPZ53ZJwW
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: GCPcFpCAz64lYCMMxOpBD
+    model: Dashboard
+  - id: 7t5purilrvtKL_pVOEaAO
+    model: DashboardCard
+- entity_id: 3alXLkhX4o1T5GvDG2h-3
+  card_id: ApAAGKD_agQsL2XliEJUe
+  created_at: '2024-09-18T16:46:20.071147Z'
+  row: 2
+  col: 10
+  size_x: 5
+  size_y: 3
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: ApAAGKD_agQsL2XliEJUe
+    parameter_id: '-447002199'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - null
+  - card_id: ApAAGKD_agQsL2XliEJUe
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - null
+  - card_id: ApAAGKD_agQsL2XliEJUe
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - null
+  - card_id: ApAAGKD_agQsL2XliEJUe
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: GCPcFpCAz64lYCMMxOpBD
+    model: Dashboard
+  - id: 3alXLkhX4o1T5GvDG2h-3
+    model: DashboardCard
+- entity_id: rYvbvunxmU7Qx8gOwNvYL
+  card_id: XRtOKo0ZSGz5myVF3WASK
+  created_at: '2024-09-18T16:46:20.071147Z'
+  row: 5
+  col: 0
+  size_x: 18
+  size_y: 7
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: XRtOKo0ZSGz5myVF3WASK
+    parameter_id: '-447002199'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - null
+  - card_id: XRtOKo0ZSGz5myVF3WASK
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - null
+  - card_id: XRtOKo0ZSGz5myVF3WASK
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - null
+  - card_id: XRtOKo0ZSGz5myVF3WASK
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: GCPcFpCAz64lYCMMxOpBD
+    model: Dashboard
+  - id: rYvbvunxmU7Qx8gOwNvYL
+    model: DashboardCard
+- entity_id: PHZ9Yp8tgImlUbQlD55w_
+  card_id: null
+  created_at: '2024-09-18T16:46:20.071147Z'
+  row: 12
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# Where these Accounts are'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: GCPcFpCAz64lYCMMxOpBD
+    model: Dashboard
+  - id: PHZ9Yp8tgImlUbQlD55w_
+    model: DashboardCard
+- entity_id: j4nP4EcUnbs5cUkeiWZgw
+  card_id: 7rb4kIHGuDzs4x1d-feio
+  created_at: '2024-09-18T16:46:20.071147Z'
+  row: 14
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: 7rb4kIHGuDzs4x1d-feio
+    parameter_id: '-447002199'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - null
+  - card_id: 7rb4kIHGuDzs4x1d-feio
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - null
+  - card_id: 7rb4kIHGuDzs4x1d-feio
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - null
+  - card_id: 7rb4kIHGuDzs4x1d-feio
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: GCPcFpCAz64lYCMMxOpBD
+    model: Dashboard
+  - id: j4nP4EcUnbs5cUkeiWZgw
+    model: DashboardCard
+- entity_id: XsKdevCvKNC1vcSnaXeqM
+  card_id: _4l0EI55M7_ZA8C3XEbHs
+  created_at: '2024-09-18T16:46:20.071147Z'
+  row: 14
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: _4l0EI55M7_ZA8C3XEbHs
+    parameter_id: '-447002199'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - null
+  - card_id: _4l0EI55M7_ZA8C3XEbHs
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - null
+  - card_id: _4l0EI55M7_ZA8C3XEbHs
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - null
+  - card_id: _4l0EI55M7_ZA8C3XEbHs
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: GCPcFpCAz64lYCMMxOpBD
+    model: Dashboard
+  - id: XsKdevCvKNC1vcSnaXeqM
+    model: DashboardCard
+- entity_id: n8wYyi3CLoNYa4UsT_Zkl
+  card_id: null
+  created_at: '2024-09-18T16:46:20.071147Z'
+  row: 22
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# How these Accounts are distributed'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: GCPcFpCAz64lYCMMxOpBD
+    model: Dashboard
+  - id: n8wYyi3CLoNYa4UsT_Zkl
+    model: DashboardCard
+- entity_id: a6ILvYj7_DHXLRo6LIErp
+  card_id: VSMJCngjG2DgIOnqdLkuw
+  created_at: '2024-09-18T16:46:20.071147Z'
+  row: 24
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: VSMJCngjG2DgIOnqdLkuw
+    parameter_id: '-447002199'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - null
+  - card_id: VSMJCngjG2DgIOnqdLkuw
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - null
+  - card_id: VSMJCngjG2DgIOnqdLkuw
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - null
+  - card_id: VSMJCngjG2DgIOnqdLkuw
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: GCPcFpCAz64lYCMMxOpBD
+    model: Dashboard
+  - id: a6ILvYj7_DHXLRo6LIErp
+    model: DashboardCard
+- entity_id: snxV_cdaNIpl5HVYDv29G
+  card_id: K5OrAn7BHqigkfYJAHr0T
+  created_at: '2024-09-18T16:46:20.071147Z'
+  row: 24
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: K5OrAn7BHqigkfYJAHr0T
+    parameter_id: '-447002199'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - null
+  - card_id: K5OrAn7BHqigkfYJAHr0T
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - null
+  - card_id: K5OrAn7BHqigkfYJAHr0T
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - null
+  - card_id: K5OrAn7BHqigkfYJAHr0T
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: GCPcFpCAz64lYCMMxOpBD
+    model: Dashboard
+  - id: snxV_cdaNIpl5HVYDv29G
+    model: DashboardCard
+- entity_id: vo-drRneSbgu54Qp86ZNp
+  card_id: n_LQ2Uhl-bGUE_O-XKJ6U
+  created_at: '2024-09-18T16:46:20.071147Z'
+  row: 30
+  col: 0
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: n_LQ2Uhl-bGUE_O-XKJ6U
+    parameter_id: '-447002199'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - null
+  - card_id: n_LQ2Uhl-bGUE_O-XKJ6U
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - null
+  - card_id: n_LQ2Uhl-bGUE_O-XKJ6U
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - null
+  - card_id: n_LQ2Uhl-bGUE_O-XKJ6U
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: GCPcFpCAz64lYCMMxOpBD
+    model: Dashboard
+  - id: vo-drRneSbgu54Qp86ZNp
+    model: DashboardCard
+- entity_id: FWEhrMkSdD4dhHkv_YydJ
+  card_id: IJKt1biAustYCWid6tMGC
+  created_at: '2024-09-18T16:46:20.071147Z'
+  row: 32
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: IJKt1biAustYCWid6tMGC
+    parameter_id: '-447002199'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - null
+  - card_id: IJKt1biAustYCWid6tMGC
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - null
+  - card_id: IJKt1biAustYCWid6tMGC
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - null
+  - card_id: IJKt1biAustYCWid6tMGC
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: GCPcFpCAz64lYCMMxOpBD
+    model: Dashboard
+  - id: FWEhrMkSdD4dhHkv_YydJ
+    model: DashboardCard
+- entity_id: dC6UNkgrk9kiPwp3czXqx
+  card_id: n8OehY2Jtlfcv7G3bggHQ
+  created_at: '2024-09-18T16:46:20.071147Z'
+  row: 38
+  col: 0
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: n8OehY2Jtlfcv7G3bggHQ
+    parameter_id: '-447002199'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - null
+  - card_id: n8OehY2Jtlfcv7G3bggHQ
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - null
+  - card_id: n8OehY2Jtlfcv7G3bggHQ
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - null
+  - card_id: n8OehY2Jtlfcv7G3bggHQ
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: GCPcFpCAz64lYCMMxOpBD
+    model: Dashboard
+  - id: dC6UNkgrk9kiPwp3czXqx
+    model: DashboardCard
+- entity_id: RnMVWt1DBKl3-Vom_FAFe
+  card_id: LZ71znD7FHkk0X-cqNc2v
+  created_at: '2024-09-18T16:46:20.071147Z'
+  row: 40
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: LZ71znD7FHkk0X-cqNc2v
+    parameter_id: '-447002199'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - null
+  - card_id: LZ71znD7FHkk0X-cqNc2v
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - null
+  - card_id: LZ71znD7FHkk0X-cqNc2v
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - null
+  - card_id: LZ71znD7FHkk0X-cqNc2v
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: GCPcFpCAz64lYCMMxOpBD
+    model: Dashboard
+  - id: RnMVWt1DBKl3-Vom_FAFe
+    model: DashboardCard
+initially_published_at: null
+tabs: []
+width: fixed

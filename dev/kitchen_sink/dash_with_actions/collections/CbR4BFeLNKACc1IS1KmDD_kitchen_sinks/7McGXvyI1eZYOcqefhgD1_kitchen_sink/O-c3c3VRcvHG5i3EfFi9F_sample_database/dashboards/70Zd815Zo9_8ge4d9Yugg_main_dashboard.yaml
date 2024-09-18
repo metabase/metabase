@@ -1,0 +1,1035 @@
+name: Main Dashboard
+description: null
+entity_id: 70Zd815Zo9_8ge4d9Yugg
+created_at: '2024-09-18T18:36:20.547657Z'
+creator_id: admin@metabase.local
+archived: false
+collection_id: O-c3c3VRcvHG5i3EfFi9F
+auto_apply_filters: true
+collection_position: null
+position: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+show_in_getting_started: false
+caveats: null
+points_of_interest: null
+parameters:
+- id: 55e1cd01
+  name: Created Date
+  sectionId: date
+  slug: created_date
+  type: date/all-options
+- id: 7d3b9c2c
+  name: Address
+  sectionId: string
+  slug: address
+  type: string/=
+- id: c1dfb5f0
+  name: Email
+  sectionId: string
+  slug: email
+  type: string/=
+- id: 244639ea
+  name: Tax
+  sectionId: number
+  slug: tax
+  type: number/=
+- id: 43f6a09a
+  name: Price
+  sectionId: number
+  slug: price
+  type: number/=
+- id: 145bcc
+  name: Vendor
+  sectionId: string
+  slug: vendor
+  type: string/=
+- id: 55b2255d
+  name: Category
+  sectionId: string
+  slug: category
+  type: string/=
+- id: '24694506'
+  name: City
+  sectionId: location
+  slug: city
+  type: string/=
+- id: 56c06915
+  name: State
+  sectionId: location
+  slug: state
+  type: string/=
+- id: 41dfc923
+  name: Zip
+  sectionId: location
+  slug: zip
+  type: string/=
+- id: 674a6baa
+  name: Title
+  sectionId: string
+  slug: title
+  type: string/=
+- id: 19327f57
+  name: Discount
+  sectionId: number
+  slug: discount
+  type: number/=
+- id: 32f3aae4
+  name: UserID
+  sectionId: id
+  slug: userid
+  type: id
+serdes/meta:
+- id: 70Zd815Zo9_8ge4d9Yugg
+  label: main_dashboard
+  model: Dashboard
+archived_directly: false
+dashcards:
+- entity_id: PSZPYvBJVhyjI5Nb1o5wL
+  card_id: AD1D2w2BtFGl-O2Ba9_SA
+  created_at: '2024-09-18T18:37:44.316058Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 7
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - 0NsTb4VcHFDIWjyQSeYP3
+  parameter_mappings:
+  - card_id: AD1D2w2BtFGl-O2Ba9_SA
+    parameter_id: 55e1cd01
+    target:
+    - dimension
+    - - field
+      - CREATED_AT
+      - base-type: type/DateTime
+  - card_id: AD1D2w2BtFGl-O2Ba9_SA
+    parameter_id: 7d3b9c2c
+    target:
+    - dimension
+    - - field
+      - ADDRESS
+      - base-type: type/Text
+  - card_id: AD1D2w2BtFGl-O2Ba9_SA
+    parameter_id: c1dfb5f0
+    target:
+    - dimension
+    - - field
+      - EMAIL
+      - base-type: type/Text
+  - card_id: AD1D2w2BtFGl-O2Ba9_SA
+    parameter_id: 244639ea
+    target:
+    - dimension
+    - - field
+      - TAX
+      - base-type: type/Float
+  - card_id: AD1D2w2BtFGl-O2Ba9_SA
+    parameter_id: 43f6a09a
+    target:
+    - dimension
+    - - field
+      - TOTAL
+      - base-type: type/Float
+  - card_id: AD1D2w2BtFGl-O2Ba9_SA
+    parameter_id: 145bcc
+    target:
+    - dimension
+    - - field
+      - VENDOR
+      - base-type: type/Text
+  - card_id: AD1D2w2BtFGl-O2Ba9_SA
+    parameter_id: 55b2255d
+    target:
+    - dimension
+    - - field
+      - CATEGORY
+      - base-type: type/Text
+  - card_id: AD1D2w2BtFGl-O2Ba9_SA
+    parameter_id: '24694506'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - CITY
+      - base-type: type/Text
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: AD1D2w2BtFGl-O2Ba9_SA
+    parameter_id: 56c06915
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - base-type: type/Text
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: AD1D2w2BtFGl-O2Ba9_SA
+    parameter_id: 41dfc923
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - ZIP
+      - base-type: type/Text
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: AD1D2w2BtFGl-O2Ba9_SA
+    parameter_id: 674a6baa
+    target:
+    - dimension
+    - - field
+      - TITLE
+      - base-type: type/Text
+  - card_id: AD1D2w2BtFGl-O2Ba9_SA
+    parameter_id: 19327f57
+    target:
+    - dimension
+    - - field
+      - DISCOUNT
+      - base-type: type/Float
+  - card_id: AD1D2w2BtFGl-O2Ba9_SA
+    parameter_id: 32f3aae4
+    target:
+    - dimension
+    - - field
+      - USER_ID
+      - base-type: type/Integer
+  series: []
+  visualization_settings:
+    click_behavior:
+      linkType: question
+      parameterMapping:
+        '["dimension",["field","count",{"base-type":"type/Decimal"}]]':
+          id: '["dimension",["field","count",{"base-type":"type/Decimal"}]]'
+          source:
+            id: count
+            name: Count
+            type: column
+          target:
+            dimension:
+            - dimension
+            - - field
+              - count
+              - base-type: type/Decimal
+            id: '["dimension",["field","count",{"base-type":"type/Decimal"}]]'
+            type: dimension
+      targetId: WXuYO8At4VTM7TOB5abuh
+      type: link
+    column_settings: null
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: 0NsTb4VcHFDIWjyQSeYP3
+    model: DashboardTab
+  - id: PSZPYvBJVhyjI5Nb1o5wL
+    model: DashboardCard
+- entity_id: 5nZBJUPtVk3QApZ0z6Itc
+  card_id: ucX2OawWJZO_uTWOsLwvh
+  created_at: '2024-09-18T18:37:44.316058Z'
+  row: 10
+  col: 0
+  size_x: 12
+  size_y: 9
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - 0NsTb4VcHFDIWjyQSeYP3
+  parameter_mappings:
+  - card_id: ucX2OawWJZO_uTWOsLwvh
+    parameter_id: 55e1cd01
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - base-type: type/DateTime
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: ucX2OawWJZO_uTWOsLwvh
+    parameter_id: c1dfb5f0
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - EMAIL
+      - base-type: type/Text
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings:
+      '["name","ID_2"]':
+        click_behavior:
+          parameterMapping:
+            '24694506':
+              id: '24694506'
+              source:
+                id: CITY
+                name: People - Model - Account → City
+                type: column
+              target:
+                id: '24694506'
+                type: parameter
+          type: crossfilter
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: 0NsTb4VcHFDIWjyQSeYP3
+    model: DashboardTab
+  - id: 5nZBJUPtVk3QApZ0z6Itc
+    model: DashboardCard
+- entity_id: RML_WehMO-KdQ4SYbtApU
+  card_id: SA5Kuw5uuVkz6FJL-hg0k
+  created_at: '2024-09-18T18:37:44.316058Z'
+  row: 10
+  col: 12
+  size_x: 12
+  size_y: 9
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - 0NsTb4VcHFDIWjyQSeYP3
+  parameter_mappings:
+  - card_id: SA5Kuw5uuVkz6FJL-hg0k
+    parameter_id: 55e1cd01
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - base-type: type/DateTime
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: SA5Kuw5uuVkz6FJL-hg0k
+    parameter_id: c1dfb5f0
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - EMAIL
+      - base-type: type/Text
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings:
+      '["name","ACCOUNT_ID"]':
+        click_behavior:
+          parameterMapping:
+            32f3aae4:
+              id: 32f3aae4
+              source:
+                id: ACCOUNT_ID
+                name: Account ID
+                type: column
+              target:
+                id: 32f3aae4
+                type: parameter
+          type: crossfilter
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: 0NsTb4VcHFDIWjyQSeYP3
+    model: DashboardTab
+  - id: RML_WehMO-KdQ4SYbtApU
+    model: DashboardCard
+- entity_id: JpE_J0rX16PIxYS5rJL2H
+  card_id: hTl_qrTcM54v2Rk-Cc-xL
+  created_at: '2024-09-18T18:37:44.316058Z'
+  row: 19
+  col: 0
+  size_x: 12
+  size_y: 9
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - 0NsTb4VcHFDIWjyQSeYP3
+  parameter_mappings:
+  - card_id: hTl_qrTcM54v2Rk-Cc-xL
+    parameter_id: 55e1cd01
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CREATED_AT
+      - base-type: type/DateTime
+  - card_id: hTl_qrTcM54v2Rk-Cc-xL
+    parameter_id: 7d3b9c2c
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - ADDRESS
+      - base-type: type/Text
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: hTl_qrTcM54v2Rk-Cc-xL
+    parameter_id: c1dfb5f0
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - EMAIL
+      - base-type: type/Text
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: hTl_qrTcM54v2Rk-Cc-xL
+    parameter_id: 145bcc
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - VENDOR
+      - base-type: type/Text
+  - card_id: hTl_qrTcM54v2Rk-Cc-xL
+    parameter_id: 55b2255d
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - base-type: type/Text
+  - card_id: hTl_qrTcM54v2Rk-Cc-xL
+    parameter_id: '24694506'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - CITY
+      - base-type: type/Text
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: hTl_qrTcM54v2Rk-Cc-xL
+    parameter_id: 56c06915
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - base-type: type/Text
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: hTl_qrTcM54v2Rk-Cc-xL
+    parameter_id: 41dfc923
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PEOPLE
+        - ZIP
+      - base-type: type/Text
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: hTl_qrTcM54v2Rk-Cc-xL
+    parameter_id: 674a6baa
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - TITLE
+      - base-type: type/Text
+  series: []
+  visualization_settings:
+    column_settings:
+      '["name","TITLE"]':
+        click_behavior:
+          linkType: question
+          parameterMapping: {}
+          targetId: AD1D2w2BtFGl-O2Ba9_SA
+          type: link
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: 0NsTb4VcHFDIWjyQSeYP3
+    model: DashboardTab
+  - id: JpE_J0rX16PIxYS5rJL2H
+    model: DashboardCard
+- entity_id: 8UbthOWRmffgLwS1_FyS4
+  card_id: BObkLx82CGLJwx4jUUgNK
+  created_at: '2024-09-18T18:37:44.316058Z'
+  row: 19
+  col: 12
+  size_x: 12
+  size_y: 9
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - 0NsTb4VcHFDIWjyQSeYP3
+  parameter_mappings:
+  - card_id: BObkLx82CGLJwx4jUUgNK
+    parameter_id: 55e1cd01
+    target:
+    - dimension
+    - - field
+      - CREATED_AT
+      - base-type: type/DateTime
+  - card_id: BObkLx82CGLJwx4jUUgNK
+    parameter_id: 244639ea
+    target:
+    - dimension
+    - - field
+      - TAX
+      - base-type: type/Float
+  - card_id: BObkLx82CGLJwx4jUUgNK
+    parameter_id: 43f6a09a
+    target:
+    - dimension
+    - - field
+      - TOTAL
+      - base-type: type/Float
+  - card_id: BObkLx82CGLJwx4jUUgNK
+    parameter_id: 145bcc
+    target:
+    - dimension
+    - - field
+      - VENDOR
+      - base-type: type/Text
+  - card_id: BObkLx82CGLJwx4jUUgNK
+    parameter_id: 55b2255d
+    target:
+    - dimension
+    - - field
+      - CATEGORY
+      - base-type: type/Text
+  - card_id: BObkLx82CGLJwx4jUUgNK
+    parameter_id: 674a6baa
+    target:
+    - dimension
+    - - field
+      - TITLE
+      - base-type: type/Text
+  - card_id: BObkLx82CGLJwx4jUUgNK
+    parameter_id: 19327f57
+    target:
+    - dimension
+    - - field
+      - DISCOUNT
+      - base-type: type/Float
+  - card_id: BObkLx82CGLJwx4jUUgNK
+    parameter_id: 32f3aae4
+    target:
+    - dimension
+    - - field
+      - USER_ID
+      - base-type: type/Integer
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: 0NsTb4VcHFDIWjyQSeYP3
+    model: DashboardTab
+  - id: 8UbthOWRmffgLwS1_FyS4
+    model: DashboardCard
+- entity_id: raE_QBJfsAZ6-4pxnWHpx
+  card_id: WXuYO8At4VTM7TOB5abuh
+  created_at: '2024-09-18T18:37:44.316058Z'
+  row: 7
+  col: 0
+  size_x: 6
+  size_y: 3
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - 0NsTb4VcHFDIWjyQSeYP3
+  parameter_mappings:
+  - card_id: WXuYO8At4VTM7TOB5abuh
+    parameter_id: 55e1cd01
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - base-type: type/DateTime
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: WXuYO8At4VTM7TOB5abuh
+    parameter_id: c1dfb5f0
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - EMAIL
+      - base-type: type/Text
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    click_behavior:
+      parameterMapping:
+        32f3aae4:
+          id: 32f3aae4
+          source:
+            id: count
+            name: Count
+            type: column
+          target:
+            id: 32f3aae4
+            type: parameter
+      type: crossfilter
+    column_settings: null
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: 0NsTb4VcHFDIWjyQSeYP3
+    model: DashboardTab
+  - id: raE_QBJfsAZ6-4pxnWHpx
+    model: DashboardCard
+- entity_id: mqyn8jhouLjbiGwCY4LnU
+  card_id: WXuYO8At4VTM7TOB5abuh
+  created_at: '2024-09-18T18:37:44.316058Z'
+  row: 7
+  col: 6
+  size_x: 6
+  size_y: 3
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - 0NsTb4VcHFDIWjyQSeYP3
+  parameter_mappings:
+  - card_id: WXuYO8At4VTM7TOB5abuh
+    parameter_id: 55e1cd01
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - base-type: type/DateTime
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: WXuYO8At4VTM7TOB5abuh
+    parameter_id: c1dfb5f0
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - EMAIL
+      - base-type: type/Text
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: 0NsTb4VcHFDIWjyQSeYP3
+    model: DashboardTab
+  - id: mqyn8jhouLjbiGwCY4LnU
+    model: DashboardCard
+- entity_id: 7_ZG5i63FJSHYi7pKjvRK
+  card_id: WXuYO8At4VTM7TOB5abuh
+  created_at: '2024-09-18T18:37:44.316058Z'
+  row: 7
+  col: 12
+  size_x: 6
+  size_y: 3
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - 0NsTb4VcHFDIWjyQSeYP3
+  parameter_mappings:
+  - card_id: WXuYO8At4VTM7TOB5abuh
+    parameter_id: 55e1cd01
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - base-type: type/DateTime
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: WXuYO8At4VTM7TOB5abuh
+    parameter_id: c1dfb5f0
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - EMAIL
+      - base-type: type/Text
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: 0NsTb4VcHFDIWjyQSeYP3
+    model: DashboardTab
+  - id: 7_ZG5i63FJSHYi7pKjvRK
+    model: DashboardCard
+- entity_id: Y0smIJdqTMcWMzZvcXJLt
+  card_id: WXuYO8At4VTM7TOB5abuh
+  created_at: '2024-09-18T18:37:44.316058Z'
+  row: 7
+  col: 18
+  size_x: 6
+  size_y: 3
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - 0NsTb4VcHFDIWjyQSeYP3
+  parameter_mappings:
+  - card_id: WXuYO8At4VTM7TOB5abuh
+    parameter_id: 55e1cd01
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - CREATED_AT
+      - base-type: type/DateTime
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: WXuYO8At4VTM7TOB5abuh
+    parameter_id: c1dfb5f0
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - EMAIL
+      - base-type: type/Text
+        source-field:
+        - Sample Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: 0NsTb4VcHFDIWjyQSeYP3
+    model: DashboardTab
+  - id: Y0smIJdqTMcWMzZvcXJLt
+    model: DashboardCard
+- entity_id: y0v8XsKUjsbsBjoWecH6I
+  card_id: tEyXw8tiTaBwcwLZREp_y
+  created_at: '2024-09-18T18:47:11.391515Z'
+  row: 0
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - tWBAglvqjCQ4LCstZN4lG
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: tWBAglvqjCQ4LCstZN4lG
+    model: DashboardTab
+  - id: y0v8XsKUjsbsBjoWecH6I
+    model: DashboardCard
+- entity_id: ey0d9jneZuGyB94YRsOps
+  card_id: TcaL1N7yrpAP_S6rb4jVW
+  created_at: '2024-09-18T18:47:11.391515Z'
+  row: 0
+  col: 12
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - tWBAglvqjCQ4LCstZN4lG
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: tWBAglvqjCQ4LCstZN4lG
+    model: DashboardTab
+  - id: ey0d9jneZuGyB94YRsOps
+    model: DashboardCard
+- entity_id: Hm-JYtazAJD4V-Jnelfke
+  card_id: xbkPM4gCRfWNownU0DeA1
+  created_at: '2024-09-18T18:47:11.391515Z'
+  row: 6
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - tWBAglvqjCQ4LCstZN4lG
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: tWBAglvqjCQ4LCstZN4lG
+    model: DashboardTab
+  - id: Hm-JYtazAJD4V-Jnelfke
+    model: DashboardCard
+- entity_id: 5mAfRwU4Xy8n9q8-GV8g6
+  card_id: cD8cA2-5TFxQU4d6SSW93
+  created_at: '2024-09-18T18:47:11.391515Z'
+  row: 6
+  col: 12
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - tWBAglvqjCQ4LCstZN4lG
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: tWBAglvqjCQ4LCstZN4lG
+    model: DashboardTab
+  - id: 5mAfRwU4Xy8n9q8-GV8g6
+    model: DashboardCard
+- entity_id: BoSrTRfcfaQQPMumfoCcj
+  card_id: f9Z3gdn6d3Hzh9IJ8cIex
+  created_at: '2024-09-18T18:47:11.391515Z'
+  row: 12
+  col: 0
+  size_x: 6
+  size_y: 3
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - tWBAglvqjCQ4LCstZN4lG
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: tWBAglvqjCQ4LCstZN4lG
+    model: DashboardTab
+  - id: BoSrTRfcfaQQPMumfoCcj
+    model: DashboardCard
+- entity_id: 0JiL3CGg-k35qhviSo4mm
+  card_id: tFxowrGpgFQhWC1vIOblD
+  created_at: '2024-09-18T18:47:11.391515Z'
+  row: 12
+  col: 6
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - tWBAglvqjCQ4LCstZN4lG
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: tWBAglvqjCQ4LCstZN4lG
+    model: DashboardTab
+  - id: 0JiL3CGg-k35qhviSo4mm
+    model: DashboardCard
+- entity_id: 5SJXqfu1UtD9RKhMU5j6E
+  card_id: D6awOMOWTnrezDa5xau4j
+  created_at: '2024-09-18T18:47:11.391515Z'
+  row: 18
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - tWBAglvqjCQ4LCstZN4lG
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: tWBAglvqjCQ4LCstZN4lG
+    model: DashboardTab
+  - id: 5SJXqfu1UtD9RKhMU5j6E
+    model: DashboardCard
+- entity_id: mNlqZcdQX7HTdaJzaDQVE
+  card_id: Z4DParcLJx-1M4tzNCO2g
+  created_at: '2024-09-18T18:47:11.391515Z'
+  row: 18
+  col: 12
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - tWBAglvqjCQ4LCstZN4lG
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: tWBAglvqjCQ4LCstZN4lG
+    model: DashboardTab
+  - id: mNlqZcdQX7HTdaJzaDQVE
+    model: DashboardCard
+- entity_id: ia3xdR0oV4nX_aoHK0D5R
+  card_id: -4c7nl8Bg6AsuIoTviji1
+  created_at: '2024-09-18T18:47:11.391515Z'
+  row: 24
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id:
+  - 70Zd815Zo9_8ge4d9Yugg
+  - tWBAglvqjCQ4LCstZN4lG
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: tWBAglvqjCQ4LCstZN4lG
+    model: DashboardTab
+  - id: ia3xdR0oV4nX_aoHK0D5R
+    model: DashboardCard
+initially_published_at: null
+tabs:
+- created_at: '2024-09-18T18:47:11.391515Z'
+  entity_id: 0NsTb4VcHFDIWjyQSeYP3
+  name: Tab 1
+  position: 0
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: 0NsTb4VcHFDIWjyQSeYP3
+    model: DashboardTab
+- created_at: '2024-09-18T18:47:11.391515Z'
+  entity_id: tWBAglvqjCQ4LCstZN4lG
+  name: Tab 2
+  position: 1
+  serdes/meta:
+  - id: 70Zd815Zo9_8ge4d9Yugg
+    model: Dashboard
+  - id: tWBAglvqjCQ4LCstZN4lG
+    model: DashboardTab
+width: fixed

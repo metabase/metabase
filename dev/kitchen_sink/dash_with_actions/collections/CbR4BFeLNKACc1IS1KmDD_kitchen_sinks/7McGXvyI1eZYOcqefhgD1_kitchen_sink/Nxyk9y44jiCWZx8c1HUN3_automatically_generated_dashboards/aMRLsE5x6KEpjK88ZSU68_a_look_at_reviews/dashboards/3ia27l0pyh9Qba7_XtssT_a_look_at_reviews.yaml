@@ -1,0 +1,701 @@
+name: A look at Reviews
+description: An overview of Reviews and how it's distributed across time, place, and categories.
+entity_id: 3ia27l0pyh9Qba7_XtssT
+created_at: '2024-09-18T16:47:13.171561Z'
+creator_id: admin@metabase.local
+archived: false
+collection_id: aMRLsE5x6KEpjK88ZSU68
+auto_apply_filters: true
+collection_position: 1
+position: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+show_in_getting_started: false
+caveats: null
+points_of_interest: null
+parameters:
+- id: '1007613411'
+  name: Created At
+  slug: CREATED_AT
+  type: date/all-options
+- id: '241800831'
+  name: Category
+  slug: CATEGORY
+  type: category
+serdes/meta:
+- id: 3ia27l0pyh9Qba7_XtssT
+  label: a_look_at_reviews
+  model: Dashboard
+archived_directly: false
+dashcards:
+- entity_id: 2pQRZstZPCaMQ5ZrWzOcx
+  card_id: null
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# Summary'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: 2pQRZstZPCaMQ5ZrWzOcx
+    model: DashboardCard
+- entity_id: AaLgecW3kf9VFG6wet9r9
+  card_id: ZqE5jeyOTwIl_jXMhNxEi
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 2
+  col: 0
+  size_x: 6
+  size_y: 3
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: ZqE5jeyOTwIl_jXMhNxEi
+    parameter_id: '1007613411'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - CREATED_AT
+      - null
+  - card_id: ZqE5jeyOTwIl_jXMhNxEi
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: AaLgecW3kf9VFG6wet9r9
+    model: DashboardCard
+- entity_id: nhpwONL4toA8FbmQhmH1p
+  card_id: DI54D4Bi5A2X9e07EjtQN
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 2
+  col: 6
+  size_x: 6
+  size_y: 3
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: DI54D4Bi5A2X9e07EjtQN
+    parameter_id: '1007613411'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - CREATED_AT
+      - null
+  - card_id: DI54D4Bi5A2X9e07EjtQN
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: nhpwONL4toA8FbmQhmH1p
+    model: DashboardCard
+- entity_id: dIruLWrwzARTUpT9gSuX_
+  card_id: XqW8Agx0iuT6K67oR0dLo
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 2
+  col: 12
+  size_x: 6
+  size_y: 3
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: XqW8Agx0iuT6K67oR0dLo
+    parameter_id: '1007613411'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - CREATED_AT
+      - null
+  - card_id: XqW8Agx0iuT6K67oR0dLo
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: dIruLWrwzARTUpT9gSuX_
+    model: DashboardCard
+- entity_id: eS7mY6-lyY3dPh-8Cdu8m
+  card_id: null
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 5
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# These Reviews across time'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: eS7mY6-lyY3dPh-8Cdu8m
+    model: DashboardCard
+- entity_id: UoVVCKJvJXicRYEuCR1aQ
+  card_id: nYYT4spWQKzEmessp-Ofp
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 7
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: nYYT4spWQKzEmessp-Ofp
+    parameter_id: '1007613411'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - CREATED_AT
+      - null
+  - card_id: nYYT4spWQKzEmessp-Ofp
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: UoVVCKJvJXicRYEuCR1aQ
+    model: DashboardCard
+- entity_id: 9HLYogsnhbCbCLZM9aN3n
+  card_id: qKsvtadRprHYDAcDT_8TT
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 7
+  col: 12
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: qKsvtadRprHYDAcDT_8TT
+    parameter_id: '1007613411'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - CREATED_AT
+      - null
+  - card_id: qKsvtadRprHYDAcDT_8TT
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: 9HLYogsnhbCbCLZM9aN3n
+    model: DashboardCard
+- entity_id: MSlfHXIpm8GyFjDXcuciC
+  card_id: VEggyqFhsBAJDNg1GsteL
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 13
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: VEggyqFhsBAJDNg1GsteL
+    parameter_id: '1007613411'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - CREATED_AT
+      - null
+  - card_id: VEggyqFhsBAJDNg1GsteL
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: MSlfHXIpm8GyFjDXcuciC
+    model: DashboardCard
+- entity_id: AvBazC_3zqae0AkmcWjb4
+  card_id: 7v-RfaaQTZs0L-Gk3n1Sg
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 13
+  col: 12
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: 7v-RfaaQTZs0L-Gk3n1Sg
+    parameter_id: '1007613411'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - CREATED_AT
+      - null
+  - card_id: 7v-RfaaQTZs0L-Gk3n1Sg
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: AvBazC_3zqae0AkmcWjb4
+    model: DashboardCard
+- entity_id: A2soXgcrJdYgcWjIZCtDw
+  card_id: bmsZMmoHfq4lI-R7dx1hY
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 19
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: bmsZMmoHfq4lI-R7dx1hY
+    parameter_id: '1007613411'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - CREATED_AT
+      - null
+  - card_id: bmsZMmoHfq4lI-R7dx1hY
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: A2soXgcrJdYgcWjIZCtDw
+    model: DashboardCard
+- entity_id: 32vsY7tJblJXyzSaBTh3G
+  card_id: silDhn2SA-WWc3KzGOpG8
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 19
+  col: 12
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: silDhn2SA-WWc3KzGOpG8
+    parameter_id: '1007613411'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - CREATED_AT
+      - null
+  - card_id: silDhn2SA-WWc3KzGOpG8
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: 32vsY7tJblJXyzSaBTh3G
+    model: DashboardCard
+- entity_id: NCPGZ9HkLg0h0pd2T4xN3
+  card_id: h4hNZERyxdlaSZDi_wIod
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 25
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: h4hNZERyxdlaSZDi_wIod
+    parameter_id: '1007613411'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - CREATED_AT
+      - null
+  - card_id: h4hNZERyxdlaSZDi_wIod
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: NCPGZ9HkLg0h0pd2T4xN3
+    model: DashboardCard
+- entity_id: QEXbCgiW2TkkmovuANWc6
+  card_id: null
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 31
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# How these Reviews are distributed'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: QEXbCgiW2TkkmovuANWc6
+    model: DashboardCard
+- entity_id: PNM_QYAueJ9fohDiiiFC3
+  card_id: 2Gxozh5XKeNjB6xdU9tR0
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 33
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: 2Gxozh5XKeNjB6xdU9tR0
+    parameter_id: '1007613411'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - CREATED_AT
+      - null
+  - card_id: 2Gxozh5XKeNjB6xdU9tR0
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: PNM_QYAueJ9fohDiiiFC3
+    model: DashboardCard
+- entity_id: GfqU_iIXVflu7bGyY4ZMq
+  card_id: AZCRJiIV9X-Y_9eiPbLaG
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 33
+  col: 12
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: AZCRJiIV9X-Y_9eiPbLaG
+    parameter_id: '1007613411'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - CREATED_AT
+      - null
+  - card_id: AZCRJiIV9X-Y_9eiPbLaG
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: GfqU_iIXVflu7bGyY4ZMq
+    model: DashboardCard
+- entity_id: WfVjGO24m6cJNwpuqzUy7
+  card_id: GVqfIGuVTebqM-9yWoDIC
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 39
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: GVqfIGuVTebqM-9yWoDIC
+    parameter_id: '1007613411'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - CREATED_AT
+      - null
+  - card_id: GVqfIGuVTebqM-9yWoDIC
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: WfVjGO24m6cJNwpuqzUy7
+    model: DashboardCard
+- entity_id: gE_15WchgOsmtyosqGiCF
+  card_id: Nql2zzo0aWpOSVRF0Vx9V
+  created_at: '2024-09-18T16:47:13.436916Z'
+  row: 39
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: Nql2zzo0aWpOSVRF0Vx9V
+    parameter_id: '1007613411'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - CREATED_AT
+      - null
+  - card_id: Nql2zzo0aWpOSVRF0Vx9V
+    parameter_id: '241800831'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - REVIEWS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: 3ia27l0pyh9Qba7_XtssT
+    model: Dashboard
+  - id: gE_15WchgOsmtyosqGiCF
+    model: DashboardCard
+initially_published_at: null
+tabs: []
+width: fixed

@@ -1,0 +1,67 @@
+name: Transactions in the last 30 days
+description: null
+entity_id: BYmOX5yC7_cAxkoYnzeG-
+created_at: '2024-09-18T16:46:42.169708Z'
+creator_id: admin@metabase.local
+display: scalar
+archived: false
+collection_id: Bn6JLGGoMO_vNorJoBEOU
+collection_preview: true
+collection_position: null
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  query:
+    aggregation:
+    - - count
+    filter:
+    - time-interval
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - base-type: type/DateTime
+    - -30
+    - day
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ORDERS
+  type: query
+result_metadata:
+- aggregation_index: 0
+  base_type: type/Integer
+  display_name: Count
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+visualization_settings:
+  column_settings: null
+  graph.dimensions: null
+  graph.metrics:
+  - count
+  graph.series_labels:
+  - null
+serdes/meta:
+- id: BYmOX5yC7_cAxkoYnzeG-
+  label: transactions_in_the_last_30_days
+  model: Card
+archived_directly: false
+metabase_version: v0.1.37-SNAPSHOT (6469402)
+source_card_id: null
+type: question
