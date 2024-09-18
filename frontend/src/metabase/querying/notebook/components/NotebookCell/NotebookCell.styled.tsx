@@ -28,9 +28,9 @@ export const NotebookCellItemContainer = styled.div<{
   font-weight: bold;
   color: ${props => (props.inactive ? props.color : color("text-white"))};
   border-radius: 6px;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
   border-color: ${props =>
-    props.inactive ? alpha(props.color, 0.25) : "transparent"};
+    props.inactive ? alpha(props.color, 0.5) : "transparent"};
   cursor: ${props =>
     (!props.inactive || props.onClick) && !props.readOnly && !props.disabled
       ? "pointer"
