@@ -176,7 +176,7 @@
   {:select [:model_id :model]
    :from   [active-table]
    :where  (if-not search-term
-             [:= 1 1]
+             [:= [:inline 1] [:inline 1]]
              [:raw
               "search_vector @@ to_tsquery('"
               tsv-language "', "
