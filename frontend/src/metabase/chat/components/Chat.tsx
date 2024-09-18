@@ -151,7 +151,7 @@ export const Chat = ({
       },
       body: JSON.stringify({
         messages: nextMessages,
-        tools: getToolSpec(),
+        tools: getToolSpec(table?.fields as Field[]),
       }),
     });
 

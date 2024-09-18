@@ -1,4 +1,5 @@
 import {Field} from "metabase-types/api";
+import {getFieldsForJsonSchema} from "metabase/chat/components/utils";
 
 export interface Tool {
   name: string;
@@ -86,30 +87,7 @@ export function getToolSpec(fields: Field[]) {
               "scalar"
             ]
           },
-          "filters": {
-            "type": ["array", "null"],
-            "items": {
-              "type": "object",
-              "properties": {
-                "comparator": {
-                  "type": "string",
-                  "enum": ["=", "<", ">"],
-                  "title": "FilterOperator"
-                },
-                "fieldName": {
-                  "title": "Field Name",
-                  "type": "string"
-                },
-                "value": {
-                  "title": "Value",
-                  "type": "string"
-                }
-              },
-              "required": ["comparator", "fieldName", "value"],
-              "additionalProperties": false,
-              "title": "Filter"
-            }
-          },
+          "filters": getSchemaForFilters(fields),
           "summarizations": {
             "type": ["array", "null"],
             "items": {
@@ -159,4 +137,71 @@ export function getToolSpec(fields: Field[]) {
       "strict": true
     }
   ] as const satisfies Tool[];
+}
+
+const getSchemaForFilters = (fields: Field[]) => {
+  const fieldsForSchema = getFieldsForJsonSchema(fields);
+  const schema = {
+    type: "object",
+    $defs: {
+      Query: {
+        properties: {
+          filter: { $ref: "#/$defs/FilterCombo" },
+        },
+        title: "Query",
+        type: "object",
+        additionalProperties: false,
+        required: ["filter"],
+      },
+      Field: { enum: fieldsForSchema },
+      Filter: {
+        prefixItems: [
+          {
+            enum: [
+              "=",
+              "!=",
+              "<",
+              ">",
+              ">=",
+              "<=",
+              // These seem to be causing more trouble than they're worth right now:
+              // "is-null",
+              // "not-null"
+            ],
+          },
+          {
+            $ref: "#/$defs/Field",
+          },
+        ],
+        items: { anyOf: [{ type: "string" }, { type: "number" }] },
+        type: "array",
+        additionalItems: false,
+      },
+      FilterCombo: {
+        type: "array",
+        prefixItems: [{ enum: ["and", "or"] }],
+        items: { $ref: "#/$defs/Filter" },
+        additionalItems: false,
+      },
+    },
+    properties: {
+      display: {
+        enum: ["bar", "line", "pie", "scatter", "table", "map"],
+        title: "Display",
+        type: "string",
+      },
+      // "visualization_settings": {"$ref": "#/$defs/VisualizationSettings"},
+      query: {
+        anyOf: [{ $ref: "#/$defs/Query" }, { type: "null" }],
+      },
+    },
+    required: [
+      "display",
+      "query",
+      // "visualization_settings"
+    ],
+    additionalProperties: false,
+    title: "QueryWithViz",
+  };
+  return schema;
 }

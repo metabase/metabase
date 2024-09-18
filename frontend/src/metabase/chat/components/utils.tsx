@@ -9,10 +9,6 @@ import {
   METABOT_AGENT_TOOLS_SPEC,
   Tool,
 } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
-import {
-  METABOT_AGENT_TOOLS_SPEC,
-  Tool,
-} from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
 import { Field, RowValues } from "metabase-types/api";
 
 const getBody = ({
@@ -35,59 +31,6 @@ const getBody = ({
     tools,
   });
   return body;
-};
-
-const sendPrompt = async (
-  prompt: string,
-  systemPrompt?: string,
-  fields?: QueryField[],
-  apiPath = "experimental/viz-agent/",
-  // Another option is /v1/chat/
-) => {
-  // eslint-disable-next-line no-console
-  console.log(`%cPrompt sent to LLM:%c\n ${prompt}`, ...promptStyle);
-  const body = getBody({
-    content: prompt,
-    systemPrompt,
-    fields,
-    tools: getToolSpec(),
-  });
-  const results = await fetch(`http://0.0.0.0:8000/${apiPath}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body,
-  });
-  return results;
-};
-
-export const getLLMResponse = async (
-  prompt: string,
-  systemPrompt?: string,
-  fields?: QueryField[],
-) => {
-  const response = await sendPrompt(prompt, systemPrompt, fields);
-  const json = (await response.json()) as any;
-  const responseContent = json.message.content as string;
-  const toolCalls = json.message.tool_calls.map(
-    (tc: any) => `${tc.function?.name} called with ${tc.function?.arguments}`,
-  );
-  // eslint-disable-next-line no-console
-  console.log("LLM says", responseContent);
-  // eslint-disable-next-line no-console
-  console.log("toolCalls", "\n" + toolCalls.join("\n"));
-  // The response might be encoded json
-  try {
-    const parsed = JSON.parse(responseContent) as {
-      tool_output: string;
-      assistant_output: string;
-    };
-    const { tool_output, assistant_output } = parsed;
-    return { tool_output, assistant_output };
-  } catch {
-    return { assistant_output: responseContent };
-  }
 };
 
 export const adhockifyURL = (
@@ -147,73 +90,6 @@ export const getColumnsWithSampleValues = (
       return `* ${col.display_name} (Sample values: ${uniqueValues})`;
     })
     .join("\n");
-};
-
-export const getJsonSchemaForFilters = (fields: Field[]) => {
-  const fieldsForSchema = getFieldsForJsonSchema(fields);
-  const schema = {
-    type: "object",
-    $defs: {
-      Query: {
-        properties: {
-          filter: { $ref: "#/$defs/FilterCombo" },
-        },
-        title: "Query",
-        type: "object",
-        additionalProperties: false,
-        required: ["filter"],
-      },
-      Field: { enum: fieldsForSchema },
-      Filter: {
-        prefixItems: [
-          {
-            enum: [
-              "=",
-              "!=",
-              "<",
-              ">",
-              ">=",
-              "<=",
-              // These seem to be causing more trouble than they're worth right now:
-              // "is-null",
-              // "not-null"
-            ],
-          },
-          {
-            $ref: "#/$defs/Field",
-          },
-        ],
-        items: { anyOf: [{ type: "string" }, { type: "number" }] },
-        type: "array",
-        additionalItems: false,
-      },
-      FilterCombo: {
-        type: "array",
-        prefixItems: [{ enum: ["and", "or"] }],
-        items: { $ref: "#/$defs/Filter" },
-        additionalItems: false,
-      },
-    },
-    properties: {
-      display: {
-        enum: ["bar", "line", "pie", "scatter", "table", "map"],
-        title: "Display",
-        type: "string",
-      },
-      // "visualization_settings": {"$ref": "#/$defs/VisualizationSettings"},
-      query: {
-        anyOf: [{ $ref: "#/$defs/Query" }, { type: "null" }],
-      },
-    },
-    required: [
-      "display",
-      "query",
-      // "visualization_settings"
-    ],
-    additionalProperties: false,
-    title: "QueryWithViz",
-  };
-  return schema;
 };
 
 export const getFieldsForJsonSchema = (fields: Field[]) => {
