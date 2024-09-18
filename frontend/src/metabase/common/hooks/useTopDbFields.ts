@@ -7,7 +7,11 @@ type TopDbAttribute =
   | "field_usage_breakout_count"
   | "field_usage_aggregation_count";
 
-export const useTopDbFields = (query: Lib.Query, attribute: TopDbAttribute) => {
+export const useTopDbFields = (
+  query: Lib.Query,
+  stageIndex: number,
+  attribute: TopDbAttribute,
+) => {
   const dbId = Lib.databaseID(query);
   const { data: database } = useGetDatabaseQuery(
     dbId
@@ -24,10 +28,28 @@ export const useTopDbFields = (query: Lib.Query, attribute: TopDbAttribute) => {
     }) ?? [];
 
   const usedFields = fields.filter(field => field[attribute] > 0);
-
   const sortedFields = sortFields(usedFields, attribute);
 
-  return sortedFields.slice(0, 2);
+  const columns = Lib.filterableColumns(query, stageIndex);
+  const getColumn = (field: Field) => {
+    return columns.find(column => {
+      const columnInfo = Lib.displayInfo(query, stageIndex, column);
+
+      return (
+        columnInfo.table?.name === field.table?.name &&
+        columnInfo.displayName === field.display_name
+      );
+    });
+  };
+
+  const topFields = sortedFields
+    .map(field => ({
+      ...field,
+      column: getColumn(field),
+    }))
+    .filter(({ column }) => column != null);
+
+  return topFields.slice(0, 2);
 };
 
 const sortFields = (fields: Field[], attribute: TopDbAttribute) => {
