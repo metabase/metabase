@@ -26,6 +26,9 @@
        (map m)
        (str/join " ")))
 
+(defn- display-data [m]
+  (select-keys m [:name :display_name :description]))
+
 (defn- ->entry [m]
   (-> m
       (select-keys
@@ -37,6 +40,8 @@
         :table_id])
       (update :archived boolean)
       (assoc
+       :display_data    (display-data m)
+       :legacy_input    m
        :searchable_text (searchable-text m)
        :model_rank      (model-rank (:model m)))))
 
