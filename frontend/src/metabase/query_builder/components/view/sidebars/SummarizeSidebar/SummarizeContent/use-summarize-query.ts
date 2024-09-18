@@ -30,6 +30,8 @@ export const useSummarizeQuery = ({
 
   const handleChange = useCallback(
     (nextQuery: Lib.Query) => {
+      console.log(`[UI] useSummarizeQuery.handleChange`, nextQuery);
+
       setHasDefaultAggregation(false);
       onQueryChange(nextQuery);
     },
@@ -38,6 +40,8 @@ export const useSummarizeQuery = ({
 
   const handleQueryChange = useCallback(
     (nextQuery: Lib.Query) => {
+      console.log(`[UI] useSummarizeQuery.handleQueryChange`, nextQuery);
+
       const newAggregations = Lib.aggregations(nextQuery, STAGE_INDEX);
       if (newAggregations.length === 0) {
         setHasDefaultAggregation(false);
@@ -50,6 +54,8 @@ export const useSummarizeQuery = ({
 
   const handleAddBreakout = useCallback(
     (column: Lib.ColumnMetadata) => {
+      console.log(`[UI] useSummarizeQuery.handleAddBreakout`, column);
+
       const nextQuery = Lib.breakout(query, STAGE_INDEX, column);
       handleChange(nextQuery);
     },
@@ -58,6 +64,12 @@ export const useSummarizeQuery = ({
 
   const handleUpdateBreakout = useCallback(
     (clause: Lib.BreakoutClause, column: Lib.ColumnMetadata) => {
+      console.log(
+        `[UI] useSummarizeQuery.handleUpdateBreakout`,
+        clause,
+        column,
+      );
+
       const nextQuery = Lib.replaceClause(query, STAGE_INDEX, clause, column);
       handleChange(nextQuery);
     },
@@ -66,6 +78,8 @@ export const useSummarizeQuery = ({
 
   const handleRemoveBreakout = useCallback(
     (clause: Lib.BreakoutClause) => {
+      console.log(`[UI] useSummarizeQuery.handleRemoveBreakout`, clause);
+
       const nextQuery = Lib.removeClause(query, STAGE_INDEX, clause);
       handleChange(nextQuery);
     },
@@ -74,6 +88,8 @@ export const useSummarizeQuery = ({
 
   const handleReplaceBreakouts = useCallback(
     (column: Lib.ColumnMetadata) => {
+      console.log(`[UI] useSummarizeQuery.handleReplaceBreakouts`, column);
+
       const nextQuery = Lib.replaceBreakouts(query, STAGE_INDEX, column);
       handleChange(nextQuery);
     },

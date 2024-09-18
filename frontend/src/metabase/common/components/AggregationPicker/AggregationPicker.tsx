@@ -110,6 +110,8 @@ export function AggregationPicker({
 
   const onSelect = useCallback(
     function (aggregation: Lib.Aggregable) {
+      console.log(`[UI] AggregationPicker.onSelect`, aggregation);
+
       const isUpdate = clause != null && clauseIndex != null;
       if (isUpdate) {
         const nextQuery = Lib.replaceClause(
@@ -189,6 +191,7 @@ export function AggregationPicker({
 
   const handleOperatorSelect = useCallback(
     (item: OperatorListItem) => {
+      console.log(`[UI] AggregationPicker.handleOperatorSelect`, item);
       if (item.requiresColumn) {
         setOperator(item.operator);
       } else {
@@ -201,11 +204,13 @@ export function AggregationPicker({
   );
 
   const handleResetOperator = useCallback(() => {
+    console.log(`[UI] AggregationPicker.handleResetOperator`);
     setOperator(null);
   }, []);
 
   const handleColumnSelect = useCallback(
     (column: Lib.ColumnMetadata) => {
+      console.log(`[UI] AggregationPicker.handleColumnSelect`, column);
       if (!operator) {
         return;
       }
@@ -218,6 +223,7 @@ export function AggregationPicker({
 
   const handleMetricSelect = useCallback(
     (item: MetricListItem) => {
+      console.log(`[UI] AggregationPicker.handleMetricSelect`, item);
       onSelect(item.metric);
       onClose?.();
     },
@@ -234,6 +240,8 @@ export function AggregationPicker({
 
   const handleChange = useCallback(
     (item: ListItem) => {
+      console.log(`[UI] AggregationPicker.handleChange`, item);
+
       if (item.type === "operator") {
         handleOperatorSelect(item);
       } else if (item.type === "metric") {
@@ -245,6 +253,8 @@ export function AggregationPicker({
 
   const handleSectionChange = useCallback(
     (section: Section) => {
+      console.log(`[UI] AggregationPicker.handleSectionChange`, section);
+
       if (section.key === "custom-expression") {
         openExpressionEditor();
       }
@@ -257,6 +267,7 @@ export function AggregationPicker({
 
   const handleClauseChange = useCallback(
     (name: string, clause: Lib.AggregationClause | Lib.ExpressionClause) => {
+      console.log(`[UI] AggregationPicker.handleClauseChange`, name, clause);
       const updatedClause = Lib.withExpressionName(clause, name);
       onSelect(updatedClause);
       onClose?.();
@@ -266,6 +277,11 @@ export function AggregationPicker({
 
   const handleCompareSubmit = useCallback(
     (query: Lib.Query, aggregations: Lib.ExpressionClause[]) => {
+      console.log(
+        `[UI] AggregationPicker.handleCompareSubmit`,
+        query,
+        aggregations,
+      );
       onQueryChange(query);
 
       if (question) {

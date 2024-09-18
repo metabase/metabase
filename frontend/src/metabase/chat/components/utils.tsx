@@ -3,10 +3,8 @@ import _ from "underscore";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 
 import type { AdhocQuestionData, QueryField } from "./types";
-import {
-  METABOT_AGENT_TOOLS_SPEC,
-  Tool,
-} from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
+import { Tool } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
+import { getToolSpec } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
 
 const getBody = ({
   content,
@@ -43,7 +41,7 @@ const sendPrompt = async (
     content: prompt,
     systemPrompt,
     fields,
-    tools: METABOT_AGENT_TOOLS_SPEC,
+    tools: getToolSpec(),
   });
   const results = await fetch(`http://0.0.0.0:8000/${apiPath}`, {
     method: "POST",
