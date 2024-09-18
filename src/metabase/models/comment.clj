@@ -43,7 +43,7 @@
 
 (defn- hydrate-comment
   [comment-or-comments]
-  (t2/hydrate comment-or-comments :author [:reactions :author] [:replies :author] [:replies :reactions] :resolved_by))
+  (t2/hydrate comment-or-comments :author [:reactions :author] [:replies :author] [:replies :reactions] [:replies [:reactions :author]] :resolved_by))
 
 (defn for-model
   "All the comments for the given model"
