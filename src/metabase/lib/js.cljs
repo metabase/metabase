@@ -248,8 +248,9 @@
   looking at the last stage.
 
   > **Code health:** Healthy"
-  [a-query stage-number]
-  (if (and
+  [a-query stage-number card-id]
+  (let [a-query (lib.drill-thru.common/prepare-query a-query stage-number card-id)]
+    (if (and
        (empty? (lib.core/aggregations a-query stage-number))
        (empty? (lib.core/breakouts a-query stage-number)))
     ;; No extra stage needed with no aggregations.
@@ -263,7 +264,7 @@
            :stageIndex next-stage}
       ;; No new stage, so append one.
       #js {:query      (lib.core/append-stage a-query)
-           :stageIndex -1})))
+           :stageIndex -1}))))
 
 (defn ^:export orderable-columns
   "Returns a JS Array of *column metadata* values for all columns which can be used to add an `ORDER BY` to `a-query` at
