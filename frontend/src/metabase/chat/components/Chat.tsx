@@ -13,8 +13,9 @@ import _ from "underscore";
 
 import Markdown from "metabase/core/components/Markdown";
 import MetabotLogo from "metabase/core/components/MetabotLogo";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions";
+import { getRawSeries } from "metabase/query_builder/selectors";
 import {
   Box,
   Button,
@@ -44,8 +45,9 @@ export const Chat = ({
   scrollableStackRef: React.RefObject<HTMLDivElement>;
   setWidgetOpened: Dispatch<SetStateAction<boolean>>;
 }) => {
-  const { currentlyViewedQuestion: question, questionData } = (window as any)
-    ._chatHacks;
+  const { currentlyViewedQuestion: question } = (window as any)._chatHacks;
+
+  const questionData = useSelector(getRawSeries);
 
   const query = question._card.dataset_query;
   const visualizationSettings = question._card.visualization_settings;
