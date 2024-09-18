@@ -11,6 +11,7 @@ import {
 } from "metabase/ui";
 
 import type { Comment as CommentType } from "../../types";
+import { ReactionList } from "../reaction-list";
 
 import CommentS from "./Comment.module.css";
 
@@ -57,6 +58,9 @@ export const Comment = ({ comment }: { comment: CommentType }) => (
         isEditing={false}
         placeholder="put something here ya ding dong"
       />
+    </Box>
+    <Box ml="4px" pt="xs" className={CommentS.div6}>
+      <ReactionList reactions={comment.reactions} />
     </Box>
   </Box>
 );

@@ -1,0 +1,10 @@
+.EmojiButton {
+  transition: background ease-in-out 250ms;
+  background: transparent;
+  border-radius: 0.25rem;
+}
+
+.EmojiButton:hover {
+  background: var(--mb-color-bg-medium);
+  transition: all ease-in-out;
+}
