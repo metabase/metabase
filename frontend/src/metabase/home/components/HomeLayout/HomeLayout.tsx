@@ -20,6 +20,7 @@ import { Flex, Stack } from "metabase/ui";
 import ChatHistory from "metabase/browse/components/ChatItems/ChatHistory";
 import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipToken } from "metabase/api";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { generateRandomId } from "metabase/lib/utils";
 
 export const HomeLayout = () => {
   const initialMessage = useSelector(getInitialMessage);
@@ -36,6 +37,8 @@ export const HomeLayout = () => {
   const [insightDbId, setInsightDbId] = useState<number | null>(null)
   const [company, setCompany] = useState<string | null>(null)
   const [schema, setSchema] = useState<any[]>([]);
+  const [messages, setMessages] = useState([]);
+  const [threadId, setThreadId] = useState('')
   const dispatch = useDispatch();
   const {
     data,
@@ -130,6 +133,14 @@ useEffect(() => {
     setInputValue(""); // Clear the input value
   };
 
+  const handleStartNewChat = () => {
+    setSelectedThreadId(null)
+    setMessages([])
+    setInputValue("")
+    let thread_Id = generateRandomId();
+    setThreadId(thread_Id)
+};
+
   return (
     <>
       {!showChatAssistant ? (
@@ -162,8 +173,22 @@ useEffect(() => {
         </LayoutRoot>
       ) : (
         <BrowseContainer>
+          <Flex
+        style={{
+          justifyContent: "flex-end",
+          marginRight: "3rem",
+        }}
+      >
+        <button
+          style={{color: "#8A64DF", cursor: "pointer"}}
+          onClick={handleStartNewChat}>
+          <p style={{ fontSize: "14px", color: "#8A64DF", fontWeight: "500" }}>
+            New Thread
+            </p>
+        </button>
+      </Flex>
           <BrowseMain>
-            <Flex style={{ height: "100%", width: "100%" }}>
+            <Flex style={{ height: "85vh", width: "100%" }}>
               <Stack
                 mb="lg"
                 spacing="xs"
@@ -181,6 +206,12 @@ useEffect(() => {
                   insights={insights}
                   setSelectedThreadId={setSelectedThreadId}
                   initial_message={initialMessage}
+                  setMessages={setMessages}
+                  setInputValue={setInputValue}
+                  setThreadId={setThreadId}
+                  threadId={threadId}
+                  inputValue={inputValue}
+                  messages={messages}
                 />
               </Stack>
               <Stack
