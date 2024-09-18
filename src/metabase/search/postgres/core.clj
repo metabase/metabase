@@ -88,12 +88,15 @@
        (map :legacy_input)
        (map #(json/parse-string % keyword))))
 
+(def ^:private default-engine hybrid-multi)
+
 (defn- search-fn [search-engine]
   (case search-engine
     :hybrid       hybrid
     :hubrid-multi hybrid-multi
     :minimal      minimal
-    hybrid-multi))
+    :fulltext     default-engine
+    default-engine))
 
 (defn search
   "Return a reducible-query corresponding to searching the entities via a tsvector."
