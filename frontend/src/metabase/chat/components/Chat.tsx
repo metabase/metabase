@@ -119,10 +119,11 @@ export const Chat = ({
     console.log(`Prompt:`, prompt);
 
     const nextMessages = [
-      // ...messages.map(m => ({
-      //   content: m.content,
-      //   role: m.author === "llm" ? "assistant" : "user",
-      // })),
+      ...messages.map(m => ({
+        content: m.content,
+        role: m.author === "llm" ? "assistant" : "user",
+        ...(m.author === "llm" && { tool_calls: m.toolCalls }),
+      })),
       {
         content: prompt,
         role: "user",
@@ -147,6 +148,7 @@ export const Chat = ({
       content: agentResponse,
       author: "llm",
       // newQuery: completeNewQuery,
+      toolCalls: tool_calls,
     });
 
     for (const toolCall of tool_calls) {

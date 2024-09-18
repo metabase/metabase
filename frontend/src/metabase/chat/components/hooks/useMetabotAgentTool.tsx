@@ -112,8 +112,8 @@ export function useMetabotAgentTool() {
           .table(currentQuestion.legacyQueryTableId());
 
         if (nextQuery.type === "query") {
-          const aggregation = nextQuery.query.aggregation ?? [];
-          const breakout = nextQuery.query.breakout ?? [];
+          const aggregation = [];
+          const breakout = [];
 
           // Apply filter
           console.log("FILTERS", filters);

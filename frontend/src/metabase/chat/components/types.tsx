@@ -38,4 +38,5 @@ export type Message = {
   content: string;
   author: Author;
   newQuery?: any;
+  toolCalls?: any[];
 };
