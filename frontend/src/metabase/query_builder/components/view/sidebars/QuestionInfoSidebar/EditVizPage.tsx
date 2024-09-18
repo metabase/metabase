@@ -55,57 +55,47 @@ export const EditVizPage = ({
 
   const [isAwaitingLLMResponse, setIsAwaitingLLMResponse] = useState(false);
 
-  const data = (window as { questionData?: any }).questionData[0]?.data;
-  const { cols, rows } = data;
-  const fieldsWithSampleValues = useMemo(() => {
-    return getColumnsWithSampleValues(cols, rows);
-  }, [cols, rows]);
+  const data = (window as { questionData?: any }).questionData?.[0]?.data;
+  const { cols, rows } = data ?? {};
+
+  // const fieldsWithSampleValues = (() => {
+  //   if (!rows || !cols) {
+  //     return [];
+  //   }
+  //
+  //   return getColumnsWithSampleValues(cols, rows);
+  // })();
 
   // So that the LLM has better information, we're going to concatenate the id
   // with the field name and remove this name later.
 
-  // table_name: string
-  // table_id: number
-  // fields: id, name, description
-  const fields = useMemo(
-    () =>
-      question._card.result_metadata
-        .filter(field => field.field_ref)
-        .map(field => [
-          ...([
-            field.field_ref?.[0],
-            // Concatenate the id with the field name
-            `${field.field_ref?.[1]}.${field.display_name}`,
-            ...(field.field_ref as FieldReference)?.slice(2),
-          ] as FieldReference),
-          {
-            name: field.name,
-            display_name: field.display_name,
-            base_type: field.base_type,
-          },
-        ]) as QueryField[],
-    [question],
-  );
+  const handleAddMessage = async (message: Message) => {
+    addMessage(message);
 
-  useEffect(() => {
-    scrollMessagesToBottom();
+    const userMessage = message.content;
+    console.log(`[user] ${userMessage}`);
 
-    const sendMessageToLLM = async () => {
-      const lastMessage = _.last(messages);
+    setIsAwaitingLLMResponse(true);
 
-      if (!lastMessage || lastMessage.author !== "user") {
-        return;
-      }
+    const table = question.metadata().table(question.legacyQueryTableId());
 
-      const userMessage = lastMessage.content;
-      if (!userMessage) {
-        return;
-      }
+    const fields = table?.fields?.map(field => ({
+      id: field.id,
+      name: field.name,
+      display_name: field.display_name,
+      base_type: field.base_type,
+      description: field.description,
+    }));
 
-      setIsAwaitingLLMResponse(true);
+    const prompt = `
+        <system>
+          the function call must only use the field's name field.
+        </system>
 
-      const prompt = `
         <context>
+          table id: ${question._card.dataset_query.database}.
+          table name: ${table?.name}.
+          table display name: ${table?.display_name}.
           available fields: ${JSON.stringify(fields)}.
         </context>
 
@@ -114,50 +104,39 @@ export const EditVizPage = ({
         </user_ask>
       `;
 
-      const results = await fetch(
-        `http://0.0.0.0:8000/experimental/viz-agent/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            messages: [{ content: prompt, role: "user" }],
-            tools: METABOT_AGENT_TOOLS_SPEC,
-          }),
-        },
-      );
+    console.log(`Prompt:`, prompt);
 
-      const json = await results.json();
-      const { content: agentResponse, tool_calls } = json.message;
+    const results = await fetch(`http://0.0.0.0:8000/experimental/viz-agent/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messages: [{ content: prompt, role: "user" }],
+        tools: METABOT_AGENT_TOOLS_SPEC,
+      }),
+    });
 
-      if (tool_calls) {
-        tool_calls.forEach(toolCall => {
-          runAgentAction(toolCall);
-        });
-      }
+    const json = await results.json();
+    const { content: agentResponse, tool_calls } = json.message;
 
-      addMessage({
-        content: agentResponse,
-        author: "llm",
-        // newQuery: completeNewQuery,
-      });
+    addMessage({
+      content: agentResponse,
+      author: "llm",
+      // newQuery: completeNewQuery,
+    });
 
-      setIsAwaitingLLMResponse(false);
-    };
-    sendMessageToLLM();
-  }, [
-    addMessage,
-    fields,
-    fieldsWithSampleValues,
-    messages,
-    query,
-    question,
-    scrollMessagesToBottom,
-    scrollableStackRef,
-    setIsAwaitingLLMResponse,
-    visualizationSettings,
-  ]);
+    for (const toolCall of tool_calls) {
+      await runAgentAction(toolCall);
+    }
+
+    setIsAwaitingLLMResponse(false);
+    scrollMessagesToBottom();
+  };
+
+  if (!data) {
+    return null;
+  }
 
   return (
     <>
@@ -179,7 +158,7 @@ export const EditVizPage = ({
         <Box p="1rem" pr=".5rem">
           <WriteMessage
             isAwaitingLLMResponse={isAwaitingLLMResponse}
-            addMessage={addMessage}
+            addMessage={handleAddMessage}
           />
         </Box>
       </Box>
