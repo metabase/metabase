@@ -3,9 +3,9 @@ import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
 type TopDbAttribute =
-  | "field_usage_filter_count"
-  | "field_usage_breakout_count"
-  | "field_usage_aggregation_count";
+  | "field_usage_filter"
+  | "field_usage_breakout"
+  | "field_usage_aggregation";
 
 export const useTopDbFields = (
   query: Lib.Query,
@@ -34,8 +34,9 @@ export const useTopDbFields = (
       }));
     }) ?? [];
 
-  const usedFields = fields.filter(field => field[attribute] > 0);
-  const sortedFields = sortFields(usedFields, attribute);
+  const countAttribute = attribute + "_count";
+  const usedFields = fields.filter(field => (field as any)[countAttribute] > 0);
+  const sortedFields = sortFields(usedFields, countAttribute);
 
   const columns = Lib.filterableColumns(query, stageIndex);
   const getColumn = (field: Field) => {
@@ -53,16 +54,17 @@ export const useTopDbFields = (
     .map(field => ({
       ...field,
       column: getColumn(field),
+      attribute,
     }))
     .filter(({ column }) => column != null);
 
   return topFields.slice(0, 2);
 };
 
-const sortFields = (fields: Field[], attribute: TopDbAttribute) => {
+const sortFields = (fields: Field[], attribute: string) => {
   return fields.sort((a, b) => {
-    const aVal = a[attribute];
-    const bVal = b[attribute];
+    const aVal = (a as any)[attribute];
+    const bVal = (b as any)[attribute];
     return bVal - aVal;
   });
 };

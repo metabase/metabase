@@ -1,9 +1,12 @@
-import { Popover, Icon } from "metabase/ui";
-import { NotebookCellItem } from "../NotebookCell";
-import { FilterPopover } from "./FilterPopover";
+import { useState } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { useState } from "react";
+import { Icon, Popover } from "metabase/ui";
+import * as Lib from "metabase-lib";
+
+import { NotebookCellItem } from "../NotebookCell";
+
+import { FilterPopover } from "./FilterPopover";
 
 interface FilterSuggestionProps {
   field: any;
@@ -21,6 +24,21 @@ export const FilterSuggestion = ({
   handleUpdateFilter,
 }: FilterSuggestionProps) => {
   const [opened, setOpened] = useState(false);
+
+  const filter = (() => {
+    if (Lib.isNumber(field.column)) {
+      const argsAttribute = field.attribute + "_most_used_args";
+      const opAttribute = field.attribute + "_most_used_op";
+
+      return Lib.numberFilterClause({
+        operator: field[opAttribute],
+        column: field.column,
+        values: field[argsAttribute],
+      });
+    }
+
+    return null;
+  })();
 
   return (
     <Popover opened={opened} onChange={setOpened}>
@@ -42,7 +60,7 @@ export const FilterSuggestion = ({
       </Popover.Target>
       <Popover.Dropdown>
         <FilterPopover
-          initialColumn={field.column}
+          initialFilter={filter as any}
           query={query}
           stageIndex={stageIndex}
           onAddFilter={clause => {

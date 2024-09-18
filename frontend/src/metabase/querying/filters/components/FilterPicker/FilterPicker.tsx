@@ -15,7 +15,10 @@ export interface FilterPickerProps {
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
+  initialFilter?: Lib.FilterClause;
   filterIndex?: number;
+
+  isNew?: boolean;
 
   onSelect: (filter: Lib.Filterable) => void;
   onClose?: () => void;
@@ -26,6 +29,7 @@ export function FilterPicker({
   query,
   stageIndex,
   filter: initialFilter,
+  isNew,
   filterIndex,
   onSelect,
   onClose,
@@ -41,7 +45,7 @@ export function FilterPicker({
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
   ] = useToggle(isExpressionEditorInitiallyOpen(query, stageIndex, filter));
 
-  const isNewFilter = !initialFilter;
+  const isNewFilter = isNew ?? !initialFilter;
 
   useLayoutEffect(() => {
     setFilter(initialFilter);

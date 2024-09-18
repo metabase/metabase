@@ -22,11 +22,7 @@ export function FilterStep({
 }: NotebookStepProps) {
   const { stageIndex } = step;
 
-  const topDbFields = useTopDbFields(
-    query,
-    stageIndex,
-    "field_usage_filter_count",
-  );
+  const topDbFields = useTopDbFields(query, stageIndex, "field_usage_filter");
 
   const filters = useMemo(
     () => Lib.filters(query, stageIndex),

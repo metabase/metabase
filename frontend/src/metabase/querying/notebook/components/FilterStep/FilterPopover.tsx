@@ -1,10 +1,10 @@
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 interface FilterPopoverProps {
-  initialColumn?: Lib.ColumnMetadata;
   query: Lib.Query;
   stageIndex: number;
+  initialFilter?: Lib.FilterClause;
   filter?: Lib.FilterClause;
   filterIndex?: number;
   onAddFilter: (filter: Lib.Filterable) => void;
@@ -16,10 +16,10 @@ interface FilterPopoverProps {
 }
 
 export function FilterPopover({
-  initialColumn,
   query,
   stageIndex,
   filter,
+  initialFilter,
   filterIndex,
   onAddFilter,
   onUpdateFilter,
@@ -27,10 +27,10 @@ export function FilterPopover({
 }: FilterPopoverProps) {
   return (
     <FilterPicker
-      initialColumn={initialColumn}
       query={query}
       stageIndex={stageIndex}
-      filter={filter}
+      isNew={Boolean(initialFilter)}
+      filter={filter ?? initialFilter}
       filterIndex={filterIndex}
       onSelect={newFilter => {
         if (filter) {
