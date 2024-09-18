@@ -127,9 +127,46 @@
                                                   :sentFromSetup sent-from-setup?}))]
     (email/send-message!
      {:subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
-      :recipients   [(:email invited)]
+      :recipients   [(:email invited)];; (t2/select-fn-vec :email ... user-ids
       :message-type :html
       :message      message-body})))
+
+(defn- comment-url-bit
+  [comment]
+  (condp = (:model comment)
+    "card" (format "card/%d" (:model_id comment))
+    "dashboard" (format "dashboard/%d" (:model_id comment))
+    "comment" (recur (t2/select-one :model/Comment :id (:model_id comment)))))
+
+(defn- model-title
+  [comment]
+  (condp = (:model comment)
+    "card" (t2/select-one-fn :name :model/Card :id (:model_id comment))
+    "dashboard" (t2/select-one-fn :name :model/Dashboard :id (:model_id comment))
+    "comment" (recur (t2/select-one :model/Comment :id (:model_id comment)))))
+
+(defn send-comment-notification!
+  "Send an email to `users` letting them know that there's a new comment"
+  [users comment]
+  (let [full-comment    (t2/hydrate comment :author)
+        author          (:author full-comment)
+        model-url       (str (public-settings/site-url) "/" (comment-url-bit comment))
+        the-model-title (model-title comment)
+        subject         (format "New comment on %s" the-model-title)]
+    (doseq [user users]
+      (let [message-body (stencil/render-file "metabase/email/comment_notification"
+                           (merge (common-context)
+                                  {:recipientFirstName (:first_name user)
+                                   :commentAuthorName  (:common_name author)
+                                   :commentAuthorEmail (:email author)
+                                   :modelURL           model-url
+                                   :modelTitle         the-model-title
+                                   :commentBody        (:text comment)}))]
+        (email/send-message!
+         {:subject      subject
+          :recipients   [(:email user)]
+          :message-type :html
+          :message      message-body})))))
 
 (defn- all-admin-recipients
   "Return a sequence of email addresses for all Admin users.
