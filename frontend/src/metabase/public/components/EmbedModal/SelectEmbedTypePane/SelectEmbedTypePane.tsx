@@ -1,6 +1,6 @@
 import cx from "classnames";
-import type { MouseEvent } from "react";
 import { useState } from "react";
+import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
 import { getPlan } from "metabase/common/utils/plan";
@@ -20,10 +20,20 @@ import type {
 import { getSetting } from "metabase/selectors/settings";
 import { PublicLinkCopyPanel } from "metabase/sharing/components/PublicLinkPopover/PublicLinkCopyPanel";
 import type { ExportFormatType } from "metabase/sharing/components/PublicLinkPopover/types";
-import { Box, Button, Group, Icon, List, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Center,
+  Group,
+  Icon,
+  List,
+  Loader,
+  Popover,
+  Stack,
+  Text,
+} from "metabase/ui";
 
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
-import { SharingPaneActionButton } from "./SharingPaneButton/SharingPaneButton.styled";
 import SdkIllustration from "./illustrations/embedding-sdk.svg?component";
 import InteractiveEmbeddingIllustration from "./illustrations/interactive-embedding.svg?component";
 import StaticEmbeddingIllustration from "./illustrations/static-embedding.svg?component";
@@ -60,8 +70,7 @@ export function SelectEmbedTypePane({
     resource.public_uuid &&
     getPublicEmbedHTML(getPublicUrl(resource.public_uuid));
 
-  const createPublicLink = async (e: MouseEvent) => {
-    e.stopPropagation();
+  const createPublicLink = async () => {
     if (!isLoadingLink && !hasPublicLink) {
       setIsLoadingLink(true);
       await onCreatePublicLink();
@@ -69,8 +78,7 @@ export function SelectEmbedTypePane({
     }
   };
 
-  const deletePublicLink = async (e: MouseEvent) => {
-    e.stopPropagation();
+  const deletePublicLink = async () => {
     if (!isLoadingLink && hasPublicLink) {
       setIsLoadingLink(true);
 
@@ -82,41 +90,6 @@ export function SelectEmbedTypePane({
       await onDeletePublicLink();
       setIsLoadingLink(false);
     }
-  };
-
-  const getPublicLinkElement = () => {
-    if (isLoadingLink) {
-      return (
-        <SharingPaneActionButton
-          fullWidth
-          disabled
-        >{t`Loading…`}</SharingPaneActionButton>
-      );
-    }
-
-    if (hasPublicLink && resource.public_uuid != null) {
-      return (
-        <PublicLinkCopyPanel
-          url={publicEmbedCode}
-          onCopy={() =>
-            trackPublicEmbedCodeCopied({
-              artifact: resourceType,
-              source: "public-embed",
-            })
-          }
-          onRemoveLink={deletePublicLink}
-          removeButtonLabel={t`Remove public URL`}
-          removeTooltipLabel={t`Affects both embed URL and public link for this dashboard`}
-        />
-      );
-    }
-
-    return (
-      <SharingPaneActionButton
-        fullWidth
-        disabled={!isPublicSharingEnabled}
-      >{t`Get an embed link`}</SharingPaneActionButton>
-    );
   };
 
   return (
@@ -163,6 +136,7 @@ export function SelectEmbedTypePane({
 
         {/* REACT SDK */}
         <a
+          // TODO: utm tags
           href="https://metaba.se/sdk"
           style={{ height: "100%" }}
           target="_blank"
@@ -186,11 +160,22 @@ export function SelectEmbedTypePane({
       </Group>
       <Group position="apart">
         {/* PUBLIC EMBEDDING */}
-        <PublicEmbedCard
-          publicEmbedCode={publicEmbedCode}
-          createPublicLink={onCreatePublicLink}
-          deletePublicLink={onDeletePublicLink}
-        />
+        {isPublicSharingEnabled ? (
+          <PublicEmbedCard
+            publicEmbedCode={publicEmbedCode}
+            createPublicLink={createPublicLink}
+            deletePublicLink={deletePublicLink}
+            resourceType={resourceType}
+          />
+        ) : (
+          <Text>
+            {t`Public embeds and links are disabled.`}{" "}
+            <Link
+              variant="brand"
+              to="/admin/settings/public-sharing"
+            >{t`Settings`}</Link>
+          </Text>
+        )}
         <a
           className={cx(CS.link, CS.textBold)}
           style={{ display: "flex", alignItems: "center", gap: 4 }}
@@ -200,7 +185,6 @@ export function SelectEmbedTypePane({
           {t`Compare options`} <Icon name="share" />
         </a>
       </Group>
-      {getPublicLinkElement()}
     </Stack>
   );
 }
@@ -209,28 +193,67 @@ const PublicEmbedCard = ({
   publicEmbedCode,
   createPublicLink,
   deletePublicLink,
-}) => {
+  resourceType,
+}: any) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const { loading } = useAsync(async () => {
+    if (isOpen && !publicEmbedCode) {
+      return createPublicLink();
+    }
+    return null;
+  }, [publicEmbedCode, isOpen]);
+
   return (
     <Group spacing="xs">
       <Text>
         {jt`Use ${(
-          <Text span fw="bold">
+          <Text span fw="bold" key="bold">
             {t`public embedding`}
           </Text>
         )} to add a publicly-visible iframe embed to your web page or blog
     post.`}
       </Text>
-      <Button
-        variant="subtle"
-        p={0}
-        onClick={() => {
-          if (publicEmbedCode) {
-            navigator.clipboard.writeText(publicEmbedCode);
-          } else {
-            alert("No public embed code found");
-          }
-        }}
-      >{t`Get embedding code`}</Button>
+      <Popover
+        width={200}
+        position="bottom"
+        withArrow
+        shadow="md"
+        opened={isOpen}
+      >
+        <Popover.Target>
+          <Button
+            variant="subtle"
+            p={0}
+            onClick={() => setIsOpen(value => !value)}
+          >{t`Get embedding code`}</Button>
+        </Popover.Target>
+        <Popover.Dropdown>
+          <Stack p="lg" w="28rem" mih="7.5rem" justify="center">
+            {loading ? (
+              <Center>
+                <Loader />
+              </Center>
+            ) : (
+              <PublicLinkCopyPanel
+                url={publicEmbedCode}
+                onRemoveLink={e => {
+                  setIsOpen(false);
+                  deletePublicLink(e);
+                }}
+                removeButtonLabel={t`Remove public link`}
+                removeTooltipLabel={t`Affects both public link and embed URL for this dashboard`}
+                onCopy={() =>
+                  trackPublicEmbedCodeCopied({
+                    artifact: resourceType,
+                    source: "public-embed",
+                  })
+                }
+              />
+            )}
+          </Stack>
+        </Popover.Dropdown>
+      </Popover>
     </Group>
   );
 };
