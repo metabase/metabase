@@ -15,7 +15,13 @@ import { ReactionList } from "../reaction-list";
 
 import CommentS from "./Comment.module.css";
 
-export const Comment = ({ comment }: { comment: CommentType }) => (
+export const Comment = ({
+  comment,
+  onResolve,
+}: {
+  comment: CommentType;
+  onResolve?: () => Promise<void>;
+}) => (
   <Box mb="sm" className={CommentS.CommentGrid}>
     <Box ml="sm" className={CommentS.UserInfo}>
       <Group spacing="sm">
@@ -30,9 +36,11 @@ export const Comment = ({ comment }: { comment: CommentType }) => (
     </Box>
     <Box className={CommentS.ActionIcons}>
       <Group spacing="xs">
-        <ActionIcon>
-          <Icon name="check" />
-        </ActionIcon>
+        {onResolve && (
+          <ActionIcon onClick={onResolve}>
+            <Icon name="check" />
+          </ActionIcon>
+        )}
         <ActionIcon>
           <Icon name="ellipsis" />
         </ActionIcon>

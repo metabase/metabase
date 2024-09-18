@@ -1,7 +1,11 @@
 import { useRef } from "react";
 import { usePrevious } from "react-use";
 
-import { useCreateCommentMutation, useListCommentQuery } from "metabase/api";
+import {
+  useCreateCommentMutation,
+  useListCommentQuery,
+  useResolveCommentMutation,
+} from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Stack } from "metabase/ui";
 import type {
@@ -38,6 +42,8 @@ export function CommentFeed({
   const previousComments = usePrevious(comments);
 
   const [saveComment] = useCreateCommentMutation();
+  const [handleResolve] = useResolveCommentMutation();
+
   const ref = useRef<HTMLDivElement>(null);
 
   if (isLoading) {
@@ -60,7 +66,11 @@ export function CommentFeed({
 
   return (
     <Stack spacing="md">
-      <CommentSection comments={comments} onReply={saveComment} />
+      <CommentSection
+        comments={comments}
+        onReply={saveComment}
+        onResolve={handleResolve}
+      />
       {canComment && (
         <CommentInput
           placeholder="Add a comment..."
