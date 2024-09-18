@@ -5,6 +5,15 @@ import { utf8_to_b64url } from "metabase/lib/encoding";
 import type { AdhocQuestionData, QueryField } from "./types";
 import { Tool } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
 import { getToolSpec } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
+import {
+  METABOT_AGENT_TOOLS_SPEC,
+  Tool,
+} from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
+import {
+  METABOT_AGENT_TOOLS_SPEC,
+  Tool,
+} from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
+import { Field, RowValues } from "metabase-types/api";
 
 const getBody = ({
   content,
@@ -115,11 +124,11 @@ type Column = { display_name: string };
 
 export const getColumnsWithSampleValues = (
   columns: Column[],
-  rows: (string | number)[][],
+  rows: RowValues[],
 ) => {
   return columns
     .map((col, index) => {
-      const values = rows.map(row => row[index]);
+      const values = rows.map(row => row?.[index]);
       const uniqueValues = _.uniq(values)
         .slice(0, 10)
         .filter(
@@ -138,4 +147,75 @@ export const getColumnsWithSampleValues = (
       return `* ${col.display_name} (Sample values: ${uniqueValues})`;
     })
     .join("\n");
+};
+
+export const getJsonSchemaForFilters = (fields: Field[]) => {
+  const fieldsForSchema = getFieldsForJsonSchema(fields);
+  const schema = {
+    type: "object",
+    $defs: {
+      Query: {
+        properties: {
+          filter: { $ref: "#/$defs/FilterCombo" },
+        },
+        title: "Query",
+        type: "object",
+        additionalProperties: false,
+        required: ["filter"],
+      },
+      Field: { enum: fieldsForSchema },
+      Filter: {
+        prefixItems: [
+          {
+            enum: [
+              "=",
+              "!=",
+              "<",
+              ">",
+              ">=",
+              "<=",
+              // These seem to be causing more trouble than they're worth right now:
+              // "is-null",
+              // "not-null"
+            ],
+          },
+          {
+            $ref: "#/$defs/Field",
+          },
+        ],
+        items: { anyOf: [{ type: "string" }, { type: "number" }] },
+        type: "array",
+        additionalItems: false,
+      },
+      FilterCombo: {
+        type: "array",
+        prefixItems: [{ enum: ["and", "or"] }],
+        items: { $ref: "#/$defs/Filter" },
+        additionalItems: false,
+      },
+    },
+    properties: {
+      display: {
+        enum: ["bar", "line", "pie", "scatter", "table", "map"],
+        title: "Display",
+        type: "string",
+      },
+      // "visualization_settings": {"$ref": "#/$defs/VisualizationSettings"},
+      query: {
+        anyOf: [{ $ref: "#/$defs/Query" }, { type: "null" }],
+      },
+    },
+    required: [
+      "display",
+      "query",
+      // "visualization_settings"
+    ],
+    additionalProperties: false,
+    title: "QueryWithViz",
+  };
+  return schema;
+};
+
+export const getFieldsForJsonSchema = (fields: Field[]) => {
+  return fields.map(field => `${field.display_name}/${field.id}`);
 };
