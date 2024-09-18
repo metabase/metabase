@@ -4,6 +4,7 @@
    [compojure.core :refer [GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.models.comment :as comment]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -32,5 +33,13 @@
                     :model_id  model_id
                     :text      text
                     :author_id api/*current-user-id*}))
+
+(api/defendpoint PUT "/:id"
+  "Update a comment (resolve; edit)"
+  [id :as {{:keys [resolved text] :as comment-updates} :body}]
+  {id       ms/PositiveInt
+   resolved [:maybe :boolean]
+   text     [:maybe ms/NonBlankString]}
+  (comment/update! id (u/select-non-nil-keys comment-updates [:resolved :text])))
 
 (api/define-routes)
