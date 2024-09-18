@@ -1,10 +1,15 @@
 type DisplayType = "pie" | "table" | "bar" | "line" | "row" | "area" | "scalar";
 
-type FilterOperator = "=" | "<" | ">";
+type FilterOperator =
+  | "="
+  | "!="
+  | "contains"
+  | "does-not-contain"
+  | "starts-with";
 
 interface Filter {
-  comparator: FilterOperator;
-  fieldName: string;
+  operator: FilterOperator;
+  field: string;
   value: string;
 }
 

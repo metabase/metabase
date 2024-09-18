@@ -115,13 +115,6 @@ export function useMetabotAgentTool() {
           const aggregation = [];
           const breakout = [];
 
-          // Apply filter
-          console.log("FILTERS", filters);
-          const transformedFilters = transformFilters(
-            filters,
-            table?.fields ?? [],
-          );
-
           // Apply summarizations/breakouts
           if (Array.isArray(args.summarizations)) {
             for (const summarization of summarizations) {
@@ -168,6 +161,34 @@ export function useMetabotAgentTool() {
             }
           }
 
+          const getRef = (fieldName: string) => {
+            const field = table?.fields?.find(
+              field => field.name === fieldName,
+            );
+
+            return ["field", fieldName, { "base-type": field?.base_type }];
+          };
+
+          let nextFilter = [];
+
+          // single filter
+          if (filters.length === 1) {
+            const [{ field, operator, value }] = filters;
+
+            nextFilter = [operator, getRef(field), value];
+          } else if (filters.length > 1) {
+            // multiple filters
+            const [A, B] = filters;
+
+            nextFilter = [
+              "and",
+              [A.operator, getRef(A.field), A.value],
+              [B.operator, getRef(B.field), B.value],
+            ];
+          }
+
+          console.log(`[UI] set filter`, { nextFilter });
+
           // Sync dataset query
           const nextDatasetQuery = {
             ...nextQuery,
@@ -175,13 +196,13 @@ export function useMetabotAgentTool() {
               ...nextQuery.query,
               aggregation,
               breakout,
-              filter: transformedFilters as any,
+              ...(nextFilter.length > 0 && { filter: nextFilter }),
             },
           };
 
           console.log(`[UI] set dataset query`, { nextDatasetQuery });
 
-          nextQuestion = nextQuestion.setDatasetQuery(nextDatasetQuery);
+          nextQuestion = nextQuestion.setDatasetQuery(nextDatasetQuery as any);
         }
 
         // Apply viz display settings

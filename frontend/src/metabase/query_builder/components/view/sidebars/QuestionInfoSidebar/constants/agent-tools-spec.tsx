@@ -75,38 +75,6 @@ export function getToolSpec(fields: Field[]) {
       "description": "Apply visualization settings including display type, filters, summarizations, and groupings. Leave the field null to keep the setting unchanged.",
       "parameters": {
         "type": "object",
-        $defs: {
-          Field: { enum: getFieldsForJsonSchema(fields)},
-          Filter: {
-            prefixItems: [
-              {
-                enum: [
-                  "=",
-                  "!=",
-                  "<",
-                  ">",
-                  ">=",
-                  "<=",
-                  // These seem to be causing more trouble than they're worth right now:
-                  // "is-null",
-                  // "not-null"
-                ],
-              },
-              {
-                $ref: "#/$defs/Field",
-              },
-            ],
-            items: { anyOf: [{ type: "string" }, { type: "number" }] },
-            type: "array",
-            additionalItems: false,
-          },
-          FilterCombo: {
-            type: "array",
-            prefixItems: [{ enum: ["and", "or"] }],
-            items: { $ref: "#/$defs/Filter" },
-            additionalItems: false,
-          },
-        },
         "properties": {
           "display": {
             "title": "Visualization Display Type",
@@ -122,7 +90,42 @@ export function getToolSpec(fields: Field[]) {
               "scalar"
             ]
           },
-          "filters": { $ref: "#/$defs/FilterCombo" },
+          "filters": {
+            "type": ["array", "null"],
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "field": {
+                  "description": "The field name to filter on.",
+                  "title": "Field Name",
+                  "type": "string"
+                },
+                "operator": {
+                  "enum": [
+                    "=",
+                    "!=",
+                    "contains",
+                    "does-not-contain",
+                    "starts-with"
+                  ],
+                  "title": "FilterOperator",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "The value to filter.",
+                  "title": "Value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "field",
+                "operator",
+                "value"
+              ],
+              "title": "FilterExpression",
+              "type": "object",
+            },
+          },
           "summarizations": {
             "type": ["array", "null"],
             "items": {
