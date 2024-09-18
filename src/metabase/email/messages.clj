@@ -149,18 +149,22 @@
   "Send an email to `users` letting them know that there's a new comment"
   [users comment]
   (let [full-comment    (t2/hydrate comment :author)
+        reply?          (= "comment" (:model comment))
         author          (:author full-comment)
         model-url       (str (public-settings/site-url) "/" (comment-url-bit comment))
         the-model-title (model-title comment)
-        subject         (format "New comment on %s" the-model-title)]
+        subject         (format "New %s on %s" (if reply? "reply" "comment") the-model-title)]
     (doseq [user users]
-      (let [message-body (stencil/render-file "metabase/email/comment_notification"
+      (let [message-body (stencil/render-file (str "metabase/email/" (if reply?
+                                                                       "comment_reply"
+                                                                       "comment_notification"))
                            (merge (common-context)
                                   {:recipientFirstName (:first_name user)
                                    :commentAuthorName  (:common_name author)
                                    :commentAuthorEmail (:email author)
                                    :modelURL           model-url
                                    :modelTitle         the-model-title
+                                   :replyLink          model-url
                                    :commentBody        (:text comment)}))]
         (email/send-message!
          {:subject      subject
