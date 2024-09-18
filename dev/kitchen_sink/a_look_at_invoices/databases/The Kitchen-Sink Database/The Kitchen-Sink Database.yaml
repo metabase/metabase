@@ -17,8 +17,8 @@ is_on_demand: false
 is_sample: false
 is_audit: false
 is_attached_dwh: false
-metadata_sync_schedule: 0 16 * * * ? *
-cache_field_values_schedule: 0 0 7 * * ? *
+metadata_sync_schedule: 0 9 * * * ? *
+cache_field_values_schedule: 0 0 15 * * ? *
 settings: null
 caveats: You probably don't want to use this for your business-critical analyses, but hey, it's your world, we're just living in it.
 points_of_interest: You can find all sorts of different joinable tables ranging from products to people to reviews here.
