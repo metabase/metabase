@@ -1,3 +1,5 @@
+import {Field} from "metabase-types/api";
+
 export interface Tool {
   name: string;
   description: string;
@@ -5,7 +7,7 @@ export interface Tool {
   strict: boolean;
 }
 
-export function getToolSpec() {
+export function getToolSpec(fields: Field[]) {
   return [
     {
       "name": "hideShowColumns",
