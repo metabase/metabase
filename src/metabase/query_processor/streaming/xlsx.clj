@@ -638,14 +638,14 @@
                                                     pivot-export-options) ordered-cols))
               col-names          (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
               pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
+          (when pivot-grouping-key (vreset! pivot-grouping-idx pivot-grouping-key))
           (if opts
             (let [wb (init-native-pivot opts
                                         {:ordered-cols ordered-cols
                                          :col-settings col-settings
                                          :viz-settings viz-settings
                                          :format-rows? format-rows?})]
-              (vreset! workbook-data wb)
-              (when pivot-grouping-key (vreset! pivot-grouping-idx pivot-grouping-key)))
+              (vreset! workbook-data wb))
             (let [wb (init-workbook {:ordered-cols (cond->> ordered-cols
                                                      pivot-grouping-key (m/remove-nth pivot-grouping-key))
                                      :col-settings col-settings

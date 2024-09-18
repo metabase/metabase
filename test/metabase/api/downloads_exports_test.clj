@@ -810,4 +810,6 @@
                                                {})
                   data   (process-results (keyword export-format) result)]
               (is (= ["Category" "Sum of Price"]
-                     (first data))))))))))
+                     (first data)))
+              (is (= 2
+                     (count (second data)))))))))))
