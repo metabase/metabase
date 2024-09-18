@@ -40,7 +40,7 @@ export const Comment = ({
         </Group>
       </Box>
       <Box className={CommentS.ActionIcons}>
-        <Group spacing="xs">
+        <Group spacing="xs" align="end">
           {onResolve && (
             <ActionIcon onClick={onResolve}>
               <Icon name="check" />
@@ -51,30 +51,7 @@ export const Comment = ({
           </ActionIcon>
         </Group>
       </Box>
-      <Box className={CommentS.Avatar}>
-        <Stack h="100%" align="center" spacing="sm">
-          <Avatar radius="xl" c="text-light" size="1.5rem" color="brand">
-            <Text c="white" size="0.65rem">
-              {comment?.author?.first_name?.at?.(0) ?? "😁"}
-              {comment?.author?.last_name?.at?.(0) ?? ""}
-            </Text>
 
-            <Text span size="md" c="text-medium">
-              {comment.created_at}
-            </Text>
-          </Avatar>
-        </Stack>
-      </Box>
-      <Box className={CommentS.ActionIcons}>
-        <Group spacing="xs">
-          <ActionIcon>
-            <Icon name="check" />
-          </ActionIcon>
-          <ActionIcon>
-            <Icon name="ellipsis" />
-          </ActionIcon>
-        </Group>
-      </Box>
       <Box className={CommentS.Avatar}>
         <Stack h="100%" align="center" spacing="sm">
           <UserIcon user={comment.author} />
