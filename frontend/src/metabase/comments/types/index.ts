@@ -23,14 +23,16 @@ type ModelRef =
 
 export type Comment = ModelRef & {
   text: string;
+  created_at: string;
+  updated_at: string;
   resolved: boolean;
   reactions: Reaction[];
-  author: User;
+  author: Pick<User, "id" | "first_name" | "last_name" | "email">;
   replies?: Comment[];
 };
 
 export type Reaction = {
-  content: "string";
-  author: User;
+  content: string;
+  author: Pick<User, "id" | "first_name" | "last_name" | "email">;
   id: ReactionId;
 };

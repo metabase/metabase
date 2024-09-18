@@ -56,7 +56,7 @@ import { BrowseMetrics } from "./browse/components/BrowseMetrics";
 import { BrowseModels } from "./browse/components/BrowseModels";
 import BrowseSchemas from "./browse/components/BrowseSchemas";
 import { BrowseTables } from "./browse/components/BrowseTables";
-import { CommentHtml } from "./comments/components/comment/Comment";
+import { CommentSection } from "./comments/components/comment/CommentSection";
 import {
   CanAccessMetabot,
   CanAccessSettings,
@@ -69,8 +69,10 @@ import { getApplicationName } from "./selectors/whitelabel";
 
 const Playground = () => {
   return (
-    <Center>
-      <CommentHtml />
+    <Center w="100vw" h="100vh" bg="black">
+      <Center p="xl" w="30rem" bg="white">
+        <CommentSection />
+      </Center>
     </Center>
   );
 };
@@ -81,6 +83,7 @@ export const getRoutes = store => {
 
   return (
     <Route title={applicationName} component={App}>
+      <Route path="/playground" component={Playground} />
       {/* SETUP */}
       <Route
         path="/setup"
@@ -120,8 +123,6 @@ export const getRoutes = store => {
           <Route path="forgot_password" component={ForgotPassword} />
           <Route path="reset_password/:token" component={ResetPassword} />
         </Route>
-
-        <Route path="/playground" component={Playground} />
 
         {/* MAIN */}
         <Route component={IsAuthenticated}>
