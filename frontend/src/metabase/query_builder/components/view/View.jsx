@@ -159,13 +159,7 @@ class View extends Component {
       );
     }
 
-    console.log("dqq", JSON.stringify(question._card.dataset_query.query));
-
-    if (isSaved && isShowingQuestionInfoSidebar) {
-      return <QuestionInfoSidebar question={question} onSave={onSave} />;
-    }
-
-    return null;
+    return <QuestionInfoSidebar question={question} onSave={onSave} />;
   };
 
   getRightSidebarForNativeQuery = () => {

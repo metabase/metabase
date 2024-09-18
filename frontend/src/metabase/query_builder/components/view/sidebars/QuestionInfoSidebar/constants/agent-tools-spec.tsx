@@ -10,23 +10,32 @@ export const METABOT_AGENT_TOOLS_SPEC = [
     "name": "hideShowColumns",
     "description": "Show or hide columns in a table",
     "parameters": {
-      "additionalProperties": false,
+      "type": "object",
       "properties": {
-        "name": {
-          "title": "Name",
-          "type": "string"
-        },
-        "shown": {
-          "title": "Shown",
-          "type": "boolean"
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "enabled": {
+                "title": "Enabled",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "enabled"
+            ],
+            "additionalProperties": false
+          }
         }
       },
-      "required": [
-        "name",
-        "shown"
-      ],
-      "title": "Parameters",
-      "type": "object"
+      "required": ["columns"],
+      "additionalProperties": false
     },
     "strict": true
   },
@@ -37,11 +46,11 @@ export const METABOT_AGENT_TOOLS_SPEC = [
       "additionalProperties": false,
       "properties": {
         "oldIndex": {
-          "title": "Oldindex",
+          "title": "Old Index",
           "type": "integer"
         },
         "newIndex": {
-          "title": "Newindex",
+          "title": "New Index",
           "type": "integer"
         }
       },
