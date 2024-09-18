@@ -146,6 +146,7 @@ export const getColumnsWithSampleValues = (
 export const getJsonSchemaForFilters = (fields: Field[]) => {
   const fieldsForSchema = getFieldsForJsonSchema(fields);
   const schema = {
+    type: "object",
     $defs: {
       Query: {
         properties: {
@@ -205,7 +206,6 @@ export const getJsonSchemaForFilters = (fields: Field[]) => {
     ],
     additionalProperties: false,
     title: "QueryWithViz",
-    type: "object",
   };
   return schema;
 };

@@ -68,44 +68,11 @@ export const METABOT_AGENT_TOOLS_SPEC = [
     "name": "applyFilters",
     "description": "Apply filters to a table",
     "parameters": {
-      "$defs": {
-        "Filter": {
-          "additionalProperties": false,
-          "properties": {
-            "comparator": {
-              "$ref": "#/$defs/FilterOperator"
-            },
-            "fieldName": {
-              "title": "Fieldname",
-              "type": "string"
-            },
-            "value": {
-              "title": "Value",
-              "type": "string"
-            }
-          },
-          "required": [
-            "comparator",
-            "fieldName",
-            "value"
-          ],
-          "title": "Filter",
-          "type": "object"
-        },
-        "FilterOperator": {
-          "enum": [
-            "=",
-            "<",
-            ">"
-          ],
-          "title": "FilterOperator",
-          "type": "string"
-        }
-      },
       "additionalProperties": false,
       "properties": {
         "filters": {
-          "$ref": "#/$defs/Filter"
+          // We could tight this here but the json schema is imposed by the tool
+          "type": "string"
         }
       },
       "required": [

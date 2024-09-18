@@ -108,6 +108,11 @@ export const Chat = ({
     const jsonSchemaForFiltersStringified =
       JSON.stringify(jsonSchemaForFilters);
 
+    console.log(
+      "jsonSchemaForFiltersStringified",
+      jsonSchemaForFiltersStringified,
+    );
+
     const prompt = `
       <context>
         table id: ${question._card.dataset_query.database}.
@@ -116,9 +121,9 @@ export const Chat = ({
         available fields: ${JSON.stringify(fields)}.
       </context>
 
-      <json-schema-for-filters>
+      <json_schema>
       ${jsonSchemaForFiltersStringified}
-      </json-schema-for-filters>
+      </json_schema>
 
       <user_ask>
         ${userMessage}
