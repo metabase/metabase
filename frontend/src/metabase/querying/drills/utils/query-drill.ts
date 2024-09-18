@@ -11,6 +11,8 @@ export function queryDrill(
   clicked: Lib.ClickObject,
   isDrillEnabled: (drill: DrillThruDisplayInfo) => boolean,
 ): ClickAction[] {
+  // eslint-disable-next-line no-console
+  console.log("result_metadata", question.getResultMetadata());
   const query = question.query();
   const stageIndex = -1;
   const drills = Lib.availableDrillThrus(

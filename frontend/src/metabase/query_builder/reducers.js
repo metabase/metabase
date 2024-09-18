@@ -384,10 +384,10 @@ export const card = handleActions(
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {
-      next: (state, { payload: { card } }) => ({
+      next: (state, { payload: { card, queryResults } }) => ({
         ...state,
         display: card.display,
-        result_metadata: card.result_metadata,
+        result_metadata: queryResults[0].data.results_metadata.columns,
         visualization_settings: card.visualization_settings,
       }),
     },
