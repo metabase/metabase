@@ -5,11 +5,8 @@ import { utf8_to_b64url } from "metabase/lib/encoding";
 import type { AdhocQuestionData, QueryField } from "./types";
 import { Tool } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
 import { getToolSpec } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
-import {
-  METABOT_AGENT_TOOLS_SPEC,
-  Tool,
-} from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
-import { Field, RowValues } from "metabase-types/api";
+import { RowValues } from "metabase-types/api";
+import Field from "metabase-lib/v1/metadata/Field";
 
 const getBody = ({
   content,
@@ -94,4 +91,41 @@ export const getColumnsWithSampleValues = (
 
 export const getFieldsForJsonSchema = (fields: Field[]) => {
   return fields.map(field => `${field.display_name}/${field.id}`);
+};
+
+// Transform back into correct MBQL
+export const transformField = (simplifiedField: any, fields: Field[]) => {
+  const fieldId = Number(simplifiedField.split("/")[1]);
+  const field = fields.find((f: Field) => f.id === fieldId);
+  return getFieldRef(field as any);
+};
+
+export const transformFilters = (filters: any, fields: Field[]) => {
+  const withFixedFields = transformArrayInFilters(filters, fields);
+
+  // Simplify overcomplicated logical expressions that don't work in MBQL
+  if (withFixedFields[0] === "and" && withFixedFields.length === 2) {
+    return withFixedFields[1];
+  }
+  if (withFixedFields[0] === "or" && withFixedFields.length === 2) {
+    return withFixedFields[1];
+  }
+  return withFixedFields;
+};
+
+/** Transform filters and their array parts */
+export const transformArrayInFilters = (arr: any[], fields: Field[]): any[] => {
+  return arr.map(el => {
+    if (Array.isArray(el)) {
+      return transformArrayInFilters(el, fields); // Recurse for nested arrays
+    } else if (typeof el === "string" && el.includes("/")) {
+      return transformField(el, fields); // Transform matching strings
+    }
+    return el;
+  });
+};
+
+const getFieldRef = (field: Field) => {
+  const fieldRef = ["field", field.name, { "base-type": field?.base_type }];
+  return fieldRef;
 };

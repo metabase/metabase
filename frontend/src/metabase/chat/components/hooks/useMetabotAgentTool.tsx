@@ -2,15 +2,14 @@ import { match } from "ts-pattern";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import _ from "underscore";
 import {
-  onUpdateVisualizationSettings,
   setUIControls,
   updateCardVisualizationSettings,
   updateQuestion,
 } from "metabase/query_builder/actions";
 import { getQuestion } from "metabase/query_builder/selectors";
-import { findColumnSettingIndexesForColumns } from "metabase-lib/v1/queries/utils/dataset";
 import visualizations from "metabase/visualizations";
 import { ApplyVisualizationToolCall } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/tool-call-types";
+import { transformFilters } from "../utils";
 
 interface ToolCall {
   id: string;
@@ -118,6 +117,10 @@ export function useMetabotAgentTool() {
 
           // Apply filter
           console.log("FILTERS", filters);
+          const transformedFilters = transformFilters(
+            filters,
+            table?.fields ?? [],
+          );
 
           // Apply summarizations/breakouts
           if (Array.isArray(args.summarizations)) {
@@ -172,6 +175,7 @@ export function useMetabotAgentTool() {
               ...nextQuery.query,
               aggregation,
               breakout,
+              filter: transformedFilters as any,
             },
           };
 
