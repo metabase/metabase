@@ -65,54 +65,92 @@ export const METABOT_AGENT_TOOLS_SPEC = [
     "strict": true
   },
   {
-    "name": "applyFilters",
-    "description": "Apply filters to a table",
+    "name": "applyVisualization",
+    "description": "Apply visualization settings including display type, filters, summarizations, and groupings",
     "parameters": {
-      "$defs": {
-        "Filter": {
-          "additionalProperties": false,
-          "properties": {
-            "comparator": {
-              "$ref": "#/$defs/FilterOperator"
-            },
-            "fieldName": {
-              "title": "Fieldname",
-              "type": "string"
-            },
-            "value": {
-              "title": "Value",
-              "type": "string"
-            }
-          },
-          "required": [
-            "comparator",
-            "fieldName",
-            "value"
-          ],
-          "title": "Filter",
-          "type": "object"
-        },
-        "FilterOperator": {
-          "enum": [
-            "=",
-            "<",
-            ">"
-          ],
-          "title": "FilterOperator",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false,
+      "type": "object",
       "properties": {
+        "display": {
+          "title": "Visualization Display Type",
+          "type": "string",
+          "enum": [
+            "pie",
+            "table",
+            "bar",
+            "line",
+            "row",
+            "area",
+            "scalar"
+          ]
+        },
         "filters": {
-          "$ref": "#/$defs/Filter"
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "comparator": {
+                "type": "string",
+                "enum": ["=", "<", ">"],
+                "title": "FilterOperator"
+              },
+              "fieldName": {
+                "title": "Fieldname",
+                "type": "string"
+              },
+              "value": {
+                "title": "Value",
+                "type": "string"
+              }
+            },
+            "required": ["comparator", "fieldName", "value"],
+            "additionalProperties": false,
+            "title": "Filter"
+          }
+        },
+        "summarizations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "fieldName": {
+                "title": "Field Name",
+                "description": "The name of the field to summarize",
+                "type": "string"
+              },
+              "metrics": {
+                "title": "Summarization Metric",
+                "description": "The type of summarization to apply",
+                "type": "string",
+                "enum": ["sum", "count", "average"]
+              }
+            },
+            "required": ["fieldName", "metrics"],
+            "additionalProperties": false
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "fieldName": {
+                "title": "Field Name",
+                "description": "The name of the field to group by",
+                "type": "string"
+              },
+              "granularity": {
+                "title": "Granularity",
+                "description": "The granularity of grouping for date fields",
+                "type": "string",
+                "enum": ["day", "week", "month", "year"]
+              }
+            },
+            "required": ["fieldName"],
+            "additionalProperties": false
+          }
         }
       },
-      "required": [
-        "filters"
-      ],
-      "title": "Parameters",
-      "type": "object"
+      "additionalProperties": false
     },
     "strict": true
   }
