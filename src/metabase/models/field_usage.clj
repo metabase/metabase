@@ -22,7 +22,8 @@
    :aggregation_function      mi/transform-keyword
    :breakout_temporal_unit    mi/transform-keyword
    :breakout_binning_strategy mi/transform-keyword
-   :filter_op                 mi/transform-keyword})
+   :filter_op                 mi/transform-keyword
+   :filter_args               mi/transform-json})
 
 (defn- filter->field-usage
   [query stage filter-clause]
@@ -31,6 +32,7 @@
     (when (int? field-id)
       {:field_id    field-id
        :used_in     :filter
+       :filter_args (map last (:args filter-parts))
        :filter_op   (-> filter-parts :operator :short)})))
 
 (defn- aggregation->field-usage

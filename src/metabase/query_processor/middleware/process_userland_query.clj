@@ -33,7 +33,7 @@
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private field-usage-interval-seconds 20)
+(def ^:private field-usage-interval-seconds 1)
 
 (defonce ^:private
   field-usages-queue

@@ -246,21 +246,29 @@
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
+(defn- most-frequently-used-val
+  [coll]
+  (->> coll
+       (frequencies)
+       (sort-by val)
+       last
+       first))
 
 (mi/define-batched-hydration-method with-field-usages
   :field_usages
   "Efficiently hydrate the `FieldValues` for a collection of `fields`."
   [fields]
   (when (seq fields)
-    (let [field-id->field-usages-cnt (update-vals (group-by :field_id (t2/select :model/FieldUsage :field_id [:in (map :id fields)]))
-                                                  (fn [field-usages]
-                                                    (update-vals (group-by :used_in field-usages) count)))]
+    (let [field-id->field-usages (update-vals (group-by :field_id (t2/select :model/FieldUsage :field_id [:in (map :id fields)]))
+                                              (fn [field-usages]
+                                                (group-by :used_in field-usages)))]
       (seq (for [field fields]
-             (let [used-in->cnt (get field-id->field-usages-cnt (:id field))]
+             (let [used-in->cnt (get field-id->field-usages (:id field))]
                (assoc field
-                      :field_usage_filter_count (get used-in->cnt :filter 0)
-                      :field_usage_aggregation_count (get used-in->cnt :aggregation 0)
-                      :field_usage_breakout_count (get used-in->cnt :breakout 0))))))))
+                      :field_usage_filter_args       (most-frequently-used-val (map :filter_args (get used-in->cnt :filter [])))
+                      :field_usage_filter_count      (count (get used-in->cnt :filter []))
+                      :field_usage_aggregation_count (count (get used-in->cnt :aggregation []))
+                      :field_usage_breakout_count    (count (get used-in->cnt :breakout [])))))))))
 
 (mi/define-batched-hydration-method with-dimensions
   :dimensions

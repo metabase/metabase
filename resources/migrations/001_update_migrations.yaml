@@ -9288,6 +9288,19 @@ databaseChangeLog:
                   name: type
             indexName: idx_collection_type
 
+  - changeSet:
+      id: v51.2024-09-09T15:11:19
+      author: qnkhuat
+      comment: Add field_usage.filter_args
+      changes:
+        - addColumn:
+            tableName: field_usage
+            columns:
+              - column:
+                  name: filter_args
+                  type: ${text.type}
+                  remarks: fitler arguments that were used
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
