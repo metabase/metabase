@@ -1,6 +1,7 @@
 .mentions {
   margin: 1em 0;
   width: 100%;
+  padding: 10px;
 }
 
 .mentions--singleLine .mentions__control {

@@ -1,4 +1,5 @@
-import { useReactToCommentMutation } from "metabase/api";
+import { useListUsersQuery, useReactToCommentMutation } from "metabase/api";
+import { toMentionDisplay } from "metabase/comments/utils";
 import Markdown from "metabase/core/components/Markdown";
 import {
   ActionIcon,
@@ -10,7 +11,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { User } from "metabase-types/api";
+import type { User, UserId } from "metabase-types/api";
 
 import type { Comment as CommentType } from "../../types";
 import { ReactionList } from "../reaction-list";
@@ -25,6 +26,15 @@ export const Comment = ({
   onResolve?: () => Promise<void>;
 }) => {
   const [onReact] = useReactToCommentMutation();
+  const { data: users } = useListUsersQuery({});
+  const usersData = users?.data ?? [];
+  const userMapping = usersData.reduce(
+    (mapping, user) => {
+      mapping[user.id] = user;
+      return mapping;
+    },
+    {} as Record<UserId, User>,
+  );
 
   return (
     <Box mb="sm" className={CommentS.CommentGrid}>
@@ -61,7 +71,7 @@ export const Comment = ({
         </Stack>
       </Box>
       <Box ml="2px" className={CommentS.CommentText}>
-        <Markdown>{comment.text}</Markdown>
+        <Markdown>{toMentionDisplay(comment.text, userMapping)}</Markdown>
       </Box>
       <Box ml="4px" pt="xs" className={CommentS.Reactions}>
         <ReactionList

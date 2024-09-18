@@ -22,9 +22,9 @@ export function toMentionDisplay(
 }
 
 function getUserTokens(comment: string): UserToken[] {
-  const tokens = comment.match(/@\[.+\]\(\d+\)/g) ?? [];
+  const tokens = comment.match(/@\[.+?\]\(\d+\)/g) ?? [];
   return tokens.map(token => {
-    const userId = token.match(/\(\d+\)/);
+    const [_, userId] = token.match(/\((\d+)\)/) ?? [];
     return {
       token,
       userId: Number(userId),
