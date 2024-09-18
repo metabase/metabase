@@ -25,25 +25,23 @@
   (t2/count :search_index)
 
   ;; doesn't work, need to drop to lower level postgres functions
-  (basic-view (search.postgres/hybrid "satis:*"))
+  (basic-view (#'search.postgres/hybrid "satis:*"))
 
   ;; nope, neither get it as the lexeme is not similar enough
-  (basic-view (search.postgres/hybrid "satisfactory"))
+  (basic-view (#'search.postgres/hybrid "satisfactory"))
   (basic-view (legacy-results "satisfactory"))
 
   (defn- mini-bench [n engine search-term & args]
     #_{:clj-kondo/ignore [:discouraged-var]}
-    (time
-     (dotimes [_ n]
-       (vec
-        (apply
-         (case engine
-           :index-only search.index/search
-           :legacy legacy-results
-           :hybrid search.postgres/hybrid
-           :hybrid-multi search.postgres/hybrid-multi)
-         search-term
-         args)))))
+    (let [f (case engine
+             :index-only   search.index/search
+             :legacy       legacy-results
+             :hybrid       @#'search.postgres/hybrid
+             :hybrid-multi @#'search.postgres/hybrid-multi
+             :minimal      @#'search.postgres/minimal)]
+      (time
+       (dotimes [_ n]
+         (doall (apply f search-term args))))))
 
   (mini-bench 500 :legacy nil)
   (mini-bench 500 :legacy "sample")

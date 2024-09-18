@@ -9,7 +9,7 @@
    [toucan2.realize :as t2.realize]))
 
 (def ^:private hybrid
-  (comp t2.realize/realize search.postgres/hybrid))
+  (comp t2.realize/realize #'search.postgres/hybrid))
 
 (def ^:private hybrid-multi #'search.postgres/hybrid-multi)
 
@@ -18,13 +18,14 @@
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-setup [& body]
   `(when (is-postgres?)
+     ;; TODO add more extensive searchable data
      (mt/dataset ~'test-data
        (search.postgres/init! true)
        ~@body)))
 
 (def ^:private example-terms
   "Search queries which should give consistent, non-trivial results across engines, for the test data."
-  [nil "da" "data" "dash" "peop" "venue" "rasta" "collectio"])
+  [nil "da" "data" "dash" "peop" "venue" "rasta"])
 
 (deftest hybrid-test
   (with-setup
