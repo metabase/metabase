@@ -23,6 +23,7 @@ export const CubeDialog = ({
   handleSemanticView,
   onUpdateCube,
 }: CubeInfoDialogProps) => {
+  console.log("🚀 ~ cube:", cube);
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false); // State to control verify modal
 
   const handleVerify = () => {
@@ -66,7 +67,7 @@ export const CubeDialog = ({
               {" "}
               {isValidationTable ? `${t`Question`}` : `${t`Name`}`}
             </Text>
-            <Input value={cube.title} readOnly></Input>
+            <Input value={cube.name} readOnly></Input>
           </Flex>
           {!isValidationTable && (
             <Flex direction="column">

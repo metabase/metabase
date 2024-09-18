@@ -7,8 +7,7 @@ export { skipToken };
 
 import { TAG_TYPES } from "./tags";
 
-export const semantic = "http://localhost:3001";
-console.log("🚀 ~ semantic:", semantic);
+export const semantic = process.env.REACT_APP_SEMANTIC;
 
 export const CubeApi = createApi({
   reducerPath: "cube-api",
