@@ -87,10 +87,13 @@
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
   {database [:maybe :int]}
-  (run-streaming-query
-   (-> query
-       (update-in [:middleware :js-int-to-string?] (fnil identity true))
-       qp/userland-query-with-default-constraints)))
+  (let [query (cond-> query
+                (-> query :query :source-native)
+                (update :query #(dissoc % :source-table)))]
+    (run-streaming-query
+     (-> query
+         (update-in [:middleware :js-int-to-string?] (fnil identity true))
+         qp/userland-query-with-default-constraints))))
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
