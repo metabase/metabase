@@ -9368,6 +9368,24 @@ databaseChangeLog:
             oldColumnName: active
             newColumnName: resolved
 
+  - changeSet:
+      id: v51.2024-09-18T12:01:12
+      author: tsmacdonald
+      comment: Add user avatars!
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: core_user
+              columnName: avatar
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: avatar
+                  type: ${text.type}
+                  remarks: Base64-encoded avatar image
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

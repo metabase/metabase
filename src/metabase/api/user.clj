@@ -411,9 +411,10 @@
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
   Group Managers can only add/remove users from groups they are manager of."
-  [id :as {{:keys [email first_name last_name user_group_memberships
+  [id :as {{:keys [avatar email first_name last_name user_group_memberships
                    is_superuser is_group_manager login_attributes locale] :as body} :body}]
   {id                     ms/PositiveInt
+   avatar                 [:maybe ms/NonBlankString]
    email                  [:maybe ms/Email]
    first_name             [:maybe ms/NonBlankString]
    last_name              [:maybe ms/NonBlankString]
@@ -450,7 +451,7 @@
                             (u/select-keys-when body
                                                 :present (cond-> #{:first_name :last_name :locale}
                                                            api/*is-superuser?* (conj :login_attributes))
-                                                :non-nil (cond-> #{:email}
+                                                :non-nil (cond-> #{:email :avatar}
                                                            api/*is-superuser?* (conj :is_superuser))))]
           (t2/update! :model/User id changes)
           (events/publish-event! :event/user-update {:object (t2/select-one :model/User :id id)
