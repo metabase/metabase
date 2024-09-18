@@ -24,6 +24,7 @@ import { CommentList } from "../comment-section/CommentSection";
 export function CommentFeed({
   model,
   modelId,
+  userId,
   autoScroll = false,
   shadowed = false,
 }: {
@@ -37,9 +38,10 @@ export function CommentFeed({
     {
       model,
       model_id: modelId,
+      user_id: userId,
     },
     {
-      pollingInterval: 10000,
+      pollingInterval: 3000,
       skipPollingIfUnfocused: true,
     },
   );

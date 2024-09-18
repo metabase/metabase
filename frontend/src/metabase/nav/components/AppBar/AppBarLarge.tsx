@@ -2,6 +2,7 @@ import { useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+// import { useCurrentUser } from "embedding-sdk";
 import { useListCommentQuery } from "metabase/api";
 import { CommentFeed } from "metabase/comments";
 import { Box, Icon, IconBadgeDotThingy, Popover } from "metabase/ui";
@@ -58,7 +59,7 @@ const AppBarLarge = ({
   const [hasNewNotifications, setHasNewNotifications] = useState(false);
 
   const { data: comments } = useListCommentQuery(undefined, {
-    pollingInterval: 10000,
+    pollingInterval: 2000,
   });
 
   const previousComments = usePrevious(comments);
