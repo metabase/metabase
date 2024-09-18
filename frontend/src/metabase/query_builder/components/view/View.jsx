@@ -159,7 +159,11 @@ class View extends Component {
       );
     }
 
-    return <QuestionInfoSidebar question={question} onSave={onSave} />;
+    if (isSaved && isShowingQuestionInfoSidebar) {
+      return <QuestionInfoSidebar question={question} onSave={onSave} />;
+    }
+
+    return null;
   };
 
   getRightSidebarForNativeQuery = () => {

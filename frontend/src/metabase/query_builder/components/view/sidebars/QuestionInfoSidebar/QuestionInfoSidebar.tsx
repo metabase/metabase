@@ -7,7 +7,7 @@ import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
-import { Button, Flex, Icon, Stack, Textarea, Tooltip } from "metabase/ui";
+import { Button, Flex, Icon, Stack, Textarea } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import ModelCacheManagementSection from "../ModelCacheManagementSection";
@@ -17,7 +17,6 @@ import {
   HeaderContainer,
   Root,
 } from "./QuestionInfoSidebar.styled";
-import { useMessages } from "./hooks/useMessages";
 
 interface QuestionInfoSidebarProps {
   question: Question;
@@ -63,26 +62,6 @@ export const QuestionInfoSidebar = ({
               >
                 <Icon name="info" />
               </Button>
-              {/*
-              <Button onClick={() => setPageId("describe")}>
-                <Icon name="gear" />
-              </Button>
-                */}
-              <Tooltip label={t`Metabot`}>
-                <Button
-                  c={
-                    pageId === "edit_viz" ? "var(--mb-color-brand)" : undefined
-                  }
-                  onClick={() => setPageId("edit_viz")}
-                >
-                  <Icon name="ai" />
-                </Button>
-              </Tooltip>
-              <Tooltip label={t`Clear AI history`}>
-                <Button onClick={clearMessages}>
-                  <Icon name="trash" />
-                </Button>
-              </Tooltip>
             </Flex>
             {page}
           </Stack>
