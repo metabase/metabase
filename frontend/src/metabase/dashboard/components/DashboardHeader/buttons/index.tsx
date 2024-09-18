@@ -8,6 +8,7 @@ export * from "./CancelEditButton";
 export * from "./CopyAnalyticsDashboardButton";
 export * from "./DashboardActionMenu";
 export * from "./DashboardInfoButton";
+export * from "./DashboardCommentButton";
 export * from "./EditDashboardButton";
 export * from "./FullscreenAnalyticsDashboard";
 export * from "./SaveEditButton";

@@ -16,7 +16,13 @@ import { ReactionList } from "../reaction-list";
 
 import CommentS from "./Comment.module.css";
 
-export const Comment = ({ comment }: { comment: CommentType }) => {
+export const Comment = ({
+  comment,
+  onResolve,
+}: {
+  comment: CommentType;
+  onResolve?: () => Promise<void>;
+}) => {
   const [onReact] = useReactToCommentMutation();
 
   return (
@@ -28,9 +34,35 @@ export const Comment = ({ comment }: { comment: CommentType }) => {
           </Text>
 
           <Text span size="md" c="text-medium">
-            {comment.created_at}
+            {comment.created_at ?? "Apr 20 6:90PM"}
           </Text>
         </Group>
+      </Box>
+      <Box className={CommentS.ActionIcons}>
+        <Group spacing="xs">
+          {onResolve && (
+            <ActionIcon onClick={onResolve}>
+              <Icon name="check" />
+            </ActionIcon>
+          )}
+          <ActionIcon>
+            <Icon name="ellipsis" />
+          </ActionIcon>
+        </Group>
+      </Box>
+      <Box className={CommentS.Avatar}>
+        <Stack h="100%" align="center" spacing="sm">
+          <Avatar radius="xl" c="text-light" size="1.5rem" color="brand">
+            <Text c="white" size="0.65rem">
+              {comment?.author?.first_name?.at?.(0) ?? "😁"}
+              {comment?.author?.last_name?.at?.(0) ?? ""}
+            </Text>
+
+            <Text span size="md" c="text-medium">
+              {comment.created_at}
+            </Text>
+          </Avatar>
+        </Stack>
       </Box>
       <Box className={CommentS.ActionIcons}>
         <Group spacing="xs">
