@@ -358,7 +358,7 @@ databaseChangeLog:
                   type: char(21)
                   remarks: Random NanoID tag for unique identity.
                   constraints:
-                    nullable: true
+                    nullable: false
                     unique: true
               - column:
                   name: collection_id
