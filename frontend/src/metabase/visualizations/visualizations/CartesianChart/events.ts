@@ -750,6 +750,9 @@ export const getBrushData = (
   const start = checkNumber(range[0]);
   const end = checkNumber(range[1]);
 
+  // console.log("getBrushData")
+  // console.log(isTimeSeries)
+
   if (isTimeSeries) {
     const nextQuery = Lib.updateTemporalFilter(
       query,
@@ -772,6 +775,7 @@ export const getBrushData = (
     query,
     stageIndex,
     column,
+    question.id(),
     start,
     end,
   );

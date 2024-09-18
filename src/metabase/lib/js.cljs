@@ -2232,9 +2232,10 @@
   > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
   However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
   ideally refactored away."
-  [a-query stage-number numeric-column start end]
+  [a-query stage-number numeric-column card-id start end]
   (let [numeric-column (legacy-column->metadata a-query stage-number numeric-column)]
-    (lib.core/update-numeric-filter a-query stage-number numeric-column start end)))
+    (lib.core/update-numeric-filter (lib.drill-thru.common/prepare-query a-query stage-number card-id)
+                                    stage-number numeric-column start end)))
 
 (defn ^:export update-temporal-filter
   "Add or update a filter against `temporal-column`, based on the provided start and end values.
@@ -2247,7 +2248,7 @@
   However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
   ideally refactored away."
   [a-query stage-number temporal-column card-id start end]
-  (do (.log js/console "update-temporal-filter")
+  #_(do (.log js/console "update-temporal-filter")
       (.log js/console (with-out-str (cljs.pprint/pprint a-query))))
   (let [temporal-column (legacy-column->metadata a-query stage-number temporal-column)]
     ;; (lib.drill-thru.common/prepare-query query stage-number card-id)
