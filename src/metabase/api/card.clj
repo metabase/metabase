@@ -890,7 +890,7 @@
                                                                                {:status-code 422})))})]
       {:status  200
        :body    (:id model)
-       :headers {:table_id (:table-id model)}})
+       :headers {"metabase_table_id" (str (:table-id model))}})
     (catch Throwable e
       {:status (or (-> e ex-data :status-code)
                    500)

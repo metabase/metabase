@@ -8,7 +8,11 @@
    [metabase.search.impl :as search.impl]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time Instant)))
+
+(set! *warn-on-reflection* true)
 
 (defn- user-params [search-ctx]
   (cond
@@ -79,6 +83,10 @@
                      (t2/query <>)
                      (filter (comp (set ids) :id) <>)))))))
 
+(defn- parse-datetime [s]
+  (when s
+    (Instant/parse s)))
+
 (defn- minimal [search-term & {:as _search-ctx}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
@@ -86,7 +94,11 @@
   (->> (assoc (search.index/search-query search-term) :select [:legacy_input])
        (t2/query)
        (map :legacy_input)
-       (map #(json/parse-string % keyword))))
+       (map #(json/parse-string % keyword))
+       (map #(-> %
+                 (update :created_at parse-datetime)
+                 (update :updated_at parse-datetime)
+                 #_(update :last_edited_at instant/read-instant-date)))))
 
 (def ^:private default-engine hybrid-multi)
 
