@@ -33,6 +33,23 @@ export const Reaction = ({
 }) => {
   const currentUser = useSelector(getCurrentUser);
 
+  const getUserListString = () => {
+    const userStrings = userList
+      .map(user => {
+        if (currentUser.email === user.email) {
+          return null;
+        }
+        return `${user.first_name} ${user.last_name}` || user.email;
+      })
+      .filter(u => !!u);
+
+    if (isSelected) {
+      return ["You", ...userStrings];
+    }
+
+    return userStrings;
+  };
+
   return (
     <ReactionBadge
       isSelected={isSelected}
@@ -56,14 +73,7 @@ export const Reaction = ({
       onClick={() => onAddReaction(emoji)}
       tooltipLabel={
         <Text fz="sm" span c="text-white">
-          {formatList(
-            userList.map(user => {
-              if (currentUser.email === user.email) {
-                return "You";
-              }
-              return `${user.first_name} ${user.last_name}` || user.email;
-            }),
-          )}
+          {formatList(getUserListString())}
           <Text fz="sm" span c="text-medium">
             {` reacted with  ${emoji}`}
           </Text>
