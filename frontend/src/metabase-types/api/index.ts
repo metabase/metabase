@@ -7,6 +7,7 @@ export * from "./bookmark";
 export * from "./card";
 export * from "./click-behavior";
 export * from "./collection";
+export * from "./comment";
 export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";

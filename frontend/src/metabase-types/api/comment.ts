@@ -28,13 +28,14 @@ export interface CreateCommentRequest {
   model: CommentModel;
   model_id: number;
   text: string;
-  reply_to: CommentId;
 }
 
 export interface ReactToCommentRequest {
+  id: CommentId;
   content: string;
 }
 
 export interface ResolveCommentRequest {
+  id: CommentId;
   resolved: true;
 }
