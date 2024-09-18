@@ -2344,3 +2344,8 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
+
+(defn ^:export is-equal?
+  "Is `col1` equal to `col2`? Hackathon version!"
+  [col1 col2]
+  (lib.core/is-equal? col1 col2))
