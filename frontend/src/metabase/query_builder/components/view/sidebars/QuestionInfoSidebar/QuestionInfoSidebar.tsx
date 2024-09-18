@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import { CommentFeed } from "metabase/comments";
 import {
   Sidesheet,
   SidesheetCard,
@@ -66,6 +67,7 @@ export const QuestionInfoSidebar = ({
       >
         <Tabs.List mx="lg">
           <Tabs.Tab value="overview">{t`Overview`}</Tabs.Tab>
+          <Tabs.Tab value="comments">{t`Comments`}</Tabs.Tab>
           <Tabs.Tab value="history">{t`History`}</Tabs.Tab>
         </Tabs.List>
         <SidesheetTabPanelContainer>
@@ -100,6 +102,9 @@ export const QuestionInfoSidebar = ({
               </SidesheetCard>
               <EntityIdCard entityId={question._card.entity_id} />
             </Stack>
+          </Tabs.Panel>
+          <Tabs.Panel value="comments">
+            <CommentFeed model="question" modelId={question.id} />
           </Tabs.Panel>
           <Tabs.Panel value="history">
             <SidesheetCard>

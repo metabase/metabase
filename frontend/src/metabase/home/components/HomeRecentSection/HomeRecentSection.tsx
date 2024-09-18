@@ -1,12 +1,14 @@
 import { t } from "ttag";
 
 import { useListRecentsQuery } from "metabase/api";
+import { CommentFeed } from "metabase/comments";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUser } from "metabase/selectors/user";
+import { Flex, Paper } from "metabase/ui";
 import type { RecentItem } from "metabase-types/api";
 
 import { isWithinWeeks } from "../../utils";
@@ -27,20 +29,28 @@ export const HomeRecentSection = () => {
   }
 
   return (
-    <div>
-      <HomeCaption>{t`Pick up where you left off`}</HomeCaption>
-      <SectionBody>
-        {recentsFilter(recentItems).map((item, index) => (
-          <HomeModelCard
-            key={index}
-            title={getName(item)}
-            icon={getIcon(item)}
-            url={Urls.modelToUrl(item) ?? ""}
-          />
-        ))}
-        {hasHelpCard && <HomeHelpCard />}
-      </SectionBody>
-    </div>
+    <Flex gap="lg">
+      <div style={{ width: "50%" }}>
+        <HomeCaption>{t`Pick up where you left off`}</HomeCaption>
+        <SectionBody>
+          {recentsFilter(recentItems).map((item, index) => (
+            <HomeModelCard
+              key={index}
+              title={getName(item)}
+              icon={getIcon(item)}
+              url={Urls.modelToUrl(item) ?? ""}
+            />
+          ))}
+          {hasHelpCard && <HomeHelpCard />}
+        </SectionBody>
+      </div>
+      <div style={{ width: "50%" }}>
+        <HomeCaption>{t`What people are discussing`}</HomeCaption>
+        <Paper p="lg" mah="20rem" style={{ overflow: "auto" }}>
+          <CommentFeed />
+        </Paper>
+      </div>
+    </Flex>
   );
 };
 

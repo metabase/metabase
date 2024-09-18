@@ -4,6 +4,7 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { CommentFeed } from "metabase/comments";
 import {
   Sidesheet,
   SidesheetCard,
@@ -47,6 +48,7 @@ interface DashboardInfoSidebarProps {
 enum Tab {
   Overview = "overview",
   History = "history",
+  Comments = "comments",
 }
 
 export function DashboardInfoSidebar({
@@ -125,6 +127,7 @@ export function DashboardInfoSidebar({
           >
             <Tabs.List mx="lg">
               <Tabs.Tab value={Tab.Overview}>{t`Overview`}</Tabs.Tab>
+              <Tabs.Tab value={Tab.Comments}>{t`Comments`}</Tabs.Tab>
               <Tabs.Tab value={Tab.History}>{t`History`}</Tabs.Tab>
             </Tabs.List>
             <SidesheetTabPanelContainer>
@@ -139,6 +142,9 @@ export function DashboardInfoSidebar({
                   setPage={setPage}
                   showCaching={showCaching}
                 />
+              </Tabs.Panel>
+              <Tabs.Panel value={Tab.Comments}>
+                <CommentFeed model="dashboard" modelId={dashboard.id} />
               </Tabs.Panel>
               <Tabs.Panel value={Tab.History}>
                 <HistoryTab
