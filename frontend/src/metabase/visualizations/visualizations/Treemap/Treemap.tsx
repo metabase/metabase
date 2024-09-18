@@ -1,3 +1,5 @@
+import type { TreemapSeriesOption } from "echarts";
+import type { TooltipOption } from "echarts/types/dist/shared";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -123,14 +125,25 @@ export const Treemap = ({ rawSeries, settings }: VisualizationProps) => {
 
   const echartsData = buildTree(data.rows, dimensions, metric.index);
 
+  const treemapSeries: TreemapSeriesOption = {
+    type: "treemap",
+    name: "All",
+    data: echartsData,
+    itemStyle: {
+      gapWidth: 2,
+    },
+  };
+
+  const treemapTooltip: TooltipOption = {
+    formatter: (info: any) => {
+      const value = info.data.value;
+      return String(value);
+    },
+  };
+
   const option = {
-    series: [
-      {
-        type: "treemap",
-        name: "All",
-        data: echartsData,
-      },
-    ],
+    series: [treemapSeries],
+    tooltip: treemapTooltip,
   };
 
   return <ResponsiveEChartsRenderer option={option} />;
