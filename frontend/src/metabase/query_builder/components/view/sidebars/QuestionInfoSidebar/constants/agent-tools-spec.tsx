@@ -137,7 +137,7 @@ export function getToolSpec(fields: Field[]) {
                   "title": "Summarization Metric",
                   "description": "The type of summarization to apply. COUNT does not require a field name.",
                   "type": "string",
-                  "enum": ["sum", "count", "average"]
+                  "enum": ["sum", "count", "avg"]
                 }
               },
               "required": ["fieldName", "metrics"],
