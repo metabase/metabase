@@ -1,0 +1,96 @@
+name: Invoices per Account → Legacy Plan
+description: null
+entity_id: CEwPuKBT7fLEiY4rgHSvw
+created_at: '2024-09-18T20:45:24.962397Z'
+creator_id: admin@metabase.test
+display: row
+archived: false
+collection_id: 24eYAY0ZSZ7qhVCnRW9tC
+collection_preview: true
+collection_position: null
+query_type: query
+database_id: The Kitchen-Sink Database
+table_id:
+- The Kitchen-Sink Database
+- PUBLIC
+- INVOICES
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: The Kitchen-Sink Database
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+    source-table:
+    - The Kitchen-Sink Database
+    - PUBLIC
+    - INVOICES
+  type: query
+result_metadata:
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Account → Legacy Plan
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - - The Kitchen-Sink Database
+    - PUBLIC
+    - ACCOUNTS
+    - LEGACY_PLAN
+  - source-field:
+    - The Kitchen-Sink Database
+    - PUBLIC
+    - INVOICES
+    - ACCOUNT_ID
+  fk_target_field_id: null
+  id:
+  - The Kitchen-Sink Database
+  - PUBLIC
+  - ACCOUNTS
+  - LEGACY_PLAN
+  name: LEGACY_PLAN
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/BigInteger
+  display_name: Count
+  effective_type: type/BigInteger
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+visualization_settings:
+  column_settings: null
+  graph.colors:
+  - '#88BF4D'
+  graph.dimensions:
+  - LEGACY_PLAN
+  graph.metrics:
+  - count
+  graph.series_labels:
+  - null
+serdes/meta:
+- id: CEwPuKBT7fLEiY4rgHSvw
+  label: invoices_per_account_→_legacy_plan
+  model: Card
+archived_directly: false
+metabase_version: v1.1.33-SNAPSHOT (a859933)
+source_card_id: null
+type: question

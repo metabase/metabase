@@ -1,0 +1,1197 @@
+name: A look at Invoices
+description: An overview of Invoices and how it's distributed across time, place, and categories.
+entity_id: kYsN0rtGl_vk_l9YBBlGZ
+created_at: '2024-09-18T20:45:24.597464Z'
+creator_id: admin@metabase.test
+archived: false
+collection_id: 24eYAY0ZSZ7qhVCnRW9tC
+auto_apply_filters: true
+collection_position: 1
+position: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+show_in_getting_started: false
+caveats: null
+points_of_interest: null
+parameters:
+- id: '512957441'
+  name: Source
+  slug: SOURCE
+  type: category
+- id: '559764467'
+  name: Legacy Plan
+  slug: LEGACY_PLAN
+  type: category
+- id: '828302998'
+  name: Plan
+  slug: PLAN
+  type: category
+- id: '1751914005'
+  name: Country
+  slug: COUNTRY
+  type: location/country
+serdes/meta:
+- id: kYsN0rtGl_vk_l9YBBlGZ
+  label: a_look_at_invoices
+  model: Dashboard
+archived_directly: false
+dashcards:
+- entity_id: mLHJuzqv2_FlWvktptp9Y
+  card_id: null
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# Summary'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: mLHJuzqv2_FlWvktptp9Y
+    model: DashboardCard
+- entity_id: L09imsJpMLPhg31RMhKvp
+  card_id: U8hanfMY-uXsGpUOvWnNy
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 2
+  col: 0
+  size_x: 6
+  size_y: 3
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: U8hanfMY-uXsGpUOvWnNy
+    parameter_id: '512957441'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: U8hanfMY-uXsGpUOvWnNy
+    parameter_id: '559764467'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: U8hanfMY-uXsGpUOvWnNy
+    parameter_id: '828302998'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - PLAN
+      - null
+  - card_id: U8hanfMY-uXsGpUOvWnNy
+    parameter_id: '1751914005'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: L09imsJpMLPhg31RMhKvp
+    model: DashboardCard
+- entity_id: UrAmQFBgjLDXnxL7MJZam
+  card_id: VvZsLYxg4vECLYnp9W9b9
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 2
+  col: 6
+  size_x: 6
+  size_y: 3
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: VvZsLYxg4vECLYnp9W9b9
+    parameter_id: '512957441'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: VvZsLYxg4vECLYnp9W9b9
+    parameter_id: '559764467'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: VvZsLYxg4vECLYnp9W9b9
+    parameter_id: '828302998'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - PLAN
+      - null
+  - card_id: VvZsLYxg4vECLYnp9W9b9
+    parameter_id: '1751914005'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: UrAmQFBgjLDXnxL7MJZam
+    model: DashboardCard
+- entity_id: nZZZnkfs93Lpkl3si0Mqp
+  card_id: Ef3iSivp1cF0xA3z1R34y
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 2
+  col: 12
+  size_x: 6
+  size_y: 3
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: Ef3iSivp1cF0xA3z1R34y
+    parameter_id: '512957441'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: Ef3iSivp1cF0xA3z1R34y
+    parameter_id: '559764467'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: Ef3iSivp1cF0xA3z1R34y
+    parameter_id: '828302998'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - PLAN
+      - null
+  - card_id: Ef3iSivp1cF0xA3z1R34y
+    parameter_id: '1751914005'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: nZZZnkfs93Lpkl3si0Mqp
+    model: DashboardCard
+- entity_id: w1BAWdnOB1X0Kp64z3zuY
+  card_id: null
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 5
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# Where these Invoices are'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: w1BAWdnOB1X0Kp64z3zuY
+    model: DashboardCard
+- entity_id: kg8uwv1lp0nhGFxj3B4qn
+  card_id: t-8EhbO3gaSekQvXqQo7S
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 7
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: t-8EhbO3gaSekQvXqQo7S
+    parameter_id: '512957441'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: t-8EhbO3gaSekQvXqQo7S
+    parameter_id: '559764467'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: t-8EhbO3gaSekQvXqQo7S
+    parameter_id: '828302998'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - PLAN
+      - null
+  - card_id: t-8EhbO3gaSekQvXqQo7S
+    parameter_id: '1751914005'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: kg8uwv1lp0nhGFxj3B4qn
+    model: DashboardCard
+- entity_id: lBpGIbGgucugO-JF3DtOC
+  card_id: hYND2T7PBnBIKwGrVWbH3
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 7
+  col: 12
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: hYND2T7PBnBIKwGrVWbH3
+    parameter_id: '512957441'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: hYND2T7PBnBIKwGrVWbH3
+    parameter_id: '559764467'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: hYND2T7PBnBIKwGrVWbH3
+    parameter_id: '828302998'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - PLAN
+      - null
+  - card_id: hYND2T7PBnBIKwGrVWbH3
+    parameter_id: '1751914005'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: lBpGIbGgucugO-JF3DtOC
+    model: DashboardCard
+- entity_id: 6THWAEd2XJ8OZtzTb2HwA
+  card_id: null
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 13
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# These Invoices across time'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: 6THWAEd2XJ8OZtzTb2HwA
+    model: DashboardCard
+- entity_id: C7dDheVmUhDkEGjadY8aQ
+  card_id: FfHgwqD5Mj6FtY9En4yoU
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 15
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: FfHgwqD5Mj6FtY9En4yoU
+    parameter_id: '512957441'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: FfHgwqD5Mj6FtY9En4yoU
+    parameter_id: '559764467'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: FfHgwqD5Mj6FtY9En4yoU
+    parameter_id: '828302998'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - PLAN
+      - null
+  - card_id: FfHgwqD5Mj6FtY9En4yoU
+    parameter_id: '1751914005'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: C7dDheVmUhDkEGjadY8aQ
+    model: DashboardCard
+- entity_id: LAZAYjiswRScrTNdRWBJ2
+  card_id: sDOPIFgbGwzugNBptfha-
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 15
+  col: 12
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: sDOPIFgbGwzugNBptfha-
+    parameter_id: '512957441'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: sDOPIFgbGwzugNBptfha-
+    parameter_id: '559764467'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: sDOPIFgbGwzugNBptfha-
+    parameter_id: '828302998'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - PLAN
+      - null
+  - card_id: sDOPIFgbGwzugNBptfha-
+    parameter_id: '1751914005'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: LAZAYjiswRScrTNdRWBJ2
+    model: DashboardCard
+- entity_id: 2Oa49OGGSQqcgvQILU3ON
+  card_id: null
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 21
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# How these Invoices are distributed'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: 2Oa49OGGSQqcgvQILU3ON
+    model: DashboardCard
+- entity_id: T7UoeBSQUxS-Y5DzAbrkr
+  card_id: fdsaRXHsGi4l6bvjUJ-9h
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 23
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: fdsaRXHsGi4l6bvjUJ-9h
+    parameter_id: '512957441'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: fdsaRXHsGi4l6bvjUJ-9h
+    parameter_id: '559764467'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: fdsaRXHsGi4l6bvjUJ-9h
+    parameter_id: '828302998'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - PLAN
+      - null
+  - card_id: fdsaRXHsGi4l6bvjUJ-9h
+    parameter_id: '1751914005'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: T7UoeBSQUxS-Y5DzAbrkr
+    model: DashboardCard
+- entity_id: R7IThak_ccSz7cXjHAJlu
+  card_id: xa5stVhoo58UAgAm0Iges
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 23
+  col: 12
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: xa5stVhoo58UAgAm0Iges
+    parameter_id: '512957441'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: xa5stVhoo58UAgAm0Iges
+    parameter_id: '559764467'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: xa5stVhoo58UAgAm0Iges
+    parameter_id: '828302998'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - PLAN
+      - null
+  - card_id: xa5stVhoo58UAgAm0Iges
+    parameter_id: '1751914005'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: R7IThak_ccSz7cXjHAJlu
+    model: DashboardCard
+- entity_id: v8C_575oTp4tLz3i8seJS
+  card_id: CEwPuKBT7fLEiY4rgHSvw
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 29
+  col: 0
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: CEwPuKBT7fLEiY4rgHSvw
+    parameter_id: '512957441'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: CEwPuKBT7fLEiY4rgHSvw
+    parameter_id: '559764467'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: CEwPuKBT7fLEiY4rgHSvw
+    parameter_id: '828302998'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - PLAN
+      - null
+  - card_id: CEwPuKBT7fLEiY4rgHSvw
+    parameter_id: '1751914005'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: v8C_575oTp4tLz3i8seJS
+    model: DashboardCard
+- entity_id: lEOwlYgpouuXRcWGGAk_y
+  card_id: TIGcEphHDmDmm1t4bhGV5
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 29
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: TIGcEphHDmDmm1t4bhGV5
+    parameter_id: '512957441'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: TIGcEphHDmDmm1t4bhGV5
+    parameter_id: '559764467'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: TIGcEphHDmDmm1t4bhGV5
+    parameter_id: '828302998'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - PLAN
+      - null
+  - card_id: TIGcEphHDmDmm1t4bhGV5
+    parameter_id: '1751914005'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: lEOwlYgpouuXRcWGGAk_y
+    model: DashboardCard
+- entity_id: 1RJY6iNdiVOjOI89R55O_
+  card_id: dHPZZY0zfCaU-vQBZ-PWa
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 37
+  col: 0
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: dHPZZY0zfCaU-vQBZ-PWa
+    parameter_id: '512957441'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: dHPZZY0zfCaU-vQBZ-PWa
+    parameter_id: '559764467'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: dHPZZY0zfCaU-vQBZ-PWa
+    parameter_id: '828302998'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - PLAN
+      - null
+  - card_id: dHPZZY0zfCaU-vQBZ-PWa
+    parameter_id: '1751914005'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: 1RJY6iNdiVOjOI89R55O_
+    model: DashboardCard
+- entity_id: a6oWeX-S249aaU6OZARwL
+  card_id: yXVZ-5iJmJRn8V3Q-4ciY
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 37
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: yXVZ-5iJmJRn8V3Q-4ciY
+    parameter_id: '512957441'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: yXVZ-5iJmJRn8V3Q-4ciY
+    parameter_id: '559764467'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: yXVZ-5iJmJRn8V3Q-4ciY
+    parameter_id: '828302998'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - PLAN
+      - null
+  - card_id: yXVZ-5iJmJRn8V3Q-4ciY
+    parameter_id: '1751914005'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: a6oWeX-S249aaU6OZARwL
+    model: DashboardCard
+- entity_id: xTy20sm7Khf9zhGZZfScu
+  card_id: 4HetvzDPQOeg2NmF-xOkQ
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 45
+  col: 0
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: 4HetvzDPQOeg2NmF-xOkQ
+    parameter_id: '512957441'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: 4HetvzDPQOeg2NmF-xOkQ
+    parameter_id: '559764467'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: 4HetvzDPQOeg2NmF-xOkQ
+    parameter_id: '828302998'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - PLAN
+      - null
+  - card_id: 4HetvzDPQOeg2NmF-xOkQ
+    parameter_id: '1751914005'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: xTy20sm7Khf9zhGZZfScu
+    model: DashboardCard
+- entity_id: WP-9VyO0Y32_GGlHTrWJR
+  card_id: pAS6vVxG4PAUb3RgbRW4Z
+  created_at: '2024-09-18T20:45:25.144757Z'
+  row: 45
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: pAS6vVxG4PAUb3RgbRW4Z
+    parameter_id: '512957441'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: pAS6vVxG4PAUb3RgbRW4Z
+    parameter_id: '559764467'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - LEGACY_PLAN
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  - card_id: pAS6vVxG4PAUb3RgbRW4Z
+    parameter_id: '828302998'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - PLAN
+      - null
+  - card_id: pAS6vVxG4PAUb3RgbRW4Z
+    parameter_id: '1751914005'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: kYsN0rtGl_vk_l9YBBlGZ
+    model: Dashboard
+  - id: WP-9VyO0Y32_GGlHTrWJR
+    model: DashboardCard
+initially_published_at: null
+tabs: []
+width: fixed

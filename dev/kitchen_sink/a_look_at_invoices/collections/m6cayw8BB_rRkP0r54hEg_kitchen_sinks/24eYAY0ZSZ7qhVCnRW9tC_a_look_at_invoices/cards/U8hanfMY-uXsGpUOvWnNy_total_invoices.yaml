@@ -1,0 +1,56 @@
+name: Total Invoices
+description: null
+entity_id: U8hanfMY-uXsGpUOvWnNy
+created_at: '2024-09-18T20:45:24.619981Z'
+creator_id: admin@metabase.test
+display: scalar
+archived: false
+collection_id: 24eYAY0ZSZ7qhVCnRW9tC
+collection_preview: true
+collection_position: null
+query_type: query
+database_id: The Kitchen-Sink Database
+table_id:
+- The Kitchen-Sink Database
+- PUBLIC
+- INVOICES
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: The Kitchen-Sink Database
+  query:
+    aggregation:
+    - - count
+    source-table:
+    - The Kitchen-Sink Database
+    - PUBLIC
+    - INVOICES
+  type: query
+result_metadata:
+- base_type: type/BigInteger
+  display_name: Count
+  effective_type: type/BigInteger
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+visualization_settings:
+  column_settings: null
+  graph.dimensions: null
+  graph.metrics:
+  - count
+  graph.series_labels:
+  - null
+serdes/meta:
+- id: U8hanfMY-uXsGpUOvWnNy
+  label: total_invoices
+  model: Card
+archived_directly: false
+metabase_version: v1.1.33-SNAPSHOT (a859933)
+source_card_id: null
+type: question

@@ -30,7 +30,7 @@ export const StoreApi = {
 };
 
 export const KitchenSinkAPI = {
-  makeKitchenSink: POST("/api/kitchen-sink")
+  makeKitchenSink: POST("/api/ee/serialization/kitchen-sink"),
 };
 
 // Pivot tables need extra data beyond what's described in the MBQL query itself.

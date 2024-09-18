@@ -1,0 +1,67 @@
+name: Distinct Account ID
+description: null
+entity_id: Ef3iSivp1cF0xA3z1R34y
+created_at: '2024-09-18T20:45:24.714766Z'
+creator_id: admin@metabase.test
+display: scalar
+archived: false
+collection_id: 24eYAY0ZSZ7qhVCnRW9tC
+collection_preview: true
+collection_position: null
+query_type: query
+database_id: The Kitchen-Sink Database
+table_id:
+- The Kitchen-Sink Database
+- PUBLIC
+- INVOICES
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: The Kitchen-Sink Database
+  query:
+    aggregation:
+    - - distinct
+      - - field
+        - - The Kitchen-Sink Database
+          - PUBLIC
+          - ACCOUNTS
+          - ID
+        - source-field:
+          - The Kitchen-Sink Database
+          - PUBLIC
+          - INVOICES
+          - ACCOUNT_ID
+    source-table:
+    - The Kitchen-Sink Database
+    - PUBLIC
+    - INVOICES
+  type: query
+result_metadata:
+- base_type: type/BigInteger
+  display_name: Distinct values of Account → ID
+  effective_type: type/BigInteger
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+  settings: null
+visualization_settings:
+  column_settings: null
+  graph.dimensions: null
+  graph.metrics:
+  - distinct
+  graph.series_labels:
+  - null
+serdes/meta:
+- id: Ef3iSivp1cF0xA3z1R34y
+  label: distinct_account_id
+  model: Card
+archived_directly: false
+metabase_version: v1.1.33-SNAPSHOT (a859933)
+source_card_id: null
+type: question

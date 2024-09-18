@@ -8,7 +8,6 @@ import {
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
-import { KitchenSinkAPI } from "metabase/services";
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -18,6 +17,7 @@ import {
   getHasDatabaseWithActionsEnabled,
   getHasNativeWrite,
 } from "metabase/selectors/data";
+import { KitchenSinkAPI } from "metabase/services";
 
 export const useCommandPaletteBasicActions = ({
   isLoggedIn,
@@ -116,15 +116,31 @@ export const useCommandPaletteBasicActions = ({
             openNewModal("collection");
           },
         },
+      ],
+    );
+
+    actions.push(
+      ...[
         {
-          id: "make_kitchen_sink",
-          name: t`Kitchen Sink`,
-          section: "basic",
+          id: "make_kitchen_sink_1",
+          name: t`Kitchen Sink One`,
+          section: "admin",
           icon: "dashboard",
           perform: async () => {
-            await KitchenSinkAPI.makeKitchenSink({"some": "body"})
-          }
-        }
+            await KitchenSinkAPI.makeKitchenSink({ sink: "a_look_at_orders" });
+          },
+        },
+        {
+          id: "make_kitchen_sink_2",
+          name: t`Kitchen Sink Two`,
+          section: "admin",
+          icon: "dashboard",
+          perform: async () => {
+            await KitchenSinkAPI.makeKitchenSink({
+              sink: "a_look_at_invoices",
+            });
+          },
+        },
       ],
     );
 

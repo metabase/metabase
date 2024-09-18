@@ -1,0 +1,117 @@
+name: Payment over time
+description: null
+entity_id: sDOPIFgbGwzugNBptfha-
+created_at: '2024-09-18T20:45:24.865926Z'
+creator_id: admin@metabase.test
+display: line
+archived: false
+collection_id: 24eYAY0ZSZ7qhVCnRW9tC
+collection_preview: true
+collection_position: null
+query_type: query
+database_id: The Kitchen-Sink Database
+table_id:
+- The Kitchen-Sink Database
+- PUBLIC
+- INVOICES
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: The Kitchen-Sink Database
+  query:
+    aggregation:
+    - - sum
+      - - field
+        - - The Kitchen-Sink Database
+          - PUBLIC
+          - INVOICES
+          - PAYMENT
+        - base-type: type/Float
+    - - avg
+      - - field
+        - - The Kitchen-Sink Database
+          - PUBLIC
+          - INVOICES
+          - PAYMENT
+        - base-type: type/Float
+    breakout:
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - INVOICES
+        - DATE_RECEIVED
+      - base-type: type/DateTime
+        temporal-unit: month
+    source-table:
+    - The Kitchen-Sink Database
+    - PUBLIC
+    - INVOICES
+  type: query
+result_metadata:
+- base_type: type/DateTime
+  coercion_strategy: null
+  description: null
+  display_name: Date Received
+  effective_type: type/DateTime
+  field_ref:
+  - field
+  - - The Kitchen-Sink Database
+    - PUBLIC
+    - INVOICES
+    - DATE_RECEIVED
+  - base-type: type/DateTime
+    temporal-unit: month
+  fk_target_field_id: null
+  id:
+  - The Kitchen-Sink Database
+  - PUBLIC
+  - INVOICES
+  - DATE_RECEIVED
+  name: DATE_RECEIVED
+  semantic_type: null
+  settings: null
+  unit: month
+  visibility_type: normal
+- base_type: type/Float
+  display_name: Sum of Payment
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 0
+  name: sum
+  semantic_type: null
+  settings: null
+- base_type: type/Float
+  display_name: Average of Payment
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 1
+  name: avg
+  semantic_type: null
+  settings: null
+visualization_settings:
+  column_settings: null
+  graph.colors:
+  - '#EF8C8C'
+  - '#F2A86F'
+  graph.dimensions:
+  - DATE_RECEIVED
+  graph.metrics:
+  - sum
+  - avg
+  graph.series_labels:
+  - null
+  - null
+serdes/meta:
+- id: sDOPIFgbGwzugNBptfha-
+  label: payment_over_time
+  model: Card
+archived_directly: false
+metabase_version: v1.1.33-SNAPSHOT (a859933)
+source_card_id: null
+type: question
