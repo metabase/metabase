@@ -16,8 +16,8 @@ import { ReactionList } from "../reaction-list";
 import CommentS from "./Comment.module.css";
 
 export const Comment = ({ comment }: { comment: CommentType }) => (
-  <Box mb="sm" className={CommentS.parent}>
-    <Box ml="sm" className={CommentS.div1}>
+  <Box mb="sm" className={CommentS.CommentGrid}>
+    <Box ml="sm" className={CommentS.UserInfo}>
       <Group spacing="sm">
         <Text fw="bold" c="text-dark" size="md">
           {comment?.author?.first_name} {comment?.author?.last_name}
@@ -28,7 +28,7 @@ export const Comment = ({ comment }: { comment: CommentType }) => (
         </Text>
       </Group>
     </Box>
-    <Box className={CommentS.div3}>
+    <Box className={CommentS.ActionIcons}>
       <Group spacing="xs">
         <ActionIcon>
           <Icon name="check" />
@@ -38,7 +38,7 @@ export const Comment = ({ comment }: { comment: CommentType }) => (
         </ActionIcon>
       </Group>
     </Box>
-    <Box className={CommentS.div4}>
+    <Box className={CommentS.Avatar}>
       <Stack h="100%" align="center" spacing="sm">
         <Avatar radius="xl" c="text-light" size="1.5rem" color="brand">
           <Text c="white" size="0.65rem">
@@ -51,7 +51,7 @@ export const Comment = ({ comment }: { comment: CommentType }) => (
         </Box>
       </Stack>
     </Box>
-    <Box ml="2px" className={CommentS.div5}>
+    <Box ml="2px" className={CommentS.CommentText}>
       <EditableText
         isMultiline={true}
         initialValue={comment.text}
@@ -59,7 +59,7 @@ export const Comment = ({ comment }: { comment: CommentType }) => (
         placeholder="put something here ya ding dong"
       />
     </Box>
-    <Box ml="4px" pt="xs" className={CommentS.div6}>
+    <Box ml="4px" pt="xs" className={CommentS.Reactions}>
       <ReactionList reactions={comment.reactions} />
     </Box>
   </Box>
