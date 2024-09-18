@@ -1,10 +1,14 @@
 import { useCallback, useState } from "react";
+import { Mention, MentionsInput } from "react-mentions";
 
+import { useListUsersQuery } from "metabase/api";
 import Styles from "metabase/css/core/index.css";
-import { Flex, type FlexProps, Icon, Input } from "metabase/ui";
+import { Flex, type FlexProps, Icon } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
 import { UserIcon } from "../comment/Comment";
+
+import CommentInputStyle from "./CommentInput.module.css";
 
 export function CommentInput({
   onSubmit,
@@ -27,34 +31,53 @@ export function CommentInput({
     [onSubmit],
   );
 
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSubmit(text);
-    }
-  };
+  const { data: users } = useListUsersQuery({});
 
   return (
     <Flex align="center" gap="sm" {...flexProps}>
       <UserIcon user={user} />
-
-      <Input
-        onKeyDown={handleKeyDown}
+      <MentionsInput
         value={text}
+        onKeyDown={e => {
+          if (e.key === "Enter") {
+            handleSubmit(text);
+          }
+        }}
         onChange={e => setText(e.target.value)}
         placeholder={placeholder}
-        style={{ flex: 1 }}
-        autoFocus={autoFocus}
-        rightSection={
-          text && (
-            <Icon
-              name="enter_or_return"
-              color="var(--mb-color-brand)"
-              className={Styles.cursorPointer}
-              onClick={() => handleSubmit(text)}
-            />
-          )
-        }
-      />
+        autoFocus
+        singleLine
+        className="mentions"
+        classNames={CommentInputStyle}
+        style={{
+          suggestions: {
+            background: "red",
+          },
+        }}
+      >
+        <Mention
+          markup="@[__display__](__id__)"
+          trigger="@"
+          data={
+            users?.data.map(user => {
+              return { id: user.id, display: user.common_name };
+            }) ?? []
+          }
+        />
+      </MentionsInput>
+      {text && (
+        <Icon
+          style={{
+            position: "absolute",
+            top: 26,
+            right: 12,
+          }}
+          name="enter_or_return"
+          color="var(--mb-color-brand)"
+          className={Styles.cursorPointer}
+          onClick={() => handleSubmit(text)}
+        />
+      )}
     </Flex>
   );
 }

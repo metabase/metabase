@@ -58,7 +58,7 @@ const AppBarLarge = ({
   const [hasNewNotifications, setHasNewNotifications] = useState(false);
 
   const { data: comments } = useListCommentQuery(undefined, {
-    pollingInterval: 1000,
+    pollingInterval: 10000,
   });
 
   const previousComments = usePrevious(comments);
