@@ -14,6 +14,7 @@ import Markdown from "metabase/core/components/Markdown";
 import MetabotLogo from "metabase/core/components/MetabotLogo";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions";
+import { getToolSpec } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
 import { getRawSeries } from "metabase/query_builder/selectors";
 import {
   Box,
@@ -30,15 +31,13 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
+import type { Field } from "metabase-types/api";
 
 import Styles from "./Chat.module.css";
 import { useMessages } from "./hooks/use-messages";
+import { useMetabotAgentTool } from "./hooks/useMetabotAgentTool";
 import type { Message } from "./types";
 import { getColumnsWithSampleValues } from "./utils";
-import { useMetabotAgentTool } from "./hooks/useMetabotAgentTool";
-
-import { getToolSpec } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
-import { Field } from "metabase-types/api";
 
 export const Chat = ({
   scrollableStackRef,
@@ -124,7 +123,7 @@ export const Chat = ({
       ...messages.map(m => ({
         content: m.content,
         role: m.author === "llm" ? "assistant" : "user",
-        ...(m.author === "llm" && { tool_calls: m.toolCalls }),
+        ...(m.author === "llm" && { tool_calls: null }),
       })),
       {
         content: prompt,
