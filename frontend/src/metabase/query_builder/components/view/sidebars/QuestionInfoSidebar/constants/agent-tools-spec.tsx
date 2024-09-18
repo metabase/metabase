@@ -110,6 +110,7 @@ export function getToolSpec(fields: Field[]) {
         "properties": {
           "display": {
             "title": "Visualization Display Type",
+            "description": "Change the visualization. When summarization is used, this should be set appropriately with preference to line",
             "type": ["string", "null"],
             "enum": [
               "pie",

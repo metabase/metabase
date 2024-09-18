@@ -53,8 +53,8 @@ export const Chat = ({
 
   const { runAgentAction } = useMetabotAgentTool();
 
-  const query = question._card.dataset_query;
-  const visualizationSettings = question._card.visualization_settings;
+  //const query = question._card.dataset_query;
+  //const visualizationSettings = question._card.visualization_settings;
 
   const { messages, clearMessages, addMessage } = useMessages();
 
@@ -83,7 +83,6 @@ export const Chat = ({
     addMessage(message);
 
     const userMessage = message.content;
-    console.log(`[user] ${userMessage}`);
 
     setIsAwaitingLLMResponse(true);
 
@@ -106,17 +105,20 @@ export const Chat = ({
     const prompt = `
       <context>
         table id: ${question._card.dataset_query.database}.
+
         table name: ${table?.name}.
+
         table display name: ${table?.display_name}.
+
         available fields: ${JSON.stringify(fields)}.
+
+        distinct values in each field: ${fieldsWithSampleValues}
       </context>
 
       <user_ask>
         ${userMessage}
       </user_ask>
     `;
-
-    console.log(`Prompt:`, prompt);
 
     const nextMessages = [
       ...messages.map(m => ({
@@ -188,10 +190,13 @@ export const Chat = ({
         <Messages messages={messages} question={question} />
         {isAwaitingLLMResponse && (
           <AIMessageDisplay
+            isThinking
             question={question}
             message={{
               author: "llm",
-              content: t`...`,
+              content: (
+                <Loader pos="relative" top="10px" size="xs" variant="dots" />
+              ),
             }}
           ></AIMessageDisplay>
         )}
@@ -298,26 +303,33 @@ const WriteMessage = ({
 const AIMessageDisplay = ({
   message,
   question,
+  isThinking,
 }: {
   message: Message;
   question: Question;
+  isThinking?: boolean;
 }) => {
   const markdown = (
     <Markdown linkTarget="" className={Styles.AIMessageMarkdown}>
-      {message.content}
+      {message.content as string}
     </Markdown>
   );
   return (
     <Flex justify="flex-start">
       <Stack maw="100%" spacing="xs">
         <Group noWrap align="flex-start" spacing="sm">
-          <MetabotLogo style={{ width: "1.5rem" }} />
+          <MetabotLogo
+            variant={isThinking ? "thinking" : undefined}
+            style={{ width: "2rem" }}
+          />
           {message.newQuery ? (
             <LoadNewQuestionButton message={message} question={question}>
               {markdown}
             </LoadNewQuestionButton>
-          ) : (
+          ) : typeof message.content === "string" ? (
             markdown
+          ) : (
+            message.content
           )}
         </Group>
       </Stack>

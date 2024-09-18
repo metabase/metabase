@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import _ from "underscore";
 
 export type AdhocQuestionData = {
@@ -35,7 +36,7 @@ export const isMessage = (message: unknown): message is Message => {
 export type Author = "user" | "llm";
 
 export type Message = {
-  content: string;
+  content: ReactNode;
   author: Author;
   newQuery?: any;
   toolCalls?: any[];
