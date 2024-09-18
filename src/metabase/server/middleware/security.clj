@@ -93,6 +93,8 @@
                                  (when config/is-dev?
                                    "http://localhost:9630")
                                  "https://accounts.google.com"]
+                  :frame-ancestors ["*"]
+                  :frame-src     ["*"]
                   :font-src     ["*"]
                   :img-src      ["*"
                                  "'self' data:"]

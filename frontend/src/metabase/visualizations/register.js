@@ -11,7 +11,7 @@ import { DashCardPlaceholder } from "./visualizations/DashCardPlaceholder";
 import { Funnel } from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
 import { Heading } from "./visualizations/Heading";
-import { Treemap } from "./visualizations/Treemap";
+import { IFrameViz } from "./visualizations/IFrameViz";
 import { LineChart } from "./visualizations/LineChart";
 import { LinkViz } from "./visualizations/LinkViz";
 import { Map } from "./visualizations/Map";
@@ -25,6 +25,7 @@ import { ScatterPlot } from "./visualizations/ScatterPlot";
 import { SmartScalar } from "./visualizations/SmartScalar";
 import Table from "./visualizations/Table";
 import { Text } from "./visualizations/Text";
+import { Treemap } from "./visualizations/Treemap";
 import { WaterfallChart } from "./visualizations/WaterfallChart";
 
 export default function () {
@@ -52,6 +53,7 @@ export default function () {
   registerVisualization(Heading);
   registerVisualization(LinkViz);
   registerVisualization(Text);
+  registerVisualization(IFrameViz);
 
   setDefaultVisualization(Table);
 }

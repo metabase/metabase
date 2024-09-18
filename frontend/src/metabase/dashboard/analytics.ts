@@ -49,7 +49,7 @@ export const trackDashboardWidthChange = (
   });
 };
 
-type CardTypes = "text" | "heading" | "link" | "action";
+type CardTypes = "text" | "heading" | "link" | "action" | "iframe";
 
 export const trackCardCreated = (type: CardTypes, dashboardId: DashboardId) => {
   switch (type) {
