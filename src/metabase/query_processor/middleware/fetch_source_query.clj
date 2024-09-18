@@ -114,7 +114,7 @@
                        (tru "Card {0}" (:source-card stage)))
         ;; This will throw if there's a cycle
         (dep/topo-sort <>)))
-    (if (:source-card stage)
+    (if (and (:source-card stage) (pos? (:source-card stage)))
       (let [card         (card query (:source-card stage))
             card-stages  (get-in card [:dataset-query :stages])
             ;; this information is used by [[metabase.query-processor.middleware.annotate/col-info-for-field-clause*]]
@@ -126,13 +126,15 @@
                                      :source-query/model?      (= (:type card) :model))
                               (dissoc :source-card))]
         (into (vec card-stages) [stage']))
-      (vector {:lib/type :mbql.stage/native
-               :template-tags (or (-> stage :source-native :template-tags) {})
-               :native (-> stage :source-native :query)
-               :lib/stage-metadata (-> stage :source-native :metadata)}
-              (merge
-               (dissoc stage :lib/type :source-native)
-               {:lib/type :mbql.stage/mbql})))))
+      (let [source-native ((some-fn :source-native :metabase.lib.convert/source-native)
+                           stage)]
+        (vector {:lib/type :mbql.stage/native
+                 :template-tags (or (-> source-native :template-tags) {})
+                 :native (-> source-native :query)
+                 :lib/stage-metadata (-> source-native :metadata)}
+                (merge
+                 (dissoc stage :lib/type :source-native :source-card)
+                 {:lib/type :mbql.stage/mbql}))))))
 
 (def ^:private max-recursion-depth 50)
 
