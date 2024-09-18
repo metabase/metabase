@@ -465,10 +465,13 @@ export const lastRunCard = handleActions(
 export const sourceCard = handleActions(
   {
     [QUERY_COMPLETED]: {
-      next: (_, { payload: { card, queryResults } }) => ({
-        ...card,
-        result_metadata: queryResults[0].data.results_metadata.columns,
-      }),
+      next: (state, { payload: { card, queryResults } }) =>
+        card.dataset_query.type === "native"
+          ? {
+              ...card,
+              result_metadata: queryResults[0].data.results_metadata.columns,
+            }
+          : state,
     },
   },
   null,
