@@ -118,6 +118,31 @@
     (default-MBQL-clause->pMBQL x)
     x))
 
+(comment
+  (let [original {:database 4
+                  :type :query
+                  :query {:source-native {:query "select db.* from metabase_table t left join metabase_database db on db.id = t.db_id"
+                                          :metadata [{:name "db_id",
+                                                      :effective_type :type/Integer
+                                                      :field_ref [:field "db_id" {:base-type :type/Integer}]}]}
+                          :aggregation [[:count]]
+                          :breakout [[:field "name" {:base-type :type/Text}]]
+                          :order-by [[:desc [:aggregation 0]]]}}]
+    (-> original ->pMBQL))
+
+  ;; is true!
+  (let [original {:database 4
+                  :type :query
+                  :query {:source-native {:query "select db.* from metabase_table t left join metabase_database db on db.id = t.db_id"
+                                          :metadata [{:name "db_id",
+                                                      :effective_type :type/Integer
+                                                      :field_ref [:field "db_id" {:base-type :type/Integer}]}]}
+                          :aggregation [[:count]]
+                          :breakout [[:field "name" {:base-type :type/Text}]]
+                          :order-by [[:desc [:aggregation 0]]]}}]
+    (= original (-> original ->pMBQL ->legacy-MBQL)))
+  )
+
 (defmethod ->pMBQL :mbql/query
   [query]
   query)
@@ -145,14 +170,27 @@
               (= (:alias join) legacy-default-join-alias) (update :alias unique-name-fn)))
           joins)))
 
+(let [card-id* (atom 0)]
+  (defn- card-id!
+    "sequence of negative id numbers to serve as a card id for the native stages"
+    []
+    (swap! card-id* dec)))
+
 (defn- stage-source-card-id->pMBQL
   "If a query `stage` has a legacy `card__<id>` `:source-table`, convert it to a pMBQL-style `:source-card`."
   [stage]
-  (if (string? (:source-table stage))
-    (-> stage
-        (assoc :source-card (lib.util/legacy-string-table-id->card-id (:source-table stage)))
-        (dissoc :source-table))
-    stage))
+  (cond (string? (:source-table stage))
+        (-> stage
+            (assoc :source-card (lib.util/legacy-string-table-id->card-id (:source-table stage)))
+            (dissoc :source-table))
+
+        (:source-native stage)
+        (-> stage
+            (assoc :source-card (card-id!) ::source-native (:source-native stage))
+            (dissoc :source-native))
+
+        :else
+        stage))
 
 (defn do-with-aggregation-list
   "Impl for [[with-aggregation-list]]."
@@ -333,6 +371,7 @@
   "Does keyword `k` have a`:lib/` or a `:metabase.lib.*/` namespace?"
   [k]
   (and (qualified-keyword? k)
+       (not= k ::source-native)
        (when-let [symb-namespace (namespace k)]
          (or (= symb-namespace "lib")
              (str/starts-with? symb-namespace "metabase.lib.")))))
@@ -535,9 +574,13 @@
   "If a pMBQL query stage has `:source-card` convert it to legacy-style `:source-table \"card__<id>\"`."
   [stage]
   (if-let [source-card-id (:source-card stage)]
-    (-> stage
-        (dissoc :source-card)
-        (assoc :source-table (str "card__" source-card-id)))
+    (if (pos? source-card-id)
+      (-> stage
+          (dissoc :source-card)
+          (assoc :source-table (str "card__" source-card-id)))
+      (-> stage
+          (dissoc :source-card ::source-native)
+          (assoc :source-native (::source-native stage))))
     stage))
 
 (defmethod ->legacy-MBQL :mbql.stage/mbql
