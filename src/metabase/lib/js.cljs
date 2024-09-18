@@ -2246,9 +2246,13 @@
   > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
   However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
   ideally refactored away."
-  [a-query stage-number temporal-column start end]
+  [a-query stage-number temporal-column card-id start end]
+  (do (.log js/console "update-temporal-filter")
+      (.log js/console (with-out-str (cljs.pprint/pprint a-query))))
   (let [temporal-column (legacy-column->metadata a-query stage-number temporal-column)]
-    (lib.core/update-temporal-filter a-query stage-number temporal-column start end)))
+    ;; (lib.drill-thru.common/prepare-query query stage-number card-id)
+    (lib.core/update-temporal-filter (lib.drill-thru.common/prepare-query query stage-number card-id)
+                                     stage-number temporal-column start end)))
 
 (defn ^:export valid-filter-for?
   "Given two columns, returns true if `src-column` is a valid source to use for filtering `dst-column`.

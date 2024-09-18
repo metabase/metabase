@@ -273,7 +273,7 @@ export const canBrush = (
     !!onChangeCardAndRun &&
     hasBrushableDimension &&
     !hasCombinedCards &&
-    !isNative(series[0].card) &&
+    // !isNative(series[0].card) &&
     !isRemappedToString(series) &&
     !hasClickBehavior(series)
   );
@@ -755,6 +755,7 @@ export const getBrushData = (
       query,
       stageIndex,
       column,
+      question.id(),
       new Date(start).toISOString(),
       new Date(end).toISOString(),
     );
