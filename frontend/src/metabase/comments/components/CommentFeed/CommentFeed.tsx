@@ -24,10 +24,16 @@ export function CommentFeed({
   userId?: UserId;
   autoScroll?: boolean;
 }) {
-  const { data: comments, isLoading } = useListCommentQuery({
-    model,
-    model_id: modelId,
-  });
+  const { data: comments, isLoading } = useListCommentQuery(
+    {
+      model,
+      model_id: modelId,
+    },
+    {
+      pollingInterval: 1000,
+      skipPollingIfUnfocused: true,
+    },
+  );
 
   const previousComments = usePrevious(comments);
 
