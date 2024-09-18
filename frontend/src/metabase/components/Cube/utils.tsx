@@ -124,13 +124,6 @@ export const formatAndCleanCubeContent = (content: string) => {
         indentLevel = Math.max(0, indentLevel - 1);
       }
 
-      // Correctly handle primaryKey boolean values
-      if (formattedLine.includes("primaryKey:")) {
-        formattedLine = formattedLine
-          .replace(/`true`/g, "true")
-          .replace(/`false`/g, "false");
-      }
-
       return indent.repeat(indentLevel) + formattedLine;
     });
 
@@ -178,19 +171,14 @@ export function removeLineBreaks(str: string) {
 
 export const addCubeWrapper = (content: string, cubeName: string) => {
   const trimmedContent = content.trim();
-
-  // Check if the content is already wrapped with `cube(...)`
-  if (trimmedContent.startsWith(`cube(\`${cubeName}\``)) {
-    return trimmedContent; // If already wrapped, return the content as is
-  }
-
-  // Otherwise, wrap the content with `cube(...)` and ensure proper closure
-  if (trimmedContent.endsWith("}") || trimmedContent.endsWith("};")) {
-    return `cube(\`${cubeName}\`, ${trimmedContent})`;
+  const lastChar = trimmedContent.slice(-1);
+  if (lastChar === ")" || lastChar === ";") {
+    return `cube(\`${cubeName}\`, ${trimmedContent}`;
   } else {
     return `cube(\`${cubeName}\`, ${trimmedContent});`;
   }
 };
+
 export function extractAllJoins(
   cubesContent: string[],
 ): Record<string, string[]> {
