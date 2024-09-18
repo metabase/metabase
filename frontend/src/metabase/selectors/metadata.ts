@@ -93,10 +93,10 @@ const getNormalizedQuestions = (
   ...state.entities.questions,
   ...(state.qb?.sourceCard
     ? {
-        [Number.MAX_SAFE_INTEGER]: {
+        1000: {
           ...state.qb.sourceCard,
-          id: Number.MAX_SAFE_INTEGER,
-        },
+          id: 1000,
+        } as any,
       }
     : {}),
 });
