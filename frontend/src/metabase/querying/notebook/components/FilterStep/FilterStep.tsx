@@ -91,7 +91,7 @@ export function FilterStep({
         onReorder={handleReorderFilter}
         onRemove={handleRemoveFilter}
       >
-        {topDbFields.map(field => (
+        {topDbFields.slice(0, 2).map(field => (
           <FilterSuggestion
             key={new Field(field).getUniqueId()}
             stageIndex={stageIndex}

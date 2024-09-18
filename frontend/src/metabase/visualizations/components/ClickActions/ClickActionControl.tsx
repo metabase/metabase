@@ -1,3 +1,4 @@
+import { useTopDbFields } from "metabase/common/hooks";
 import Tooltip from "metabase/core/components/Tooltip";
 import type { IconName } from "metabase/ui";
 import { Button, Icon } from "metabase/ui";
@@ -8,6 +9,7 @@ import {
   isCustomClickActionWithView,
 } from "metabase/visualizations/types";
 import { isRegularClickAction } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
 
 import styles from "./ClickActionControl.module.css";
 import {
@@ -20,7 +22,6 @@ import {
   TokenActionButton,
   TokenFilterActionButton,
 } from "./ClickActionControl.styled";
-import { useTopDbFields } from "metabase/common/hooks";
 
 interface Props {
   action: ClickAction;
@@ -35,7 +36,10 @@ export const ClickActionControl = ({
 }: Props): JSX.Element | null => {
   const topDbFields = useTopDbFields(__MLv2_query, -1, "field_usage_filter");
 
-  console.log(topDbFields);
+  const suggestion = topDbFields.find(field =>
+    Lib.isEqual(field.column, action.column),
+  );
+
   if (
     !isRegularClickAction(action) &&
     !isCustomClickAction(action) &&
@@ -104,7 +108,7 @@ export const ClickActionControl = ({
 
     case "horizontal":
       return (
-        <>
+        <span>
           <Button
             classNames={{
               root: styles.horizontalButton,
@@ -130,8 +134,25 @@ export const ClickActionControl = ({
               <Subtitle className={styles.nested}>{action.subTitle}</Subtitle>
             )}
           </Button>
-          {action.name === "column-filter" && <p>appear</p>}
-        </>
+          {action.name === "column-filter" &&
+            !!suggestion?.field_usage_filter_most_used_args && (
+              <Button
+                w="fit-content"
+                py="4px"
+                px="8px"
+                fz="12px"
+                ml="24px"
+                fw={600}
+                radius={100}
+                style={{
+                  background:
+                    "linear-gradient(80.24deg, #66A5EF 34.6%, #AA97F1 90.52%)",
+                  color: "white",
+                }}
+                leftIcon={<Icon name="sparkles" size="12px" />}
+              >{`${suggestion.field_usage_filter_most_used_op} ${suggestion.field_usage_filter_most_used_args?.join(" and ")}`}</Button>
+            )}
+        </span>
       );
 
     case "info":
