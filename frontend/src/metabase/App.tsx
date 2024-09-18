@@ -121,7 +121,9 @@ function App({
             </AppContentContainer>
           </AppContainer>
           <Palette />
-          <ChatWidget />
+          <ErrorBoundary>
+            <ChatWidget />
+          </ErrorBoundary>
         </KBarProvider>
       </ScrollToTop>
     </ErrorBoundary>

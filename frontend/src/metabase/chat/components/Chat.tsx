@@ -1,4 +1,13 @@
-import { createRef, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Dispatch,
+  SetStateAction,
+  createRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -15,6 +24,7 @@ import {
   Icon,
   Loader,
   Paper,
+  Popover,
   Stack,
   Text,
   Textarea,
@@ -30,29 +40,30 @@ import { useMessages } from "./hooks/use-messages";
 
 export const Chat = ({
   scrollableStackRef,
+  setWidgetOpened,
 }: {
   scrollableStackRef: React.RefObject<HTMLDivElement>;
+  setWidgetOpened: Dispatch<SetStateAction<boolean>>;
 }) => {
   const { currentlyViewedQuestion: question, questionData } = (window as any)
     ._chatHacks;
-
-  console.log("question via hack", question);
-  console.log("questionData via hack", questionData);
 
   const query = question._card.dataset_query;
   const visualizationSettings = question._card.visualization_settings;
 
   const { messages, clearMessages, addMessage } = useMessages();
 
-  const scrollMessagesToBottom = useCallback(
-    () =>
-      scrollableStackRef.current?.scrollTo({
-        top: scrollableStackRef.current?.scrollHeight + 1000,
-      }),
-    [scrollableStackRef],
-  );
+  const scrollMessagesToBottom = useCallback(() => {
+    scrollableStackRef.current?.scrollTo({
+      top: scrollableStackRef.current?.scrollHeight + 1000,
+    });
+  }, [scrollableStackRef]);
 
   const [isAwaitingLLMResponse, setIsAwaitingLLMResponse] = useState(false);
+
+  useEffect(() => {
+    scrollMessagesToBottom();
+  }, [isAwaitingLLMResponse, scrollMessagesToBottom]);
 
   const data = questionData[0]?.data;
   const { cols, rows } = data;
@@ -173,6 +184,18 @@ export const Chat = ({
 
   return (
     <Box pos="relative">
+      <Flex
+        justify="center"
+        align="center"
+        w="5rem"
+        className={Styles.ChatNav}
+        pos="sticky"
+        top={0}
+        left="calc(100% - 5rem)"
+      >
+        <ChatMenu clearMessages={clearMessages} />
+        <ChatCollapse collapse={() => setWidgetOpened(false)} />
+      </Flex>
       <Stack
         spacing="sm"
         p="1rem"
@@ -384,10 +407,82 @@ const Messages = ({
   question: Question;
 }) => {
   return (
-    <Stack spacing="lg">
+    <Stack spacing="lg" pb="2rem">
       {messages.map((message, index) => (
         <MessageDisplay key={index} message={message} question={question} />
       ))}
     </Stack>
+  );
+};
+
+const ChatMenu = ({ clearMessages }: { clearMessages: () => void }) => {
+  const [opened, setOpened] = useState(false);
+  return (
+    <Popover
+      position="bottom-end"
+      offset={0}
+      opened={opened}
+      closeOnClickOutside
+    >
+      <Popover.Target>
+        <Button
+          styles={{
+            label: {
+              display: "flex",
+              justifyContent: "center",
+              align: "center",
+            },
+          }}
+          mt="xs"
+          px="sm"
+          py="xs"
+          c="#000"
+          variant="subtle"
+          onClick={() => setOpened(o => !o)}
+          className={Styles.ChatNavButton}
+        >
+          <Icon name="ellipsis" />
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <Paper miw="8rem">
+          <Stack>
+            <Button
+              className={Styles.ChatMenuItem}
+              styles={{ inner: { justifyContent: "flex-start" } }}
+              onClick={() => {
+                clearMessages();
+                setOpened(false);
+              }}
+            >{t`Clear chat`}</Button>
+          </Stack>
+        </Paper>
+      </Popover.Dropdown>
+    </Popover>
+  );
+};
+
+const ChatCollapse = ({ collapse }: { collapse: () => void }) => {
+  return (
+    <Tooltip label={t`Minimize chat`}>
+      <Button
+        styles={{
+          label: {
+            display: "flex",
+            justifyContent: "center",
+            align: "center",
+          },
+        }}
+        mt="xs"
+        px="sm"
+        py="xs"
+        c="#000"
+        variant="subtle"
+        onClick={collapse}
+        className={Styles.ChatNavButton}
+      >
+        <Icon name="chevrondown" />
+      </Button>
+    </Tooltip>
   );
 };

@@ -5,6 +5,7 @@
 }
 .MetabotLogo {
   width: 2rem;
+  cursor: pointer;
 }
 .ChatLauncher {
   border-radius: 100%;
@@ -13,5 +14,30 @@
   transition: background-color 0.1s;
   &:hover {
     background-color: color-mix(in srgb, var(--mb-color-brand) 90%, white);
+  }
+}
+
+.WidgetDropdown {
+  &:not([data-css-specificity-hack]) {
+    box-shadow: 0px 4px 20px 0px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+  }
+  animation: expandAnimation 0.15s ease-out forwards;
+}
+
+.WidgetContainer {
+  overflow-y: auto;
+}
+
+@keyframes expandAnimation {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+    transform-origin: bottom right; /* Origin point for expansion */
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    transform-origin: bottom right;
   }
 }
