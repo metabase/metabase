@@ -33,7 +33,7 @@
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private field-usage-interval-seconds 1)
+(def ^:private field-usage-interval-seconds 20)
 
 (defonce ^:private
   field-usages-queue
@@ -51,7 +51,7 @@
                                              inputs))
               (catch Throwable e
                 (log/error e "Error saving field usages"))))
-          :capacity 20
+          :capacity 1
           :interval (* field-usage-interval-seconds 1000))))
 
 ;; TODO - I'm not sure whether this should happen async as is currently the case, or should happen synchronously e.g.
