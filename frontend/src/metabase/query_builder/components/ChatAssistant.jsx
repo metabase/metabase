@@ -17,7 +17,7 @@ import {
 } from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
 import { clearInitialMessage } from "metabase/redux/initialMessage";
 import { useSelector } from "metabase/lib/redux";
-import { getDBInputValue, getCompanyName } from "metabase/redux/initialDb";
+import { getDBInputValue, getCompanyName, getInsightDBInputValue } from "metabase/redux/initialDb";
 import { getInitialSchema } from "metabase/redux/initialSchema";
 import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipToken } from "metabase/api";
 import { SemanticError } from "metabase/components/ErrorPages";
@@ -26,6 +26,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const initialDbName = useSelector(getDBInputValue);
     const initialCompanyName = useSelector(getCompanyName);
     const initialSchema = useSelector(getInitialSchema);
+    const initialInsightDbName = useSelector(getInsightDBInputValue);
     const inputRef = useRef(null);
     const dispatch = useDispatch();
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
@@ -41,6 +42,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [codeQuery, setCodeQuery] = useState([]);
     const [isDBModalOpen, setIsDBModalOpen] = useState(false);
     const [dbInputValue, setDBInputValue] = useState("");
+    const [insightDbId, setInsightDbId] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedTab, setSelectedTab] = useState("reasoning");
@@ -75,15 +77,21 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 setDBInputValue(cubeDatabase.id);
                 setCompanyName(cubeDatabase.company_name)
             }
+            const insightDatabase = databases.find(
+                database => database.is_cube === false,
+              );
+              if (insightDatabase) {
+                setInsightDbId(insightDatabase.id);
+              }
         }
     }, [databases]);
-
+    const dbId = chatType === "insights" ? insightDbId : dbInputValue;
     const { 
         data: databaseMetadata, 
         isLoading: databaseMetadataIsLoading, 
         error: databaseMetadataIsError 
     } = useGetDatabaseMetadataWithoutParamsQuery(
-        dbInputValue !== "" ? { id: dbInputValue } : skipToken
+        dbId !== "" ? { id: dbId } : skipToken
     );
     const databaseMetadataData = databaseMetadata;
     
@@ -190,6 +198,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                         break;
                     case "info":
                         await handleInfoMessage(data);
+                        break;
+                    case "directResponse":
+                        await handleDirectResponse(data);
                         break;
                     default:
                         handleDefaultMessage(data);
@@ -576,10 +587,12 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     }
 
     const handleDefaultMessage = data => {
-        addServerMessage(
-            data.message || "Received a message from the server.",
-            "text",
-        );
+        if(data.message) {
+            addServerMessage(
+                data.message || "Received a message from the server.",
+                "text",
+            );
+        }
     };
 
     const handleResultMessage = data => {
@@ -652,6 +665,15 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 ];
             });
         }
+    }
+
+    const handleDirectResponse = data => {
+        addServerMessage(
+            data.message || "Received a message from the server.",
+            "text",
+        );
+        setIsLoading(false);
+        removeLoadingMessage();
     }
 
     const redirect = async () => {
@@ -764,11 +786,12 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
 
         setIsLoading(true);
+        const dbId = chatType === "insights" ? insightDbId : dbInputValue;
         if (isConnected) {
             ws.send(
                 JSON.stringify({
                     type: "configure",
-                    configData: [dbInputValue, companyName],
+                    configData: [dbId, companyName],
                     appType: chatType,
                     schema: schema
                 }),
@@ -883,12 +906,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     }, [initial_message, ws, isConnected]);
 
     useEffect(() => {
-        if (initialDbName !== null && initialCompanyName !== '' && initialSchema && initialSchema.schema && initialSchema.schema.length > 0) {
+        if (initialDbName !== null && initialInsightDbName !== null && initialCompanyName !== '' && initialSchema && initialSchema.schema && initialSchema.schema.length > 0) {
             setDBInputValue(initialDbName)
+            setInsightDbId(initialInsightDbName)
             setCompanyName(initialCompanyName)
             setSchema(initialSchema.schema)
         }
-    }, [initialDbName, initialCompanyName, initialSchema])
+    }, [initialDbName, initialInsightDbName, initialCompanyName, initialSchema])
 
 
     return (
@@ -901,7 +925,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     width: "100%",
                 }}
             >
-                {dbInputValue !== '' ? (
+                {chatType === "default" && dbInputValue === '' ? (
+                <SemanticError />
+            ) : (
                     <>
                         <Button
                             variant="outlined"
@@ -964,6 +990,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                                 ref={inputRef}
                                                 value={inputValue}
                                                 onChange={handleInputChange}
+                                                disabled={!isConnected || schema.length < 1 || selectedThreadId}
                                                 onKeyPress={handleKeyPress}
                                                 placeholder="Enter a prompt here..."
                                                 style={{
@@ -1049,8 +1076,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
                         </div>
                     </>
-                ) : (
-                    <SemanticError />
                 )}
             </Box>
 
