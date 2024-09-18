@@ -35,15 +35,13 @@ export const EmojiButton = ({
 }: {
   emoji: string;
   onClick: ButtonProps["onClick"];
-}) => {
-  return (
-    <UnstyledButton onClick={onClick} className={AddReactionS.EmojiButton}>
-      <Center p="xs">
-        <Text fz="xl">{emoji}</Text>
-      </Center>
-    </UnstyledButton>
-  );
-};
+}) => (
+  <UnstyledButton onClick={onClick} className={AddReactionS.EmojiButton}>
+    <Center p="xs">
+      <Text fz="xl">{emoji}</Text>
+    </Center>
+  </UnstyledButton>
+);
 
 export const ASlightlyCrapEmojiPicker = ({
   onSelect,
@@ -116,15 +114,17 @@ export const ASlightlyCrapEmojiPicker = ({
   );
 };
 
-export const AddReaction = () => {
+export const AddReaction = ({
+  onSelect,
+}: {
+  onSelect: (value: string) => void;
+}) => {
   const [opened, { toggle, close }] = useDisclosure(false);
 
-  const onSelectReaction = () =>
-    // reaction: string
-    {
-      // do a thing with reaction
-      close();
-    };
+  const onSelectReaction = (reaction: string) => {
+    close();
+    onSelect(reaction);
+  };
 
   return (
     <Popover opened={opened} onClose={close} closeOnClickOutside>

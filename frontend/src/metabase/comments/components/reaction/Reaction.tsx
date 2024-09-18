@@ -21,9 +21,11 @@ function formatList(items: string[]) {
 export const Reaction = ({
   userList,
   emoji,
+  onAddReaction,
 }: {
   userList: ReactionType["author"][];
-  emoji: ReactionType["content"];
+  emoji: ReactionType["emoji"];
+  onAddReaction: (value: string) => void;
 }) => (
   <ReactionBadge
     left={
@@ -36,6 +38,7 @@ export const Reaction = ({
         {userList.length}
       </Text>
     }
+    onClick={() => onAddReaction(emoji)}
     tooltipLabel={
       <Text fz="sm" span c="text-white">
         {formatList(

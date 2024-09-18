@@ -33,7 +33,7 @@ export type Comment = ModelRef & {
 };
 
 export type Reaction = {
-  content: string;
+  emoji: string;
   author: Pick<User, "id" | "first_name" | "last_name" | "email">;
   id: ReactionId;
 };
