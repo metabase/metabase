@@ -34,9 +34,10 @@ import type Question from "metabase-lib/v1/Question";
 import Styles from "./Chat.module.css";
 import { useMessages } from "./hooks/use-messages";
 import type { Message } from "./types";
-import { getColumnsWithSampleValues } from "./utils";
+import { getColumnsWithSampleValues, getJsonSchemaForFilters } from "./utils";
 import { useMetabotAgentTool } from "./hooks/useMetabotAgentTool";
 import { METABOT_AGENT_TOOLS_SPEC } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
+import { Field } from "metabase-types/api";
 
 export const Chat = ({
   scrollableStackRef,
@@ -74,14 +75,6 @@ export const Chat = ({
     return getColumnsWithSampleValues(cols, rows);
   }, [cols, rows]);
 
-  // const fieldsWithSampleValues = (() => {
-  //   if (!rows || !cols) {
-  //     return [];
-  //   }
-  //
-  //   return getColumnsWithSampleValues(cols, rows);
-  // })();
-
   // So that the LLM has better information, we're going to concatenate the id
   // with the field name and remove this name later.
 
@@ -109,6 +102,12 @@ export const Chat = ({
     //   use the field's name field.
     // </system>;
 
+    const jsonSchemaForFilters = getJsonSchemaForFilters(
+      table.fields as Field[],
+    );
+    const jsonSchemaForFiltersStringified =
+      JSON.stringify(jsonSchemaForFilters);
+
     const prompt = `
       <context>
         table id: ${question._card.dataset_query.database}.
@@ -116,6 +115,10 @@ export const Chat = ({
         table display name: ${table?.display_name}.
         available fields: ${JSON.stringify(fields)}.
       </context>
+
+      <json-schema-for-filters>
+      ${jsonSchemaForFiltersStringified}
+      </json-schema-for-filters>
 
       <user_ask>
         ${userMessage}
