@@ -52,37 +52,30 @@ export function NotebookStep({
     useToggle(false);
 
   const actionButtons = useMemo(() => {
-    const actions = [];
     const hasLargeActionButtons =
       isLastStep && step.actions.some(hasLargeButton);
 
-    actions.push(
-      ...step.actions.map(action => {
-        const stepUi = getStepConfig(action.type);
-        const title = stepUi.title;
-        return {
-          priority: stepUi.priority,
-          button: (
-            <NotebookActionButton
-              key={`actionButton_${title}`}
-              className={cx({
-                [cx(CS.mr2, CS.mt2)]: isLastStep,
-                [CS.mr1]: !isLastStep,
-              })}
-              large={hasLargeActionButtons}
-              {...stepUi}
-              title={title}
-              aria-label={title}
-              onClick={() => action.action({ openStep })}
-            />
-          ),
-        };
-      }),
-    );
+    const actions = step.actions.map(action => {
+      const stepUi = getStepConfig(action.type);
+      const title = stepUi.title;
 
-    actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+      return (
+        <NotebookActionButton
+          key={`actionButton_${title}`}
+          className={cx({
+            [cx(CS.mr2, CS.mt2)]: isLastStep,
+            [CS.mr1]: !isLastStep,
+          })}
+          large={hasLargeActionButtons}
+          {...stepUi}
+          title={title}
+          aria-label={title}
+          onClick={() => action.action({ openStep })}
+        />
+      );
+    });
 
-    return actions.map(action => action.button);
+    return actions;
   }, [step.actions, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
@@ -97,6 +90,8 @@ export function NotebookStep({
   }, [step, updateQuery]);
 
   const { title, color, Step, StepHeader } = getStepConfig(step.type);
+
+  // console.log({ actionButtons })
 
   const canPreview = step.previewQuery != null;
   const hasPreviewButton = !isPreviewOpen && canPreview;

@@ -25,7 +25,6 @@ import { NotebookStepHeader } from "./NotebookStepHeader";
 type StepUIItem = {
   title: string;
   icon?: IconName;
-  priority?: number;
   transparent?: boolean;
   compact?: boolean;
   color: () => string;
@@ -43,7 +42,6 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
   join: {
     title: t`Join data`,
     icon: "join_left_outer",
-    priority: 1,
     color: () => color("brand"),
     Step: JoinStep,
     StepHeader: NotebookStepHeader,
@@ -59,7 +57,6 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
   filter: {
     title: t`Filter`,
     icon: "filter",
-    priority: 10,
     color: () => color("filter"),
     Step: FilterStep,
     StepHeader: NotebookStepHeader,
@@ -67,7 +64,6 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
   summarize: {
     title: t`Summarize`,
     icon: "sum",
-    priority: 5,
     color: () => color("summarize"),
     Step: SummarizeStep,
     StepHeader: SummarizeStepHeader,
@@ -75,7 +71,6 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
   aggregate: {
     title: t`Aggregate`,
     icon: "sum",
-    priority: 5,
     color: () => color("summarize"),
     Step: AggregateStep,
     StepHeader: NotebookStepHeader,
@@ -83,7 +78,6 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
   breakout: {
     title: t`Breakout`,
     icon: "segment",
-    priority: 1,
     color: () => color("accent4"),
     Step: BreakoutStep,
     StepHeader: NotebookStepHeader,
