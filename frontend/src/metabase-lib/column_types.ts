@@ -51,3 +51,10 @@ export function isAssignableType(
 ): boolean {
   return ML.valid_filter_for_QMARK_(column1, column2);
 }
+
+export function isEqual(
+  column1: ColumnMetadata,
+  column2: ColumnMetadata,
+): boolean {
+  return ML.is_equal_QMARK_(column1, column2);
+}

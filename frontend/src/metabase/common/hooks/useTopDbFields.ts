@@ -50,13 +50,28 @@ export const useTopDbFields = (
     });
   };
 
+  const filters = Lib.filters(query, stageIndex);
   const topFields = sortedFields
     .map(field => ({
       ...field,
       column: getColumn(field),
       attribute,
     }))
-    .filter(({ column }) => column != null);
+    .filter(({ column }) => {
+      if (!column) {
+        return false;
+      }
+
+      return filters.every(filter => {
+        const parts = Lib.filterParts(query, stageIndex, filter);
+
+        if (!parts?.column) {
+          return true;
+        }
+
+        return !Lib.isEqual(parts?.column, column);
+      });
+    });
 
   return topFields.slice(0, 2);
 };
