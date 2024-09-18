@@ -1,9 +1,12 @@
+import { useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { getSankeyLayout } from "metabase/visualizations/echarts/graph/layout";
 import { getSankeyChartModel } from "metabase/visualizations/echarts/graph/model";
 import { getSankeyChartOption } from "metabase/visualizations/echarts/graph/sankey/option";
+import { getTooltipOption } from "metabase/visualizations/echarts/graph/sankey/option/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
@@ -45,12 +48,16 @@ export const SankeyChart = ({
   settings,
   fontFamily,
 }: VisualizationProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const renderingContext = useBrowserRenderingContext({ fontFamily });
   const model = getSankeyChartModel(rawSeries, settings, renderingContext);
   const layout = getSankeyLayout(model, renderingContext);
-  const option = getSankeyChartOption(model, layout, renderingContext);
+  const option = {
+    ...getSankeyChartOption(model, layout, renderingContext),
+    tooltip: getTooltipOption(containerRef, model.sankeyColumns.value.column),
+  };
 
-  return <SankeyChartRenderer option={option} />;
+  return <ResponsiveEChartsRenderer ref={containerRef} option={option} />;
 };
 
 Object.assign(SankeyChart, {

@@ -35,5 +35,6 @@ export const getSankeyChartModel = (
   return {
     data,
     formatters,
+    sankeyColumns,
   };
 };
