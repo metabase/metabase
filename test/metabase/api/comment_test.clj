@@ -33,7 +33,22 @@
       (let [result (mt/user-http-request :rasta :get 200 (format "comment?model=card&model_id=%d" card-id))]
         (is (= [c1-id c2-id c3-id] (filter #{c4-id c3-id c2-id c1-id} (map :id result))))
         (is (=? {:model "card" :text "first!" :model_id card-id :author {:first_name "Rasta"}}
-                (first result)))))))
+                (first result))))))
+  (testing "Comments with replies"
+    (mt/with-temp
+      [:model/Card    {card-id :id}  {}
+       :model/Comment {c1-id :id}    {:model "card"    :model_id card-id  :text "first!"}
+       :model/Comment {c2-id :id}    {:model "comment" :model_id c1-id    :text "A reply"}
+       :model/Comment {c3-id :id}    {:model "card"    :model_id card-id  :text "Here is some actual insight..."}
+       :model/Comment {c4-id :id}    {:model "comment" :model_id c1-id    :text "Another reply"}]
+      (let [result (mt/user-http-request :rasta :get 200 (format "comment?model=card&model_id=%d" card-id))]
+        (is (=?
+             [{:id c1-id
+               :replies [{:id c2-id}
+                         {:id c4-id}]}
+              {:id c3-id
+               :replies []}]
+             result))))))
 
 (deftest comment-creation-test
   (testing "POST /api/comment"

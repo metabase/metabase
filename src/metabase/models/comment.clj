@@ -19,6 +19,15 @@
    :id
    {:default []}))
 
+(methodical/defmethod t2/batched-hydrate [:default :replies]
+  [_model k comments]
+  (mi/instances-with-hydrated-data
+   comments k
+   #(group-by :model_id
+              (t2/select :model/Comment :model "comment" :model_id [:in (map :id comments)]))
+   :id
+   {:default []}))
+
 (def commentable-models "Set of models that allow comments"
   #{"card"
     "comment"
@@ -26,7 +35,7 @@
 
 (defn- hydrate-comment
   [comment-or-comments]
-  (t2/hydrate comment-or-comments :author [:reactions :author]))
+  (t2/hydrate comment-or-comments :author [:reactions :author] :replies))
 
 (defn for-model
   "All the comments for the given model"
