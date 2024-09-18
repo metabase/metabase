@@ -22,10 +22,14 @@
        (search.postgres/init! true)
        ~@body)))
 
+(def ^:private example-terms
+  "Search queries which should give consistent, non-trivial results across engines, for the test data."
+  [nil "da" "data" "dash" "peop" "venue" "rasta" "collectio"])
+
 (deftest hybrid-test
   (with-setup
     (testing "consistent results between all searches for certain queries\n"
-      (doseq [term ["satisfaction" "e-commerce" "example" "rasta" "new" "revenue" "collection"]]
+      (doseq [term example-terms]
         (testing (str "consistent results, but not ordering\n" term)
           (is (= (set (legacy-results term))
                  (set (hybrid term)))))))))
@@ -48,18 +52,19 @@
 (deftest hybrid-multi-test
   (with-setup
     (testing "consistent results between both hybrid implementations"
-      (doseq [term ["satisfaction" "e-commerce" "example" "rasta" "new" "revenue" "collection"]]
+      (doseq [term example-terms]
         (testing term
           (is (= (hybrid term)
                  (hybrid-multi term))))))))
 
 (defn- remove-time [m]
-  (dissoc m :create_at))
+  #_(select-keys m [:id :name :description :model])
+  (dissoc m :created_at :updated_at :last_edited_at))
 
 (deftest minimal-test
   (with-setup
     (testing "consistent results between both hybrid implementations"
-      (doseq [term ["satisfaction" "e-commerce" "example" "new" "revenue"]]
+      (doseq [term example-terms]
         (testing term
           ;; Timestamps are not strings after round trip, but this doesn't matter
           (is (= (map remove-time (hybrid term))
