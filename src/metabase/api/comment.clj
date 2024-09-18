@@ -4,6 +4,7 @@
    [compojure.core :refer [GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.models.comment :as comment]
+   [metabase.models.reaction :as reaction]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]))
 
@@ -41,5 +42,14 @@
    resolved [:maybe :boolean]
    text     [:maybe ms/NonBlankString]}
   (comment/update! id (u/select-non-nil-keys comment-updates [:resolved :text])))
+
+(api/defendpoint POST "/:comment-id/react"
+  "Create a comment"
+  [comment-id :as {{:keys [emoji]} :body}]
+  {comment-id ms/PositiveInt
+   emoji      ms/NonBlankString}
+  (reaction/create! {:comment_id comment-id
+                     :emoji      emoji
+                     :author_id  api/*current-user-id*}))
 
 (api/define-routes)

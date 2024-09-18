@@ -60,3 +60,21 @@
         (is (=? {:resolved false :text "oops" :author {:first_name "Rasta"}}
                 result))
         (is (= "oops" (t2/select-one-fn :text :model/Comment :id comment-id)))))))
+
+(deftest comment-reaction-test
+  (testing "POST /api/comment/:id/react"
+    (mt/with-temp
+      [:model/Card    {card-id :id}    {}
+       :model/Comment {comment-id :id} {:model "card" :model_id card-id :text "first!"}]
+      (try
+        (mt/user-http-request :rasta :post 200
+                              (format "comment/%d/react" comment-id)
+                              {:emoji "🐄"})
+        (let [comment (first (mt/user-http-request :rasta :get 200 (format "comment?model=card&model_id=%d" card-id)))]
+
+          (is (=? {:text "first!"
+                   :author {:first_name "Rasta"}
+                   :reactions [{:emoji "🐄" :author {:first_name "Rasta"}}]}
+                  comment)))
+        (finally
+          (t2/delete! :model/Reaction :comment_id comment-id))))))

@@ -1,5 +1,6 @@
 (ns metabase.models.comment
   (:require
+   [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -8,6 +9,15 @@
 (doto :model/Comment
   (derive :metabase/model))
 
+(methodical/defmethod t2/batched-hydrate [:default :reactions]
+  [_model k comments]
+  (mi/instances-with-hydrated-data
+   comments k
+   #(group-by :comment_id
+              (t2/select :model/Reaction :comment_id [:in (map :id comments)]))
+   :id
+   {:default []}))
+
 (def commentable-models "Set of models that allow comments"
   #{"card"
     "comment"
@@ -15,7 +25,7 @@
 
 (defn- hydrate-comment
   [comment-or-comments]
-  (t2/hydrate comment-or-comments :author))
+  (t2/hydrate comment-or-comments :author [:reactions :author]))
 
 (defn for-model
   "All the comments for the given model"
