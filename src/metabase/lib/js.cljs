@@ -1993,7 +1993,7 @@
        "stageIndex" stage-number
        "value"      (lib.drill-thru.common/drill-value->js value)})
 
-(defn ^:export combile-column-drill-details
+(defn ^:export combine-column-drill-details
   "Returns a JS object with the details needed to render the complex UI for `combine-column` drills."
   [{a-query :query
     :keys [column stage-number]}]
