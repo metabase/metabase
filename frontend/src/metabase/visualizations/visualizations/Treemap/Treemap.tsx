@@ -5,26 +5,38 @@ import { findWithIndex } from "metabase/lib/arrays";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
-  dimensionSetting,
+  getOptionFromColumn,
   metricSetting,
 } from "metabase/visualizations/lib/settings/utils";
+import { getDefaultDimensionsAndMetrics } from "metabase/visualizations/lib/utils";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import type { RawSeries } from "metabase-types/api";
+
+const MAX_TREEMAP_DIMENSIONS = 100;
 
 // Defines supported visualization settings
 const SETTING_DEFINITIONS = {
   // Column formatting settings
   ...columnSettings({ hidden: true }),
-  // // Treemap dimension column
-  ...dimensionSetting("treemap.name", {
+  // Treemap dimensions
+  "treemap.dimensions": {
     section: t`Data`,
-    title: t`Name`,
-    showColumnSetting: true,
-  }),
-  ...dimensionSetting("treemap.parent", {
-    section: t`Data`,
-    title: t`Parent`,
-    showColumnSetting: true,
-  }),
+    title: t`Dimensions`,
+    widget: "fields",
+    getDefault: (rawSeries: RawSeries) =>
+      getDefaultDimensionsAndMetrics(rawSeries, MAX_TREEMAP_DIMENSIONS, 1)
+        .dimensions,
+    persistDefault: true,
+    getProps: ([{ data }]) => {
+      const options = data.cols.map(getOptionFromColumn);
+      return {
+        options,
+        addAnother: true,
+        columns: data.cols,
+      };
+    },
+  },
+
   // Heatmap metric column
   ...metricSetting("treemap.metric", {
     section: t`Data`,
