@@ -43,10 +43,11 @@
   :model/User)
 
 (methodical/defmethod t2/table-name :model/User [_model] :core_user)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :author]     [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :creator]    [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :updated_by] [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :user]       [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :author]      [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :creator]     [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :updated_by]  [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :resolved_by] [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :user]        [_original-model _k] :model/User)
 
 (doto :model/User
   (derive :metabase/model)

@@ -40,11 +40,14 @@
 
 (api/defendpoint PUT "/:id"
   "Update a comment (resolve; edit)"
-  [id :as {{:keys [resolved text] :as comment-updates} :body}]
+  [id :as {{:keys [resolved text]} :body}]
   {id       ms/PositiveInt
    resolved [:maybe :boolean]
    text     [:maybe ms/NonBlankString]}
-  (comment/update! id (u/select-non-nil-keys comment-updates [:resolved :text])))
+  (let [comment-updates {:resolved       resolved
+                         :text           text
+                         :resolved_by_id (when resolved api/*current-user-id*)}]
+    (comment/update! id (u/select-non-nil-keys comment-updates [:resolved :text :resolved_by_id]))))
 
 (api/defendpoint POST "/:comment-id/react"
   "Create a comment"
