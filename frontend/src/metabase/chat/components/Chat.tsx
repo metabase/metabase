@@ -1,11 +1,10 @@
 import {
-  Dispatch,
-  SetStateAction,
+  type Dispatch,
+  type SetStateAction,
   createRef,
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { match } from "ts-pattern";
@@ -34,9 +33,9 @@ import type Question from "metabase-lib/v1/Question";
 import type { FieldReference } from "metabase-types/api";
 
 import Styles from "./Chat.module.css";
+import { useMessages } from "./hooks/use-messages";
 import type { Message, QueryField } from "./types";
 import { getColumnsWithSampleValues, getLLMResponse } from "./utils";
-import { useMessages } from "./hooks/use-messages";
 
 export const Chat = ({
   scrollableStackRef,
@@ -192,6 +191,7 @@ export const Chat = ({
         pos="sticky"
         top={0}
         left="calc(100% - 5rem)"
+        gap="xs"
       >
         <ChatMenu clearMessages={clearMessages} />
         <ChatCollapse collapse={() => setWidgetOpened(false)} />
@@ -448,7 +448,6 @@ const ChatMenu = ({ clearMessages }: { clearMessages: () => void }) => {
         <Paper miw="8rem">
           <Stack>
             <Button
-              className={Styles.ChatMenuItem}
               styles={{ inner: { justifyContent: "flex-start" } }}
               onClick={() => {
                 clearMessages();

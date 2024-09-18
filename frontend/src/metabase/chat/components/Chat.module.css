@@ -1,14 +1,17 @@
 .AIMessageMarkdown {
   line-height: 1.35;
   word-break: break-word;
+
   p {
     margin-bottom: 1rem;
   }
+
   li {
     list-style: disc;
     margin-left: 1rem;
     margin-bottom: 0.5rem;
   }
+
   h1,
   h2,
   h3 {
@@ -16,18 +19,19 @@
     margin-bottom: 0.5rem;
   }
 }
-.ChatMenu {
-  background-color: rgba(255, 255, 255, 0.9);
-  &:hover {
-    background-color: #fff;
-  }
+
+.ChatNav {
   border-radius: 1rem;
   z-index: 10;
 }
 
 .ChatNavButton {
+  &:not([data-css-specificity-hack]) {
+    background-color: rgba(255, 255, 255, 0.7);
+  }
+
   &:hover:not([data-css-specificity-hack]) {
-    background-color: var(--mb-color-border);
+    background-color: #fff;
     color: #000;
   }
 }
