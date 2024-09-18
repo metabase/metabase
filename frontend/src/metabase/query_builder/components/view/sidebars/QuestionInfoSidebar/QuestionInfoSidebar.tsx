@@ -79,14 +79,14 @@ export const QuestionInfoSidebar = ({
                 <Icon name="gear" />
               </Button>
                 */}
-              <Tooltip label={t`Edit visualization with AI`}>
+              <Tooltip label={t`Metabot`}>
                 <Button
                   c={
                     pageId === "edit_viz" ? "var(--mb-color-brand)" : undefined
                   }
                   onClick={() => setPageId("edit_viz")}
                 >
-                  <Icon name="palette" />
+                  <Icon name="ai" />
                 </Button>
               </Tooltip>
               <Tooltip label={t`Clear AI history`}>
