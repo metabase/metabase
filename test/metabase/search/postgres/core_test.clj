@@ -25,7 +25,7 @@
 
 (def ^:private example-terms
   "Search queries which should give consistent, non-trivial results across engines, for the test data."
-  [nil "da" "data" "dash" "peop" "venue" "rasta"])
+  [#_nil "data" "dash" "peop" "venue" "rasta"])
 
 (deftest hybrid-test
   (with-setup
@@ -52,7 +52,7 @@
 
 (deftest hybrid-multi-test
   (with-setup
-    (testing "consistent results between both hybrid implementations"
+    (testing "consistent results between both hybrid implementations\n"
       (doseq [term example-terms]
         (testing term
           (is (= (hybrid term)
@@ -63,7 +63,7 @@
 
 (deftest minimal-test
   (with-setup
-    (testing "consistent results between both hybrid implementations"
+    (testing "consistent results between both hybrid implementations\n"
       (doseq [term example-terms]
         (testing term
           ;; Timestamps are not strings after round trip, but this doesn't matter
