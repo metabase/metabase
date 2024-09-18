@@ -26,6 +26,25 @@
   []
   (u.files/append-to-path (plugins/plugins-dir) kitchen-sink-database-filename))
 
+(def kitchen-sync-dir
+  "Directory in dev mode for the kitchen sink exports."
+  (io/file "dev" "kitchen_sink"))
+
+(defn- kitchen-sink-bundles []
+  (.listFiles kitchen-sync-dir))
+
+(defn kitchen-sink-collections
+  "Returns a map of collection `entity_id`s to kitchen sink subdirectories (as `java.io.File`s).
+
+  Intended to be used by update/insert hooks to keep the kitchen sink directories up to date."
+  []
+  (into {} (for [dir      (kitchen-sink-bundles)
+                 col-file (.listFiles (io/file dir "collections"))]
+             (-> col-file
+                 (.getName)
+                 (subs 0 21) ; NanoIDs are always 21 characters
+                 (vector dir)))))
+
 (defn- process-kitchen-sink-db-path
   [base-path]
   (-> base-path
