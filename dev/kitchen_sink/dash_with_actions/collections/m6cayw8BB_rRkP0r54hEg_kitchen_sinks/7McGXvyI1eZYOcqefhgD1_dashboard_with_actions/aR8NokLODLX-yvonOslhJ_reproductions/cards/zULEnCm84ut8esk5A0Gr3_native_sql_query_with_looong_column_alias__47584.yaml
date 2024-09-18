@@ -1,0 +1,69 @@
+name: 'Native SQL query with looong column alias #47584'
+description: |-
+  A native query with a long column alias.
+
+  Try turning this saved question into a Model and make sure query results are displayed.
+
+  We don't like long column names in models #47584
+
+  https://github.com/metabase/metabase/issues/47584
+entity_id: zULEnCm84ut8esk5A0Gr3
+created_at: '2024-09-18T16:56:22.401891Z'
+creator_id: admin@metabase.local
+display: table
+archived: false
+collection_id: aR8NokLODLX-yvonOslhJ
+collection_preview: true
+collection_position: null
+query_type: native
+database_id: Sample Database
+table_id: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  native:
+    query: |-
+      SELECT
+        count(*) AS coun,
+        state AS Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count
+      FROM
+        people
+      GROUP BY
+        Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count
+    template-tags: {}
+  type: native
+result_metadata:
+- base_type: type/BigInteger
+  display_name: COUN
+  effective_type: type/BigInteger
+  field_ref:
+  - field
+  - COUN
+  - base-type: type/BigInteger
+  name: COUN
+  semantic_type: null
+- base_type: type/Text
+  display_name: TOTAL_NUMBER_OF_PEOPLE_FROM_EACH_STATE_SEPARATED_BY_STATE_AND_THEN_WE_DO_A_COUNT
+  effective_type: type/Text
+  field_ref:
+  - field
+  - TOTAL_NUMBER_OF_PEOPLE_FROM_EACH_STATE_SEPARATED_BY_STATE_AND_THEN_WE_DO_A_COUNT
+  - base-type: type/Text
+  name: TOTAL_NUMBER_OF_PEOPLE_FROM_EACH_STATE_SEPARATED_BY_STATE_AND_THEN_WE_DO_A_COUNT
+  semantic_type: null
+visualization_settings:
+  column_settings: null
+  table.cell_column: COUN
+serdes/meta:
+- id: zULEnCm84ut8esk5A0Gr3
+  label: native_sql_query_with_looong_column_alias__47584
+  model: Card
+archived_directly: false
+metabase_version: v0.1.37-SNAPSHOT (6469402)
+source_card_id: null
+type: question

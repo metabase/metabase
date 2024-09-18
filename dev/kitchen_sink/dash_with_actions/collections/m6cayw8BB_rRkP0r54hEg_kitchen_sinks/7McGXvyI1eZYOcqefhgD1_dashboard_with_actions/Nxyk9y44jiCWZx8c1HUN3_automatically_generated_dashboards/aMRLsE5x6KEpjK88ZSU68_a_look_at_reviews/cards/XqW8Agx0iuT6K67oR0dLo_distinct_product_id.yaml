@@ -1,0 +1,68 @@
+name: Distinct Product ID
+description: null
+entity_id: XqW8Agx0iuT6K67oR0dLo
+created_at: '2024-09-18T16:47:13.228733Z'
+creator_id: admin@metabase.local
+display: scalar
+archived: false
+collection_id: aMRLsE5x6KEpjK88ZSU68
+collection_preview: true
+collection_position: null
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- REVIEWS
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  query:
+    aggregation:
+    - - distinct
+      - - field
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - ID
+        - source-field:
+          - Sample Database
+          - PUBLIC
+          - REVIEWS
+          - PRODUCT_ID
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - REVIEWS
+  type: query
+result_metadata:
+- aggregation_index: 0
+  base_type: type/Integer
+  display_name: Distinct values of Product → ID
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+  settings: null
+  source: aggregation
+visualization_settings:
+  column_settings: null
+  graph.dimensions: null
+  graph.metrics:
+  - distinct
+  graph.series_labels:
+  - null
+serdes/meta:
+- id: XqW8Agx0iuT6K67oR0dLo
+  label: distinct_product_id
+  model: Card
+archived_directly: false
+metabase_version: v0.1.37-SNAPSHOT (6469402)
+source_card_id: null
+type: question

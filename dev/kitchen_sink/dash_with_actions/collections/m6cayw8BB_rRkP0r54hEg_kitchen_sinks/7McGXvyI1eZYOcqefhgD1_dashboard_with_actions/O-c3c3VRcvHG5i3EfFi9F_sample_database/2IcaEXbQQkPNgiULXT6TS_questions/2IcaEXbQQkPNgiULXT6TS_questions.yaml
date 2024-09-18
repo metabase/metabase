@@ -1,0 +1,18 @@
+name: Questions
+description: null
+entity_id: 2IcaEXbQQkPNgiULXT6TS
+slug: questions
+created_at: '2024-09-18T18:27:35.796071Z'
+archived: false
+type: null
+parent_id: O-c3c3VRcvHG5i3EfFi9F
+personal_owner_id: null
+namespace: null
+authority_level: null
+serdes/meta:
+- id: 2IcaEXbQQkPNgiULXT6TS
+  label: questions
+  model: Collection
+archive_operation_id: null
+archived_directly: null
+is_sample: false

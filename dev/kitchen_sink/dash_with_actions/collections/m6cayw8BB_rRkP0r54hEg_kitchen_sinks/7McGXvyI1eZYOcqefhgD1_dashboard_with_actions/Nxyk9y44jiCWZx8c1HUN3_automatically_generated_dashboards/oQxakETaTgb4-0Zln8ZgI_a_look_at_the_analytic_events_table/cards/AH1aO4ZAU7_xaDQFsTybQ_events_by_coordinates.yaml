@@ -1,0 +1,154 @@
+name: Events by coordinates
+description: null
+entity_id: AH1aO4ZAU7_xaDQFsTybQ
+created_at: '2024-09-18T16:46:49.815806Z'
+creator_id: admin@metabase.local
+display: map
+archived: false
+collection_id: oQxakETaTgb4-0Zln8ZgI
+collection_preview: true
+collection_position: null
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- ANALYTIC_EVENTS
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - LATITUDE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - LONGITUDE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ANALYTIC_EVENTS
+  type: query
+result_metadata:
+- base_type: type/Float
+  coercion_strategy: null
+  database_type: DOUBLE PRECISION
+  description: null
+  display_name: Account → Latitude
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ACCOUNTS
+    - LATITUDE
+  - source-field:
+    - Sample Database
+    - PUBLIC
+    - ANALYTIC_EVENTS
+    - ACCOUNT_ID
+  fk_field_id: 21
+  fk_target_field_id: null
+  id:
+  - Sample Database
+  - PUBLIC
+  - ACCOUNTS
+  - LATITUDE
+  name: LATITUDE
+  nfc_path: null
+  parent_id: null
+  position: 13
+  semantic_type: type/Latitude
+  settings: null
+  source: breakout
+  source_alias: ACCOUNTS__via__ACCOUNT_ID
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ACCOUNTS
+  visibility_type: normal
+- base_type: type/Float
+  coercion_strategy: null
+  database_type: DOUBLE PRECISION
+  description: null
+  display_name: Account → Longitude
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ACCOUNTS
+    - LONGITUDE
+  - source-field:
+    - Sample Database
+    - PUBLIC
+    - ANALYTIC_EVENTS
+    - ACCOUNT_ID
+  fk_field_id: 21
+  fk_target_field_id: null
+  id:
+  - Sample Database
+  - PUBLIC
+  - ACCOUNTS
+  - LONGITUDE
+  name: LONGITUDE
+  nfc_path: null
+  parent_id: null
+  position: 14
+  semantic_type: type/Longitude
+  settings: null
+  source: breakout
+  source_alias: ACCOUNTS__via__ACCOUNT_ID
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ACCOUNTS
+  visibility_type: normal
+- aggregation_index: 0
+  base_type: type/Integer
+  display_name: Count
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - LATITUDE
+  - LONGITUDE
+  graph.metrics:
+  - count
+  graph.series_labels:
+  - null
+serdes/meta:
+- id: AH1aO4ZAU7_xaDQFsTybQ
+  label: events_by_coordinates
+  model: Card
+archived_directly: false
+metabase_version: v0.1.37-SNAPSHOT (6469402)
+source_card_id: null
+type: question

@@ -1,0 +1,1257 @@
+name: A look at the Analytic Events table
+description: A look at events over time and by several categories.
+entity_id: RW9tfgq0IB6n6kzkAgmy0
+created_at: '2024-09-18T16:46:49.522593Z'
+creator_id: admin@metabase.local
+archived: false
+collection_id: oQxakETaTgb4-0Zln8ZgI
+auto_apply_filters: true
+collection_position: 1
+position: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+show_in_getting_started: false
+caveats: null
+points_of_interest: null
+parameters:
+- id: '-1558815535'
+  name: Source
+  slug: SOURCE
+  type: category
+- id: '-1312859911'
+  name: Plan
+  slug: PLAN
+  type: category
+- id: '409628339'
+  name: Active Subscription
+  slug: ACTIVE_SUBSCRIPTION
+  type: category
+- id: '-348424523'
+  name: Country
+  slug: COUNTRY
+  type: location/country
+serdes/meta:
+- id: RW9tfgq0IB6n6kzkAgmy0
+  label: a_look_at_the_analytic_events_table
+  model: Dashboard
+archived_directly: false
+dashcards:
+- entity_id: -ymFPlZPzRDY7XrvugRfk
+  card_id: 0PuUQqXEIZtaoMsVabzhO
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 34
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: 0PuUQqXEIZtaoMsVabzhO
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: 0PuUQqXEIZtaoMsVabzhO
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: 0PuUQqXEIZtaoMsVabzhO
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: 0PuUQqXEIZtaoMsVabzhO
+    parameter_id: '-348424523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: -ymFPlZPzRDY7XrvugRfk
+    model: DashboardCard
+- entity_id: 13c5eJ-LfjKyZ5gGZPSFH
+  card_id: n-GXvt83FrNtzSmgQy1B2
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 42
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: n-GXvt83FrNtzSmgQy1B2
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: n-GXvt83FrNtzSmgQy1B2
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: n-GXvt83FrNtzSmgQy1B2
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: n-GXvt83FrNtzSmgQy1B2
+    parameter_id: '-348424523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: 13c5eJ-LfjKyZ5gGZPSFH
+    model: DashboardCard
+- entity_id: 2y-lbbhvPhbyG-YH2Bj27
+  card_id: zamZ_bkVLK6E7tbFZMd2p
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 52
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: zamZ_bkVLK6E7tbFZMd2p
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: zamZ_bkVLK6E7tbFZMd2p
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: zamZ_bkVLK6E7tbFZMd2p
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: zamZ_bkVLK6E7tbFZMd2p
+    parameter_id: '-348424523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: 2y-lbbhvPhbyG-YH2Bj27
+    model: DashboardCard
+- entity_id: AYm5FtlN0XjVAFsSA1lAL
+  card_id: null
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 8
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# Events by different categories'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: AYm5FtlN0XjVAFsSA1lAL
+    model: DashboardCard
+- entity_id: CojH_vf4fmK0r9kiF9VeJ
+  card_id: null
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 50
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# Where these events are happening'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: CojH_vf4fmK0r9kiF9VeJ
+    model: DashboardCard
+- entity_id: EMhbtBMTJQ6uKAh-gxIjg
+  card_id: wfqSuSem4wMD2RUtCo2y4
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 32
+  col: 0
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: wfqSuSem4wMD2RUtCo2y4
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: wfqSuSem4wMD2RUtCo2y4
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: wfqSuSem4wMD2RUtCo2y4
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: wfqSuSem4wMD2RUtCo2y4
+    parameter_id: '-348424523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: EMhbtBMTJQ6uKAh-gxIjg
+    model: DashboardCard
+- entity_id: HUA7kwb4_YsV2w06WEKLy
+  card_id: GOemZcS69vQNEDDVKoBoH
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 60
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: GOemZcS69vQNEDDVKoBoH
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: GOemZcS69vQNEDDVKoBoH
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: GOemZcS69vQNEDDVKoBoH
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: GOemZcS69vQNEDDVKoBoH
+    parameter_id: '-348424523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: HUA7kwb4_YsV2w06WEKLy
+    model: DashboardCard
+- entity_id: Hs_3fI4sMNZTbjuuGrT5F
+  card_id: 05k3f3MdB_AVoH5hHsM9B
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 24
+  col: 0
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: 05k3f3MdB_AVoH5hHsM9B
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: 05k3f3MdB_AVoH5hHsM9B
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: 05k3f3MdB_AVoH5hHsM9B
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: 05k3f3MdB_AVoH5hHsM9B
+    parameter_id: '-348424523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: Hs_3fI4sMNZTbjuuGrT5F
+    model: DashboardCard
+- entity_id: J1LFe7IkP0y6gTq89AnxX
+  card_id: 9eUwPy9CQvhLar1i55jYh
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 10
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: 9eUwPy9CQvhLar1i55jYh
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: 9eUwPy9CQvhLar1i55jYh
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: 9eUwPy9CQvhLar1i55jYh
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: 9eUwPy9CQvhLar1i55jYh
+    parameter_id: '-348424523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: J1LFe7IkP0y6gTq89AnxX
+    model: DashboardCard
+- entity_id: Kr34xN0SomdfIhl26ltrp
+  card_id: null
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 58
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# Events over time'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: Kr34xN0SomdfIhl26ltrp
+    model: DashboardCard
+- entity_id: Y1nPIXcoeJlwCUwUeaaZ1
+  card_id: pXt6LOzs0_qOUV-Gv16ne
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 2
+  col: 5
+  size_x: 18
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: pXt6LOzs0_qOUV-Gv16ne
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: pXt6LOzs0_qOUV-Gv16ne
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: pXt6LOzs0_qOUV-Gv16ne
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: pXt6LOzs0_qOUV-Gv16ne
+    parameter_id: '-348424523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: Y1nPIXcoeJlwCUwUeaaZ1
+    model: DashboardCard
+- entity_id: YcrXa7yj3tQkITgjTCPWo
+  card_id: qxm3-xiqNiYifsnBulU4H
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 26
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: qxm3-xiqNiYifsnBulU4H
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: qxm3-xiqNiYifsnBulU4H
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: qxm3-xiqNiYifsnBulU4H
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: qxm3-xiqNiYifsnBulU4H
+    parameter_id: '-348424523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: YcrXa7yj3tQkITgjTCPWo
+    model: DashboardCard
+- entity_id: Zkgd9d1nDxUgty8OiPkDQ
+  card_id: BI_MMdZU0AOUXfaK6odFZ
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 18
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: BI_MMdZU0AOUXfaK6odFZ
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: BI_MMdZU0AOUXfaK6odFZ
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: BI_MMdZU0AOUXfaK6odFZ
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: BI_MMdZU0AOUXfaK6odFZ
+    parameter_id: '-348424523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: Zkgd9d1nDxUgty8OiPkDQ
+    model: DashboardCard
+- entity_id: ZlBV1UNEf7ItSdkW2IY62
+  card_id: null
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# Overview'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: ZlBV1UNEf7ItSdkW2IY62
+    model: DashboardCard
+- entity_id: a4AeiPxrtJjIF2ydZWAFc
+  card_id: ft6PuzEqJ6Be4omIEIZWL
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 16
+  col: 0
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: ft6PuzEqJ6Be4omIEIZWL
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: ft6PuzEqJ6Be4omIEIZWL
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: ft6PuzEqJ6Be4omIEIZWL
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: ft6PuzEqJ6Be4omIEIZWL
+    parameter_id: '-348424523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: a4AeiPxrtJjIF2ydZWAFc
+    model: DashboardCard
+- entity_id: nkOWG169ARsx35SSfSOn-
+  card_id: 0g-qWhNEkUj7ZKgTLAgKp
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 2
+  col: 0
+  size_x: 5
+  size_y: 3
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: 0g-qWhNEkUj7ZKgTLAgKp
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: 0g-qWhNEkUj7ZKgTLAgKp
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: 0g-qWhNEkUj7ZKgTLAgKp
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: 0g-qWhNEkUj7ZKgTLAgKp
+    parameter_id: '-348424523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: nkOWG169ARsx35SSfSOn-
+    model: DashboardCard
+- entity_id: oKMXQyw_4XDFvWzgBgFrt
+  card_id: 0XJnS9-aY8dFx2TTwR4v6
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 10
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: 0XJnS9-aY8dFx2TTwR4v6
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: 0XJnS9-aY8dFx2TTwR4v6
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: 0XJnS9-aY8dFx2TTwR4v6
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: 0XJnS9-aY8dFx2TTwR4v6
+    parameter_id: '-348424523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: oKMXQyw_4XDFvWzgBgFrt
+    model: DashboardCard
+- entity_id: pahGRgt6AkK68qZ34QFBk
+  card_id: AH1aO4ZAU7_xaDQFsTybQ
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 52
+  col: 12
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: AH1aO4ZAU7_xaDQFsTybQ
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: AH1aO4ZAU7_xaDQFsTybQ
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: AH1aO4ZAU7_xaDQFsTybQ
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: AH1aO4ZAU7_xaDQFsTybQ
+    parameter_id: '-348424523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: pahGRgt6AkK68qZ34QFBk
+    model: DashboardCard
+- entity_id: sWrPEg_Cyxm_20pD6TPn_
+  card_id: zBlDx8wiYMVXlXa7uuwaQ
+  created_at: '2024-09-18T16:46:49.843723Z'
+  row: 40
+  col: 0
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: zBlDx8wiYMVXlXa7uuwaQ
+    parameter_id: '-1558815535'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - SOURCE
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: zBlDx8wiYMVXlXa7uuwaQ
+    parameter_id: '-1312859911'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - PLAN
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: zBlDx8wiYMVXlXa7uuwaQ
+    parameter_id: '409628339'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - ACTIVE_SUBSCRIPTION
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  - card_id: zBlDx8wiYMVXlXa7uuwaQ
+    parameter_id: '-348424523'
+    target:
+    - dimension
+    - - field
+      - - Sample Database
+        - PUBLIC
+        - ACCOUNTS
+        - COUNTRY
+      - source-field:
+        - Sample Database
+        - PUBLIC
+        - ANALYTIC_EVENTS
+        - ACCOUNT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: RW9tfgq0IB6n6kzkAgmy0
+    model: Dashboard
+  - id: sWrPEg_Cyxm_20pD6TPn_
+    model: DashboardCard
+initially_published_at: null
+tabs: []
+width: fixed

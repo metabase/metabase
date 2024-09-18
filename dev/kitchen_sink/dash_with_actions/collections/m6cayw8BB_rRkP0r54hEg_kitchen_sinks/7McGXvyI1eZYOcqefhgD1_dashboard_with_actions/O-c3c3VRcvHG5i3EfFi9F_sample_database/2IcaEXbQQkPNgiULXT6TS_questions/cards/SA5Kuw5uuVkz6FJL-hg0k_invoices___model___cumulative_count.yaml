@@ -1,0 +1,73 @@
+name: Invoices - Model - Cumulative count
+description: null
+entity_id: SA5Kuw5uuVkz6FJL-hg0k
+created_at: '2024-09-18T18:35:20.126911Z'
+creator_id: admin@metabase.local
+display: table
+archived: false
+collection_id: 2IcaEXbQQkPNgiULXT6TS
+collection_preview: true
+collection_position: null
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- INVOICES
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  query:
+    aggregation:
+    - - cum-count
+    breakout:
+    - - field
+      - ACCOUNT_ID
+      - base-type: type/BigInteger
+    source-table: WO2v88FZN_HLGERXk7_dG
+  type: query
+result_metadata:
+- base_type: type/BigInteger
+  display_name: Account ID
+  effective_type: type/BigInteger
+  field_ref:
+  - field
+  - ACCOUNT_ID
+  - base-type: type/BigInteger
+  fk_target_field_id:
+  - Sample Database
+  - PUBLIC
+  - ACCOUNTS
+  - ID
+  id:
+  - Sample Database
+  - PUBLIC
+  - INVOICES
+  - ACCOUNT_ID
+  name: ACCOUNT_ID
+  semantic_type: type/FK
+  visibility_type: normal
+- base_type: type/Decimal
+  display_name: Cumulative count
+  effective_type: type/Decimal
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+visualization_settings:
+  column_settings: null
+  table.cell_column: count
+serdes/meta:
+- id: SA5Kuw5uuVkz6FJL-hg0k
+  label: invoices___model___cumulative_count
+  model: Card
+archived_directly: false
+metabase_version: v0.1.37-SNAPSHOT (6469402)
+source_card_id: WO2v88FZN_HLGERXk7_dG
+type: question

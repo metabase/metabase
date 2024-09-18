@@ -1,0 +1,18 @@
+name: A look at Invoices
+description: Automatically generated cards.
+entity_id: yuIAjrthAoF2NZwyA8KCL
+slug: a_look_at_invoices
+created_at: '2024-09-18T16:48:14.357432Z'
+archived: false
+type: null
+parent_id: Nxyk9y44jiCWZx8c1HUN3
+personal_owner_id: null
+namespace: null
+authority_level: null
+serdes/meta:
+- id: yuIAjrthAoF2NZwyA8KCL
+  label: a_look_at_invoices
+  model: Collection
+archive_operation_id: null
+archived_directly: null
+is_sample: false
