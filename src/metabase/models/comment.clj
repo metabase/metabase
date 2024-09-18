@@ -13,23 +13,31 @@
     "comment"
     "dashboard"})
 
+(defn- hydrate-comment
+  [comment-or-comments]
+  (t2/hydrate comment-or-comments :author))
+
 (defn for-model
   "All the comments for the given model"
   [model-type model-id]
-  (t2/hydrate
-   (t2/select :model/Comment :model model-type :model_id model-id {:order-by [[:created_at :asc]]})
-   :author))
+  (hydrate-comment
+   (t2/select :model/Comment :model model-type :model_id model-id {:order-by [[:created_at :asc]]})))
 
 (defn all
   "All comments"
   []
-  (t2/hydrate
-   (t2/select :model/Comment {:order-by [[:created_at :desc]]})
-   :author))
+  (hydrate-comment
+   (t2/select :model/Comment {:order-by [[:created_at :desc]]})))
 
 (defn create!
   "make the thing"
   [params-map]
-  (t2/hydrate
-   (t2/insert-returning-instance! :model/Comment params-map)
-   :author))
+  (hydrate-comment
+   (t2/insert-returning-instance! :model/Comment params-map)))
+
+(defn update!
+  "edit the thing"
+  [comment-id comment-updates]
+  (hydrate-comment
+   (t2/select-one :model/Comment
+                  :id (first (t2/update-returning-pks! :model/Comment comment-id comment-updates)))))
