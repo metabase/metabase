@@ -1941,7 +1941,7 @@
   clicked value are also in the `dimensions` list.
 
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
-  [a-query stage-number column value row dimensions]
+  [a-query stage-number _card-id column value row dimensions]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [column-ref (when-let [a-ref (and column (.-field_ref ^js column))]
                        (legacy-ref->pMBQL a-ref))]
@@ -1966,7 +1966,7 @@
   The exact effect on the query depends on the specific drill-thru and the `args`.
 
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
-  [a-query stage-number a-drill-thru & args]
+  [a-query stage-number _card-id a-drill-thru & args]
   (apply lib.core/drill-thru a-query stage-number a-drill-thru args))
 
 (defn ^:export filter-drill-details
