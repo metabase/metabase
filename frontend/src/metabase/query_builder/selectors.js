@@ -697,9 +697,10 @@ export const getRawSeries = createSelector(
       datasetQuery: lastRunDatasetQuery,
     });
 
-    // HACK: expose data to be send to ai proxy/flask
-    window.questionData = rawSeries;
-    window.queryResult = queryResult;
+    // HACK: Make data available to ChatWidget
+    window._chatHacks ||= {};
+    window._chatHacks.questionData = rawSeries;
+    window._chatHacks.queryResult = queryResult;
 
     if (isShowingRawTable && rawSeries?.length > 0) {
       const [{ card, data }] = rawSeries;

@@ -66,6 +66,10 @@ class View extends Component {
       onCloseChartType,
     } = this.props;
 
+    // HACK: This makes the currently viewed question available to the ChatWidget
+    window._chatHacks ||= {};
+    window._chatHacks.currentlyViewedQuestion = this.props.question;
+
     if (isShowingChartSettingsSidebar) {
       const {
         question,

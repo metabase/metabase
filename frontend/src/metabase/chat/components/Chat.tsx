@@ -23,18 +23,22 @@ import {
 import type Question from "metabase-lib/v1/Question";
 import type { FieldReference } from "metabase-types/api";
 
-import Styles from "./EditVizPage.module.css";
+import Styles from "./Chat.module.css";
 import type { Message, QueryField } from "./types";
 import { getColumnsWithSampleValues, getLLMResponse } from "./utils";
 import { useMessages } from "./hooks/use-messages";
 
 export const Chat = ({
   scrollableStackRef,
-  question,
 }: {
-  question: Question;
   scrollableStackRef: React.RefObject<HTMLDivElement>;
 }) => {
+  const { currentlyViewedQuestion: question, questionData } = (window as any)
+    ._chatHacks;
+
+  console.log("question via hack", question);
+  console.log("questionData via hack", questionData);
+
   const query = question._card.dataset_query;
   const visualizationSettings = question._card.visualization_settings;
 
@@ -50,7 +54,7 @@ export const Chat = ({
 
   const [isAwaitingLLMResponse, setIsAwaitingLLMResponse] = useState(false);
 
-  const data = (window as { questionData?: any }).questionData[0]?.data;
+  const data = questionData[0]?.data;
   const { cols, rows } = data;
   const fieldsWithSampleValues = useMemo(() => {
     return getColumnsWithSampleValues(cols, rows);
@@ -168,7 +172,7 @@ export const Chat = ({
   ]);
 
   return (
-    <>
+    <Box pos="relative">
       <Stack
         spacing="sm"
         p="1rem"
@@ -177,21 +181,30 @@ export const Chat = ({
         justify="flex-end"
       >
         <Messages messages={messages} question={question} />
+        {isAwaitingLLMResponse && (
+          <AIMessageDisplay
+            question={question}
+            message={{
+              author: "llm",
+              content: t`...`,
+            }}
+          ></AIMessageDisplay>
+        )}
       </Stack>
       <Box
-        pos="absolute"
+        pos="sticky"
         w="calc(100% - 1rem)"
         bg="linear-gradient(to bottom, transparent, white 75%)"
         bottom={0}
       >
-        <Box p="1rem" pr=".5rem">
+        <Box p="1rem" pr="0">
           <WriteMessage
             isAwaitingLLMResponse={isAwaitingLLMResponse}
             addMessage={addMessage}
           />
         </Box>
       </Box>
-    </>
+    </Box>
   );
 };
 
@@ -322,7 +335,7 @@ const LoadNewQuestionButton = ({
       <Button
         px="md"
         py="xs"
-        variant="filled"
+        variant="default"
         onClick={() => {
           const nextQuestion = question.setDatasetQuery(
             message.newQuery.dataset_query,
@@ -339,8 +352,10 @@ const LoadNewQuestionButton = ({
 const UserMessageDisplay = ({ message }: { message: Message }) => {
   return (
     <Flex justify="flex-end">
-      <Paper shadow="none" bg="var(--mb-color-border)" maw="15rem" p=".75rem">
-        <Text lh="1.35rem">{message.content}</Text>
+      <Paper shadow="none" bg="var(--mb-color-brand)" maw="15rem" p=".75rem">
+        <Text c="#fff" lh="1.35rem">
+          {message.content}
+        </Text>
       </Paper>
     </Flex>
   );
@@ -369,7 +384,7 @@ const Messages = ({
   question: Question;
 }) => {
   return (
-    <Stack spacing="lg" pb="7rem">
+    <Stack spacing="lg">
       {messages.map((message, index) => (
         <MessageDisplay key={index} message={message} question={question} />
       ))}

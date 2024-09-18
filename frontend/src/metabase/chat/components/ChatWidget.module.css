@@ -3,3 +3,18 @@
   bottom: 1rem;
   right: 1rem;
 }
+.MetabotLogo {
+  width: 2rem;
+}
+.ChatLauncher {
+  border-radius: 100%;
+  cursor: pointer;
+  background-color: var(--mb-color-brand);
+  transition: background-color 0.1s;
+  &:hover {
+    background-color: color-mix(in srgb, var(--mb-color-brand) 90%, white);
+  }
+  &:active {
+    transform: scale(0.96);
+  }
+}
