@@ -341,7 +341,7 @@
     db
     (-> (t2/hydrate db (case include
                          "tables"        :tables
-                         "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
+                         "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values :field_usages]]))
         (update :tables (fn [tables]
                           (cond->> tables
                             ; filter hidden tables

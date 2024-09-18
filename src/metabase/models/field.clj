@@ -246,6 +246,22 @@
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
+
+(mi/define-batched-hydration-method with-field-usages
+  :field_usages
+  "Efficiently hydrate the `FieldValues` for a collection of `fields`."
+  [fields]
+  (when (seq fields)
+    (let [field-id->field-usages-cnt (update-vals (group-by :field_id (t2/select :model/FieldUsage :field_id [:in (map :id fields)]))
+                                                  (fn [field-usages]
+                                                    (update-vals (group-by :used_in field-usages) count)))]
+      (seq (for [field fields]
+             (let [used-in->cnt (get field-id->field-usages-cnt (:id field))]
+               (assoc field
+                      :field_usage_filter_count (get used-in->cnt :filter)
+                      :field_usage_aggregation_count (get used-in->cnt :aggregation)
+                      :field_usage_breakout_count (get used-in->cnt :breakout))))))))
+
 (mi/define-batched-hydration-method with-dimensions
   :dimensions
   "Efficiently hydrate the `Dimension` for a collection of `fields`.
