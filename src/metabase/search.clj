@@ -33,6 +33,10 @@
                 search.postgres/search
                 (do (log/warn ":fulltext search not supported for your AppDb, using :in-place")
                     search.impl/in-place))
+    :minimal  (if (is-postgres?)
+                search.postgres/search-minimal
+                (do (log/warn ":minimal search not supported for your AppDb, using :in-place")
+                    search.impl/in-place))
     :in-place search.impl/in-place))
 
 (defn supports-index?
