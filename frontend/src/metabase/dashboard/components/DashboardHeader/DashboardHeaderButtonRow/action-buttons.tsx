@@ -15,6 +15,7 @@ import {
   AddSectionButton,
   CopyAnalyticsDashboardButton,
   DashboardActionMenu,
+  DashboardCommentButton,
   DashboardInfoButton,
   EditDashboardButton,
   FullscreenAnalyticsDashboard,
@@ -46,6 +47,7 @@ export const DASHBOARD_ACTION = {
   DASHBOARD_HEADER_ACTION_DIVIDER: "DASHBOARD_HEADER_ACTION_DIVIDER",
   DASHBOARD_BOOKMARK: "DASHBOARD_BOOKMARK",
   DASHBOARD_INFO: "DASHBOARD_INFO",
+  DASHBOARD_COMMENT: "DASHBOARD_COMMENT",
   DASHBOARD_ACTION_MENU: "DASHBOARD_ACTION_MENU",
   FULLSCREEN_ANALYTICS_DASHBOARD: "FULLSCREEN_ANALYTICS_DASHBOARD",
 } as const;
@@ -149,6 +151,10 @@ export const dashboardActionButtons: Record<
   },
   [DASHBOARD_ACTION.DASHBOARD_INFO]: {
     component: DashboardInfoButton,
+    enabled: ({ isEditing }) => !isEditing,
+  },
+  [DASHBOARD_ACTION.DASHBOARD_COMMENT]: {
+    component: DashboardCommentButton,
     enabled: ({ isEditing }) => !isEditing,
   },
   [DASHBOARD_ACTION.DASHBOARD_ACTION_MENU]: {

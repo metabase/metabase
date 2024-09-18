@@ -275,6 +275,18 @@ export const QuestionActions = ({
           />
         </ViewHeaderIconButtonContainer>
       )}
+      <Tooltip tooltip={t`Comments`}>
+        <ViewHeaderIconButtonContainer>
+          <Button
+            onlyIcon
+            icon="comment"
+            iconSize={HEADER_ICON_SIZE}
+            onClick={onInfoClick}
+            color={infoButtonColor}
+            data-testid="qb-header-comment-button"
+          />
+        </ViewHeaderIconButtonContainer>
+      </Tooltip>
       <Tooltip tooltip={t`More info`}>
         <ViewHeaderIconButtonContainer>
           <Button
