@@ -888,8 +888,9 @@
                                             :db-id         (or (:db_id uploads-db-settings)
                                                                (throw (ex-info (tru "The uploads database is not configured.")
                                                                                {:status-code 422})))})]
-      {:status 200
-       :body   (:id model)})
+      {:status  200
+       :body    (:id model)
+       :headers {:table_id (:table-id model)}})
     (catch Throwable e
       {:status (or (-> e ex-data :status-code)
                    500)
