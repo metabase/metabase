@@ -87,22 +87,24 @@ export const EditVizPage = ({
       description: field.description,
     }));
 
+    // <system>
+    //   provide only one tool call per message for the show/hide columns tool. try
+    //   to batch multiple tool calls when possible. the function call must only
+    //   use the field's name field.
+    // </system>;
+
     const prompt = `
-        <system>
-          the function call must only use the field's name field.
-        </system>
+      <context>
+        table id: ${question._card.dataset_query.database}.
+        table name: ${table?.name}.
+        table display name: ${table?.display_name}.
+        available fields: ${JSON.stringify(fields)}.
+      </context>
 
-        <context>
-          table id: ${question._card.dataset_query.database}.
-          table name: ${table?.name}.
-          table display name: ${table?.display_name}.
-          available fields: ${JSON.stringify(fields)}.
-        </context>
-
-        <user_ask>
-          ${userMessage}
-        </user_ask>
-      `;
+      <user_ask>
+        ${userMessage}
+      </user_ask>
+    `;
 
     console.log(`Prompt:`, prompt);
 

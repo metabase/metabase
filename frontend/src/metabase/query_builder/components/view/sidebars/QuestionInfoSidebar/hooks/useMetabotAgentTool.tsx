@@ -39,7 +39,7 @@ export function useMetabotAgentTool() {
   const runAgentAction = async (toolCall: ToolCall) => {
     const args = JSON.parse(toolCall.function.arguments);
 
-    console.log(`[AGENT] Tool Call:`, toolCall.function.name);
+    console.log(`[AI] Tool Call:`, toolCall.function.name);
 
     return match(toolCall.function.name)
       .with("hideShowColumns", async () => {
@@ -50,25 +50,20 @@ export function useMetabotAgentTool() {
         const settings = currentQuestion.settings();
 
         const cardId = currentQuestion.card().source_card_id;
-        // const table = currentQuestion.metadata().table(`card__${cardId}`);
 
         const columns = settings?.["table.columns"] ?? [];
-        console.log(`update card viz settings:`, { args, settings, columns });
 
         const nextColumns = mergeColumns(columns, args.columns);
+        console.log(`[AI] update card viz settings:`, {
+          args,
+          settings,
+          columns,
+          nextColumns,
+        });
 
         await dispatch(
           updateCardVisualizationSettings({ "table.columns": nextColumns }),
         );
-
-        // const nextQuestion = currentQuestion.with;
-        //
-        // dispatch(
-        //   updateQuestion(nextQuestion, {
-        //     shouldUpdateUrl: true,
-        //     shouldStartAdHocQuestion: false,
-        //   }),
-        // );
       })
       .with("moveColumns", () => {
         console.log("moveColumns", args);
