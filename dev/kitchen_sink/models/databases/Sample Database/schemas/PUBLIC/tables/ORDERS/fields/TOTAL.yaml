@@ -1,0 +1,41 @@
+name: TOTAL
+display_name: Total
+description: The total billed amount.
+created_at: '2024-09-18T21:32:28.446096Z'
+active: true
+visibility_type: normal
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+database_type: DOUBLE PRECISION
+base_type: type/Float
+effective_type: type/Float
+semantic_type: null
+database_is_auto_increment: false
+database_required: false
+fk_target_field_id: null
+dimensions: []
+json_unfolding: false
+parent_id: null
+coercion_strategy: null
+preview_display: true
+position: 5
+custom_position: 0
+database_position: 5
+has_field_values: null
+settings: null
+caveats: null
+points_of_interest: null
+nfc_path: null
+serdes/meta:
+- id: Sample Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: ORDERS
+  model: Table
+- id: TOTAL
+  model: Field
+database_indexed: false
+database_partitioned: null

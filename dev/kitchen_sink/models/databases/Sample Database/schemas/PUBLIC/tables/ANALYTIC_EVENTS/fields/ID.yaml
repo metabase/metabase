@@ -1,0 +1,41 @@
+name: ID
+display_name: ID
+description: null
+created_at: '2024-09-18T21:32:28.446096Z'
+active: true
+visibility_type: normal
+table_id:
+- Sample Database
+- PUBLIC
+- ANALYTIC_EVENTS
+database_type: BIGINT
+base_type: type/BigInteger
+effective_type: type/BigInteger
+semantic_type: type/PK
+database_is_auto_increment: false
+database_required: true
+fk_target_field_id: null
+dimensions: []
+json_unfolding: false
+parent_id: null
+coercion_strategy: null
+preview_display: true
+position: 0
+custom_position: 0
+database_position: 0
+has_field_values: null
+settings: null
+caveats: null
+points_of_interest: null
+nfc_path: null
+serdes/meta:
+- id: Sample Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: ANALYTIC_EVENTS
+  model: Table
+- id: ID
+  model: Field
+database_indexed: true
+database_partitioned: null

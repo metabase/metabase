@@ -145,6 +145,18 @@ export const useCommandPaletteBasicActions = ({
           },
         },
         {
+          id: "make_kitchen_sink_3",
+          name: t`Make big ol' kitchen sink`,
+          section: "admin",
+          icon: "cloud",
+          perform: async () => {
+            location = await KitchenSinkAPI.makeKitchenSink({
+              sink: "dash_with_actions",
+            })["goto"];
+            redirect(location);
+          },
+        },
+        {
           id: "sandbox_me",
           name: t`Sandbox Me`,
           section: "admin",

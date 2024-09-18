@@ -1,4 +1,4 @@
-name: The Kitchen-Sink Database
+name: Sample Database
 description: Some example data for you to play around with.
 engine: h2
 dbms_version:
@@ -7,26 +7,26 @@ dbms_version:
   semantic-version:
   - 2
   - 1
-created_at: '2024-09-18T18:19:50.935483Z'
+created_at: '2024-09-18T21:32:28.446096Z'
 creator_id: null
 timezone: UTC
 auto_run_queries: true
 refingerprint: null
 is_full_sync: true
 is_on_demand: false
-is_sample: false
+is_sample: true
 is_audit: false
 is_attached_dwh: false
-metadata_sync_schedule: 0 17 * * * ? *
-cache_field_values_schedule: 0 0 6 * * ? *
+metadata_sync_schedule: 0 26 * * * ? *
+cache_field_values_schedule: 0 0 17 * * ? *
 settings: null
 caveats: You probably don't want to use this for your business-critical analyses, but hey, it's your world, we're just living in it.
 points_of_interest: You can find all sorts of different joinable tables ranging from products to people to reviews here.
 initial_sync_status: complete
 details:
-  db: file:/Users/jds/src/metabase/plugins/kitchen-sink.db;USER=GUEST;PASSWORD=guest
+  db: file:/Users/jds/src/metabase/plugins/sample-database.db;USER=GUEST;PASSWORD=guest
 serdes/meta:
-- id: The Kitchen-Sink Database
+- id: Sample Database
   model: Database
 uploads_enabled: false
 uploads_schema_name: null

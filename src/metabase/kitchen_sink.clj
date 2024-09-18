@@ -23,7 +23,7 @@
         sync-targets (->> vs
                           (filter #(contains? kitchen-sink-ids (:collection_id %)))
                           (map (fn [instance]
-                                 {:file  #p (entity-id->file #p (id->entity-id (:collection_id instance)))
+                                 {:file  (entity-id->file (id->entity-id (:collection_id instance)))
                                   :collection-id (:collection_id instance)}))
                           (into #{}))]
 

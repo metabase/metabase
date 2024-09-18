@@ -1,0 +1,41 @@
+name: REVIEWER
+display_name: Reviewer
+description: The user who left the review
+created_at: '2024-09-18T21:32:28.446096Z'
+active: true
+visibility_type: normal
+table_id:
+- Sample Database
+- PUBLIC
+- REVIEWS
+database_type: CHARACTER VARYING
+base_type: type/Text
+effective_type: type/Text
+semantic_type: null
+database_is_auto_increment: false
+database_required: false
+fk_target_field_id: null
+dimensions: []
+json_unfolding: false
+parent_id: null
+coercion_strategy: null
+preview_display: true
+position: 2
+custom_position: 0
+database_position: 2
+has_field_values: null
+settings: null
+caveats: null
+points_of_interest: null
+nfc_path: null
+serdes/meta:
+- id: Sample Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: REVIEWS
+  model: Table
+- id: REVIEWER
+  model: Field
+database_indexed: false
+database_partitioned: null

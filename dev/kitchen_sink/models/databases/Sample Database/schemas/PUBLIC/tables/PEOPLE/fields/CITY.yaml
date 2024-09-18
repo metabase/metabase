@@ -1,0 +1,41 @@
+name: CITY
+display_name: City
+description: The city of the account’s billing address
+created_at: '2024-09-18T21:32:28.446096Z'
+active: true
+visibility_type: normal
+table_id:
+- Sample Database
+- PUBLIC
+- PEOPLE
+database_type: CHARACTER VARYING
+base_type: type/Text
+effective_type: type/Text
+semantic_type: type/City
+database_is_auto_increment: false
+database_required: false
+fk_target_field_id: null
+dimensions: []
+json_unfolding: false
+parent_id: null
+coercion_strategy: null
+preview_display: true
+position: 5
+custom_position: 0
+database_position: 5
+has_field_values: null
+settings: null
+caveats: null
+points_of_interest: null
+nfc_path: null
+serdes/meta:
+- id: Sample Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: PEOPLE
+  model: Table
+- id: CITY
+  model: Field
+database_indexed: false
+database_partitioned: null
