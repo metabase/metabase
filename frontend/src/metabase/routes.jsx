@@ -56,7 +56,7 @@ import { BrowseMetrics } from "./browse/components/BrowseMetrics";
 import { BrowseModels } from "./browse/components/BrowseModels";
 import BrowseSchemas from "./browse/components/BrowseSchemas";
 import { BrowseTables } from "./browse/components/BrowseTables";
-import { CommentSection } from "./comments/components/comment/CommentSection";
+import { CommentSection } from "./comments/components/comment-section/CommentSection";
 import {
   CanAccessMetabot,
   CanAccessSettings,

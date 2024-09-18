@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 
 import Styles from "metabase/css/core/index.css";
-import { Flex, Icon, Input } from "metabase/ui";
+import { Flex, type FlexProps, Icon, Input } from "metabase/ui";
 
 export function CommentInput({
   onSubmit,
   placeholder,
+  ...flexProps
 }: {
-  onSubmit: (text: string) => void;
+  onSubmit: (text: string) => Promise<void>;
   placeholder: string;
-}) {
+} & FlexProps) {
   const [text, setText] = useState("");
 
   const handleSubmit = useCallback(
@@ -32,7 +33,7 @@ export function CommentInput({
   }, [text, handleSubmit]);
 
   return (
-    <Flex>
+    <Flex {...flexProps}>
       <Input
         value={text}
         onChange={e => setText(e.target.value)}
@@ -44,7 +45,7 @@ export function CommentInput({
             name="enter_or_return"
             color="var(--mb-color-brand)"
             className={Styles.cursorPointer}
-            onClick={handleSubmit}
+            onClick={() => handleSubmit(text)}
           />
         }
       />

@@ -9,7 +9,7 @@ import type {
 } from "metabase-types/api";
 
 import { CommentInput } from "../CommentInput/CommentInput";
-import { CommentSection } from "../comment/CommentSection";
+import { CommentSection } from "../comment-section/CommentSection";
 
 export function CommentFeed({
   model,
@@ -41,6 +41,8 @@ export function CommentFeed({
               model_id: modelId,
             })
           }
+          pos="sticky"
+          bottom={0}
         />
       )}
     </Stack>
