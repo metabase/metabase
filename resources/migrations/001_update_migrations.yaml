@@ -9386,6 +9386,58 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: Base64-encoded avatar image
 
+  - changeSet:
+      id: v51.2024-09-18T12:15:12
+      author: tsmacdonald
+      comment: Add the metabase_comment_reaction table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - tableExists:
+              tableName: metabase_comment_reaction
+      changes:
+        - createTable:
+            tableName: metabase_comment_reaction
+            remarks: 'Emoji. For Metabase!'
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: emoji
+                  type: varchar(4)
+                  remarks: The actual emoji
+              - column:
+                  name: author_id
+                  type: int
+                  remarks: 'The reactor. Not nuclear.'
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabase_comment_reaction_user_id
+              - column:
+                  name: comment_id
+                  type: int
+                  remarks: 'What do you think?'
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_comment
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabase_comment_reaction_comment_id
+              - column:
+                  remarks: The timestamp of when the reaction was reacted
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

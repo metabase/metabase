@@ -4,6 +4,7 @@
    [compojure.core :refer [GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.models.comment :as comment]
+   [metabase.models.reaction :as reaction]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]))
 
@@ -14,14 +15,17 @@
 
 (api/defendpoint GET "/"
   "Get juicy things"
-  [model model_id]
+  [model model_id user_id]
   {model    [:maybe commentable-model-schema]
-   model_id [:maybe ms/PositiveInt]}
-  (if model
-    (do
-      (api/checkp (integer? model_id) "model_id" "model_id is required when specifying a model")
-      (comment/for-model model model_id))
-    (comment/all)))
+   model_id [:maybe ms/PositiveInt]
+   user_id  [:maybe ms/PositiveInt]}
+  (cond
+    model (do
+            (api/checkp (integer? model_id) "model_id" "model_id is required when specifying a model")
+            (api/checkp (nil? user_id) "user_id" "When specifying a model, do not provide user_id")
+            (comment/for-model model model_id))
+    user_id (comment/user-notifications api/*current-user-id*)
+    :else (comment/all)))
 
 (api/defendpoint POST "/"
   "Create a comment"
@@ -41,5 +45,14 @@
    resolved [:maybe :boolean]
    text     [:maybe ms/NonBlankString]}
   (comment/update! id (u/select-non-nil-keys comment-updates [:resolved :text])))
+
+(api/defendpoint POST "/:comment-id/react"
+  "Create a comment"
+  [comment-id :as {{:keys [emoji]} :body}]
+  {comment-id ms/PositiveInt
+   emoji      ms/NonBlankString}
+  (reaction/create! {:comment_id comment-id
+                     :emoji      emoji
+                     :author_id  api/*current-user-id*}))
 
 (api/define-routes)

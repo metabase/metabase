@@ -22,6 +22,7 @@ type ModelRef =
     };
 
 export type Comment = ModelRef & {
+  id: number;
   text: string;
   created_at: string;
   updated_at: string;

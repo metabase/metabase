@@ -1,9 +1,7 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import { CommentFeed } from "metabase/comments";
-import CS from "metabase/css/core/index.css";
-import { Box, Icon, Popover } from "metabase/ui";
+import { Box, Icon, IconBadgeDotThingy, Popover } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
@@ -13,6 +11,7 @@ import { ProfileLink } from "../ProfileLink";
 import { SearchBar } from "../search/SearchBar";
 import { SearchButton } from "../search/SearchButton";
 
+import Styles from "./AppBar.module.css";
 import {
   AppBarInfoContainer,
   AppBarLeftContainer,
@@ -82,14 +81,13 @@ const AppBarLarge = ({
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           <Popover width="20rem" position="bottom-end">
             <Popover.Target>
-              <Icon
-                name="comment"
-                onClick={onToggleNavbar}
-                className={cx(CS.cursorPointer, CS.textBrandHover)}
-              />
+              <div className={Styles.AppBarButton}>
+                <Icon name="bell" onClick={onToggleNavbar} />
+                <IconBadgeDotThingy color="var(--mb-color-danger)" active />
+              </div>
             </Popover.Target>
             <Popover.Dropdown>
-              <Box w="20rem" p="lg" mah="20rem">
+              <Box w="30rem" p="lg" mah="30rem">
                 <CommentFeed />
                 <div style={{ height: "1.5rem" }} />
               </Box>

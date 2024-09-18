@@ -16,10 +16,13 @@ interface User {
   last_name: string | null;
   common_name: string;
   email?: string;
+  avatar: string | null;
 }
 
 interface Group {
   first_name: string;
+  // This doesn't really exist, I just don't want TS to complain
+  avatar: null;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
@@ -27,6 +30,17 @@ export default function UserAvatar({
   user,
   ...props
 }: UserAvatarProps | GroupProps) {
+  if (user.avatar) {
+    return (
+      <StyledAvatar
+        {...props}
+        style={{
+          backgroundImage: `url(${user.avatar})`,
+          backgroundSize: "cover",
+        }}
+      ></StyledAvatar>
+    );
+  }
   return <StyledAvatar {...props}>{userInitials(user) || "?"}</StyledAvatar>;
 }
 

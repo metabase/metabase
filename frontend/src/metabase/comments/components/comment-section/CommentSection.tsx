@@ -7,34 +7,26 @@ import { Comment } from "../comment/Comment";
 
 export const CommentSection = ({
   comments = TEST_DATA,
+  onReply,
 }: {
   comments?: CommentType[];
+  onReply: (comment: CommentType) => Promise<void>;
 }) => (
   <>
-    {comments.map((comment, index) => (
-      <Paper
-        key={`${index}: humidity is good for hangovers`}
-        p="lg"
-        withBorder
-        shadow="none"
-      >
+    {comments.map(comment => (
+      <Paper key={comment.id} p="lg" withBorder shadow="none">
         <Comment comment={comment} />
-        {comment.replies?.map((c, idx) => (
-          <Comment key={`${idx} ${c}`} comment={c} />
-        ))}
+        {comment.replies?.map(c => <Comment key={c.id} comment={c} />)}
 
         <CommentInput
-          placeholder="Add a comment..."
+          placeholder="Add a comment ..."
           onSubmit={text =>
-            saveComment({
+            onReply({
               text,
-              model,
-              model_id: modelId,
+              model: "comment",
+              model_id: comment.id,
             })
           }
-          pos="sticky"
-          bottom={0}
-          mt="md"
         />
       </Paper>
     ))}

@@ -33,13 +33,29 @@
       (let [result (mt/user-http-request :rasta :get 200 (format "comment?model=card&model_id=%d" card-id))]
         (is (= [c1-id c2-id c3-id] (filter #{c4-id c3-id c2-id c1-id} (map :id result))))
         (is (=? {:model "card" :text "first!" :model_id card-id :author {:first_name "Rasta"}}
-                (first result)))))))
+                (first result))))))
+  (testing "Comments with replies"
+    (mt/with-temp
+      [:model/Card    {card-id :id}  {}
+       :model/Comment {c1-id :id}    {:model "card"    :model_id card-id  :text "first!"}
+       :model/Comment {c2-id :id}    {:model "comment" :model_id c1-id    :text "A reply"}
+       :model/Comment {c3-id :id}    {:model "card"    :model_id card-id  :text "Here is some actual insight..."}
+       :model/Comment {c4-id :id}    {:model "comment" :model_id c1-id    :text "Another reply"}]
+      (let [result (mt/user-http-request :rasta :get 200 (format "comment?model=card&model_id=%d" card-id))]
+        (is (=?
+             [{:id c1-id
+               :replies [{:id c2-id}
+                         {:id c4-id}]}
+              {:id c3-id
+               :replies []}]
+             result))))))
 
 (deftest comment-creation-test
   (testing "POST /api/comment"
     (mt/with-temp [:model/Card {card-id :id} {}]
       (let [new-comment {:model "card" :model_id card-id :text "Oh-SHEEN"}
             result      (mt/user-http-request :rasta :post 200 "comment" new-comment)]
+        (t2/delete! :model/Comment :id (:id result))
         (is (=? (assoc new-comment :author {:first_name "Rasta"})
                 result))))))
 
@@ -60,3 +76,21 @@
         (is (=? {:resolved false :text "oops" :author {:first_name "Rasta"}}
                 result))
         (is (= "oops" (t2/select-one-fn :text :model/Comment :id comment-id)))))))
+
+(deftest comment-reaction-test
+  (testing "POST /api/comment/:id/react"
+    (mt/with-temp
+      [:model/Card    {card-id :id}    {}
+       :model/Comment {comment-id :id} {:model "card" :model_id card-id :text "first!"}]
+      (try
+        (mt/user-http-request :rasta :post 200
+                              (format "comment/%d/react" comment-id)
+                              {:emoji "🐄"})
+        (let [comment (first (mt/user-http-request :rasta :get 200 (format "comment?model=card&model_id=%d" card-id)))]
+
+          (is (=? {:text "first!"
+                   :author {:first_name "Rasta"}
+                   :reactions [{:emoji "🐄" :author {:first_name "Rasta"}}]}
+                  comment)))
+        (finally
+          (t2/delete! :model/Reaction :comment_id comment-id))))))

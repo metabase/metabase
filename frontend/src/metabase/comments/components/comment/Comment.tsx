@@ -20,7 +20,7 @@ export const Comment = ({ comment }: { comment: CommentType }) => (
     <Box ml="sm" className={CommentS.div1}>
       <Group spacing="sm">
         <Text fw="bold" c="text-dark" size="md">
-          {comment.author.first_name} {comment.author.last_name}
+          {comment?.author?.first_name} {comment?.author?.last_name}
         </Text>
 
         <Text span size="md" c="text-medium">
@@ -42,8 +42,8 @@ export const Comment = ({ comment }: { comment: CommentType }) => (
       <Stack h="100%" align="center" spacing="sm">
         <Avatar radius="xl" c="text-light" size="1.5rem" color="brand">
           <Text c="white" size="0.65rem">
-            {comment.author.first_name?.at(0)}
-            {comment.author.last_name?.at(0)}
+            {comment?.author?.first_name?.at?.(0) ?? "😁"}
+            {comment?.author?.last_name?.at?.(0) ?? ""}
           </Text>
         </Avatar>
         <Box style={{ flex: 1 }}>

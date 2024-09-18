@@ -1,0 +1,12 @@
+.AppBarButton {
+  position: relative;
+
+  &:hover {
+    background-color: var(--mb-color-brand);
+    color: white;
+  }
+
+  cursor: pointer;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.25rem;
+}

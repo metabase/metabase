@@ -4,6 +4,8 @@ import cx from "classnames";
 import type { MouseEvent, ReactNode, SVGAttributes } from "react";
 import { forwardRef } from "react";
 
+import { Box } from "metabase/ui";
+
 import { Tooltip } from "../../overlays/Tooltip";
 
 import type { IconName } from "./icons";
@@ -47,3 +49,24 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
 export const FixedSizeIcon = styled(Icon)`
   flex-shrink: 0;
 `;
+
+export const IconBadgeDotThingy = ({
+  color,
+  active,
+}: {
+  color: string;
+  active: boolean;
+}) => (
+  <Box
+    style={{
+      position: "absolute",
+      opacity: active ? 1 : 0,
+      top: 4,
+      right: 4,
+      width: 8,
+      height: 8,
+      borderRadius: "50%",
+      backgroundColor: color,
+    }}
+  ></Box>
+);
