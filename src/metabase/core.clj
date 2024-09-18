@@ -13,6 +13,7 @@
    [metabase.driver.mysql]
    [metabase.driver.postgres]
    [metabase.events :as events]
+   [metabase.kitchen-sink-data :as kitchen-sink-data]
    [metabase.logger :as logger]
    [metabase.models.cloud-migration :as cloud-migration]
    [metabase.models.setting :as settings]
@@ -22,7 +23,6 @@
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
-   [metabase.kitchen-sink-data :as kitchen-sink-data]
    [metabase.sample-data :as sample-data]
    [metabase.server :as server]
    [metabase.server.handler :as handler]
@@ -146,7 +146,7 @@
       (events/publish-event! :event/install {}))
     (init-status/set-progress! 0.8)
     ;; deal with our sample database as needed
-    (kitchen-sink-data/extract-and-sync-kitchen-sink-data!)
+    (kitchen-sink-data/extract-and-sync-kitchen-sink-database!)
     (when (config/load-sample-content?)
       (if new-install?
         ;; add the sample database DB for fresh installs

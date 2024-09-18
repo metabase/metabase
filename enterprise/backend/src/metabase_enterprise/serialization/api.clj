@@ -11,6 +11,7 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.config :as config]
    [metabase.logger :as logger]
    [metabase.models.serialization :as serdes]
    [metabase.public-settings :as public-settings]
@@ -276,5 +277,38 @@
        :body    (on-response! log-file callback)})
     (finally
       (io/delete-file (:tempfile file)))))
+
+(when config/is-dev?
+  (def ^:private kitchen-sink-dir
+    (io/file "dev" "kitchen_sink"))
+
+  (api/defendpoint POST "/kitchen-sink"
+    "Load the specified \"kitchen sink\" collection into the current instance.
+
+    Dev mode only."
+    [:as {{:keys [sink]} :body}]
+    {sink :string}
+    (let [path (io/file kitchen-sink-dir sink)]
+      (when-not (.exists path)
+        ;; No translation needed; this is a Metabase dev API.
+        (throw (ex-info "Kitchen sink not found"
+                        {:status-code 400
+                         :sink        sink})))
+      (log/infof "Importing kitchen sink %s from %s" sink (str path))
+      (serdes/with-cache
+        (-> (v2.ingest/ingest-yaml (.getPath path))
+            (v2.load/load-metabase! {})
+            (select-keys [:errors :seen])
+            ;; TODO: Return redirect URL or details to the FE so it can navigate to the new KS collection,
+            ;; primary dashboard, etc.
+            (update :seen count))))))
+
+(comment
+  (let [path (io/file kitchen-sink-dir "tester")]
+    (serdes/with-cache
+      (-> (extract/extract {:targets [["Collection" 584]]
+                            :include-database-secrets true
+                            :selective-metadata       true})
+          (storage/store! path)))))
 
 (api/define-routes +auth)
