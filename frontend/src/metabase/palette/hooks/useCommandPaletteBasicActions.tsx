@@ -127,7 +127,9 @@ export const useCommandPaletteBasicActions = ({
           section: "admin",
           icon: "dashboard",
           perform: async () => {
-            await KitchenSinkAPI.makeKitchenSink({ sink: "a_look_at_orders" });
+            location = await KitchenSinkAPI.makeKitchenSink({ sink: "a_look_at_orders" })["goto"];
+            console.log(location);
+            window.location.href = location;
           },
         },
         {
@@ -136,9 +138,11 @@ export const useCommandPaletteBasicActions = ({
           section: "admin",
           icon: "dashboard",
           perform: async () => {
-            await KitchenSinkAPI.makeKitchenSink({
+            location = await KitchenSinkAPI.makeKitchenSink({
               sink: "a_look_at_invoices",
-            });
+            })["goto"];
+            console.log(location);
+            window.location.href = location;
           },
         },
       ],

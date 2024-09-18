@@ -73,7 +73,7 @@
   "Tries to extract the kitchen-sink database out of the JAR (for performance) and then returns a db-details map
    containing a path to the copied database."
   []
-  (let [resource #p (io/resource #p sample-database-filename)]
+  (let [resource (io/resource sample-database-filename)]
     (when-not resource
       (throw (Exception. (trs "Kitchen-Sink database DB file ''{0}'' cannot be found."
                               sample-database-filename))))

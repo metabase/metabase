@@ -301,13 +301,15 @@
       (let [{:keys [errors seen]} (serdes/with-cache
                                     (-> (v2.ingest/ingest-yaml (.getPath path))
                                         (v2.load/load-metabase! {})))
-            db-id (t2/select-one-pk :model/Database :name "The Kitchen-Sink Database")]
+            db-id (t2/select-one-pk :model/Database :name "The Kitchen-Sink Database")
+            coll-id (t2/select-one-pk :model/Collection :name "Kitchen Sinks")]
         (when (seq errors)
           (throw (ex-info "Errors importing kitchen sink"
                           {:errors errors})))
         (kitchen-sink-data/set-kitchen-sink-perms! db-id)
         ;; TODO: Return redirect URL or details to the FE so it can navigate to the new KS collection,
         ;; primary dashboard, etc.
-        {:seen (count seen)}))))
+        {:seen (count seen)
+         :goto (str (public-settings/site-url) "/collection/" coll-id)}))))
 
 (api/define-routes +auth)
