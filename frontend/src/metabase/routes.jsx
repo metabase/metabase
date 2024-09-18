@@ -49,14 +49,12 @@ import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisi
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
-import { Center } from "metabase/ui";
 
 import { BrowseDatabases } from "./browse/components/BrowseDatabases";
 import { BrowseMetrics } from "./browse/components/BrowseMetrics";
 import { BrowseModels } from "./browse/components/BrowseModels";
 import BrowseSchemas from "./browse/components/BrowseSchemas";
 import { BrowseTables } from "./browse/components/BrowseTables";
-import { CommentSection } from "./comments/components/comment-section/CommentSection";
 import {
   CanAccessMetabot,
   CanAccessSettings,
@@ -67,23 +65,12 @@ import {
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
 
-const Playground = () => {
-  return (
-    <Center w="100vw" h="100vh" bg="black">
-      <Center p="xl" w="30rem" bg="white">
-        <CommentSection />
-      </Center>
-    </Center>
-  );
-};
-
 export const getRoutes = store => {
   const applicationName = getApplicationName(store.getState());
   const hasUserSetup = getSetting(store.getState(), "has-user-setup");
 
   return (
     <Route title={applicationName} component={App}>
-      <Route path="/playground" component={Playground} />
       {/* SETUP */}
       <Route
         path="/setup"

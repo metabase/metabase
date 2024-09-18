@@ -1,60 +1,42 @@
-import { Paper, Text } from "metabase/ui";
-import type { User } from "metabase-types/api";
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import { useSelector } from "metabase/lib/redux";
+import { Paper } from "metabase/ui";
 
 import type { Comment as CommentType } from "../../types";
 import { CommentInput } from "../CommentInput/CommentInput";
 import { Comment } from "../comment/Comment";
 
-export const CommentSection = ({
+export const CommentList = ({
   comments,
-  onReply,
   onResolve,
-  currentUser,
-  shadowed,
+  shadowed = false,
+  onReply,
 }: {
   comments: CommentType[];
-  onReply: (comment: CommentType) => Promise<void>;
-  onResolve: (comment: { id: number; resolved: boolean }) => Promise<void>;
-  currentUser: User;
+  onResolve?: (comment: CommentType) => void;
   shadowed?: boolean;
-}) => (
-  <>
-    {comments.map(comment =>
-      comment.resolved ? (
-        <Text key={comment.id} color="text-light" fontStyle="italic">
-          This comment has been resolved
-        </Text>
-      ) : (
-        <Paper
-          key={comment.id}
-          p="lg"
-          withBorder
-          shadow={shadowed ? "xl" : "none"}
-        >
-          <Comment
-            comment={comment}
-            onResolve={() =>
-              onResolve({
-                id: comment.id,
-                resolved: !comment.resolved,
-              })
-            }
-          />
-          {comment.replies?.map(c => <Comment key={c.id} comment={c} />)}
+  onReply: (comment: CommentType) => Promise<void>;
+}) => {
+  const currentUser = useSelector(getCurrentUser);
+  return comments.map(comment => (
+    <Paper key={comment.id} p="lg" withBorder shadow={shadowed ? "xl" : "none"}>
+      <Comment
+        comment={comment}
+        onResolve={onResolve ? () => onResolve(comment) : undefined}
+      />
+      {comment.replies?.map(c => <Comment key={c.id} comment={c} />)}
 
-          <CommentInput
-            placeholder="Add a comment ..."
-            user={currentUser}
-            onSubmit={text =>
-              onReply({
-                text,
-                model: "comment",
-                model_id: comment.id,
-              })
-            }
-          />
-        </Paper>
-      ),
-    )}
-  </>
-);
+      <CommentInput
+        placeholder="Add a comment ..."
+        user={currentUser}
+        onSubmit={text =>
+          onReply({
+            text,
+            model: "comment",
+            model_id: comment.id,
+          })
+        }
+      />
+    </Paper>
+  ));
+};

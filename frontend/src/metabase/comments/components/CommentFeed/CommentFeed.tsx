@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useRef } from "react";
 import { usePrevious } from "react-use";
 
@@ -8,7 +9,7 @@ import {
   useResolveCommentMutation,
 } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { Stack } from "metabase/ui";
+import { Button, Icon, Stack } from "metabase/ui";
 import type {
   CardId,
   CommentModel,
@@ -16,8 +17,9 @@ import type {
   UserId,
 } from "metabase-types/api";
 
+import type { Comment as CommentType } from "../../types";
 import { CommentInput } from "../CommentInput/CommentInput";
-import { CommentSection } from "../comment-section/CommentSection";
+import { CommentList } from "../comment-section/CommentSection";
 
 export function CommentFeed({
   model,
@@ -41,6 +43,8 @@ export function CommentFeed({
       skipPollingIfUnfocused: true,
     },
   );
+
+  const [isResolvedThreadsOpen, { toggle }] = useDisclosure(false);
 
   const user = useCurrentUser();
 
@@ -69,29 +73,70 @@ export function CommentFeed({
     });
   }
 
+  const openThreads = comments?.filter(comment => !comment.resolved) ?? [];
+  const resolvedThreads = comments?.filter(comment => comment.resolved) ?? [];
+
   return (
-    <Stack spacing="md" pr="md">
-      <CommentSection
-        comments={comments}
-        onReply={saveComment}
-        onResolve={handleResolve}
-        currentUser={user}
-        shadowed={shadowed}
-      />
-      {canComment && (
-        <CommentInput
-          placeholder="Add a comment..."
-          user={user}
-          onSubmit={text =>
-            saveComment({
-              text,
-              model,
-              model_id: modelId,
+    <Stack spacing="xs">
+      <Stack spacing="md" pr="md">
+        <CommentList
+          comments={openThreads}
+          onResolve={(comment: CommentType) =>
+            handleResolve({
+              id: comment.id,
+              resolved: !comment.resolved,
             })
           }
+          onReply={saveComment}
+          shadowed={shadowed}
         />
+
+        {canComment && (
+          <CommentInput
+            placeholder="Add a comment..."
+            user={user}
+            onSubmit={text =>
+              saveComment({
+                text,
+                model,
+                model_id: modelId,
+              })
+            }
+          />
+        )}
+        <div ref={ref} />
+      </Stack>
+
+      {resolvedThreads.length > 0 && (
+        <Stack mt="-1.5rem">
+          <Button
+            styles={{
+              inner: {
+                justifyContent: "flex-start",
+              },
+            }}
+            style={{ justifyContent: "flex-start" }}
+            color="brand"
+            variant="subtle"
+            leftIcon={
+              <Icon
+                name={isResolvedThreadsOpen ? "chevrondown" : "chevronright"}
+              />
+            }
+            onClick={toggle}
+          >
+            {resolvedThreads.length} resolved{" "}
+            {resolvedThreads.length > 1 ? "threads" : "thread"}
+          </Button>
+          {isResolvedThreadsOpen && (
+            <CommentList
+              onReply={saveComment}
+              shadowed={shadowed}
+              comments={resolvedThreads}
+            />
+          )}
+        </Stack>
       )}
-      <div ref={ref} />
     </Stack>
   );
 }
