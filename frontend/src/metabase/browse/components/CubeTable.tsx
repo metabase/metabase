@@ -5,7 +5,6 @@ import {
   type CSSProperties,
 } from "react";
 import { t } from "ttag";
-
 import EntityItem from "metabase/components/EntityItem";
 import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
 import {
@@ -70,15 +69,25 @@ export interface CubeResult {
 
 export const itemsTableContainerName = "ItemsTableContainer";
 
+type Meta = {
+  verified_status: boolean;
+  in_semantic_layer: boolean;
+  user: string;
+  admin_user: string;
+  updated_at: string;
+};
+
 type Measure = {
   sql?: string;
   type: string;
   title?: string;
   description?: string;
   primaryKey?: boolean;
+  meta?: Meta;
 };
 
 type Dimension = Measure;
+type Joins = Measure;
 
 type Cube = {
   title: string;
@@ -86,6 +95,7 @@ type Cube = {
   sql: string;
   measures?: Record<string, Measure>;
   dimensions?: Record<string, Dimension>;
+  joins?: Record<string, Joins>;
 };
 
 const descriptionProps: ResponsiveProps = {
@@ -120,7 +130,7 @@ export const CubeTable = ({
   const localeCode: string | undefined = locale?.code;
   const [selectedDefinition, setSelectedDefinition] =
     useState<CubeResult | null>();
-
+  const [noMatched, setNoMatched] = useState<boolean>(false);
   const isLargeDataset = 100 > LARGE_DATASET_THRESHOLD;
 
   const [showLoadingManyRows, setShowLoadingManyRows] =
@@ -131,36 +141,51 @@ export const CubeTable = ({
   );
 
   const typesWithParts = extractParts(cubeData.content as string);
-  const typesWithSql = extractPartsWithSql(cubeData.content as string);
+  const parsedData = cleanAndParseInputString(cubeData.content as string);
+  const typesWithSql = extractPartsWithSql(parsedData);
+  const [updatedTypesWithSql, setUpdatedTypesWithSql] = useState(typesWithSql); // Initialize with typesWithSql
 
-  const updatedTypesWithSql =
-    cubeRequests && cubeRequests.length > 0
-      ? typesWithSql.map(typeWithSql => {
-          // Find the corresponding cubeRequest that matches the description
-          const matchingCubeRequest = cubeRequests.find(
-            (cubeRequest: any) =>
-              cubeRequest.description === typeWithSql.description,
-          );
+  useEffect(() => {
+    let foundNoMatch = false;
 
-          // If a matching cubeRequest is found, merge the data from cubeRequest into the typeWithSql object
-          if (matchingCubeRequest) {
-            return {
-              ...typeWithSql,
-              user: matchingCubeRequest.user,
-              admin_user: matchingCubeRequest.admin_user,
-              updated_at: matchingCubeRequest.updated_at,
-              verified_status: matchingCubeRequest.verified_status,
-              in_semantic_layer: matchingCubeRequest.in_semantic_layer,
-            };
-          }
+    const updatedData =
+      cubeRequests && cubeRequests.length > 0
+        ? typesWithSql.map(typeWithSql => {
+            const matchingCubeRequest = cubeRequests.find(
+              (cubeRequest: any) =>
+                cubeRequest.description === typeWithSql.description,
+            );
 
-          // If no matching cubeRequest is found, return the typeWithSql object as is
-          return typeWithSql;
-        })
-      : typesWithSql; // If cubeRequests is empty, use typesWithSql without any updates
+            if (matchingCubeRequest) {
+              return {
+                ...typeWithSql,
+                user: matchingCubeRequest.user,
+                admin_user: matchingCubeRequest.admin_user,
+                updated_at: matchingCubeRequest.updated_at,
+                verified_status: matchingCubeRequest.verified_status,
+                in_semantic_layer: matchingCubeRequest.in_semantic_layer,
+              };
+            }
+
+            foundNoMatch = true; // No match found
+            return typeWithSql;
+          })
+        : typesWithSql;
+
+    // Only update state if the data has changed
+    if (JSON.stringify(updatedTypesWithSql) !== JSON.stringify(updatedData)) {
+      setUpdatedTypesWithSql(updatedData);
+      setNoMatched(foundNoMatch);
+    }
+  }, [cubeRequests, typesWithSql]);
 
   // Updated filter definitions based on `isValidation` flag and input filters
   const filteredDefinitions = updatedTypesWithSql.filter(definition => {
+    // Skip filtering if cubeRequests is empty
+    if (!cubeRequests || cubeRequests.length === 0 || noMatched) {
+      return true; // Return all `typesWithSql` when there are no cubeRequests
+    }
+
     const matchesQuestion = questionFilter
       ? definition.description
           .toLowerCase()
@@ -597,8 +622,8 @@ export const extractParts = (inputString: string) => {
         category,
         name: innerMatch[1],
         type: innerMatch[2],
-        title: innerMatch[3],
-        description: innerMatch[4],
+        title: innerMatch[3] || "",
+        description: innerMatch[4] || "",
       });
     }
   }
@@ -606,32 +631,147 @@ export const extractParts = (inputString: string) => {
   return results;
 };
 
-export const extractPartsWithSql = (inputString: string) => {
-  const regex =
-    /(measures|dimensions):\s*{(?:[^}]*?(\w+):\s*{[^}]*?(?:sql:\s*`([^`]+)`)?[^}]*?type:\s*`(\w+)`[^}]*?(?:title:\s*`([^`]+)`)?[^}]*?(?:description:\s*`([^`]+)`)?[^}]*?})+/g;
-  const results = [];
-  let match;
+const cleanAndParseInputString = (inputString: string): Cube | null => {
+  console.log("🚀 ~ extractParts ~ inputString:", inputString);
+  let cleanedString = inputString;
 
-  while ((match = regex.exec(inputString)) !== null) {
-    const category = match[1];
-    const innerMatches = match[0].matchAll(
-      /(\w+):\s*{[^}]*?(?:sql:\s*`([^`]+)`)?[^}]*?type:\s*`(\w+)`(?:[^}]*?title:\s*`([^`]+)`)?(?:[^}]*?description:\s*`([^`]+)`)?(?:[^}]*?primaryKey:\s*(true|false))?[^}]*?}/g,
-    );
-    for (const innerMatch of innerMatches) {
-      let sql = extractSQL(innerMatch[0]);
-      let primaryKey = extractPrimaryKey(innerMatch[0]);
+  // Step 1: Remove single-line comments starting with //
+  const commentRegex = /\/\/.*$/gm;
+  cleanedString = cleanedString.replace(commentRegex, "");
+
+  // Step 2: Remove all redundant cube(...) wrappers using a comprehensive regex
+  const redundantCubeRegex =
+    /cube\(["'`][^"'`]+["'`],\s*cube\(["'`][^"'`]+["'`],\s*{/g;
+  cleanedString = cleanedString.replace(redundantCubeRegex, "");
+
+  // Step 3: Remove the outermost "cube(`...`, {" at the beginning and the ")" at the end
+  cleanedString = cleanedString
+    .replace(/^cube\(["'`][^"'`]+["'`],\s*{/, "{")
+    .replace(/\);\s*$/, "}");
+
+  // Step 4: Remove any "cube(...)" that appears within the first part of the cleaned string
+  cleanedString = cleanedString.replace(/{\s*cube\(["'`][^"'`]+["'`],/g, "{");
+
+  // Step 5: Preserve multi-line SQL statements by matching content between `sql: and `} for multi-line support
+  const multiLineSqlRegex = /sql:\s*`([^`]+)`/g;
+  cleanedString = cleanedString.replace(
+    multiLineSqlRegex,
+    (match, sqlContent) => {
+      // Convert multi-line SQL back into a single line while preserving indentation for readability
+      const singleLineSql = sqlContent.replace(/\s+/g, " ").trim();
+      return `sql: \`${singleLineSql}\``;
+    },
+  );
+
+  // Step 6: Replace backticks with double quotes for JSON compatibility
+  cleanedString = cleanedString.replace(/`/g, '"');
+
+  // Step 7: Ensure all property names are in double quotes (including those that might not have been handled correctly)
+  cleanedString = cleanedString.replace(/(\w+):/g, '"$1":');
+
+  // Step 8: Ensure boolean values are correctly formatted (not wrapped in quotes)
+  cleanedString = cleanedString.replace(/:\s*(true|false)\s*(,?)/g, ": $1$2");
+
+  // Step 9: Correct improperly quoted DATE_TRUNC expressions and remove stray commas
+  cleanedString = cleanedString.replace(
+    /"DATE_TRUNC\('(\w+)',\s*\${CUBE}\.(\w+)'\)"/g,
+    "DATE_TRUNC('$1', ${CUBE}.$2)",
+  );
+
+  // Step 10: Remove stray commas inside SQL expressions
+  cleanedString = cleanedString.replace(/,\s*\.(\w+)/g, ".$1");
+
+  // Step 11: Remove trailing commas within property values and after property values
+  cleanedString = cleanedString.replace(/,\s*([}\]])/g, "$1");
+
+  // Step 12: Ensure primaryKey is treated as a boolean and correctly formatted
+  cleanedString = cleanedString.replace(
+    /(?<=\s|,|{)"?primaryKey"?\s*:\s*"?(\w+)"?\s*(,?)/g,
+    '"primaryKey": $1$2',
+  );
+
+  // Step 13: Remove any remaining trailing commas from the end of objects
+  cleanedString = cleanedString.replace(/,\s*([}\]])/g, "$1");
+
+  // Step 14: Ensure only one closing brace at the end of the JSON
+  cleanedString = cleanedString.trim();
+  if (cleanedString.endsWith("}}")) {
+    cleanedString = cleanedString.slice(0, -1);
+  }
+
+  // Step 15: Ensure the cleaned string starts with a '{' to form a valid JSON object
+  if (!cleanedString.trim().startsWith("{")) {
+    cleanedString = `{${cleanedString}`;
+  }
+
+  // Step 16: Log the final cleaned string before parsing for debugging
+  console.log("🚀 ~ Final cleaned string:", cleanedString);
+
+  // Step 17: Parse the cleaned string into a JSON object
+  try {
+    const parsedObject = JSON.parse(cleanedString) as Cube;
+    return parsedObject;
+  } catch (error) {
+    console.error("Failed to parse JSON:", error);
+    return null;
+  }
+};
+
+const extractPartsWithSql = (parsedData: Cube | null): CubeResult[] => {
+  const results: CubeResult[] = []; // Ensure the result array is correctly typed
+
+  if (!parsedData) {
+    console.error("Parsed data is null. Cannot extract parts.");
+    return results; // Return an empty array if parsedData is null
+  }
+
+  // Extract measures
+  if (parsedData.measures) {
+    Object.entries(parsedData.measures).forEach(([name, measure]) => {
+      const typedMeasure = measure as Measure; // Explicitly type 'measure'
       results.push({
-        category,
-        name: innerMatch[1],
-        sql: sql,
-        type: innerMatch[3],
-        title: innerMatch[4] || "",
-        description: innerMatch[5] || "",
-        primaryKey: primaryKey,
-        user: undefined,
-        verified_status: undefined,
+        category: "measures",
+        name,
+        sql: typedMeasure.sql || "", // Optional property
+        type: typedMeasure.type || "",
+        title: typedMeasure.title || "", // Not present in your example but added for completeness
+        description: typedMeasure.description || "",
+        primaryKey: extractPrimaryKey(`primaryKey: ${typedMeasure.primaryKey}`), // Default to false if not provided
       });
-    }
+    });
+  }
+
+  // Extract dimensions
+  if (parsedData.dimensions) {
+    Object.entries(parsedData.dimensions).forEach(([name, dimension]) => {
+      const typedDimension = dimension as Dimension; // Explicitly type 'dimension'
+      results.push({
+        category: "dimensions",
+        name,
+        sql: typedDimension.sql || "", // Optional property
+        type: typedDimension.type || "",
+        title: typedDimension.title || "", // Not present in your example but added for completeness
+        description: typedDimension.description || "",
+        primaryKey: extractPrimaryKey(
+          `primaryKey: ${typedDimension.primaryKey}`,
+        ), // Default to false if not provided
+      });
+    });
+  }
+
+  if (parsedData.joins) {
+    Object.entries(parsedData.joins).forEach(([name, join]) => {
+      const typedJoin = join as Dimension; // Explicitly type 'dimension'
+      results.push({
+        category: "joins",
+        name,
+        sql: typedJoin.sql || "", // Optional property
+        type: typedJoin.type || "",
+        title: typedJoin.title || "", // Not present in your example but added for completeness
+        description: typedJoin.description || "",
+        primaryKey: extractPrimaryKey(`primaryKey: ${typedJoin.primaryKey}`), // Default to false if not provided
+      });
+    });
   }
 
   return results;
