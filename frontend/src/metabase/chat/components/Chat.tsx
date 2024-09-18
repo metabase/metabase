@@ -36,7 +36,8 @@ import { useMessages } from "./hooks/use-messages";
 import type { Message } from "./types";
 import { getColumnsWithSampleValues } from "./utils";
 import { useMetabotAgentTool } from "./hooks/useMetabotAgentTool";
-import { METABOT_AGENT_TOOLS_SPEC } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
+
+import { getToolSpec } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/constants/agent-tools-spec";
 
 export const Chat = ({
   scrollableStackRef,
@@ -142,7 +143,7 @@ export const Chat = ({
       },
       body: JSON.stringify({
         messages: nextMessages,
-        tools: METABOT_AGENT_TOOLS_SPEC,
+        tools: getToolSpec(),
       }),
     });
 
