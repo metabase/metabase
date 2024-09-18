@@ -127,6 +127,7 @@ export const Treemap = ({ rawSeries, settings }: VisualizationProps) => {
     type: "treemap",
     name: "All",
     data: echartsData,
+    roam: false,
     leafDepth: 1,
     itemStyle: {
       gapWidth: 2,
