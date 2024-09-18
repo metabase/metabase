@@ -15,13 +15,21 @@ export const processResults = (
     "section",
   );
 
+  const metabot = processSection(t`Metabot`, groupedResults["metabot"]);
   const actions = processSection(t`Actions`, groupedResults["basic"]);
   const search = processSection(t`Search results`, groupedResults["search"]);
   const recent = processSection(t`Recent items`, groupedResults["recent"]);
   const admin = processSection(t`Admin`, groupedResults["admin"]);
   const docs = processSection(t`Documentation`, groupedResults["docs"]);
 
-  return [...recent, ...actions.slice(0, 6), ...admin, ...search, ...docs];
+  return [
+    ...metabot,
+    ...recent,
+    ...actions.slice(0, 6),
+    ...admin,
+    ...search,
+    ...docs,
+  ];
 };
 
 export const processSection = (
