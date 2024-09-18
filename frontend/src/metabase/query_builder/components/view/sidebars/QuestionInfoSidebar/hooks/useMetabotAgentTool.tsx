@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import _, { splice } from "underscore";
+import _ from "underscore";
 import {
   onUpdateVisualizationSettings,
   setUIControls,
@@ -92,31 +92,109 @@ export function useMetabotAgentTool() {
           return;
         }
 
-        const { display, filters, summarizations, groups } =
-          args as ApplyVisualizationToolCall;
+        const {
+          display,
+          filters = [],
+          summarizations = [],
+          groups = [],
+        } = args as ApplyVisualizationToolCall;
 
         console.log(`[AI] change visualization:`, { args });
 
-        // STEP 1 - Apply filters
+        // Apply viz type
+        let nextQuestion = currentQuestion.setDisplay(display).lockDisplay();
 
-        // STEP 2 - Apply summarizations
+        // Apply filters/summarizations/breakouts/groupings
+        const nextQuery = nextQuestion.datasetQuery();
+        console.log(`[AI] dataset query:`, { nextQuery });
 
-        // STEP 3 - Apply groupings
+        const table = currentQuestion
+          .metadata()
+          .table(currentQuestion.legacyQueryTableId());
 
-        // STEP 4 - Apply visualization settings
-        let newQuestion = currentQuestion.setDisplay(display).lockDisplay();
+        if (nextQuery.type === "query") {
+          const aggregation = nextQuery.query.aggregation ?? [];
+          const breakout = nextQuery.query.breakout ?? [];
 
-        const visualization = visualizations.get(display);
+          const { query } = nextQuery;
+
+          // Apply filters
+
+          // Apply summarizations/breakouts
+          if (Array.isArray(args.summarizations)) {
+            for (const summarization of summarizations) {
+              if (summarization.metrics === "count") {
+                aggregation.push(["count"]);
+                continue;
+              }
+
+              const { fieldName, metrics } = summarization;
+
+              const field = table?.fields?.find(
+                field => field.name === fieldName,
+              );
+
+              const fieldRef = [
+                "field",
+                fieldName,
+                { "base-type": field?.base_type },
+              ];
+
+              aggregation.push([metrics as any, fieldRef as any]);
+            }
+          }
+
+          if (Array.isArray(args.groups)) {
+            for (const group of args.groups) {
+              const { fieldName, granularity } = group;
+
+              const field = table?.fields?.find(
+                field => field.name === fieldName,
+              );
+
+              const fieldOptions = {
+                "base-type": field?.base_type,
+                // binning: { strategy: "default" },
+              } as any;
+
+              if (field?.base_type === "type/DateTime") {
+                fieldOptions["temporal-unit"] = granularity;
+              }
+
+              const fieldRef = ["field", fieldName, fieldOptions];
+              breakout.push(fieldRef as any);
+            }
+          }
+
+          // Sync dataset query
+          const nextDatasetQuery = {
+            ...nextQuery,
+            query: {
+              ...nextQuery.query,
+              aggregation,
+              breakout,
+            },
+          };
+
+          console.log(`[UI] set dataset query`, { nextDatasetQuery });
+
+          nextQuestion = nextQuestion.setDatasetQuery(nextDatasetQuery);
+        }
+
+        // Apply viz display settings
+        const visualization = visualizations.get(display as string);
 
         if (visualization?.onDisplayUpdate) {
           const updatedSettings = visualization.onDisplayUpdate(
-            newQuestion.settings(),
+            nextQuestion.settings(),
           );
 
-          newQuestion = newQuestion.setSettings(updatedSettings);
+          nextQuestion = nextQuestion.setSettings(updatedSettings);
         }
 
-        await dispatch(updateQuestion(newQuestion, { shouldUpdateUrl: true }));
+        await dispatch(
+          updateQuestion(nextQuestion, { shouldUpdateUrl: true, run: true }),
+        );
         dispatch(setUIControls({ isShowingRawTable: false }));
       })
       .with("moveColumns", async () => {

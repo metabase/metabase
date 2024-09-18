@@ -66,13 +66,13 @@ export const METABOT_AGENT_TOOLS_SPEC = [
   },
   {
     "name": "applyVisualization",
-    "description": "Apply visualization settings including display type, filters, summarizations, and groupings",
+    "description": "Apply visualization settings including display type, filters, summarizations, and groupings. Leave the field null to keep the setting unchanged.",
     "parameters": {
       "type": "object",
       "properties": {
         "display": {
           "title": "Visualization Display Type",
-          "type": "string",
+          "type": ["string", "null"],
           "enum": [
             "pie",
             "table",
@@ -84,7 +84,7 @@ export const METABOT_AGENT_TOOLS_SPEC = [
           ]
         },
         "filters": {
-          "type": "array",
+          "type": ["array", "null"],
           "items": {
             "type": "object",
             "properties": {
@@ -94,7 +94,7 @@ export const METABOT_AGENT_TOOLS_SPEC = [
                 "title": "FilterOperator"
               },
               "fieldName": {
-                "title": "Fieldname",
+                "title": "Field Name",
                 "type": "string"
               },
               "value": {
@@ -108,18 +108,18 @@ export const METABOT_AGENT_TOOLS_SPEC = [
           }
         },
         "summarizations": {
-          "type": "array",
+          "type": ["array", "null"],
           "items": {
             "type": "object",
             "properties": {
               "fieldName": {
                 "title": "Field Name",
                 "description": "The name of the field to summarize",
-                "type": "string"
+                "type": ["string", "null"]
               },
               "metrics": {
                 "title": "Summarization Metric",
-                "description": "The type of summarization to apply",
+                "description": "The type of summarization to apply. COUNT does not require a field name.",
                 "type": "string",
                 "enum": ["sum", "count", "average"]
               }
@@ -129,7 +129,7 @@ export const METABOT_AGENT_TOOLS_SPEC = [
           }
         },
         "groups": {
-          "type": "array",
+          "type": ["array", "null"],
           "items": {
             "type": "object",
             "properties": {
@@ -141,15 +141,16 @@ export const METABOT_AGENT_TOOLS_SPEC = [
               "granularity": {
                 "title": "Granularity",
                 "description": "The granularity of grouping for date fields",
-                "type": "string",
+                "type": ["string", "null"],
                 "enum": ["day", "week", "month", "year"]
               }
             },
-            "required": ["fieldName"],
+            "required": ["fieldName", "granularity"],
             "additionalProperties": false
           }
         }
       },
+      "required": ["display", "filters", "summarizations", "groups"],
       "additionalProperties": false
     },
     "strict": true
