@@ -1,7 +1,9 @@
 (ns metabase.lib.drill-thru.common
   (:require
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.util :as lib.util]))
 
 (defn mbql-stage?
@@ -10,6 +12,20 @@
   (-> (lib.util/query-stage query stage-number)
       :lib/type
       (= :mbql.stage/mbql)))
+
+(defn native-stage?
+  "Is this query stage a native stage?"
+  [query stage-number]
+  (-> (lib.util/query-stage query stage-number)
+      :lib/type
+      (= :mbql.stage/native)))
+
+(defn prepare-query
+  [query stage-number card-id]
+  (if (and (native-stage? query stage-number) card-id)
+    (lib.query/query query (-> (lib.metadata/->metadata-provider query)
+                               (lib.metadata/card card-id)))
+    query))
 
 (defn- drill-thru-dispatch [_query _stage-number drill-thru & _args]
   (:type drill-thru))

@@ -1941,7 +1941,7 @@
   clicked value are also in the `dimensions` list.
 
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
-  [a-query stage-number _card-id column value row dimensions]
+  [a-query stage-number card-id column value row dimensions]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [column-ref (when-let [a-ref (and column (.-field_ref ^js column))]
                        (legacy-ref->pMBQL a-ref))]
@@ -1951,7 +1951,8 @@
                    :value      (cond
                                  (undefined? value) nil   ; Missing a value, ie. a column click
                                  (nil? value)       :null ; Provided value is null, ie. database NULL
-                                 :else              value)}
+                                 :else              value)
+                   :card-id    card-id}
                   (when row                    {:row        (mapv row-cell       row)})
                   (when (not-empty dimensions) {:dimensions (mapv dimension-cell dimensions)}))
            (lib.core/available-drill-thrus a-query stage-number)
@@ -1966,8 +1967,8 @@
   The exact effect on the query depends on the specific drill-thru and the `args`.
 
   > **Code health:** Single use. This is only here to support the context menu UI and should not be reused."
-  [a-query stage-number _card-id a-drill-thru & args]
-  (apply lib.core/drill-thru a-query stage-number a-drill-thru args))
+  [a-query stage-number card-id a-drill-thru & args]
+  (apply lib.core/drill-thru a-query stage-number card-id a-drill-thru args))
 
 (defn ^:export filter-drill-details
   "Returns a JS object with the details needed to render the complex UI for `column-filter` and some `quick-filter`

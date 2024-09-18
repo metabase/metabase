@@ -1,5 +1,6 @@
 (ns metabase.lib.drill-thru
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.drill-thru.automatic-insights :as lib.drill-thru.automatic-insights]
    [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
@@ -92,7 +93,8 @@
    (try
      (into []
            (when (lib.metadata/editable? query)
-             (let [dim-contexts (dimension-contexts context)]
+             (let [query        (lib.drill-thru.common/prepare-query query stage-number (:card-id context))
+                   dim-contexts (dimension-contexts context)]
                (for [{:keys [f return-drills-for-dimensions?]} available-drill-thru-fns
                      context                                   (if (and return-drills-for-dimensions? dim-contexts)
                                                                  dim-contexts
@@ -119,8 +121,10 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
+    card-id      :- ::lib.schema.id/card
     drill        :- ::lib.schema.drill-thru/drill-thru
     & args]
    (log/debugf "Applying drill thru: %s"
                (u/pprint-to-str {:query query, :stage-number stage-number, :drill drill, :args args}))
-   (apply lib.drill-thru.common/drill-thru-method query stage-number drill args)))
+   (apply lib.drill-thru.common/drill-thru-method (lib.drill-thru.common/prepare-query query stage-number card-id)
+                                                  stage-number drill args)))
