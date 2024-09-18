@@ -1,0 +1,98 @@
+name: Average quantity per month
+description: Average item quantity per month
+entity_id: G4VtBsPSe3Ayq1TOH5j0G
+created_at: '2024-09-18T19:40:47.92114Z'
+creator_id: admin@metabase.test
+display: line
+archived: false
+collection_id: oL1UIYZS1aAqzgWbQTx8X
+collection_preview: true
+collection_position: null
+query_type: query
+database_id: The Kitchen-Sink Database
+table_id:
+- The Kitchen-Sink Database
+- PUBLIC
+- ORDERS
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: The Kitchen-Sink Database
+  query:
+    aggregation:
+    - - avg
+      - - field
+        - - The Kitchen-Sink Database
+          - PUBLIC
+          - ORDERS
+          - QUANTITY
+        - base-type: type/Integer
+    breakout:
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - base-type: type/DateTime
+        temporal-unit: month
+    source-table:
+    - The Kitchen-Sink Database
+    - PUBLIC
+    - ORDERS
+  type: query
+result_metadata:
+- base_type: type/DateTime
+  coercion_strategy: null
+  description: The date and time an order was submitted.
+  display_name: Created At
+  effective_type: type/DateTime
+  field_ref:
+  - field
+  - - The Kitchen-Sink Database
+    - PUBLIC
+    - ORDERS
+    - CREATED_AT
+  - base-type: type/DateTime
+    temporal-unit: month
+  fk_target_field_id: null
+  id:
+  - The Kitchen-Sink Database
+  - PUBLIC
+  - ORDERS
+  - CREATED_AT
+  name: CREATED_AT
+  semantic_type: type/CreationTimestamp
+  settings: null
+  unit: month
+  visibility_type: normal
+- base_type: type/Float
+  display_name: Average of Quantity
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 0
+  name: avg
+  semantic_type: type/Quantity
+  settings: null
+visualization_settings:
+  column_settings: null
+  graph.colors:
+  - '#509EE3'
+  graph.dimensions:
+  - CREATED_AT
+  graph.metrics:
+  - avg
+  graph.series_labels:
+  - null
+serdes/meta:
+- id: G4VtBsPSe3Ayq1TOH5j0G
+  label: average_quantity_per_month
+  model: Card
+archived_directly: false
+metabase_version: v1.1.33-SNAPSHOT (a859933)
+source_card_id: null
+type: question

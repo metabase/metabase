@@ -39,7 +39,7 @@
   Intended to be used by update/insert hooks to keep the kitchen sink directories up to date."
   []
   (into {} (for [dir      (kitchen-sink-bundles)
-                 col-file (.listFiles (io/file dir "collections"))]
+                 col-file (.listFiles ^java.io.File (io/file dir "collections"))]
              (-> col-file
                  (.getName)
                  (subs 0 21) ; NanoIDs are always 21 characters

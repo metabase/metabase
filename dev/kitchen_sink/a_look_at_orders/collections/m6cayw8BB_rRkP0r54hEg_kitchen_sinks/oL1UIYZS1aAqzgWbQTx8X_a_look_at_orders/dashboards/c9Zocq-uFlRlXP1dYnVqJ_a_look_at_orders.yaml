@@ -1,0 +1,681 @@
+name: A look at Orders
+description: Some metrics we found about transactions.
+entity_id: c9Zocq-uFlRlXP1dYnVqJ
+created_at: '2024-09-18T19:40:47.718625Z'
+creator_id: admin@metabase.test
+archived: false
+collection_id: oL1UIYZS1aAqzgWbQTx8X
+auto_apply_filters: true
+collection_position: 1
+position: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+show_in_getting_started: false
+caveats: null
+points_of_interest: null
+parameters:
+- id: '-1782307703'
+  name: Created At
+  slug: CREATED_AT
+  type: date/all-options
+- id: '-343514342'
+  name: Source
+  slug: SOURCE
+  type: category
+- id: '1096522386'
+  name: State
+  slug: STATE
+  type: location/state
+- id: '1892564691'
+  name: Category
+  slug: CATEGORY
+  type: category
+serdes/meta:
+- id: c9Zocq-uFlRlXP1dYnVqJ
+  label: a_look_at_orders
+  model: Dashboard
+archived_directly: false
+dashcards:
+- entity_id: -xNv73gyfgVzSHrknRbYu
+  card_id: null
+  created_at: '2024-09-18T19:40:48.254401Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# Overview'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: c9Zocq-uFlRlXP1dYnVqJ
+    model: Dashboard
+  - id: -xNv73gyfgVzSHrknRbYu
+    model: DashboardCard
+- entity_id: CGEeWYLBBM58KVa3kaEef
+  card_id: Tio9WXTfewJC6QKIerZY9
+  created_at: '2024-09-18T19:40:48.254401Z'
+  row: 2
+  col: 0
+  size_x: 5
+  size_y: 3
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: Tio9WXTfewJC6QKIerZY9
+    parameter_id: '-1782307703'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: Tio9WXTfewJC6QKIerZY9
+    parameter_id: '-343514342'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: Tio9WXTfewJC6QKIerZY9
+    parameter_id: '1096522386'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: Tio9WXTfewJC6QKIerZY9
+    parameter_id: '1892564691'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: c9Zocq-uFlRlXP1dYnVqJ
+    model: Dashboard
+  - id: CGEeWYLBBM58KVa3kaEef
+    model: DashboardCard
+- entity_id: 1bFwuN-B8Ul-VBr5K3Y1c
+  card_id: _Ec2-XlF1k6T3h2N5Z5up
+  created_at: '2024-09-18T19:40:48.254401Z'
+  row: 2
+  col: 7
+  size_x: 5
+  size_y: 3
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: _Ec2-XlF1k6T3h2N5Z5up
+    parameter_id: '-1782307703'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: _Ec2-XlF1k6T3h2N5Z5up
+    parameter_id: '-343514342'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: _Ec2-XlF1k6T3h2N5Z5up
+    parameter_id: '1096522386'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: _Ec2-XlF1k6T3h2N5Z5up
+    parameter_id: '1892564691'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: c9Zocq-uFlRlXP1dYnVqJ
+    model: Dashboard
+  - id: 1bFwuN-B8Ul-VBr5K3Y1c
+    model: DashboardCard
+- entity_id: U1-oIFcppZWBzjCI-pGpF
+  card_id: null
+  created_at: '2024-09-18T19:40:48.254401Z'
+  row: 5
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# How these transactions are distributed'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: c9Zocq-uFlRlXP1dYnVqJ
+    model: Dashboard
+  - id: U1-oIFcppZWBzjCI-pGpF
+    model: DashboardCard
+- entity_id: vIiW_FWagUoJEUizGubRp
+  card_id: G4VtBsPSe3Ayq1TOH5j0G
+  created_at: '2024-09-18T19:40:48.254401Z'
+  row: 7
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: G4VtBsPSe3Ayq1TOH5j0G
+    parameter_id: '-1782307703'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: G4VtBsPSe3Ayq1TOH5j0G
+    parameter_id: '-343514342'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: G4VtBsPSe3Ayq1TOH5j0G
+    parameter_id: '1096522386'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: G4VtBsPSe3Ayq1TOH5j0G
+    parameter_id: '1892564691'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: c9Zocq-uFlRlXP1dYnVqJ
+    model: Dashboard
+  - id: vIiW_FWagUoJEUizGubRp
+    model: DashboardCard
+- entity_id: H99McWSZA-PZ5gn9SFEnn
+  card_id: IyjbfNye3AIx9Tc6SSX7l
+  created_at: '2024-09-18T19:40:48.254401Z'
+  row: 7
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: IyjbfNye3AIx9Tc6SSX7l
+    parameter_id: '-1782307703'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: IyjbfNye3AIx9Tc6SSX7l
+    parameter_id: '-343514342'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: IyjbfNye3AIx9Tc6SSX7l
+    parameter_id: '1096522386'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: IyjbfNye3AIx9Tc6SSX7l
+    parameter_id: '1892564691'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: c9Zocq-uFlRlXP1dYnVqJ
+    model: Dashboard
+  - id: H99McWSZA-PZ5gn9SFEnn
+    model: DashboardCard
+- entity_id: gn9D0E4S4AGRC7Xa-w5tm
+  card_id: b7b5Tp86Tnz37GX-QEHhD
+  created_at: '2024-09-18T19:40:48.254401Z'
+  row: 13
+  col: 0
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: b7b5Tp86Tnz37GX-QEHhD
+    parameter_id: '-1782307703'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: b7b5Tp86Tnz37GX-QEHhD
+    parameter_id: '-343514342'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: b7b5Tp86Tnz37GX-QEHhD
+    parameter_id: '1096522386'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: b7b5Tp86Tnz37GX-QEHhD
+    parameter_id: '1892564691'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: c9Zocq-uFlRlXP1dYnVqJ
+    model: Dashboard
+  - id: gn9D0E4S4AGRC7Xa-w5tm
+    model: DashboardCard
+- entity_id: V0IBr04hFydzYcAMMRjxv
+  card_id: NMYGC6MBHDJGoIFd_DkU_
+  created_at: '2024-09-18T19:40:48.254401Z'
+  row: 15
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: NMYGC6MBHDJGoIFd_DkU_
+    parameter_id: '-1782307703'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: NMYGC6MBHDJGoIFd_DkU_
+    parameter_id: '-343514342'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: NMYGC6MBHDJGoIFd_DkU_
+    parameter_id: '1096522386'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: NMYGC6MBHDJGoIFd_DkU_
+    parameter_id: '1892564691'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: c9Zocq-uFlRlXP1dYnVqJ
+    model: Dashboard
+  - id: V0IBr04hFydzYcAMMRjxv
+    model: DashboardCard
+- entity_id: 1bSRY9bZeMNiFIVU8qRil
+  card_id: null
+  created_at: '2024-09-18T19:40:48.254401Z'
+  row: 23
+  col: 0
+  size_x: 24
+  size_y: 2
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings: null
+    dashcard.background: false
+    text: '# Where these transactions happened'
+    text.align_vertical: bottom
+    virtual_card:
+      dataset_query: {}
+      display: text
+      name: null
+      visualization_settings: {}
+  serdes/meta:
+  - id: c9Zocq-uFlRlXP1dYnVqJ
+    model: Dashboard
+  - id: 1bSRY9bZeMNiFIVU8qRil
+    model: DashboardCard
+- entity_id: vKMKeAcOfCFenjw25iujH
+  card_id: ey0CLlVGzr7dy9hlBg3Il
+  created_at: '2024-09-18T19:40:48.254401Z'
+  row: 25
+  col: 0
+  size_x: 7
+  size_y: 10
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: ey0CLlVGzr7dy9hlBg3Il
+    parameter_id: '-1782307703'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: ey0CLlVGzr7dy9hlBg3Il
+    parameter_id: '-343514342'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: ey0CLlVGzr7dy9hlBg3Il
+    parameter_id: '1096522386'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: ey0CLlVGzr7dy9hlBg3Il
+    parameter_id: '1892564691'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: c9Zocq-uFlRlXP1dYnVqJ
+    model: Dashboard
+  - id: vKMKeAcOfCFenjw25iujH
+    model: DashboardCard
+- entity_id: IZjWQ7Tt1YYwFno4LcKkf
+  card_id: vStXGSiy7HU6UD9sU2JDi
+  created_at: '2024-09-18T19:40:48.254401Z'
+  row: 25
+  col: 7
+  size_x: 11
+  size_y: 10
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: vStXGSiy7HU6UD9sU2JDi
+    parameter_id: '-1782307703'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - null
+  - card_id: vStXGSiy7HU6UD9sU2JDi
+    parameter_id: '-343514342'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: vStXGSiy7HU6UD9sU2JDi
+    parameter_id: '1096522386'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - STATE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+  - card_id: vStXGSiy7HU6UD9sU2JDi
+    parameter_id: '1892564691'
+    target:
+    - dimension
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PRODUCTS
+        - CATEGORY
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+  series: []
+  visualization_settings:
+    column_settings: null
+  serdes/meta:
+  - id: c9Zocq-uFlRlXP1dYnVqJ
+    model: Dashboard
+  - id: IZjWQ7Tt1YYwFno4LcKkf
+    model: DashboardCard
+initially_published_at: null
+tabs: []
+width: fixed

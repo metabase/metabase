@@ -1,0 +1,127 @@
+name: Sales per source
+description: null
+entity_id: IyjbfNye3AIx9Tc6SSX7l
+created_at: '2024-09-18T19:40:47.999526Z'
+creator_id: admin@metabase.test
+display: area
+archived: false
+collection_id: oL1UIYZS1aAqzgWbQTx8X
+collection_preview: true
+collection_position: null
+query_type: query
+database_id: The Kitchen-Sink Database
+table_id:
+- The Kitchen-Sink Database
+- PUBLIC
+- ORDERS
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: The Kitchen-Sink Database
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+      - base-type: type/DateTime
+        temporal-unit: month
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PEOPLE
+        - SOURCE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - USER_ID
+    source-table:
+    - The Kitchen-Sink Database
+    - PUBLIC
+    - ORDERS
+  type: query
+result_metadata:
+- base_type: type/DateTime
+  coercion_strategy: null
+  description: The date and time an order was submitted.
+  display_name: Created At
+  effective_type: type/DateTime
+  field_ref:
+  - field
+  - - The Kitchen-Sink Database
+    - PUBLIC
+    - ORDERS
+    - CREATED_AT
+  - base-type: type/DateTime
+    temporal-unit: month
+  fk_target_field_id: null
+  id:
+  - The Kitchen-Sink Database
+  - PUBLIC
+  - ORDERS
+  - CREATED_AT
+  name: CREATED_AT
+  semantic_type: type/CreationTimestamp
+  settings: null
+  unit: month
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: 'The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter'
+  display_name: User → Source
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - The Kitchen-Sink Database
+    - PUBLIC
+    - PEOPLE
+    - SOURCE
+  - source-field:
+    - The Kitchen-Sink Database
+    - PUBLIC
+    - ORDERS
+    - USER_ID
+  fk_target_field_id: null
+  id:
+  - The Kitchen-Sink Database
+  - PUBLIC
+  - PEOPLE
+  - SOURCE
+  name: SOURCE
+  semantic_type: type/Source
+  settings: null
+  visibility_type: normal
+- base_type: type/BigInteger
+  display_name: Count
+  effective_type: type/BigInteger
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - CREATED_AT
+  - SOURCE
+  graph.metrics:
+  - count
+  graph.series_labels:
+  - null
+  stackable.stack_type: stacked
+serdes/meta:
+- id: IyjbfNye3AIx9Tc6SSX7l
+  label: sales_per_source
+  model: Card
+archived_directly: false
+metabase_version: v1.1.33-SNAPSHOT (a859933)
+source_card_id: null
+type: question

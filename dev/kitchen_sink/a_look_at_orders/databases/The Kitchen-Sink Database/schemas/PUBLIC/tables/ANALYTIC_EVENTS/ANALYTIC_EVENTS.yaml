@@ -1,0 +1,23 @@
+name: ANALYTIC_EVENTS
+display_name: Analytic Events
+description: Piespace does some anonymous analytics tracking on how users interact with their platform. They’ve only had time to implement a few events, but you know how it is. Pies come first.
+created_at: '2024-09-18T18:19:51.580153Z'
+db_id: The Kitchen-Sink Database
+schema: PUBLIC
+entity_type: entity/EventTable
+active: true
+is_upload: false
+field_order: database
+visibility_type: null
+show_in_getting_started: false
+initial_sync_status: complete
+points_of_interest: Is it? We’ll let you be the judge of that.
+caveats: Piespace has cracked time travel, so keep in mind that some events may have already happened in the future.
+serdes/meta:
+- id: The Kitchen-Sink Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: ANALYTIC_EVENTS
+  model: Table
+database_require_filter: null

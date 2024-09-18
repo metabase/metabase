@@ -1,0 +1,96 @@
+name: Sales per product
+description: null
+entity_id: b7b5Tp86Tnz37GX-QEHhD
+created_at: '2024-09-18T19:40:48.077986Z'
+creator_id: admin@metabase.test
+display: table
+archived: false
+collection_id: oL1UIYZS1aAqzgWbQTx8X
+collection_preview: true
+collection_position: null
+query_type: query
+database_id: The Kitchen-Sink Database
+table_id:
+- The Kitchen-Sink Database
+- PUBLIC
+- ORDERS
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: The Kitchen-Sink Database
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - The Kitchen-Sink Database
+        - PUBLIC
+        - PRODUCTS
+        - TITLE
+      - source-field:
+        - The Kitchen-Sink Database
+        - PUBLIC
+        - ORDERS
+        - PRODUCT_ID
+    source-table:
+    - The Kitchen-Sink Database
+    - PUBLIC
+    - ORDERS
+  type: query
+result_metadata:
+- base_type: type/Text
+  coercion_strategy: null
+  description: The name of the product as it should be displayed to customers.
+  display_name: Product → Title
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - The Kitchen-Sink Database
+    - PUBLIC
+    - PRODUCTS
+    - TITLE
+  - source-field:
+    - The Kitchen-Sink Database
+    - PUBLIC
+    - ORDERS
+    - PRODUCT_ID
+  fk_target_field_id: null
+  id:
+  - The Kitchen-Sink Database
+  - PUBLIC
+  - PRODUCTS
+  - TITLE
+  name: TITLE
+  semantic_type: type/Title
+  settings: null
+  visibility_type: normal
+- base_type: type/BigInteger
+  display_name: Count
+  effective_type: type/BigInteger
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+visualization_settings:
+  column_settings:
+    '["name","null"]':
+      show_mini_bar: true
+  graph.dimensions:
+  - TITLE
+  graph.metrics:
+  - count
+  graph.series_labels:
+  - null
+serdes/meta:
+- id: b7b5Tp86Tnz37GX-QEHhD
+  label: sales_per_product
+  model: Card
+archived_directly: false
+metabase_version: v1.1.33-SNAPSHOT (a859933)
+source_card_id: null
+type: question

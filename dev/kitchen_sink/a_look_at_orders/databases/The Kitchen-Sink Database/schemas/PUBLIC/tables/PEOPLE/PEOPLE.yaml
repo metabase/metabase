@@ -1,0 +1,23 @@
+name: PEOPLE
+display_name: People
+description: Information on the user accounts registered with Sample Company.
+created_at: '2024-09-18T18:19:51.647832Z'
+db_id: The Kitchen-Sink Database
+schema: PUBLIC
+entity_type: entity/UserTable
+active: true
+is_upload: false
+field_order: database
+visibility_type: null
+show_in_getting_started: false
+initial_sync_status: complete
+points_of_interest: Is it? You tell us!
+caveats: Note that employees and customer support staff will have accounts.
+serdes/meta:
+- id: The Kitchen-Sink Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: PEOPLE
+  model: Table
+database_require_filter: null
