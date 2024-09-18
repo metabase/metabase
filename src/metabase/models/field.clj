@@ -263,12 +263,14 @@
                                               (fn [field-usages]
                                                 (group-by :used_in field-usages)))]
       (seq (for [field fields]
-             (let [used-in->cnt (get field-id->field-usages (:id field))]
+             (let [used-in->cnt (get field-id->field-usages (:id field))
+                   [op args] (most-frequently-used-val (map (juxt :filter_op :filter_args) (get used-in->cnt :filter [])))]
                (assoc field
-                      :field_usage_filter_args       (most-frequently-used-val (map :filter_args (get used-in->cnt :filter [])))
-                      :field_usage_filter_count      (count (get used-in->cnt :filter []))
-                      :field_usage_aggregation_count (count (get used-in->cnt :aggregation []))
-                      :field_usage_breakout_count    (count (get used-in->cnt :breakout [])))))))))
+                      :field_usage_filter_most_used_args args
+                      :field_usage_filter_most_used_op   op
+                      :field_usage_filter_count          (count (get used-in->cnt :filter []))
+                      :field_usage_aggregation_count     (count (get used-in->cnt :aggregation []))
+                      :field_usage_breakout_count        (count (get used-in->cnt :breakout [])))))))))
 
 (mi/define-batched-hydration-method with-dimensions
   :dimensions
