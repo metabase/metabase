@@ -18,7 +18,7 @@
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-setup [& body]
   `(when (is-postgres?)
-     ;; TODO add more extensive searchable data
+     ;; TODO add more extensive data to search
      (mt/dataset ~'test-data
        (search.postgres/init! true)
        ~@body)))
@@ -59,7 +59,6 @@
                  (hybrid-multi term))))))))
 
 (defn- remove-time [m]
-  #_(select-keys m [:id :name :description :model])
   (dissoc m :created_at :updated_at :last_edited_at))
 
 (deftest minimal-test
