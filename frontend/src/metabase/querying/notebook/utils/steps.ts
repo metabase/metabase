@@ -4,6 +4,7 @@ import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { CardType } from "metabase-types/api";
 
 import type { NotebookStep, OpenSteps } from "../types";
@@ -34,6 +35,24 @@ const STEPS: NotebookStepDef[] = [
     active: () => true,
     revert: query => query,
     canRevert: () => false,
+  },
+  {
+    type: "native",
+    clauseType: "native",
+    valid: (query, stageIndex) => {
+      const tableId = Lib.sourceTableOrCardId(query);
+      const cardId = getQuestionIdFromVirtualTableId(tableId);
+      return cardId === 1000 && stageIndex === 0;
+    },
+    active: query => {
+      const tableId = Lib.sourceTableOrCardId(query);
+      const cardId = getQuestionIdFromVirtualTableId(tableId);
+      return cardId === 1000;
+    },
+    revert: (query, _stageIndex) => {
+      return query;
+    },
+    canRevert: () => true,
   },
   {
     type: "join",

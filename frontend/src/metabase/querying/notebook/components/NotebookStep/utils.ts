@@ -16,6 +16,7 @@ import { ExpressionStep } from "../ExpressionStep/ExpressionStep";
 import { FilterStep } from "../FilterStep";
 import { JoinStep } from "../JoinStep";
 import { LimitStep } from "../LimitStep";
+import { NativeStep } from "../NativeStep";
 import { SortStep } from "../SortStep";
 import { SummarizeStep } from "../SummarizeStep";
 import { SummarizeStepHeader } from "../SummarizeStep/SummarizeStepHeader";
@@ -104,6 +105,15 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     transparent: true,
     color: () => color("bg-dark"),
     Step: LimitStep,
+    StepHeader: NotebookStepHeader,
+  },
+  native: {
+    title: t`SQL`,
+    icon: "sql",
+    compact: true,
+    transparent: true,
+    color: () => color("brand"),
+    Step: NativeStep,
     StepHeader: NotebookStepHeader,
   },
 };

@@ -10,7 +10,8 @@ export type NotebookStepType =
   | "aggregate"
   | "breakout"
   | "sort"
-  | "limit";
+  | "limit"
+  | "native";
 
 type RevertFn = (
   query: Lib.Query,

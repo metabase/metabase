@@ -104,7 +104,10 @@ export type ClauseType =
   | "aggregation"
   | "breakout"
   | "order-by"
-  | "limit";
+  | "limit"
+  | "native";
+
+export type StageType = "mbql" | "native";
 
 export type Limit = number | null;
 
