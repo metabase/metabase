@@ -192,4 +192,4 @@
                 {:id user-2-g1}]
                [{:id user-1-g2}]]
               (map :members (t2/hydrate (t2/select :model/PermissionsGroup :id [:in [group-id-1 group-id-2]])
-                                      :members)))))))
+                                        :members)))))))

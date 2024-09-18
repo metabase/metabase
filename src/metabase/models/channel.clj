@@ -53,7 +53,6 @@
   [channel _event-type]
   (select-keys channel [:id :name :description :type :active]))
 
-
 (defmethod serdes/entity-id "Channel" [_ {:keys [name]}] name)
 
 (defmethod serdes/hash-fields :model/Channel         [_instance] [:name :type])

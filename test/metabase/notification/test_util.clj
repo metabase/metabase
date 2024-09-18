@@ -26,8 +26,8 @@
   [thunk]
   (let [channel-messages (atom {})]
     (with-redefs
-      [channel/send! (fn [channel message]
-                       (swap! channel-messages update (:type channel) u/conjv message))]
+     [channel/send! (fn [channel message]
+                      (swap! channel-messages update (:type channel) u/conjv message))]
       (thunk)
       @channel-messages)))
 

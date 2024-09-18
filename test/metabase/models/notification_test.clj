@@ -213,21 +213,21 @@
           (is (some? (insert! {:type    :notification-recipient/external-email
                                :details {:email "ngoc@metabase.com"}}))))
 
-       (testing "fail if details does not match schema"
-                 (is (thrown-with-msg? Exception #"Value does not match schema"
-                                       (insert! {:type    :notification-recipient/external-email
-                                                 :details {:email     "ngoc@metabase.com"
-                                                           :not-email true}}))))
-       (testing "fail without email"
-         (is (thrown-with-msg? Exception #"Value does not match schema"
-                               (insert! {:type :notification-recipient/external-email}))))
-       (testing "if has user_id"
-         (is (thrown-with-msg? Exception #"Value does not match schema"
-                               (insert! {:type    :notification-recipient/external-email
-                                         :user_id 1
-                                         :details {:email "ngoc@metabase.com"}}))))
-       (testing "if has permissions_group_id"
-         (is (thrown-with-msg? Exception #"Value does not match schema"
-                               (insert! {:type                 :notification-recipient/external-email
-                                         :permissions_group_id 1
-                                         :details              {:email "ngoc@metabase.com"}}))))))))
+        (testing "fail if details does not match schema"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type    :notification-recipient/external-email
+                                          :details {:email     "ngoc@metabase.com"
+                                                    :not-email true}}))))
+        (testing "fail without email"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type :notification-recipient/external-email}))))
+        (testing "if has user_id"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type    :notification-recipient/external-email
+                                          :user_id 1
+                                          :details {:email "ngoc@metabase.com"}}))))
+        (testing "if has permissions_group_id"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type                 :notification-recipient/external-email
+                                          :permissions_group_id 1
+                                          :details              {:email "ngoc@metabase.com"}}))))))))
