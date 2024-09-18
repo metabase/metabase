@@ -2,6 +2,7 @@ import { type Action, useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
+import { redirect } from "metabase/lib/dom";
 import { t } from "ttag";
 
 import {
@@ -125,26 +126,44 @@ export const useCommandPaletteBasicActions = ({
           id: "make_kitchen_sink_1",
           name: t`Kitchen Sink One`,
           section: "admin",
-          icon: "dashboard",
+          icon: "beaker",
           perform: async () => {
             location = await KitchenSinkAPI.makeKitchenSink({ sink: "a_look_at_orders" })["goto"];
-            console.log(location);
-            window.location.href = location;
+            redirect(location);
           },
         },
         {
           id: "make_kitchen_sink_2",
           name: t`Kitchen Sink Two`,
           section: "admin",
-          icon: "dashboard",
+          icon: "cloud",
           perform: async () => {
             location = await KitchenSinkAPI.makeKitchenSink({
               sink: "a_look_at_invoices",
             })["goto"];
-            console.log(location);
-            window.location.href = location;
+            redirect(location);
           },
         },
+        {
+          id: "sandbox_me",
+          name: t`Sandbox Me`,
+          section: "admin",
+          icon: "lightning",
+          perform: async () => {
+            await KitchenSinkAPI.makeMeASandbox({})
+            redirect(window.location.href);
+          }
+        },
+        {
+          id: "admin_me",
+          name: t`Admin Me`,
+          section: "admin",
+          icon: "lightning",
+          perform: async () => {
+            await KitchenSinkAPI.makeMeAnAdmin({})
+            redirect(window.location.href);
+          }
+        }
       ],
     );
 

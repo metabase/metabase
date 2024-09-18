@@ -23,8 +23,16 @@
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
 
-(t2/define-before-update :model/Session [_model]
-  (throw (RuntimeException. "You cannot update a Session.")))
+(def ^:dynamic *never-ever-set-this-very-dangerous-thing* false)
+
+(t2/define-before-update :model/Session [model]
+  (when-not *never-ever-set-this-very-dangerous-thing*
+    (throw (RuntimeException. "You cannot update a Session.")))
+  model)
+
+(defmacro with-really-dangerous-i-know-what-i-am-doing [& body]
+  `(binding [*never-ever-set-this-very-dangerous-thing* true]
+     ~@body))
 
 (t2/define-before-insert :model/Session
   [session]

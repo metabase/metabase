@@ -2,8 +2,10 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.api.common :as api]
    [compojure.core :refer [POST]]
    [java-time.api :as t]
+   [metabase.models.session :as session]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.load :as v2.load]
@@ -310,6 +312,23 @@
         ;; TODO: Return redirect URL or details to the FE so it can navigate to the new KS collection,
         ;; primary dashboard, etc.
         {:seen (count seen)
-         :goto (str (public-settings/site-url) "/collection/" coll-id)}))))
+         :goto (str (public-settings/site-url) "/collection/" coll-id)})))
+
+  (api/defendpoint POST "/sandyboxme"
+    "Logs me in as the sandbox user"
+    []
+    (session/with-really-dangerous-i-know-what-i-am-doing
+      (t2/update! :model/Session :user_id api/*current-user-id*
+                  {:user_id {:select :id
+                             :from [:core_user]
+                             :where [:= :email "sandy@kitchen.sink"]}})))
+
+  (api/defendpoint POST "/adminme"
+    "Logs me in as the admin user"
+    []
+    (session/with-really-dangerous-i-know-what-i-am-doing
+      (t2/update! :model/Session :user_id api/*current-user-id*
+                  ;; assume the admin is 1
+                  {:user_id 1}))))
 
 (api/define-routes +auth)
