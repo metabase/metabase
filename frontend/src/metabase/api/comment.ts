@@ -11,9 +11,10 @@ import { invalidateTags, listTag, provideCommentListTags } from "./tags";
 export const commentApi = Api.injectEndpoints({
   endpoints: builder => ({
     listComment: builder.query<Comment[], void>({
-      query: () => ({
+      query: body => ({
         method: "GET",
         url: "/api/comment",
+        body,
       }),
       providesTags: (comments = []) => provideCommentListTags(comments),
     }),

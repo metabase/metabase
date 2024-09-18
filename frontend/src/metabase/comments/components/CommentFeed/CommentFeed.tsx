@@ -19,7 +19,11 @@ export function CommentFeed({
   modelId?: CardId | DashboardId;
   userId?: UserId;
 }) {
-  const { data: comments, isLoading } = useListCommentQuery();
+  const { data: comments, isLoading } = useListCommentQuery({
+    model,
+    model_id: modelId,
+  });
+
   const [saveComment] = useCreateCommentMutation();
 
   if (isLoading) {

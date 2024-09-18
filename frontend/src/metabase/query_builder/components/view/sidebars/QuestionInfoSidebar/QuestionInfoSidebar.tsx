@@ -104,7 +104,7 @@ export const QuestionInfoSidebar = ({
             </Stack>
           </Tabs.Panel>
           <Tabs.Panel value="comments">
-            <CommentFeed model="question" modelId={question.id} />
+            <CommentFeed model="card" modelId={question.id()} />
           </Tabs.Panel>
           <Tabs.Panel value="history">
             <SidesheetCard>

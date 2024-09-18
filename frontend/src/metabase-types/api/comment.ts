@@ -24,6 +24,16 @@ export interface Reaction {
   author: User;
 }
 
+export type QueryCommentParams =
+  | {
+      model: CommentModel;
+      model_id: number;
+    }
+  | {
+      model: never;
+      model_id: never;
+    };
+
 export interface CreateCommentRequest {
   model: CommentModel;
   model_id: number;
