@@ -952,10 +952,11 @@ export function updateNumericFilter(
   query: Query,
   stageIndex: number,
   numericColumn: DatasetColumn,
+  cardId: CardId | undefined,
   start: number,
   end: number,
 ): Query {
-  return ML.update_numeric_filter(query, stageIndex, numericColumn, start, end);
+  return ML.update_numeric_filter(query, stageIndex, numericColumn, cardId, start, end);
 }
 
 /**

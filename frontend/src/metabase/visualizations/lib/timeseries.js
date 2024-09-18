@@ -13,11 +13,13 @@ const TIMESERIES_UNITS = new Set([
   "year", // https://github.com/metabase/metabase/issues/1992
 ]);
 
-// investigate the response from a dataset query and determine if the dimension is a timeseries
 export function dimensionIsTimeseries({ cols, rows }, i = 0) {
+  // console.log("dimensionIsTimeseries");
+  // rows[0] && console.log(typeof rows[0][i])
+  // moment... returns true for numbers. It may be a bug. To be investigated later.
   return (
-    dimensionIsExplicitTimeseries({ cols, rows }, i) ||
-    moment(rows[0] && rows[0][i], moment.ISO_8601).isValid()
+    dimensionIsExplicitTimeseries({ cols, rows }, i)  /* ||
+    moment(rows[0] && rows[0][i], moment.ISO_8601).isValid() */
   );
 }
 
