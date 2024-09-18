@@ -3,18 +3,16 @@ import { init } from "echarts/core";
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { registerEChartsModules } from "metabase/visualizations/echarts";
-import { getSankeyLayout } from "metabase/visualizations/echarts/graph/layout";
-import { getSankeyChartModel } from "metabase/visualizations/echarts/graph/model";
-import { getSankeyChartOption } from "metabase/visualizations/echarts/graph/sankey/option";
+import { buildTreemapOption } from "metabase/visualizations/visualizations/Treemap/option";
 
-import { computeSankeyChartSettings } from "./settings";
+import { computeTreemapChartSettings } from "./settings";
 
 const WIDTH = 540;
 const HEIGHT = 360;
 
 registerEChartsModules();
 
-export const SankeyChart = ({
+export const TreemapChart = ({
   rawSeries,
   renderingContext,
   width = WIDTH,
@@ -28,20 +26,12 @@ export const SankeyChart = ({
     height,
   });
 
-  const computedVisualizationSettings = computeSankeyChartSettings(
+  const computedVisualizationSettings = computeTreemapChartSettings(
     rawSeries,
     renderingContext,
   );
 
-  const chartModel = getSankeyChartModel(
-    rawSeries,
-    computedVisualizationSettings,
-    renderingContext,
-  );
-
-  const layout = getSankeyLayout(chartModel, renderingContext);
-
-  const option = getSankeyChartOption(chartModel, layout, renderingContext);
+  const option = buildTreemapOption(rawSeries, computedVisualizationSettings);
 
   chart.setOption(option);
 

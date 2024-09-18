@@ -103,6 +103,7 @@
         (chart-type display-type "display-type is %s" display-type)
 
         (#{:smartscalar
+           :treemap
            :sankey
            :scalar
            :pie

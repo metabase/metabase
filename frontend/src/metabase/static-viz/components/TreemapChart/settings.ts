@@ -1,8 +1,5 @@
-import type {
-  ComputedVisualizationSettings,
-  RenderingContext,
-} from "metabase/visualizations/types";
-import type { RawSeries, VisualizationSettings } from "metabase-types/api";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { RawSeries } from "metabase-types/api";
 
 export const fillWithDefaultValue = (
   settings: Record<string, unknown>,
@@ -15,9 +12,8 @@ export const fillWithDefaultValue = (
   }
 };
 
-export const computeSankeyChartSettings = (
+export const computeTreemapChartSettings = (
   rawSeries: RawSeries,
-  renderingContext: RenderingContext,
 ): ComputedVisualizationSettings => {
   return rawSeries[0].card.visualization_settings;
 };
