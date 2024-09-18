@@ -122,7 +122,7 @@ export function DashboardInfoSidebar({
           size="md"
         >
           <Tabs
-            defaultValue={Tab.Overview}
+            defaultValue={Tab.Comments}
             className={SidesheetS.FlexScrollContainer}
           >
             <Tabs.List mx="lg">

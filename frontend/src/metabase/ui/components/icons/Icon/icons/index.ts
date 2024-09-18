@@ -91,6 +91,8 @@ import cloud_filled_component from "./cloud_filled.svg?component";
 import cloud_filled_source from "./cloud_filled.svg?source";
 import combine_component from "./combine.svg?component";
 import combine_source from "./combine.svg?source";
+import comment_component from "./comment.svg?component";
+import comment_source from "./comment.svg?source";
 import compare_component from "./compare.svg?component";
 import compare_source from "./compare.svg?source";
 import connections_component from "./connections.svg?component";
@@ -576,6 +578,10 @@ export const Icons = {
   combine: {
     component: combine_component,
     source: combine_source,
+  },
+  comment: {
+    component: comment_component,
+    source: comment_source,
   },
   connections: {
     component: connections_component,
