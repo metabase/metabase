@@ -1,0 +1,19 @@
+<svg width="42" height="30" viewBox="0 0 42 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="1" y="1" width="40" height="28" rx="3" fill="white" stroke="#509EE3" stroke-width="1.25" stroke-linejoin="round"/>
+<rect x="6" y="6" width="30" height="16" rx="1" fill="#EEF6FD" stroke="#509EE3" stroke-width="1.25" stroke-linejoin="round"/>
+<path d="M18 16.5H24" stroke="#509EE3" stroke-width="1.25"/>
+<path d="M13 9H17" stroke="#509EE3" stroke-width="1.25" stroke-linecap="round"/>
+<path d="M25 3.5H29" stroke="#509EE3" stroke-width="1.25" stroke-linecap="round"/>
+<mask id="path-6-inside-1_1_3" fill="white">
+<ellipse cx="31.7141" cy="25.5834" rx="1.25" ry="1.25"/>
+</mask>
+<ellipse cx="31.7141" cy="25.5834" rx="1.25" ry="1.25" fill="#949AAB"/>
+<path d="M31.7141 25.5834V25.5834V28.0834C33.0949 28.0834 34.2141 26.9641 34.2141 25.5834H31.7141ZM31.7141 25.5834V25.5834H29.2141C29.2141 26.9641 30.3334 28.0834 31.7141 28.0834V25.5834ZM31.7141 25.5834V25.5834V23.0834C30.3334 23.0834 29.2141 24.2027 29.2141 25.5834H31.7141ZM31.7141 25.5834V25.5834H34.2141C34.2141 24.2027 33.0949 23.0834 31.7141 23.0834V25.5834Z" fill="#509EE3" mask="url(#path-6-inside-1_1_3)"/>
+<mask id="path-8-inside-2_1_3" fill="white">
+<ellipse cx="35.4641" cy="25.5834" rx="1.25" ry="1.25"/>
+</mask>
+<ellipse cx="35.4641" cy="25.5834" rx="1.25" ry="1.25" fill="#949AAB"/>
+<path d="M35.4641 25.5834V25.5834V28.0834C36.8449 28.0834 37.9641 26.9641 37.9641 25.5834H35.4641ZM35.4641 25.5834V25.5834H32.9641C32.9641 26.9641 34.0834 28.0834 35.4641 28.0834V25.5834ZM35.4641 25.5834V25.5834V23.0834C34.0834 23.0834 32.9641 24.2027 32.9641 25.5834H35.4641ZM35.4641 25.5834V25.5834H37.9641C37.9641 24.2027 36.8449 23.0834 35.4641 23.0834V25.5834Z" fill="#509EE3" mask="url(#path-8-inside-2_1_3)"/>
+<circle cx="15.1665" cy="11.4163" r="1.25" fill="#509EE3"/>
+<circle cx="26.8334" cy="11.4163" r="1.25" fill="#509EE3"/>
+</svg>
