@@ -7,6 +7,7 @@ import {
 import { AreaChart } from "./visualizations/AreaChart";
 import { BarChart } from "./visualizations/BarChart";
 import { ComboChart } from "./visualizations/ComboChart";
+import { Cow } from "./visualizations/Cow";
 import { DashCardPlaceholder } from "./visualizations/DashCardPlaceholder";
 import { Funnel } from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
@@ -49,6 +50,7 @@ export default function () {
   registerVisualization(PivotTable);
   registerVisualization(Treemap);
   registerVisualization(SankeyChart);
+  registerVisualization(Cow);
 
   registerVisualization(ActionViz);
   registerVisualization(DashCardPlaceholder);

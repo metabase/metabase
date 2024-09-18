@@ -99,6 +99,8 @@ import contract_component from "./contract.svg?component";
 import contract_source from "./contract.svg?source";
 import copy_component from "./copy.svg?component";
 import copy_source from "./copy.svg?source";
+import cow_component from "./cow.svg?component";
+import cow_source from "./cow.svg?source";
 import curve_component from "./curve.svg?component";
 import curve_source from "./curve.svg?source";
 import curved_component from "./curved.svg?component";
@@ -590,6 +592,10 @@ export const Icons = {
   copy: {
     component: copy_component,
     source: copy_source,
+  },
+  cow: {
+    component: cow_component,
+    source: cow_source,
   },
   curved: {
     component: curved_component,
