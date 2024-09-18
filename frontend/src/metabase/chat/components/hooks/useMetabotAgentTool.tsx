@@ -175,19 +175,18 @@ export function useMetabotAgentTool() {
           if (!filters) {
             // f
           } else if (filters.length === 1) {
-              const [{ field, operator, value }] = filters;
+            const [{ field, operator, value }] = filters;
 
-              nextFilter = [operator, getRef(field), value];
-            } else if (filters.length > 1) {
-              // multiple filters
-              const [A, B] = filters;
+            nextFilter = [operator, getRef(field), value];
+          } else if (filters.length > 1) {
+            // multiple filters
+            const [A, B] = filters;
 
-              nextFilter = [
-                "and",
-                [A.operator, getRef(A.field), A.value],
-                [B.operator, getRef(B.field), B.value],
-              ];
-            }
+            nextFilter = [
+              "and",
+              [A.operator, getRef(A.field), A.value],
+              [B.operator, getRef(B.field), B.value],
+            ];
           }
 
           console.log(`[UI] set filter`, { nextFilter });
