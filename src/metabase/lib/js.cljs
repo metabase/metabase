@@ -1993,6 +1993,14 @@
        "stageIndex" stage-number
        "value"      (lib.drill-thru.common/drill-value->js value)})
 
+(defn ^:export combile-column-drill-details
+  "Returns a JS object with the details needed to render the complex UI for `combine-column` drills."
+  [{a-query :query
+    :keys [column stage-number]}]
+  #js {"query"      a-query
+       "stageIndex" stage-number
+       "column"     column})
+
 (defn ^:export aggregation-drill-details
   "Returns a JS object with the details needed to render the complex UI for `compare-aggregation` drills.
   The argument is the opaque `a-drill-thru` value returned by [[available-drill-thrus]].

@@ -49,6 +49,12 @@ export function filterDrillDetails(drillThru: DrillThru): FilterDrillDetails {
   return ML.filter_drill_details(drillThru);
 }
 
+export function combineColumnDrillDetails(
+  drillThru: DrillThru,
+): FilterDrillDetails {
+  return ML.combine_column_drill_details(drillThru);
+}
+
 export function aggregationDrillDetails(
   drillThru: DrillThru,
 ): AggregationDrillDetails {
