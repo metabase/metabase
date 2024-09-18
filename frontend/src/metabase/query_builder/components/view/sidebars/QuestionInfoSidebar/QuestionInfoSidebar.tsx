@@ -12,7 +12,6 @@ import type Question from "metabase-lib/v1/Question";
 
 import ModelCacheManagementSection from "../ModelCacheManagementSection";
 
-import { EditVizPage } from "./EditVizPage";
 import {
   ContentSection,
   HeaderContainer,
@@ -34,21 +33,11 @@ export const QuestionInfoSidebar = ({
   const [pageId, setPageId] = useState<AnalysisPageId>("edit_viz");
   const scrollableStackRef = useRef<HTMLDivElement | null>(null);
 
-  const { messages, clearMessages, addMessage } = useMessages();
-
   const page = match(pageId)
     .with("default", () => (
       <DefaultPage question={question} onSave={onSave} setPageId={setPageId} />
     ))
     .with("describe", () => <DescribePage />)
-    .with("edit_viz", () => (
-      <EditVizPage
-        question={question}
-        scrollableStackRef={scrollableStackRef}
-        messages={messages}
-        addMessage={addMessage}
-      />
-    ))
     .with("caching", () => (
       <CachingPage question={question} setPage={setPageId} />
     ))
