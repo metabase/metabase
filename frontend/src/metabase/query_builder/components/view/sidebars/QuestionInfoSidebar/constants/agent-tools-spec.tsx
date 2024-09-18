@@ -114,7 +114,7 @@ export function getToolSpec(fields: Field[]) {
                 "value": {
                   "description": "The value to filter.",
                   "title": "Value",
-                  "type": "string"
+                  "type": ["string", "number"]
                 }
               },
               "required": [
