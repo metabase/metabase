@@ -1,5 +1,8 @@
+import { useState } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
+import { useListCommentQuery } from "metabase/api";
 import { CommentFeed } from "metabase/comments";
 import { Box, Icon, IconBadgeDotThingy, Popover } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
@@ -52,6 +55,22 @@ const AppBarLarge = ({
   onLogout,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
+  const [hasNewNotifications, setHasNewNotifications] = useState(false);
+
+  const { data: comments } = useListCommentQuery(undefined, {
+    pollingInterval: 1000,
+  });
+
+  const previousComments = usePrevious(comments);
+
+  if (
+    !hasNewNotifications &&
+    comments?.length &&
+    previousComments?.length &&
+    comments.length > previousComments.length
+  ) {
+    setHasNewNotifications(true);
+  }
 
   return (
     <AppBarRoot isNavBarOpen={isNavBarVisible}>
@@ -79,11 +98,18 @@ const AppBarLarge = ({
         <AppBarRightContainer>
           {isSearchVisible && (isEmbedded ? <SearchBar /> : <SearchButton />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
-          <Popover width="20rem" position="bottom-end">
+          <Popover
+            width="20rem"
+            position="bottom-end"
+            onOpen={() => setHasNewNotifications(false)}
+          >
             <Popover.Target>
               <div className={Styles.AppBarButton}>
                 <Icon name="bell" onClick={onToggleNavbar} />
-                <IconBadgeDotThingy color="var(--mb-color-danger)" active />
+                <IconBadgeDotThingy
+                  color="var(--mb-color-danger)"
+                  active={hasNewNotifications}
+                />
               </div>
             </Popover.Target>
             <Popover.Dropdown>
