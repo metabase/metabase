@@ -17,7 +17,8 @@ describe("comments/mention", () => {
     it("should not convert a user ID not existing in the mapping", () => {
       const comment =
         "Hey @[Oisin](123) and @[Ryan](456) can you check this out?";
-      const expectedComment = "Hey @Oisin and <@456> can you check this out?";
+      const expectedComment =
+        "Hey @Oisin and @[Ryan](456) can you check this out?";
       expect(
         toMentionDisplay(comment, {
           123: { common_name: "Oisin" },
