@@ -8,6 +8,7 @@ export * from "./bookmark";
 export * from "./card";
 export * from "./cloud-migration";
 export * from "./collection";
+export * from "./comment";
 export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
