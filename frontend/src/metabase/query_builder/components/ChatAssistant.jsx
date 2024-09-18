@@ -200,6 +200,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     case "directResponse":
                         await handleDirectResponse(data);
                         break;
+                    case "plan":
+                        await handlePlanMessage(data);
+                        break;
                     default:
                         handleDefaultMessage(data);
                         break;
@@ -507,6 +510,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         setToolWaitingResponse("planReview");
         setInisghtPlan(prevPlan => [...prevPlan, ...plan]);
         removeLoadingMessage();
+        clearInfoMessage();
     };
 
     const handleGetImage = async func => {
@@ -559,6 +563,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             setInsightsText(prevInsightsText => [...prevInsightsText, generatedTexts.value]);
             setIsLoading(false);
             removeLoadingMessage();
+            clearInfoMessage();
             if(status === "completed") {
                 setChatLoading(false);
                 setToolWaitingResponse("continue")
@@ -593,10 +598,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     };
 
     const handleResultMessage = data => {
-        const hasError =
-            data.message.toLowerCase().includes("error") ||
-            data.message.toLowerCase().includes("failed");
-        if (data.type === "result" && !hasError) {
+        if (data.type === "result") {
             setVisualizationIndex((prevIndex) => {
                 const currentIndex = prevIndex + 1;
                 addServerMessageWithInfo(
@@ -613,55 +615,49 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 "text",
             )
         }
-        if (hasError) {
-            setError(data.message);
-        }
         setIsLoading(false);
         removeLoadingMessage();
+        clearPlanMessage();
+        clearInfoMessage();
     };
     
     const handleInfoMessage = data => {
-        if(data.functions.type === "data") {
+        removeLoadingMessage();
+        clearPlanMessage();
+        if (data.functions.type === "data" || data.functions.type === "error") {
             setMessages(prevMessages => {
-                // Remove the last message with `isInsightData: true`
+                // Remove the last message with `isInsightData: true` or `isInsightError: true`
                 const filteredMessages = [...prevMessages].reverse().filter((message, index, arr) => {
-                    // Keep all messages except the first (from the end) with `isInsightData: true`
-                    return !(message.isInsightData && arr.findIndex(m => m.isInsightData) === index);
+                    return !(
+                        (message.isInsightData || message.isInsightError) && 
+                        arr.findIndex(m => m.isInsightData || m.isInsightError) === index
+                    );
                 }).reverse(); // Reverse again to maintain original order
             
+                // Prepare the new message
+                const newMessage = {
+                    id: Date.now() + Math.random(),
+                    text: data.functions.payload.message,
+                    sender: "server",
+                    type: "text",
+                    info: true,
+                    isInsightData: data.functions.type === "data",
+                    isInsightError: data.functions.type === "error"
+                };
+
+                if(data.functions.type === "error") {
+                    newMessage.typeMessage = "error"
+                } else {
+                    newMessage.typeMessage = "data"
+                }
+    
+                // Add error: true only if data.functions.payload.data.finalError exists
+                if (data.functions.payload.data?.finalError) {
+                    newMessage.error = true;
+                }
+    
                 // Add the new message
-                return [
-                    ...filteredMessages,
-                    {
-                        id: Date.now() + Math.random(),
-                        text: data.functions.payload.message,
-                        typeMessage: "data",
-                        sender: "server",
-                        type: "text",
-                        isInsightData: true
-                    }
-                ];
-            });
-        } else if(data.functions.type === "error") {
-            setMessages(prevMessages => {
-                // Remove the last message with `isInsightError: true`
-                const filteredMessages = [...prevMessages].reverse().filter((message, index, arr) => {
-                    // Keep all messages except the first (from the end) with `isInsightError: true`
-                    return !(message.isInsightError && arr.findIndex(m => m.isInsightError) === index);
-                }).reverse(); // Reverse again to maintain original order
-            
-                // Add the new message
-                return [
-                    ...filteredMessages,
-                    {
-                        id: Date.now() + Math.random(),
-                        text: data.functions.payload.message,
-                        typeMessage: "error",
-                        sender: "server",
-                        type: "text",
-                        isInsightError: true
-                    }
-                ];
+                return [...filteredMessages, newMessage];
             });
         }
     }
@@ -673,6 +669,20 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         );
         setIsLoading(false);
         removeLoadingMessage();
+    }
+
+    const handlePlanMessage = data => {
+        removeLoadingMessage();
+        setMessages(prevMessages => [
+            ...prevMessages,
+            {
+                id: Date.now() + Math.random(),
+                text: data.message,
+                sender: "server",
+                type: "text",
+                plan: true
+            }
+        ]);
     }
 
     const redirect = async () => {
@@ -842,6 +852,18 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             message => message.text !== "Please wait until we generate the response...." && message.text !== "Please wait until we generate the visualization for you...."
         ));
     };
+
+    const clearPlanMessage = () => {
+        setMessages(prevMessages => prevMessages.filter(
+            message => !message.plan 
+        ));
+    }
+    
+    const clearInfoMessage = () => {
+        setMessages(prevMessages => prevMessages.filter(
+            message => !message.info 
+        ));
+    }
 
     const handleKeyPress = (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
