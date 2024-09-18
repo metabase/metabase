@@ -632,7 +632,6 @@ export const extractParts = (inputString: string) => {
 };
 
 const cleanAndParseInputString = (inputString: string): Cube | null => {
-  console.log("🚀 ~ extractParts ~ inputString:", inputString);
   let cleanedString = inputString;
 
   // Step 1: Remove single-line comments starting with //
@@ -705,7 +704,6 @@ const cleanAndParseInputString = (inputString: string): Cube | null => {
   }
 
   // Step 16: Log the final cleaned string before parsing for debugging
-  console.log("🚀 ~ Final cleaned string:", cleanedString);
 
   // Step 17: Parse the cleaned string into a JSON object
   try {
