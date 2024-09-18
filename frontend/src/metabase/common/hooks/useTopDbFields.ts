@@ -20,6 +20,9 @@ export const useTopDbFields = (
           include: "tables.fields",
         }
       : skipToken,
+    {
+      refetchOnMountOrArgChange: true,
+    },
   );
 
   const fields =
