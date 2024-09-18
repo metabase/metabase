@@ -63,6 +63,7 @@ export const NotebookCellItem = forwardRef<
       ref={ref}
     >
       <NotebookCellItemContentContainer
+        className={restProps.className2}
         inactive={inactive}
         disabled={disabled}
         readOnly={readOnly}

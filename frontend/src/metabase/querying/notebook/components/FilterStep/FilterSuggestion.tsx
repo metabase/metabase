@@ -7,6 +7,7 @@ import * as Lib from "metabase-lib";
 import { NotebookCellItem } from "../NotebookCell";
 
 import { FilterPopover } from "./FilterPopover";
+import S from "./FilterPopover.module.css";
 
 interface FilterSuggestionProps {
   field: any;
@@ -57,13 +58,8 @@ export const FilterSuggestion = ({
       <Popover.Target>
         <NotebookCellItem
           color="#8F90EA33"
-          containerStyle={{
-            color: "#7173AD",
-            border: "1px dashed",
-            boxSizing: "border-box",
-            background: "linear-gradient(to left, #8DC0ED33, #8F90EA33)",
-            marginLeft: "0.5rem",
-          }}
+          className={S.x}
+          className2={S.y}
           onClick={() => {
             if (filter) {
               handleAddFilter(filter);

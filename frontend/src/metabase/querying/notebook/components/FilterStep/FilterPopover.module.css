@@ -1,0 +1,32 @@
+.x {
+  border: 1px dashed #8bacfa !important;
+  box-sizing: border-box !important;
+  margin-left: 0.5rem !important;
+  color: #7173ad !important;
+  background: linear-gradient(
+    86.87deg,
+    rgba(141, 192, 237, 0.2) 0%,
+    rgba(143, 144, 234, 0.2) 100%
+  ) !important;
+  transition: all 300ms ease-out !important;
+  box-shadow: 0 0 12px 0 transparent !important;
+}
+
+.y {
+  background: transparent !important;
+}
+
+.x:hover {
+  box-shadow: 0 0 12px 0 #509ee3a8 !important;
+  background: linear-gradient(
+    86.87deg,
+    rgba(141, 192, 237, 0.4) 0%,
+    rgba(143, 144, 234, 0.4) 100%
+  ) !important;
+}
+
+.x:hover svg:first-child {
+  transition: all 300ms ease-out !important;
+  transform: scale(1.33);
+  transform-origin: 50% 50%;
+}
