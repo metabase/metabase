@@ -314,13 +314,13 @@ const RuleDescription = ({ rule }) => {
       {rule.type === "range"
         ? t`Cells in this column will be tinted based on their values.`
         : rule.type === "single"
-        ? jt`When a cell in these columns ${(
-            <span className={CS.textBold}>
-              {ALL_OPERATOR_NAMES[rule.operator]}
-              {getValueForDescription(rule)}
-            </span>
-          )} it will be tinted this color.`
-        : null}
+          ? jt`When a cell in these columns ${(
+              <span className={CS.textBold}>
+                {ALL_OPERATOR_NAMES[rule.operator]}
+                {getValueForDescription(rule)}
+              </span>
+            )} it will be tinted this color.`
+          : null}
     </span>
   );
 };
@@ -426,10 +426,10 @@ const RuleEditor = ({
               ...(isBooleanRule
                 ? BOOLEAN_OPERATIOR_NAMES
                 : isNumericRule
-                ? NUMBER_OPERATOR_NAMES
-                : isStringRule
-                ? STRING_OPERATOR_NAMES
-                : {}),
+                  ? NUMBER_OPERATOR_NAMES
+                  : isStringRule
+                    ? STRING_OPERATOR_NAMES
+                    : {}),
             }).map(([operator, operatorName]) => (
               <Option key={operatorName} value={operator}>
                 {operatorName}

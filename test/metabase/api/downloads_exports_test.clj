@@ -41,12 +41,20 @@
                  (->>  (spreadsheet/cell-seq r)
                        (mapv read-cell-with-formatting)))))))
 
+(defn- tabulate-maps
+  [result]
+  (let [ks (keys (first result))]
+    (cons
+     (mapv name ks)
+     (map #(mapv % ks) result))))
+
 (defn- process-results
   [export-format results]
   (when (seq results)
     (case export-format
-      :csv  (try (csv/read-csv results) (catch Exception _ results))
-      :xlsx (read-xlsx results))))
+      :csv  (csv/read-csv results)
+      :xlsx (read-xlsx results)
+      :json (tabulate-maps results))))
 
 (defn- card-download
   [{:keys [id] :as _card} {:keys [export-format format-rows pivot]}]
@@ -739,12 +747,11 @@
                                          (mapv (fn [row] (->> (spreadsheet/cell-seq row)
                                                               (mapv spreadsheet/read-cell)))))]
                            data))]
-            (is (= [["Category" "pivot-grouping" "Sum of Price"]
-                    ["Doohickey" 0.0 2185.89]
-                    ["Gadget" 0.0 3019.2]
-                    ["Gizmo" 0.0 2834.88]
-                    ["Widget" 0.0 3109.31]
-                    [nil 1.0 11149.28]]
+            (is (= [["Category" "Sum of Price"]
+                    ["Doohickey" 2185.89]
+                    ["Gadget" 3019.2]
+                    ["Gizmo" 2834.88]
+                    ["Widget" 3109.31]]
                    (take 6 data)))))))))
 
 (deftest ^:parallel dashcard-viz-settings-downloads-test
@@ -966,3 +973,27 @@
                   (is (true? (str/includes? results-string "Test Exception")))
                   (testing (format "String \"%s\" is not in the error message." illegal)
                     (is (false? (str/includes? results-string illegal)))))))))))))
+
+(deftest unpivoted-pivot-results-do-not-include-pivot-grouping
+  (testing "If a pivot question is downloaded or exported unpivoted, the results do not include 'pivot-grouping' column"
+    (doseq [export-format ["csv" "xlsx" "json"]]
+      (testing (format "for %s" export-format)
+        (mt/dataset test-data
+          (mt/with-temp [:model/Card {pivot-card-id :id}
+                         {:display                :pivot
+                          :visualization_settings {:pivot_table.column_split
+                                                   {:rows    []
+                                                    :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                    :values  [[:aggregation 0]]}}
+                          :dataset_query          {:database (mt/id)
+                                                   :type     :query
+                                                   :query
+                                                   {:source-table (mt/id :products)
+                                                    :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                    :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
+            (let [result (mt/user-http-request :crowberto :post 200
+                                               (format "card/%d/query/%s?format_rows=false" pivot-card-id export-format)
+                                               {})
+                  data   (process-results (keyword export-format) result)]
+              (is (= ["Category" "Sum of Price"]
+                     (first data))))))))))

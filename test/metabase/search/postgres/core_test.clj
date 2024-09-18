@@ -11,8 +11,9 @@
 (def ^:private hybrid
   (comp t2.realize/realize search.postgres/hybrid))
 
-(def ^:private hybrid-multi
-  #'search.postgres/hybrid-multi)
+(def ^:private hybrid-multi #'search.postgres/hybrid-multi)
+
+(def ^:private minimal #'search.postgres/minimal)
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-setup [& body]
@@ -51,3 +52,15 @@
         (testing term
           (is (= (hybrid term)
                  (hybrid-multi term))))))))
+
+(defn- remove-time [m]
+  (dissoc m :create_at))
+
+(deftest minimal-test
+  (with-setup
+    (testing "consistent results between both hybrid implementations"
+      (doseq [term ["satisfaction" "e-commerce" "example" "new" "revenue"]]
+        (testing term
+          ;; Timestamps are not strings after round trip, but this doesn't matter
+          (is (= (map remove-time (hybrid term))
+                 (map remove-time (minimal term)))))))))
