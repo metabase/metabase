@@ -22,8 +22,6 @@
   [_channel message]
   message)
 
-
-
 (defn do-with-captured-channel-send!
   [thunk]
   (let [channel-messages (atom {})]
