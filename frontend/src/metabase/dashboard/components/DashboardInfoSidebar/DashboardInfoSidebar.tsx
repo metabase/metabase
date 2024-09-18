@@ -144,7 +144,11 @@ export function DashboardInfoSidebar({
                 />
               </Tabs.Panel>
               <Tabs.Panel value={Tab.Comments}>
-                <CommentFeed model="dashboard" modelId={dashboard.id} />
+                <CommentFeed
+                  model="dashboard"
+                  modelId={dashboard.id}
+                  autoScroll
+                />
               </Tabs.Panel>
               <Tabs.Panel value={Tab.History}>
                 <HistoryTab

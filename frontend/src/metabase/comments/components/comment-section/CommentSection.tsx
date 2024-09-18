@@ -24,7 +24,7 @@ export const CommentSection = ({
         ))}
 
         <CommentInput
-          placeholder="Add a comment..."
+          placeholder="reply..."
           onSubmit={text =>
             saveComment({
               text,

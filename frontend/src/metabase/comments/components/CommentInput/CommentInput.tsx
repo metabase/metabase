@@ -6,10 +6,12 @@ import { Flex, type FlexProps, Icon, Input } from "metabase/ui";
 export function CommentInput({
   onSubmit,
   placeholder,
+  autoFocus,
   ...flexProps
 }: {
   onSubmit: (text: string) => Promise<void>;
   placeholder: string;
+  autoFocus: boolean;
 } & FlexProps) {
   const [text, setText] = useState("");
 
@@ -38,15 +40,17 @@ export function CommentInput({
         value={text}
         onChange={e => setText(e.target.value)}
         placeholder={placeholder}
-        autoFocus
         style={{ flex: 1 }}
+        autoFocus={autoFocus}
         rightSection={
-          <Icon
-            name="enter_or_return"
-            color="var(--mb-color-brand)"
-            className={Styles.cursorPointer}
-            onClick={() => handleSubmit(text)}
-          />
+          text && (
+            <Icon
+              name="enter_or_return"
+              color="var(--mb-color-brand)"
+              className={Styles.cursorPointer}
+              onClick={() => handleSubmit(text)}
+            />
+          )
         }
       />
     </Flex>
