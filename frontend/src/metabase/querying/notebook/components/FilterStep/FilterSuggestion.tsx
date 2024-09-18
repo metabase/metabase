@@ -37,6 +37,18 @@ export const FilterSuggestion = ({
       });
     }
 
+    if (Lib.isString(field.column)) {
+      const argsAttribute = field.attribute + "_most_used_args";
+      const opAttribute = field.attribute + "_most_used_op";
+
+      return Lib.stringFilterClause({
+        operator: field[opAttribute],
+        column: field.column,
+        values: field[argsAttribute],
+        options: {},
+      });
+    }
+
     return null;
   })();
 
@@ -50,17 +62,19 @@ export const FilterSuggestion = ({
             border: "1px dashed",
             boxSizing: "border-box",
             background: "linear-gradient(to left, #8DC0ED33, #8F90EA33)",
+            marginLeft: "0.5rem",
           }}
           onClick={() => setOpened(true)}
         >
           <Icon className={CS.mr1} name="sparkles" />
-          {field.display_name}
+          {generateFilterLabel(field)}
           <Icon className={CS.ml1} name="add" />
         </NotebookCellItem>
       </Popover.Target>
       <Popover.Dropdown>
         <FilterPopover
           initialFilter={filter as any}
+          initialColumn={field.column}
           query={query}
           stageIndex={stageIndex}
           onAddFilter={clause => {
@@ -73,3 +87,14 @@ export const FilterSuggestion = ({
     </Popover>
   );
 };
+
+function generateFilterLabel(field) {
+  const args = field[field.attribute + "_most_used_args"];
+  const operator = field[field.attribute + "_most_used_op"];
+
+  if (args && operator) {
+    return `${field.display_name} ${operator === "between" ? `is between` : operator} ${args?.join(" and ")}`;
+  } else {
+    return field.display_name;
+  }
+}

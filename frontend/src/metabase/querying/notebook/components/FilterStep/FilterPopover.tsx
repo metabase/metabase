@@ -5,6 +5,7 @@ interface FilterPopoverProps {
   query: Lib.Query;
   stageIndex: number;
   initialFilter?: Lib.FilterClause;
+  initialColumn?: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
   filterIndex?: number;
   onAddFilter: (filter: Lib.Filterable) => void;
@@ -24,9 +25,11 @@ export function FilterPopover({
   onAddFilter,
   onUpdateFilter,
   onClose,
+  initialColumn,
 }: FilterPopoverProps) {
   return (
     <FilterPicker
+      initialColumn={initialColumn}
       query={query}
       stageIndex={stageIndex}
       isNew={Boolean(initialFilter)}
