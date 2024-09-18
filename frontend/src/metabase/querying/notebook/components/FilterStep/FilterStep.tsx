@@ -106,6 +106,7 @@ export function FilterStep({
 }
 
 interface FilterPopoverProps {
+  initialColumn?: Lib.ColumnMetadata;
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
@@ -119,6 +120,7 @@ interface FilterPopoverProps {
 }
 
 function FilterPopover({
+  initialColumn,
   query,
   stageIndex,
   filter,
@@ -129,6 +131,7 @@ function FilterPopover({
 }: FilterPopoverProps) {
   return (
     <FilterPicker
+      initialColumn={initialColumn}
       query={query}
       stageIndex={stageIndex}
       filter={filter}

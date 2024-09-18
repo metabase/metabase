@@ -10,6 +10,8 @@ import { FilterPickerBody } from "./FilterPickerBody";
 import type { ColumnListItem, SegmentListItem } from "./types";
 
 export interface FilterPickerProps {
+  initialColumn?: Lib.ColumnMetadata;
+
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
@@ -20,6 +22,7 @@ export interface FilterPickerProps {
 }
 
 export function FilterPicker({
+  initialColumn,
   query,
   stageIndex,
   filter: initialFilter,
@@ -30,7 +33,7 @@ export function FilterPicker({
   const [filter, setFilter] = useState(initialFilter);
 
   const [column, setColumn] = useState(
-    getInitialColumn(query, stageIndex, filter),
+    initialColumn ?? getInitialColumn(query, stageIndex, filter),
   );
 
   const [
