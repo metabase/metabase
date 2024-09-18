@@ -31,7 +31,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const dispatch = useDispatch();
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
     const [companyName, setCompanyName] = useState("");
-    const [card, setCard] = useState([]);
+    const [inputValue, setInputValue] = useState("");
+    const [messages, setMessages] = useState([]);
+    const [card, setCard] = useState(null);
     const [reasoning, setReasoning] = useState([]);
     const [sources, setSources] = useState([]);
     const [selectedIndex, setSelectedIndex] = useState(null)
@@ -132,6 +134,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 const messages = messageGroup.text.map(([senderType, messageText]) => ({
                     id: generateRandomId(),
                     text: messageText,
+                    typeMessage: "data",
                     sender: senderType === "human" ? "user" : "server",
                     type: "text",
                     thread_id: selectedThreadId,
@@ -153,7 +156,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 return messages;
             });
             setDefaultQuestion([]);
-            setCard([]);
+            setCard(null);
             setCardHash([]);
             setResult([])
             if (chatType == "insights" && insights.length > 0) {
@@ -464,7 +467,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
     const handleGetCalulationOptions = async func => {
         const { calculationOptions } = func.arguments;
-        console.log(calculationOptions)
         //Show calculationOptions and send a response from the user
         addServerMessage(
             calculationOptions || "Received a message from the server.",
@@ -635,6 +637,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     {
                         id: Date.now() + Math.random(),
                         text: data.functions.payload.message,
+                        typeMessage: "data",
                         sender: "server",
                         type: "text",
                         isInsightData: true
@@ -655,6 +658,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     {
                         id: Date.now() + Math.random(),
                         text: data.functions.payload.message,
+                        typeMessage: "error",
                         sender: "server",
                         type: "text",
                         isInsightError: true
@@ -684,6 +688,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             {
                 id: Date.now() + Math.random(),
                 text: message,
+                typeMessage: "data",
                 sender: "server",
                 type: type,
             }
@@ -691,11 +696,14 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     };
 
     const addServerMessageWithInfo = (message, type, showVisualization, visualizationIdx) => {
+        if (message === "The semantic layer requires an update to proceed with the task.") return;
+
         setMessages(prevMessages => [
             ...prevMessages,
             {
                 id: Date.now() + Math.random(),
                 text: message,
+                typeMessage: "data",
                 sender: "server",
                 type: type,
                 showVisualization: showVisualization,
@@ -710,6 +718,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             {
                 id: Date.now() + Math.random(),
                 text: message,
+                typeMessage: "data",
                 sender: "server",
                 type: type,
                 showType: visualization,
@@ -727,6 +736,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 {
                     id: Date.now() + Math.random(),
                     text: inputValue,
+                    typeMessage: "data",
                     sender: "user",
                     type: "text",
                     thread_id: threadId,
@@ -738,6 +748,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     {
                         id: Date.now() + Math.random(),
                         text: "Please wait until we generate the visualization for you....",
+                        typeMessage: "data",
                         sender: "server",
                         type: "text",
                         // thread_id: threadId,
@@ -752,6 +763,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     {
                         id: Date.now() + Math.random(),
                         text: "Please wait until we generate the response....",
+                        typeMessage: "data",
                         sender: "server",
                         type: "text"
                     }
@@ -800,6 +812,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             {
                 id: Date.now() + Math.random(),
                 text: inputValue,
+                typeMessage: "data",
                 sender: "user",
                 type: "text",
                 thread_id: threadId,
@@ -807,6 +820,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             {
                 id: Date.now() + Math.random(),
                 text: "Please wait until we generate the response....",
+                typeMessage: "data",
                 sender: "server",
                 type: "text",
             },

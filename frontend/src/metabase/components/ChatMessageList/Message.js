@@ -11,7 +11,8 @@ const Message = ({
   onDenyClick,
 }) => {
   const isUser = message.sender === "user";
-  const hasError =
+  const hasError = 
+    message.typeMessage.toLowerCase().includes("error") ||
     message.text.toLowerCase().includes("error") ||
     message.text.toLowerCase().includes("failed");
 
@@ -48,7 +49,8 @@ const Message = ({
           color: hasError ? "#D32F2F" : "#333",
           position: "relative",
           display: "flex",
-          alignItems: "center",
+          flexDirection: "column",
+          alignItems: "flex-start",
         }}
       >
         <span style={{ fontSize: "16px", whiteSpace: "pre-wrap" }}>
@@ -67,36 +69,36 @@ const Message = ({
           </div>
         )}
         {hasError && (
-          <Button
-            variant="outlined"
-            style={{
-              cursor: "pointer",
-              border: "1px solid #587330",
-              borderRadius: "8px",
-              color: "#587330",
-              backgroundColor: "#FFF",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginLeft: "auto",
-              padding: "0.6rem 1rem",
-              lineHeight: "1",
-              marginRight: "10px",
-              fontWeight: "bold",
-              width: "10rem",
-            }}
-            onClick={onFeedbackClick}
-          >
-            <span
+          <div style={{ marginTop: "8px" }}>
+            <Button
+              variant="outlined"
               style={{
-                fontSize: "14px",
-                fontWeight: "lighter",
-                verticalAlign: "middle",
+                cursor: "pointer",
+                border: "1px solid #587330",
+                borderRadius: "8px",
+                color: "#587330",
+                backgroundColor: "#FFF",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0.3rem 0.8rem",
+                lineHeight: "1",
+                fontWeight: "bold",
+                width: "10rem",
               }}
+              onClick={onFeedbackClick}
             >
-              Provide feedback
-            </span>
-          </Button>
+              <span
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "lighter",
+                  verticalAlign: "middle",
+                }}
+              >
+                Provide feedback
+              </span>
+            </Button>
+          </div>
         )}
 
         {approvalChangeButtons && (
@@ -105,6 +107,7 @@ const Message = ({
               display: "flex",
               flexDirection: "row",
               marginLeft: "auto",
+              marginTop: "8px",
             }}
           >
             <Button
