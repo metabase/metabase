@@ -934,6 +934,7 @@ export function updateLatLonFilter(
   stageIndex: number,
   latitudeColumn: DatasetColumn,
   longitudeColumn: DatasetColumn,
+  cardId: CardId | undefined,
   bounds: UpdateLatLonFilterBounds,
 ): Query {
   return ML.update_lat_lon_filter(
@@ -941,6 +942,7 @@ export function updateLatLonFilter(
     stageIndex,
     latitudeColumn,
     longitudeColumn,
+    cardId,
     bounds,
   );
 }

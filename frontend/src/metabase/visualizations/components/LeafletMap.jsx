@@ -158,7 +158,7 @@ export default class LeafletMap extends Component {
     const question = new Question(card, metadata);
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
-    if (!isNative) {
+    if (!isNative || question.isSaved()) {
       const query = question.query();
       const stageIndex = -1;
       const filterBounds = {
@@ -172,6 +172,7 @@ export default class LeafletMap extends Component {
         stageIndex,
         latitudeColumn,
         longitudeColumn,
+        question.id(),
         filterBounds,
       );
       const updatedQuestion = question.setQuery(updatedQuery);

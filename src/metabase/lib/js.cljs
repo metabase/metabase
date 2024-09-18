@@ -2219,11 +2219,13 @@
   > **Code health:** Smelly; Single use. This is highly specialized in the UI, but should probably continue to exist.
   However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
   ideally refactored away."
-  [a-query stage-number latitude-column longitude-column bounds]
+  [a-query stage-number latitude-column longitude-column card-id  bounds]
+  ;; (.log js/console "update-lat-lon-filter")
   (let [bounds           (js->clj bounds :keywordize-keys true)
         latitude-column  (legacy-column->metadata a-query stage-number latitude-column)
         longitude-column (legacy-column->metadata a-query stage-number longitude-column)]
-    (lib.core/update-lat-lon-filter a-query stage-number latitude-column longitude-column bounds)))
+    (lib.core/update-lat-lon-filter (lib.drill-thru.common/prepare-query a-query stage-number card-id)
+                                    stage-number latitude-column longitude-column bounds)))
 
 (defn ^:export update-numeric-filter
   "Add or update a filter against `numeric-column`, based on the provided start and end values. **Removes** any existing
