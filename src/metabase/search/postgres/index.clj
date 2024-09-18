@@ -90,7 +90,7 @@
         :collection_id
         :database_id
         :display_data
-        :legacy_data
+        :legacy_input
         :table_id
         :archived])
       (update :display_data json/generate-string)
@@ -175,10 +175,12 @@
   [search-term]
   {:select [:model_id :model]
    :from   [active-table]
-   :where  [:raw
-            "search_vector @@ to_tsquery('"
-            tsv-language "', "
-            [:lift (to-tsquery-expr search-term)] ")"]})
+   :where  (if-not search-term
+             [:= [:inline 1] [:inline 1]]
+             [:raw
+              "search_vector @@ to_tsquery('"
+              tsv-language "', "
+              [:lift (to-tsquery-expr search-term)] ")"])})
 
 (defn search
   "Use the index table to search for records."

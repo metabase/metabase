@@ -40,7 +40,7 @@
      :archived?          archived?
      :model-ancestors?   true})))
 
-(defn hybrid
+(defn- hybrid
   "Use the index for appling the search string, but rely on the legacy code path for rendering
   the display data, applying permissions, additional filtering, etc.
 
@@ -60,7 +60,7 @@
       (sql/format {:quoted true})
       t2/reducible-query))
 
-(defn hybrid-multi
+(defn- hybrid-multi
   "Perform multiple legacy searches to see if its faster. Perverse!"
   [search-term & {:as search-ctx}]
   (when-not @#'search.index/initialized?
@@ -88,17 +88,22 @@
        (map :legacy_input)
        (map #(json/parse-string % keyword))))
 
-(defn search-minimal
-  "Perform a basic search that only uses the index"
-  [search-ctx]
-  (minimal (:search-string search-ctx)
-           (dissoc search-ctx :search-string)))
+(def ^:private default-engine hybrid-multi)
+
+(defn- search-fn [search-engine]
+  (case search-engine
+    :hybrid       hybrid
+    :hubrid-multi hybrid-multi
+    :minimal      minimal
+    :fulltext     default-engine
+    default-engine))
 
 (defn search
   "Return a reducible-query corresponding to searching the entities via a tsvector."
   [search-ctx]
-  (hybrid-multi (:search-string search-ctx)
-                (dissoc search-ctx :search-string)))
+  (let [f (search-fn (:search-engine search-ctx))]
+    (f (:search-string search-ctx)
+       (dissoc search-ctx :search-string))))
 
 (defn init!
   "Ensure that the search index exists, and has been populated with all the entities."
