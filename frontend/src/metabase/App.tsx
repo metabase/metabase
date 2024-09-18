@@ -33,6 +33,7 @@ import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
+import { ChatWidget } from "./chat/components/ChatWidget";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
@@ -120,6 +121,7 @@ function App({
             </AppContentContainer>
           </AppContainer>
           <Palette />
+          <ChatWidget />
         </KBarProvider>
       </ScrollToTop>
     </ErrorBoundary>
