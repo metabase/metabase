@@ -130,7 +130,13 @@ export const Treemap = ({ rawSeries, settings }: VisualizationProps) => {
     itemStyle: {
       gapWidth: 2,
     },
-    colorSaturation: [0.3, 0.8],
+    levels: [
+      {},
+      {
+        colorSaturation: [0.25, 0.65],
+      },
+      {},
+    ],
   };
 
   const treemapTooltip: TooltipOption = {
