@@ -2248,7 +2248,7 @@
   However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
   ideally refactored away."
   [a-query stage-number temporal-column card-id start end]
-  (do (.log js/console "update-temporal-filter")
+  #_(do (.log js/console "update-temporal-filter")
       (.log js/console (with-out-str (cljs.pprint/pprint a-query))))
   (let [temporal-column (legacy-column->metadata a-query stage-number temporal-column)]
     ;; (lib.drill-thru.common/prepare-query query stage-number card-id)
