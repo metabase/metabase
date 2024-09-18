@@ -15,14 +15,17 @@
 
 (api/defendpoint GET "/"
   "Get juicy things"
-  [model model_id]
+  [model model_id user_id]
   {model    [:maybe commentable-model-schema]
-   model_id [:maybe ms/PositiveInt]}
-  (if model
-    (do
-      (api/checkp (integer? model_id) "model_id" "model_id is required when specifying a model")
-      (comment/for-model model model_id))
-    (comment/all)))
+   model_id [:maybe ms/PositiveInt]
+   user_id  [:maybe ms/PositiveInt]}
+  (cond
+    model (do
+            (api/checkp (integer? model_id) "model_id" "model_id is required when specifying a model")
+            (api/checkp (nil? user_id) "user_id" "When specifying a model, do not provide user_id")
+            (comment/for-model model model_id))
+    user_id (comment/user-notifications api/*current-user-id*)
+    :else (comment/all)))
 
 (api/defendpoint POST "/"
   "Create a comment"

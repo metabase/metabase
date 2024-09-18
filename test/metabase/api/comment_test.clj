@@ -40,6 +40,7 @@
     (mt/with-temp [:model/Card {card-id :id} {}]
       (let [new-comment {:model "card" :model_id card-id :text "Oh-SHEEN"}
             result      (mt/user-http-request :rasta :post 200 "comment" new-comment)]
+        (t2/delete! :model/Comment :id (:id result))
         (is (=? (assoc new-comment :author {:first_name "Rasta"})
                 result))))))
 
