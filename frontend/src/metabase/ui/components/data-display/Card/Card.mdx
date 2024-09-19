@@ -1,6 +1,7 @@
 import { Fragment } from "react";
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Box, Card, Stack, Text } from "metabase/ui";
+import * as CardStories from './Card.stories';
 
 export const args = {
   p: "md",
@@ -28,12 +29,7 @@ export const argTypes = {
   },
 };
 
-<Meta
-  title="Data display/Card"
-  component={Card}
-  args={args}
-  argTypes={argTypes}
-/>
+<Meta of={CardStories} />
 
 # Card
 
@@ -41,7 +37,7 @@ Our themed wrapper around [Mantine Card](https://v6.mantine.dev/core/card/).
 
 ## Docs
 
-- [Mantine Card Docs](https://v6.mantine.dev/core/card/)
+*   [Mantine Card Docs](https://v6.mantine.dev/core/card/)
 
 ## Examples
 
@@ -77,18 +73,15 @@ export const CardSectionBorderTemplate = args => (
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={CardStories.Default_} />
 </Canvas>
 
 ### Card border
 
 export const Border = DefaultTemplate.bind({});
-Border.args = {
-  withBorder: true,
-};
 
 <Canvas>
-  <Story name="Border">{Border}</Story>
+  <Story of={CardStories.Border_} />
 </Canvas>
 
 ### Card.Section
@@ -96,7 +89,7 @@ Border.args = {
 export const CardSection = CardSectionTemplate.bind({});
 
 <Canvas>
-  <Story name="Card section">{CardSection}</Story>
+  <Story of={CardStories.CardSection_} />
 </Canvas>
 
 ### Card.Section border
@@ -104,5 +97,5 @@ export const CardSection = CardSectionTemplate.bind({});
 export const CardSectionBorder = CardSectionBorderTemplate.bind({});
 
 <Canvas>
-  <Story name="Card section, border">{CardSectionBorder}</Story>
+  <Story of={CardStories.CardSectionBorder_} />
 </Canvas>
