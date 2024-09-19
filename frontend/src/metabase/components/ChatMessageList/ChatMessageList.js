@@ -51,7 +51,8 @@ const ChatMessageList = ({
             message={message}
             isLoading={
               isLoading &&
-              message.sender === "server"
+              message.sender === "server" &&
+              message.isLoading !== false
             }
             onFeedbackClick={onFeedbackClick}
             approvalChangeButtons={
@@ -96,9 +97,9 @@ const ChatMessageList = ({
           ))}
 
           {/* Conditionally render visualization under the specific message */}
-          {message.showVisualization && card && defaultQuestion && result && (
+          {message.showVisualization && (
             <>
-              {card.length < 1 && insightsList.length < 1 ? (
+              {!card ? (
                 <Skeleton
                   variant="rect"
                   animate={true}
@@ -133,7 +134,7 @@ const ChatMessageList = ({
                 </Skeleton>
               ) : (
                 <>
-                  {insightsList.length < 1 ? (
+                  {card && defaultQuestion && result && (
                     <div>
                       {card.map(
                         (singleCard, cardIndex) =>
@@ -227,122 +228,6 @@ const ChatMessageList = ({
                           ),
                       )}
                     </div>
-                  ) : (
-                    <>
-                      {insightsList && insightsList.length > 0 && (
-                        <div>
-                          {insightsList.map(
-                            (insightList, insightIndex) =>
-                              message.visualizationIdx === insightIndex && (
-                                <div style={{ marginTop: "2rem" }}>
-                                  <h2 style={{ marginBottom: "1rem" }}>
-                                    Insights
-                                  </h2>
-                                  {insightList.map((insight, index) => (
-                                    <div
-                                      key={index}
-                                      style={{ marginBottom: "2rem" }}
-                                    >
-                                      {insight.insightExplanation && (
-                                        <div style={{ marginBottom: "1rem" }}>
-                                          <strong>Insight:</strong>{" "}
-                                          {insight.insightExplanation}
-                                        </div>
-                                      )}
-                                      {!insight.type ? (
-                                        <div
-                                          style={{
-                                            padding: "16px",
-                                            overflow: "hidden",
-                                            height: "400px",
-                                            width: "auto",
-                                            display: "flex",
-                                            justifyContent: "center",
-                                            alignItems: "center",
-                                            border: "1px solid #E0E0E0",
-                                            borderRadius: "8px",
-                                            backgroundColor: "#F8FAFD",
-                                          }}
-                                        >
-                                          <VisualizationResult
-                                            question={insight.defaultQuestion}
-                                            isDirty={false}
-                                            queryBuilderMode={"view"}
-                                            result={insight.queryCard}
-                                            className={cx(
-                                              CS.flexFull,
-                                              CS.fullWidth,
-                                              CS.fullHeight,
-                                            )}
-                                            rawSeries={[
-                                              {
-                                                card: insight.card,
-                                                data:
-                                                  insight.queryCard &&
-                                                  insight.queryCard.data,
-                                              },
-                                            ]}
-                                            isRunning={false}
-                                            navigateToNewCardInsideQB={null}
-                                            onNavigateBack={() =>
-                                              console.log("back")
-                                            }
-                                            timelineEvents={[]}
-                                            selectedTimelineEventIds={[]}
-                                          />
-                                        </div>
-                                      ) : (
-                                        <div>
-                                          {insight.type === "image" &&
-                                            insight.base64 && (
-                                              <img
-                                                src={`data:image/png;base64,${insight.base64}`}
-                                                alt="Insight Visualization"
-                                                style={{
-                                                  maxHeight: "100%",
-                                                  maxWidth: "100%",
-                                                }}
-                                              />
-                                            )}
-                                          <Button
-                                            variant="outlined"
-                                            style={{
-                                              width: "auto",
-                                              cursor: "pointer",
-                                              border: "1px solid #E0E0E0",
-                                              borderRadius: "8px",
-                                              marginBottom: "1rem",
-                                              color: "#FFF",
-                                              marginLeft: "auto",
-                                              marginRight: 0,
-                                              backgroundColor: "#8A64DF",
-                                              display: "flex",
-                                              alignItems: "center",
-                                              padding: "0.5rem 1rem",
-                                              lineHeight: "1",
-                                            }}
-                                            onClick={() => { }}
-                                          >
-                                            <span
-                                              style={{
-                                                fontSize: "18px",
-                                                fontWeight: "lighter",
-                                                verticalAlign: "top",
-                                              }}
-                                            >
-                                              Verify Code
-                                            </span>
-                                          </Button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              ),
-                          )}
-                        </div>
-                      )}
-                    </>
                   )}
                 </>
               )}
