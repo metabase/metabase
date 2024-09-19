@@ -160,8 +160,11 @@ import {
             cy.findByTestId("embed-menu-embed-modal-item").click();
 
             getEmbedModalSharingPane().within(() => {
-              cy.findByText("Static embed").should("be.visible");
-              cy.findByText("Public embed").should("be.visible");
+              cy.findByText("Static embedding").should("be.visible");
+              cy.findByText(/Use public embedding/).should("not.exist");
+              cy.findByText("Public embeds and links are disabled.").should(
+                "be.visible",
+              );
             });
           });
         });
