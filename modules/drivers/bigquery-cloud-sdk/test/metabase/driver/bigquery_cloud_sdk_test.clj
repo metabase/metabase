@@ -4,6 +4,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
@@ -12,6 +13,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
@@ -50,8 +52,8 @@
       (testing "can-connect? returns false for bogus credentials"
         (is (false? (driver/can-connect? :bigquery-cloud-sdk (assoc db-details :project-id fake-proj-id)))))
       (testing "can-connect? returns true for a valid dataset-id even with no tables"
-        (with-redefs [bigquery/list-tables (fn [& _]
-                                             [])]
+        (with-redefs [bigquery/describe-database-tables (fn [& _]
+                                                          [])]
           (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details)))))
       (testing "can-connect? returns an appropriate exception message if no datasets are found"
         (is (thrown-with-msg? Exception
@@ -240,14 +242,22 @@
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
                      {:schema test-db-name :name view-name :database_require_filter false})
           "`describe-database` should see the view")
-      (is (= {:schema test-db-name
-              :name   view-name
-              :fields #{{:name "id", :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false}
-                        {:name "venue_name", :database-type "STRING" :base-type :type/Text :database-position 1 :database-partitioned false}
-                        {:name "category_name", :database-type "STRING" :base-type :type/Text :database-position 2 :database-partitioned false}}}
-             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name, :schema test-db-name}))
-          "`describe-tables` should see the fields in the view")
+      (is (= [{:name "id", :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name view-name :table-schema test-db-name}
+              {:name "venue_name", :database-type "STRING" :base-type :type/Text :database-position 1 :database-partitioned false :table-name view-name :table-schema test-db-name}
+              {:name "category_name", :database-type "STRING" :base-type :type/Text :database-position 2 :database-partitioned false :table-name view-name :table-schema test-db-name}]
+             (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [view-name], :schema-names [test-db-name]}))
+          "`describe-fields` should see the fields in the view")
       (sync/sync-database! (mt/db) {:scan :schema})
+
+      (testing "describe-database"
+        (qp.store/with-metadata-provider (mt/id)
+          (is (= #{{:schema test-db-name
+                    :name view-name
+                    :database_require_filter false}}
+                 (into #{}
+                       (filter (comp #{view-name} :name))
+                       (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
+
       (testing "We should be able to run queries against the view (#3414)"
         (is (= [[1 "Red Medicine" "Asian"]
                 [2 "Stout Burgers & Beers" "Burger"]
@@ -268,6 +278,15 @@
                                (fmt-table-name "orders"))]]
             (bigquery.tx/execute! sql))
           (sync/sync-database! (mt/db) {:scan :schema})
+          (testing "describe-database"
+            (qp.store/with-metadata-provider (mt/id)
+              (is (= #{{:schema test-db-name
+                        :name view-name
+                        :database_require_filter false}}
+                     (into #{}
+                           (filter (comp #{view-name} :name))
+                           (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
+
           (testing "We should be able to run queries against the view (#3414)"
             (is (= [[1 93] [2 98] [3 77]]
                    (mt/rows
@@ -302,13 +321,41 @@
     :bigquery-cloud-sdk
     (mt/dataset
       nested-records
-      (is (= {:columns ["r.a" "r.b" "r.rr.aa"]
-              :rows [[1 "a" 10] [2 "b" nil] [3 "c" nil]]}
-             (mt/rows+column-names
-              (mt/run-mbql-query records
-                {:fields [(mt/id :records :r :a)
-                          (mt/id :records :r :b)
-                          (mt/id :records :r :rr :aa)]})))))))
+      (let [table (first (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))]
+        (is (=? {:name "records"} table))
+        (is (=? [{:name "id"}
+                 {:name "name"}
+                 {:name "r"
+                  :database-type "RECORD",
+                  :base-type :type/Dictionary,
+                  :database-position 2
+                  :nested-fields [{:name "a",
+                                    :database-type "INTEGER",
+                                    :base-type :type/Integer,
+                                    :database-position 2,
+                                    :nfc-path ["r"]}
+                                   {:name "b",
+                                    :database-type "STRING",
+                                    :base-type :type/Text,
+                                    :database-position 2,
+                                    :nfc-path ["r"]}
+                                   {:name "rr",
+                                    :database-type "RECORD",
+                                    :base-type :type/Dictionary,
+                                    :database-position 2,
+                                    :nfc-path ["r"],
+                                    :nested-fields
+                                    [{:name "aa",
+                                      :database-type "INTEGER",
+                                      :base-type :type/Integer,
+                                      :database-position 2,
+                                      :nfc-path ["r" "rr"]}]}]}]
+                (walk/postwalk
+                  (fn [n]
+                    (if (set? n)
+                      (sort-by :name n)
+                      n))
+                  (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [table]}))))))))
 
 (deftest query-nested-fields-test
   (mt/test-driver
@@ -354,6 +401,24 @@
                                  (fmt-table-name "not_partitioned"))]]
               (bigquery.tx/execute! sql))
             (sync/sync-database! (mt/db) {:scan :schema})
+
+            (testing "describe-database"
+              (qp.store/with-metadata-provider (mt/id)
+                (is (= #{{:schema test-db-name
+                          :name "partition_by_ingestion_time",
+                          :database_require_filter true}
+                         {:schema test-db-name, :name "partition_by_time", :database_require_filter true}
+                         {:schema test-db-name, :name "partition_by_range", :database_require_filter true}
+                         {:schema test-db-name,
+                          :name "partition_by_range_not_required",
+                          :database_require_filter false}}
+                       (into #{}
+                             (filter (comp #{"partition_by_range"
+                                             "partition_by_time"
+                                             "partition_by_ingestion_time"
+                                             "partition_by_range_not_required"
+                                             "partition_by_ingestion_time_not_required"} :name))
+                             (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
 
             (testing "tables that require a filter are correctly identified"
               (is (= table-name->is-filter-required?
@@ -655,30 +720,36 @@
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
                      {:schema test-db-name :name tbl-nm :database_require_filter false})
           "`describe-database` should see the table")
-      (is (= {:schema test-db-name
-              :name   tbl-nm
-              :fields #{{:base-type :type/Decimal
-                         :database-partitioned false
-                         :database-position 0
-                         :database-type "NUMERIC"
-                         :name "numeric_col"}
-                        {:base-type :type/Decimal
-                         :database-partitioned false
-                         :database-position 1
-                         :database-type "NUMERIC"
-                         :name "decimal_col"}
-                        {:base-type :type/Decimal
-                         :database-partitioned false
-                         :database-position 2
-                         :database-type "BIGNUMERIC"
-                         :name "bignumeric_col"}
-                        {:base-type :type/Decimal
-                         :database-partitioned false
-                         :database-position 3
-                         :database-type "BIGNUMERIC"
-                         :name "bigdecimal_col"}}}
-             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm :schema test-db-name}))
-          "`describe-table` should see the fields in the table")
+      (is (= [{:base-type :type/Decimal
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-partitioned false
+               :database-position 0
+               :database-type "NUMERIC"
+               :name "numeric_col"}
+              {:base-type :type/Decimal
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-partitioned false
+               :database-position 1
+               :database-type "NUMERIC"
+               :name "decimal_col"}
+              {:base-type :type/Decimal
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-partitioned false
+               :database-position 2
+               :database-type "BIGNUMERIC"
+               :name "bignumeric_col"}
+              {:base-type :type/Decimal
+               :table-name tbl-nm
+               :table-schema test-db-name
+               :database-partitioned false
+               :database-position 3
+               :database-type "BIGNUMERIC"
+               :name "bigdecimal_col"}]
+             (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
+          "`describe-fields` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the table"
         (doseq [[col-nm param-v] [[:numeric_col (bigdec numeric-val)]
@@ -708,7 +779,7 @@
                         (is (= {:schema test-db-name
                                 :name   tbl-nm
                                 :fields #{{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false}
-                                          {:name "array_col" :database-type "INTEGER" :base-type :type/Array :database-position 1 :database-partitioned false}}}
+                                          {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false}}}
                                (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm :schema test-db-name}))
                             "`describe-table` should detect the correct base-type for array type columns")))))
 
