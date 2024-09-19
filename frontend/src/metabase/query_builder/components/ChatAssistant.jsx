@@ -22,7 +22,7 @@ import { getInitialSchema } from "metabase/redux/initialSchema";
 import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipToken } from "metabase/api";
 import { SemanticError } from "metabase/components/ErrorPages";
 import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
-const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages }) => {
+const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton }) => {
     const initialDbName = useSelector(getDBInputValue);
     const initialCompanyName = useSelector(getCompanyName);
     const initialSchema = useSelector(getInitialSchema);
@@ -71,6 +71,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         if (databases) {
             const cubeDatabase = databases.find(database => database.is_cube === true);
             if (cubeDatabase) {
+                setIsChatHistoryOpen(true);
+                setShowButton(true);
                 setDBInputValue(cubeDatabase.id);
                 setCompanyName(cubeDatabase.company_name)
             }
@@ -673,16 +675,18 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
     const handlePlanMessage = data => {
         removeLoadingMessage();
-        setMessages(prevMessages => [
-            ...prevMessages,
-            {
-                id: Date.now() + Math.random(),
-                text: data.message,
-                sender: "server",
-                type: "text",
-                plan: true
-            }
-        ]);
+        if(data.message) {
+            setMessages(prevMessages => [
+                ...prevMessages,
+                {
+                    id: Date.now() + Math.random(),
+                    text: data.message,
+                    sender: "server",
+                    type: "text",
+                    plan: true
+                }
+            ]);
+        }
     }
 
     const redirect = async () => {
@@ -938,6 +942,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
     useEffect(() => {
         if (initialDbName !== null && initialInsightDbName !== null && initialCompanyName !== '' && initialSchema && initialSchema.schema && initialSchema.schema.length > 0) {
+            setShowButton(true);
+            setIsChatHistoryOpen(true);
             setDBInputValue(initialDbName)
             setInsightDbId(initialInsightDbName)
             setCompanyName(initialCompanyName)
@@ -994,7 +1000,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                 style={{
                                     display: "flex",
                                     justifyContent: "center", // Center horizontally
-                                    width: "calc(100% - 600px)",
+                                    width: "100%",            // Take full width
+                                    maxWidth: `calc(100% - ${isChatHistoryOpen ? "600px" : "300px"})`, // Adjust the width based on the chat history visibility
                                     backgroundColor: "#FFF",
                                     position: "fixed",
                                     bottom: "5rem",

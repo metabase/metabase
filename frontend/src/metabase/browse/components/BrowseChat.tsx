@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Flex, Stack } from "metabase/ui";
+import { Flex, Icon, Stack } from "metabase/ui";
 import ChatAssistant from "metabase/query_builder/components/ChatAssistant";
 import { BrowseContainer, BrowseMain } from "./BrowseContainer.styled";
 import ChatHistory from "./ChatItems/ChatHistory";
@@ -15,6 +15,8 @@ export const BrowseChat = () => {
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState([]);
   const [threadId, setThreadId] = useState('')
+  const [isChatHistoryOpen, setIsChatHistoryOpen] = useState(false);
+  const [showButton, setShowButton] = useState(false);
   const initialMessage = useSelector(getInitialMessage);
 
   const handleStartNewChat = () => {
@@ -25,22 +27,42 @@ export const BrowseChat = () => {
         setThreadId(thread_Id)
   };
 
+  const toggleChatHistory = () => {
+    setIsChatHistoryOpen(!isChatHistoryOpen);
+  };
+
   return (
     <BrowseContainer>
+    {showButton && (
       <Flex
         style={{
           justifyContent: "flex-end",
+          alignItems: "center",
           marginRight: "3rem",
+          gap: "1rem", 
         }}
       >
         <button
-          style={{color: "#8A64DF", cursor: "pointer"}}
-          onClick={handleStartNewChat}>
+          style={{ color: isChatHistoryOpen ? "#8A64DF" : "#76797D", cursor: "pointer", marginTop: ".2rem" }}
+          onClick={toggleChatHistory}
+        >
+          <Icon
+            name="chatHistory"
+            size={18}
+            style={{ fill: isChatHistoryOpen ? "#8A64DF" : "#76797D", paddingTop: "2px", paddingLeft: "2px" }}
+          />
+        </button>
+
+        <button
+          style={{ color: "#8A64DF", cursor: "pointer" }}
+          onClick={handleStartNewChat}
+        >
           <p style={{ fontSize: "14px", color: "#8A64DF", fontWeight: "500" }}>
             New Thread
             </p>
         </button>
       </Flex>
+    )}
       <BrowseMain>
         <Flex style={{ height: "85vh", width: "100%" }}>
           <Stack
@@ -49,7 +71,7 @@ export const BrowseChat = () => {
             style={{
               flexGrow: 1,
               marginTop: "1rem",
-              borderRight: "1px solid #e3e3e3",
+              borderRight: isChatHistoryOpen ? "1px solid #e3e3e3" : "none",
             }}
           >
             <ChatAssistant
@@ -68,21 +90,26 @@ export const BrowseChat = () => {
               threadId={threadId}
               inputValue={inputValue}
               messages={messages}
+              isChatHistoryOpen={isChatHistoryOpen}
+              setIsChatHistoryOpen={setIsChatHistoryOpen}
+              setShowButton={setShowButton}
             />
           </Stack>
-          <Stack
-            mb="lg"
-            spacing="xs"
-            style={{ minWidth: "300px", width: "300px", marginTop: "1rem" }}
-          >
-            <ChatHistory
-              setSelectedChatHistory={setSelectedChatHistory}
-              setThreadId={setSelectedThreadId}
-              type="dataAgent"
-              setOldCardId={setOldCardId}
-              setInsights={setInsights}
-            />
-          </Stack>
+          {isChatHistoryOpen && (
+            <Stack
+              mb="lg"
+              spacing="xs"
+              style={{ minWidth: "300px", width: "300px", marginTop: "1rem" }}
+            >
+              <ChatHistory
+                setSelectedChatHistory={setSelectedChatHistory}
+                setThreadId={setSelectedThreadId}
+                type="dataAgent"
+                setOldCardId={setOldCardId}
+                setInsights={setInsights}
+              />
+            </Stack>
+          )}
         </Flex>
       </BrowseMain>
     </BrowseContainer>
