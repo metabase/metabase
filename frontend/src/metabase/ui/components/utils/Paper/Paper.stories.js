@@ -1,19 +1,19 @@
 import { Fragment } from "react";
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+
 import { Grid, Paper, Text } from "metabase/ui";
 
-export const args = {
+const args = {
   p: "md",
   radius: "md",
   shadow: "md",
   withBorder: false,
 };
 
-export const sampleArgs = {
+const sampleArgs = {
   text: "The elm tree planted by Eleanor Bold, the judge’s daughter, fell last night.",
 };
 
-export const argTypes = {
+const argTypes = {
   p: {
     options: ["xs", "sm", "md", "lg", "xl"],
     control: { type: "inline-radio" },
@@ -31,26 +31,13 @@ export const argTypes = {
   },
 };
 
-<Meta title="Utils/Paper" component={Paper} args={args} argTypes={argTypes} />
-
-# Paper
-
-Our themed wrapper around [Mantine Paper](https://v6.mantine.dev/core/paper/).
-
-## Docs
-
-- [Figma File](https://www.figma.com/file/uc2OFS4lu0GvVDFB7Sz1hw/Paper?type=design&node-id=1-227&mode=design&t=x44LGyAYVvvURkVS-0)
-- [Mantine Paper Docs](https://v6.mantine.dev/core/paper/)
-
-## Examples
-
-export const DefaultTemplate = args => (
+const DefaultTemplate = args => (
   <Paper {...args}>
     <Text>{sampleArgs.text}</Text>
   </Paper>
 );
 
-export const GridTemplate = args => (
+const GridTemplate = args => (
   <Grid columns={argTypes.radius.options.length + 1} align="center" gutter="xl">
     <Grid.Col span={1} />
     {argTypes.radius.options.map(radius => (
@@ -75,27 +62,31 @@ export const GridTemplate = args => (
   </Grid>
 );
 
-export const Default = DefaultTemplate.bind({});
+const Default = DefaultTemplate.bind({});
+const NoBorder = GridTemplate.bind({});
+const Border = GridTemplate.bind({});
 
-<Canvas>
-  <Story name="Default">{Default}</Story>
-</Canvas>
-
-### No border
-
-export const NoBorder = GridTemplate.bind({});
-
-<Canvas>
-  <Story name="No border">{NoBorder}</Story>
-</Canvas>
-
-### Border
-
-export const Border = GridTemplate.bind({});
-Border.args = {
-  withBorder: true,
+export default {
+  title: "Utils/Paper",
+  component: Paper,
+  args: args,
+  argTypes: argTypes,
 };
 
-<Canvas>
-  <Story name="Border">{Border}</Story>
-</Canvas>
+export const Default_ = {
+  render: Default,
+  name: "Default",
+};
+
+export const NoBorder_ = {
+  render: NoBorder,
+  name: "No border",
+};
+
+export const Border_ = {
+  render: Border,
+  name: "Border",
+  args: {
+    withBorder: true,
+  },
+};
