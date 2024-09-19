@@ -20971,8 +20971,8 @@ msgid "Didn’t find anything"
 msgstr "hiçbir şey bulunamadı"
 
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:247
-msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
-msgstr "Veritabanınızı görmüyor musunuz? Kendi kendine barındırma için uygun olup olmadığını görmek için {0} sayfamıza göz atın."
+msgid "Don’t see your database? Please reach out to support or contact an admin."
+msgstr "Veritabanınızı görmüyor musunuz? Lütfen destekle iletişime geçin veya bir yöneticiyle iletişim kurun."
 
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:255
 msgid "Community Drivers"

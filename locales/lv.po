@@ -20998,8 +20998,8 @@ msgid "Didn’t find anything"
 msgstr "Neko neatradu"
 
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:247
-msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
-msgstr "Vai neredzat savu datu bāzi? Apskatiet mūsu {0} lapu, lai redzētu, vai tā ir pieejama pašmitināšanai."
+msgid "Don’t see your database? Please reach out to support or contact an admin."
+msgstr "Vai neredzat savu datu bāzi? Lūdzu, sazinieties ar atbalstu vai sazinieties ar administratoru."
 
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:255
 msgid "Community Drivers"

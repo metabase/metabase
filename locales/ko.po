@@ -20946,8 +20946,8 @@ msgid "Didn’t find anything"
 msgstr "아무것도 찾지 못했습니다"
 
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:247
-msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
-msgstr "데이터베이스가 보이지 않습니까? 자체 호스팅이 가능한지 알아보려면 {0} 페이지를 확인하세요."
+msgid "Don’t see your database? Please reach out to support or contact an admin."
+msgstr "데이터베이스가 보이지 않습니까? 지원에 문의하거나 관리자에게 연락하세요."
 
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:255
 msgid "Community Drivers"
