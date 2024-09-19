@@ -203,7 +203,7 @@ describe("embed modal display", () => {
       openSharingMenu("Embed");
 
       getEmbedModalSharingPane().within(() => {
-        cy.findByText("Static embed").should("be.visible");
+        cy.findByText("Static embedding").should("be.visible");
         cy.findByText("Public embed").should("be.visible");
         cy.findByTestId("interactive-embedding-cta").within(() => {
           cy.findByText("Interactive Embedding").should("be.visible");
@@ -230,7 +230,7 @@ describe("embed modal display", () => {
       openSharingMenu("Embed");
 
       getEmbedModalSharingPane().within(() => {
-        cy.findByText("Static embed").should("be.visible");
+        cy.findByText("Static embedding").should("be.visible");
         cy.findByText("Public embed").should("be.visible");
         cy.findByTestId("interactive-embedding-cta").within(() => {
           cy.findByText("Interactive Embedding").should("be.visible");

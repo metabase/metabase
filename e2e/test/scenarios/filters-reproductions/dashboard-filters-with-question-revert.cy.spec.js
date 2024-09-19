@@ -227,7 +227,7 @@ describe("issue 35954", () => {
 
         visitDashboard(id);
         openSharingMenu("Embed");
-        modal().findByText("Static embed").click();
+        modal().findByText("Static embedding").click();
 
         cy.findByTestId("embedding-preview").within(() => {
           cy.intercept("GET", "api/preview_embed/dashboard/**").as(
