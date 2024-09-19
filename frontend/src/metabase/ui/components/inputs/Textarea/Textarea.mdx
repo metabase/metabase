@@ -1,6 +1,7 @@
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Icon } from "metabase/ui";
 import { Stack, Textarea } from "metabase/ui";
+import * as TextareaStories from './Textarea.stories';
 
 export const args = {
   variant: "default",
@@ -66,12 +67,7 @@ export const argTypes = {
   },
 };
 
-<Meta
-  title="Inputs/Textarea"
-  component={Textarea}
-  args={args}
-  argTypes={argTypes}
-/>
+<Meta of={TextareaStories} />
 
 # Textarea
 
@@ -79,7 +75,7 @@ Our themed wrapper around [Mantine Textarea](https://v6.mantine.dev/core/textare
 
 ## Docs
 
-- [Mantine Textarea Docs](https://v6.mantine.dev/core/textarea/)
+*   [Mantine Textarea Docs](https://v6.mantine.dev/core/textarea/)
 
 ## Examples
 
@@ -95,211 +91,133 @@ export const VariantTemplate = args => (
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={TextareaStories.Default_} />
 </Canvas>
 
 ### Size - md
 
 export const EmptyMd = VariantTemplate.bind({});
-EmptyMd.args = {
-  label: sampleArgs.label,
-  placeholder: sampleArgs.placeholder,
-};
 
 <Canvas>
-  <Story name="Empty, md">{EmptyMd}</Story>
+  <Story of={TextareaStories.EmptyMd_} />
 </Canvas>
 
 #### Filled
 
 export const FilledMd = VariantTemplate.bind({});
-FilledMd.args = {
-  defaultValue: sampleArgs.value,
-  label: sampleArgs.label,
-  placeholder: sampleArgs.placeholder,
-};
 
 <Canvas>
-  <Story name="Filled, md">{FilledMd}</Story>
+  <Story of={TextareaStories.FilledMd_} />
 </Canvas>
 
 #### Asterisk
 
 export const AsteriskMd = VariantTemplate.bind({});
-AsteriskMd.args = {
-  label: sampleArgs.label,
-  placeholder: sampleArgs.placeholder,
-  withAsterisk: true,
-};
 
 <Canvas>
-  <Story name="Asterisk, md">{AsteriskMd}</Story>
+  <Story of={TextareaStories.AsteriskMd_} />
 </Canvas>
 
 #### Description
 
 export const DescriptionMd = VariantTemplate.bind({});
-DescriptionMd.args = {
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  placeholder: sampleArgs.placeholder,
-};
 
 <Canvas>
-  <Story name="Description, md">{DescriptionMd}</Story>
+  <Story of={TextareaStories.DescriptionMd_} />
 </Canvas>
 
 #### Disabled
 
 export const DisabledMd = VariantTemplate.bind({});
-DisabledMd.args = {
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  placeholder: sampleArgs.placeholder,
-  disabled: true,
-  withAsterisk: true,
-};
 
 <Canvas>
-  <Story name="Disabled, md">{DisabledMd}</Story>
+  <Story of={TextareaStories.DisabledMd_} />
 </Canvas>
 
 #### Error
 
 export const ErrorMd = VariantTemplate.bind({});
-ErrorMd.args = {
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  placeholder: sampleArgs.placeholder,
-  error: sampleArgs.error,
-  withAsterisk: true,
-};
 
 <Canvas>
-  <Story name="Error, md">{ErrorMd}</Story>
+  <Story of={TextareaStories.ErrorMd_} />
 </Canvas>
 
 #### Read only
 
 export const ReadOnlyMd = VariantTemplate.bind({});
-ReadOnlyMd.args = {
-  defaultValue: sampleArgs.value,
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  placeholder: sampleArgs.placeholder,
-  readOnly: true,
-};
 
 <Canvas>
-  <Story name="Read only, md">{ReadOnlyMd}</Story>
+  <Story of={TextareaStories.ReadOnlyMd_} />
 </Canvas>
 
 #### Autosize
 
 export const AutosizeMd = VariantTemplate.bind({});
-AutosizeMd.args = {
-  label: sampleArgs.label,
-  description: sampleArgs.description,
-  placeholder: sampleArgs.placeholder,
-  autosize: true,
-};
 
 <Canvas>
-  <Story name="Autosize, md">{AutosizeMd}</Story>
+  <Story of={TextareaStories.AutosizeMd_} />
 </Canvas>
 
 ### Size - xs
 
 export const EmptyXs = VariantTemplate.bind({});
-EmptyXs.args = {
-  ...EmptyMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Empty, xs">{EmptyXs}</Story>
+  <Story of={TextareaStories.EmptyXs_} />
 </Canvas>
 
 #### Filled
 
 export const FilledXs = VariantTemplate.bind({});
-FilledXs.args = {
-  ...FilledMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Filled, xs">{FilledXs}</Story>
+  <Story of={TextareaStories.FilledXs_} />
 </Canvas>
 
 #### Asterisk
 
 export const AsteriskXs = VariantTemplate.bind({});
-AsteriskXs.args = {
-  ...AsteriskMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Asterisk, xs">{AsteriskXs}</Story>
+  <Story of={TextareaStories.AsteriskXs_} />
 </Canvas>
 
 #### Description
 
 export const DescriptionXs = VariantTemplate.bind({});
-DescriptionXs.args = {
-  ...DescriptionMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Description, xs">{DescriptionXs}</Story>
+  <Story of={TextareaStories.DescriptionXs_} />
 </Canvas>
 
 #### Disabled
 
 export const DisabledXs = VariantTemplate.bind({});
-DisabledXs.args = {
-  ...DisabledMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Disabled, xs">{DisabledXs}</Story>
+  <Story of={TextareaStories.DisabledXs_} />
 </Canvas>
 
 #### Error
 
 export const ErrorXs = VariantTemplate.bind({});
-ErrorXs.args = {
-  ...ErrorMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Error, xs">{ErrorXs}</Story>
+  <Story of={TextareaStories.ErrorXs_} />
 </Canvas>
 
 #### Read only
 
 export const ReadOnlyXs = VariantTemplate.bind({});
-ReadOnlyXs.args = {
-  ...ReadOnlyMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Read only, xs">{ReadOnlyXs}</Story>
+  <Story of={TextareaStories.ReadOnlyXs_} />
 </Canvas>
 
 #### Autosize
 
 export const AutosizeXs = VariantTemplate.bind({});
-AutosizeXs.args = {
-  ...AutosizeXs.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Autosize, xs">{AutosizeXs}</Story>
+  <Story of={TextareaStories.AutosizeXs_} />
 </Canvas>
