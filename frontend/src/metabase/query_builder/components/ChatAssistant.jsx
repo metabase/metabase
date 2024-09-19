@@ -184,7 +184,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     };
 
     const { ws, isConnected } = useWebSocket(
-        "ws://localhost:8090",
+        assistant_url,
         async e => {
             if (e.data) {
                 const data = JSON.parse(e.data);
