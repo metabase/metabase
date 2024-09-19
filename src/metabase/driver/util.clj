@@ -530,24 +530,33 @@
     (contains? partner-drivers driver-name) "partner"
     :else "community"))
 
+(def ^:private cached-available-drivers-info
+  "Stores a tuple of `driver/hierarchy` and the computed value of `available-drivers-info` for that hierarchy. "
+  (atom nil))
+
 (defn available-drivers-info
   "Return info about all currently available drivers, including their connection properties fields and supported
   features. The output of `driver/connection-properties` is passed through `connection-props-server->client` before
   being returned, to handle any transformation between the server side and client side representation."
   []
-  (into {} (for [driver (available-drivers)
-                 :let   [props (try
-                                 (->> (driver/connection-properties driver)
-                                      (connection-props-server->client driver))
-                                 (catch Throwable e
-                                   (log/errorf e "Unable to determine connection properties for driver %s" driver)))]
-                 :when  props]
-             ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
-             [driver {:source {:type (driver-source (name driver))
-                               :contact (driver/contact-info driver)}
-                      :details-fields props
-                      :driver-name    (driver/display-name driver)
-                      :superseded-by  (driver/superseded-by driver)}])))
+  (let [[hierarchy cached-value] @cached-available-drivers-info]
+    (if (identical? hierarchy driver/hierarchy)
+      cached-value
+      (reset! cached-available-drivers-info
+              [driver/hierarchy
+               (into {} (for [driver (available-drivers)
+                              :let   [props (try
+                                              (->> (driver/connection-properties driver)
+                                                   (connection-props-server->client driver))
+                                              (catch Throwable e
+                                                (log/errorf e "Unable to determine connection properties for driver %s" driver)))]
+                              :when  props]
+                          ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
+                          [driver {:source {:type (driver-source (name driver))
+                                            :contact (driver/contact-info driver)}
+                                   :details-fields props
+                                   :driver-name    (driver/display-name driver)
+                                   :superseded-by  (driver/superseded-by driver)}]))]))))
 
 (defsetting engines
   "Available database engines"
