@@ -27,7 +27,9 @@ const ChatMessageList = ({
   insightsPlan,
   insightsText,
   insightsImg,
-  insightsCode
+  insightsCode,
+  showCubeEditButton,
+  sendAdminRequest
 }) => {
   const messageEndRef = useRef(null);
   useEffect(() => {
@@ -62,6 +64,8 @@ const ChatMessageList = ({
             }
             onApproveClick={onApproveClick}
             onDenyClick={onDenyClick}
+            showCubeEditButton={showCubeEditButton}
+            sendAdminRequest={sendAdminRequest}
           />
 
           {/* Loop over insightsPlan and display matching items */}

@@ -6,6 +6,7 @@ import TextArea from "metabase/core/components/TextArea";
 import useWebSocket from "metabase/hooks/useWebSocket";
 import ChatMessageList from "metabase/components/ChatMessageList/ChatMessageList";
 import FeedbackDialog from "metabase/components/FeedbackDialog/FeedbackDialog";
+import CubeRequestDialog from "metabase/components/CubeRequest/CubeRequestDialog";
 import { CardApi } from "metabase/services";
 import Question from "metabase-lib/v1/Question";
 import { push } from "react-router-redux";
@@ -22,6 +23,8 @@ import { getInitialSchema } from "metabase/redux/initialSchema";
 import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipToken } from "metabase/api";
 import { SemanticError } from "metabase/components/ErrorPages";
 import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
+
+
 const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton }) => {
     const initialDbName = useSelector(getDBInputValue);
     const initialCompanyName = useSelector(getCompanyName);
@@ -45,6 +48,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedTab, setSelectedTab] = useState("reasoning");
     const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
+    const [isCubeRequestDialogOpen, setIsCbubeRequestDialogOpen] = useState(false);
     const [insightsList, setInsightsList] = useState([]);
     const [cardHash, setCardHash] = useState([]);
     const [id, setId] = useState(0);
@@ -67,6 +71,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [chatLoading, setChatLoading] = useState(false);
     const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
     const [selectedHash, setSelectedHash] = useState(null)
+    const [showCubeEditButton, setShowCubeEditButton] = useState(false)
+    const [requestedFields, setRequestedFields] = useState([]);
+
     const databases = data?.data;
     useEffect(() => {
         if (databases) {
@@ -316,7 +323,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 };
                 return Array.isArray(prevCard) ? [...prevCard, updatedCard] : [updatedCard];
             });
-
             setCardHash(prevCardHash => Array.isArray(prevCardHash) ? [...prevCardHash, hash1] : [hash1]);
             console.log('CARD HASH: ', cardHash)
         } catch (error) {
@@ -526,7 +532,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         setToolWaitingResponse("planReview");
         setInisghtPlan(prevPlan => [...prevPlan, ...plan]);
         removeLoadingMessage();
-        clearInfoMessage();
+        // clearInfoMessage();
     };
 
     const handleGetImage = async func => {
@@ -579,7 +585,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             setInsightsText(prevInsightsText => [...prevInsightsText, generatedTexts.value]);
             setIsLoading(false);
             removeLoadingMessage();
-            clearInfoMessage();
+            // clearInfoMessage();
             if (status === "completed") {
                 setChatLoading(false);
                 setToolWaitingResponse("continue")
@@ -634,12 +640,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         setIsLoading(false);
         removeLoadingMessage();
         clearPlanMessage();
-        clearInfoMessage();
+        // clearInfoMessage();
     };
 
     const handleInfoMessage = data => {
         removeLoadingMessage();
         clearPlanMessage();
+
         if (data.functions.type === "data" || data.functions.type === "error") {
             setMessages(prevMessages => {
                 // Remove the last message with `isInsightData: true` or `isInsightError: true`
@@ -662,9 +669,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 };
 
                 if (data.functions.type === "error") {
-                    newMessage.typeMessage = "error"
+                    newMessage.typeMessage = "error";
                 } else {
-                    newMessage.typeMessage = "data"
+                    newMessage.typeMessage = "data";
                 }
 
                 // Add error: true only if data.functions.payload.data.finalError exists
@@ -675,8 +682,30 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 // Add the new message
                 return [...filteredMessages, newMessage];
             });
+
+            // Check for the specific error message format
+            const message = data.functions.payload.message;
+            const semanticLayerMessageStart = "To complete this task, the semantic layer needs to be updated with the following field:";
+            const semanticLayerMessageEnd = "Please reach out to support for assistance.";
+
+            if (message.startsWith(semanticLayerMessageStart) && message.endsWith(semanticLayerMessageEnd)) {
+                // Extract the part of the message containing the fields
+                const fieldsString = message
+                    .slice(semanticLayerMessageStart.length, message.indexOf(semanticLayerMessageEnd))
+                    .trim();
+
+                // Split the string into an array of field names
+                const requestedFields = fieldsString.split(',').map(field => field.trim());
+
+                console.log('Extracted fields:', requestedFields);
+
+                // You can now use or store the `requestedFields` array in your component
+                // For example, set it in the state
+                setRequestedFields(requestedFields); // Assuming you have a state for requestedFields
+            }
         }
-    }
+    };
+
 
     const handleDirectResponse = data => {
         addServerMessage(
@@ -689,7 +718,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
     const handlePlanMessage = data => {
         removeLoadingMessage();
-        if(data.message) {
+        if (data.message) {
             setMessages(prevMessages => [
                 ...prevMessages,
                 {
@@ -724,8 +753,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     };
 
     const addServerMessageWithInfo = (message, type, showVisualization, visualizationIdx) => {
-        if (message === "The semantic layer requires an update to proceed with the task.") return;
-
+        if (message === "The semantic layer requires an update to proceed with the task.") {
+            setShowCubeEditButton(true)
+            return;
+        }
         setMessages(prevMessages => [
             ...prevMessages,
             {
@@ -897,6 +928,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         setIsFeedbackDialogOpen(!isFeedbackDialogOpen);
     };
 
+    const handleCubeRequestDialogOpen = () => {
+        setIsCbubeRequestDialogOpen(!isCubeRequestDialogOpen);
+    };
+
     const handleAccept = () => {
         ws.send(
             JSON.stringify({
@@ -1010,7 +1045,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                 approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
                                 card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} insightsList={insightsList}
                                 showError={showError} insightsPlan={inisghtPlan}
-                                insightsText={insightsText} insightsImg={insightsImg} insightsCode={insightsCode}
+                                insightsText={insightsText} insightsImg={insightsImg} insightsCode={insightsCode} showCubeEditButton={showCubeEditButton} sendAdminRequest={handleCubeRequestDialogOpen}
                             />
                             <div
                                 style={{
@@ -1316,6 +1351,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 isOpen={isFeedbackDialogOpen}
                 onClose={handleFeedbackDialogOpen}
                 messages={messages}
+
+            />
+            <CubeRequestDialog
+                isOpen={isCubeRequestDialogOpen}
+                onClose={handleCubeRequestDialogOpen}
+                messages={messages}
+                requestedFields={requestedFields}
 
             />
         </>

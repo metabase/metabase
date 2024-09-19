@@ -51,15 +51,8 @@ export const cubesRequestsApi = Api.injectEndpoints({
         url: "/api/cubes_requests",
         body,
       }),
-      invalidatesTags: (response, error) =>
-        response
-          ? [
-              ...invalidateTags(error, [listTag("cubes_requests")]),
-              ...invalidateTags(error, [
-                idTag("cubes_requests", response.id ?? "root"),
-              ]),
-            ]
-          : [],
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("cubes_requests")]),
     }),
 
     // Update existing cubes request details

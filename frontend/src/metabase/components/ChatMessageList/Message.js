@@ -6,13 +6,15 @@ const Message = ({
   message,
   isLoading,
   onFeedbackClick,
+  sendAdminRequest,
   approvalChangeButtons,
   onApproveClick,
   onDenyClick,
+  showCubeEditButton
 }) => {
   const isUser = message.sender === "user";
   let hasError = false
-  if(message.error) {
+  if (message.typeMessage === "error") {
     hasError = true
   }
   return (
@@ -33,8 +35,8 @@ const Message = ({
           backgroundColor: isUser
             ? "#0458DD"
             : hasError
-            ? "#FFCDD2"
-            : "#E9DFFF",
+              ? "#FFCDD2"
+              : "#E9DFFF",
           borderRadius: "50%",
           color: isUser ? "#FFF" : hasError ? "#D32F2F" : "#5B26D3",
         }}
@@ -68,7 +70,7 @@ const Message = ({
           </div>
         )}
         {hasError && (
-          <div style={{ marginTop: "8px" }}>
+          <div style={{ marginTop: "8px", display: "flex", flexDirection: "row", gap: "1rem" }}>
             <Button
               variant="outlined"
               style={{
@@ -97,6 +99,36 @@ const Message = ({
                 Provide feedback
               </span>
             </Button>
+            {showCubeEditButton && (
+              <Button
+                variant="outlined"
+                style={{
+                  cursor: "pointer",
+                  border: "1px solid #587330",
+                  borderRadius: "8px",
+                  color: "#587330",
+                  backgroundColor: "#FFF",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "0.3rem 0.8rem",
+                  lineHeight: "1",
+                  fontWeight: "bold",
+                  width: "13rem",
+                }}
+                onClick={sendAdminRequest}
+              >
+                <span
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: "lighter",
+                    verticalAlign: "middle",
+                  }}
+                >
+                  Ask admin to add definition
+                </span>
+              </Button>
+            )}
           </div>
         )}
 

@@ -32,17 +32,20 @@
 
 ;;; ----------------------------------------------- CRUD Operations --------------------------------------------------
 
-(defn- assert-valid-cubes-request [{:keys [description user admin_user verified_status in_semantic_layer]}]
+(defn- assert-valid-cubes-request [{:keys [description user admin_user verified_status in_semantic_layer requested_fields]}]
   (when-not (mc/validate ms/NonBlankString description)
     (throw (ex-info (tru "Description must be a non-blank string.") {:description description})))
   (when-not (mc/validate ms/NonBlankString user)
     (throw (ex-info (tru "User must be a non-blank string.") {:user user})))
-  (when-not (mc/validate ms/NonBlankString admin_user)
+  (when-not (mc/validate [:maybe ms/NonBlankString] admin_user)
     (throw (ex-info (tru "Admin User must be a non-blank string.") {:admin_user admin_user})))
   (when-not (mc/validate :boolean verified_status)
-    (throw (ex-info (tru "Verified Status must be a non-blank string.") {:verified_status verified_status})))
+    (throw (ex-info (tru "Verified Status must be a boolean.") {:verified_status verified_status})))
   (when-not (mc/validate :boolean in_semantic_layer)
-    (throw (ex-info (tru "In Semantic Layer must be a non-blank string.") {:in_semantic_layer in_semantic_layer}))))
+    (throw (ex-info (tru "In Semantic Layer must be a boolean.") {:in_semantic_layer in_semantic_layer})))
+  ;; Validate requested_fields if present
+  (when-not (mc/validate [:maybe [:sequential ms/NonBlankString]] requested_fields)
+    (throw (ex-info (tru "Requested Fields must be an array of non-blank strings.") {:requested_fields requested_fields}))))
 
 (t2/define-before-insert :model/CubesRequest
   [cubes_request]
@@ -69,7 +72,7 @@
 
 (defmethod serdes/extract-one "cubes_requests"  ;; Updated table name
   [_model-name _opts cubes_request]
-  (serdes/extract-one-basics "cubes_requests" cubes_request))  ;; Updated table name
+  (serdes/extract-one-basics "cubes_requests" cubes_request))  ;; Ensure requested_fields is included
 
 (defmethod serdes/load-xform "cubes_requests" [cubes_request]  ;; Updated table name
   (serdes/load-xform-basics cubes_request))
@@ -91,25 +94,27 @@
 
 (mu/defn create-cubes-request-detail :- (ms/InstanceOf CubesRequest)
   "Create a new Cube Request."
-  [cubes_request-data :- [:map 
+  [cubes_request_data :- [:map 
                           [:description ms/NonBlankString]
                           [:user ms/NonBlankString]
-                          [:admin_user ms/NonBlankString]
+                          [:admin_user [:maybe ms/NonBlankString]]
                           [:verified_status :boolean]
-                          [:in_semantic_layer :boolean]]]
+                          [:in_semantic_layer :boolean]
+                          [:requested_fields [:maybe [:sequential ms/NonBlankString]]]]] ;; New column
   (t2/with-transaction [_conn]
-    (t2/insert-returning-instances! CubesRequest cubes_request-data)))
+    (t2/insert-returning-instances! CubesRequest cubes_request_data)))
 
 (mu/defn update-cubes-request-detail :- (ms/InstanceOf CubesRequest)
   "Update an existing Cube Request."
-  [cubes_request-id :- ms/PositiveInt, cubes_request-data :- [:map 
-                                                             [:description ms/NonBlankString]
-                                                             [:user ms/NonBlankString]
-                                                             [:admin_user ms/NonBlankString]
-                                                             [:verified_status :boolean]
-                                                             [:in_semantic_layer :boolean]]]
+  [cubes_request-id :- ms/PositiveInt, cubes_request_data :- [:map 
+                                                             [:description [:maybe ms/NonBlankString]]
+                                                             [:user [:maybe ms/NonBlankString]]
+                                                             [:admin_user [:maybe ms/NonBlankString]]
+                                                             [:verified_status [:maybe :boolean]]
+                                                             [:in_semantic_layer [:maybe :boolean]]
+                                                             [:requested_fields [:maybe [:sequential ms/NonBlankString]]]]] ;; New column
   (t2/with-transaction [_conn]
-    (t2/update! CubesRequest cubes_request-id cubes_request-data)
+    (t2/update! CubesRequest cubes_request-id cubes_request_data)
     (retrieve-cubes-request-detail cubes_request-id)))
 
 (mu/defn delete-cubes-request-detail :- (ms/InstanceOf CubesRequest)
