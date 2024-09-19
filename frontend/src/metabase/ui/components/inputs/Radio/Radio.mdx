@@ -1,5 +1,6 @@
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Radio, Stack } from "metabase/ui";
+import * as RadioStories from './Radio.stories';
 
 export const args = {
   label: "Label",
@@ -24,7 +25,7 @@ export const argTypes = {
   },
 };
 
-<Meta title="Inputs/Radio" component={Radio} args={args} argTypes={argTypes} />
+<Meta of={RadioStories} />
 
 # Radio
 
@@ -36,14 +37,14 @@ Radio buttons allow users to select a single option from a list of mutually excl
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/7LCGPhkbJdrhdIaeiU1O9c/Input-%2F-Radio?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
-- [Mantine Radio Docs](https://v6.mantine.dev/core/radio/)
+*   [Figma File](https://www.figma.com/file/7LCGPhkbJdrhdIaeiU1O9c/Input-%2F-Radio?type=design\&node-id=1-96\&mode=design\&t=yaNljw178EFJeU7k-0)
+*   [Mantine Radio Docs](https://v6.mantine.dev/core/radio/)
 
 ## Usage guidelines
 
-- **Use this component if there are more than 5 options**. If there are fewer options, feel free to check out Radio or Select.
-- For option ordering, try to use your best judgement on a sensible order. For example, Yes should come before No. Alphabetical ordering is usually a good fallback if there's no inherent order in your set of choices.
-- In almost all circumstances you'll want to use `<Radio.Group>` to provide a set of options and help with defaultValues and state management between them.
+*   **Use this component if there are more than 5 options**. If there are fewer options, feel free to check out Radio or Select.
+*   For option ordering, try to use your best judgement on a sensible order. For example, Yes should come before No. Alphabetical ordering is usually a good fallback if there's no inherent order in your set of choices.
+*   In almost all circumstances you'll want to use `<Radio.Group>` to provide a set of options and help with defaultValues and state management between them.
 
 ## Examples
 
@@ -76,7 +77,7 @@ export const StateTemplate = args => (
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={RadioStories.Default_} />
 </Canvas>
 
 ### Radio.Group
@@ -84,7 +85,7 @@ export const Default = DefaultTemplate.bind({});
 export const RadioGroup = RadioGroupTemplate.bind({});
 
 <Canvas>
-  <Story name="Radio group">{RadioGroup}</Story>
+  <Story of={RadioStories.RadioGroup_} />
 </Canvas>
 
 ### Label
@@ -92,44 +93,34 @@ export const RadioGroup = RadioGroupTemplate.bind({});
 export const Label = StateTemplate.bind({});
 
 <Canvas>
-  <Story name="Label">{Label}</Story>
+  <Story of={RadioStories.Label_} />
 </Canvas>
 
 #### Left label position
 
 export const LabelLeft = StateTemplate.bind({});
-LabelLeft.args = {
-  labelPosition: "left",
-};
 
 <Canvas>
-  <Story name="Label, left position">{LabelLeft}</Story>
+  <Story of={RadioStories.LabelLeftPosition} />
 </Canvas>
 
 ### Description
 
 export const Description = StateTemplate.bind({});
-Description.args = {
-  description: "Description",
-};
 
 <Canvas>
-  <Story name="Description">{Description}</Story>
+  <Story of={RadioStories.Description_} />
 </Canvas>
 
 export const DescriptionLeft = StateTemplate.bind({});
-DescriptionLeft.args = {
-  description: "Description",
-  labelPosition: "left",
-};
 
 #### Left label position
 
 <Canvas>
-  <Story name="Description, left position">{DescriptionLeft}</Story>
+  <Story of={RadioStories.DescriptionLeftPosition} />
 </Canvas>
 
 ## Related components
 
-- Checkbox
-- Select
+*   Checkbox
+*   Select
