@@ -22,7 +22,8 @@
    [metabase.models.user :as user]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features :as premium-features
+    :refer [defenterprise]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as req.util]
@@ -279,14 +280,11 @@
         :group (within-group)
         :all (all)))))
 
-(defn- maybe-add-advanced-permissions
-  "If `advanced-permissions` is enabled, add to `user` a permissions map."
+(defenterprise with-advanced-permissions
+  "Adds advanced permissions to the user if available"
+  metabase-enterprise.advanced-permissions.common
   [user]
-  (if-let [with-advanced-permissions
-           (and (premium-features/enable-advanced-permissions?)
-                (resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions))]
-    (with-advanced-permissions user)
-    user))
+  user)
 
 (defn- maybe-add-sso-source
   "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
@@ -358,7 +356,7 @@
       (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
       add-has-question-and-dashboard
       add-first-login
-      maybe-add-advanced-permissions
+      with-advanced-permissions
       maybe-add-sso-source
       add-custom-homepage-info))
 

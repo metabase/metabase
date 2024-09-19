@@ -58,9 +58,10 @@
    (:db_id table)
    (:id table)))
 
-(defn with-advanced-permissions
+(defenterprise with-advanced-permissions
   "Adds to `user` a set of boolean flag indiciate whether or not current user has access to an advanced permissions.
   This function is meant to be used for GET /api/user/current "
+  :feature :advanced-permissions
   [user]
   (let [permissions-set @api/*current-user-permissions-set*]
     (assoc user :permissions
