@@ -1,4 +1,5 @@
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import * as SwitchStories from "./Switch.stories";
 
 import { Switch, Stack } from "metabase/ui";
 
@@ -34,12 +35,7 @@ export const argTypes = {
   },
 };
 
-<Meta
-  title="Inputs/Switch"
-  component={Switch}
-  args={args}
-  argTypes={argTypes}
-/>
+<Meta of={SwitchStories} />
 
 # Switch
 
@@ -74,7 +70,7 @@ export const StateTemplate = args => (
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={SwitchStories.Default_} />
 </Canvas>
 
 ### Label
@@ -82,41 +78,29 @@ export const Default = DefaultTemplate.bind({});
 export const Label = StateTemplate.bind({});
 
 <Canvas>
-  <Story name="Label">{Label}</Story>
+  <Story of={SwitchStories.Label_} />
 </Canvas>
 
 ### Left label position
 
 export const LabelLeft = StateTemplate.bind({});
-LabelLeft.args = {
-  labelPosition: "left",
-};
 
 <Canvas>
-  <Story name="Label, left position" args={LabelLeft.args}>
-    {LabelLeft}
-  </Story>
+  <Story of={SwitchStories.LabelLeftPosition} />
 </Canvas>
 
 ### Description
 
 export const Description = StateTemplate.bind({});
-Description.args = {
-  description: "Every type of cheese will be consumed, regardless of stink.",
-};
 
 <Canvas>
-  <Story name="Description">{Description}</Story>
+  <Story of={SwitchStories.Description_} />
 </Canvas>
 
 ### Left description position
 
 export const DescriptionLeft = StateTemplate.bind({});
-DescriptionLeft.args = {
-  labelPosition: "left",
-  description: "Every type of cheese will be consumed, regardless of stink.",
-};
 
 <Canvas>
-  <Story name="Description, left position">{DescriptionLeft}</Story>
+  <Story of={SwitchStories.DescriptionLeftPosition} />
 </Canvas>
