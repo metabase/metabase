@@ -1,5 +1,6 @@
 import type {
   CreateUserRequest,
+  CurrentUser,
   ListUsersRequest,
   ListUsersResponse,
   UpdatePasswordRequest,
@@ -40,6 +41,13 @@ export const userApi = Api.injectEndpoints({
       query: id => ({
         method: "GET",
         url: `/api/user/${id}`,
+      }),
+      providesTags: user => (user ? provideUserTags(user) : []),
+    }),
+    getCurrentUser: builder.query<CurrentUser, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/user/current",
       }),
       providesTags: user => (user ? provideUserTags(user) : []),
     }),
@@ -92,6 +100,7 @@ export const {
   useListUsersQuery,
   useListUserRecipientsQuery,
   useGetUserQuery,
+  useGetCurrentUserQuery,
   useCreateUserMutation,
   useUpdatePasswordMutation,
   useDeactivateUserMutation,

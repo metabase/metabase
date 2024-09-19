@@ -4,10 +4,7 @@ import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import {
-  useDatabaseListQuery,
-  useSearchListQuery,
-} from "metabase/common/hooks";
+import { useDatabaseListQuery, useHasModel } from "metabase/common/hooks";
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -30,16 +27,13 @@ export const useCommandPaletteBasicActions = ({
   const { data: databases = [] } = useDatabaseListQuery({
     enabled: isLoggedIn,
   });
-  const { data: models = [] } = useSearchListQuery({
-    query: { models: ["dataset"], limit: 1 },
-    enabled: isLoggedIn,
-  });
+
+  const hasModels = useHasModel({ enabled: isLoggedIn });
 
   const hasDataAccess = getHasDataAccess(databases);
   const hasNativeWrite = getHasNativeWrite(databases);
   const hasDatabaseWithActionsEnabled =
     getHasDatabaseWithActionsEnabled(databases);
-  const hasModels = models.length > 0;
 
   const openNewModal = useCallback(
     (modalId: string) => {
