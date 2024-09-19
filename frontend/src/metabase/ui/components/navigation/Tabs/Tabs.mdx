@@ -1,7 +1,8 @@
 import { Fragment } from "react";
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Icon } from "metabase/ui";
 import { Group, Tabs } from "metabase/ui";
+import * as TabsStories from './Tabs.stories';
 
 export const args = {
   orientation: "horizontal",
@@ -22,12 +23,7 @@ export const tabs = [
   { value: "filters", label: "Filters", icon: "filter" },
 ];
 
-<Meta
-  title="Navigation/Tabs"
-  component={Tabs}
-  args={args}
-  argTypes={argTypes}
-/>
+<Meta of={TabsStories} />
 
 # Tabs
 
@@ -35,8 +31,8 @@ Our themed wrapper around [Mantine Tabs](https://v6.mantine.dev/core/tabs/).
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/uPYsD4ncNpQPFzxsLnTnGd/Navigation-%2F-Tabs?type=design&node-id=1-96&mode=design&t=dtMJ59HbOKZ8TOgJ-0)
-- [Mantine Tabs Docs](https://v6.mantine.dev/core/tabs/)
+*   [Figma File](https://www.figma.com/file/uPYsD4ncNpQPFzxsLnTnGd/Navigation-%2F-Tabs?type=design\&node-id=1-96\&mode=design\&t=dtMJ59HbOKZ8TOgJ-0)
+*   [Mantine Tabs Docs](https://v6.mantine.dev/core/tabs/)
 
 ## Examples
 
@@ -78,31 +74,25 @@ export const IconsTemplate = args => (
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={TabsStories.Default_} />
 </Canvas>
 
 export const Icons = IconsTemplate.bind({});
 
 <Canvas>
-  <Story name="Icons">{Icons}</Story>
+  <Story of={TabsStories.Icons_} />
 </Canvas>
 
 ### Vertical orientation
 
 export const Vertical = DefaultTemplate.bind({});
-Vertical.args = {
-  orientation: "vertical",
-};
 
 <Canvas>
-  <Story name="Vertical orientation">{Vertical}</Story>
+  <Story of={TabsStories.VerticalOrientation} />
 </Canvas>
 
 export const VerticalIcons = IconsTemplate.bind({});
-VerticalIcons.args = {
-  orientation: "vertical",
-};
 
 <Canvas>
-  <Story name="Vertical orientation, icons">{VerticalIcons}</Story>
+  <Story of={TabsStories.VerticalOrientationIcons} />
 </Canvas>
