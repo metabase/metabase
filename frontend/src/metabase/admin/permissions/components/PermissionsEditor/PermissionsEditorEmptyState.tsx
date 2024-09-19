@@ -1,7 +1,7 @@
 import EmptyState from "metabase/components/EmptyState";
+import type { EmptyStateProps } from "metabase/components/EmptyState/EmptyState";
 
 import { EmptyStateRoot } from "./PermissionsEditorEmptyState.styled";
-import { EmptyStateProps } from "metabase/components/EmptyState/EmptyState";
 
 interface PermissionsEditorEmptyStateProps extends EmptyStateProps {
   icon: Exclude<EmptyStateProps["icon"], undefined>;

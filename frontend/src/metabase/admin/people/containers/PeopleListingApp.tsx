@@ -1,6 +1,6 @@
-import type { ChangeEventHandler, ReactNode } from "react";
 import cx from "classnames";
 import PropTypes from "prop-types";
+import type { ChangeEventHandler, ReactNode } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
@@ -9,12 +9,12 @@ import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Group, Radio } from "metabase/ui";
+import type { State } from "metabase-types/store";
 
 import PeopleList from "../components/PeopleList";
 import SearchInput from "../components/SearchInput";
 import { USER_STATUS } from "../constants";
 import { usePeopleQuery } from "../hooks/use-people-query";
-import { State } from "metabase-types/store";
 
 const PAGE_SIZE = 25;
 
@@ -84,6 +84,7 @@ PeopleListingApp.propTypes = {
   isAdmin: PropTypes.bool,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect((state: State) => ({
   isAdmin: getUserIsAdmin(state),
 }))(PeopleListingApp);

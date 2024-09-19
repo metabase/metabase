@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from "react";
-import { withRouter, type WithRouterProps } from "react-router";
+import { type WithRouterProps, withRouter } from "react-router";
 
 interface ScrollToTopInnerProps extends WithRouterProps {
   children: ReactNode;
@@ -20,4 +20,5 @@ class ScrollToTopInner extends Component<ScrollToTopInnerProps> {
 
 const ScrollToTop = withRouter(ScrollToTopInner);
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ScrollToTop;

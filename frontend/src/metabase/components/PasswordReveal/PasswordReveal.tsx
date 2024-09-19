@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 /* flow */
 import cx from "classnames";
 import { Component } from "react";
@@ -38,6 +37,7 @@ const Label = () => (
   </div>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class PasswordReveal extends Component<{ password: string }> {
   state = { visible: false };
 

@@ -1,4 +1,7 @@
-import { DashboardCard, DashboardCardLayoutAttrs } from "metabase-types/api";
+import type {
+  DashboardCard,
+  DashboardCardLayoutAttrs,
+} from "metabase-types/api";
 
 export const GRID_WIDTH = 24;
 export const GRID_ASPECT_RATIO = 10 / 9;

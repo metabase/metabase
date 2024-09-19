@@ -4,7 +4,8 @@ import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
-import { PermissionsPageTab } from "./PermissionsPageLayout";
+
+import type { PermissionsPageTab } from "./PermissionsPageLayout";
 
 interface PermissionsTabsProps {
   tab: PermissionsPageTab;

@@ -1,6 +1,6 @@
 import cx from "classnames";
 
-import { Icon, IconName } from "metabase/ui";
+import { Icon, type IconName } from "metabase/ui";
 
 import S from "./LabelIcon.module.css";
 
@@ -20,4 +20,5 @@ const LabelIcon = ({ icon, size = 16, className }: LabelIconProps) =>
     <Icon className={cx(S.icon, className)} name={icon} />
   );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default LabelIcon;

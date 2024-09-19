@@ -8,10 +8,10 @@ import CS from "metabase/css/core/index.css";
 import Typeahead from "metabase/hoc/Typeahead";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import type { User as IUser } from "metabase-types/api";
 
 import { AddMemberAutocompleteSuggestionRoot } from "./AddMemberRow.styled";
 import { AddRow } from "./AddRow";
-import type { User as IUser } from "metabase-types/api";
 
 interface AddMemberRowProps {
   users: IUser[];
@@ -20,6 +20,7 @@ interface AddMemberRowProps {
   onDone: (selectedUserIds: number[]) => void;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function AddMemberRow({
   users,
   excludeIds,

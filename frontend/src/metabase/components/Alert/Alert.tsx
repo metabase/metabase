@@ -1,11 +1,10 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import Modal from "metabase/components/Modal";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { ReactNode } from "react";
 
 const Alert = ({
   message,
@@ -25,4 +24,5 @@ const Alert = ({
   </Modal>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Alert;

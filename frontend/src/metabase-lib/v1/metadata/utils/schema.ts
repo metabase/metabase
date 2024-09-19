@@ -1,4 +1,4 @@
-import { SchemaId } from "metabase-types/api";
+import type { SchemaId } from "metabase-types/api";
 
 export const getSchemaName = (id: SchemaId) => {
   return parseSchemaId(id)[1];

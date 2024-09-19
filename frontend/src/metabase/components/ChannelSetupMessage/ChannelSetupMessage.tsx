@@ -6,8 +6,9 @@ import { t } from "ttag";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import Settings from "metabase/lib/settings";
-import { User } from "metabase-types/api";
+import type { User } from "metabase-types/api";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class ChannelSetupMessage extends Component<{
   user: User;
   channels: string[];

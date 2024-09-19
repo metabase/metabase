@@ -1,9 +1,9 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class AdminHeader extends Component<{
   title: string;
   className?: string;

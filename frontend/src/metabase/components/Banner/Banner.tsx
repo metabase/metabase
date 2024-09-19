@@ -1,6 +1,7 @@
+import type { ReactNode } from "react";
+
 import { BannerRoot } from "metabase/components/Banner/Banner.styled";
 import Markdown from "metabase/core/components/Markdown";
-import { ReactNode } from "react";
 
 const Banner = ({
   className,

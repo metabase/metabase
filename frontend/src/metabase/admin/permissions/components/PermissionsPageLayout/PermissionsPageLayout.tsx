@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode, PropsWithChildren } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 import { useCallback } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";

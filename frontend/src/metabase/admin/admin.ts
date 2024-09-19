@@ -8,6 +8,7 @@ import permissions from "metabase/admin/permissions/permissions";
 import settings from "metabase/admin/settings/settings";
 import { combineReducers } from "metabase/lib/redux";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
   app,
   databases,

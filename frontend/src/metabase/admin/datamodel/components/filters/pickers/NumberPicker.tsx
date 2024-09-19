@@ -1,5 +1,6 @@
 import { Component } from "react";
 import { t } from "ttag";
+
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
 
 import TextPicker from "./TextPicker";
@@ -19,6 +20,7 @@ interface NumberPickerState {
   validations: boolean[];
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class NumberPicker extends Component<
   NumberPickerProps,
   NumberPickerState

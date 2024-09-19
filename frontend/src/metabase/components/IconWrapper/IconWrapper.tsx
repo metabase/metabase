@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { CSSProperties } from "react";
+import type { CSSProperties } from "react";
 
 import { color } from "metabase/lib/colors";
 
@@ -18,4 +18,5 @@ IconWrapper.defaultProps = {
   bg: color("bg-medium"),
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default IconWrapper;

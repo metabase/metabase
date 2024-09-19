@@ -1,4 +1,4 @@
-import { Fragment, ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Text, type TextProps } from "metabase/ui";
@@ -39,4 +39,5 @@ const Code = ({
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Code;

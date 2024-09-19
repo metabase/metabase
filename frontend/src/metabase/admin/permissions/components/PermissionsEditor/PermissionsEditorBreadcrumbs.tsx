@@ -3,11 +3,12 @@ import { Fragment } from "react";
 
 import { Icon } from "metabase/ui";
 
+import type { EditorBreadcrumb } from "../../selectors/data-permissions/breadcrumbs";
+
 import {
   BreadcrumbsLink,
   BreadcrumbsSeparator,
 } from "./PermissionsEditorBreadcrumbs.styled";
-import { EditorBreadcrumb } from "../../selectors/data-permissions/breadcrumbs";
 
 const propTypes = {
   items: PropTypes.array,

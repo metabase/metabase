@@ -1,6 +1,5 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
-import { ReactNode, memo } from "react";
+import { type ReactNode, memo } from "react";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
@@ -25,4 +24,5 @@ const TitleAndDescription = ({
   </div>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(TitleAndDescription);

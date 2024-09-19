@@ -6,7 +6,6 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import { SettingValue } from "metabase-types/api";
 
 const SETTING_TYPES = [
   {

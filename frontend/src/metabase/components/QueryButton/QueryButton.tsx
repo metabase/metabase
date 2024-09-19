@@ -3,7 +3,7 @@ import { memo } from "react";
 import { Link } from "react-router";
 
 import CS from "metabase/css/core/index.css";
-import { Icon, IconName } from "metabase/ui";
+import { Icon, type IconName } from "metabase/ui";
 
 import S from "./QueryButton.module.css";
 
@@ -34,4 +34,5 @@ const QueryButton = ({
   </div>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(QueryButton);

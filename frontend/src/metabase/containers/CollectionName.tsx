@@ -1,6 +1,5 @@
-/* eslint-disable react/prop-types */
-import { CollectionId } from "metabase-types/api";
 import Collection, { ROOT_COLLECTION } from "metabase/entities/collections";
+import type { CollectionId } from "metabase-types/api";
 
 const CollectionName = ({ id }: { id: CollectionId }) => {
   if (id === "root" || id === null) {
@@ -12,4 +11,5 @@ const CollectionName = ({ id }: { id: CollectionId }) => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CollectionName;

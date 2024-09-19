@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { Component } from "react";
 import { t } from "ttag";
 
@@ -35,6 +34,7 @@ interface ButtonWithStatusState {
  * Renders a button that triggers a promise-returning `onClickOperation` when user clicks the button.
  * When the button is clicked, `inProgress` text is shown, and when the promise resolves, `completed` text is shown.
  */
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class ButtonWithStatus extends Component<
   ButtonWithStatusProps,
   ButtonWithStatusState

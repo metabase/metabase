@@ -1,15 +1,15 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
+import type { PropsWithChildren } from "react";
 
 import GrabberS from "metabase/css/components/grabber.module.css";
 import CS from "metabase/css/core/index.css";
-import { PropsWithChildren } from "react";
 
 interface GrabberProps extends PropsWithChildren {
   className?: string;
   style: React.CSSProperties;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function Grabber({
   className = "",
   style,

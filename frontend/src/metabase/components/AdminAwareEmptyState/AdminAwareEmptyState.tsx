@@ -1,12 +1,11 @@
-/* eslint-disable react/prop-types */
 import { Component } from "react";
 import { connect } from "react-redux";
 
 import EmptyState from "metabase/components/EmptyState";
 import { getUser } from "metabase/selectors/user";
-import { User } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import { IconName } from "metabase/ui";
+import type { IconName } from "metabase/ui";
+import type { User } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 /*
  * AdminAwareEmptyState is a component that can
@@ -71,4 +70,5 @@ const AdminAwareEmptyState = connect(
   null,
 )(AdminAwareEmptyStateInner);
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AdminAwareEmptyState;

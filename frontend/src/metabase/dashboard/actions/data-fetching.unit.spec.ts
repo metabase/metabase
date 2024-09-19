@@ -6,6 +6,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
+import type { Dashboard } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockDashboardQueryMetadata,
@@ -13,7 +14,6 @@ import {
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockDashboardState } from "metabase-types/store/mocks";
-import type { Dashboard } from "metabase-types/api";
 
 import { dashboardReducers } from "../reducers";
 

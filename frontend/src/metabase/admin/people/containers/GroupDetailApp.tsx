@@ -13,6 +13,7 @@ class GroupDetailApp extends Component {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Users.loadList(),
   Group.load({

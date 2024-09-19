@@ -1,14 +1,14 @@
+import type { Location } from "history";
 import { connect } from "react-redux";
 import _ from "underscore";
-import type { Location } from "history";
 
 import Pulses from "metabase/entities/pulses";
 import { getUser } from "metabase/selectors/user";
+import type { Pulse } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import ArchiveModal from "../../components/ArchiveModal";
 import { getPulseId } from "../../selectors";
-import { State } from "metabase-types/store";
-import { Pulse } from "metabase-types/api";
 
 const mapStateToProps = (
   state: State,
@@ -24,6 +24,7 @@ const mapDispatchToProps = {
   onArchive: Pulses.actions.setArchived,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Pulses.load({
     id: (_state: State, props: { params: { pulseId: string } }) =>

@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
+import { useMemo } from "react";
 import { goBack } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -10,8 +10,7 @@ import ModalContent from "metabase/components/ModalContent";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
-import { useMemo } from "react";
-import { Trigger } from "metabase-types/api";
+import type { Trigger } from "metabase-types/api";
 
 const renderTriggersTable = (triggers: Trigger[] | undefined) => {
   return (

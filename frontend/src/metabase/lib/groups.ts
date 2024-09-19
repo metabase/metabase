@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { Group } from "metabase-types/api";
+import type { Group } from "metabase-types/api";
 
 const SPECIAL_GROUP_NAMES = new Map([
   ["All Users", t`All Users`],

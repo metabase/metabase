@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
+
 import AdminS from "metabase/css/admin.module.css";
-import { ReactNode } from "react";
 
 interface AdminContentTableProps {
   columnTitles: ReactNode[];
@@ -21,4 +22,5 @@ const AdminContentTable = ({
   </table>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AdminContentTable;

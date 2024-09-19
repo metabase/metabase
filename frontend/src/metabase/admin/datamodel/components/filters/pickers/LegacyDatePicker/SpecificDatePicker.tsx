@@ -1,7 +1,5 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
@@ -34,6 +32,7 @@ interface SpecificDatePickerState {
   showCalendar: boolean;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class SpecificDatePicker extends Component<
   SpecificDatePickerProps,
   SpecificDatePickerState
@@ -45,11 +44,6 @@ export default class SpecificDatePicker extends Component<
       showCalendar: true,
     };
   }
-
-  static propTypes = {
-    value: PropTypes.string,
-    onChange: PropTypes.func.isRequired,
-  };
 
   onChange = (
     date: moment.MomentInput,

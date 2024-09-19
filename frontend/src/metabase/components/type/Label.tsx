@@ -1,7 +1,7 @@
-/* eslint-disable react/prop-types */
+import type { PropsWithChildren } from "react";
+
 import Text from "metabase/components/type/Text";
 import CS from "metabase/css/core/index.css";
-import { PropsWithChildren } from "react";
 
 const Label = ({ children, ...props }: PropsWithChildren) => (
   <Text
@@ -15,4 +15,5 @@ const Label = ({ children, ...props }: PropsWithChildren) => (
   </Text>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Label;

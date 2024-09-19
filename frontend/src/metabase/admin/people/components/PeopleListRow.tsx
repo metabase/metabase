@@ -15,7 +15,7 @@ import { getFullName } from "metabase/lib/user";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon } from "metabase/ui";
-import type { User, Group, Member } from "metabase-types/api";
+import type { Group, Member, User } from "metabase-types/api";
 
 import MembershipSelect from "./MembershipSelect";
 import { RefreshLink } from "./PeopleListRow.styled";
@@ -155,4 +155,5 @@ function getName(user: User): string {
   return name;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default PeopleListRow;
