@@ -66,6 +66,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [insightStatus, setInsightStatus] = useState([]);
     const [chatLoading, setChatLoading] = useState(false);
     const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
+    const [selectedHash, setSelectedHash] = useState(null)
     const databases = data?.data;
     useEffect(() => {
         if (databases) {
@@ -78,37 +79,37 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             }
             const insightDatabase = databases.find(
                 database => database.is_cube === false,
-              );
-              if (insightDatabase) {
+            );
+            if (insightDatabase) {
                 setInsightDbId(insightDatabase.id);
-              }
+            }
         }
     }, [databases]);
     const dbId = chatType === "insights" ? insightDbId : dbInputValue;
-    const { 
-        data: databaseMetadata, 
-        isLoading: databaseMetadataIsLoading, 
-        error: databaseMetadataIsError 
+    const {
+        data: databaseMetadata,
+        isLoading: databaseMetadataIsLoading,
+        error: databaseMetadataIsError
     } = useGetDatabaseMetadataWithoutParamsQuery(
         dbId !== "" ? { id: dbId } : skipToken
     );
     const databaseMetadataData = databaseMetadata;
-    
+
     useEffect(() => {
-      if (databaseMetadataData) {
-        const schema = databaseMetadata.tables.map((table) => ({
-          display_name: table.display_name,
-          id: table.id,
-          fields: table.fields.map((field) => ({
-            id: field.id,
-            name: field.name,
-            fieldName: field.display_name,
-            description: field.description,
-            details: field.fingerprint ? JSON.stringify(field.fingerprint) : null
-          }))
-        }));
-        setSchema(schema)
-      }
+        if (databaseMetadataData) {
+            const schema = databaseMetadata.tables.map((table) => ({
+                display_name: table.display_name,
+                id: table.id,
+                fields: table.fields.map((field) => ({
+                    id: field.id,
+                    name: field.name,
+                    fieldName: field.display_name,
+                    description: field.description,
+                    details: field.fingerprint ? JSON.stringify(field.fingerprint) : null
+                }))
+            }));
+            setSchema(schema)
+        }
     }, [databaseMetadataData]);
 
     useEffect(() => {
@@ -216,7 +217,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         () => console.log("WebSocket opened"),
     );
 
-    const openModal = (cardIndex) => {
+    const openModal = (cardData, cardIndex) => {
+        setSelectedHash(cardData.hash)
         setSelectedIndex(cardIndex)
         setIsModalOpen(true);
     };
@@ -303,8 +305,16 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 return prevCodeQuery;
             });
             setDefaultQuestion(prevDefaultQuestion => Array.isArray(prevDefaultQuestion) ? [...prevDefaultQuestion, newQuestion] : [newQuestion]);
-            setCard(prevCard => Array.isArray(prevCard) ? [...prevCard, fetchedCard] : [fetchedCard]);
+            setCard(prevCard => {
+                const updatedCard = {
+                    ...fetchedCard, // Copy all properties from the fetched card
+                    hash: hash1 // Add the hash property
+                };
+                return Array.isArray(prevCard) ? [...prevCard, updatedCard] : [updatedCard];
+            });
+
             setCardHash(prevCardHash => Array.isArray(prevCardHash) ? [...prevCardHash, hash1] : [hash1]);
+            console.log('CARD HASH: ', cardHash)
         } catch (error) {
             console.error("Error fetching card content:", error);
             setShowError(true)
@@ -540,7 +550,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             });
             setRunId(runId)
             setCodeInterpreterThreadId(codeInterpreterThreadId)
-            if(status === "completed") {
+            if (status === "completed") {
                 setChatLoading(false);
                 setToolWaitingResponse("continue")
             }
@@ -550,7 +560,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     }
 
     const handleGetText = async func => {
-        const { generatedTexts, status, runId  } = func.arguments;
+        const { generatedTexts, status, runId } = func.arguments;
         try {
             setInsightTextIndex(prevIndex => {
                 const currentIndex = prevIndex + 1;
@@ -566,7 +576,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             setIsLoading(false);
             removeLoadingMessage();
             clearInfoMessage();
-            if(status === "completed") {
+            if (status === "completed") {
                 setChatLoading(false);
                 setToolWaitingResponse("continue")
             }
@@ -581,7 +591,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             setInsightsCode(prevCode => [...prevCode, generatedCodes]);
             setRunId(runId)
             setCodeInterpreterThreadId(codeInterpreterThreadId)
-            if(status === "completed") {
+            if (status === "completed") {
                 setChatLoading(false);
                 setToolWaitingResponse("continue")
             }
@@ -591,7 +601,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     }
 
     const handleDefaultMessage = data => {
-        if(data.message) {
+        if (data.message) {
             addServerMessage(
                 data.message || "Received a message from the server.",
                 "text",
@@ -622,7 +632,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         clearPlanMessage();
         clearInfoMessage();
     };
-    
+
     const handleInfoMessage = data => {
         removeLoadingMessage();
         clearPlanMessage();
@@ -631,11 +641,11 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 // Remove the last message with `isInsightData: true` or `isInsightError: true`
                 const filteredMessages = [...prevMessages].reverse().filter((message, index, arr) => {
                     return !(
-                        (message.isInsightData || message.isInsightError) && 
+                        (message.isInsightData || message.isInsightError) &&
                         arr.findIndex(m => m.isInsightData || m.isInsightError) === index
                     );
                 }).reverse(); // Reverse again to maintain original order
-            
+
                 // Prepare the new message
                 const newMessage = {
                     id: Date.now() + Math.random(),
@@ -647,17 +657,17 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     isInsightError: data.functions.type === "error"
                 };
 
-                if(data.functions.type === "error") {
+                if (data.functions.type === "error") {
                     newMessage.typeMessage = "error"
                 } else {
                     newMessage.typeMessage = "data"
                 }
-    
+
                 // Add error: true only if data.functions.payload.data.finalError exists
                 if (data.functions.payload.data?.finalError) {
                     newMessage.error = true;
                 }
-    
+
                 // Add the new message
                 return [...filteredMessages, newMessage];
             });
@@ -690,8 +700,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     }
 
     const redirect = async () => {
-        dispatch(push(`/question#${cardHash}`));
-        const deletedCard = await CardApi.delete({ id: id });
+        if (selectedHash) {
+            dispatch(push(`/question#${selectedHash}`));
+            const deletedCard = await CardApi.delete({ id: id });
+        }
     }
 
     const addServerMessage = (message, type) => {
@@ -769,7 +781,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 setIsLoading(true)
                 setChatLoading(true);
             }
-            if(toolWaitingResponse === "continue") {
+            if (toolWaitingResponse === "continue") {
                 setMessages(prevMessages => [
                     ...prevMessages,
                     {
@@ -859,13 +871,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
     const clearPlanMessage = () => {
         setMessages(prevMessages => prevMessages.filter(
-            message => !message.plan 
+            message => !message.plan
         ));
     }
-    
+
     const clearInfoMessage = () => {
         setMessages(prevMessages => prevMessages.filter(
-            message => !message.info 
+            message => !message.info
         ));
     }
 
@@ -963,8 +975,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 }}
             >
                 {chatType === "default" && dbInputValue === '' ? (
-                <SemanticError />
-            ) : (
+                    <SemanticError />
+                ) : (
                     <>
                         <Button
                             variant="outlined"
