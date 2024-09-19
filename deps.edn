@@ -90,7 +90,7 @@
   lambdaisland/uri                          {:mvn/version "1.19.155"}           ; Used by openai-clojure
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "2.2.7.172"
+  metabase/saml20-clj                       {:mvn/version "2.2.7.173"
                                              :exclusions [; EE SAML integration TODO: bump version when we release the library
                                                           org.bouncycastle/bcpkix-jdk15on
                                                           org.bouncycastle/bcprov-jdk15on
@@ -101,7 +101,7 @@
   metosin/malli                             {:mvn/version "0.16.3"}             ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.1.0"}              ; NanoID generator for generating entity_ids
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
-  net.clojars.wkok/openai-clojure           {:mvn/version "0.18.1"
+  net.clojars.wkok/openai-clojure           {:mvn/version "0.21.0"
                                              :exclusions  [lambdaisland/uri]}   ; OpenAI
   net.i2p.crypto/eddsa                      {:mvn/version "0.3.0"}              ; ED25519 key support (optional dependency for org.apache.sshd/sshd-core)
   net.redhogs.cronparser/cron-parser-core   {:mvn/version "3.5"                 ; describe Cron schedule in human-readable language
@@ -125,7 +125,7 @@
   org.apache.poi/poi-ooxml                  {:mvn/version "5.3.0"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
                                                            org.bouncycastle/bcprov-jdk15on]}
-  org.apache.sshd/sshd-core                 {:mvn/version "2.13.1"              ; ssh tunneling and test server
+  org.apache.sshd/sshd-core                 {:mvn/version "2.13.2"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
   org.apache.tika/tika-core                 {:mvn/version "2.9.2"}
@@ -161,14 +161,14 @@
   org.eclipse.jetty/jetty-server            {:mvn/version "11.0.22" #_"must be 11"} ; web server
   org.eclipse.jetty.websocket/websocket-jetty-server {:mvn/version "11.0.22"}   ; ring-jetty-adapter needs that
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
-  org.graalvm.js/js                         {:mvn/version "22.3.5"}             ; JavaScript engine
+  org.graalvm.js/js                         {:mvn/version "24.1.0"}             ; JavaScript engine
   org.jsoup/jsoup                           {:mvn/version "1.18.1"}             ; required by hickory
   org.liquibase/liquibase-core              {:mvn/version "4.26.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   ;; The 3.X line of development for mariadb-java-client only supports the jdbc:mariadb protocol, so use 2.X for now.
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
-  org.postgresql/postgresql                 {:mvn/version "42.7.3"}             ; Postgres driver
+  org.postgresql/postgresql                 {:mvn/version "42.7.4"}             ; Postgres driver
   org.quartz-scheduler/quartz               {:mvn/version "2.3.2"}              ; Quartz job scheduler, provided by quartzite but this is a newer version.
   org.slf4j/slf4j-api                       {:mvn/version "2.0.13"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
