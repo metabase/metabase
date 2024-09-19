@@ -148,36 +148,83 @@ export const CubeTable = ({
   useEffect(() => {
     let foundNoMatch = false;
 
-    const updatedData =
+    // Create a new list combining cubeRequests and typesWithSql
+    const updatedData: any =
       cubeRequests && cubeRequests.length > 0
-        ? typesWithSql.map(typeWithSql => {
-            const matchingCubeRequest = cubeRequests.find(
-              (cubeRequest: any) =>
-                cubeRequest.description === typeWithSql.description,
-            );
+        ? typesWithSql
+            .map(typeWithSql => {
+              const matchingCubeRequest = cubeRequests.find(
+                (cubeRequest: any) =>
+                  cubeRequest.description === typeWithSql.description,
+              );
 
-            if (matchingCubeRequest) {
+              if (matchingCubeRequest) {
+                // If we're not in validation mode and the verified status is false, skip this item
+                if (
+                  !isValidation &&
+                  matchingCubeRequest.verified_status === false
+                ) {
+                  return null;
+                }
+
+                return {
+                  ...typeWithSql,
+                  user: matchingCubeRequest.user || "", // Ensure default empty values
+                  admin_user: matchingCubeRequest.admin_user || "",
+                  updated_at: matchingCubeRequest.updated_at || "",
+                  verified_status: matchingCubeRequest.verified_status ?? false,
+                  in_semantic_layer:
+                    matchingCubeRequest.in_semantic_layer ?? false,
+                };
+              }
+
+              foundNoMatch = true; // No match found, but we return the original `typeWithSql`
               return {
-                ...typeWithSql,
-                user: matchingCubeRequest.user,
-                admin_user: matchingCubeRequest.admin_user,
-                updated_at: matchingCubeRequest.updated_at,
-                verified_status: matchingCubeRequest.verified_status,
-                in_semantic_layer: matchingCubeRequest.in_semantic_layer,
+                ...typeWithSql, // Return the original, but with the extra fields
+                user: "",
+                admin_user: "",
+                updated_at: "",
+                verified_status: false,
+                in_semantic_layer: false,
               };
-            }
-
-            foundNoMatch = true; // No match found
-            return typeWithSql;
-          })
+            })
+            .filter(Boolean) // Remove any null entries
         : typesWithSql;
+
+    // If a cubeRequest was not matched in `typesWithSql`, add it to the final list as "pending"
+    cubeRequests.forEach((cubeRequest: any) => {
+      const existingEntry = updatedData.find(
+        (dataItem: any) =>
+          dataItem && dataItem.description === cubeRequest.description,
+      );
+
+      // If there's no match in `typesWithSql`, and we're in validation mode or verified_status is true, add the cubeRequest to the list
+      if (
+        !existingEntry &&
+        (isValidation || cubeRequest.verified_status === true)
+      ) {
+        updatedData.push({
+          category: "Pending", // Optionally set this to a placeholder category
+          name: cubeRequest.description,
+          type: "Pending", // You can replace this based on the structure of `CubeResult`
+          title: cubeRequest.description,
+          description: cubeRequest.description,
+          user: cubeRequest.user || "",
+          admin_user: cubeRequest.admin_user || "",
+          updated_at: cubeRequest.updated_at || "",
+          verified_status: cubeRequest.verified_status ?? false,
+          in_semantic_layer: cubeRequest.in_semantic_layer ?? false,
+          primaryKey: false, // Ensure a valid structure for CubeResult
+        });
+      }
+    });
 
     // Only update state if the data has changed
     if (JSON.stringify(updatedTypesWithSql) !== JSON.stringify(updatedData)) {
       setUpdatedTypesWithSql(updatedData);
       setNoMatched(foundNoMatch);
     }
-  }, [cubeRequests, typesWithSql]);
+  }, [cubeRequests, typesWithSql, isValidation]);
 
   // Updated filter definitions based on `isValidation` flag and input filters
   const filteredDefinitions = updatedTypesWithSql.filter(definition => {

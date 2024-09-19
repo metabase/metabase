@@ -29,21 +29,24 @@
 
 (api/defendpoint POST "/"
   "Create a new cube request."
-  [:as {{:keys [description user admin_user verified_status in_semantic_layer]} :body}]
+  [:as {{:keys [description user admin_user verified_status in_semantic_layer requested_fields]} :body}]
   {description ms/NonBlankString
    user        ms/NonBlankString
-   admin_user  ms/NonBlankString
-   verified_status :boolean  ;; Changed from :boolean to ms/NonBlankString
-   in_semantic_layer :boolean}
+   admin_user  [:maybe ms/NonBlankString]
+   verified_status :boolean
+   in_semantic_layer :boolean
+   requested_fields [:maybe [:sequential ms/NonBlankString]]} ;; Ensure this is still an array of strings
   (let [cubes-request-data {:description     description
                             :user            user
                             :admin_user      admin_user
                             :verified_status verified_status
                             :in_semantic_layer in_semantic_layer
-                            :creator_id      api/*current-user-id*}]
+                            :requested_fields (into-array String requested_fields)}] ;; Ensure array format
     (t2/with-transaction [_conn]
-      (let [cubes-request (api/check-500 (t2/insert! :cubes_requests cubes-request-data))]  ;; Updated table name
-        cubes-request))))  ;; Return the created cube request
+      (let [cubes-request (api/check-500 (t2/insert! :cubes_requests cubes-request-data))]  ;; Insert without specifying "id"
+        cubes-request))))
+
+
 
 (derive :event/cubes_requests-update :metabase/event)
 
@@ -76,13 +79,15 @@
 
 (api/defendpoint PUT "/:id"
   "Update fields of a `CubesRequest` with ID."
-  [id :as {{:keys [description user admin_user verified_status in_semantic_layer], :as body} :body}]
+  [id :as {{:keys [description user admin_user verified_status in_semantic_layer requested_fields], :as body} :body}]
   {id                ms/PositiveInt
    description       [:maybe ms/NonBlankString]
    user              [:maybe ms/NonBlankString]
    admin_user        [:maybe ms/NonBlankString]
-   verified_status   [:maybe :boolean]  ;; Changed from :boolean to ms/NonBlankString
-   in_semantic_layer [:maybe :boolean]}
+   verified_status   [:maybe :boolean]
+   in_semantic_layer [:maybe :boolean]
+   requested_fields  [:maybe [:sequential ms/NonBlankString]]} ;; New array of strings, can be nil
   (write-check-and-update-cubes-request! id body))
+
 
 (api/define-routes)

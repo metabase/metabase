@@ -9258,7 +9258,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v55.2024-09-17T16:00:00
+      id: v55.2024-09-19T17:45:00
       author: flaviust
       comment: Create table cubes_requests
       preConditions:
@@ -9295,8 +9295,8 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: updated_at
-                  type: timestamp with time zone
-                  defaultValueComputed: "now()"
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
@@ -9309,6 +9309,30 @@ databaseChangeLog:
                   type: boolean
                   constraints:
                     nullable: true
+              - column:
+                  name: name
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: type
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: category
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: requested_fields
+                  type: text[]
+                  remarks: Array of requested fields for the cube request
+                  constraints:
+                    nullable: true
+
+
+  
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
