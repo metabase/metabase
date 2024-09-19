@@ -1,7 +1,8 @@
 import noResultsSource from "assets/img/no_results.svg";
 import { Fragment } from "react";
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Box, Image, Stack, Text } from "metabase/ui";
+import * as ImageStories from './Image.stories';
 
 export const args = {
   width: 120,
@@ -30,12 +31,7 @@ export const argTypes = {
   },
 };
 
-<Meta
-  title="Data display/Image"
-  component={Image}
-  args={args}
-  argTypes={argTypes}
-/>
+<Meta of={ImageStories} />
 
 # Image
 
@@ -43,7 +39,7 @@ Our themed wrapper around [Mantine Image](https://v6.mantine.dev/core/image/).
 
 ## Docs
 
-- [Mantine Image Docs](https://v6.mantine.dev/core/image/)
+*   [Mantine Image Docs](https://v6.mantine.dev/core/image/)
 
 ## Examples
 
@@ -56,17 +52,13 @@ export const DefaultTemplate = args => (
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={ImageStories.Default_} />
 </Canvas>
 
 ### Image position
 
 export const BackgroundPosition = DefaultTemplate.bind({});
-BackgroundPosition.args = {
-  width: 80,
-  position: "top left",
-};
 
 <Canvas>
-  <Story name="BackgroundPosition">{BackgroundPosition}</Story>
+  <Story of={ImageStories.BackgroundPosition_} />
 </Canvas>
