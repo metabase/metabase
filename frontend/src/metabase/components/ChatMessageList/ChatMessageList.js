@@ -51,8 +51,7 @@ const ChatMessageList = ({
             message={message}
             isLoading={
               isLoading &&
-              message.sender === "server" &&
-              message.text === "Please wait until we generate the response...." || message.text === "Please wait until we generate the visualization for you...."
+              message.sender === "server"
             }
             onFeedbackClick={onFeedbackClick}
             approvalChangeButtons={

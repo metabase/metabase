@@ -11,11 +11,10 @@ const Message = ({
   onDenyClick,
 }) => {
   const isUser = message.sender === "user";
-  const hasError = 
-    message.typeMessage.toLowerCase().includes("error") ||
-    message.text.toLowerCase().includes("error") ||
-    message.text.toLowerCase().includes("failed");
-
+  let hasError = false
+  if(message.error) {
+    hasError = true
+  }
   return (
     <div
       style={{
