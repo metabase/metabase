@@ -20,7 +20,10 @@ const CubeRequestDialog = ({ isOpen, onClose, requestedFields }) => {
                 admin_user: null,
                 verified_status: false,
                 in_semantic_layer: false,
-                requested_fields: requestedFields
+                requested_fields: requestedFields,
+                name: null,
+                type: null,
+                category: null
             }).unwrap();
 
             // Handle success state
