@@ -1,6 +1,7 @@
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { ReduxProvider } from "__support__/storybook";
 import { _UpsellCard } from "./UpsellCard";
+import * as UpsellCardStories from './UpsellCard.stories';
 
 export const args = {
   title: "Ice Cream",
@@ -33,23 +34,18 @@ export const argTypes = {
   },
   children: {
     control: { type: "text" },
-  }
+  },
 };
 
-<Meta
-  title="Upsells/Card"
-  component={_UpsellCard}
-  args={args}
-  argTypes={argTypes}
-/>
+<Meta of={UpsellCardStories} />
 
 # Upsell Card
 
-- Use as a small, visible upsell, with or without an image
+*   Use as a small, visible upsell, with or without an image
 
 ## Examples
 
-export const DefaultTemplate = (args) => (
+export const DefaultTemplate = args => (
   <ReduxProvider>
     <Flex justify="center">
       <_UpsellCard {...args} />
@@ -60,12 +56,11 @@ export const DefaultTemplate = (args) => (
 export const WithImage = DefaultTemplate.bind({});
 
 export const WithoutImage = DefaultTemplate.bind({});
-WithoutImage.args = { ...args, illustrationSrc: null};
 
 <Canvas>
-  <Story name="With Image">{WithImage}</Story>
+  <Story of={UpsellCardStories.WithImage_} />
 </Canvas>
 
 <Canvas>
-  <Story name="Without Image">{WithoutImage}</Story>
+  <Story of={UpsellCardStories.WithoutImage_} />
 </Canvas>
