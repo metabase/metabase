@@ -17,19 +17,6 @@ import { StepDescription } from "./UserStep.styled";
 export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const { isStepActive, isStepCompleted } = useStep("user_info");
 
-  const params = new URLSearchParams(window.location.search);
-  const getParam = (key: string, defaultValue = "") =>
-    params.get(key) || defaultValue;
-
-  const cloudUser = {
-    first_name: getParam("first_name"),
-    last_name: getParam("last_name"),
-    email: getParam("email"),
-    site_name: getParam("site_name"),
-    password: "",
-    password_confirm: "",
-  };
-
   const user = useSelector(getUser);
   const isHosted = useSelector(getIsHosted);
 
@@ -58,7 +45,7 @@ export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
         </StepDescription>
       )}
       <UserForm
-        user={isHosted ? cloudUser : user}
+        user={user}
         isHosted={isHosted}
         onValidatePassword={validatePassword}
         onSubmit={handleSubmit}
