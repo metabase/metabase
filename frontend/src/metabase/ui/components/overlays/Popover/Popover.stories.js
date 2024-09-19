@@ -1,21 +1,20 @@
-import { Fragment } from "react";
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+/* eslint-disable react/prop-types */
 import {
   Box,
   Button,
   Flex,
   Popover,
+  Stack,
   Text,
   TextInput,
-  Stack,
 } from "metabase/ui";
 
-export const args = {
+const args = {
   label: "Popover",
   position: "bottom",
 };
 
-export const argTypes = {
+const argTypes = {
   position: {
     options: [
       "bottom",
@@ -35,7 +34,7 @@ export const argTypes = {
   },
 };
 
-export const sampleArgs = {
+const sampleArgs = {
   simple: <Text>Popover!</Text>,
   interactive: (
     <Stack spacing="sm">
@@ -46,24 +45,7 @@ export const sampleArgs = {
   ),
 };
 
-<Meta
-  title="Overlays/Popover"
-  component={Popover}
-  args={args}
-  argTypes={argTypes}
-/>
-
-# Popover
-
-Our themed wrapper around [Mantine Popover](https://v6.mantine.dev/core/popover/).
-
-## Docs
-
-- [Mantine Popover Docs](https://v6.mantine.dev/core/popover/)
-
-## Examples
-
-export const DefaultTemplate = ({ children, ...args }) => (
+const DefaultTemplate = ({ children, ...args }) => (
   <Flex justify="center">
     <Popover {...args}>
       <Popover.Target>
@@ -76,17 +58,28 @@ export const DefaultTemplate = ({ children, ...args }) => (
   </Flex>
 );
 
-export const Default = DefaultTemplate.bind({});
-Default.args = {
-  children: sampleArgs.simple,
+const Default = DefaultTemplate.bind({});
+const Interactive = DefaultTemplate.bind({});
+
+export default {
+  title: "Overlays/Popover",
+  component: Popover,
+  args: args,
+  argTypes: argTypes,
 };
 
-export const Interactive = DefaultTemplate.bind({});
-Interactive.args = {
-  children: sampleArgs.interactive,
+export const Default_ = {
+  render: Default,
+  name: "Default",
+  args: {
+    children: sampleArgs.simple,
+  },
 };
 
-<Canvas>
-  <Story name="Default">{Default}</Story>
-  <Story name="Interactive content">{Interactive}</Story>
-</Canvas>
+export const InteractiveContent = {
+  render: Interactive,
+  name: "Interactive content",
+  args: {
+    children: sampleArgs.interactive,
+  },
+};

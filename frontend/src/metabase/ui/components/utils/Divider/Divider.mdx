@@ -1,0 +1,53 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Group, Divider, Text } from "metabase/ui";
+import * as DividerStories from './Divider.stories';
+
+export const args = {
+  orientation: "horizontal",
+};
+
+export const argTypes = {
+  orientation: {
+    options: ["horizontal", "vertical"],
+    control: { type: "inline-radio" },
+  },
+};
+
+<Meta of={DividerStories} />
+
+# Divider
+
+Our themed wrapper around [Mantine Divider](https://v6.mantine.dev/core/divider/).
+
+## Docs
+
+*   [Mantine Divider Docs](https://v6.mantine.dev/core/divider/)
+
+## Examples
+
+export const DefaultTemplate = args => <Divider {...args} />;
+
+export const VerticalTemplate = args => (
+  <Group>
+    <Text>Overview</Text>
+    <Divider {...args} />
+    <Text>Metrics</Text>
+    <Divider {...args} />
+    <Text>Segments</Text>
+  </Group>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story of={DividerStories.Default_} />
+</Canvas>
+
+### Vertical orientation
+
+export const Vertical = VerticalTemplate.bind({});
+
+<Canvas>
+  <Story of={DividerStories.VerticalOrientation} />
+</Canvas>
