@@ -3,7 +3,6 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const appConfig = require("../webpack.config");
 const fs = require("fs");
 const path = require("path");
-const { features } = require("process");
 
 const isEmbeddingSDK = process.env.IS_EMBEDDING_SDK === "true";
 
@@ -25,9 +24,9 @@ const EMBEDDING_SDK_VERSION = JSON.stringify(
   sdkPackageTemplateJsonContent.version,
 );
 
-module.exports = {
-  core: {
-    builder: "webpack5",
+const config = {
+  framework: {
+    name: "@storybook/react-webpack5",
   },
   stories: isEmbeddingSDK ? embeddingSdkStories : mainAppStories,
   staticDirs: ["../resources/frontend_client"],
@@ -40,6 +39,7 @@ module.exports = {
   ],
   features: {
     interactionsDebugger: true,
+    legacyMdx1: true,
   },
   babel: () => {},
   typescript: {
@@ -77,5 +77,7 @@ module.exports = {
   }),
 };
 
-const isCSSRule = rule => rule.test.toString() === "/\\.css$/";
+export default config;
+
+const isCSSRule = rule => rule?.test?.toString() === "/\\.css$/";
 const isSvgRule = rule => rule.test && rule.test?.test(".svg");

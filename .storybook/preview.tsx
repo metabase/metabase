@@ -13,16 +13,6 @@ import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
-export const parameters = {
-  actions: { argTypesRegex: "^on[A-Z].*" },
-  controls: {
-    matchers: {
-      color: /(background|color)$/i,
-      date: /Date$/,
-    },
-  },
-};
-
 const globalStyles = css`
   ${defaultFontFiles({ baseUrl: "/" })}
 
@@ -34,18 +24,6 @@ const globalStyles = css`
   ${saveDomImageStyles}
   ${baseStyle}
 `;
-
-export const decorators = [
-  renderStory => (
-    <EmotionCacheProvider>
-      <ThemeProvider>
-        <Global styles={globalStyles} />
-        <CssVariables />
-        {renderStory()}
-      </ThemeProvider>
-    </EmotionCacheProvider>
-  ),
-];
 
 function CssVariables() {
   const theme = useTheme();
@@ -72,3 +50,28 @@ function CssVariables() {
 
   return <Global styles={styles} />;
 }
+
+const preview = {
+  parameters: {
+    actions: { argTypesRegex: "^on[A-Z].*" },
+    controls: {
+      matchers: {
+        color: /(background|color)$/i,
+        date: /Date$/,
+      },
+    },
+  },
+  decorators: [
+    renderStory => (
+      <EmotionCacheProvider>
+        <ThemeProvider>
+          <Global styles={globalStyles} />
+          <CssVariables />
+          {renderStory()}
+        </ThemeProvider>
+      </EmotionCacheProvider>
+    ),
+  ]
+}
+
+export default preview;
