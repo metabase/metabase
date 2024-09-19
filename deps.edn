@@ -165,6 +165,7 @@
   ;; The 3.X line of development for mariadb-java-client only supports the jdbc:mariadb protocol, so use 2.X for now.
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
+  com.oracle.database.jdbc/ojdbc8           {:mvn/version "19.8.0.0"}           ; Oracle JDBC driver
   org.postgresql/postgresql                 {:mvn/version "42.7.3"}             ; Postgres driver
   org.quartz-scheduler/quartz               {:mvn/version "2.3.2"}              ; Quartz job scheduler, provided by quartzite but this is a newer version.
   org.slf4j/slf4j-api                       {:mvn/version "2.0.12"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time

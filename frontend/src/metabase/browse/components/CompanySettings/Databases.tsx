@@ -92,7 +92,6 @@ export const SettingsDatabases = () => {
         <BrowseSection>
           <DatabaseGrid data-testid="database-browser">
             {filteredDatabases.map((database: any) => {
-              console.log("🚀 ~ {filteredDatabases.map ~ database:", database);
               // Get the logo for each database engine
               const logo = getEngineLogo(database.engine);
 

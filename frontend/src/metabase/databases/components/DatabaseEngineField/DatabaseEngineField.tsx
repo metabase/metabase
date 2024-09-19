@@ -30,6 +30,7 @@ const DatabaseEngineField = ({
       option =>
         option.value === "postgres" ||
         option.value === "bigquery-cloud-sdk" ||
+        option.value === "oracle" ||
         option.value === "redshift",
     );
   }, [engines, engineKey, isAdvanced]);
