@@ -93,7 +93,10 @@ export const UserForm = ({
           type="password"
           title={t`Create a password`}
           placeholder={t`Shhh...`}
-          autoFocus={isHosted}
+          // Hosted instances always pass user information in the URLSearchParams
+          // during the initial setup. Password is the first empty field
+          // so it makes sense to focus on it.
+          autoFocus={isHosted && initialValues.site_name !== ""}
         />
         <FormInput
           name="password_confirm"
