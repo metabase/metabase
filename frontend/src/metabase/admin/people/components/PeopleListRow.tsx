@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { Fragment, useMemo } from "react";
@@ -16,11 +15,24 @@ import { getFullName } from "metabase/lib/user";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon } from "metabase/ui";
+import type { User, Group, Member } from "metabase-types/api";
 
 import MembershipSelect from "./MembershipSelect";
 import { RefreshLink } from "./PeopleListRow.styled";
 
 const enablePasswordLoginKey = "enable-password-login";
+
+interface PeopleListRowProps {
+  user: User;
+  showDeactivated: boolean;
+  groups: Group[] | null;
+  userMemberships: Member[];
+  isCurrentUser: boolean;
+  isAdmin: boolean;
+  onAdd: (groupId: number, membershipData: Partial<Member>) => void;
+  onRemove: (groupId: number) => void;
+  onChange: (groupId: number, membershipData: Partial<Member>) => void;
+}
 
 const PeopleListRow = ({
   user,
@@ -32,7 +44,7 @@ const PeopleListRow = ({
   onAdd,
   onRemove,
   onChange,
-}) => {
+}: PeopleListRowProps) => {
   const membershipsByGroupId = useMemo(
     () =>
       userMemberships?.reduce((acc, membership) => {
@@ -133,12 +145,7 @@ const PeopleListRow = ({
   );
 };
 
-/**
- *
- * @param {import("metabase-types/api").User} user
- * @returns {string}
- */
-function getName(user) {
+function getName(user: User): string {
   const name = getFullName(user);
 
   if (!name) {

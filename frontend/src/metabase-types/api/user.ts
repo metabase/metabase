@@ -20,6 +20,7 @@ export interface BaseUser {
   date_joined: string;
   last_login: string;
   first_login: string;
+  updated_at: string;
 }
 
 export interface User extends BaseUser {

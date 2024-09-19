@@ -165,7 +165,7 @@ export const PLUGIN_ADMIN_USER_FORM_FIELDS = {
 };
 
 // menu items in people management tab
-export const PLUGIN_ADMIN_USER_MENU_ITEMS = [];
+export const PLUGIN_ADMIN_USER_MENU_ITEMS = [] as Array<(user: User) => any>;
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
 // auth settings

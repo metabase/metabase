@@ -22,8 +22,23 @@ const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
 const TIME_SELECTOR_DEFAULT_HOUR = 12;
 const TIME_SELECTOR_DEFAULT_MINUTE = 30;
 
-export default class SpecificDatePicker extends Component {
-  constructor(props) {
+interface SpecificDatePickerProps {
+  value: string | null;
+  onChange: (value: string | null) => void;
+  calendar?: boolean;
+  hideTimeSelectors?: boolean;
+  className?: string;
+}
+
+interface SpecificDatePickerState {
+  showCalendar: boolean;
+}
+
+export default class SpecificDatePicker extends Component<
+  SpecificDatePickerProps,
+  SpecificDatePickerState
+> {
+  constructor(props: SpecificDatePickerProps) {
     super(props);
 
     this.state = {
@@ -36,7 +51,11 @@ export default class SpecificDatePicker extends Component {
     onChange: PropTypes.func.isRequired,
   };
 
-  onChange = (date, hours, minutes) => {
+  onChange = (
+    date: moment.MomentInput,
+    hours?: number | null,
+    minutes?: number | null,
+  ) => {
     const m = moment(date);
     if (!m.isValid()) {
       this.props.onChange(null);
@@ -63,7 +82,10 @@ export default class SpecificDatePicker extends Component {
     const { value, calendar, hideTimeSelectors, className } = this.props;
     const { showCalendar } = this.state;
 
-    let date, hours, minutes;
+    let date: moment.Moment | undefined;
+    let hours: number | undefined;
+    let minutes: number | undefined;
+
     if (moment(value, DATE_TIME_FORMAT, true).isValid()) {
       date = moment(value, DATE_TIME_FORMAT, true);
       hours = date.hours();

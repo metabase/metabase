@@ -1,12 +1,28 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
-import { forwardRef } from "react";
+import {
+  type ChangeEventHandler,
+  type KeyboardEventHandler,
+  type MouseEventHandler,
+  type ReactNode,
+  forwardRef,
+} from "react";
 import { t } from "ttag";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 
-export const AddRow = forwardRef(function AddRow(
+interface AddRowProps {
+  value: string;
+  isValid: boolean;
+  placeholder?: string;
+  onKeyDown?: KeyboardEventHandler<HTMLInputElement>;
+  onChange: ChangeEventHandler<HTMLInputElement>;
+  onDone: MouseEventHandler<HTMLButtonElement>;
+  onCancel: MouseEventHandler<HTMLSpanElement>;
+  children?: ReactNode;
+}
+
+export const AddRow = forwardRef<HTMLDivElement, AddRowProps>(function AddRow(
   {
     value,
     isValid,
@@ -59,14 +75,3 @@ export const AddRow = forwardRef(function AddRow(
     </div>
   );
 });
-
-AddRow.propTypes = {
-  value: PropTypes.string.isRequired,
-  isValid: PropTypes.bool.isRequired,
-  placeholder: PropTypes.string,
-  onKeyDown: PropTypes.func,
-  onChange: PropTypes.func.isRequired,
-  onDone: PropTypes.func.isRequired,
-  onCancel: PropTypes.func.isRequired,
-  children: PropTypes.node,
-};

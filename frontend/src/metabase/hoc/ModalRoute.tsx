@@ -12,7 +12,10 @@ type IRoute = {
   path: string;
 };
 
-export const getParentPath = (route: IRoute, location: Location) => {
+export const getParentPath = (
+  route: IRoute,
+  location: Pick<Location, "pathname">,
+) => {
   // If instance has a custom url we need to exclude its subpath
   const siteUrlSegments = (MetabaseSettings.get("site-url") ?? "").split("/");
   const subPath = siteUrlSegments.slice(3).join("/");

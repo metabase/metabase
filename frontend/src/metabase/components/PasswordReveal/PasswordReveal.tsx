@@ -38,7 +38,7 @@ const Label = () => (
   </div>
 );
 
-export default class PasswordReveal extends Component {
+export default class PasswordReveal extends Component<{ password: string }> {
   state = { visible: false };
 
   render() {
@@ -64,9 +64,10 @@ export default class PasswordReveal extends Component {
             style={styles.input}
             className={cx(CS.textLight, CS.textNormal, CS.mr3, CS.borderless)}
             value={password}
-            onClick={({ target }) =>
-              target.setSelectionRange(0, target.value.length)
-            }
+            onClick={(e: React.MouseEvent<HTMLInputElement>) => {
+              const target = e.currentTarget;
+              target.setSelectionRange(0, target.value.length);
+            }}
           />
         ) : (
           <span style={styles.input} className={CS.mr3}>

@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -12,26 +11,34 @@ import { Icon } from "metabase/ui";
 
 import { AddMemberAutocompleteSuggestionRoot } from "./AddMemberRow.styled";
 import { AddRow } from "./AddRow";
+import type { User as IUser } from "metabase-types/api";
 
-AddMemberRow.propTypes = {
-  users: PropTypes.array.isRequired,
-  excludeIds: PropTypes.object,
-  onCancel: PropTypes.func.isRequired,
-  onDone: PropTypes.func.isRequired,
-};
+interface AddMemberRowProps {
+  users: IUser[];
+  excludeIds: Set<number>;
+  onCancel: () => void;
+  onDone: (selectedUserIds: number[]) => void;
+}
 
-export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
+export default function AddMemberRow({
+  users,
+  excludeIds,
+  onCancel,
+  onDone,
+}: AddMemberRowProps) {
   const rowRef = useRef(null);
   const [text, setText] = useState("");
-  const [selectedUsersById, setSelectedUsersById] = useState(new Map());
+  const [selectedUsersById, setSelectedUsersById] = useState<
+    Map<number, IUser>
+  >(new Map());
 
-  const handleRemoveUser = user => {
+  const handleRemoveUser = (user: IUser) => {
     const newSelectedUsersById = new Map(selectedUsersById);
     newSelectedUsersById.delete(user.id);
     setSelectedUsersById(newSelectedUsersById);
   };
 
-  const handleAddUser = user => {
+  const handleAddUser = (user: IUser) => {
     const newSelectedUsersById = new Map(selectedUsersById);
     newSelectedUsersById.set(user.id, user);
     setSelectedUsersById(newSelectedUsersById);
@@ -52,7 +59,7 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
 
   return (
     <tr>
-      <td colSpan="4" style={{ padding: 0 }}>
+      <td colSpan={4} style={{ padding: 0 }}>
         <AddRow
           ref={rowRef}
           value={text}
@@ -108,14 +115,12 @@ const getColorPalette = () => [
   color("accent4"),
 ];
 
-const AddMemberTypeaheadPopoverPropTypes = {
-  suggestions: PropTypes.array,
-  selectedSuggestion: PropTypes.object,
-  onSuggestionAccepted: PropTypes.func.isRequired,
-  target: PropTypes.shape({
-    current: PropTypes.instanceOf(Element),
-  }),
-};
+interface AddMemberTypeaheadPopoverProps {
+  suggestions: IUser[];
+  selectedSuggestion?: IUser | null;
+  onSuggestionAccepted: (user: IUser) => void;
+  target: React.RefObject<HTMLDivElement>;
+}
 
 const AddMemberTypeaheadPopover = Typeahead({
   optionFilter: (text, user) =>
@@ -126,13 +131,13 @@ const AddMemberTypeaheadPopover = Typeahead({
   selectedSuggestion,
   onSuggestionAccepted,
   target,
-}) {
+}: AddMemberTypeaheadPopoverProps) {
   const colors = useMemo(getColorPalette, []);
 
   return (
     <TippyPopover
       className={CS.bordered}
-      offset={0}
+      offset={[0, 0]}
       placement="bottom-start"
       visible={suggestions.length > 0}
       reference={target}
@@ -143,7 +148,9 @@ const AddMemberTypeaheadPopover = Typeahead({
             key={index}
             user={user}
             color={colors[index % colors.length]}
-            selected={selectedSuggestion && user.id === selectedSuggestion.id}
+            selected={Boolean(
+              selectedSuggestion && user.id === selectedSuggestion.id,
+            )}
             onClick={onSuggestionAccepted.bind(null, user)}
           />
         ))
@@ -152,16 +159,19 @@ const AddMemberTypeaheadPopover = Typeahead({
   );
 });
 
-AddMemberTypeaheadPopover.propTypes = AddMemberTypeaheadPopoverPropTypes;
+interface AddMemberAutocompleteSuggestionProps {
+  user: IUser;
+  color: string;
+  selected?: boolean;
+  onClick: () => void;
+}
 
-AddMemberAutocompleteSuggestion.propTypes = {
-  user: PropTypes.object.isRequired,
-  color: PropTypes.string.isRequired,
-  selected: PropTypes.bool,
-  onClick: PropTypes.func.isRequired,
-};
-
-function AddMemberAutocompleteSuggestion({ user, color, selected, onClick }) {
+function AddMemberAutocompleteSuggestion({
+  user,
+  color,
+  selected,
+  onClick,
+}: AddMemberAutocompleteSuggestionProps) {
   return (
     <AddMemberAutocompleteSuggestionRoot
       isSelected={selected}

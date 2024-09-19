@@ -4,17 +4,36 @@ import { connect } from "react-redux";
 
 import EmptyState from "metabase/components/EmptyState";
 import { getUser } from "metabase/selectors/user";
+import { User } from "metabase-types/api";
+import { State } from "metabase-types/store";
+import { IconName } from "metabase/ui";
 
 /*
  * AdminAwareEmptyState is a component that can
  *  1) Produce a custom message for admins in empty results
  */
 
-const mapStateToProps = (state, props) => ({
-  user: getUser(state, props),
+interface AdminAwareEmptyStateProps {
+  user: User | null;
+  title: string;
+  message: string;
+  adminMessage?: string;
+  icon?: IconName;
+  image?: string;
+  imageHeight?: number;
+  imageClassName?: string;
+  action?: string;
+  adminAction?: string;
+  link?: string;
+  adminLink?: string;
+  onActionClick?: () => void;
+}
+
+const mapStateToProps = (state: State) => ({
+  user: getUser(state),
 });
 
-class AdminAwareEmptyStateInner extends Component {
+class AdminAwareEmptyStateInner extends Component<AdminAwareEmptyStateProps> {
   render() {
     const {
       user,
@@ -30,7 +49,6 @@ class AdminAwareEmptyStateInner extends Component {
       link,
       adminLink,
       onActionClick,
-      smallDescription = false,
     } = this.props;
     return (
       <EmptyState
@@ -43,7 +61,6 @@ class AdminAwareEmptyStateInner extends Component {
         imageHeight={imageHeight}
         imageClassName={imageClassName}
         onActionClick={onActionClick}
-        smallDescription={smallDescription}
       />
     );
   }

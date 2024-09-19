@@ -48,6 +48,8 @@ export type EmptyStateProps = {
   className?: string;
   icon?: IconName;
   image?: string;
+  imageHeight?: number;
+  imageClassName?: string;
 };
 
 const EmptyState = ({

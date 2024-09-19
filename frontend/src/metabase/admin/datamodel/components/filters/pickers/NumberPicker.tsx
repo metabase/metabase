@@ -1,12 +1,29 @@
-/* eslint-disable react/prop-types */
-import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 
 import TextPicker from "./TextPicker";
 
-export default class NumberPicker extends Component {
-  constructor(props) {
+interface NumberPickerProps {
+  values: number[];
+  onValuesChange: (values: (number | null)[]) => void;
+  placeholder?: string;
+  multi?: boolean;
+  prefix?: string;
+  autoFocus?: boolean;
+  onCommit: (filter: Filter) => void;
+}
+
+interface NumberPickerState {
+  stringValues: string[];
+  validations: boolean[];
+}
+
+export default class NumberPicker extends Component<
+  NumberPickerProps,
+  NumberPickerState
+> {
+  constructor(props: NumberPickerProps) {
     super(props);
     this.state = {
       stringValues: props.values.map(v => {
@@ -20,22 +37,15 @@ export default class NumberPicker extends Component {
     };
   }
 
-  static propTypes = {
-    values: PropTypes.array.isRequired,
-    onValuesChange: PropTypes.func.isRequired,
-    placeholder: PropTypes.string,
-    multi: PropTypes.bool,
-  };
-
   static defaultProps = {
     placeholder: t`Enter desired number`,
   };
 
-  _validate(values) {
+  _validate(values: number[]) {
     return values.map(v => v === undefined || !isNaN(v));
   }
 
-  onValuesChange(stringValues) {
+  onValuesChange(stringValues: string[]) {
     const values = stringValues.map(v => parseFloat(v));
     this.props.onValuesChange(values.map(v => (isNaN(v) ? null : v)));
     this.setState({
@@ -54,7 +64,7 @@ export default class NumberPicker extends Component {
         prefix={this.props.prefix}
         values={values}
         validations={this.state.validations}
-        onValuesChange={values => this.onValuesChange(values)}
+        onValuesChange={(values: string[]) => this.onValuesChange(values)}
       />
     );
   }
