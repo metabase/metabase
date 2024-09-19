@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Button, Flex, TextInput } from "metabase/ui";
 import { Modal } from "./";
+import * as ModalStories from './Modal.stories';
 
 export const args = {
   centered: true,
@@ -27,12 +28,7 @@ export const argTypes = {
   },
 };
 
-<Meta
-  title="Overlays/Modal"
-  component={Modal}
-  args={args}
-  argTypes={argTypes}
-/>
+<Meta of={ModalStories} />
 
 # Modal
 
@@ -40,7 +36,7 @@ Our themed wrapper around [Mantine Modal](https://v6.mantine.dev/core/modal/).
 
 ## Docs
 
-- [Mantine Modal Docs](https://v6.mantine.dev/core/modal/)
+* [Mantine Modal Docs](https://v6.mantine.dev/core/modal/)
 
 ## Guidelines
 
@@ -74,7 +70,7 @@ export const SimpleWithTitle = args => {
 };
 
 <Canvas>
-  <Story name="Sentence case titles">{SimpleWithTitle}</Story>
+  <Story of={ModalStories.SentenceCaseTitles} />
 </Canvas>
 
 ### Headings for confirmation modals should always be a question, and the body text should elaborate on the consequences
@@ -114,7 +110,7 @@ export const Confirmation = args => {
 };
 
 <Canvas>
-  <Story name="Confirmation">{Confirmation}</Story>
+  <Story of={ModalStories.Confirmation_} />
 </Canvas>
 
 ### Buttons should be right-aligned, with the primary action on the far right
@@ -125,21 +121,21 @@ This is primarily to reinforce the top-left-to-bottom-right eye travel path for 
 
 ### The primary button for create or neutral actions should be blue, and red for destructive actions
 
-- Examples of “create” and neutral actions:
+* Examples of “create” and neutral actions:
 
-  - Save
-  - Create
-  - Invite
-  - Download
-  - Okay
-  - Done
+  * Save
+  * Create
+  * Invite
+  * Download
+  * Okay
+  * Done
 
-- Examples of “destructive” actions
-  - Discard
-  - Delete
-  - Deactivate
-  - Revoke
-  - Remove
+* Examples of “destructive” actions
+  * Discard
+  * Delete
+  * Deactivate
+  * Revoke
+  * Remove
 
 ### The text for primary action buttons should always be a verb
 
@@ -186,7 +182,7 @@ export const SingleButton = args => {
 };
 
 <Canvas>
-  <Story name="Single button">{SingleButton}</Story>
+  <Story of={ModalStories.SingleButton_} />
 </Canvas>
 
 ### It’s okay if a modal doesn’t have body text
@@ -220,5 +216,5 @@ export const NoBodyText = args => {
 };
 
 <Canvas>
-  <Story name="No body text">{NoBodyText}</Story>
+  <Story of={ModalStories.NoBodyText_} />
 </Canvas>

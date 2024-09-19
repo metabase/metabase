@@ -1,7 +1,8 @@
 import { Fragment } from "react";
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Grid, Text } from "metabase/ui";
 import { Loader } from "./";
+import * as LoaderStories from './Loader.stories';
 
 export const args = {
   size: "md",
@@ -14,12 +15,7 @@ export const argTypes = {
   },
 };
 
-<Meta
-  title="Feedback/Loader"
-  component={Loader}
-  args={args}
-  argTypes={argTypes}
-/>
+<Meta of={LoaderStories} />
 
 # Loader
 
@@ -27,13 +23,13 @@ Our themed wrapper around [Mantine Loader](https://v6.mantine.dev/core/loader/).
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/NUXRUa9Ot3HvgC1WwIA4UH/Loader?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
-- [Mantine Loader Docs](https://v6.mantine.dev/core/loader/)
+* [Figma File](https://www.figma.com/file/NUXRUa9Ot3HvgC1WwIA4UH/Loader?type=design\&node-id=1-96\&mode=design\&t=yaNljw178EFJeU7k-0)
+* [Mantine Loader Docs](https://v6.mantine.dev/core/loader/)
 
 ## Caveats
 
-- Only use the `oval` variant unless otherwise called out
-- Prefer usage of loader sizes less than `xl` unless specifically called out
+* Only use the `oval` variant unless otherwise called out
+* Prefer usage of loader sizes less than `xl` unless specifically called out
 
 ## Examples
 
@@ -57,7 +53,7 @@ export const SizeTemplate = args => (
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={LoaderStories.Default_} />
 </Canvas>
 
 ### Sizes
@@ -65,5 +61,5 @@ export const Default = DefaultTemplate.bind({});
 export const Sizes = SizeTemplate.bind({});
 
 <Canvas>
-  <Story name="Sizes">{Sizes}</Story>
+  <Story of={LoaderStories.Sizes_} />
 </Canvas>

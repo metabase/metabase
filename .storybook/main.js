@@ -5,9 +5,10 @@ const fs = require("fs");
 const path = require("path");
 
 const isEmbeddingSDK = process.env.IS_EMBEDDING_SDK === "true";
+console.log({ isEmbeddingSDK });
 
 const mainAppStories = [
-  "../frontend/**/*.stories.mdx",
+  "../frontend/**/*.mdx",
   "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
 ];
 
@@ -45,39 +46,53 @@ const config = {
   typescript: {
     reactDocgen: "react-docgen-typescript-plugin",
   },
-  webpackFinal: storybookConfig => ({
-    ...storybookConfig,
-    plugins: [
-      ...storybookConfig.plugins,
-      new MiniCssExtractPlugin(),
-      new webpack.ProvidePlugin({
-        Buffer: ["buffer", "Buffer"],
-      }),
-      new webpack.EnvironmentPlugin({
-        EMBEDDING_SDK_VERSION,
-        IS_EMBEDDING_SDK_BUILD: isEmbeddingSDK,
-      }),
-    ],
-    module: {
-      ...storybookConfig.module,
-      rules: [
-        ...storybookConfig.module.rules.filter(
-          rule => !isCSSRule(rule) && !isSvgRule(rule),
-        ),
-        ...appConfig.module.rules.filter(
-          rule => isCSSRule(rule) || isSvgRule(rule),
-        ),
+  webpackFinal: storybookConfig => {
+    console.log(storybookConfig.module.rules);
+    return {
+      ...storybookConfig,
+      plugins: [
+        ...storybookConfig.plugins,
+
+        new MiniCssExtractPlugin({
+          filename: "[name].css",
+          chunkFilename: "[id].css",
+        }),
+        new webpack.ProvidePlugin({
+          Buffer: ["buffer", "Buffer"],
+        }),
+        new webpack.EnvironmentPlugin({
+          EMBEDDING_SDK_VERSION,
+          IS_EMBEDDING_SDK_BUILD: isEmbeddingSDK,
+        }),
       ],
-    },
-    resolve: {
-      ...storybookConfig.resolve,
-      alias: appConfig.resolve.alias,
-      extensions: appConfig.resolve.extensions,
-    },
-  }),
+      module: {
+        ...storybookConfig.module,
+        rules: [
+          ...storybookConfig.module.rules.filter(
+            rule => !isCSSRule(rule) && !isSvgRule(rule),
+          ),
+          ...appConfig.module.rules.filter(
+            rule => isCSSRule(rule) || isSvgRule(rule),
+          ),
+        ],
+      },
+      resolve: {
+        ...storybookConfig.resolve,
+        alias: appConfig.resolve.alias,
+        extensions: appConfig.resolve.extensions,
+      },
+    };
+  },
 };
 
 export default config;
 
-const isCSSRule = rule => rule?.test?.toString() === "/\\.css$/";
+const isCSSRule = rule => {
+  // console.log({ test: rule.test });
+  const res = rule?.test?.toString() === "/\\.css$/";
+  if (res) {
+    console.log({ rule });
+  }
+  return res;
+};
 const isSvgRule = rule => rule.test && rule.test?.test(".svg");

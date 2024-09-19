@@ -1,7 +1,8 @@
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Icon } from "metabase/ui";
 import { Button, Flex, Text } from "metabase/ui";
 import { Menu } from "./";
+import * as MenuStories from './Menu.stories';
 
 export const args = {
   trigger: "click",
@@ -57,7 +58,7 @@ export const argTypes = {
   },
 };
 
-<Meta title="Overlays/Menu" component={Menu} args={args} argTypes={argTypes} />
+<Meta of={MenuStories} />
 
 # Menu
 
@@ -67,33 +68,33 @@ Our themed wrapper around [Mantine Menu](https://v6.mantine.dev/core/menu/).
 
 Use this menu in the following cases:
 
-- To display a list (up to 10) of static actions
-- Use it as the primary menu without additional flyout popups
-- Examples: + New, Settings, More on Metabase’s main UI
+* To display a list (up to 10) of static actions
+* Use it as the primary menu without additional flyout popups
+* Examples: + New, Settings, More on Metabase’s main UI
 
 Not to use:
 
-- As filter popup, selector or multi-selector
-- GUI editor dropdowns
-- Dynamic and composite menu items, e.g., group by month
-- Dynamic dropdown for table column picker
-- Any other advanced popups such as column popup on chill mode
+* As filter popup, selector or multi-selector
+* GUI editor dropdowns
+* Dynamic and composite menu items, e.g., group by month
+* Dynamic dropdown for table column picker
+* Any other advanced popups such as column popup on chill mode
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/MZhwfwmOaa8HeCBBUCeq7R/Menu?type=design&node-id=1-96&mode=design&t=vj3dPYMbYVYVuKBy-0)
-- [Mantine Menu Docs](https://v6.mantine.dev/core/menu/)
+* [Figma File](https://www.figma.com/file/MZhwfwmOaa8HeCBBUCeq7R/Menu?type=design\&node-id=1-96\&mode=design\&t=vj3dPYMbYVYVuKBy-0)
+* [Mantine Menu Docs](https://v6.mantine.dev/core/menu/)
 
 ## Caveats
 
-- The position of menu is auto-programmed responsively according to the location of the trigger button on the page
-- Limit the menu items to 10 or fewer
+* The position of menu is auto-programmed responsively according to the location of the trigger button on the page
+* Limit the menu items to 10 or fewer
 
 ## Usage guidelines
 
-- Although menu item label can be as long as you wish, keep it simple and concise
-- In general, use sentence casing for menu item labels
-- Use icon + label when applicable for better visual affordance
+* Although menu item label can be as long as you wish, keep it simple and concise
+* In general, use sentence casing for menu item labels
+* Use icon + label when applicable for better visual affordance
 
 ## Examples
 
@@ -182,7 +183,7 @@ export const LabelsAndDividersTemplate = args => (
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={MenuStories.Default_} />
 </Canvas>
 
 ### Right section
@@ -190,7 +191,7 @@ export const Default = DefaultTemplate.bind({});
 export const RightSection = RightSectionTemplate.bind({});
 
 <Canvas>
-  <Story name="Right section">{RightSection}</Story>
+  <Story of={MenuStories.RightSection_} />
 </Canvas>
 
 ### Icons
@@ -198,7 +199,7 @@ export const RightSection = RightSectionTemplate.bind({});
 export const Icons = IconsTemplate.bind({});
 
 <Canvas>
-  <Story name="Icons">{Icons}</Story>
+  <Story of={MenuStories.Icons_} />
 </Canvas>
 
 ### Labels and dividers
@@ -206,5 +207,5 @@ export const Icons = IconsTemplate.bind({});
 export const LabelsAndDividers = LabelsAndDividersTemplate.bind({});
 
 <Canvas>
-  <Story name="Labels and dividers">{LabelsAndDividers}</Story>
+  <Story of={MenuStories.LabelsAndDividers_} />
 </Canvas>

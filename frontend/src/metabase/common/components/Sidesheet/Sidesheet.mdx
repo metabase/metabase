@@ -1,5 +1,6 @@
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Box, Flex } from "metabase/ui";
+import * as SidesheetStories from './Sidesheet.stories';
 
 import { Sidesheet } from "./Sidesheet";
 import { SidesheetCard } from "./SidesheetCard";
@@ -28,25 +29,17 @@ export const argTypes = {
   }
 };
 
-<Meta title="Components/Sidesheet" component={Sidesheet} args={args} argTypes={argTypes} />
+<Meta of={SidesheetStories} />
 
 # Sidesheet
 
-
 ## When to use a Sidesheet
-
-
 
 ## Docs
 
-
 ## Caveats
 
-
-
 ## Usage guidelines
-
-
 
 ## Examples
 
@@ -93,7 +86,6 @@ export const TabbedSidesheetTemplate = () => (
   <TestTabbedSidesheet />
 );
 
-
 export const SidesheetButtonTemplate = () => (
   <Flex maw="30rem" direction="column" gap="lg">
     <SidesheetCard title="normal">
@@ -120,7 +112,7 @@ export const SidesheetButtonTemplate = () => (
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={SidesheetStories.Default_} />
 </Canvas>
 
 ### With cards
@@ -128,16 +120,15 @@ export const Default = DefaultTemplate.bind({});
 export const WithCards = WithCardsTemplate.bind({});
 
 <Canvas>
-  <Story name="With cards">{WithCards}</Story>
+  <Story of={SidesheetStories.WithCards_} />
 </Canvas>
-
 
 ### With sectioned cards
 
 export const WithSectionedCards = WithSectionedCardsTemplate.bind({});
 
 <Canvas>
-  <Story name="With sectioned cards">{WithSectionedCards}</Story>
+  <Story of={SidesheetStories.WithSectionedCards_} />
 </Canvas>
 
 ### With pages
@@ -145,7 +136,7 @@ export const WithSectionedCards = WithSectionedCardsTemplate.bind({});
 export const WithPages = PagedSidesheetTemplate.bind({});
 
 <Canvas>
-  <Story name="With sub pages">{WithPages}</Story>
+  <Story of={SidesheetStories.WithSubPages} />
 </Canvas>
 
 ### With tabs
@@ -153,7 +144,7 @@ export const WithPages = PagedSidesheetTemplate.bind({});
 export const WithTabs = TabbedSidesheetTemplate.bind({});
 
 <Canvas>
-  <Story name="With tabs">{WithTabs}</Story>
+  <Story of={SidesheetStories.WithTabs_} />
 </Canvas>
 
 ### Sidesheet Buttons
@@ -161,5 +152,5 @@ export const WithTabs = TabbedSidesheetTemplate.bind({});
 export const SidesheetButtonStory = SidesheetButtonTemplate.bind({});
 
 <Canvas>
-  <Story name="Sidesheet buttons">{SidesheetButtonStory}</Story>
+  <Story of={SidesheetStories.SidesheetButtons} />
 </Canvas>

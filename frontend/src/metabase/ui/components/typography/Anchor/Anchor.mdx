@@ -1,6 +1,7 @@
 import { Fragment } from "react";
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Anchor, Grid, Text } from "metabase/ui";
+import * as AnchorStories from './Anchor.stories';
 
 export const args = {
   size: "md",
@@ -27,12 +28,7 @@ export const argTypes = {
   },
 };
 
-<Meta
-  title="Typography/Anchor"
-  component={Anchor}
-  args={args}
-  argTypes={argTypes}
-/>
+<Meta of={AnchorStories} />
 
 # Anchor
 
@@ -44,8 +40,8 @@ The Anchor component allows users to display links with themed styles, and repla
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/8nuIBDQGSGKLfAPsebbASA/Navigation-%2F-Anchor?type=design&node-id=1-96&mode=design&t=2eUYOsqZZeMc4OGT-0)
-- [Mantine Anchor Docs](https://v6.mantine.dev/core/anchor/)
+* [Figma File](https://www.figma.com/file/8nuIBDQGSGKLfAPsebbASA/Navigation-%2F-Anchor?type=design\&node-id=1-96\&mode=design\&t=2eUYOsqZZeMc4OGT-0)
+* [Mantine Anchor Docs](https://v6.mantine.dev/core/anchor/)
 
 ## Examples
 
@@ -75,7 +71,7 @@ export const SizeTemplate = args => (
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={AnchorStories.Default_} />
 </Canvas>
 
 ### Sizes
@@ -83,10 +79,10 @@ export const Default = DefaultTemplate.bind({});
 export const Sizes = SizeTemplate.bind({});
 
 <Canvas>
-  <Story name="Sizes">{Sizes}</Story>
+  <Story of={AnchorStories.Sizes_} />
 </Canvas>
 
 ## Related components
 
-- Anchor
-- Code
+* Anchor
+* Code

@@ -1,16 +1,16 @@
-import { Box } from "metabase/ui";
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
 import { ReduxProvider } from "__support__/storybook";
+import { Box } from "metabase/ui";
+
 import { _UpsellPill } from "./UpsellPill";
 
-export const args = {
+const args = {
   children: "Metabase Enterprise is so great",
   link: "https://www.metabase.com",
   campaign: "enterprise",
   source: "enterprise-page-footer",
 };
 
-export const argTypes = {
+const argTypes = {
   children: {
     control: { type: "text" },
   },
@@ -25,19 +25,7 @@ export const argTypes = {
   },
 };
 
-<Meta
-  title="Upsells/Pill"
-  component={_UpsellPill}
-  args={args}
-  argTypes={argTypes}
-/>
-
-# Upsell Pill
-
-
-## Examples
-
-export const DefaultTemplate = (args) => (
+const DefaultTemplate = args => (
   <ReduxProvider>
     <Box>
       <_UpsellPill {...args} />
@@ -45,26 +33,31 @@ export const DefaultTemplate = (args) => (
   </ReduxProvider>
 );
 
-export const Default = DefaultTemplate.bind({});
+const Default = DefaultTemplate.bind({});
 
-
-export const NarrowTemplate = (args) => (
+const NarrowTemplate = args => (
   <ReduxProvider>
-    <Box style={{ maxWidth: "10rem"}}>
+    <Box style={{ maxWidth: "10rem" }}>
       <_UpsellPill {...args} />
     </Box>
   </ReduxProvider>
 );
 
-export const Narrow = NarrowTemplate.bind({});
+const Narrow = NarrowTemplate.bind({});
 
-<Canvas>
-  <Story name="Default">{Default}</Story>
-</Canvas>
+export default {
+  title: "Upsells/Pill",
+  component: _UpsellPill,
+  args: args,
+  argTypes: argTypes,
+};
 
+export const Default_ = {
+  render: Default,
+  name: "Default",
+};
 
-<Canvas>
-  <Story name="Multiline">{Narrow}</Story>
-</Canvas>
-
-
+export const Multiline = {
+  render: Narrow,
+  name: "Multiline",
+};

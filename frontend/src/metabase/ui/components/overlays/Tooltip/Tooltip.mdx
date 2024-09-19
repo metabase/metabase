@@ -1,6 +1,7 @@
 import { Fragment } from "react";
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Box, Button, Flex, Grid, Tooltip } from "metabase/ui";
+import * as TooltipStories from './Tooltip.stories';
 
 export const args = {
   label: "Tooltip",
@@ -30,12 +31,7 @@ export const argTypes = {
   },
 };
 
-<Meta
-  title="Overlays/Tooltip"
-  component={Tooltip}
-  args={args}
-  argTypes={argTypes}
-/>
+<Meta of={TooltipStories} />
 
 # Tooltip
 
@@ -43,7 +39,7 @@ Our themed wrapper around [Mantine Tooltip](https://v6.mantine.dev/core/tooltip/
 
 ## Docs
 
-- [Mantine Tooltip Docs](https://v6.mantine.dev/core/tooltip/)
+* [Mantine Tooltip Docs](https://v6.mantine.dev/core/tooltip/)
 
 ## Examples
 
@@ -58,5 +54,5 @@ export const DefaultTemplate = args => (
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={TooltipStories.Default_} />
 </Canvas>
