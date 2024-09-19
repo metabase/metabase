@@ -20964,8 +20964,8 @@ msgid "Didn’t find anything"
 msgstr "No s'ha trobat res"
 
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:247
-msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
-msgstr "No veus la teva base de dades? Comprova la nostra pàgina {0} per veure si està disponible per a self-hosting."
+msgid "Don’t see your database? Please reach out to support or contact an admin."
+msgstr "No veus la teva base de dades? Si us plau, contacta amb el suport o amb un administrador."
 
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:255
 msgid "Community Drivers"

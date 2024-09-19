@@ -21014,8 +21014,8 @@ msgid "Didn’t find anything"
 msgstr "Nisam našao ništa"
 
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:247
-msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
-msgstr "Ne vidite bazu podataka? Pogledajte našu {0} stranicu da biste videli da li je dostupna za samo-hosting."
+msgid "Don’t see your database? Please reach out to support or contact an admin."
+msgstr "Ne vidite bazu podataka? Kontaktirajte podršku ili administratora."
 
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:255
 msgid "Community Drivers"

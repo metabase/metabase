@@ -244,17 +244,7 @@ const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
       {isHosted ? (
         <EngineEmptyText>{t`Didn’t find anything`}</EngineEmptyText>
       ) : (
-        <EngineEmptyText>{jt`Don’t see your database? Check out our ${(
-          <ExternalLink
-            key="link"
-            // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup
-            href={MetabaseSettings.docsUrl(
-              "developers-guide/partner-and-community-drivers",
-            )}
-          >
-            {t`Community Drivers`}
-          </ExternalLink>
-        )} page to see if it’s available for self-hosting.`}</EngineEmptyText>
+        <EngineEmptyText>{jt`Don’t see your database? Please reach out to support or contact an admin.`}</EngineEmptyText>
       )}
     </EngineEmptyStateRoot>
   );

@@ -21005,8 +21005,8 @@ msgid "Didn’t find anything"
 msgstr "Nic jsem nenašel"
 
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:247
-msgid "Don’t see your database? Check out our {0} page to see if it’s available for self-hosting."
-msgstr "Nevidíte svou databázi? Podívejte se na naši stránku {0} a zjistěte, zda je dostupná ve vlastním hostingu."
+msgid "Don’t see your database? Please reach out to support or contact an admin."
+msgstr "Nevidíte svou databázi? Obraťte se na podporu nebo kontaktujte administrátora."
 
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineWidget.tsx:255
 msgid "Community Drivers"
