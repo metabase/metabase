@@ -196,7 +196,7 @@ describe("embed modal display", () => {
   });
 
   describeEE("when the user has a paid instance", () => {
-    it("should display a link to the interactive embedding settings", () => {
+    it("should display a link to the Interactive embedding settings", () => {
       setTokenFeatures("all");
       visitDashboard("@dashboardId");
 
@@ -204,15 +204,9 @@ describe("embed modal display", () => {
 
       getEmbedModalSharingPane().within(() => {
         cy.findByText("Static embedding").should("be.visible");
-        cy.findByText("Public embed").should("be.visible");
-        cy.findByTestId("interactive-embedding-cta").within(() => {
-          cy.findByText("Interactive Embedding").should("be.visible");
-          cy.findByText(
-            "Your plan allows you to use Interactive Embedding create interactive embedding experiences with drill-through and more.",
-          ).should("be.visible");
-          cy.findByText("Set it up").should("be.visible");
-        });
-        cy.findByTestId("interactive-embedding-cta").click();
+        cy.findByText("Interactive embedding").should("be.visible");
+
+        cy.findByText("Interactive embedding").click();
 
         cy.url().should(
           "equal",
@@ -231,15 +225,9 @@ describe("embed modal display", () => {
 
       getEmbedModalSharingPane().within(() => {
         cy.findByText("Static embedding").should("be.visible");
-        cy.findByText("Public embed").should("be.visible");
-        cy.findByTestId("interactive-embedding-cta").within(() => {
-          cy.findByText("Interactive Embedding").should("be.visible");
-          cy.findByText(
-            "Give your customers the full power of Metabase in your own app, with SSO, advanced permissions, customization, and more.",
-          ).should("be.visible");
-          cy.findByText("Learn more").should("be.visible");
-        });
-        cy.findByTestId("interactive-embedding-cta").should(
+        cy.findByText("Interactive embedding").should("be.visible");
+
+        cy.findByRole("link", { name: /Interactive embedding/ }).should(
           "have.attr",
           "href",
           "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
