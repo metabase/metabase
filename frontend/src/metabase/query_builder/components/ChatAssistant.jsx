@@ -138,6 +138,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     typeMessage: "data",
                     sender: senderType === "human" ? "user" : "server",
                     type: "text",
+                    isLoading: false,
                     thread_id: selectedThreadId,
                 }));
 
@@ -154,7 +155,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     }
                 }
 
-                return messages;
+                return messages.filter(
+                    (message) =>
+                        !message.text.includes("It was executed successfully, ready for your next task")
+                );
             });
             setDefaultQuestion([]);
             setCard(null);
