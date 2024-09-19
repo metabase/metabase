@@ -403,43 +403,55 @@
                                      :device_id (str (random-uuid))
                                      :timestamp #t "2021-03-18T19:52:41.808482Z"}
                      Card _ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]
-        (is (= (-> (merge
-                    @user-defaults
-                    {:email                      "rasta@metabase.com"
-                     :first_name                 "Rasta"
-                     :last_name                  "Toucan"
-                     :common_name                "Rasta Toucan"
-                     :first_login                "2021-03-18T19:52:41.808482Z"
-                     :group_ids                  [(u/the-id (perms-group/all-users))]
-                     :personal_collection_id     true
-                     :custom_homepage            nil
-                     :is_installer               (= 1 (mt/user->id :rasta))
-                     :has_invited_second_user    (= 1 (mt/user->id :rasta))})
-                   (dissoc :is_qbnewb :last_login))
-               (-> (mt/user-http-request :rasta :get 200 "user/current")
-                   mt/boolean-ids-and-timestamps
-                   (dissoc :is_qbnewb :has_question_and_dashboard :last_login :has_model))))))
+        (mt/with-premium-features #{}
+          (is (= (-> (merge
+                      @user-defaults
+                      {:email                      "rasta@metabase.com"
+                       :first_name                 "Rasta"
+                       :last_name                  "Toucan"
+                       :common_name                "Rasta Toucan"
+                       :first_login                "2021-03-18T19:52:41.808482Z"
+                       :group_ids                  [(u/the-id (perms-group/all-users))]
+                       :personal_collection_id     true
+                       :has_metric                 false
+                       :custom_homepage            nil
+                       :is_installer               (= 1 (mt/user->id :rasta))
+                       :has_invited_second_user    (= 1 (mt/user->id :rasta))})
+                     (dissoc :is_qbnewb :last_login))
+                 (-> (mt/user-http-request :rasta :get 200 "user/current")
+                     mt/boolean-ids-and-timestamps
+                     (dissoc :is_qbnewb :has_question_and_dashboard :last_login :has_model)))))))
+    (testing "check that `permissions` is returned if you have the token"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp [LoginHistory _ {:user_id   (mt/user->id :rasta)
+                                     :device_id (str (random-uuid))
+                                     :timestamp #t "2021-03-18T19:52:41.808482Z"}
+                     Card _ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]
+          (is (contains? (mt/user-http-request :rasta :get 200 "user/current")
+                         :permissions)))))
     (testing "check that `has_question_and_dashboard` is `true`."
       (mt/with-temp [Dashboard _ {:name "dash1" :creator_id (mt/user->id :rasta)}
                      Card      _ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}
                      Card      _ {:name "model" :creator_id (mt/user->id :rasta) :type "model"}]
-        (is (= (-> (merge
-                    @user-defaults
-                    {:email                      "rasta@metabase.com"
-                     :first_name                 "Rasta"
-                     :last_name                  "Toucan"
-                     :common_name                "Rasta Toucan"
-                     :group_ids                  [(u/the-id (perms-group/all-users))]
-                     :personal_collection_id     true
-                     :has_question_and_dashboard true
-                     :has_model                  true
-                     :custom_homepage            nil
-                     :is_installer               (= 1 (mt/user->id :rasta))
-                     :has_invited_second_user    (= 1 (mt/user->id :rasta))})
-                   (dissoc :is_qbnewb :last_login))
-               (-> (mt/user-http-request :rasta :get 200 "user/current")
-                   mt/boolean-ids-and-timestamps
-                   (dissoc :is_qbnewb :first_login :last_login))))))
+        (mt/with-premium-features #{}
+          (is (= (-> (merge
+                      @user-defaults
+                      {:email                      "rasta@metabase.com"
+                       :first_name                 "Rasta"
+                       :last_name                  "Toucan"
+                       :common_name                "Rasta Toucan"
+                       :group_ids                  [(u/the-id (perms-group/all-users))]
+                       :personal_collection_id     true
+                       :has_question_and_dashboard true
+                       :has_model                  true
+                       :has_metric                 false
+                       :custom_homepage            nil
+                       :is_installer               (= 1 (mt/user->id :rasta))
+                       :has_invited_second_user    (= 1 (mt/user->id :rasta))})
+                     (dissoc :is_qbnewb :last_login))
+                 (-> (mt/user-http-request :rasta :get 200 "user/current")
+                     mt/boolean-ids-and-timestamps
+                     (dissoc :is_qbnewb :first_login :last_login)))))))
     (testing "on a fresh instance, `has_question_and_dashboard` is `false`"
       (mt/with-empty-h2-app-db
         (is (false? (-> (mt/user-http-request :rasta :get 200 "user/current")

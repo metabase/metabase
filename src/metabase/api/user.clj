@@ -300,17 +300,37 @@
   internal/automatically-loaded content."
   [user]
   (let [collection-filter (collection/visible-collection-filter-clause)
-        entity-exists? (fn [model & additional-clauses] (t2/exists? model
-                                                                    {:where (into [:and
-                                                                                   [:= :archived false]
-                                                                                   collection-filter
-                                                                                   (mi/exclude-internal-content-hsql model)]
-                                                                                  additional-clauses)}))]
+        {:keys [has_dashboard has_card has_model has_metric]}
+        (t2/query-one {:select [[[:exists {:select 1
+                                           :from [:report_card]
+                                           :where [:and
+                                                   [:= :archived false]
+                                                   collection-filter
+                                                   (mi/exclude-internal-content-hsql :model/Card)]}] :has_card]
+                                [[:exists {:select 1
+                                           :from [:report_dashboard]
+                                           :where [:and
+                                                   [:= :archived false]
+                                                   collection-filter
+                                                   (mi/exclude-internal-content-hsql :model/Dashboard)]}] :has_dashboard]
+                                [[:exists {:select 1
+                                           :from [:report_card]
+                                           :where [:and
+                                                   [:= :archived false]
+                                                   collection-filter
+                                                   (mi/exclude-internal-content-hsql :model/Card)
+                                                   [:= :type "model"]]}] :has_model]
+                                [[:exists {:select 1
+                                           :from [:report_card]
+                                           :where [:and
+                                                   [:= :archived false]
+                                                   collection-filter
+                                                   (mi/exclude-internal-content-hsql :model/Card)
+                                                   [:= :type "metric"]]}] :has_metric]]})]
     (-> user
-        (assoc :has_question_and_dashboard
-               (and (entity-exists? :model/Card)
-                    (entity-exists? :model/Dashboard)))
-        (assoc :has_model (entity-exists? :model/Card [:= :type "model"])))))
+        (assoc :has_question_and_dashboard (and has_dashboard has_card))
+        (assoc :has_metric has_metric)
+        (assoc :has_model has_model))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
