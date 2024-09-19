@@ -8928,98 +8928,51 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-        id: v51.2024-08-29T15:00:00
-        author: jordigiam
-        comment: Create table postcheckpoints
-        preConditions:
-          - onFail: MARK_RAN
-          - dbms: h2
-          - not:
-              - tableExists:
-                  tableName: postcheckpoints
-        changes:
-          - createTable:
-              tableName: postcheckpoints
-              remarks: Table to track checkpoints in threads
-              columns:
-                - column:
-                    name: thread_id
-                    type: text
-                    constraints:
-                      nullable: false
-                - column:
-                    name: checkpoint_id
-                    type: text
-                    constraints:
-                      nullable: false
-                      primaryKey: true
-                - column:
-                    name: parent_id
-                    type: text
-                    constraints:
-                      nullable: true
-                - column:
-                    name: checkpoint
-                    type: clob
-                    constraints:
-                      nullable: true
-                - column:
-                    name: metadata
-                    type: clob
-                    constraints:
-                      nullable: true
-                - column:
-                    name: step
-                    type: bigint
-                    constraints:
-                      nullable: false
-
-  - changeSet:
-        id: v51.2024-08-29T15:10:00
-        author: jordigiam
-        comment: Create table postcheckpoints
-        preConditions:
-          - onFail: MARK_RAN
-          - dbms: postgresql
-          - not:
-              - tableExists:
-                  tableName: postcheckpoints
-        changes:
-          - createTable:
-              tableName: postcheckpoints
-              remarks: Table to track checkpoints in threads
-              columns:
-                - column:
-                    name: thread_id
-                    type: text
-                    constraints:
-                      nullable: false
-                - column:
-                    name: checkpoint_id
-                    type: text
-                    constraints:
-                      nullable: false
-                      primaryKey: true
-                - column:
-                    name: parent_id
-                    type: text
-                    constraints:
-                      nullable: true
-                - column:
-                    name: checkpoint
-                    type: jsonb
-                    constraints:
-                      nullable: true
-                - column:
-                    name: metadata
-                    type: jsonb
-                    constraints:
-                      nullable: true
-                - column:
-                    name: step
-                    type: bigint
-                    constraints:
-                      nullable: false
+      id: v55.2024-09-17T17:00:20
+      author: nazim
+      comment: Create table postcheckpoints
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: postcheckpoints
+      changes:
+        - createTable:
+            tableName: postcheckpoints
+            remarks: Table to track checkpoints in threads
+            columns:
+              - column:
+                  name: thread_id
+                  type: text
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: checkpoint_id
+                  type: text
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: parent_id
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: checkpoint
+                  type: jsonb
+                  constraints:
+                    nullable: true
+              - column:
+                  name: metadata
+                  type: jsonb
+                  constraints:
+                    nullable: true
+              - column:
+                  name: step
+                  type: int
+                  constraints:
+                    nullable: false
 
   - changeSet:
         id: v51.2024-08-28T14:35:00-1
@@ -9125,15 +9078,19 @@ databaseChangeLog:
                     constraints:
                       nullable: true
   - changeSet:
-      id: v52.2024-08-28T15:30:00
+      id: v55.2024-09-17T17:00:30
       author: jordigiam
       comment: Add agent_name and agent_description columns to postcheckpoints
       preConditions:
       - onFail: MARK_RAN
-      - dbms: postgresql, h2
       - not:
-          - tableExists:
+          - columnExists:
               tableName: postcheckpoints
+              columnName: agent_name
+      - not:
+          - columnExists:
+              tableName: postcheckpoints
+              columnName: agent_description
       changes:
         - addColumn:
             tableName: postcheckpoints
@@ -9168,12 +9125,11 @@ databaseChangeLog:
                   constraints:
                     nullable: true
   - changeSet:
-      id: v53.2024-08-29T10:30:00
+      id: v55.2024-09-17T17:00:35
       author: jordigiam
       comment: Add card_id column to postcheckpoints
       preConditions:
         - onFail: MARK_RAN
-        - dbms: postgresql, h2
         - not:
             - columnExists:
                 tableName: postcheckpoints
@@ -9184,17 +9140,16 @@ databaseChangeLog:
             columns:
               - column:
                   name: card_id
-                  type: number
+                  type: int
                   constraints:
                     nullable: true
 
   - changeSet:
-      id: v53.2024-09-01T10:30:00
+      id: v55.2024-09-17T17:00:75
       author: jordigiam
       comment: Add insights column to postcheckpoints
       preConditions:
         - onFail: MARK_RAN
-        - dbms: postgresql
         - not:
             - columnExists:
                 tableName: postcheckpoints
@@ -9206,27 +9161,6 @@ databaseChangeLog:
               - column:
                   name: insights
                   type: jsonb
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v53.2024-09-01T10:32:00
-      author: jordigiam
-      comment: Add insights column to postcheckpoints
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms: h2
-        - not:
-            - columnExists:
-                tableName: postcheckpoints
-                columnName: insights
-      changes:
-        - addColumn:
-            tableName: postcheckpoints
-            columns:
-              - column:
-                  name: insights
-                  type: clob
                   constraints:
                     nullable: true
 
