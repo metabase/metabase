@@ -355,10 +355,11 @@ describe("#39152 sharing an unsaved question", () => {
           });
 
           openSharingMenu("Embed");
-          cy.findByTestId("sharing-pane-public-embed-button").within(() => {
-            cy.findByText("Get an embed link").click();
-            cy.findByTestId("copy-button").realClick();
-          });
+
+          modal().findByText("Get embedding code").click();
+
+          popover().findByTestId("copy-button").click();
+
           expectGoodSnowplowEvent({
             event: "public_embed_code_copied",
             artifact: resource,
@@ -372,10 +373,10 @@ describe("#39152 sharing an unsaved question", () => {
           });
 
           openSharingMenu("Embed");
-          cy.findByTestId("sharing-pane-public-embed-button").within(() => {
-            cy.findByText("Get an embed link").click();
-            cy.button("Remove public URL").click();
-          });
+          modal().findByText("Get embedding code").click();
+
+          popover().findByText("Remove public link").click();
+
           expectGoodSnowplowEvent({
             event: "public_link_removed",
             artifact: resource,
