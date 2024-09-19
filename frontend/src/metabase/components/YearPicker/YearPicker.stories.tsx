@@ -1,5 +1,5 @@
 import { useArgs } from "@storybook/addons";
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import YearPicker from "./YearPicker";
 
@@ -8,7 +8,7 @@ export default {
   component: YearPicker,
 };
 
-const Template: ComponentStory<typeof YearPicker> = args => {
+const Template: StoryFn<typeof YearPicker> = args => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleChange = (year: number) => {
@@ -18,7 +18,10 @@ const Template: ComponentStory<typeof YearPicker> = args => {
   return <YearPicker {...args} value={value} onChange={handleChange} />;
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  value: 2022,
+export const Default = {
+  render: Template,
+
+  args: {
+    value: 2022,
+  },
 };

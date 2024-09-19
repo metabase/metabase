@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import CS from "metabase/css/core/index.css";
 
@@ -10,7 +10,7 @@ export default {
   argTypes: { onChange: { action: "onChange" } },
 };
 
-const Template: ComponentStory<typeof Slider> = args => {
+const Template: StoryFn<typeof Slider> = args => {
   const value = [10, 40];
   return (
     <div className={CS.pt4}>
@@ -19,4 +19,6 @@ const Template: ComponentStory<typeof Slider> = args => {
   );
 };
 
-export const Default = Template.bind({});
+export const Default = {
+  render: Template,
+};

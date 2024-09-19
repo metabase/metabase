@@ -1,5 +1,5 @@
 import { useArgs } from "@storybook/addons";
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import { DateRelativeWidget } from "./DateRelativeWidget";
 
@@ -8,7 +8,7 @@ export default {
   component: DateRelativeWidget,
 };
 
-const Template: ComponentStory<typeof DateRelativeWidget> = args => {
+const Template: StoryFn<typeof DateRelativeWidget> = args => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleSetValue = (v?: string) => {
@@ -29,22 +29,34 @@ const Template: ComponentStory<typeof DateRelativeWidget> = args => {
   );
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  value: "",
+export const Default = {
+  render: Template,
+
+  args: {
+    value: "",
+  },
 };
 
-export const Yesterday = Template.bind({});
-Yesterday.args = {
-  value: "yesterday",
+export const Yesterday = {
+  render: Template,
+
+  args: {
+    value: "yesterday",
+  },
 };
 
-export const LastMonth = Template.bind({});
-LastMonth.args = {
-  value: "lastmonth",
+export const LastMonth = {
+  render: Template,
+
+  args: {
+    value: "lastmonth",
+  },
 };
 
-export const ThisWeek = Template.bind({});
-ThisWeek.args = {
-  value: "thisweek",
+export const ThisWeek = {
+  render: Template,
+
+  args: {
+    value: "thisweek",
+  },
 };

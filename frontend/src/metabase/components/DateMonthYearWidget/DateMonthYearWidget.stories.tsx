@@ -1,5 +1,5 @@
-import { useArgs } from "@storybook/client-api";
-import type { ComponentStory } from "@storybook/react";
+import { useArgs } from "@storybook/addons";
+import type { StoryFn } from "@storybook/react";
 
 import { DateMonthYearWidget } from "./DateMonthYearWidget";
 
@@ -8,7 +8,7 @@ export default {
   component: DateMonthYearWidget,
 };
 
-const Template: ComponentStory<typeof DateMonthYearWidget> = args => {
+const Template: StoryFn<typeof DateMonthYearWidget> = args => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleSetValue = (v: string) => {
@@ -29,17 +29,26 @@ const Template: ComponentStory<typeof DateMonthYearWidget> = args => {
   );
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  value: "",
+export const Default = {
+  render: Template,
+
+  args: {
+    value: "",
+  },
 };
 
-export const ThisYear = Template.bind({});
-ThisYear.args = {
-  value: "2022",
+export const ThisYear = {
+  render: Template,
+
+  args: {
+    value: "2022",
+  },
 };
 
-export const LastYear = Template.bind({});
-LastYear.args = {
-  value: "2021-07",
+export const LastYear = {
+  render: Template,
+
+  args: {
+    value: "2021-07",
+  },
 };

@@ -1,5 +1,5 @@
 import { useArgs } from "@storybook/addons";
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 
@@ -10,7 +10,7 @@ export default {
   component: ColorRangeSelector,
 };
 
-const Template: ComponentStory<typeof ColorRangeSelector> = args => {
+const Template: StoryFn<typeof ColorRangeSelector> = args => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleChange = (value: string[]) => {
@@ -20,29 +20,42 @@ const Template: ComponentStory<typeof ColorRangeSelector> = args => {
   return <ColorRangeSelector {...args} value={value} onChange={handleChange} />;
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  value: [color("white"), color("brand")],
-  colors: [color("brand"), color("summarize"), color("filter")],
+export const Default = {
+  render: Template,
+
+  args: {
+    value: [color("white"), color("brand")],
+    colors: [color("brand"), color("summarize"), color("filter")],
+  },
 };
 
-export const WithColorRanges = Template.bind({});
-WithColorRanges.args = {
-  value: [color("white"), color("brand")],
-  colors: [color("brand"), color("summarize"), color("filter")],
-  colorRanges: [
-    [color("error"), color("white"), color("success")],
-    [color("error"), color("warning"), color("success")],
-  ],
+export const WithColorRanges = {
+  render: Template,
+
+  args: {
+    value: [color("white"), color("brand")],
+    colors: [color("brand"), color("summarize"), color("filter")],
+    colorRanges: [
+      [color("error"), color("white"), color("success")],
+      [color("error"), color("warning"), color("success")],
+    ],
+  },
 };
 
-export const WithColorMapping = Template.bind({});
-WithColorMapping.args = {
-  value: [color("white"), color("brand")],
-  colors: [color("brand"), color("summarize"), color("filter")],
-  colorMapping: {
-    [color("brand")]: [color("brand"), color("white"), color("brand")],
-    [color("summarize")]: [color("summarize"), color("white"), color("error")],
-    [color("filter")]: [color("filter"), color("white"), color("filter")],
+export const WithColorMapping = {
+  render: Template,
+
+  args: {
+    value: [color("white"), color("brand")],
+    colors: [color("brand"), color("summarize"), color("filter")],
+    colorMapping: {
+      [color("brand")]: [color("brand"), color("white"), color("brand")],
+      [color("summarize")]: [
+        color("summarize"),
+        color("white"),
+        color("error"),
+      ],
+      [color("filter")]: [color("filter"), color("white"), color("filter")],
+    },
   },
 };

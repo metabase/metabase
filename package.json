@@ -148,6 +148,7 @@
     "@storybook/addon-essentials": "^7",
     "@storybook/addon-interactions": "^7",
     "@storybook/addon-links": "^7",
+    "@storybook/addons": "^7.6.17",
     "@storybook/blocks": "^7",
     "@storybook/jest": "^0.2.3",
     "@storybook/mdx1-csf": "^1.0.0",

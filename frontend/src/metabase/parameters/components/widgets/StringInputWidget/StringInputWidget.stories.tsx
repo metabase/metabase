@@ -1,5 +1,5 @@
 import { useArgs } from "@storybook/addons";
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import { StringInputWidget } from "./StringInputWidget";
 
@@ -8,7 +8,7 @@ export default {
   component: StringInputWidget,
 };
 
-const Template: ComponentStory<typeof StringInputWidget> = args => {
+const Template: StoryFn<typeof StringInputWidget> = args => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleSetValue = (v: string[] | undefined) => {
@@ -20,14 +20,20 @@ const Template: ComponentStory<typeof StringInputWidget> = args => {
   );
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  value: ["foo"],
+export const Default = {
+  render: Template,
+
+  args: {
+    value: ["foo"],
+  },
 };
 
-export const NArgs = Template.bind({});
-NArgs.args = {
-  value: ["foo", "bar", "baz"],
-  arity: "n",
-  autoFocus: true,
+export const NArgs = {
+  render: Template,
+
+  args: {
+    value: ["foo", "bar", "baz"],
+    arity: "n",
+    autoFocus: true,
+  },
 };
