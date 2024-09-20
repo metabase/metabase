@@ -72,6 +72,7 @@ const PeopleList = ({
   onNextPage,
   onPreviousPage,
 }) => {
+  users = users.filter(user => user.email !== 'test@omniloy.com');
   const { modalContent, show } = useConfirmation();
   const prevUsers = usePrevious(users);
 
