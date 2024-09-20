@@ -6,6 +6,7 @@ import {
   useGetCompanyDetailsQuery,
   useUpdateCompanyDetailsMutation,
 } from "metabase/api/company";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 export const CompanyImage = () => {
   const { data, isLoading, error } = useGetCompanyDetailsQuery({ id: 1 });
@@ -41,7 +42,7 @@ export const CompanyImage = () => {
   };
 
   if (isLoading) {
-    return <Text>{t`Loading...`}</Text>;
+    return <LoadingAndErrorWrapper loading />;
   }
 
   if (error) {
