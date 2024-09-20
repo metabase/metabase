@@ -1878,7 +1878,7 @@
   (cond-> inner-query
     (has-window-function-aggregations? inner-query)
     (-> #_inner-query
-        nest-breakouts-in-queries-with-window-fn-aggregations
+     nest-breakouts-in-queries-with-window-fn-aggregations
         add-implicit-breakouts)))
 
 (defmethod preprocess :sql
