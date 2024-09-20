@@ -58,14 +58,11 @@
           (is (= (hybrid term)
                  (hybrid-multi term))))))))
 
-(defn- remove-time [m]
-  (dissoc m :created_at :updated_at :last_edited_at))
-
 (deftest minimal-test
   (with-setup
     (testing "consistent results between both hybrid implementations\n"
       (doseq [term example-terms]
         (testing term
           ;; Timestamps are not strings after round trip, but this doesn't matter
-          (is (= (map remove-time (hybrid term))
-                 (map remove-time (minimal term)))))))))
+          (is (= (hybrid term)
+                 (minimal term))))))))
