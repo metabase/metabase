@@ -640,6 +640,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         setIsLoading(false);
         removeLoadingMessage();
         clearPlanMessage();
+        clearQueryMessage();
         // clearInfoMessage();
     };
 
@@ -708,10 +709,23 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
 
     const handleDirectResponse = data => {
-        addServerMessage(
-            data.message || "Received a message from the server.",
-            "text",
-        );
+        if(data.message.includes("We had a problem creating a response for your requests. Please try again or contact support.")) {
+            setMessages(prevMessages => [
+                ...prevMessages,
+                {
+                    id: Date.now() + Math.random(),
+                    text: data.message,
+                    typeMessage: "error",
+                    sender: "server",
+                    type: "text",
+                }
+            ]);
+        } else {
+            addServerMessage(
+                data.message || "Received a message from the server.",
+                "text",
+            );
+        }
         setIsLoading(false);
         removeLoadingMessage();
     }
@@ -913,6 +927,12 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const clearInfoMessage = () => {
         setMessages(prevMessages => prevMessages.filter(
             message => !message.info
+        ));
+    }
+
+    const clearQueryMessage = () => {
+        setMessages(prevMessages => prevMessages.filter(
+            message => !message.text.includes("Query executed successfully")
         ));
     }
 
