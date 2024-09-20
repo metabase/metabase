@@ -430,3 +430,62 @@
                  (mt/formatted-rows
                   [str 2.0 2.0]
                   (qp/process-query query)))))))))
+
+(deftest ^:parallel cumulative-count-different-temporal-breakouts-test
+  (testing "The finest temporal column comes last in the order-by"
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
+      (let [metadata-provider   (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            orders              (lib.metadata/table metadata-provider (mt/id :orders))
+            created-at          (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+            products-category   (m/find-first (fn [col]
+                                                (= (:id col) (mt/id :products :category)))
+                                              (lib/visible-columns (lib/query metadata-provider orders)))
+            _                   (assert (some? products-category))
+            products-created-at (m/find-first (fn [col]
+                                                (= (:id col) (mt/id :products :created_at)))
+                                            (lib/visible-columns (lib/query metadata-provider orders)))
+            _                   (assert (some? products-created-at))
+            base-query          (-> (lib/query metadata-provider orders)
+                                    (lib/filter (lib/< created-at "2018"))
+                                    (lib/filter (lib/< products-created-at "2018"))
+                                    (lib/filter (lib/starts-with products-category "G"))
+                                    (lib/breakout (lib/with-temporal-bucket products-created-at :quarter))
+                                    (lib/breakout products-category)
+                                    (lib/breakout (lib/with-temporal-bucket created-at :year))
+                                    (lib/aggregate (lib/count))
+                                    (lib/aggregate (lib/cum-count))
+                                    (lib/order-by products-category :desc)
+                                    (assoc-in [:middleware :format-rows?] false))
+            query               base-query]
+        (mt/with-native-query-testing-context query
+          (is (= [[#t "2016-04-01" "Gizmo"  #t "2016-01-01"  41  41]
+                  [#t "2016-07-01" "Gizmo"  #t "2016-01-01"  28  69]
+                  [#t "2016-10-01" "Gizmo"  #t "2016-01-01"  15  84]
+                  [#t "2017-01-01" "Gizmo"  #t "2016-01-01"   3  87]
+                  [#t "2017-04-01" "Gizmo"  #t "2016-01-01"   6  93]
+                  [#t "2017-07-01" "Gizmo"  #t "2016-01-01"  19 112]
+                  [#t "2017-10-01" "Gizmo"  #t "2016-01-01"  17 129]
+                  [#t "2016-04-01" "Gizmo"  #t "2017-01-01"  76  76]
+                  [#t "2016-07-01" "Gizmo"  #t "2017-01-01"  45 121]
+                  [#t "2016-10-01" "Gizmo"  #t "2017-01-01" 137 258]
+                  [#t "2017-01-01" "Gizmo"  #t "2017-01-01" 103 361]
+                  [#t "2017-04-01" "Gizmo"  #t "2017-01-01"  64 425]
+                  [#t "2017-07-01" "Gizmo"  #t "2017-01-01" 144 569]
+                  [#t "2017-10-01" "Gizmo"  #t "2017-01-01"  85 654]
+                  [#t "2016-04-01" "Gadget" #t "2016-01-01"  49  49]
+                  [#t "2016-07-01" "Gadget" #t "2016-01-01"  30  79]
+                  [#t "2016-10-01" "Gadget" #t "2016-01-01"  39 118]
+                  [#t "2017-01-01" "Gadget" #t "2016-01-01"  18 136]
+                  [#t "2017-04-01" "Gadget" #t "2016-01-01"   8 144]
+                  [#t "2017-07-01" "Gadget" #t "2016-01-01"   3 147]
+                  [#t "2017-10-01" "Gadget" #t "2016-01-01"  12 159]
+                  [#t "2016-04-01" "Gadget" #t "2017-01-01"  87  87]
+                  [#t "2016-07-01" "Gadget" #t "2017-01-01" 107 194]
+                  [#t "2016-10-01" "Gadget" #t "2017-01-01" 124 318]
+                  [#t "2017-01-01" "Gadget" #t "2017-01-01" 174 492]
+                  [#t "2017-04-01" "Gadget" #t "2017-01-01"  97 589]
+                  [#t "2017-07-01" "Gadget" #t "2017-01-01"  38 627]
+                  [#t "2017-10-01" "Gadget" #t "2017-01-01"  68 695]]
+                 (mt/formatted-rows
+                  [->local-date str ->local-date int int]
+                  (qp/process-query query)))))))))
