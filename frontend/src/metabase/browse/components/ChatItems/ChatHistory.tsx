@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Box, Text, ScrollArea, Title, Divider } from "metabase/ui";
 import { useListCheckpointsQuery } from "metabase/api/checkpoints";
 import dayjs from "dayjs";
@@ -11,6 +11,15 @@ interface ChatHistoryProps {
   setInsights: (insights: any) => void; // Optional prop
 }
 
+const ITEMS_PER_PAGE = 30; // Number of items to load per request
+
+// Explicit type for chat history
+interface ChatHistoryState {
+  today: any[];
+  last7Days: any[];
+  last30Days: any[];
+}
+
 const ChatHistory = ({
   setSelectedChatHistory,
   setThreadId,
@@ -18,17 +27,22 @@ const ChatHistory = ({
   setOldCardId,
   setInsights,
 }: ChatHistoryProps) => {
-  const [chatHistory, setChatHistory] = useState({
+  const [chatHistory, setChatHistory] = useState<ChatHistoryState>({
     today: [],
     last7Days: [],
     last30Days: [],
   });
 
+  const [offset, setOffset] = useState(0); // Track the current offset for pagination
+  const [hasMore, setHasMore] = useState(true); // Track if there is more data to load
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null); // Ref for scroll area
+
+  // Fetch paginated checkpoints
   const {
     data: checkpoints,
     error: checkpointsError,
     isLoading: isLoadingCheckpoints,
-  } = useListCheckpointsQuery();
+  } = useListCheckpointsQuery({ offset, limit: ITEMS_PER_PAGE });
 
   useEffect(() => {
     if (checkpoints && checkpoints.length > 0) {
@@ -41,6 +55,7 @@ const ChatHistory = ({
           card_id,
           insights,
         } = checkpoint;
+
         if (!acc[thread_id]) {
           acc[thread_id] = {
             ...checkpoint,
@@ -107,6 +122,7 @@ const ChatHistory = ({
         (group: any) =>
           Array.isArray(group.agent_name) && group.agent_name.includes(type),
       );
+
       let chatGroups;
       if (type === "getInsights") {
         chatGroups = filteredGroups.filter(
@@ -131,15 +147,14 @@ const ChatHistory = ({
       const last7Days = dayjs().subtract(7, "day").startOf("day");
       const last30Days = dayjs().subtract(30, "day").startOf("day");
 
-      const categorizedHistory: any = {
+      const categorizedHistory: ChatHistoryState = {
         today: [],
         last7Days: [],
         last30Days: [],
       };
 
       chatGroups.forEach((chat: any) => {
-        const parsedCheckpoint = JSON.parse(chat.checkpoint);
-        const timestamp = dayjs(parsedCheckpoint.ts);
+        const timestamp = dayjs(JSON.parse(chat.checkpoint).ts);
 
         if (timestamp.isSame(today, "day")) {
           categorizedHistory.today.push(chat);
@@ -150,9 +165,42 @@ const ChatHistory = ({
         }
       });
 
-      setChatHistory(categorizedHistory);
+      setChatHistory(prevHistory => ({
+        today: [...prevHistory.today, ...categorizedHistory.today],
+        last7Days: [...prevHistory.last7Days, ...categorizedHistory.last7Days],
+        last30Days: [
+          ...prevHistory.last30Days,
+          ...categorizedHistory.last30Days,
+        ],
+      }));
+
+      // If fewer than ITEMS_PER_PAGE items are returned, there are no more items to load
+      if (checkpoints.length < ITEMS_PER_PAGE) {
+        setHasMore(false);
+      }
     }
   }, [checkpoints]);
+
+  // Handle scrolling to bottom to load more items
+  const handleScroll = () => {
+    const scrollElement = scrollContainerRef.current;
+    if (!scrollElement) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = scrollElement;
+    if (scrollHeight - scrollTop === clientHeight && hasMore) {
+      setOffset(prevOffset => prevOffset + ITEMS_PER_PAGE); // Load the next batch
+    }
+  };
+
+  useEffect(() => {
+    const scrollElement = scrollContainerRef.current;
+    if (scrollElement) {
+      scrollElement.addEventListener("scroll", handleScroll);
+      return () => {
+        scrollElement.removeEventListener("scroll", handleScroll);
+      };
+    }
+  }, [hasMore]);
 
   const handleHistoryItemClick = (item: any) => {
     setThreadId(null);
@@ -194,7 +242,7 @@ const ChatHistory = ({
         Chat history
       </Title>
 
-      <ScrollArea style={{ flex: 1 }}>
+      <ScrollArea ref={scrollContainerRef} style={{ flex: 1 }}>
         {chatHistory.today.length > 0 && (
           <>
             <Text
@@ -207,9 +255,9 @@ const ChatHistory = ({
             >
               Today
             </Text>
-            {chatHistory.today.map((chat: any) => (
+            {chatHistory.today.map((chat: any, index: number) => (
               <Box
-                key={chat.checkpoint_id}
+                key={`${chat.checkpoint_id}-${index}`}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
@@ -240,9 +288,9 @@ const ChatHistory = ({
             >
               Last 7 Days
             </Text>
-            {chatHistory.last7Days.map((chat: any) => (
+            {chatHistory.last7Days.map((chat: any, index: number) => (
               <Box
-                key={chat.checkpoint_id}
+                key={`${chat.checkpoint_id}-${index}`}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
@@ -273,9 +321,9 @@ const ChatHistory = ({
             >
               Last 30 Days
             </Text>
-            {chatHistory.last30Days.map((chat: any) => (
+            {chatHistory.last30Days.map((chat: any, index: number) => (
               <Box
-                key={chat.checkpoint_id}
+                key={`${chat.checkpoint_id}-${index}`}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
