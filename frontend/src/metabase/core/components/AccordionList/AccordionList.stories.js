@@ -20,8 +20,10 @@ const Template = args => {
   return <AccordionList {...args} />;
 };
 
-export const Default = Template.bind({});
+export const Default = {
+  render: Template,
 
-Default.args = {
-  sections: SECTIONS,
+  args: {
+    sections: SECTIONS,
+  },
 };
