@@ -1,8 +1,9 @@
 import { Fragment } from "react";
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Icon } from "metabase/ui";
 import { Group, Stack } from "metabase/ui";
 import { Button } from "./";
+import * as ButtonStories from './Button.stories';
 
 export const args = {
   variant: "default",
@@ -46,12 +47,7 @@ export const argTypes = {
   },
 };
 
-<Meta
-  title="Buttons/Button"
-  component={Button}
-  args={args}
-  argTypes={argTypes}
-/>
+<Meta of={ButtonStories} />
 
 # Button
 
@@ -61,32 +57,32 @@ Our themed wrapper around [Mantine Button](https://v6.mantine.dev/core/button/).
 
 Use button in the following cases:
 
-- Buttons are widely used as actions that users can take. They are typically placed on the UI such as dialogs, forms, toolbars, config pages/panels, headers etc.
-- Use primary button for primarily intended actions.
-- Use icon in primary button for improved visual affordance.
-- Primary buttons could be colorized with our brand colors for differentiating actions and states.
+*   Buttons are widely used as actions that users can take. They are typically placed on the UI such as dialogs, forms, toolbars, config pages/panels, headers etc.
+*   Use primary button for primarily intended actions.
+*   Use icon in primary button for improved visual affordance.
+*   Primary buttons could be colorized with our brand colors for differentiating actions and states.
 
 Not to use:
 
-- Avoid using multiple primary buttons on a form section, or a dialog for competing primarily intended actions.
-- If there is no primarily intended action for a form, use default (non-primary) button or other variations. That is, you don’t have to have a primary button on the form or dialog.
-- Not to use links to replace subtle buttons. Links are meant to navigate to another page. Subtle buttons share the characteristics of button and are mostly used in compact or inline situations.
+*   Avoid using multiple primary buttons on a form section, or a dialog for competing primarily intended actions.
+*   If there is no primarily intended action for a form, use default (non-primary) button or other variations. That is, you don’t have to have a primary button on the form or dialog.
+*   Not to use links to replace subtle buttons. Links are meant to navigate to another page. Subtle buttons share the characteristics of button and are mostly used in compact or inline situations.
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/Ey1rOyIxRHpmRvE9XrGyop/Buttons-%2F-Button?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
-- [Mantine Button Docs](https://v6.mantine.dev/core/button/)
+*   [Figma File](https://www.figma.com/file/Ey1rOyIxRHpmRvE9XrGyop/Buttons-%2F-Button?type=design\&node-id=1-96\&mode=design\&t=yaNljw178EFJeU7k-0)
+*   [Mantine Button Docs](https://v6.mantine.dev/core/button/)
 
 ## Caveats
 
-- Use verb, or verb+noun for button labels. E.g., Save, Filter, Summarize, Convert this question to SQL.
-- Use sentence casing for long button labels.
+*   Use verb, or verb+noun for button labels. E.g., Save, Filter, Summarize, Convert this question to SQL.
+*   Use sentence casing for long button labels.
 
 ## Usage guidelines
 
-- Although button labels can be as long as you wish, keep it simple and concise.
-- In general, use sentence casing for menu item labels.
-- Use icon+button label when applicable for better visual affordance. E.g., + New
+*   Although button labels can be as long as you wish, keep it simple and concise.
+*   In general, use sentence casing for menu item labels.
+*   Use icon+button label when applicable for better visual affordance. E.g., + New
 
 ## Examples
 
@@ -160,7 +156,7 @@ export const LoadingGridTemplate = args => (
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={ButtonStories.Default_} />
 </Canvas>
 
 ### Button.Group
@@ -168,7 +164,7 @@ export const Default = DefaultTemplate.bind({});
 export const ButtonGroup = ButtonGroupTemplate.bind({});
 
 <Canvas>
-  <Story name="Button group">{ButtonGroup}</Story>
+  <Story of={ButtonStories.ButtonGroup_} />
 </Canvas>
 
 ### Default size
@@ -176,166 +172,109 @@ export const ButtonGroup = ButtonGroupTemplate.bind({});
 export const DefaultGrid = GridTemplate.bind({});
 
 <Canvas>
-  <Story name="Default size">{DefaultGrid}</Story>
+  <Story of={ButtonStories.DefaultSize} />
 </Canvas>
 
 #### Custom color
 
 export const CustomColorGrid = GridTemplate.bind({});
-CustomColorGrid.args = {
-  color: "error",
-};
 
 <Canvas>
-  <Story name="Default size, custom color">{CustomColorGrid}</Story>
+  <Story of={ButtonStories.DefaultSizeCustomColor} />
 </Canvas>
 
 #### Disabled state
 
 export const DefaultDisabledGrid = GridTemplate.bind({});
-DefaultDisabledGrid.args = {
-  disabled: true,
-};
 
 <Canvas>
-  <Story name="Default size, disabled">{DefaultDisabledGrid}</Story>
+  <Story of={ButtonStories.DefaultSizeDisabled} />
 </Canvas>
 
 #### Loading state
 
 export const DefaultLoadingGrid = LoadingGridTemplate.bind({});
-DefaultLoadingGrid.args = {
-  loading: true,
-};
 
 <Canvas>
-  <Story name="Default size, loading">{DefaultLoadingGrid}</Story>
+  <Story of={ButtonStories.DefaultSizeLoading} />
 </Canvas>
 
 ### Default size & full width
 
 export const DefaultFullWidthGrid = GridTemplate.bind({});
-DefaultFullWidthGrid.args = {
-  fullWidth: true,
-};
 
 <Canvas>
-  <Story name="Default size, full width">{DefaultFullWidthGrid}</Story>
+  <Story of={ButtonStories.DefaultSizeFullWidth} />
 </Canvas>
 
 #### Disabled state
 
 export const DefaultDisabledFullWidthGrid = GridTemplate.bind({});
-DefaultDisabledFullWidthGrid.args = {
-  disabled: true,
-  fullWidth: true,
-};
 
 <Canvas>
-  <Story name="Default size, full width, disabled">
-    {DefaultDisabledFullWidthGrid}
-  </Story>
+  <Story of={ButtonStories.DefaultSizeFullWidthDisabled} />
 </Canvas>
 
 #### Loading state
 
 export const DefaultLoadingFullWidthGrid = LoadingGridTemplate.bind({});
-DefaultLoadingFullWidthGrid.args = {
-  loading: true,
-  fullWidth: true,
-};
 
 <Canvas>
-  <Story name="Default size, full width, loading">
-    {DefaultLoadingFullWidthGrid}
-  </Story>
+  <Story of={ButtonStories.DefaultSizeFullWidthLoading} />
 </Canvas>
 
 ### Compact size
 
 export const CompactGrid = GridTemplate.bind({});
-CompactGrid.args = {
-  compact: true,
-};
 
 <Canvas>
-  <Story name="Compact size">{CompactGrid}</Story>
+  <Story of={ButtonStories.CompactSize} />
 </Canvas>
 
 #### Custom color
 
 export const CompactCustomColorGrid = GridTemplate.bind({});
-CompactCustomColorGrid.args = {
-  color: "error",
-  compact: true,
-};
 
 <Canvas>
-  <Story name="Compact size, custom color">{CompactCustomColorGrid}</Story>
+  <Story of={ButtonStories.CompactSizeCustomColor} />
 </Canvas>
 
 #### Disabled state
 
 export const CompactDisabledGrid = GridTemplate.bind({});
-CompactDisabledGrid.args = {
-  compact: true,
-  disabled: true,
-};
 
 <Canvas>
-  <Story name="Compact size, disabled">{CompactDisabledGrid}</Story>
+  <Story of={ButtonStories.CompactSizeDisabled} />
 </Canvas>
 
 #### Loading state
 
 export const CompactLoadingGrid = LoadingGridTemplate.bind({});
-CompactLoadingGrid.args = {
-  compact: true,
-  loading: true,
-};
 
 <Canvas>
-  <Story name="Compact size, loading">{CompactLoadingGrid}</Story>
+  <Story of={ButtonStories.CompactSizeLoading} />
 </Canvas>
 
 ### Compact size & full width
 
 export const CompactFullWidthGrid = GridTemplate.bind({});
-CompactFullWidthGrid.args = {
-  compact: true,
-  fullWidth: true,
-};
 
 <Canvas>
-  <Story name="Compact size, full width">{CompactFullWidthGrid}</Story>
+  <Story of={ButtonStories.CompactSizeFullWidth} />
 </Canvas>
 
 #### Disabled state
 
 export const CompactDisabledFullWidthGrid = GridTemplate.bind({});
-CompactDisabledFullWidthGrid.args = {
-  compact: true,
-  disabled: true,
-  fullWidth: true,
-};
 
 <Canvas>
-  <Story name="Compact size, full width, disabled">
-    {CompactDisabledFullWidthGrid}
-  </Story>
+  <Story of={ButtonStories.CompactSizeFullWidthDisabled} />
 </Canvas>
 
 #### Loading state
 
 export const CompactLoadingFullWidthGrid = LoadingGridTemplate.bind({});
-CompactLoadingFullWidthGrid.args = {
-  compact: true,
-  loading: true,
-  fullWidth: true,
-};
 
 <Canvas>
-  <Story name="Compact size, full width, loading">
-    {CompactLoadingFullWidthGrid}
-  </Story>
+  <Story of={ButtonStories.CompactSizeFullWidthLoading} />
 </Canvas>
