@@ -5,7 +5,6 @@ const fs = require("fs");
 const path = require("path");
 
 const isEmbeddingSDK = process.env.IS_EMBEDDING_SDK === "true";
-console.log({ isEmbeddingSDK });
 
 const mainAppStories = [
   "../frontend/**/*.mdx",
@@ -40,7 +39,6 @@ const config = {
   ],
   features: {
     interactionsDebugger: true,
-    legacyMdx1: true,
   },
   babel: () => {},
   typescript: {
