@@ -2,7 +2,6 @@
 
 import { scaleLinear } from "d3-scale";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   scale: {
     linear: scaleLinear,
