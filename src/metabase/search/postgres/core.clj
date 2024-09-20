@@ -10,7 +10,7 @@
    [metabase.search.postgres.ingestion :as search.ingestion]
    [toucan2.core :as t2])
   (:import
-   (java.time Instant)))
+   (java.time OffsetDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -85,7 +85,7 @@
 
 (defn- parse-datetime [s]
   (when s
-    (Instant/parse s)))
+    (OffsetDateTime/parse s)))
 
 (defn- minimal [search-term & {:as _search-ctx}]
   (when-not @#'search.index/initialized?
@@ -98,7 +98,7 @@
        (map #(-> %
                  (update :created_at parse-datetime)
                  (update :updated_at parse-datetime)
-                 #_(update :last_edited_at instant/read-instant-date)))))
+                 (update :last_edited_at parse-datetime)))))
 
 (def ^:private default-engine hybrid-multi)
 
