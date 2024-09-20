@@ -349,7 +349,6 @@ describe("#39152 sharing an unsaved question", () => {
       });
 
       describe("when interacting with public embedding", () => {
-        beforeEach(() => {});
         it("should send `public_embed_code_copied` event when copying the public embed iframe", () => {
           cy.get("@resourceId").then(id => {
             visitResource(resource, id);
