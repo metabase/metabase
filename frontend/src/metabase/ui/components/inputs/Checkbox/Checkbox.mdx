@@ -1,5 +1,6 @@
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Checkbox, Stack } from "metabase/ui";
+import * as CheckboxStories from "./Checkbox.stories";
 
 export const args = {
   label: "Label",
@@ -33,12 +34,7 @@ export const argTypes = {
   },
 };
 
-<Meta
-  title="Inputs/Checkbox"
-  component={Checkbox}
-  args={args}
-  argTypes={argTypes}
-/>
+<Meta of={CheckboxStories} />
 
 # Checkbox
 
@@ -109,7 +105,7 @@ export const StateTemplate = args => (
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={CheckboxStories.Default_} />
 </Canvas>
 
 ### Checkbox.Group
@@ -117,7 +113,7 @@ export const Default = DefaultTemplate.bind({});
 export const CheckboxGroup = CheckboxGroupTemplate.bind({});
 
 <Canvas>
-  <Story name="Checkbox group">{CheckboxGroup}</Story>
+  <Story of={CheckboxStories.CheckboxGroup_} />
 </Canvas>
 
 ### Label
@@ -125,18 +121,15 @@ export const CheckboxGroup = CheckboxGroupTemplate.bind({});
 export const Label = StateTemplate.bind({});
 
 <Canvas>
-  <Story name="Label">{Label}</Story>
+  <Story of={CheckboxStories.Label_} />
 </Canvas>
 
 #### Left label position
 
 export const LabelLeft = StateTemplate.bind({});
-LabelLeft.args = {
-  labelPosition: "left",
-};
 
 <Canvas>
-  <Story name="Label, left position">{LabelLeft}</Story>
+  <Story of={CheckboxStories.LabelLeftPosition} />
 </Canvas>
 
 ### Description
@@ -144,29 +137,23 @@ LabelLeft.args = {
 export const Description = StateTemplate.bind({});
 
 <Canvas>
-  <Story name="Description">{Description}</Story>
+  <Story of={CheckboxStories.Description_} />
 </Canvas>
 
 #### Left label position
 
 export const DescriptionLeft = StateTemplate.bind({});
-DescriptionLeft.args = {
-  labelPosition: "left",
-};
 
 <Canvas>
-  <Story name="Description, left position">{DescriptionLeft}</Story>
+  <Story of={CheckboxStories.DescriptionLeftPosition} />
 </Canvas>
 
 #### Stacked Variant
 
 export const Stacked = StateTemplate.bind({});
-Stacked.args = {
-  variant: "stacked",
-};
 
 <Canvas>
-  <Story name="Stacked">{Stacked}</Story>
+  <Story of={CheckboxStories.Stacked_} />
 </Canvas>
 
 ## Related components
