@@ -6,6 +6,8 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  assertDatasetReqIsSandboxed,
+  assertQueryBuilderRowCount,
   commandPaletteSearch,
   describeEE,
   entityPickerModal,
@@ -160,6 +162,10 @@ describeEE("postgres > user > query", { tags: "@external" }, () => {
 
         cy.findByText(CC_NAME);
         cy.findByText(/^Hudson$/);
+        assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
+        assertDatasetReqIsSandboxed({
+          requestAlias: `@cardQuery${QUESTION_ID}`,
+        });
       });
     });
   });
@@ -599,7 +605,7 @@ describeEE("issue 24966", () => {
   const dashboardDetails = { parameters: [dashboardFilter] };
 
   beforeEach(() => {
-    restore();
+    restore("default-ee");
     cy.signInAsAdmin();
     setTokenFeatures("all");
 
@@ -631,6 +637,7 @@ describeEE("issue 24966", () => {
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
       cy.wrap(dashboard_id).as("dashboardId");
+      cy.wrap(id).as("dashcardId");
 
       // Connect the filter to the card
       cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
@@ -669,5 +676,8 @@ describeEE("issue 24966", () => {
     cy.findByLabelText("Widget").click();
     cy.button("Add filter").click();
     cy.location("search").should("eq", "?text=Widget");
+    cy.get("@dashcardId").then(id => {
+      assertDatasetReqIsSandboxed({ requestAlias: `@dashcardQuery${id}` });
+    });
   });
 });
