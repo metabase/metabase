@@ -321,7 +321,8 @@
     :bigquery-cloud-sdk
     (mt/dataset
       nested-records
-      (let [table (first (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))]
+      (let [database (driver/describe-database :bigquery-cloud-sdk (mt/db))
+            table (first (:tables database))]
         (is (=? {:name "records"} table))
         (is (=? [{:name "id"}
                  {:name "name"}
