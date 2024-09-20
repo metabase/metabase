@@ -9,43 +9,7 @@ import {
   TextInput,
   Stack,
 } from "metabase/ui";
-import * as PopoverStories from './Popover.stories';
-
-export const args = {
-  label: "Popover",
-  position: "bottom",
-};
-
-export const argTypes = {
-  position: {
-    options: [
-      "bottom",
-      "left",
-      "right",
-      "top",
-      "bottom-end",
-      "bottom-start",
-      "left-end",
-      "left-start",
-      "right-end",
-      "right-start",
-      "top-end",
-      "top-start",
-    ],
-    control: { type: "select" },
-  },
-};
-
-export const sampleArgs = {
-  simple: <Text>Popover!</Text>,
-  interactive: (
-    <Stack spacing="sm">
-      <TextInput autoFocus placeholder="First name" />
-      <TextInput placeholder="Last name" />
-      <Button>Update</Button>
-    </Stack>
-  ),
-};
+import * as PopoverStories from "./Popover.stories";
 
 <Meta of={PopoverStories} />
 
@@ -55,26 +19,9 @@ Our themed wrapper around [Mantine Popover](https://v6.mantine.dev/core/popover/
 
 ## Docs
 
-*   [Mantine Popover Docs](https://v6.mantine.dev/core/popover/)
+- [Mantine Popover Docs](https://v6.mantine.dev/core/popover/)
 
 ## Examples
-
-export const DefaultTemplate = ({ children, ...args }) => (
-  <Flex justify="center">
-    <Popover {...args}>
-      <Popover.Target>
-        <Button variant="filled">Click to open</Button>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <Box p="md">{children}</Box>
-      </Popover.Dropdown>
-    </Popover>
-  </Flex>
-);
-
-export const Default = DefaultTemplate.bind({});
-
-export const Interactive = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={PopoverStories.Default_} />

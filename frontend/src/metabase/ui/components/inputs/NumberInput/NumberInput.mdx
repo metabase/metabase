@@ -2,59 +2,7 @@ import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Icon } from "metabase/ui";
 import { Stack } from "metabase/ui";
 import { NumberInput } from "./";
-import * as NumberInputStories from './NumberInput.stories';
-
-export const args = {
-  variant: "default",
-  size: "md",
-  label: "Label",
-  description: undefined,
-  error: undefined,
-  placeholder: "Placeholder",
-  disabled: false,
-  readOnly: false,
-  withAsterisk: false,
-};
-
-export const sampleArgs = {
-  value: 1234,
-  label: "Goal value",
-  description: "Constant line added as a marker to the chart",
-  placeholder: "0",
-  error: "required",
-};
-
-export const argTypes = {
-  variant: {
-    options: ["default", "unstyled"],
-    control: { type: "inline-radio" },
-  },
-  size: {
-    options: ["xs", "md"],
-    control: { type: "inline-radio" },
-  },
-  label: {
-    control: { type: "number" },
-  },
-  description: {
-    control: { type: "number" },
-  },
-  placeholder: {
-    control: { type: "number" },
-  },
-  error: {
-    control: { type: "number" },
-  },
-  disabled: {
-    control: { type: "boolean" },
-  },
-  readOnly: {
-    control: { type: "boolean" },
-  },
-  withAsterisk: {
-    control: { type: "boolean" },
-  },
-};
+import * as NumberInputStories from "./NumberInput.stories";
 
 <Meta of={NumberInputStories} />
 
@@ -64,25 +12,10 @@ Our themed wrapper around [Mantine NumberInput](https://v6.mantine.dev/core/numb
 
 ## Docs
 
-*   [Figma File](https://www.figma.com/file/YWyb541aUHtYXJVPzyYSbg/Input-%2F-Numbers?type=design\&node-id=1-96\&mode=design\&t=1bDfUrJc5alZmVpx-0)
-*   [Mantine NumberInput Docs](https://v6.mantine.dev/core/number-input/)
+- [Figma File](https://www.figma.com/file/YWyb541aUHtYXJVPzyYSbg/Input-%2F-Numbers?type=design&node-id=1-96&mode=design&t=1bDfUrJc5alZmVpx-0)
+- [Mantine NumberInput Docs](https://v6.mantine.dev/core/number-input/)
 
 ## Examples
-
-export const DefaultTemplate = args => <NumberInput {...args} />;
-
-export const VariantTemplate = args => (
-  <Stack>
-    <NumberInput {...args} variant="default" />
-    <NumberInput {...args} variant="unstyled" />
-  </Stack>
-);
-
-export const IconTemplate = args => (
-  <VariantTemplate {...args} icon={<Icon name="int" />} />
-);
-
-export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={NumberInputStories.Default_} />
@@ -90,15 +23,11 @@ export const Default = DefaultTemplate.bind({});
 
 ### Size - md
 
-export const EmptyMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={NumberInputStories.EmptyMd_} />
 </Canvas>
 
 #### Filled
-
-export const FilledMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={NumberInputStories.FilledMd_} />
@@ -106,15 +35,11 @@ export const FilledMd = VariantTemplate.bind({});
 
 #### Asterisk
 
-export const AsteriskMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={NumberInputStories.AsteriskMd_} />
 </Canvas>
 
 #### Description
-
-export const DescriptionMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={NumberInputStories.DescriptionMd_} />
@@ -122,15 +47,11 @@ export const DescriptionMd = VariantTemplate.bind({});
 
 #### Disabled
 
-export const DisabledMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={NumberInputStories.DisabledMd_} />
 </Canvas>
 
 #### Error
-
-export const ErrorMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={NumberInputStories.ErrorMd_} />
@@ -138,15 +59,11 @@ export const ErrorMd = VariantTemplate.bind({});
 
 #### Icon
 
-export const IconMd = IconTemplate.bind({});
-
 <Canvas>
   <Story of={NumberInputStories.IconMd_} />
 </Canvas>
 
 #### Read only
-
-export const ReadOnlyMd = IconTemplate.bind({});
 
 <Canvas>
   <Story of={NumberInputStories.ReadOnlyMd_} />
@@ -154,15 +71,11 @@ export const ReadOnlyMd = IconTemplate.bind({});
 
 ### Size - xs
 
-export const EmptyXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={NumberInputStories.EmptyXs_} />
 </Canvas>
 
 #### Filled
-
-export const FilledXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={NumberInputStories.FilledXs_} />
@@ -170,15 +83,11 @@ export const FilledXs = VariantTemplate.bind({});
 
 #### Asterisk
 
-export const AsteriskXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={NumberInputStories.AsteriskXs_} />
 </Canvas>
 
 #### Description
-
-export const DescriptionXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={NumberInputStories.DescriptionXs_} />
@@ -186,15 +95,11 @@ export const DescriptionXs = VariantTemplate.bind({});
 
 #### Disabled
 
-export const DisabledXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={NumberInputStories.DisabledXs_} />
 </Canvas>
 
 #### Error
-
-export const ErrorXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={NumberInputStories.ErrorXs_} />
@@ -202,15 +107,11 @@ export const ErrorXs = VariantTemplate.bind({});
 
 #### Icon
 
-export const IconXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={NumberInputStories.IconXs_} />
 </Canvas>
 
 #### Read only
-
-export const ReadOnlyXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={NumberInputStories.ReadOnlyXs_} />

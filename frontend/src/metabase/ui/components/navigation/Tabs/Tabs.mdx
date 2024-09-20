@@ -2,26 +2,7 @@ import { Fragment } from "react";
 import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Icon } from "metabase/ui";
 import { Group, Tabs } from "metabase/ui";
-import * as TabsStories from './Tabs.stories';
-
-export const args = {
-  orientation: "horizontal",
-};
-
-export const argTypes = {
-  orientation: {
-    options: ["horizontal", "vertical"],
-    control: { type: "inline-radio" },
-  },
-};
-
-export const tabs = [
-  { value: "overview", label: "Overview", icon: "home" },
-  { value: "metrics", label: "Metrics", icon: "metric" },
-  { value: "segments", label: "Segments", icon: "segment" },
-  { value: "actions", label: "Actions", icon: "bolt", disabled: true },
-  { value: "filters", label: "Filters", icon: "filter" },
-];
+import * as TabsStories from "./Tabs.stories";
 
 <Meta of={TabsStories} />
 
@@ -31,53 +12,14 @@ Our themed wrapper around [Mantine Tabs](https://v6.mantine.dev/core/tabs/).
 
 ## Docs
 
-*   [Figma File](https://www.figma.com/file/uPYsD4ncNpQPFzxsLnTnGd/Navigation-%2F-Tabs?type=design\&node-id=1-96\&mode=design\&t=dtMJ59HbOKZ8TOgJ-0)
-*   [Mantine Tabs Docs](https://v6.mantine.dev/core/tabs/)
+- [Figma File](https://www.figma.com/file/uPYsD4ncNpQPFzxsLnTnGd/Navigation-%2F-Tabs?type=design&node-id=1-96&mode=design&t=dtMJ59HbOKZ8TOgJ-0)
+- [Mantine Tabs Docs](https://v6.mantine.dev/core/tabs/)
 
 ## Examples
-
-export const DefaultTemplate = args => (
-  <Tabs {...args}>
-    <Tabs.List>
-      {tabs.map(tab => (
-        <Tabs.Tab key={tab.value} value={tab.value} disabled={tab.disabled}>
-          {tab.label}
-        </Tabs.Tab>
-      ))}
-    </Tabs.List>
-    {tabs.map(tab => (
-      <Tabs.Panel key={tab.value} value={tab.value} />
-    ))}
-  </Tabs>
-);
-
-export const IconsTemplate = args => (
-  <Tabs {...args}>
-    <Tabs.List>
-      {tabs.map(tab => (
-        <Tabs.Tab
-          key={tab.value}
-          value={tab.value}
-          disabled={tab.disabled}
-          icon={<Icon name={tab.icon} />}
-        >
-          {tab.label}
-        </Tabs.Tab>
-      ))}
-    </Tabs.List>
-    {tabs.map(tab => (
-      <Tabs.Panel key={tab.value} value={tab.value} />
-    ))}
-  </Tabs>
-);
-
-export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={TabsStories.Default_} />
 </Canvas>
-
-export const Icons = IconsTemplate.bind({});
 
 <Canvas>
   <Story of={TabsStories.Icons_} />
@@ -85,13 +27,9 @@ export const Icons = IconsTemplate.bind({});
 
 ### Vertical orientation
 
-export const Vertical = DefaultTemplate.bind({});
-
 <Canvas>
   <Story of={TabsStories.VerticalOrientation} />
 </Canvas>
-
-export const VerticalIcons = IconsTemplate.bind({});
 
 <Canvas>
   <Story of={TabsStories.VerticalOrientationIcons} />

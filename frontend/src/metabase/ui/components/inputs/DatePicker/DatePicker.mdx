@@ -2,36 +2,7 @@ import { Fragment } from "react";
 import { Canvas, Story, Meta } from "@storybook/blocks";
 import { DatePicker, Box } from "metabase/ui";
 import { SdkVisualizationWrapper } from "__support__/storybook";
-import * as DatePickerStories from './DatePicker.stories';
-
-export const args = {
-  type: "default",
-  allowDeselect: undefined,
-  allowSingleDateInRange: undefined,
-  numberOfColumns: undefined,
-};
-
-export const sampleArgs = {
-  date1: new Date(2023, 9, 8),
-  date2: new Date(2023, 9, 24),
-  date3: new Date(2023, 9, 16),
-};
-
-export const argTypes = {
-  type: {
-    options: ["default", "multiple", "range"],
-    control: { type: "inline-radio" },
-  },
-  allowDeselect: {
-    control: { type: "boolean" },
-  },
-  allowSingleDateInRange: {
-    control: { type: "boolean" },
-  },
-  numberOfColumns: {
-    control: { type: "number" },
-  },
-};
+import * as DatePickerStories from "./DatePicker.stories";
 
 <Meta of={DatePickerStories} />
 
@@ -41,16 +12,10 @@ Our themed wrapper around [Mantine DatePicker](https://v6.mantine.dev/dates/date
 
 ## Docs
 
-*   [Figma File](https://www.figma.com/file/cncRbkG7XJQs144EG9r9hM/Date-Picker?type=design\&node-id=0-1\&mode=design\&t=v00tLhbD9OFEgy25-0)
-*   [Mantine DatePicker Docs](https://v6.mantine.dev/dates/date-picker/)
+- [Figma File](https://www.figma.com/file/cncRbkG7XJQs144EG9r9hM/Date-Picker?type=design&node-id=0-1&mode=design&t=v00tLhbD9OFEgy25-0)
+- [Mantine DatePicker Docs](https://v6.mantine.dev/dates/date-picker/)
 
 ## Examples
-
-export const DefaultTemplate = args => {
-  return <DatePicker {...args} />;
-};
-
-export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={DatePickerStories.Default_} />
@@ -58,15 +23,11 @@ export const Default = DefaultTemplate.bind({});
 
 ### Allow deselect
 
-export const AllowDeselect = DefaultTemplate.bind({});
-
 <Canvas>
   <Story of={DatePickerStories.AllowDeselect_} />
 </Canvas>
 
 ### Multiple dates
-
-export const MultipleDates = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={DatePickerStories.MultipleDates_} />
@@ -74,28 +35,11 @@ export const MultipleDates = DefaultTemplate.bind({});
 
 ### Dates range
 
-export const DatesRange = DefaultTemplate.bind({});
-
 <Canvas>
   <Story of={DatePickerStories.DatesRange_} />
 </Canvas>
 
 ### Dates range (SDK theme)
-
-export const DatesRangeSdk = DefaultTemplate.bind({});
-
-export const theme = {
-  colors: {
-    brand: "#DF75E9",
-    filter: "#7ABBF9",
-    "text-primary": "#E3E7E4",
-    "text-secondary": "#E3E7E4",
-    "text-tertiary": "#E3E7E4",
-    border: "#3B3F3F",
-    background: "#151C20",
-    "background-hover": "#4C4A48",
-  },
-};
 
 <Canvas>
   <Story of={DatePickerStories.DatesRangeSdk_} />
@@ -103,15 +47,11 @@ export const theme = {
 
 ### Single date in range
 
-export const SingleDateInRange = DefaultTemplate.bind({});
-
 <Canvas>
   <Story of={DatePickerStories.SingleDateInRange_} />
 </Canvas>
 
 ### Number of columns
-
-export const NumberOfColumns = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={DatePickerStories.NumberOfColumns_} />

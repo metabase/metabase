@@ -1,29 +1,6 @@
 import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Radio, Stack } from "metabase/ui";
-import * as RadioStories from './Radio.stories';
-
-export const args = {
-  label: "Label",
-  description: "",
-  disabled: false,
-  labelPosition: "right",
-};
-
-export const argTypes = {
-  label: {
-    control: { type: "text" },
-  },
-  description: {
-    control: { type: "text" },
-  },
-  disabled: {
-    control: { type: "boolean" },
-  },
-  labelPosition: {
-    options: ["left", "right"],
-    control: { type: "inline-radio" },
-  },
-};
+import * as RadioStories from "./Radio.stories";
 
 <Meta of={RadioStories} />
 
@@ -37,44 +14,16 @@ Radio buttons allow users to select a single option from a list of mutually excl
 
 ## Docs
 
-*   [Figma File](https://www.figma.com/file/7LCGPhkbJdrhdIaeiU1O9c/Input-%2F-Radio?type=design\&node-id=1-96\&mode=design\&t=yaNljw178EFJeU7k-0)
-*   [Mantine Radio Docs](https://v6.mantine.dev/core/radio/)
+- [Figma File](https://www.figma.com/file/7LCGPhkbJdrhdIaeiU1O9c/Input-%2F-Radio?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
+- [Mantine Radio Docs](https://v6.mantine.dev/core/radio/)
 
 ## Usage guidelines
 
-*   **Use this component if there are more than 5 options**. If there are fewer options, feel free to check out Radio or Select.
-*   For option ordering, try to use your best judgement on a sensible order. For example, Yes should come before No. Alphabetical ordering is usually a good fallback if there's no inherent order in your set of choices.
-*   In almost all circumstances you'll want to use `<Radio.Group>` to provide a set of options and help with defaultValues and state management between them.
+- **Use this component if there are more than 5 options**. If there are fewer options, feel free to check out Radio or Select.
+- For option ordering, try to use your best judgement on a sensible order. For example, Yes should come before No. Alphabetical ordering is usually a good fallback if there's no inherent order in your set of choices.
+- In almost all circumstances you'll want to use `<Radio.Group>` to provide a set of options and help with defaultValues and state management between them.
 
 ## Examples
-
-export const DefaultTemplate = args => <Radio {...args} />;
-
-export const RadioGroupTemplate = args => (
-  <Radio.Group
-    defaultValue={"react"}
-    label="An array of good frameworks"
-    description="But which one to use?"
-  >
-    <Stack mt="md">
-      <Radio value="react" label="React" />
-      <Radio value="svelte" label="Svelte" />
-      <Radio value="ng" label="Angular" />
-      <Radio value="vue" label="Vue" />
-    </Stack>
-  </Radio.Group>
-);
-
-export const StateTemplate = args => (
-  <Stack>
-    <Radio {...args} label="Default radio" />
-    <Radio {...args} label="Checked radio" defaultChecked />
-    <Radio {...args} label="Disabled radio" disabled />
-    <Radio {...args} label="Disabled checked radio" disabled defaultChecked />
-  </Stack>
-);
-
-export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={RadioStories.Default_} />
@@ -82,15 +31,11 @@ export const Default = DefaultTemplate.bind({});
 
 ### Radio.Group
 
-export const RadioGroup = RadioGroupTemplate.bind({});
-
 <Canvas>
   <Story of={RadioStories.RadioGroup_} />
 </Canvas>
 
 ### Label
-
-export const Label = StateTemplate.bind({});
 
 <Canvas>
   <Story of={RadioStories.Label_} />
@@ -98,21 +43,15 @@ export const Label = StateTemplate.bind({});
 
 #### Left label position
 
-export const LabelLeft = StateTemplate.bind({});
-
 <Canvas>
   <Story of={RadioStories.LabelLeftPosition} />
 </Canvas>
 
 ### Description
 
-export const Description = StateTemplate.bind({});
-
 <Canvas>
   <Story of={RadioStories.Description_} />
 </Canvas>
-
-export const DescriptionLeft = StateTemplate.bind({});
 
 #### Left label position
 
@@ -122,5 +61,5 @@ export const DescriptionLeft = StateTemplate.bind({});
 
 ## Related components
 
-*   Checkbox
-*   Select
+- Checkbox
+- Select

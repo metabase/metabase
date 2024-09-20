@@ -1,35 +1,7 @@
 import { Fragment } from "react";
 import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Box, Button, Flex, Grid, Tooltip } from "metabase/ui";
-import * as TooltipStories from './Tooltip.stories';
-
-export const args = {
-  label: "Tooltip",
-  position: "bottom",
-};
-
-export const argTypes = {
-  label: {
-    control: { type: "text" },
-  },
-  position: {
-    options: [
-      "bottom",
-      "left",
-      "right",
-      "top",
-      "bottom-end",
-      "bottom-start",
-      "left-end",
-      "left-start",
-      "right-end",
-      "right-start",
-      "top-end",
-      "top-start",
-    ],
-    control: { type: "select" },
-  },
-};
+import * as TooltipStories from "./Tooltip.stories";
 
 <Meta of={TooltipStories} />
 
@@ -39,19 +11,9 @@ Our themed wrapper around [Mantine Tooltip](https://v6.mantine.dev/core/tooltip/
 
 ## Docs
 
-* [Mantine Tooltip Docs](https://v6.mantine.dev/core/tooltip/)
+- [Mantine Tooltip Docs](https://v6.mantine.dev/core/tooltip/)
 
 ## Examples
-
-export const DefaultTemplate = args => (
-  <Flex justify="center">
-    <Tooltip {...args}>
-      <Button variant="filled">Toggle tooltip</Button>
-    </Tooltip>
-  </Flex>
-);
-
-export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={TooltipStories.Default_} />

@@ -1,104 +1,6 @@
 import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Select, Stack } from "metabase/ui";
-import * as SelectStories from './Select.stories';
-
-export const dataWithGroupsLarge = [
-  { value: "10", label: "Entity key", icon: "label", group: "Overall row" },
-  { value: "11", label: "Entity name", icon: "string", group: "Overall row" },
-  {
-    value: "12",
-    label: "Foreign key",
-    icon: "connections",
-    group: "Overall row",
-  },
-  { value: "13", label: "Category", icon: "string", group: "Common" },
-  {
-    value: "14",
-    label: "Comment",
-    icon: "string",
-    group: "Common",
-    disabled: true,
-  },
-  { value: "15", label: "Description", icon: "string", group: "Common" },
-  { value: "16", label: "Title", icon: "string", group: "Common" },
-  { value: "17", label: "City", icon: "location", group: "Location" },
-  { value: "18", label: "Country", icon: "location", group: "Location" },
-  { value: "19", label: "Latitude", icon: "location", group: "Location" },
-  { value: "20", label: "Longitude", icon: "location", group: "Location" },
-  { value: "21", label: "Longitude", icon: "location", group: "Location" },
-  { value: "22", label: "State", icon: "location", group: "Location" },
-  { value: "23", label: "Zip code", icon: "location", group: "Location" },
-];
-
-export const dataWithGroups = dataWithGroupsLarge.slice(0, 6);
-
-export const dataWithIcons = dataWithGroups.map(item => ({
-  ...item,
-  group: undefined,
-}));
-
-export const dataWithLabels = dataWithIcons.map(item => ({
-  ...item,
-  icon: undefined,
-}));
-
-export const args = {
-  data: dataWithLabels,
-  size: "md",
-  label: "Field type",
-  description: undefined,
-  error: undefined,
-  placeholder: "No semantic type",
-  searchable: false,
-  disabled: false,
-  readOnly: false,
-  withAsterisk: false,
-  dropdownPosition: "flip",
-};
-
-export const sampleArgs = {
-  value: dataWithLabels[0].value,
-  description: "Determines how Metabase displays the field",
-  error: "required",
-};
-
-export const argTypes = {
-  data: {
-    control: { type: "json" },
-  },
-  size: {
-    options: ["xs", "md"],
-    control: { type: "inline-radio" },
-  },
-  label: {
-    control: { type: "text" },
-  },
-  description: {
-    control: { type: "text" },
-  },
-  error: {
-    control: { type: "text" },
-  },
-  placeholder: {
-    control: { type: "text" },
-  },
-  searchable: {
-    control: { type: "boolean" },
-  },
-  disabled: {
-    control: { type: "boolean" },
-  },
-  readOnly: {
-    control: { type: "boolean" },
-  },
-  withAsterisk: {
-    control: { type: "boolean" },
-  },
-  dropdownPosition: {
-    options: ["bottom", "top", "flip"],
-    control: { type: "inline-radio" },
-  },
-};
+import * as SelectStories from "./Select.stories";
 
 <Meta of={SelectStories} />
 
@@ -108,21 +10,10 @@ Our themed wrapper around [Mantine Select](https://v6.mantine.dev/core/select/).
 
 ## Docs
 
-*   [Figma File](https://www.figma.com/file/21uCY0czmCfb6QBjRce0I8/Input-%2F-Select?type=design\&node-id=1-96\&mode=design\&t=Mk8RP6HsneuWzHtr-0)
-*   [Mantine Select Docs](https://v6.mantine.dev/core/select/)
+- [Figma File](https://www.figma.com/file/21uCY0czmCfb6QBjRce0I8/Input-%2F-Select?type=design&node-id=1-96&mode=design&t=Mk8RP6HsneuWzHtr-0)
+- [Mantine Select Docs](https://v6.mantine.dev/core/select/)
 
 ## Examples
-
-export const DefaultTemplate = args => <Select {...args} />;
-
-export const VariantTemplate = args => (
-  <Stack>
-    <Select {...args} />
-    <Select {...args} variant="unstyled" />
-  </Stack>
-);
-
-export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={SelectStories.Default_} />
@@ -130,15 +21,11 @@ export const Default = DefaultTemplate.bind({});
 
 ### Size - md
 
-export const EmptyMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={SelectStories.EmptyMd_} />
 </Canvas>
 
 #### Asterisk
-
-export const AsteriskMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={SelectStories.AsteriskMd_} />
@@ -146,15 +33,11 @@ export const AsteriskMd = VariantTemplate.bind({});
 
 #### Clearable
 
-export const ClearableMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={SelectStories.ClearableMd_} />
 </Canvas>
 
 #### Description
-
-export const DescriptionMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={SelectStories.DescriptionMd_} />
@@ -162,15 +45,11 @@ export const DescriptionMd = VariantTemplate.bind({});
 
 #### Disabled
 
-export const DisabledMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={SelectStories.DisabledMd_} />
 </Canvas>
 
 #### Error
-
-export const ErrorMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={SelectStories.ErrorMd_} />
@@ -178,15 +57,11 @@ export const ErrorMd = VariantTemplate.bind({});
 
 #### Read only
 
-export const ReadOnlyMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={SelectStories.ReadOnlyMd_} />
 </Canvas>
 
 #### Icons
-
-export const IconsMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={SelectStories.IconsMd_} />
@@ -194,15 +69,11 @@ export const IconsMd = VariantTemplate.bind({});
 
 #### Groups
 
-export const GroupsMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={SelectStories.GroupsMd_} />
 </Canvas>
 
 #### Large sets
-
-export const LargeSetsMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={SelectStories.LargeSetsMd_} />
@@ -210,15 +81,11 @@ export const LargeSetsMd = VariantTemplate.bind({});
 
 #### Searchable
 
-export const SearchableMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={SelectStories.SearchableMd_} />
 </Canvas>
 
 ### Size - xs
-
-export const EmptyXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={SelectStories.EmptyXs_} />
@@ -226,15 +93,11 @@ export const EmptyXs = VariantTemplate.bind({});
 
 #### Asterisk
 
-export const AsteriskXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={SelectStories.AsteriskXs_} />
 </Canvas>
 
 #### Clearable
-
-export const ClearableXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={SelectStories.ClearableXs_} />
@@ -242,15 +105,11 @@ export const ClearableXs = VariantTemplate.bind({});
 
 #### Description
 
-export const DescriptionXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={SelectStories.DescriptionXs_} />
 </Canvas>
 
 #### Disabled
-
-export const DisabledXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={SelectStories.DisabledXs_} />
@@ -258,15 +117,11 @@ export const DisabledXs = VariantTemplate.bind({});
 
 #### Error
 
-export const ErrorXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={SelectStories.ErrorXs_} />
 </Canvas>
 
 #### Read only
-
-export const ReadOnlyXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={SelectStories.ReadOnlyXs_} />
@@ -274,15 +129,11 @@ export const ReadOnlyXs = VariantTemplate.bind({});
 
 #### Icons
 
-export const IconsXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={SelectStories.IconsXs_} />
 </Canvas>
 
 #### Groups
-
-export const GroupsXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={SelectStories.GroupsXs_} />
@@ -290,15 +141,11 @@ export const GroupsXs = VariantTemplate.bind({});
 
 #### Large sets
 
-export const LargeSetsXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={SelectStories.LargeSetsXs_} />
 </Canvas>
 
 #### Searchable
-
-export const SearchableXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={SelectStories.SearchableXs_} />

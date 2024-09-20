@@ -1,32 +1,7 @@
 import { Fragment } from "react";
 import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Anchor, Grid, Text } from "metabase/ui";
-import * as AnchorStories from './Anchor.stories';
-
-export const args = {
-  size: "md",
-  align: "unset",
-  truncate: false,
-};
-
-export const sampleArgs = {
-  text: "Weniger",
-  href: "https://example.test",
-};
-
-export const argTypes = {
-  size: {
-    options: ["xs", "sm", "md", "lg"],
-    control: { type: "inline-radio" },
-  },
-  align: {
-    options: ["left", "center", "right"],
-    control: { type: "inline-radio" },
-  },
-  truncate: {
-    control: { type: "boolean" },
-  },
-};
+import * as AnchorStories from "./Anchor.stories";
 
 <Meta of={AnchorStories} />
 
@@ -40,35 +15,10 @@ The Anchor component allows users to display links with themed styles, and repla
 
 ## Docs
 
-* [Figma File](https://www.figma.com/file/8nuIBDQGSGKLfAPsebbASA/Navigation-%2F-Anchor?type=design\&node-id=1-96\&mode=design\&t=2eUYOsqZZeMc4OGT-0)
-* [Mantine Anchor Docs](https://v6.mantine.dev/core/anchor/)
+- [Figma File](https://www.figma.com/file/8nuIBDQGSGKLfAPsebbASA/Navigation-%2F-Anchor?type=design&node-id=1-96&mode=design&t=2eUYOsqZZeMc4OGT-0)
+- [Mantine Anchor Docs](https://v6.mantine.dev/core/anchor/)
 
 ## Examples
-
-export const DefaultTemplate = args => (
-  <Anchor {...args} href={sampleArgs.href}>
-    {sampleArgs.text}
-  </Anchor>
-);
-
-export const SizeTemplate = args => (
-  <Grid align="center" maw="18rem">
-    {argTypes.size.options.map(size => (
-      <Fragment key={size}>
-        <Grid.Col span={2}>
-          <Text weight="bold">{size}</Text>
-        </Grid.Col>
-        <Grid.Col span={10}>
-          <Anchor {...args} size={size} href={sampleArgs.href}>
-            {sampleArgs.text}
-          </Anchor>
-        </Grid.Col>
-      </Fragment>
-    ))}
-  </Grid>
-);
-
-export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={AnchorStories.Default_} />
@@ -76,13 +26,11 @@ export const Default = DefaultTemplate.bind({});
 
 ### Sizes
 
-export const Sizes = SizeTemplate.bind({});
-
 <Canvas>
   <Story of={AnchorStories.Sizes_} />
 </Canvas>
 
 ## Related components
 
-* Anchor
-* Code
+- Anchor
+- Code

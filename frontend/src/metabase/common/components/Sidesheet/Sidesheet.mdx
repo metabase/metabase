@@ -1,33 +1,13 @@
 import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Box, Flex } from "metabase/ui";
-import * as SidesheetStories from './Sidesheet.stories';
+import * as SidesheetStories from "./Sidesheet.stories";
 
 import { Sidesheet } from "./Sidesheet";
 import { SidesheetCard } from "./SidesheetCard";
 import { SidesheetCardSection } from "./SidesheetCardSection";
 import { SidesheetButton, SidesheetButtonWithChevron } from "./SidesheetButton";
 
-import { TestTabbedSidesheet, TestPagedSidesheet} from "./Sidesheet.samples";
-
-export const args = {
-  size: "md",
-  title: "My Awesome Sidesheet",
-  onClose: () => {},
-  isOpen: true,
-};
-
-export const argTypes = {
-  size: {
-    options: ["xs", "sm", "md", "lg", "xl", "auto"],
-    control: { type: "inline-radio" },
-  },
-  title: {
-    control: { type: "text" },
-  },
-  isOpen: {
-    control: { type: "boolean" },
-  }
-};
+import { TestTabbedSidesheet, TestPagedSidesheet } from "./Sidesheet.samples";
 
 <Meta of={SidesheetStories} />
 
@@ -45,79 +25,11 @@ export const argTypes = {
 
 // TODO: figure out how to get CSS modules working with storybook 🔥
 
-export const DefaultTemplate = args => (
-  <Sidesheet {...args}>
-    Call me Ishmael ...
-  </Sidesheet>
-);
-
-export const WithCardsTemplate = args => (
-  <Sidesheet {...args}>
-    <SidesheetCard>
-      Here is even more cool information
-    </SidesheetCard>
-    <SidesheetCard title="Some information has a title">
-      titles are neat
-    </SidesheetCard>
-  </Sidesheet>
-);
-
-export const WithSectionedCardsTemplate = args => (
-  <Sidesheet {...args}>
-    <SidesheetCard>
-      <SidesheetCardSection title="lots">
-        Some cards have so much information
-      </SidesheetCardSection>
-      <SidesheetCardSection title="of information">
-        that you need a bunch
-      </SidesheetCardSection>
-      <SidesheetCardSection title="to display">
-        of sections to display it all
-      </SidesheetCardSection>
-    </SidesheetCard>
-  </Sidesheet>
-);
-
-export const PagedSidesheetTemplate = () => (
-  <TestPagedSidesheet />
-);
-
-export const TabbedSidesheetTemplate = () => (
-  <TestTabbedSidesheet />
-);
-
-export const SidesheetButtonTemplate = () => (
-  <Flex maw="30rem" direction="column" gap="lg">
-    <SidesheetCard title="normal">
-      <SidesheetButton>
-        Do something fun
-      </SidesheetButton>
-    </SidesheetCard>
-    <SidesheetCard title="with chevron">
-      <Flex justify="space-between">
-        Favorite Pokemon
-        <SidesheetButtonWithChevron>
-          Naclstack
-        </SidesheetButtonWithChevron>
-      </Flex>
-    </SidesheetCard>
-    <SidesheetCard title="with chevron - fullWidth">
-      <SidesheetButtonWithChevron fullWidth>
-        Configure favorite pokemon
-      </SidesheetButtonWithChevron>
-    </SidesheetCard>
-  </Flex>
-);
-
-export const Default = DefaultTemplate.bind({});
-
 <Canvas>
   <Story of={SidesheetStories.Default_} />
 </Canvas>
 
 ### With cards
-
-export const WithCards = WithCardsTemplate.bind({});
 
 <Canvas>
   <Story of={SidesheetStories.WithCards_} />
@@ -125,15 +37,11 @@ export const WithCards = WithCardsTemplate.bind({});
 
 ### With sectioned cards
 
-export const WithSectionedCards = WithSectionedCardsTemplate.bind({});
-
 <Canvas>
   <Story of={SidesheetStories.WithSectionedCards_} />
 </Canvas>
 
 ### With pages
-
-export const WithPages = PagedSidesheetTemplate.bind({});
 
 <Canvas>
   <Story of={SidesheetStories.WithSubPages} />
@@ -141,15 +49,11 @@ export const WithPages = PagedSidesheetTemplate.bind({});
 
 ### With tabs
 
-export const WithTabs = TabbedSidesheetTemplate.bind({});
-
 <Canvas>
   <Story of={SidesheetStories.WithTabs_} />
 </Canvas>
 
 ### Sidesheet Buttons
-
-export const SidesheetButtonStory = SidesheetButtonTemplate.bind({});
 
 <Canvas>
   <Story of={SidesheetStories.SidesheetButtons} />

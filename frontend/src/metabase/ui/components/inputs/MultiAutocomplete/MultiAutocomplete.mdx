@@ -2,61 +2,6 @@ import { Canvas, Story, Meta } from "@storybook/blocks";
 import { MultiAutocomplete, Stack } from "metabase/ui";
 import * as MultiAutocompleteStories from "./MultiAutocomplete.stories";
 
-export const args = {
-  data: [],
-  size: "md",
-  label: "Field type",
-  description: undefined,
-  error: undefined,
-  placeholder: "No semantic type",
-  disabled: false,
-  readOnly: false,
-  withAsterisk: false,
-  dropdownPosition: "flip",
-};
-
-export const sampleArgs = {
-  data: ["Doohickey", "Gadget", "Gizmo", "Widget"],
-  value: ["Gadget"],
-  description: "Determines how Metabase displays the field",
-  error: "required",
-};
-
-export const argTypes = {
-  data: {
-    control: { type: "json" },
-  },
-  size: {
-    options: ["xs", "md"],
-    control: { type: "inline-radio" },
-  },
-  label: {
-    control: { type: "text" },
-  },
-  description: {
-    control: { type: "text" },
-  },
-  error: {
-    control: { type: "text" },
-  },
-  placeholder: {
-    control: { type: "text" },
-  },
-  disabled: {
-    control: { type: "boolean" },
-  },
-  readOnly: {
-    control: { type: "boolean" },
-  },
-  withAsterisk: {
-    control: { type: "boolean" },
-  },
-  dropdownPosition: {
-    options: ["bottom", "top", "flip"],
-    control: { type: "inline-radio" },
-  },
-};
-
 <Meta of={MultiAutocompleteStories} />
 
 # MultiAutocomplete
@@ -70,26 +15,11 @@ Our themed wrapper around [Mantine MultiSelect](https://v6.mantine.dev/core/mult
 
 ## Examples
 
-export const DefaultTemplate = args => (
-  <MultiAutocomplete {...args} shouldCreate={query => query.length > 0} />
-);
-
-export const VariantTemplate = args => (
-  <Stack>
-    <DefaultTemplate {...args} />
-    <DefaultTemplate {...args} variant="unstyled" />
-  </Stack>
-);
-
-export const Default = DefaultTemplate.bind({});
-
 <Canvas>
   <Story of={MultiAutocompleteStories.Default_} />
 </Canvas>
 
 ### Size - md
-
-export const EmptyMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={MultiAutocompleteStories.EmptyMd_} />
@@ -97,15 +27,11 @@ export const EmptyMd = VariantTemplate.bind({});
 
 #### Asterisk
 
-export const AsteriskMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={MultiAutocompleteStories.AsteriskMd_} />
 </Canvas>
 
 #### Clearable
-
-export const ClearableMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={MultiAutocompleteStories.ClearableMd_} />
@@ -113,15 +39,11 @@ export const ClearableMd = VariantTemplate.bind({});
 
 #### Description
 
-export const DescriptionMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={MultiAutocompleteStories.DescriptionMd_} />
 </Canvas>
 
 #### Disabled
-
-export const DisabledMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={MultiAutocompleteStories.DisabledMd_} />
@@ -129,15 +51,11 @@ export const DisabledMd = VariantTemplate.bind({});
 
 #### Error
 
-export const ErrorMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={MultiAutocompleteStories.ErrorMd_} />
 </Canvas>
 
 #### Read only
-
-export const ReadOnlyMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={MultiAutocompleteStories.ReadOnlyMd_} />
@@ -145,15 +63,11 @@ export const ReadOnlyMd = VariantTemplate.bind({});
 
 ### Size - xs
 
-export const EmptyXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={MultiAutocompleteStories.EmptyXs_} />
 </Canvas>
 
 #### Asterisk
-
-export const AsteriskXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={MultiAutocompleteStories.AsteriskXs_} />
@@ -161,15 +75,11 @@ export const AsteriskXs = VariantTemplate.bind({});
 
 #### Clearable
 
-export const ClearableXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={MultiAutocompleteStories.ClearableXs_} />
 </Canvas>
 
 #### Description
-
-export const DescriptionXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={MultiAutocompleteStories.DescriptionXs_} />
@@ -177,23 +87,17 @@ export const DescriptionXs = VariantTemplate.bind({});
 
 #### Disabled
 
-export const DisabledXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={MultiAutocompleteStories.DisabledXs_} />
 </Canvas>
 
 #### Error
 
-export const ErrorXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={MultiAutocompleteStories.ErrorXs_} />
 </Canvas>
 
 #### Read only
-
-export const ReadOnlyXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={MultiAutocompleteStories.ReadOnlyXs_} />

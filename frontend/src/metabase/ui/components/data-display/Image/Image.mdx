@@ -2,34 +2,7 @@ import noResultsSource from "assets/img/no_results.svg";
 import { Fragment } from "react";
 import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Box, Image, Stack, Text } from "metabase/ui";
-import * as ImageStories from './Image.stories';
-
-export const args = {
-  width: 120,
-  height: 120,
-  fit: "cover",
-  position: "center",
-  src: noResultsSource,
-  alt: "No search results",
-};
-
-export const argTypes = {
-  fit: {
-    control: {
-      type: "inline-radio",
-      options: ["cover", "contain", "fill", "none", "scale-down"],
-    },
-  },
-  position: {
-    control: {
-      type: "inline-radio",
-      options: ["top left", "top", "center", "bottom", "bottom right"],
-    },
-  },
-  src: {
-    control: { type: "file", accept: "image/jpeg,image/png,image/svg+xml" },
-  },
-};
+import * as ImageStories from "./Image.stories";
 
 <Meta of={ImageStories} />
 
@@ -39,25 +12,15 @@ Our themed wrapper around [Mantine Image](https://v6.mantine.dev/core/image/).
 
 ## Docs
 
-*   [Mantine Image Docs](https://v6.mantine.dev/core/image/)
+- [Mantine Image Docs](https://v6.mantine.dev/core/image/)
 
 ## Examples
-
-export const DefaultTemplate = args => (
-  <Box maw="20rem">
-    <Image {...args} />
-  </Box>
-);
-
-export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={ImageStories.Default_} />
 </Canvas>
 
 ### Image position
-
-export const BackgroundPosition = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={ImageStories.BackgroundPosition_} />

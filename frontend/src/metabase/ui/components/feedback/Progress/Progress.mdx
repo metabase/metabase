@@ -1,18 +1,7 @@
 import { Fragment } from "react";
 import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Progress } from "./";
-import * as ProgressStories from './Progress.stories';
-
-export const args = {
-  value: 40,
-};
-
-export const argTypes = {
-  size: {
-    options: ["xs", "sm", "md", "lg", "xl"],
-    control: { type: "inline-radio" },
-  },
-};
+import * as ProgressStories from "./Progress.stories";
 
 <Meta of={ProgressStories} />
 
@@ -22,13 +11,9 @@ Our themed wrapper around [Mantine Progress](https://v6.mantine.dev/core/progres
 
 ## Docs
 
-* [Mantine Progress Docs](https://v6.mantine.dev/core/progress/)
+- [Mantine Progress Docs](https://v6.mantine.dev/core/progress/)
 
 ## Examples
-
-export const DefaultTemplate = args => <Progress {...args} />;
-
-export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={ProgressStories.Default_} />

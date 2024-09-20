@@ -1,57 +1,7 @@
 import { Fragment } from "react";
 import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Box, Grid, Text } from "metabase/ui";
-import * as TextStories from './Text.stories';
-
-export const args = {
-  size: "md",
-  align: "unset",
-  weight: "normal",
-  italic: false,
-  underline: false,
-  strikethrough: false,
-  truncate: false,
-  lineClamp: undefined,
-};
-
-export const sampleArgs = {
-  shortText: "Weniger",
-  longText:
-    "Having small touches of colour makes it more colourful than having the whole thing in colour",
-};
-
-export const argTypes = {
-  size: {
-    options: ["xs", "sm", "md", "lg"],
-    control: { type: "inline-radio" },
-  },
-  align: {
-    options: ["left", "center", "right"],
-    control: { type: "inline-radio" },
-  },
-  weight: {
-    options: ["normal", "bold"],
-    control: { type: "inline-radio" },
-  },
-  italic: {
-    control: { type: "boolean" },
-  },
-  underline: {
-    control: { type: "boolean" },
-  },
-  underline: {
-    control: { type: "boolean" },
-  },
-  strikethrough: {
-    control: { type: "boolean" },
-  },
-  truncate: {
-    control: { type: "boolean" },
-  },
-  lineClamp: {
-    control: { type: "number" },
-  },
-};
+import * as TextStories from "./Text.stories";
 
 <Meta of={TextStories} />
 
@@ -65,31 +15,10 @@ The Text component allows users to display text with themed styles, and replaces
 
 ## Docs
 
-*   [Figma File](https://www.figma.com/file/h6aMN8H67eu2w8wmDngfnM/Typography-%2F-Text?type=design\&node-id=1-96\&mode=design\&t=2eUYOsqZZeMc4OGT-0)
-*   [Mantine Text Docs](https://v6.mantine.dev/core/text/)
+- [Figma File](https://www.figma.com/file/h6aMN8H67eu2w8wmDngfnM/Typography-%2F-Text?type=design&node-id=1-96&mode=design&t=2eUYOsqZZeMc4OGT-0)
+- [Mantine Text Docs](https://v6.mantine.dev/core/text/)
 
 ## Examples
-
-export const DefaultTemplate = args => (
-  <Text {...args}>{sampleArgs.shortText}</Text>
-);
-
-export const SizeTemplate = args => (
-  <Grid align="center" maw="18rem">
-    {argTypes.size.options.map(size => (
-      <Fragment key={size}>
-        <Grid.Col span={2}>
-          <Text weight="bold">{size}</Text>
-        </Grid.Col>
-        <Grid.Col span={10}>
-          <Text {...args} size={size} />
-        </Grid.Col>
-      </Fragment>
-    ))}
-  </Grid>
-);
-
-export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={TextStories.Default_} />
@@ -97,15 +26,11 @@ export const Default = DefaultTemplate.bind({});
 
 ### Sizes
 
-export const Sizes = SizeTemplate.bind({});
-
 <Canvas>
   <Story of={TextStories.Sizes_} />
 </Canvas>
 
 ### Multiline
-
-export const Multiline = SizeTemplate.bind({});
 
 <Canvas>
   <Story of={TextStories.Multiline_} />
@@ -113,13 +38,11 @@ export const Multiline = SizeTemplate.bind({});
 
 ### Truncated
 
-export const Truncated = SizeTemplate.bind({});
-
 <Canvas>
   <Story of={TextStories.Truncated_} />
 </Canvas>
 
 ## Related components
 
-*   Anchor
-*   Code
+- Anchor
+- Code

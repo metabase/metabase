@@ -2,26 +2,7 @@ import { useState } from "react";
 import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Box, Icon, Stack, Text, TextInput } from "metabase/ui";
 import { iconNames } from "./icons";
-import * as IconStories from './Icon.stories';
-
-export const args = {
-  name: "star",
-  size: undefined,
-  tooltip: undefined,
-};
-
-export const argTypes = {
-  name: {
-    control: { type: "select" },
-    options: iconNames,
-  },
-  size: {
-    control: { type: "number" },
-  },
-  tooltip: {
-    control: { type: "text" },
-  },
-};
+import * as IconStories from "./Icon.stories";
 
 <Meta of={IconStories} />
 
@@ -31,32 +12,11 @@ Our component wrapper around SVG icons.
 
 ## Examples
 
-export const DefaultTemplate = args => {
-  return <Icon {...args} />;
-};
-
-export const ListTemplate = () => {
-  return (
-    <Box>
-      {iconNames.map(icon => (
-        <Box key={icon} display="inline-block" w="100px" m="20px" ta="center">
-          <p>{icon}</p>
-          <Icon name={icon} />
-        </Box>
-      ))}
-    </Box>
-  );
-};
-
-export const Default = DefaultTemplate.bind({});
-
 <Canvas>
   <Story of={IconStories.Default_} />
 </Canvas>
 
 ### List
-
-export const List = ListTemplate.bind({});
 
 <Canvas>
   <Story of={IconStories.List_} />

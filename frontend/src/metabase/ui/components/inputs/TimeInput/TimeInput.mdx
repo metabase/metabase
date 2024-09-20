@@ -1,61 +1,6 @@
 import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Stack, TimeInput } from "metabase/ui";
-import * as TimeInputStories from './TimeInput.stories';
-
-export const args = {
-  variant: "default",
-  size: "md",
-  label: "Label",
-  description: undefined,
-  error: undefined,
-  placeholder: "Placeholder",
-  disabled: false,
-  readOnly: false,
-  withAsterisk: false,
-  onChange: event => {
-    console.log(event.target.value);
-  },
-};
-
-export const sampleArgs = {
-  value: new Date(0, 0, 1, 20, 40),
-  label: "Time of day",
-  description: "The time you've this page",
-  placholder: "HH:MM",
-  error: "required",
-};
-
-export const argTypes = {
-  variant: {
-    options: ["default", "unstyled"],
-    control: { type: "inline-radio" },
-  },
-  size: {
-    options: ["xs", "md"],
-    control: { type: "inline-radio" },
-  },
-  label: {
-    control: { type: "text" },
-  },
-  description: {
-    control: { type: "text" },
-  },
-  placeholder: {
-    control: { type: "text" },
-  },
-  error: {
-    control: { type: "text" },
-  },
-  disabled: {
-    control: { type: "boolean" },
-  },
-  readOnly: {
-    control: { type: "boolean" },
-  },
-  withAsterisk: {
-    control: { type: "boolean" },
-  },
-};
+import * as TimeInputStories from "./TimeInput.stories";
 
 <Meta of={TimeInputStories} />
 
@@ -65,21 +10,10 @@ Our themed wrapper around [Mantine TimeInput](https://v6.mantine.dev/dates/time-
 
 ## Docs
 
-*   [Mantine TimeInput Docs](https://v6.mantine.dev/dates/time-input/)
-*   [HTML Time Input Docs](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/time)
+- [Mantine TimeInput Docs](https://v6.mantine.dev/dates/time-input/)
+- [HTML Time Input Docs](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/time)
 
 # Examples
-
-export const DefaultTemplate = args => <TimeInput {...args} />;
-
-export const VariantTemplate = args => (
-  <Stack>
-    <TimeInput {...args} variant="default" />
-    <TimeInput {...args} variant="unstyled" />
-  </Stack>
-);
-
-export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={TimeInputStories.Default_} />
@@ -87,15 +21,11 @@ export const Default = DefaultTemplate.bind({});
 
 ### Size - md
 
-export const EmptyMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={TimeInputStories.EmptyMd_} />
 </Canvas>
 
 #### Filled
-
-export const FilledMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={TimeInputStories.FilledMd_} />
@@ -103,15 +33,11 @@ export const FilledMd = VariantTemplate.bind({});
 
 #### Asterisk
 
-export const AsteriskMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={TimeInputStories.AsteriskMd_} />
 </Canvas>
 
 #### Description
-
-export const DescriptionMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={TimeInputStories.DescriptionMd_} />
@@ -119,15 +45,11 @@ export const DescriptionMd = VariantTemplate.bind({});
 
 #### Disabled
 
-export const DisabledMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={TimeInputStories.DisabledMd_} />
 </Canvas>
 
 #### Error
-
-export const ErrorMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={TimeInputStories.ErrorMd_} />
@@ -135,15 +57,11 @@ export const ErrorMd = VariantTemplate.bind({});
 
 #### Read only
 
-export const ReadOnlyMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={TimeInputStories.ReadOnlyMd_} />
 </Canvas>
 
 ### Size - xs
-
-export const EmptyXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={TimeInputStories.EmptyXs_} />
@@ -151,15 +69,11 @@ export const EmptyXs = VariantTemplate.bind({});
 
 #### Filled
 
-export const FilledXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={TimeInputStories.FilledXs_} />
 </Canvas>
 
 #### Asterisk
-
-export const AsteriskXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={TimeInputStories.AsteriskXs_} />
@@ -167,15 +81,11 @@ export const AsteriskXs = VariantTemplate.bind({});
 
 #### Description
 
-export const DescriptionXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={TimeInputStories.DescriptionXs_} />
 </Canvas>
 
 #### Disabled
-
-export const DisabledXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={TimeInputStories.DisabledXs_} />
@@ -183,15 +93,11 @@ export const DisabledXs = VariantTemplate.bind({});
 
 #### Error
 
-export const ErrorXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={TimeInputStories.ErrorXs_} />
 </Canvas>
 
 #### Read only
-
-export const ReadOnlyXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={TimeInputStories.ReadOnlyXs_} />

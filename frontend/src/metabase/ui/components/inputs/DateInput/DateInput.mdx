@@ -1,60 +1,7 @@
 import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Icon } from "metabase/ui";
 import { DateInput, Stack } from "metabase/ui";
-import * as DateInputStories from './DateInput.stories';
-
-export const args = {
-  variant: "default",
-  size: "md",
-  label: "Label",
-  description: undefined,
-  error: undefined,
-  placeholder: "Placeholder",
-  disabled: false,
-  readOnly: false,
-  withAsterisk: false,
-};
-
-export const sampleArgs = {
-  value: new Date(2023, 9, 8),
-  label: "Event date",
-  description:
-    "The event is visible if the date falls within the chart’s time range",
-  placeholder: "Enter date",
-  error: "required",
-};
-
-export const argTypes = {
-  variant: {
-    options: ["default", "unstyled"],
-    control: { type: "inline-radio" },
-  },
-  size: {
-    options: ["xs", "md"],
-    control: { type: "inline-radio" },
-  },
-  label: {
-    control: { type: "text" },
-  },
-  description: {
-    control: { type: "text" },
-  },
-  placeholder: {
-    control: { type: "text" },
-  },
-  error: {
-    control: { type: "text" },
-  },
-  disabled: {
-    control: { type: "boolean" },
-  },
-  readOnly: {
-    control: { type: "boolean" },
-  },
-  withAsterisk: {
-    control: { type: "boolean" },
-  },
-};
+import * as DateInputStories from "./DateInput.stories";
 
 <Meta of={DateInputStories} />
 
@@ -64,25 +11,10 @@ Our themed wrapper around [Mantine DateInput](https://v6.mantine.dev/dates/date-
 
 ## Docs
 
-*   [Figma File](https://www.figma.com/file/oIZhYS5OoRA7twd4KqN4Eu/Input-%2F-Text?type=design\&node-id=1-96\&mode=design\&t=yaNljw178EFJeU7k-0)
-*   [Mantine DateInput Docs](https://v6.mantine.dev/dates/date-input/)
+- [Figma File](https://www.figma.com/file/oIZhYS5OoRA7twd4KqN4Eu/Input-%2F-Text?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
+- [Mantine DateInput Docs](https://v6.mantine.dev/dates/date-input/)
 
 ## Examples
-
-export const DefaultTemplate = args => <DateInput {...args} />;
-
-export const VariantTemplate = args => (
-  <Stack>
-    <DateInput {...args} variant="default" />
-    <DateInput {...args} variant="unstyled" />
-  </Stack>
-);
-
-export const IconTemplate = args => (
-  <VariantTemplate {...args} icon={<Icon name="calendar" />} />
-);
-
-export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={DateInputStories.Default_} />
@@ -90,15 +22,11 @@ export const Default = DefaultTemplate.bind({});
 
 ### Size - md
 
-export const EmptyMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={DateInputStories.EmptyMd_} />
 </Canvas>
 
 #### Filled
-
-export const FilledMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={DateInputStories.FilledMd_} />
@@ -106,15 +34,11 @@ export const FilledMd = VariantTemplate.bind({});
 
 #### Asterisk
 
-export const AsteriskMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={DateInputStories.AsteriskMd_} />
 </Canvas>
 
 #### Description
-
-export const DescriptionMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={DateInputStories.DescriptionMd_} />
@@ -122,15 +46,11 @@ export const DescriptionMd = VariantTemplate.bind({});
 
 #### Disabled
 
-export const DisabledMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={DateInputStories.DisabledMd_} />
 </Canvas>
 
 #### Error
-
-export const ErrorMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={DateInputStories.ErrorMd_} />
@@ -138,15 +58,11 @@ export const ErrorMd = VariantTemplate.bind({});
 
 #### Icon
 
-export const IconMd = IconTemplate.bind({});
-
 <Canvas>
   <Story of={DateInputStories.IconMd_} />
 </Canvas>
 
 #### Read only
-
-export const ReadOnlyMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={DateInputStories.ReadOnlyMd_} />
@@ -154,15 +70,11 @@ export const ReadOnlyMd = VariantTemplate.bind({});
 
 #### No popover
 
-export const NoPopoverMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={DateInputStories.NoPopoverMd_} />
 </Canvas>
 
 ### Size - xs
-
-export const EmptyXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={DateInputStories.EmptyXs_} />
@@ -170,15 +82,11 @@ export const EmptyXs = VariantTemplate.bind({});
 
 #### Filled
 
-export const FilledXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={DateInputStories.FilledXs_} />
 </Canvas>
 
 #### Asterisk
-
-export const AsteriskXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={DateInputStories.AsteriskXs_} />
@@ -186,15 +94,11 @@ export const AsteriskXs = VariantTemplate.bind({});
 
 #### Description
 
-export const DescriptionXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={DateInputStories.DescriptionXs_} />
 </Canvas>
 
 #### Disabled
-
-export const DisabledXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={DateInputStories.DisabledXs_} />
@@ -202,15 +106,11 @@ export const DisabledXs = VariantTemplate.bind({});
 
 #### Error
 
-export const ErrorXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={DateInputStories.ErrorXs_} />
 </Canvas>
 
 #### Icon
-
-export const IconXs = IconTemplate.bind({});
 
 <Canvas>
   <Story of={DateInputStories.IconXs_} />
@@ -218,15 +118,11 @@ export const IconXs = IconTemplate.bind({});
 
 #### Read only
 
-export const ReadOnlyXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={DateInputStories.ReadOnlyXs_} />
 </Canvas>
 
 #### No popover
-
-export const NoPopoverXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={DateInputStories.NoPopoverXs_} />

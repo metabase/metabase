@@ -1,55 +1,7 @@
 import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Icon } from "metabase/ui";
 import { Stack, FileInput } from "metabase/ui";
-import * as FileInputStories from './FileInput.stories';
-
-export const args = {
-  variant: "default",
-  size: "md",
-  label: "Label",
-  description: undefined,
-  error: undefined,
-  placeholder: "Placeholder",
-  disabled: false,
-  readOnly: false,
-  withAsterisk: false,
-};
-
-export const sampleArgs = {
-  label: "SSL Client Certificate (PEM)",
-  description: "A certificate to authenticate the instance to the server",
-  placeholder: "Select a file",
-  error: "required",
-};
-
-export const argTypes = {
-  variant: {
-    options: ["default", "unstyled"],
-    control: { type: "inline-radio" },
-  },
-  size: {
-    options: ["xs", "md"],
-    control: { type: "inline-radio" },
-  },
-  label: {
-    control: { type: "text" },
-  },
-  description: {
-    control: { type: "text" },
-  },
-  placeholder: {
-    control: { type: "text" },
-  },
-  error: {
-    control: { type: "text" },
-  },
-  disabled: {
-    control: { type: "boolean" },
-  },
-  withAsterisk: {
-    control: { type: "boolean" },
-  },
-};
+import * as FileInputStories from "./FileInput.stories";
 
 <Meta of={FileInputStories} />
 
@@ -59,24 +11,9 @@ Our themed wrapper around [Mantine FileInput](https://v6.mantine.dev/core/file-i
 
 ## Docs
 
-*   [Mantine FileInput Docs](https://v6.mantine.dev/core/file-input/)
+- [Mantine FileInput Docs](https://v6.mantine.dev/core/file-input/)
 
 ## Examples
-
-export const DefaultTemplate = args => <FileInput {...args} />;
-
-export const VariantTemplate = args => (
-  <Stack>
-    <FileInput {...args} variant="default" />
-    <FileInput {...args} variant="unstyled" />
-  </Stack>
-);
-
-export const IconTemplate = args => (
-  <VariantTemplate {...args} icon={<Icon name="attachment" />} />
-);
-
-export const Default = DefaultTemplate.bind({});
 
 <Canvas>
   <Story of={FileInputStories.Default_} />
@@ -84,15 +21,11 @@ export const Default = DefaultTemplate.bind({});
 
 ### Size - md
 
-export const EmptyMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={FileInputStories.EmptyMd_} />
 </Canvas>
 
 #### Asterisk
-
-export const AsteriskMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={FileInputStories.AsteriskMd_} />
@@ -100,15 +33,11 @@ export const AsteriskMd = VariantTemplate.bind({});
 
 #### Description
 
-export const DescriptionMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={FileInputStories.DescriptionMd_} />
 </Canvas>
 
 #### Disabled
-
-export const DisabledMd = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={FileInputStories.DisabledMd_} />
@@ -116,15 +45,11 @@ export const DisabledMd = VariantTemplate.bind({});
 
 #### Error
 
-export const ErrorMd = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={FileInputStories.ErrorMd_} />
 </Canvas>
 
 #### Icon
-
-export const IconMd = IconTemplate.bind({});
 
 <Canvas>
   <Story of={FileInputStories.IconMd_} />
@@ -132,15 +57,11 @@ export const IconMd = IconTemplate.bind({});
 
 ### Size - xs
 
-export const EmptyXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={FileInputStories.EmptyXs_} />
 </Canvas>
 
 #### Asterisk
-
-export const AsteriskXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={FileInputStories.AsteriskXs_} />
@@ -148,15 +69,11 @@ export const AsteriskXs = VariantTemplate.bind({});
 
 #### Description
 
-export const DescriptionXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={FileInputStories.DescriptionXs_} />
 </Canvas>
 
 #### Disabled
-
-export const DisabledXs = VariantTemplate.bind({});
 
 <Canvas>
   <Story of={FileInputStories.DisabledXs_} />
@@ -164,15 +81,11 @@ export const DisabledXs = VariantTemplate.bind({});
 
 #### Error
 
-export const ErrorXs = VariantTemplate.bind({});
-
 <Canvas>
   <Story of={FileInputStories.ErrorXs_} />
 </Canvas>
 
 #### Icon
-
-export const IconXs = IconTemplate.bind({});
 
 <Canvas>
   <Story of={FileInputStories.IconXs_} />

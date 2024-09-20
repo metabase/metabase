@@ -2,38 +2,6 @@ import { Canvas, Story, Meta } from "@storybook/blocks";
 import { Checkbox, Stack } from "metabase/ui";
 import * as CheckboxStories from "./Checkbox.stories";
 
-export const args = {
-  label: "Label",
-  description: undefined,
-  disabled: false,
-  labelPosition: "right",
-  size: "md",
-};
-
-export const argTypes = {
-  label: {
-    control: { type: "text" },
-  },
-  description: {
-    control: { type: "text" },
-  },
-  disabled: {
-    control: { type: "boolean" },
-  },
-  labelPosition: {
-    options: ["left", "right"],
-    control: { type: "inline-radio" },
-  },
-  size: {
-    options: ["xs", "md", "lg", "xl"],
-    control: { type: "inline-radio" },
-  },
-  variant: {
-    options: ["default", "stacked"],
-    control: { type: "inline-radio" },
-  },
-};
-
 <Meta of={CheckboxStories} />
 
 # Checkbox
@@ -57,60 +25,11 @@ Checkbox buttons allow users to select a single option from a list of mutually e
 
 ## Examples
 
-export const DefaultTemplate = args => <Checkbox {...args} />;
-
-export const CheckboxGroupTemplate = args => (
-  <Checkbox.Group
-    defaultValue={["react"]}
-    label="An array of good frameworks"
-    description="But which one to use?"
-  >
-    <Stack mt="md">
-      <Checkbox {...args} value="react" label="React" />
-      <Checkbox {...args} value="svelte" label="Svelte" />
-      <Checkbox {...args} value="ng" label="Angular" />
-      <Checkbox {...args} value="vue" label="Vue" />
-    </Stack>
-  </Checkbox.Group>
-);
-
-export const StateTemplate = args => (
-  <Stack>
-    <Checkbox {...args} label="Default checkbox" />
-    <Checkbox {...args} label="Indeterminate checkbox" indeterminate />
-    <Checkbox
-      {...args}
-      label="Indeterminate checked checkbox"
-      defaultChecked
-      indeterminate
-    />
-    <Checkbox {...args} label="Checked checkbox" defaultChecked />
-    <Checkbox {...args} label="Disabled checkbox" disabled />
-    <Checkbox
-      {...args}
-      label="Disabled indeterminate checked checkbox"
-      disabled
-      defaultChecked
-      indeterminate
-    />
-    <Checkbox
-      {...args}
-      label="Disabled checked checkbox"
-      disabled
-      defaultChecked
-    />
-  </Stack>
-);
-
-export const Default = DefaultTemplate.bind({});
-
 <Canvas>
   <Story of={CheckboxStories.Default_} />
 </Canvas>
 
 ### Checkbox.Group
-
-export const CheckboxGroup = CheckboxGroupTemplate.bind({});
 
 <Canvas>
   <Story of={CheckboxStories.CheckboxGroup_} />
@@ -118,15 +37,11 @@ export const CheckboxGroup = CheckboxGroupTemplate.bind({});
 
 ### Label
 
-export const Label = StateTemplate.bind({});
-
 <Canvas>
   <Story of={CheckboxStories.Label_} />
 </Canvas>
 
 #### Left label position
-
-export const LabelLeft = StateTemplate.bind({});
 
 <Canvas>
   <Story of={CheckboxStories.LabelLeftPosition} />
@@ -134,23 +49,17 @@ export const LabelLeft = StateTemplate.bind({});
 
 ### Description
 
-export const Description = StateTemplate.bind({});
-
 <Canvas>
   <Story of={CheckboxStories.Description_} />
 </Canvas>
 
 #### Left label position
 
-export const DescriptionLeft = StateTemplate.bind({});
-
 <Canvas>
   <Story of={CheckboxStories.DescriptionLeftPosition} />
 </Canvas>
 
 #### Stacked Variant
-
-export const Stacked = StateTemplate.bind({});
 
 <Canvas>
   <Story of={CheckboxStories.Stacked_} />
