@@ -11,6 +11,7 @@ import {
 } from "metabase/setup/actions";
 import { updateIn } from "icepick";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 
 export const DatabasesConnections = () => {
   const dispatch = useDispatch();
@@ -45,12 +46,11 @@ export const DatabasesConnections = () => {
         >
           <Icon name="lan" color="accent2" size={20} />
           <Title order={2} style={{ marginLeft: "8px" }}>
-            Connect with your data stack
+            {t`Connect with your data stack`}
           </Title>
         </Box>
         <span style={{ color: "#76797D", marginBottom: "2rem" }}>
-          Only grant read permissions to data sources. Dot should use for
-          answering questions.
+          {t`Only grant read permissions to data sources. Not should use for answering questions.`}
         </span>
       </Box>
       <span
@@ -65,7 +65,7 @@ export const DatabasesConnections = () => {
           fontSize: "14px",
         }}
       >
-        Databases
+        {t`Databases`}
       </span>
       <Box
         style={{

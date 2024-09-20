@@ -3,12 +3,13 @@ import _ from "underscore";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
+import { t } from "ttag";
 
 export const ChatGreeting = ({ chatType }: any): JSX.Element => {
   const user = useSelector(getUser);
   const name = user?.first_name;
   const subMessage = useMemo(
-    () => "What would you like to create? Here are some suggestions",
+    () => t`What would you like to create? Here are some suggestions`,
     [],
   );
 
@@ -42,8 +43,8 @@ export const ChatGreeting = ({ chatType }: any): JSX.Element => {
           }}
         >
           {chatType === "insights"
-            ? "Generate insights for me"
-            : "Talk data to me"}
+            ? t`Generate insights for me`
+            : t`Talk data to me`}
         </div>
         <div
           style={{

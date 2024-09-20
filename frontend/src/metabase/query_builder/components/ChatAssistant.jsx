@@ -1081,7 +1081,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                                 onChange={handleInputChange}
                                                 disabled={!isConnected || schema.length < 1 || selectedThreadId}
                                                 onKeyPress={handleKeyPress}
-                                                placeholder="Enter a prompt here..."
+                                                placeholder={t`Enter a prompt here...`}
                                                 style={{
                                                     width: "100%",
                                                     resize: "none",

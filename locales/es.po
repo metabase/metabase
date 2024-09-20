@@ -20806,7 +20806,7 @@ msgstr "El mejor punto de partida para preguntas nuevas."
 #: frontend/src/metabase/query_builder/components/DataSelector/DataSelector.styled.tsx:45
 #: frontend/src/metabase/query_builder/components/DataSelector/constants.ts:22
 msgid "Raw Data"
-msgstr "Datos Crudos"
+msgstr "Datos Brutos"
 
 #: frontend/src/metabase/query_builder/components/DataSelector/constants.ts:23
 msgid "Unaltered tables in connected databases."
@@ -35211,3 +35211,35 @@ msgstr "Validación de Referencia de Consulta"
 msgid "Is SAML Single Log Out enabled?"
 msgstr "¿Está habilitado el cierre de sesión único de SAML?"
 
+msgid "Company settings"
+msgstr "Configuración de la compañia"
+
+msgid "Invite user"
+msgstr "Invitar usuario"
+
+msgid "Connect with your data stack"
+msgstr "Conecta con tus datos"
+
+msgid "Only grant read permissions to data sources. Not should use for answering questions."
+msgstr "Otorgue permisos de lectura solo a fuentes de datos. No debería usarse para responder preguntas."
+
+msgid "Library"
+msgstr "Biblioteca"
+
+msgid "Generate insights for me"
+msgstr "Genera insights para mi"
+
+msgid "Talk data to me"
+msgstr "Dame información de mis datos"
+
+msgid "What would you like to create? Here are some suggestions"
+msgstr "¿Que quieres crear? Aqui tienes algunas sugerencias"
+
+msgid "Enter a prompt here..."
+msgstr "Escribe aqui tu mensaje..."
+
+msgid "Ask a question to get started"
+msgstr "Realiza una pregunta para empezar"
+
+msgid "Ask a question or make a request to get started"
+msgstr "Realiza una pregunta o haz una petición para empezar"
