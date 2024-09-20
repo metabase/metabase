@@ -16,7 +16,7 @@
      (t/zoned-date-time (t/zone-id "UTC")))))
 
 (deftest ^:parallel cumulative-sum-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "cum_sum w/o breakout should be treated the same as sum"
       (let [result (mt/run-mbql-query users
                      {:aggregation [[:cum-sum $id]]})]
@@ -29,7 +29,7 @@
                 result)))))))
 
 (deftest ^:parallel cumulative-sum-test-2
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "Simple cumulative sum where breakout field is same as cum_sum field"
       (let [query (mt/mbql-query users
                     {:aggregation [[:cum-sum $id]]
@@ -55,7 +55,7 @@
                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-sum-test-3
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "Cumulative sum w/ a different breakout field"
       (let [query (mt/mbql-query users
                     {:aggregation [[:cum-sum $id]]
@@ -81,7 +81,7 @@
                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-sum-test-4
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "Cumulative sum w/ a different breakout field that requires grouping"
       (let [query (mt/mbql-query venues
                     {:aggregation [[:cum-sum $id]]
@@ -96,7 +96,7 @@
                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-sum-with-bucketed-breakout-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "cumulative sum with a temporally bucketed breakout"
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
@@ -116,7 +116,7 @@
                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "cumulative count aggregations"
       (testing "w/o breakout should be treated the same as count"
         (let [query (mt/mbql-query users
@@ -128,7 +128,7 @@
                     (qp/process-query query))))))))))
 
 (deftest ^:parallel cumulative-count-with-breakout-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "w/ breakout on field with distinct values"
       (let [query (mt/mbql-query users
                     {:aggregation [[:cum-count $id]]
@@ -154,7 +154,7 @@
                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-with-breakout-test-2
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "w/ breakout on field that requires grouping"
       (let [query (mt/mbql-query venues
                     {:aggregation [[:cum-count $id]]
@@ -170,7 +170,7 @@
 
 (deftest ^:parallel cumulative-count-with-multiple-breakouts-test
   (testing "Should be ORDERED BY first BREAKOUT and PARTITIONED BY the second BREAKOUT (#2862, #42003)"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
       (let [query (-> (mt/mbql-query orders
                         {:aggregation [[:cum-count]]
                          :breakout    [!month.created_at !year.created_at]
@@ -195,7 +195,7 @@
 
 (deftest ^:parallel cumulative-count-with-three-breakouts-test
   (testing "Three breakouts: should be ORDERED BY first BREAKOUT and PARTITIONED BY second and third BREAKOUTS (#2862, #42003)"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
       (let [query (-> (mt/mbql-query orders
                         {:aggregation [[:cum-count]]
                          :breakout    [!day.created_at !year.created_at !month.created_at]
@@ -211,7 +211,7 @@
                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-without-field-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "cumulative count without a field"
       (let [query (mt/mbql-query venues
                     {:aggregation [[:cum-count]]
@@ -226,7 +226,7 @@
                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-with-bucketed-breakout-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "cumulative count with a temporally bucketed breakout"
       (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
         (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -247,7 +247,7 @@
 
 (deftest ^:parallel cumulative-sum-with-multiple-breakouts-test
   (testing "Should be ORDERED BY first BREAKOUT and PARTITIONED BY the second BREAKOUT (#2862, #42003)"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
       (let [query (-> (mt/mbql-query orders
                         {:aggregation [[:cum-sum $total]]
                          :breakout    [!month.created_at !year.created_at]
@@ -273,7 +273,7 @@
 
 (deftest ^:parallel cumulative-sum-with-three-breakouts-test
   (testing "Three breakouts: should be ORDERED BY first BREAKOUT and PARTITIONED BY last two BREAKOUTS (#2862, #42003)"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
       (let [query (-> (mt/mbql-query orders
                         {:aggregation [[:cum-sum $total]]
                          :breakout    [!day.created_at !year.created_at !month.created_at]
