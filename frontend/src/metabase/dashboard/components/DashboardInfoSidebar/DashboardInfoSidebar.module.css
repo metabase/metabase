@@ -1,0 +1,5 @@
+.EditableTextContainer {
+  max-height: 19rem;
+  overflow: auto;
+  line-height: 1.38rem; /* magic number to keep line-height from changing in edit mode */
+}

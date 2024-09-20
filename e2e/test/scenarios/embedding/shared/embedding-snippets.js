@@ -22,10 +22,10 @@ var token = jwt.sign(payload, METABASE_SECRET_KEY);
 
 var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token +
   "#${getThemeParameter(theme)}${getBackgroundParameter(
-      background,
-    )}bordered=true&titled=true${getParameter({
-      downloads,
-    })}";`
+    background,
+  )}bordered=true&titled=true${getParameter({
+    downloads,
+  })}";`
       .split("\n")
       .join("")
       .replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")

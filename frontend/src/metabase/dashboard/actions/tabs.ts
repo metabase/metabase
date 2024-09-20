@@ -584,7 +584,7 @@ export const tabsReducer = createReducer<DashboardState>(
       const tabId =
         idFromSlug && prevTabs.map(t => t.id).includes(idFromSlug)
           ? idFromSlug
-          : prevTabs[0]?.id ?? null;
+          : (prevTabs[0]?.id ?? null);
 
       state.selectedTabId = tabId;
     });
