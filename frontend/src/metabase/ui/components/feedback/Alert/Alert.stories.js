@@ -21,7 +21,7 @@ const argTypes = {
 const DefaultTemplate = args => {
   return (
     <Alert {...args}>
-      <Text>The No self-service access level for View data is going away.</Text>
+      <Text>The No self-service access level for View data is going away.</Text>
       <Text>
         In a future release, if a group’s View data access for a database (or
         any of its schemas or tables) is still set to No self-service
@@ -34,8 +34,6 @@ const DefaultTemplate = args => {
   );
 };
 
-const Default = DefaultTemplate.bind({});
-
 export default {
   title: "Feedback/Alert",
   component: Alert,
@@ -44,6 +42,6 @@ export default {
 };
 
 export const Default_ = {
-  render: Default,
+  render: DefaultTemplate,
   name: "Default",
 };
