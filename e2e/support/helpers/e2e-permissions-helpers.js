@@ -150,12 +150,9 @@ export function assertDatasetReqIsSandboxed(options = {}) {
   });
 }
 
-export function blockUserGroupPermissions(
-  groupName,
-  databaseId = SAMPLE_DB_ID,
-) {
+export function blockUserGroupPermissions(groupId, databaseId = SAMPLE_DB_ID) {
   cy.updatePermissionsGraph({
-    [groupName]: {
+    [groupId]: {
       [databaseId]: {
         "view-data": "blocked",
         "create-queries": "no",
