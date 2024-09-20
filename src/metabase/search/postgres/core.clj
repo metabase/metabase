@@ -103,14 +103,42 @@
                  (update :updated_at parse-datetime)
                  (update :last_edited_at parse-datetime)))))
 
+;; filters:
+;; - the obvious ones in the ui
+;; - db-id
+;; - personal collection (include / exclude), including sub
+
+(defn- minimal-with-perms
+  "Search via index, and return potentially stale information, without applying filters,
+  but applying permissions. Does not perform ranking."
+  [search-term & {:as search-ctx}]
+  (when-not @#'search.index/initialized?
+    (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
+                    {:search-engine :postgres})))
+  (->> (search.impl/add-collection-join-and-where-clauses
+        (assoc (search.index/search-query search-term)
+               :select [:legacy_input])
+        ;; we just need this to not be "collection"
+        "__search_index__"
+        search-ctx)
+       (t2/query)
+       (map :legacy_input)
+       (map #(json/parse-string % keyword))
+       (filter (partial #'search.impl/check-permissions-for-model search-ctx))
+       (map #(-> %
+                 (update :created_at parse-datetime)
+                 (update :updated_at parse-datetime)
+                 (update :last_edited_at parse-datetime)))))
+
 (def ^:private default-engine hybrid-multi)
 
 (defn- search-fn [search-engine]
   (case search-engine
-    :hybrid       hybrid
-    :hubrid-multi hybrid-multi
-    :minimal      minimal
-    :fulltext     default-engine
+    :hybrid             hybrid
+    :hubrid-multi       hybrid-multi
+    :minimal            minimal
+    :minimal-with-perms minimal-with-perms
+    :fulltext           default-engine
     default-engine))
 
 (defn search

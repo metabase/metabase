@@ -113,21 +113,21 @@
   [honeysql-query                                :- ms/Map
    model                                         :- :string
    {:keys [filter-items-in-personal-collection
-           archived
+           archived?
            current-user-id
            is-superuser?]} :- SearchContext]
   (let [collection-id-col        (if (= model "collection")
                                    :collection.id
                                    :collection_id)
         collection-filter-clause (collection/visible-collection-filter-clause
-                                  collection-id-col
-                                  {:include-archived-items :all
-                                   :include-trash-collection? true
-                                   :permission-level (if archived
-                                                       :write
-                                                       :read)}
-                                  {:current-user-id current-user-id
-                                   :is-superuser?   is-superuser?})]
+                                    collection-id-col
+                                    {:include-archived-items :all
+                                     :include-trash-collection? true
+                                     :permission-level (if archived?
+                                                         :write
+                                                         :read)}
+                                    {:current-user-id current-user-id
+                                     :is-superuser?   is-superuser?})]
     (cond-> honeysql-query
       true
       (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
