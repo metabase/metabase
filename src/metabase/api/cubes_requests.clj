@@ -29,36 +29,40 @@
 
 (api/defendpoint POST "/"
   "Create a new cube request."
-  [:as {{:keys [description user admin_user verified_status in_semantic_layer requested_fields]} :body}]
+  [:as {{:keys [description user admin_user verified_status in_semantic_layer requested_fields name type category]} :body}]
   {description ms/NonBlankString
    user        ms/NonBlankString
    admin_user  [:maybe ms/NonBlankString]
    verified_status :boolean
    in_semantic_layer :boolean
-   requested_fields [:maybe [:sequential ms/NonBlankString]]} ;; Ensure this is still an array of strings
+   requested_fields [:maybe [:sequential ms/NonBlankString]]
+   name        [:maybe ms/NonBlankString]
+   type        [:maybe ms/NonBlankString]
+   category    [:maybe ms/NonBlankString]}
   (let [cubes-request-data {:description     description
                             :user            user
                             :admin_user      admin_user
                             :verified_status verified_status
                             :in_semantic_layer in_semantic_layer
-                            :requested_fields (into-array String requested_fields)}] ;; Ensure array format
+                            :requested_fields (into-array String requested_fields)
+                            :name            name
+                            :type            type
+                            :category        category}]
     (t2/with-transaction [_conn]
       (let [cubes-request (api/check-500 (t2/insert! :cubes_requests cubes-request-data))]  ;; Insert without specifying "id"
         cubes-request))))
-
-
 
 (derive :event/cubes_requests-update :metabase/event)
 
 (defn- write-check-and-update-cubes-request!
   "Check whether the current user has write permissions, then update `CubesRequest` fields."
-  [id {:keys [description user admin_user verified_status in_semantic_layer], :as body}]
+  [id {:keys [description user admin_user verified_status in_semantic_layer name type category], :as body}]
   ;; Logging incoming and existing data for debugging
   (println "Incoming body for update:" body)
 
   (let [existing   (api/write-check CubesRequest id)  ;; Check write permissions
         selected-fields (u/select-keys-when body       ;; Select fields to update
-                           :present #{:description :user :admin_user :verified_status :in_semantic_layer})
+                           :present #{:description :user :admin_user :verified_status :in_semantic_layer :name :type :category})
         changes    (when-not (= selected-fields existing)  ;; Check if there are changes to apply
                      selected-fields)]
 
@@ -79,15 +83,17 @@
 
 (api/defendpoint PUT "/:id"
   "Update fields of a `CubesRequest` with ID."
-  [id :as {{:keys [description user admin_user verified_status in_semantic_layer requested_fields], :as body} :body}]
+  [id :as {{:keys [description user admin_user verified_status in_semantic_layer requested_fields name type category], :as body} :body}]
   {id                ms/PositiveInt
    description       [:maybe ms/NonBlankString]
    user              [:maybe ms/NonBlankString]
    admin_user        [:maybe ms/NonBlankString]
    verified_status   [:maybe :boolean]
    in_semantic_layer [:maybe :boolean]
-   requested_fields  [:maybe [:sequential ms/NonBlankString]]} ;; New array of strings, can be nil
+   requested_fields  [:maybe [:sequential ms/NonBlankString]]
+   name              [:maybe ms/NonBlankString]
+   type              [:maybe ms/NonBlankString]
+   category          [:maybe ms/NonBlankString]}
   (write-check-and-update-cubes-request! id body))
-
 
 (api/define-routes)
