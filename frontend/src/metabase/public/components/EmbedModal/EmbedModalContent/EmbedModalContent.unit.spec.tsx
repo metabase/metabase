@@ -46,7 +46,10 @@ describe("EmbedModalContent", () => {
 
       expect(
         screen.getByRole("link", { name: /Embedded analytics SDK/ }),
-      ).toHaveAttribute("href", "https://metaba.se/sdk");
+      ).toHaveAttribute(
+        "href",
+        "https://metaba.se/sdk?utm_source=product&source_plan=oss&utm_content=embed-modal",
+      );
     });
   });
 });
