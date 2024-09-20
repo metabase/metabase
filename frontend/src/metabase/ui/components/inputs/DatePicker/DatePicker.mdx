@@ -1,7 +1,8 @@
 import { Fragment } from "react";
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { DatePicker, Box } from "metabase/ui";
 import { SdkVisualizationWrapper } from "__support__/storybook";
+import * as DatePickerStories from './DatePicker.stories';
 
 export const args = {
   type: "default",
@@ -32,12 +33,7 @@ export const argTypes = {
   },
 };
 
-<Meta
-  title="Inputs/DatePicker"
-  component={DatePicker}
-  args={args}
-  argTypes={argTypes}
-/>
+<Meta of={DatePickerStories} />
 
 # DatePicker
 
@@ -45,8 +41,8 @@ Our themed wrapper around [Mantine DatePicker](https://v6.mantine.dev/dates/date
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/cncRbkG7XJQs144EG9r9hM/Date-Picker?type=design&node-id=0-1&mode=design&t=v00tLhbD9OFEgy25-0)
-- [Mantine DatePicker Docs](https://v6.mantine.dev/dates/date-picker/)
+*   [Figma File](https://www.figma.com/file/cncRbkG7XJQs144EG9r9hM/Date-Picker?type=design\&node-id=0-1\&mode=design\&t=v00tLhbD9OFEgy25-0)
+*   [Mantine DatePicker Docs](https://v6.mantine.dev/dates/date-picker/)
 
 ## Examples
 
@@ -55,61 +51,38 @@ export const DefaultTemplate = args => {
 };
 
 export const Default = DefaultTemplate.bind({});
-Default.args = {
-  defaultDate: sampleArgs.date1,
-};
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={DatePickerStories.Default_} />
 </Canvas>
 
 ### Allow deselect
 
 export const AllowDeselect = DefaultTemplate.bind({});
-AllowDeselect.args = {
-  allowDeselect: true,
-  defaultDate: sampleArgs.date1,
-  defaultValue: sampleArgs.date1,
-};
 
 <Canvas>
-  <Story name="Allow deselect">{AllowDeselect}</Story>
+  <Story of={DatePickerStories.AllowDeselect_} />
 </Canvas>
 
 ### Multiple dates
 
 export const MultipleDates = DefaultTemplate.bind({});
-MultipleDates.args = {
-  type: "multiple",
-  defaultValue: [sampleArgs.date1, sampleArgs.date2],
-  defaultDate: sampleArgs.date1,
-};
 
 <Canvas>
-  <Story name="Multiple dates">{MultipleDates}</Story>
+  <Story of={DatePickerStories.MultipleDates_} />
 </Canvas>
 
 ### Dates range
 
 export const DatesRange = DefaultTemplate.bind({});
-DatesRange.args = {
-  type: "range",
-  defaultValue: [sampleArgs.date1, sampleArgs.date2],
-  defaultDate: sampleArgs.date1,
-};
 
 <Canvas>
-  <Story name="Dates range">{DatesRange}</Story>
+  <Story of={DatePickerStories.DatesRange_} />
 </Canvas>
 
 ### Dates range (SDK theme)
 
 export const DatesRangeSdk = DefaultTemplate.bind({});
-DatesRangeSdk.args = {
-  type: "range",
-  defaultValue: [sampleArgs.date1, sampleArgs.date2],
-  defaultDate: sampleArgs.date1,
-};
 
 export const theme = {
   colors: {
@@ -125,39 +98,21 @@ export const theme = {
 };
 
 <Canvas>
-  <Story name="Dates range SDK">
-    <SdkVisualizationWrapper theme={theme}>
-      <Box bg="background">
-        <DatesRangeSdk {...DatesRangeSdk.args} />
-      </Box>
-    </SdkVisualizationWrapper>
-  </Story>
+  <Story of={DatePickerStories.DatesRangeSdk_} />
 </Canvas>
 
 ### Single date in range
 
 export const SingleDateInRange = DefaultTemplate.bind({});
-SingleDateInRange.args = {
-  type: "range",
-  defaultValue: [sampleArgs.date1, sampleArgs.date1],
-  defaultDate: sampleArgs.date1,
-  allowSingleDateInRange: true,
-};
 
 <Canvas>
-  <Story name="Single date in range">{SingleDateInRange}</Story>
+  <Story of={DatePickerStories.SingleDateInRange_} />
 </Canvas>
 
 ### Number of columns
 
 export const NumberOfColumns = DefaultTemplate.bind({});
-NumberOfColumns.args = {
-  type: "range",
-  defaultValue: [sampleArgs.date1, sampleArgs.date3],
-  defaultDate: sampleArgs.date1,
-  numberOfColumns: 2,
-};
 
 <Canvas>
-  <Story name="Number of columns">{NumberOfColumns}</Story>
+  <Story of={DatePickerStories.NumberOfColumns_} />
 </Canvas>
