@@ -158,8 +158,8 @@ To run Snowplow locally use the following commands:
 
 ```
 docker-compose -f ./snowplow/docker-compose.yml up -d
-MB_SNOWPLOW_AVAILABLE=true
-MB_SNOWPLOW_URL=http://localhost:9090
+export MB_SNOWPLOW_AVAILABLE=true
+export MB_SNOWPLOW_URL=http://localhost:9090
 ```
 
 1. You can use `describeWithSnowplow` (or `describeWithSnowplowEE` for EE edition) method to define tests that only run when a Snowplow instance is running
