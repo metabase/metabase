@@ -32,7 +32,7 @@
 
 ;;; ----------------------------------------------- CRUD Operations --------------------------------------------------
 
-(defn- assert-valid-cubes-request [{:keys [description user admin_user verified_status in_semantic_layer requested_fields]}]
+(defn- assert-valid-cubes-request [{:keys [description user admin_user verified_status in_semantic_layer requested_fields name type category]}]
   (when-not (mc/validate ms/NonBlankString description)
     (throw (ex-info (tru "Description must be a non-blank string.") {:description description})))
   (when-not (mc/validate ms/NonBlankString user)
@@ -43,6 +43,12 @@
     (throw (ex-info (tru "Verified Status must be a boolean.") {:verified_status verified_status})))
   (when-not (mc/validate :boolean in_semantic_layer)
     (throw (ex-info (tru "In Semantic Layer must be a boolean.") {:in_semantic_layer in_semantic_layer})))
+  (when-not (mc/validate [:maybe ms/NonBlankString] name)
+    (throw (ex-info (tru "Name must be a non-blank string.") {:name name})))
+  (when-not (mc/validate [:maybe ms/NonBlankString] type)
+    (throw (ex-info (tru "Type must be a non-blank string.") {:type type})))
+  (when-not (mc/validate [:maybe ms/NonBlankString] category)
+    (throw (ex-info (tru "Category must be a non-blank string.") {:category category})))
   ;; Validate requested_fields if present
   (when-not (mc/validate [:maybe [:sequential ms/NonBlankString]] requested_fields)
     (throw (ex-info (tru "Requested Fields must be an array of non-blank strings.") {:requested_fields requested_fields}))))
@@ -100,7 +106,10 @@
                           [:admin_user [:maybe ms/NonBlankString]]
                           [:verified_status :boolean]
                           [:in_semantic_layer :boolean]
-                          [:requested_fields [:maybe [:sequential ms/NonBlankString]]]]] ;; New column
+                          [:requested_fields [:maybe [:sequential ms/NonBlankString]]]
+                          [:name [:maybe ms/NonBlankString]]
+                          [:type [:maybe ms/NonBlankString]]
+                          [:category [:maybe ms/NonBlankString]]]]  ;; New columns added
   (t2/with-transaction [_conn]
     (t2/insert-returning-instances! CubesRequest cubes_request_data)))
 
@@ -112,7 +121,10 @@
                                                              [:admin_user [:maybe ms/NonBlankString]]
                                                              [:verified_status [:maybe :boolean]]
                                                              [:in_semantic_layer [:maybe :boolean]]
-                                                             [:requested_fields [:maybe [:sequential ms/NonBlankString]]]]] ;; New column
+                                                             [:requested_fields [:maybe [:sequential ms/NonBlankString]]]
+                                                             [:name [:maybe ms/NonBlankString]]
+                                                             [:type [:maybe ms/NonBlankString]]
+                                                             [:category [:maybe ms/NonBlankString]]]]  ;; New columns
   (t2/with-transaction [_conn]
     (t2/update! CubesRequest cubes_request-id cubes_request_data)
     (retrieve-cubes-request-detail cubes_request-id)))
