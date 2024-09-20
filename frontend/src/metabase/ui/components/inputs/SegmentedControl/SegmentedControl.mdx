@@ -1,6 +1,7 @@
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { SegmentedControl, Box, Center } from "metabase/ui";
 import { Icon } from "metabase/ui";
+import * as SegmentedControlStories from './SegmentedControl.stories';
 
 export const args = {
   data: [
@@ -26,11 +27,7 @@ export const args = {
   fullWidth: false,
 };
 
-<Meta
-  title="Inputs/SegmentedControl"
-  component={SegmentedControl}
-  args={args}
-/>
+<Meta of={SegmentedControlStories} />
 
 # SegmentedControl
 
@@ -38,7 +35,7 @@ Our themed wrapper around [Mantine SegmentedControl](https://mantine.dev/core/se
 
 ## Docs
 
-- [Mantine SegmentedControl Docs](https://mantine.dev/core/segmented-control/)
+*   [Mantine SegmentedControl Docs](https://mantine.dev/core/segmented-control/)
 
 ## Examples
 
@@ -47,30 +44,13 @@ export const DefaultTemplate = args => <SegmentedControl {...args} />;
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={SegmentedControlStories.Default_} />
 </Canvas>
 
 ### Full width
 
 export const FullWidth = DefaultTemplate.bind({});
-FullWidth.args = {
-  data: [
-    {
-      label: "Light",
-      value: "light",
-    },
-    {
-      label: "Dark",
-      value: "dark",
-    },
-    {
-      label: "Transparent",
-      value: "transparent",
-    },
-  ],
-  fullWidth: true,
-};
 
 <Canvas>
-  <Story name="Full width">{FullWidth}</Story>
+  <Story of={SegmentedControlStories.FullWidth_} />
 </Canvas>
