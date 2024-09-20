@@ -24,7 +24,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (com.google.cloud.bigquery BigQuery DatasetId TableResult)))
+   (com.google.cloud.bigquery BigQuery TableResult)))
 
 (set! *warn-on-reflection* true)
 
@@ -330,32 +330,32 @@
                   :base-type :type/Dictionary,
                   :database-position 2
                   :nested-fields [{:name "a",
-                                    :database-type "INTEGER",
-                                    :base-type :type/Integer,
-                                    :database-position 2,
-                                    :nfc-path ["r"]}
-                                   {:name "b",
-                                    :database-type "STRING",
-                                    :base-type :type/Text,
-                                    :database-position 2,
-                                    :nfc-path ["r"]}
-                                   {:name "rr",
-                                    :database-type "RECORD",
-                                    :base-type :type/Dictionary,
-                                    :database-position 2,
-                                    :nfc-path ["r"],
-                                    :nested-fields
-                                    [{:name "aa",
-                                      :database-type "INTEGER",
-                                      :base-type :type/Integer,
-                                      :database-position 2,
-                                      :nfc-path ["r" "rr"]}]}]}]
+                                   :database-type "INTEGER",
+                                   :base-type :type/Integer,
+                                   :database-position 2,
+                                   :nfc-path ["r"]}
+                                  {:name "b",
+                                   :database-type "STRING",
+                                   :base-type :type/Text,
+                                   :database-position 2,
+                                   :nfc-path ["r"]}
+                                  {:name "rr",
+                                   :database-type "RECORD",
+                                   :base-type :type/Dictionary,
+                                   :database-position 2,
+                                   :nfc-path ["r"],
+                                   :nested-fields
+                                   [{:name "aa",
+                                     :database-type "INTEGER",
+                                     :base-type :type/Integer,
+                                     :database-position 2,
+                                     :nfc-path ["r" "rr"]}]}]}]
                 (walk/postwalk
-                  (fn [n]
-                    (if (set? n)
-                      (sort-by :name n)
-                      n))
-                  (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [table]}))))))))
+                 (fn [n]
+                   (if (set? n)
+                     (sort-by :name n)
+                     n))
+                 (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [(:name table)]}))))))))
 
 (deftest query-nested-fields-test
   (mt/test-driver
@@ -776,12 +776,10 @@
                                     tbl-nm])
                       (fn [tbl-nm] ["DROP TABLE IF EXISTS `%s.%s`" test-db-name tbl-nm])
                       (fn [tbl-nm]
-                        (is (= {:schema test-db-name
-                                :name   tbl-nm
-                                :fields #{{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false}
-                                          {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false}}}
-                               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm :schema test-db-name}))
-                            "`describe-table` should detect the correct base-type for array type columns")))))
+                        (is (= [{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
+                                {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}]
+                               (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
+                            "`describe-fields` should detect the correct base-type for array type columns")))))
 
 (deftest sync-inactivates-old-duplicate-tables
   (testing "If on the new driver, then downgrade, then upgrade again (#21981)"
@@ -964,11 +962,10 @@
         (mt/db) ;; force the creation of another test dataset
         (let [;; This test is implemented in this way to avoid having to create new datasets, and to avoid
               ;; syncing most of the tables in the test DB.
-              datasets (#'bigquery/list-datasets (-> (mt/db)
-                                                     :details
-                                                     (dissoc :dataset-filters-type
-                                                             :dataset-filters-patterns)))
-              dataset-ids (map #(.getDataset ^DatasetId %) datasets)
+              dataset-ids (#'bigquery/list-datasets (-> (mt/db)
+                                                        :details
+                                                        (dissoc :dataset-filters-type
+                                                                :dataset-filters-patterns)))
               ;; get the first 4 characters of each dataset-id. The first 4 characters are used because the first 3 are
               ;; often used for bigquery dataset names e.g. `v4_test_data`
               prefixes (->> dataset-ids

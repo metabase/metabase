@@ -32,7 +32,7 @@
    (clojure.lang PersistentList)
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
                               BigQuery$TableOption BigQueryException BigQueryOptions Dataset
-                              DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema
+                              Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema
                               Table TableDefinition$Type TableId TableResult)
    (java.util Iterator)))
 
@@ -135,10 +135,10 @@
         inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
         exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)]
     (for [^Dataset dataset (.iterateAll datasets)
-          :let [^DatasetId dataset-id (.. dataset getDatasetId)]
+          :let [dataset-id (.. dataset getDatasetId getDataset)]
           :when (driver.s/include-schema? inclusion-patterns
                                           exclusion-patterns
-                                          (.getDataset dataset-id))]
+                                          dataset-id)]
       dataset-id)))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
@@ -179,35 +179,34 @@
 (defn- describe-database-tables
   [database]
   (set
-    (for [^DatasetId dataset (list-datasets (:details database))
-          :let [project-id (get-project-id (:details database))
-                dataset-id (.getDataset dataset)
-                [_cols results] (*process-native*
-                                  (fn [cols results]
-                                    [cols (reduce conj [] results)])
-                                  database
-                                  (format "select t.table_name, t.table_type,
+   (for [dataset-id (list-datasets (:details database))
+         :let [project-id (get-project-id (:details database))
+               [_cols results] (*process-native*
+                                (fn [cols results]
+                                  [cols (reduce conj [] results)])
+                                database
+                                (format "select t.table_name, t.table_type,
                                            (select o.OPTION_VALUE = 'true' from `%s.%s.INFORMATION_SCHEMA.TABLE_OPTIONS` o
                                              where o.table_name = t.table_name
                                              and o.OPTION_NAME = 'require_partition_filter') as require_partition_filter
                                            from `%s.%s.INFORMATION_SCHEMA.TABLES` t"
-                                          project-id
-                                          dataset-id
-                                          project-id
-                                          dataset-id)
-                                  nil
-                                  nil)]
-          [table-name table-type require-partition-filter] results]
-      {:schema dataset-id
-       :name table-name
-       :database_require_filter
-       (boolean (and
+                                        project-id
+                                        dataset-id
+                                        project-id
+                                        dataset-id)
+                                nil
+                                nil)]
+         [table-name table-type require-partition-filter] results]
+     {:schema dataset-id
+      :name table-name
+      :database_require_filter
+      (boolean (and
                   ;; Materialiezed views can be partitioned, and whether the view require a filter or not is based
                   ;; on the base table it selects from, without parsing the view query we can't find out the base table,
                   ;; thus we can't know whether the view require a filter or not.
                   ;; Maybe this is something we can do once we can parse sql
-                  (= "BASE TABLE" table-type)
-                  require-partition-filter))})))
+                (= "BASE TABLE" table-type)
+                require-partition-filter))})))
 
 (defmethod driver/describe-database :bigquery-cloud-sdk
   [_ database]
@@ -304,115 +303,114 @@
 (defn- build-nested-column-lookup
   [driver database project-id dataset-id table-names]
   (let [[sql & params] (sql.qp/format-honeysql
-                         driver
-                         (cond->
-                           {:select [:table_name :column_name :data_type :field_path]
-                            :from [[(-> (h2x/identifier :table (str project-id "." dataset-id ".INFORMATION_SCHEMA.COLUMN_FIELD_PATHS"))
-                                        (vary-meta assoc ::bigquery.qp/do-not-qualify? true)) :c]]}
-                           (not-empty table-names)
-                           (assoc :where [:in :table_name table-names])))
+                        driver
+                        (cond->
+                         {:select [:table_name :column_name :data_type :field_path]
+                          :from [[(-> (h2x/identifier :table (str project-id "." dataset-id ".INFORMATION_SCHEMA.COLUMN_FIELD_PATHS"))
+                                      (vary-meta assoc ::bigquery.qp/do-not-qualify? true)) :c]]}
+                          (not-empty table-names)
+                          (assoc :where [:in :table_name table-names])))
         [nested-cols nested-rows] (*process-native*
-                                    (fn [cols results]
-                                      [cols (reduce conj [] results)])
-                                    database
-                                    sql
-                                    params
-                                    nil)
+                                   (fn [cols results]
+                                     [cols (reduce conj [] results)])
+                                   database
+                                   sql
+                                   params
+                                   nil)
         nested-column-names (map (comp keyword :name) (:cols nested-cols))
         nested-columns (into #{}
                              (comp
-                               (map #(zipmap nested-column-names %1))
-                               (map (fn [{data-type :data_type field-path :field_path table-name :table_name}]
-                                      (let [nfc-path (str/split field-path #"\.")]
-                                        {:name (peek nfc-path)
-                                         :table-name table-name
-                                         :table-schema dataset-id
-                                         :database-type (raw-data-type->database-type data-type)
-                                         :base-type (database-type->base-type data-type)
-                                         :nfc-path (not-empty (pop nfc-path))}))))
+                              (map #(zipmap nested-column-names %1))
+                              (map (fn [{data-type :data_type field-path :field_path table-name :table_name}]
+                                     (let [nfc-path (str/split field-path #"\.")]
+                                       {:name (peek nfc-path)
+                                        :table-name table-name
+                                        :table-schema dataset-id
+                                        :database-type (raw-data-type->database-type data-type)
+                                        :base-type (database-type->base-type data-type)
+                                        :nfc-path (not-empty (pop nfc-path))}))))
                              nested-rows)]
     (reduce
-      (fn [accum col]
-        (when-let [parent (:nfc-path col)]
-          (update-in accum [(:table-name col) parent] (fnil conj []) col)))
-      {}
-      (sort-by (comp count :nfc-path) nested-columns))))
+     (fn [accum col]
+       (when-let [parent (:nfc-path col)]
+         (update-in accum [(:table-name col) parent] (fnil conj []) col)))
+     {}
+     (sort-by (comp count :nfc-path) nested-columns))))
 
 (defmethod driver/describe-fields :bigquery-cloud-sdk
   [driver database & {:keys [schema-names table-names]}]
   (let [project-id (get-project-id (:details database))
-        datasets (or schema-names
-                     (list-datasets (:details database)))]
+        dataset-ids (or schema-names
+                        (list-datasets (:details database)))]
     (sort-by
-      (juxt :table-schema :table-name :database-position :name)
-      (into
-        []
-        (mapcat
-          (fn [dataset-id]
-            (let [[sql & params] (sql.qp/format-honeysql
-                                   driver
-                                   (cond->
-                                     {:select [:table_name :column_name :data_type :ordinal_position
-                                               [[:= :is_partitioning_column "YES"] :partitioned]]
-                                      :from [[(-> (h2x/identifier :table (str project-id "." dataset-id ".INFORMATION_SCHEMA.COLUMNS"))
-                                                  (vary-meta assoc ::bigquery.qp/do-not-qualify? true)) :c]]}
-                                     (not-empty table-names)
-                                     (assoc :where [:in :table_name table-names])))
-                  [cols rows] (*process-native*
-                                (fn [cols results]
-                                  [cols (reduce conj [] results)])
-                                database
-                                sql
-                                params
-                                nil)
-                  column-names (map (comp keyword :name) (:cols cols))
-                  named-rows (into [] (map #(zipmap column-names %1)) rows)
-                  nested-column-lookup (build-nested-column-lookup driver database project-id dataset-id table-names)
-                  maybe-add-nested-fields (fn maybe-add-nested-fields [col nfc-path root-database-position]
-                                            (let [new-path ((fnil conj []) nfc-path (:name col))
-                                                  nested-fields (get-in nested-column-lookup [(:table-name col) new-path])]
-                                              (cond-> (assoc col :database-position root-database-position)
-                                                nested-fields
-                                                (assoc :nested-fields (into #{}
-                                                                            (map #(maybe-add-nested-fields % new-path root-database-position))
-                                                                            nested-fields)))))
-                  max-position-per-table (reduce
-                                           (fn [accum {table-name :table_name pos :ordinal_position}]
-                                             (if (> (or pos 0) (get accum table-name -1))
-                                               (assoc accum table-name (or pos 0))
-                                               accum
-                                               ))
-                                           {}
-                                           named-rows)]
-              (into #{}
-                    (comp
-                      (mapcat (fn [{column-name :column_name
-                                    data-type :data_type
-                                    database-position :ordinal_position
-                                    partitioned? :partitioned
-                                    table-name :table_name}]
-                                (let [database-position (or (some-> database-position dec)
-                                                            (get max-position-per-table table-name 0))]
-                                  (cond-> [(maybe-add-nested-fields
-                                             {:name column-name
-                                              :table-name table-name
-                                              :table-schema dataset-id
-                                              :database-type (raw-data-type->database-type data-type)
-                                              :base-type (database-type->base-type data-type)
-                                              :database-partitioned partitioned?
-                                              :database-position database-position}
-                                             nil
-                                             database-position)]
-                                    (= column-name partitioned-time-field-name)
-                                    (conj {:name                 partitioned-date-field-name
-                                           :table-name table-name
-                                           :table-schema dataset-id
-                                           :database-type        "DATE"
-                                           :base-type            (bigquery-type->base-type nil "DATE")
-                                           :database-position    (inc database-position)
-                                           :database-partitioned true}))))))
-                    named-rows))))
-        datasets))))
+     (juxt :table-schema :table-name :database-position :name)
+     (into
+      []
+      (mapcat
+       (fn [dataset-id]
+         (let [[sql & params] (sql.qp/format-honeysql
+                               driver
+                               (cond->
+                                {:select [:table_name :column_name :data_type :ordinal_position
+                                          [[:= :is_partitioning_column "YES"] :partitioned]]
+                                 :from [[(-> (h2x/identifier :table (str project-id "." dataset-id ".INFORMATION_SCHEMA.COLUMNS"))
+                                             (vary-meta assoc ::bigquery.qp/do-not-qualify? true)) :c]]}
+                                 (not-empty table-names)
+                                 (assoc :where [:in :table_name table-names])))
+               [cols rows] (*process-native*
+                            (fn [cols results]
+                              [cols (reduce conj [] results)])
+                            database
+                            sql
+                            params
+                            nil)
+               column-names (map (comp keyword :name) (:cols cols))
+               named-rows (into [] (map #(zipmap column-names %1)) rows)
+               nested-column-lookup (build-nested-column-lookup driver database project-id dataset-id table-names)
+               maybe-add-nested-fields (fn maybe-add-nested-fields [col nfc-path root-database-position]
+                                         (let [new-path ((fnil conj []) nfc-path (:name col))
+                                               nested-fields (get-in nested-column-lookup [(:table-name col) new-path])]
+                                           (cond-> (assoc col :database-position root-database-position)
+                                             nested-fields
+                                             (assoc :nested-fields (into #{}
+                                                                         (map #(maybe-add-nested-fields % new-path root-database-position))
+                                                                         nested-fields)))))
+               max-position-per-table (reduce
+                                       (fn [accum {table-name :table_name pos :ordinal_position}]
+                                         (if (> (or pos 0) (get accum table-name -1))
+                                           (assoc accum table-name (or pos 0))
+                                           accum))
+                                       {}
+                                       named-rows)]
+           (into #{}
+                 (comp
+                  (mapcat (fn [{column-name :column_name
+                                data-type :data_type
+                                database-position :ordinal_position
+                                partitioned? :partitioned
+                                table-name :table_name}]
+                            (let [database-position (or (some-> database-position dec)
+                                                        (get max-position-per-table table-name 0))]
+                              (cond-> [(maybe-add-nested-fields
+                                        {:name column-name
+                                         :table-name table-name
+                                         :table-schema dataset-id
+                                         :database-type (raw-data-type->database-type data-type)
+                                         :base-type (database-type->base-type data-type)
+                                         :database-partitioned partitioned?
+                                         :database-position database-position}
+                                        nil
+                                        database-position)]
+                                (= column-name partitioned-time-field-name)
+                                (conj {:name                 partitioned-date-field-name
+                                       :table-name table-name
+                                       :table-schema dataset-id
+                                       :database-type        "DATE"
+                                       :base-type            (bigquery-type->base-type nil "DATE")
+                                       :database-position    (inc database-position)
+                                       :database-partitioned true}))))))
+                 named-rows))))
+      dataset-ids))))
 
 (defn- get-field-parsers [^Schema schema]
   (let [default-parser (get-method bigquery.qp/parse-result-of-type :default)]
