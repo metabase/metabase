@@ -242,7 +242,7 @@
     "BIGNUMERIC" :type/Decimal
     :type/*))
 
-(defn- field->base+database-type
+(defn- field->database+base-type
   "Returns a normalized `database-type` and its `base-type` for a type from BigQuery Field type.
 
    In BQ, an ARRAY of INTEGER has \"REPEATED\" as the mode, and \"INTEGER\" as the type name."
@@ -254,7 +254,7 @@
                         field-type)]
     [database-type (database-type->base-type database-type)]))
 
-(defn- raw-type->base+database-type
+(defn- raw-type->database+base-type
   "Returns a normalized `database-type` and its `base-type` for a type from `INFORMATION_SCHEMA.COLUMNS.data_type`."
   [raw-data-type]
   (let [database-type (cond
@@ -276,7 +276,7 @@
      (fn [[idx ^Field field]]
        (let [database-position (or database-position idx)
              field-name (.getName field)
-             [base-type database-type] (field->base+database-type field)]
+             [database-type base-type] (field->database+base-type field)]
          (into
           (cond-> {:name              field-name
                    :database-type     database-type
@@ -314,7 +314,7 @@
         nested-columns (map (fn [{data-type :data_type field-path-str :field_path table-name :table_name}]
                               (let [field-path (str/split field-path-str #"\.")
                                     nfc-path (not-empty (pop field-path))
-                                    [database-type base-type] (raw-type->base+database-type data-type)]
+                                    [database-type base-type] (raw-type->database+base-type data-type)]
                                 {:name (peek field-path)
                                  :table-name table-name
                                  :table-schema dataset-id
@@ -363,7 +363,7 @@
                   table-name :table_name}]
               (let [database-position (or (some-> database-position dec)
                                           (get max-position-per-table table-name 0))
-                    [database-type base-type] (raw-type->base+database-type data-type)]
+                    [database-type base-type] (raw-type->database+base-type data-type)]
                 (cond-> [(maybe-add-nested-fields
                           {:name column-name
                            :table-name table-name
