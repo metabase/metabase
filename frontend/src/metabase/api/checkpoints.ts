@@ -4,11 +4,11 @@ import { Api } from "./api";
 // Update the API configuration
 export const checkpointsApi = Api.injectEndpoints({
   endpoints: builder => ({
-    listCheckpoints: builder.query<any, void>({
-      // Specify `void` to indicate no arguments
-      query: () => ({
+    listCheckpoints: builder.query<any, { offset: number; limit: number }>({
+      query: ({ offset, limit }) => ({
         method: "GET",
         url: `/api/checkpoints`,
+        params: { offset, limit },
       }),
       providesTags: (checkpoints = []) => provideCheckpointsTags(checkpoints),
     }),

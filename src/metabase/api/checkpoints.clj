@@ -9,10 +9,17 @@
 (set! *warn-on-reflection* true)
 
 (api/defendpoint GET "/"
-  "Get all rows from the `postcheckpoints` table."
-  []
-  (->> (t2/select :postcheckpoints)  ;; Correctly reference the table directly
-       (into [])))
+  "Get paginated rows from the `postcheckpoints` table."
+  [offset limit]
+  {offset [:maybe ms/PositiveInt]
+   limit  [:maybe ms/PositiveInt]}
+  (let [default-limit 30
+        offset (or offset 0)
+        limit  (or limit default-limit)]
+    (->> (t2/select :postcheckpoints
+                     {:limit limit
+                      :offset offset})
+         (into []))))
 
 (api/defendpoint GET "/:id"
   "Get a single row from the `postcheckpoints` table by ID."
@@ -24,5 +31,4 @@
       (t2/hydrate result :db)
       result)))
 
-  
 (api/define-routes)
