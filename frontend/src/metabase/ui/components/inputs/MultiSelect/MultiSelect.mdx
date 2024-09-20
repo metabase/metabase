@@ -1,5 +1,6 @@
-import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Canvas, Story, Meta } from "@storybook/blocks";
 import { MultiSelect, Stack } from "metabase/ui";
+import * as MultiSelectStories from './MultiSelect.stories';
 
 export const dataWithGroupsLarge = [
   { value: "10", label: "Entity key", icon: "label", group: "Overall row" },
@@ -103,12 +104,7 @@ export const argTypes = {
   },
 };
 
-<Meta
-  title="Inputs/MultiSelect"
-  component={MultiSelect}
-  args={args}
-  argTypes={argTypes}
-/>
+<Meta of={MultiSelectStories} />
 
 # MultiSelect
 
@@ -116,8 +112,8 @@ Our themed wrapper around [Mantine MultiSelect](https://v6.mantine.dev/core/mult
 
 ## Docs
 
-- [Figma File](https://www.figma.com/file/21uCY0czmCfb6QBjRce0I8/Input-%2F-MultiSelect?type=design&node-id=1-96&mode=design&t=Mk8RP6HsneuWzHtr-0)
-- [Mantine MultiSelect Docs](https://v6.mantine.dev/core/multiselect/)
+*   [Figma File](https://www.figma.com/file/21uCY0czmCfb6QBjRce0I8/Input-%2F-MultiSelect?type=design\&node-id=1-96\&mode=design\&t=Mk8RP6HsneuWzHtr-0)
+*   [Mantine MultiSelect Docs](https://v6.mantine.dev/core/multiselect/)
 
 ## Examples
 
@@ -133,7 +129,7 @@ export const VariantTemplate = args => (
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
-  <Story name="Default">{Default}</Story>
+  <Story of={MultiSelectStories.Default_} />
 </Canvas>
 
 ### Size - md
@@ -141,294 +137,189 @@ export const Default = DefaultTemplate.bind({});
 export const EmptyMd = VariantTemplate.bind({});
 
 <Canvas>
-  <Story name="Empty, md">{EmptyMd}</Story>
+  <Story of={MultiSelectStories.EmptyMd_} />
 </Canvas>
 
 #### Asterisk
 
 export const AsteriskMd = VariantTemplate.bind({});
-AsteriskMd.args = {
-  withAsterisk: true,
-};
 
 <Canvas>
-  <Story name="Asterisk, md">{AsteriskMd}</Story>
+  <Story of={MultiSelectStories.AsteriskMd_} />
 </Canvas>
 
 #### Clearable
 
 export const ClearableMd = VariantTemplate.bind({});
-ClearableMd.args = {
-  defaultValue: sampleArgs.value,
-  clearable: true,
-  withAsterisk: true,
-};
 
 <Canvas>
-  <Story name="Clearable, md">{ClearableMd}</Story>
+  <Story of={MultiSelectStories.ClearableMd_} />
 </Canvas>
 
 #### Description
 
 export const DescriptionMd = VariantTemplate.bind({});
-DescriptionMd.args = {
-  description: sampleArgs.description,
-  withAsterisk: true,
-};
 
 <Canvas>
-  <Story name="Description, md">{DescriptionMd}</Story>
+  <Story of={MultiSelectStories.DescriptionMd_} />
 </Canvas>
 
 #### Disabled
 
 export const DisabledMd = VariantTemplate.bind({});
-DisabledMd.args = {
-  description: sampleArgs.description,
-  disabled: true,
-  withAsterisk: true,
-};
 
 <Canvas>
-  <Story name="Disabled, md">{DisabledMd}</Story>
+  <Story of={MultiSelectStories.DisabledMd_} />
 </Canvas>
 
 #### Error
 
 export const ErrorMd = VariantTemplate.bind({});
-ErrorMd.args = {
-  description: sampleArgs.description,
-  error: sampleArgs.error,
-  withAsterisk: true,
-};
 
 <Canvas>
-  <Story name="Error, md">{ErrorMd}</Story>
+  <Story of={MultiSelectStories.ErrorMd_} />
 </Canvas>
 
 #### Read only
 
 export const ReadOnlyMd = VariantTemplate.bind({});
-ReadOnlyMd.args = {
-  defaultValue: sampleArgs.value,
-  description: sampleArgs.description,
-  readOnly: true,
-  withAsterisk: true,
-};
 
 <Canvas>
-  <Story name="Read only, md">{ReadOnlyMd}</Story>
+  <Story of={MultiSelectStories.ReadOnlyMd_} />
 </Canvas>
 
 #### Icons
 
 export const IconsMd = VariantTemplate.bind({});
-IconsMd.args = {
-  data: dataWithIcons,
-  description: sampleArgs.description,
-  withAsterisk: true,
-};
 
 <Canvas>
-  <Story name="Icons, md">{IconsMd}</Story>
+  <Story of={MultiSelectStories.IconsMd_} />
 </Canvas>
 
 #### Groups
 
 export const GroupsMd = VariantTemplate.bind({});
-GroupsMd.args = {
-  data: dataWithGroups,
-  description: sampleArgs.description,
-  withAsterisk: true,
-};
 
 <Canvas>
-  <Story name="Groups, md">{GroupsMd}</Story>
+  <Story of={MultiSelectStories.GroupsMd_} />
 </Canvas>
 
 #### Large sets
 
 export const LargeSetsMd = VariantTemplate.bind({});
-LargeSetsMd.args = {
-  data: dataWithGroupsLarge,
-  description: sampleArgs.description,
-  withAsterisk: true,
-};
 
 <Canvas>
-  <Story name="Large sets, md">{LargeSetsMd}</Story>
+  <Story of={MultiSelectStories.LargeSetsMd_} />
 </Canvas>
 
 #### Searchable
 
 export const SearchableMd = VariantTemplate.bind({});
-SearchableMd.args = {
-  data: dataWithGroupsLarge,
-  description: sampleArgs.description,
-  searchable: true,
-  withAsterisk: true,
-};
 
 <Canvas>
-  <Story name="Searchable, md">{SearchableMd}</Story>
+  <Story of={MultiSelectStories.SearchableMd_} />
 </Canvas>
 
 #### Creatable
 
 export const CreatableMd = VariantTemplate.bind({});
-CreatableMd.args = {
-  data: dataWithGroupsLarge,
-  description: sampleArgs.description,
-  getCreateLabel: query => `New ${query}`,
-  creatable: true,
-  searchable: true,
-  withAsterisk: true,
-};
 
 <Canvas>
-  <Story name="Creatable, md">{CreatableMd}</Story>
+  <Story of={MultiSelectStories.CreatableMd_} />
 </Canvas>
 
 ### Size - xs
 
 export const EmptyXs = VariantTemplate.bind({});
-EmptyXs.args = {
-  ...EmptyMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Empty, xs">{EmptyXs}</Story>
+  <Story of={MultiSelectStories.EmptyXs_} />
 </Canvas>
 
 #### Asterisk
 
 export const AsteriskXs = VariantTemplate.bind({});
-AsteriskXs.args = {
-  ...AsteriskMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Asterisk, xs">{AsteriskXs}</Story>
+  <Story of={MultiSelectStories.AsteriskXs_} />
 </Canvas>
 
 #### Clearable
 
 export const ClearableXs = VariantTemplate.bind({});
-ClearableXs.args = {
-  ...ClearableMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Clearable, xs">{ClearableXs}</Story>
+  <Story of={MultiSelectStories.ClearableXs_} />
 </Canvas>
 
 #### Description
 
 export const DescriptionXs = VariantTemplate.bind({});
-DescriptionXs.args = {
-  ...DescriptionMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Description, xs">{DescriptionXs}</Story>
+  <Story of={MultiSelectStories.DescriptionXs_} />
 </Canvas>
 
 #### Disabled
 
 export const DisabledXs = VariantTemplate.bind({});
-DisabledXs.args = {
-  ...DisabledMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Disabled, xs">{DisabledXs}</Story>
+  <Story of={MultiSelectStories.DisabledXs_} />
 </Canvas>
 
 #### Error
 
 export const ErrorXs = VariantTemplate.bind({});
-ErrorXs.args = {
-  ...ErrorMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Error, xs">{ErrorXs}</Story>
+  <Story of={MultiSelectStories.ErrorXs_} />
 </Canvas>
 
 #### Read only
 
 export const ReadOnlyXs = VariantTemplate.bind({});
-ReadOnlyXs.args = {
-  ...ReadOnlyMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Read only, xs">{ReadOnlyXs}</Story>
+  <Story of={MultiSelectStories.ReadOnlyXs_} />
 </Canvas>
 
 #### Icons
 
 export const IconsXs = VariantTemplate.bind({});
-IconsXs.args = {
-  ...IconsMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Icons, xs">{IconsXs}</Story>
+  <Story of={MultiSelectStories.IconsXs_} />
 </Canvas>
 
 #### Groups
 
 export const GroupsXs = VariantTemplate.bind({});
-GroupsXs.args = {
-  ...GroupsMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Groups, xs">{GroupsXs}</Story>
+  <Story of={MultiSelectStories.GroupsXs_} />
 </Canvas>
 
 #### Large sets
 
 export const LargeSetsXs = VariantTemplate.bind({});
-LargeSetsXs.args = {
-  ...LargeSetsMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Large sets, xs">{LargeSetsXs}</Story>
+  <Story of={MultiSelectStories.LargeSetsXs_} />
 </Canvas>
 
 #### Searchable
 
 export const SearchableXs = VariantTemplate.bind({});
-SearchableXs.args = {
-  ...SearchableMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Searchable, xs">{SearchableXs}</Story>
+  <Story of={MultiSelectStories.SearchableXs_} />
 </Canvas>
 
 #### Creatable
 
 export const CreatableXs = VariantTemplate.bind({});
-CreatableXs.args = {
-  ...CreatableMd.args,
-  size: "xs",
-};
 
 <Canvas>
-  <Story name="Creatable, xs">{CreatableXs}</Story>
+  <Story of={MultiSelectStories.CreatableXs_} />
 </Canvas>
