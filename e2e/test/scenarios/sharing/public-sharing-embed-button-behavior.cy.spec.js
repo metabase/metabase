@@ -349,7 +349,8 @@ describe("#39152 sharing an unsaved question", () => {
       });
 
       describe("when interacting with public embedding", () => {
-        it.skip("should send `public_embed_code_copied` event when copying the public embed iframe", () => {
+        beforeEach(() => {});
+        it("should send `public_embed_code_copied` event when copying the public embed iframe", () => {
           cy.get("@resourceId").then(id => {
             visitResource(resource, id);
           });
@@ -357,6 +358,15 @@ describe("#39152 sharing an unsaved question", () => {
           openSharingMenu("Embed");
 
           modal().findByText("Get embedding code").click();
+
+          // mock clipboardData so that copy-to-clipboard doesn't use window.prompt, pausing the tests
+          cy.window().then(win => {
+            win.clipboardData = {
+              setData: (...args) =>
+                // eslint-disable-next-line no-console
+                console.log("clipboardData.setData", ...args),
+            };
+          });
 
           popover().findByTestId("copy-button").click();
 
