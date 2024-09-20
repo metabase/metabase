@@ -2,7 +2,7 @@ name: Prepare back-end environment
 inputs:
   java-version:
     required: true
-    default: '11'
+    default: '21'
   clojure-version:
     required: true
     default: '1.11.1.1262'
