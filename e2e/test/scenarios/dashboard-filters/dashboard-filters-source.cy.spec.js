@@ -1,5 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  assertDatasetReqIsSandboxed,
   describeEE,
   editDashboard,
   filterWidget,
@@ -273,6 +274,9 @@ describeEE("scenarios > dashboard > filters", () => {
           cy.signOut();
           cy.signInAsSandboxedUser();
           visitDashboard(card.dashboard_id);
+          assertDatasetReqIsSandboxed({
+            requestAlias: `@dashcardQuery${card.id}`,
+          });
         });
       },
     );
