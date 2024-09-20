@@ -65,7 +65,7 @@ export function OwnDatePicker(props: OwnDatePickerProps) {
       <Popover.Target>
         <TextInputTrirgger
           ref={setTriggerRef}
-          value={typeof formatted === "string" ? formatted : value ?? ""} // required by Mantine
+          value={typeof formatted === "string" ? formatted : (value ?? "")} // required by Mantine
           readOnly
           placeholder={placeholder}
           onClick={openPopover}

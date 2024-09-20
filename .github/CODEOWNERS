@@ -10,6 +10,7 @@ enterprise/backend/src/metabase_enterprise/audit_app @noahmoss
 enterprise/backend/src/metabase_enterprise/sso @noahmoss
 enterprise/backend/src/metabase_enterprise/task/truncate_audit_table.clj @noahmoss
 enterprise/backend/src/metabase_enterprise/internal_user.clj @noahmoss
+frontend/src/metabase/ui @metabase/core-frontend-admin-webapp
 src/metabase/**/*permissions* @noahmoss
 src/metabase/integrations @noahmoss
 snowplow/* @metabase/data

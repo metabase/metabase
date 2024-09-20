@@ -3,6 +3,7 @@
    [compojure.core :refer [GET]]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.public-settings :as public-settings]
    [metabase.search :as search]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
@@ -35,6 +36,22 @@
                     (assoc-in request [:params :search_engine]))
                respond
                raise))))
+
+(api/defendpoint POST "/force-reindex"
+  "If fulltext search is enabled, this will trigger a synchronous reindexing operation."
+  []
+  (api/check-superuser)
+  (cond
+    (not (public-settings/experimental-fulltext-search-enabled))
+    {:status-code 501, :message "Search index is not enabled."}
+
+    (search/supports-index?)
+    (do
+      (search/reindex!)
+      {:status-code 200})
+
+    :else
+    {:status-code 501, :message "Search index is not supported for this installation."}))
 
 ;; TODO maybe deprecate this and make it as a parameter in `GET /api/search/models`
 ;; so we don't have to keep the arguments between 2 API in sync
