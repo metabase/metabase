@@ -59,7 +59,12 @@ export function SelectEmbedTypePane({
 
   const interactiveEmbeddingCta = useInteractiveEmbeddingCta();
 
-  // TODO: needs to use this
+  const plan = useSelector(state =>
+    getPlan(getSetting(state, "token-features")),
+  );
+
+  const utmTags = `?utm_source=product&source_plan=${plan}&utm_content=embed-modal`;
+
   const isPublicSharingEnabled = useSelector(state =>
     getSetting(state, "enable-public-sharing"),
   );
@@ -136,8 +141,7 @@ export function SelectEmbedTypePane({
 
         {/* REACT SDK */}
         <a
-          // TODO: utm tags
-          href="https://metaba.se/sdk"
+          href={"https://metaba.se/sdk" + utmTags}
           style={{ height: "100%" }}
           target="_blank"
           rel="noreferrer"
@@ -179,8 +183,11 @@ export function SelectEmbedTypePane({
         <a
           className={cx(CS.link, CS.textBold)}
           style={{ display: "flex", alignItems: "center", gap: 4 }}
-          // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
-          href="https://www.metabase.com/docs/latest/embedding/introduction#comparison-of-embedding-types"
+          href={
+            // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
+            "https://www.metabase.com/docs/latest/embedding/introduction#comparison-of-embedding-types" +
+            utmTags
+          }
         >
           {t`Compare options`} <Icon name="share" />
         </a>
@@ -266,21 +273,13 @@ export const useInteractiveEmbeddingCta = () => {
     getPlan(getSetting(state, "token-features")),
   );
 
-  // TODO: check if we still need anything else other than url and target
   if (isInteractiveEmbeddingEnabled) {
     return {
-      showProBadge: false,
-      description: t`Your plan allows you to use Interactive Embedding create interactive embedding experiences with drill-through and more.`,
-      linkText: t`Set it up`,
       url: "/admin/settings/embedding-in-other-applications/full-app",
     };
   }
 
   return {
-    showProBadge: true,
-    // eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins
-    description: t`Give your customers the full power of Metabase in your own app, with SSO, advanced permissions, customization, and more.`,
-    linkText: t`Learn more`,
     url: `https://www.metabase.com/product/embedded-analytics?${new URLSearchParams(
       {
         utm_source: "product",
