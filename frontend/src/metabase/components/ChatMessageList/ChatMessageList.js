@@ -47,13 +47,17 @@ const ChatMessageList = ({
         overflowY: "auto",
       }}
     >
-      {messages.map((message, index) => (
+      {messages.map((message, index) => {
+        const isLastServerMessage = 
+        index === messages.length - 1 && message.sender === "server";
+      
+      return (
         <div key={message.id || index}>
           <Message
             message={message}
             isLoading={
               isLoading &&
-              message.sender === "server" &&
+              isLastServerMessage &&
               message.isLoading !== false
             }
             onFeedbackClick={onFeedbackClick}
@@ -238,7 +242,7 @@ const ChatMessageList = ({
             </>
           )}
         </div>
-      ))}
+      )})}
       <div ref={messageEndRef} />
     </div>
   );
