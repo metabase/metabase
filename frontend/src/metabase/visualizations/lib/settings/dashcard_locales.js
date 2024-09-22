@@ -1,124 +1,124 @@
 
 const TITLE_LOCALES_BN = {
   'sample.question': {
-      'en': "Sample Question",
-      'bn': "স্যাম্পল প্রশ্ন"
+    'en': "Sample Question",
+    'bn': "স্যাম্পল প্রশ্ন"
   },
   'admin.dashboard.total.schools': {
-      'en': 'Total Schools',
-      'bn': 'মোট বিদ্যালয়'
+    'en': 'Total Schools',
+    'bn': 'মোট বিদ্যালয়'
   },
   'admin.dashboard.school.type': {
-      'en': 'School Type',
-      'bn': 'বিদ্যালয়ের ধরণ'
+    'en': 'School Type',
+    'bn': 'বিদ্যালয়ের ধরণ'
   },
   'admin.dashboard.school.grade': {
-      'en': 'School Grade',
-      'bn': 'বিদ্যালয়ের গ্রেড'
+    'en': 'School Grade',
+    'bn': 'বিদ্যালয়ের গ্রেড'
   },
   'admin.dashboard.statistics.school': {
-      'en': 'Statistics at a glance',
-      'bn': 'একনজরে বিদ্যালয়ের পরিসংখ্যান'
+    'en': 'Statistics at a glance',
+    'bn': 'একনজরে বিদ্যালয়ের পরিসংখ্যান'
   },
   'admin.dashboard.building.condition': {
-      'en': 'Condition of Building',
-      'bn': 'ভবনের অবস্থা'
+    'en': 'Condition of Building',
+    'bn': 'ভবনের অবস্থা'
   },
   'admin.dashboard.room.condition': {
-      'en': 'Condition of Rooms',
-      'bn': 'কক্ষের অবস্থা'
+    'en': 'Condition of Rooms',
+    'bn': 'কক্ষের অবস্থা'
   },
   'admin.dashboard.toilet.users': {
-      'en': 'Users of toilets',
-      'bn': 'টয়লেটের ব্যবহারকারী'
+    'en': 'Users of toilets',
+    'bn': 'টয়লেটের ব্যবহারকারী'
   },
   'admin.dashboard.school.profile.completion': {
-      'en': 'Profile completion percentage of schools',
-      'bn': 'বিদ্যালয়ের প্রোফাইল পূরণের শতাংশ'
+    'en': 'Profile completion percentage of schools',
+    'bn': 'বিদ্যালয়ের প্রোফাইল পূরণের শতাংশ'
   },
   'admin.dashboard.teacher.approved.post': {
-      'en': 'Approved Posts',
-      'bn': 'অনুমোদিত পদ'
+    'en': 'Approved Posts',
+    'bn': 'অনুমোদিত পদ'
   },
   'admin.dashboard.teacher.active.post': {
-      'en': 'Active Posts',
-      'bn': 'সক্রিয় পদ'
+    'en': 'Active Posts',
+    'bn': 'সক্রিয় পদ'
   },
   'admin.dashboard.teacher.vacant.post': {
-      'en': 'Vacant Posts',
-      'bn': 'শূন্য পদ'
+    'en': 'Vacant Posts',
+    'bn': 'শূন্য পদ'
   },
   'admin.dashboard.teacher.education': {
-      'en': 'Educational qualification of teachers',
-      'bn': 'শিক্ষকদের শিক্ষাগত যোগ্যতা'
+    'en': 'Educational qualification of teachers',
+    'bn': 'শিক্ষকদের শিক্ষাগত যোগ্যতা'
   },
   'admin.dashboard.teacher.gender': {
     'en': 'Statistics of Teacher Gender',
     'bn': 'শিক্ষকের জেন্ডার পরিসংখ্যান'
   },
   'admin.dashboard.teacher.job.post': {
-      'en': 'Statistics of Job Post',
-      'bn': 'জব পোস্টের পরিসংখ্যান'
+    'en': 'Statistics of Job Post',
+    'bn': 'জব পোস্টের পরিসংখ্যান'
   },
   'admin.dashboard.teacher.age': {
-      'en': 'Statistics of Age Group of teachers',
-      'bn': 'শিক্ষকের বয়সের গ্রুপের পরিসংখ্যান'
+    'en': 'Statistics of Age Group of teachers',
+    'bn': 'শিক্ষকের বয়সের গ্রুপের পরিসংখ্যান'
   },
   'admin.dashboard.teacher.c-in-ed.bp-in-ed': {
-      'en': 'Statistics of C-in-Ed and DPED Training',
-      'bn': 'সি-ইন-এড এবং ডিপিএড ট্রেনিং এর পরিসংখ্যান'
+    'en': 'Statistics of C-in-Ed and DPED Training',
+    'bn': 'সি-ইন-এড এবং ডিপিএড ট্রেনিং এর পরিসংখ্যান'
   },
   'admin.dashboard.teacher.training': {
-      'en': 'Statistics of Training',
-      'bn': 'ট্রেনিং এর পরিসংখ্যান'
+    'en': 'Statistics of Training',
+    'bn': 'ট্রেনিং এর পরিসংখ্যান'
   },
   'admin.dashboard.teacher.job.status': {
-      'en': 'Statistics of Job Status',
-      'bn': 'জব স্ট্যাটাসের পরিসংখ্যান'
+    'en': 'Statistics of Job Status',
+    'bn': 'জব স্ট্যাটাসের পরিসংখ্যান'
   },
   'admin.dashboard.teacher.post.counts': {
-      'en': 'Statistics of Teachers\' posts',
-      'bn': 'শিক্ষকদের পোস্ট সংক্রান্ত পরিসংখ্যান'
+    'en': 'Statistics of Teachers\' posts',
+    'bn': 'শিক্ষকদের পোস্ট সংক্রান্ত পরিসংখ্যান'
   },
   'school.dashboard.teacher.approved.post': {
-      'en': 'Approved Posts',
-      'bn': 'অনুমোদিত পদ'
+    'en': 'Approved Posts',
+    'bn': 'অনুমোদিত পদ'
   },
   'school.dashboard.teacher.active.post': {
-      'en': 'Active Posts',
-      'bn': 'সক্রিয় পদ'
+    'en': 'Active Posts',
+    'bn': 'সক্রিয় পদ'
   },
   'school.dashboard.teacher.vacant.post': {
-      'en': 'Vacant Posts',
-      'bn': 'শূন্য পদ'
+    'en': 'Vacant Posts',
+    'bn': 'শূন্য পদ'
   },
   'school.dashboard.teacher.education': {
-      'en': 'Educational qualification of teachers',
-      'bn': 'শিক্ষকদের শিক্ষাগত যোগ্যতা'
+    'en': 'Educational qualification of teachers',
+    'bn': 'শিক্ষকদের শিক্ষাগত যোগ্যতা'
   },
   'school.dashboard.teacher.gender': {
-      'en': 'Statistics of Gender',
-      'bn': 'জেন্ডার পরিসংখ্যান'
+    'en': 'Statistics of Gender',
+    'bn': 'জেন্ডার পরিসংখ্যান'
   },
   'school.dashboard.teacher.job.post': {
-      'en': 'Statistics of Job Post',
-      'bn': 'জব পোস্টের পরিসংখ্যান'
+    'en': 'Statistics of Job Post',
+    'bn': 'জব পোস্টের পরিসংখ্যান'
   },
   'school.dashboard.teacher.age': {
-      'en': 'Statistics of Age Group of teachers',
-      'bn': 'শিক্ষকের বয়সের গ্রুপের পরিসংখ্যান'
+    'en': 'Statistics of Age Group of teachers',
+    'bn': 'শিক্ষকের বয়সের গ্রুপের পরিসংখ্যান'
   },
   'school.dashboard.teacher.c-in-ed.bp-in-ed': {
-      'en': 'Statistics of C-in-Ed and DPED Training',
-      'bn': 'সি-ইন-এড এবং ডিপিএড ট্রেনিং এর পরিসংখ্যান'
+    'en': 'Statistics of C-in-Ed and DPED Training',
+    'bn': 'সি-ইন-এড এবং ডিপিএড ট্রেনিং এর পরিসংখ্যান'
   },
   'school.dashboard.teacher.training': {
-      'en': 'Statistics of Training',
-      'bn': 'ট্রেনিং এর পরিসংখ্যান'
+    'en': 'Statistics of Training',
+    'bn': 'ট্রেনিং এর পরিসংখ্যান'
   },
   'school.dashboard.teacher.job.status': {
-      'en': 'Statistics of Job Status',
-      'bn': 'জব স্ট্যাটাসের পরিসংখ্যান'
+    'en': 'Statistics of Job Status',
+    'bn': 'জব স্ট্যাটাসের পরিসংখ্যান'
   },
   'school.dashboard.ict.equipment.stat': {
     'en': 'Statistics of ICT Equipment',
@@ -324,117 +324,117 @@ const TITLE_LOCALES_BN = {
     'en': 'Students\' Performance level by Test, Grade and Year',
     'bn': 'পরীক্ষা, গ্রেড এবং বছর অনুসারে শিক্ষার্থীদের পারফরম্যান্সের লেভেল'
   },
-  'admin.dashboard.book.distribution.progress.submitted' : {
+  'admin.dashboard.book.distribution.progress.submitted': {
     'en': 'Submitted School Book Demand',
     'bn': 'বিদ্যালয়ের বইয়ের চাহিদা জমা হয়েছে'
   },
-  'admin.dashboard.book.distribution.progress.approved' : {
+  'admin.dashboard.book.distribution.progress.approved': {
     'en': 'Approved School Book Demand',
     'bn': 'বিদ্যালয়ের বইয়ের চাহিদা অনুমোদন হয়েছে'
   },
-  'admin.dashboard.book.distribution.progress.pending' : {
+  'admin.dashboard.book.distribution.progress.pending': {
     'en': 'Pending School Book Demand',
     'bn': 'বিদ্যালয়ের বইয়ের চাহিদা পেন্ডিং আছে'
   },
-  'admin.dashboard.book.distribution.progress.rejected' : {
+  'admin.dashboard.book.distribution.progress.rejected': {
     'en': 'Rejected School Book Demand',
     'bn': 'বিদ্যালয়ের বইয়ের চাহিদা প্রত্যাখ্যাত হয়েছে'
   },
-  'admin.dashboard.book.distribution.progress' : {
+  'admin.dashboard.book.distribution.progress': {
     'en': 'Progress of Book Demand',
     'bn': 'বইয়ের চাহিদার অগ্রগতি'
   },
-  'admin.dashboard.book.received.progress.fully.partially' : {
-	'en': 'Book distributed schools',
-	'bn': 'বিদ্যালয়ে বিতরণ হয়েছে'
+  'admin.dashboard.book.received.progress.fully.partially': {
+    'en': 'Book distributed schools',
+    'bn': 'বিদ্যালয়ে বিতরণ হয়েছে'
   },
-  'admin.dashboard.book.received.progress.fully' : {
-	'en': 'Fully book distributed schools',
-	'bn': 'বিদ্যালয়ে সম্পূর্ণ বিতরণ হয়েছে'
+  'admin.dashboard.book.received.progress.fully': {
+    'en': 'Fully book distributed schools',
+    'bn': 'বিদ্যালয়ে সম্পূর্ণ বিতরণ হয়েছে'
   },
-  'admin.dashboard.book.received.progress.partially' : {
-	'en': 'Partially book distributed schools',
-	'bn': 'বিদ্যালয়ে আংশিক বিতরণ হয়েছে'
+  'admin.dashboard.book.received.progress.partially': {
+    'en': 'Partially book distributed schools',
+    'bn': 'বিদ্যালয়ে আংশিক বিতরণ হয়েছে'
   },
   'admin.dashboard.book.received.progress.not.received': {
-	'en': 'Yet to be distributed schools',
-	'bn': 'বিদ্যালয়ে কোনও বই বিতরণ হয়নি'
+    'en': 'Yet to be distributed schools',
+    'bn': 'বিদ্যালয়ে কোনও বই বিতরণ হয়নি'
   },
-  'admin.dashboard.book.lot.total' : {
+  'admin.dashboard.book.lot.total': {
     'en': 'Total Number of lots',
     'bn': 'মোট লট সংখ্যা'
   },
-  'admin.dashboard.book.lot.scheduled' : {
+  'admin.dashboard.book.lot.scheduled': {
     'en': 'Scheduled',
     'bn': 'তালিকাভুক্ত'
   },
-  'admin.dashboard.book.lot.partially.delivered' : {
+  'admin.dashboard.book.lot.partially.delivered': {
     'en': 'Partially Delivered',
     'bn': 'আংশিক সরবরাহ সম্পন্ন'
   },
-  'admin.dashboard.book.lot.delivered' : {
+  'admin.dashboard.book.lot.delivered': {
     'en': 'Delivered',
     'bn': 'সরবরাহ সম্পন্ন'
   },
   'admin.book.flow': {
-	'en' : 'Current Status of every distributed book',
-	'bn' : 'প্রতিটি বইয়ের বিতরণের বর্তমান অবস্থা'
+    'en': 'Current Status of every distributed book',
+    'bn': 'প্রতিটি বইয়ের বিতরণের বর্তমান অবস্থা'
   },
   'school.ict.equipment.damage.reason.projected.cost': {
-    'en' : 'Projected cost for repairing of ICT Equipments',
-    'bn' : 'আইসিটি পণ্যের মেরামতের সম্ভাব্য খরচ'
+    'en': 'Projected cost for repairing of ICT Equipments',
+    'bn': 'আইসিটি পণ্যের মেরামতের সম্ভাব্য খরচ'
   },
   'admin.dashboard.school.status': {
-    'en' : 'School Status',
-    'bn' : 'বিদ্যালয়ের স্ট্যাটাস'
+    'en': 'School Status',
+    'bn': 'বিদ্যালয়ের স্ট্যাটাস'
   },
   'tangerine.all.school.vs.distinct.school': {
-    'en' : 'Distinct Schools Vs All School',
-    'bn' : 'মূল্যায়িত বনাম অমূল্যায়িত বিদ্যালয়'
+    'en': 'Distinct Schools Vs All School',
+    'bn': 'মূল্যায়িত বনাম অমূল্যায়িত বিদ্যালয়'
   },
   'tangerine.count.by.subject': {
-    'en' : 'Subject',
-    'bn' : 'মূল্যায়িত সাবজেক্ট'
+    'en': 'Subject',
+    'bn': 'মূল্যায়িত সাবজেক্ট'
   },
   'tangerine.count.by.summary': {
-    'en' : 'Summary',
-    'bn' : 'মূল্যায়নের সারসংক্ষেপ'
+    'en': 'Summary',
+    'bn': 'মূল্যায়নের সারসংক্ষেপ'
   },
   'tangerine.modeling.and.summarizing.the.problem': {
-    'en' : 'Problem Summarizing Process',
-    'bn' : 'সমস্যা সংক্ষিপ্তকরণ প্রক্রিয়া'
+    'en': 'Problem Summarizing Process',
+    'bn': 'সমস্যা সংক্ষিপ্তকরণ প্রক্রিয়া'
   },
   'tangerine.problem.presentation': {
-    'en' : 'Problem Presentation Process',
-    'bn' : 'সমস্যা উপস্থাপনা প্রক্রিয়া'
+    'en': 'Problem Presentation Process',
+    'bn': 'সমস্যা উপস্থাপনা প্রক্রিয়া'
   },
   'tangerine.count.by.grouping': {
-    'en' : 'Grouping Process',
-    'bn' : 'গ্রুপিং প্রক্রিয়া'
+    'en': 'Grouping Process',
+    'bn': 'গ্রুপিং প্রক্রিয়া'
   },
   'tangerine.count.by.reading': {
-    'en' : 'Count By Reading',
-    'bn' : 'পাঠদানের প্রক্রিয়া'
+    'en': 'Count By Reading',
+    'bn': 'পাঠদানের প্রক্রিয়া'
   },
   'tangerine.count.formative.assessment': {
-    'en' : 'Count By Formative Assessment',
-    'bn' : 'গঠনমূলক মূল্যায়ন'
+    'en': 'Count By Formative Assessment',
+    'bn': 'গঠনমূলক মূল্যায়ন'
   },
   'tangerine.problem.discussion': {
-    'en' : 'Problem Discussion',
-    'bn' : 'সমস্যা আলোচনা প্রক্রিয়া'
+    'en': 'Problem Discussion',
+    'bn': 'সমস্যা আলোচনা প্রক্রিয়া'
   },
   'tangerine.total.observations': {
-    'en' : 'Total Observation',
-    'bn' : 'মোট পর্যবেক্ষণ'
+    'en': 'Total Observation',
+    'bn': 'মোট পর্যবেক্ষণ'
   },
   'tangerine.total.teacher': {
-    'en' : 'Total Teacher',
-    'bn' : 'মোট শিক্ষক'
+    'en': 'Total Teacher',
+    'bn': 'মোট শিক্ষক'
   },
   'school.dashboard.shift.wise.count': {
-    'en' : 'School shift',
-    'bn' : 'বিদ্যালয়ের শিফট'
+    'en': 'School shift',
+    'bn': 'বিদ্যালয়ের শিফট'
   },
   'admin.dashboard.teacher.education.except.low.grade': {
     'en': 'Educational qualification of teachers',
@@ -581,247 +581,303 @@ const TITLE_LOCALES_BN = {
     'bn': 'তৃতীয় এবং পঞ্চম শ্রেণীর শিক্ষার্থীদের বাংলা বিষয়ের উপর পারফরম্যান্সের লেভেল'
   },
   'admin.dashboard.nsa.performance.distribution.bangla': {
-    'en' : 'Grade wise performance levels in Bangla',
-    'bn' : 'শ্রেণীভিত্তিক বাংলা বিষয়ের উপর পারফরম্যান্সের লেভেল'
+    'en': 'Grade wise performance levels in Bangla',
+    'bn': 'শ্রেণীভিত্তিক বাংলা বিষয়ের উপর পারফরম্যান্সের লেভেল'
   },
   'admin.dashboard.nsa.performance.distribution.math': {
-    'en' : 'Grade wise performance levels in Mathematics',
-    'bn' : 'শ্রেণীভিত্তিক গণিত বিষয়ের উপর পারফরম্যান্সের লেভেল'
+    'en': 'Grade wise performance levels in Mathematics',
+    'bn': 'শ্রেণীভিত্তিক গণিত বিষয়ের উপর পারফরম্যান্সের লেভেল'
   },
   'admin.dashboard.gender.wise.mean.nsa.scale.scores.grade3.bangla': {
-    'en' : 'Grade 3 Bangla mean scale scores by gender',
-    'bn' : 'ছাত্র ছাত্রী ভিত্তিক তৃতীয় শ্রেণীর বাংলা বিষয়ের গড় স্কেল স্কোর'
+    'en': 'Grade 3 Bangla mean scale scores by gender',
+    'bn': 'ছাত্র ছাত্রী ভিত্তিক তৃতীয় শ্রেণীর বাংলা বিষয়ের গড় স্কেল স্কোর'
   },
-  'admin.dashboard.gender.wise.mean.nsa.scale.scores.grade5.bangla' : {
-    'en' : 'Grade 3 Bangla mean scale scores by gender',
-    'bn' : 'ছাত্র ছাত্রী ভিত্তিক পঞ্চম শ্রেণীর বাংলা বিষয়ের গড় স্কেল স্কোর'
+  'admin.dashboard.gender.wise.mean.nsa.scale.scores.grade5.bangla': {
+    'en': 'Grade 3 Bangla mean scale scores by gender',
+    'bn': 'ছাত্র ছাত্রী ভিত্তিক পঞ্চম শ্রেণীর বাংলা বিষয়ের গড় স্কেল স্কোর'
   },
-  'tms.session.total.application' : {
-    'en' : 'Total Applications',
-    'bn' : 'মোট আবেদন'
+  'tms.session.total.application': {
+    'en': 'Total Applications',
+    'bn': 'মোট আবেদন'
   },
-  'tms.session.validated.application' : {
-    'en' : 'Validated',
-    'bn' : 'যাচাইকৃত'
+  'tms.session.validated.application': {
+    'en': 'Validated',
+    'bn': 'যাচাইকৃত'
   },
-  'tms.session.rejected.application' : {
-    'en' : 'Rejected',
-    'bn' : 'ত্রুটিপূর্ণ'
+  'tms.session.rejected.application': {
+    'en': 'Rejected',
+    'bn': 'ত্রুটিপূর্ণ'
   },
-  'tms.session.pending.application' : {
-    'en' : 'Pending',
-    'bn' : 'পেন্ডিং'
+  'tms.session.pending.application': {
+    'en': 'Pending',
+    'bn': 'পেন্ডিং'
   },
-  'tms.session.cancelled.application' : {
-    'en' : 'Cancelled',
-    'bn' : 'বাতিলকৃত'
+  'tms.session.cancelled.application': {
+    'en': 'Cancelled',
+    'bn': 'বাতিলকৃত'
   },
-  'tms.session.processing.finished.application' : {
-    'en' : 'Selected',
-    'bn' : 'নির্বাচিত'
+  'tms.session.processing.finished.application': {
+    'en': 'Selected',
+    'bn': 'নির্বাচিত'
   },
-  'tms.session.approved.application' : {
-    'en' : 'Approved',
-    'bn' : 'মঞ্জুরকৃত'
+  'tms.session.approved.application': {
+    'en': 'Approved',
+    'bn': 'মঞ্জুরকৃত'
   },
-  'tms.session.order.granted.application' : {
-    'en' : 'Order Granted',
-    'bn' : 'আদেশপ্রাপ্ত'
+  'tms.session.order.granted.application': {
+    'en': 'Order Granted',
+    'bn': 'আদেশপ্রাপ্ত'
   },
-  'tms.session.joined.application' : {
-    'en' : 'Joined',
-    'bn' : 'যোগদান করেছেন'
+  'tms.session.joined.application': {
+    'en': 'Joined',
+    'bn': 'যোগদান করেছেন'
   },
-  'tms.session.order.hold.application' : {
-    'en' : 'Order Hold',
-    'bn' : 'আদেশ স্থগিত'
+  'tms.session.order.hold.application': {
+    'en': 'Order Hold',
+    'bn': 'আদেশ স্থগিত'
   },
-  'tms.session.order.cancelled.application' : {
-    'en' : 'Order Canceled',
-    'bn' : 'আদেশ বাতিল'
+  'tms.session.order.cancelled.application': {
+    'en': 'Order Canceled',
+    'bn': 'আদেশ বাতিল'
   },
-  'tms.session.division.application' : {
-    'en' : 'Division wise total applications in this session',
-    'bn' : 'এই সেশনে বিভাগ ভিত্তিক মোট আবেদন'
+  'tms.session.division.application': {
+    'en': 'Division wise total applications in this session',
+    'bn': 'এই সেশনে বিভাগ ভিত্তিক মোট আবেদন'
   },
-  'tms.session.district.total.application' : {
-    'en' : 'District wise total applications in this session',
-    'bn' : 'এই সেশনে জেলা ভিত্তিক মোট আবেদন'
+  'tms.session.district.total.application': {
+    'en': 'District wise total applications in this session',
+    'bn': 'এই সেশনে জেলা ভিত্তিক মোট আবেদন'
   },
-  'tms.session.different.steps.applications' : {
-    'en' : 'Applications waiting in different stages',
-    'bn' : 'বিভিন্ন ধাপে অপেক্ষমাণ আবেদন সমুহ'
+  'tms.session.different.steps.applications': {
+    'en': 'Applications waiting in different stages',
+    'bn': 'বিভিন্ন ধাপে অপেক্ষমাণ আবেদন সমুহ'
   },
-  'tms.session.applicant.gender' : {
-    'en' : 'Statistics of Applicants Gender',
-    'bn' : 'জেন্ডার ভিত্তিক আবেদন'
+  'tms.session.applicant.gender': {
+    'en': 'Statistics of Applicants Gender',
+    'bn': 'জেন্ডার ভিত্তিক আবেদন'
   },
-  'tms.session.application.teacher.type' : {
-    'en' : 'General vs Substitute Transfer',
-    'bn' : 'সাধারণ বনাম সাবস্টিটিউট বদলি'
+  'tms.session.application.teacher.type': {
+    'en': 'General vs Substitute Transfer',
+    'bn': 'সাধারণ বনাম সাবস্টিটিউট বদলি'
   },
-  'tms.session.rejected.application.after.process' : {
-    'en' : 'Rejected',
-    'bn' : 'ত্রুটিপূর্ণ'
+  'tms.session.rejected.application.after.process': {
+    'en': 'Rejected',
+    'bn': 'ত্রুটিপূর্ণ'
   },
-  'tms.gender.wise.application.statistics' : {
-    'en' : 'Gender Wise Application Statistics',
-    'bn' : 'জেন্ডার ভিত্তিক আবেদনের পরিসংখ্যান '
+  'tms.gender.wise.application.statistics': {
+    'en': 'Gender Wise Application Statistics',
+    'bn': 'জেন্ডার ভিত্তিক আবেদনের পরিসংখ্যান '
   },
-  'tms.session.criteria.wise.application' : {
-    'en' : 'Criteria Wise Application Statistics',
-    'bn' : 'ক্রাইটেরিয়া ভিত্তিক আবেদনের পরিসংখ্যান'
+  'tms.session.criteria.wise.application': {
+    'en': 'Criteria Wise Application Statistics',
+    'bn': 'ক্রাইটেরিয়া ভিত্তিক আবেদনের পরিসংখ্যান'
   },
-  'tms.session.eligible.for.nomination.application' : {
-    'en' : 'Eligible for Nomination',
-    'bn' : 'মনোনয়নযোগ্য'
+  'tms.session.eligible.for.nomination.application': {
+    'en': 'Eligible for Nomination',
+    'bn': 'মনোনয়নযোগ্য'
   },
-  'tms.session.forward.autoforward.application' : {
-    'en' : 'Statistics on Forward vs. Auto-Forward Applications of Auto-Forwarders',
-    'bn' : 'প্রাথমিক পর্যালোকদের ফরোয়ার্ড বনাম অটো-ফরোয়ার্ড আবেদনের পরিসংখ্যান'
+  'tms.session.forward.autoforward.application': {
+    'en': 'Statistics on Forward vs. Auto-Forward Applications of Auto-Forwarders',
+    'bn': 'প্রাথমিক পর্যালোকদের ফরোয়ার্ড বনাম অটো-ফরোয়ার্ড আবেদনের পরিসংখ্যান'
   },
-  'tms.session.unselected.application' : {
-    'en' : 'Unselected',
-    'bn' : 'অনির্বাচিত'
+  'tms.session.unselected.application': {
+    'en': 'Unselected',
+    'bn': 'অনির্বাচিত'
   },
-  'school.dashboard.teacher.hold.post' : {
-    'en' : 'Hold Posts',
-    'bn' : 'সংরক্ষিত পদ'
+  'school.dashboard.teacher.hold.post': {
+    'en': 'Hold Posts',
+    'bn': 'সংরক্ষিত পদ'
   },
-  'total.vacant.post' : {
-    'en' : 'Total vacant post',
-    'bn' : 'মোট শূণ্যপদ'
+  'total.vacant.post': {
+    'en': 'Total vacant post',
+    'bn': 'মোট শূণ্যপদ'
   },
-  'total.batch.count' : {
-    'en' : 'Total Batches',
-    'bn' : 'মোট ব্যাচ'
+  'total.batch.count': {
+    'en': 'Total Batches',
+    'bn': 'মোট ব্যাচ'
   },
-  'certificate.wise.training.statistics' : {
-    'en' : 'Certificate Configuration Wise Trainings Statistics',
-    'bn' : 'সার্টিফিকেট কনফিগারেশন অনুযায়ী প্রশিক্ষণের পরিসংখ্যান'
+  'certificate.wise.training.statistics': {
+    'en': 'Certificate Configuration Wise Trainings Statistics',
+    'bn': 'সার্টিফিকেট কনফিগারেশন অনুযায়ী প্রশিক্ষণের পরিসংখ্যান'
   },
-  'total.trainee.count.based.on.obtaining.certificate' : {
-    'en' : 'Statistics of Trainees Based on Certification of Trainings',
-    'bn' : 'প্রশিক্ষণ সমূহের সার্টিফিকেট অর্জন ভিত্তিক প্রশিক্ষণার্থীর পরিসংখ্যান'
+  'total.trainee.count.based.on.obtaining.certificate': {
+    'en': 'Statistics of Trainees Based on Certification of Trainings',
+    'bn': 'প্রশিক্ষণ সমূহের সার্টিফিকেট অর্জন ভিত্তিক প্রশিক্ষণার্থীর পরিসংখ্যান'
   },
-  'admin.dashboard.ppe.total.school' : {
-    'en' : 'Total Pre-Primary School',
-    'bn' : 'মোট প্রাক-প্রাথমিক বিদ্যালয়'
+  'admin.dashboard.ppe.total.school': {
+    'en': 'Total Pre-Primary School',
+    'bn': 'মোট প্রাক-প্রাথমিক বিদ্যালয়'
   },
-  'admin.dashboard.ppe.four.plus.school' : {
-    'en' : 'Total Pre-Primary 4+ School',
-    'bn' : 'মোট প্রাক-প্রাথমিক ৪+ বিদ্যালয়'
+  'admin.dashboard.ppe.four.plus.school': {
+    'en': 'Total Pre-Primary 4+ School',
+    'bn': 'মোট প্রাক-প্রাথমিক ৪+ বিদ্যালয়'
   },
-  'admin.dashboard.ppe.five.plus.school' : {
-    'en' : 'Total Pre-Primary 5+ School',
-    'bn' : 'মোট প্রাক-প্রাথমিক ৫+ বিদ্যালয়'
+  'admin.dashboard.ppe.five.plus.school': {
+    'en': 'Total Pre-Primary 5+ School',
+    'bn': 'মোট প্রাক-প্রাথমিক ৫+ বিদ্যালয়'
   },
-  'admin.dashboard.ppe.dedicated.classroom.school' : {
-    'en' : 'Schools with dedicated pre-primary classrooms',
-    'bn' : 'প্রাক-প্রাথমিকের নির্দিষ্ট শ্রেণিকক্ষ বিশিষ্ট বিদ্যালয়'
+  'admin.dashboard.ppe.dedicated.classroom.school': {
+    'en': 'Schools with dedicated pre-primary classrooms',
+    'bn': 'প্রাক-প্রাথমিকের নির্দিষ্ট শ্রেণিকক্ষ বিশিষ্ট বিদ্যালয়'
   },
-  'admin.dashboard.ppe.school.classroom.condition.wise' : {
-    'en' : 'Condition of Pre-Primary Rooms',
-    'bn' : 'প্রাক-প্রাথমিক কক্ষের অবস্থা'
+  'admin.dashboard.ppe.school.classroom.condition.wise': {
+    'en': 'Condition of Pre-Primary Rooms',
+    'bn': 'প্রাক-প্রাথমিক কক্ষের অবস্থা'
   },
-  'admin.dashboard.ppe.school.type' : {
-    'en' : 'Type of School',
-    'bn' : 'বিদ্যালয়ের ধরণ'
+  'admin.dashboard.ppe.school.type': {
+    'en': 'Type of School',
+    'bn': 'বিদ্যালয়ের ধরণ'
   },
-  'admin.dashboard.ppe.monitoring.school.visited.count' : {
-    'en' : 'School Inspection Completed',
-    'bn' : 'বিদ্যালয় পরিবীক্ষণ হয়েছে'
+  'admin.dashboard.ppe.monitoring.school.visited.count': {
+    'en': 'School Inspection Completed',
+    'bn': 'বিদ্যালয় পরিবীক্ষণ হয়েছে'
   },
-  'admin.dashboard.ppe.monitoring.school.not.visited.count' : {
-    'en' : 'School Inspection Pending',
-    'bn' : 'বিদ্যালয়ের পরিবীক্ষণ বাকি'
+  'admin.dashboard.ppe.monitoring.school.not.visited.count': {
+    'en': 'School Inspection Pending',
+    'bn': 'বিদ্যালয়ের পরিবীক্ষণ বাকি'
   },
-  'admin.dashboard.ppe.monitoring.school.status' : {
-    'en' : 'Pre-Primary Class Status Statistics',
-    'bn' : 'প্রাক-প্রাথমিক শ্রেণি স্ট্যাটাস ভিত্তিক পরিসংখ্যান'
+  'admin.dashboard.ppe.monitoring.school.status': {
+    'en': 'Pre-Primary Class Status Statistics',
+    'bn': 'প্রাক-প্রাথমিক শ্রেণি স্ট্যাটাস ভিত্তিক পরিসংখ্যান'
   },
-  'admin.dashboard.ppe.teacher.gender.statistics' : {
-    'en' : 'Pre-Primary Teacher Gender Statistics',
-    'bn' : 'প্রাক-প্রাথমিক শিক্ষকের জেন্ডারের পরিসংখ্যান'
+  'admin.dashboard.ppe.teacher.gender.statistics': {
+    'en': 'Pre-Primary Teacher Gender Statistics',
+    'bn': 'প্রাক-প্রাথমিক শিক্ষকের জেন্ডারের পরিসংখ্যান'
   },
-  'admin.dashboard.ppe.teacher.training.statistics' : {
-    'en' : 'Pre-Primary Teacher Training Statistics',
-    'bn' : 'প্রাক-প্রাথমিক শিক্ষকের প্রশিক্ষণের পরিসংখ্যান'
+  'admin.dashboard.ppe.teacher.training.statistics': {
+    'en': 'Pre-Primary Teacher Training Statistics',
+    'bn': 'প্রাক-প্রাথমিক শিক্ষকের প্রশিক্ষণের পরিসংখ্যান'
   },
-  'admin.dashboard.ppe.teacher.statistics' : {
-    'en' : 'Pre-Primary Teacher Statistics',
-    'bn' : 'প্রাক-প্রাথমিক শিক্ষকের পরিসংখ্যান'
+  'admin.dashboard.ppe.teacher.statistics': {
+    'en': 'Pre-Primary Teacher Statistics',
+    'bn': 'প্রাক-প্রাথমিক শিক্ষকের পরিসংখ্যান'
   },
-  'admin.dashboard.ppe.total.student.count' : {
-    'en' : 'Total Pre-Primary Student',
-    'bn' : 'মোট প্রাক-প্রাথমিক শিক্ষার্থী'
+  'admin.dashboard.ppe.total.student.count': {
+    'en': 'Total Pre-Primary Student',
+    'bn': 'মোট প্রাক-প্রাথমিক শিক্ষার্থী'
   },
-  'admin.dashboard.ppe.four.plus.student.count' : {
-    'en' : 'Total Pre-Primary 4+ Student',
-    'bn' : 'মোট প্রাক-প্রাথমিক ৪+ শিক্ষার্থী'
+  'admin.dashboard.ppe.four.plus.student.count': {
+    'en': 'Total Pre-Primary 4+ Student',
+    'bn': 'মোট প্রাক-প্রাথমিক ৪+ শিক্ষার্থী'
   },
-  'admin.dashboard.ppe.five.plus.student.count' : {
-    'en' : 'Total Pre-Primary 5+ Student',
-    'bn' : 'মোট প্রাক-প্রাথমিক ৫+ শিক্ষার্থী'
+  'admin.dashboard.ppe.five.plus.student.count': {
+    'en': 'Total Pre-Primary 5+ Student',
+    'bn': 'মোট প্রাক-প্রাথমিক ৫+ শিক্ষার্থী'
   },
-  'admin.dashboard.ppe.student.gender.statistics' : {
-    'en' : 'Gender Statistics',
-    'bn' : 'জেন্ডারের পরিসংখ্যান'
+  'admin.dashboard.ppe.student.gender.statistics': {
+    'en': 'Gender Statistics',
+    'bn': 'জেন্ডারের পরিসংখ্যান'
   },
-  'admin.dashboard.ppe.student.ethnicity.statistics' : {
-    'en' : 'Ethnicity Statistics',
-    'bn' : 'জাতিগত গোষ্ঠীর পরিসংখ্যান'
+  'admin.dashboard.ppe.student.ethnicity.statistics': {
+    'en': 'Ethnicity Statistics',
+    'bn': 'জাতিগত গোষ্ঠীর পরিসংখ্যান'
   },
-  'admin.dashboard.ppe.student.special.need.statistics' : {
-    'en' : 'Special Need Students Statistics',
-    'bn' : 'বিশেষ চাহিদা সম্পন্ন ছাত্র ছাত্রীর পরিসংখ্যান'
+  'admin.dashboard.ppe.student.special.need.statistics': {
+    'en': 'Special Need Students Statistics',
+    'bn': 'বিশেষ চাহিদা সম্পন্ন ছাত্র ছাত্রীর পরিসংখ্যান'
   },
-  'admin.dashboard.ppe.to.class.one.admission.statistics' : {
-    'en' : 'Pre-Primary to Class One Admission Statistics',
-    'bn' : 'প্রাক-প্রাথমিক থেকে প্রথম শ্রেণিতে ভর্তির পরিসংখ্যান'
+  'admin.dashboard.ppe.to.class.one.admission.statistics': {
+    'en': 'Pre-Primary to Class One Admission Statistics',
+    'bn': 'প্রাক-প্রাথমিক থেকে প্রথম শ্রেণিতে ভর্তির পরিসংখ্যান'
   },
-  'website.year.wise.education.stat' : {
-    'en' : 'Net Enrolment Rate & Dropout Rate',
-    'bn' : 'নীট ভর্তির হার এবং ঝরে পড়ার হার'
+  'website.year.wise.education.stat': {
+    'en': 'Net Enrolment Rate & Dropout Rate',
+    'bn': 'নীট ভর্তির হার এবং ঝরে পড়ার হার'
   },
-  'tangerine.teach.total.observations' : {
-    'en' : 'Total Observations',
-    'bn' : 'মোট পর্যবেক্ষণ'
+  'tangerine.teach.total.observations': {
+    'en': 'Total Observations',
+    'bn': 'মোট পর্যবেক্ষণ'
   },
-  'tangerine.registered.teachers' : {
-    'en' : 'Registered teachers',
-    'bn' : 'নিবন্ধিত শিক্ষক'
+  'tangerine.registered.teachers': {
+    'en': 'Registered teachers',
+    'bn': 'নিবন্ধিত শিক্ষক'
   },
-  'tangerine.teach.all.school.vs.distinct.school' : {
-    'en' : 'Assessed versus Non-assessed schools',
-    'bn' : 'মূল্যায়িত বনাম অমূল্যায়িত বিদ্যালয়'
+  'tangerine.teach.all.school.vs.distinct.school': {
+    'en': 'Assessed versus Non-assessed schools',
+    'bn': 'মূল্যায়িত বনাম অমূল্যায়িত বিদ্যালয়'
   },
   'tangerine.teach.count.by.subject': {
     'en': 'Subject Assessment',
     'bn': 'মূল্যায়িত সাবজেক্ট'
   },
-  'tangerine.count.teacher.subject.geowise.summary' : {
-    'en' : 'Subject and grade wise teacher count',
-    'bn' : 'বিষয় এবং শ্রেণি অনুযায়ী শিক্ষক সংখ্যা'
+  'tangerine.count.teacher.subject.geowise.summary': {
+    'en': 'Subject and grade wise teacher count',
+    'bn': 'বিষয় এবং শ্রেণি অনুযায়ী শিক্ষক সংখ্যা'
   },
-  'tangerine.teach.student.gender.distribution' : {
-    'en' : 'Student gender distribution',
-    'bn' : 'জেন্ডার অনুযায়ী শিক্ষার্থী সংখ্যা'
+  'tangerine.teach.student.gender.distribution': {
+    'en': 'Student gender distribution',
+    'bn': 'জেন্ডার অনুযায়ী শিক্ষার্থী সংখ্যা'
   },
-  'tangerine.teach.student.age.count' : {
-    'en' : 'Student age distribution',
-    'bn' : 'বয়সভিত্তিক শিক্ষার্থী সংখ্যা'
+  'tangerine.teach.student.age.count': {
+    'en': 'Student age distribution',
+    'bn': 'বয়সভিত্তিক শিক্ষার্থী সংখ্যা'
   },
-  'tangerine.teach.subject.gender.distribution' : {
-    'en' : 'Subject and gender wise student count',
-    'bn' : 'বিষয় এবং জেন্ডার অনুযায়ী শিক্ষার্থী সংখ্যা'
+  'tangerine.teach.subject.gender.distribution': {
+    'en': 'Subject and gender wise student count',
+    'bn': 'বিষয় এবং জেন্ডার অনুযায়ী শিক্ষার্থী সংখ্যা'
+  },
+  'nsa.portal.school.division.wise.count': {
+    'en': 'Division wise selected school',
+    'bn': 'বিভাগ অনুযায়ী নির্বাচিত বিদ্যালয়'
+  },
+  'nsa.portal.school.division.wise.participated.count': {
+    'en': 'Division wise school participated in NSA',
+    'bn': 'ডিভিশন ভিত্তিক স্কুল এনএসএ-তে অংশ নেয়'
+  },
+  'nsa.portal.school.school.type.wise.count': {
+    'en': 'Type of school selected in NSA',
+    'bn': 'NSA-তে নির্বাচিত স্কুলের ধরন'
+  },
+  'nsa.portal.school.school.type.wise.absent.count': {
+    'en': 'Type of school participated in NSA',
+    'bn': 'স্কুলের ধরন NSA অংশগ্রহণ করেছে'
+  },
+  'nsa.portal.school.different.statistics': {
+    'en': 'Different School Statistics',
+    'bn': 'বিভিন্ন স্কুল পরিসংখ্যান'
+  },
+  'nsa.portal.school.geographical.location': {
+    'en': 'Geographical Location of the schools',
+    'bn': 'বিদ্যালয়ের ভৌগলিক অবস্থান'
+  },
+  'nsa.portal.school.nature.disaster.prone': {
+    'en': 'Nature disaster prone school information',
+    'bn': 'প্রাকৃতিক দুর্যোগ প্রবণ স্কুল তথ্য'
+  },
+  'nsa.portal.student.division.wise.total.student': {
+    'en': 'Division wise total student information',
+    'bn': 'বিভাগ অনুযায়ী মোট শিক্ষার্থীর তথ্য'
+  },
+  'nsa.portal.student.school.type.wise.count': {
+    'en': 'Student information according to type of school',
+    'bn': 'স্কুলের ধরন অনুযায়ী শিক্ষার্থীদের তথ্য'
+  },
+  'nsa.portal.student.statistics.of.ethnicity': {
+    'en': 'Statistics of Ethnicity',
+    'bn': 'জাতিগত পরিসংখ্যান'
+  },
+  'nsa.portal.student.gender.wise.count': {
+    'en': 'Gender wise Students',
+    'bn': 'জেন্ডার অনুযায়ী শিক্ষার্থী'
+  },
+  'nsa.portal.student.participated.vs.absent.count': {
+    'en': 'Participated vs absent Students',
+    'bn': 'অংশগ্রহণকারী বনাম অনুপস্থিত শিক্ষার্থী'
+  },
+  'nsa.portal.student.statistics.of.special.needs': {
+    'en': 'Statistics of Special Needs',
+    'bn': 'বিশেষ চাহিদা সম্পন্ন ছাত্র ছাত্রীর পরিসংখ্যান'
+  },
+  'nsa.portal.student.statistics.of.gender.in.each.class': {
+    'en': 'Statistics of Gender in each Class',
+    'bn': 'প্রতি ক্লাসের জেন্ডার পরিসংখ্যান'
   },
 }
 
-export function dashcard_locale_title (locale, title_key) {
-    locale = (locale === 'bn')? locale: 'en';
-    if(title_key in TITLE_LOCALES_BN) {
-        return TITLE_LOCALES_BN[title_key][locale];
-    }
-    return title_key;
+export function dashcard_locale_title(locale, title_key) {
+  locale = (locale === 'bn') ? locale : 'en';
+  if (title_key in TITLE_LOCALES_BN) {
+    return TITLE_LOCALES_BN[title_key][locale];
+  }
+  return title_key;
 }
