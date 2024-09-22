@@ -371,7 +371,7 @@ describeEE("scenarios > filters > sql filters > values source", () => {
     cy.sandboxTable({
       table_id: PRODUCTS_ID,
       attribute_remappings: {
-        attr_uid: ["dimension", ["field", PRODUCTS.ID, null]],
+        attr_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
       },
     });
 
@@ -390,8 +390,9 @@ describeEE("scenarios > filters > sql filters > values source", () => {
     FieldFilter.openEntryForm();
     cy.wait("@cardParameterValues");
     checkFilterValueNotInList("Gadget");
+    checkFilterValueNotInList("Gizmo");
     checkFilterValueNotInList("Doohickey");
-    FieldFilter.selectFilterValueFromList("Gizmo");
+    FieldFilter.selectFilterValueFromList("Widget");
   });
 });
 
