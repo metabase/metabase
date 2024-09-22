@@ -181,8 +181,9 @@
   'Explode' a `location-path` into a sequence of Collection IDs, and parse them as integers. THIS DOES NOT VALIDATE
   THAT THE PATH OR RESULTS ARE VALID. This unchecked version exists solely to power the other version below."
   [location-path]
-  (for [^String id-str (rest (str/split location-path #"/"))]
-    (Integer/parseInt id-str)))
+  (if (= location-path "/")
+    []
+    (mapv parse-long (rest (str/split location-path #"/")))))
 
 (defn- valid-location-path? [s]
   (boolean
@@ -1612,12 +1613,16 @@
        ;; effectively "pulling" a Collection up to a higher level. e.g. if we have A > B > C and we can't see B then
        ;; the tree should come back as A > C.
        ([m collection]
-        (let [path (as-> (location-path->ids (:location collection)) ids
-                     (filter all-visible-ids ids)
-                     (concat ids [(:id collection)])
-                     (interpose :children ids))]
+        (let [ids (location-path->ids (:location collection))
+              path (if (empty? ids)
+                     [(:id collection)]
+                     (as-> ids ids
+                       (filterv all-visible-ids ids)
+                       (conj ids (:id collection))
+                       (interpose :children ids)
+                       (vec ids)))]
           ;; Using conj instead of merge because the latter is inefficient with its varargs and reduce1.
-          (update-in m path #(conj (or %1 {}) %2) collection)))
+          (update-in m path #(if %1 (conj %1 %2) %2) collection)))
        ;; 3. Once we've build the entire tree structure, go in and convert each ID->Collection map into a flat sequence,
        ;; sorted by the lowercased Collection name. Do this recursively for the `:children` of each Collection e.g.
        ;;
