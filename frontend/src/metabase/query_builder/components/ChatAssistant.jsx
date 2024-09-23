@@ -18,9 +18,8 @@ import {
 } from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
 import { clearInitialMessage } from "metabase/redux/initialMessage";
 import { useSelector } from "metabase/lib/redux";
-import { getDBInputValue, getCompanyName, getInsightDBInputValue } from "metabase/redux/initialDb";
-import { getInitialSchema } from "metabase/redux/initialSchema";
-import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipToken } from "metabase/api";
+import { getDBInputValue, getCompanyName } from "metabase/redux/initialDb";
+import { useListDatabasesQuery} from "metabase/api";
 import { SemanticError } from "metabase/components/ErrorPages";
 import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
 
@@ -28,8 +27,6 @@ import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.s
 const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton }) => {
     const initialDbName = useSelector(getDBInputValue);
     const initialCompanyName = useSelector(getCompanyName);
-    const initialSchema = useSelector(getInitialSchema);
-    const initialInsightDbName = useSelector(getInsightDBInputValue);
     const inputRef = useRef(null);
     const dispatch = useDispatch();
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
@@ -43,7 +40,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [codeQuery, setCodeQuery] = useState([]);
     const [isDBModalOpen, setIsDBModalOpen] = useState(false);
     const [dbInputValue, setDBInputValue] = useState("");
-    const [insightDbId, setInsightDbId] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedTab, setSelectedTab] = useState("reasoning");
@@ -62,7 +58,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [insightsText, setInsightsText] = useState([]);
     const [insightsImg, setInsightsImg] = useState([]);
     const [insightsCode, setInsightsCode] = useState([]);
-    const [schema, setSchema] = useState([]);
     const [codeIndex, setCodeIndex] = useState(-1);
     const [insightTextIndex, setInsightTextIndex] = useState(-1);
     const [runId, setRunId] = useState('');
@@ -84,40 +79,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 setDBInputValue(cubeDatabase.id);
                 setCompanyName(cubeDatabase.company_name)
             }
-            const insightDatabase = databases.find(
-                database => database.is_cube === false,
-            );
-            if (insightDatabase) {
-                setInsightDbId(insightDatabase.id);
-            }
         }
     }, [databases]);
-    const dbId = chatType === "insights" ? insightDbId : dbInputValue;
-    const {
-        data: databaseMetadata,
-        isLoading: databaseMetadataIsLoading,
-        error: databaseMetadataIsError
-    } = useGetDatabaseMetadataWithoutParamsQuery(
-        dbId !== "" ? { id: dbId } : skipToken
-    );
-    const databaseMetadataData = databaseMetadata;
-
-    useEffect(() => {
-        if (databaseMetadataData) {
-            const schema = databaseMetadata.tables.map((table) => ({
-                display_name: table.display_name,
-                id: table.id,
-                fields: table.fields.map((field) => ({
-                    id: field.id,
-                    name: field.name,
-                    fieldName: field.display_name,
-                    description: field.description,
-                    details: field.fingerprint ? JSON.stringify(field.fingerprint) : null
-                }))
-            }));
-            setSchema(schema)
-        }
-    }, [databaseMetadataData]);
 
     useEffect(() => {
         setMessages([])
@@ -522,7 +485,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
     const handlePlanReview = async func => {
         const { planReview, plan } = func.arguments;
-        //Only print infoMessage
         addServerMessageWithType(
             planReview || "Received a message from the server.",
             "text",
@@ -532,7 +494,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         setToolWaitingResponse("planReview");
         setInisghtPlan(prevPlan => [...prevPlan, ...plan]);
         removeLoadingMessage();
-        // clearInfoMessage();
+        clearInfoMessage();
     };
 
     const handleGetImage = async func => {
@@ -868,14 +830,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
 
         setIsLoading(true);
-        const dbId = chatType === "insights" ? insightDbId : dbInputValue;
+        const dbId = dbInputValue;
         if (isConnected) {
             ws.send(
                 JSON.stringify({
                     type: "configure",
                     configData: [dbId, companyName],
-                    appType: chatType,
-                    schema: schema
+                    appType: chatType
                 }),
             );
         }
@@ -1012,15 +973,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     }, [initial_message, ws, isConnected]);
 
     useEffect(() => {
-        if (initialDbName !== null && initialInsightDbName !== null && initialCompanyName !== '' && initialSchema && initialSchema.schema && initialSchema.schema.length > 0) {
+        if (initialDbName !== null && initialCompanyName !== '') {
             setShowButton(true);
             setIsChatHistoryOpen(true);
             setDBInputValue(initialDbName)
-            setInsightDbId(initialInsightDbName)
             setCompanyName(initialCompanyName)
-            setSchema(initialSchema.schema)
         }
-    }, [initialDbName, initialInsightDbName, initialCompanyName, initialSchema])
+    }, [initialDbName, initialCompanyName])
 
 
     return (
@@ -1099,7 +1058,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                                 ref={inputRef}
                                                 value={inputValue}
                                                 onChange={handleInputChange}
-                                                disabled={!isConnected || schema.length < 1 || selectedThreadId}
+                                                disabled={!isConnected || selectedThreadId}
                                                 onKeyPress={handleKeyPress}
                                                 placeholder={t`Enter a prompt here...`}
                                                 style={{
@@ -1121,7 +1080,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                             />
                                             <Button
                                                 variant="filled"
-                                                disabled={!isConnected || schema.length < 1 || selectedThreadId}
+                                                disabled={!isConnected || selectedThreadId}
                                                 onClick={chatLoading ? stopMessage : sendMessage}
                                                 style={{
                                                     position: "absolute",
@@ -1132,10 +1091,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                                     height: "30px",
                                                     padding: "0",
                                                     minWidth: "0",
-                                                    backgroundColor: isConnected && schema.length > 0 ? "#8A64DF" : "#F1EBFF",
+                                                    backgroundColor: isConnected ? "#8A64DF" : "#F1EBFF",
                                                     color: "#FFF",
                                                     border: "none",
-                                                    cursor: isConnected && schema.length > 0 ? "pointer" : "not-allowed",
+                                                    cursor: isConnected ? "pointer" : "not-allowed",
                                                     display: "flex",
                                                     justifyContent: "center",
                                                     alignItems: "center",

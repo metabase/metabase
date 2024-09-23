@@ -9,8 +9,7 @@ import {
   getInitialMessage,
   setInitialMessage,
 } from "metabase/redux/initialMessage";
-import { setDBInputValue, setCompanyName, setInsightDBInputValue } from "metabase/redux/initialDb";
-import { setInitialSchema } from "metabase/redux/initialSchema";
+import { setDBInputValue, setCompanyName } from "metabase/redux/initialDb";
 import ChatAssistant from "metabase/query_builder/components/ChatAssistant";
 import {
   BrowseContainer,
@@ -18,8 +17,7 @@ import {
 } from "metabase/browse/components/BrowseContainer.styled";
 import { Flex, Stack, Icon } from "metabase/ui";
 import ChatHistory from "metabase/browse/components/ChatItems/ChatHistory";
-import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipToken } from "metabase/api";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { useListDatabasesQuery } from "metabase/api";
 import { generateRandomId } from "metabase/lib/utils";
 
 export const HomeLayout = () => {
@@ -34,9 +32,7 @@ export const HomeLayout = () => {
   const [oldCardId, setOldCardId] = useState(null);
   const [insights, setInsights] = useState([]);
   const [dbId, setDbId] = useState<number | null>(null)
-  const [insightDbId, setInsightDbId] = useState<number | null>(null)
   const [company, setCompany] = useState<string | null>(null)
-  const [schema, setSchema] = useState<any[]>([]);
   const [messages, setMessages] = useState([]);
   const [threadId, setThreadId] = useState('')
   const [isChatHistoryOpen, setIsChatHistoryOpen] = useState(false);
@@ -61,46 +57,8 @@ export const HomeLayout = () => {
         setDbId(cubeDatabase.id as number)
         setCompany(cubeDatabase.company_name as string)
       }
-      const insightDatabase = databases.find(
-        database => database.is_cube === false,
-      );
-      if (insightDatabase) {
-        dispatch(setInsightDBInputValue(insightDatabase.id as number));
-        setInsightDbId(insightDatabase.id as number);
-      }
     }
   }, [databases]);
-
-  const { 
-    data: databaseMetadata, 
-    isLoading: databaseMetadataIsLoading, 
-    error: databaseMetadataIsError 
-  } = useGetDatabaseMetadataWithoutParamsQuery(
-    location.pathname === "/browse/insights" && insightDbId !== null
-      ? { id: insightDbId }
-      : location.pathname !== "/browse/insights" && dbId !== null
-      ? { id: dbId }
-      : skipToken 
-);
-const databaseMetadataData = databaseMetadata;
-
-useEffect(() => {
-  if (databaseMetadataData && Array.isArray(databaseMetadataData.tables)) {
-    const schema = databaseMetadata.tables?.map((table:any) => ({
-      display_name: table.display_name,
-      id: table.id,
-      fields: table.fields.map((field:any) => ({
-        id: field.id,
-        name: field.name,
-        fieldName: field.display_name,
-        description: field.description,
-        details: field.fingerprint ? JSON.stringify(field.fingerprint) : null
-      })) 
-    }));
-    dispatch(setInitialSchema(schema as any))
-    setSchema(schema as any)
-  }
-}, [databaseMetadataData]);
 
   useEffect(() => {
     setInputValue("");
@@ -157,7 +115,6 @@ useEffect(() => {
             <ChatGreeting chatType={selectedChatType} />
             {/* <HomeInitialOptions /> REMOVED UNTIL FUNCTIONALITY IS COMPLETED*/}
           </ContentContainer>
-          {schema.length > 0 ? (
             <ChatSection>
               <ChatPrompt
                 chatType={selectedChatType}
@@ -166,18 +123,6 @@ useEffect(() => {
                 onSendMessage={handleSendMessage}
               />
             </ChatSection>
-          ): (
-            <ChatSection>
-                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
-                  <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
-                  Please Wait while we initialize the chat
-                    </p>
-                  <LoadingSpinner />
-                </div>
-              </div>
-            </ChatSection>
-          )}
         </LayoutRoot>
       ) : (
         <BrowseContainer>
