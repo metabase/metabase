@@ -89,7 +89,7 @@
 
 (defn- minimal
   "Search via index, and return potentially stale information, without applying filters or
-  permissions checks. Does not perform ranking."
+  restricting to collections we have access to."
   [search-term & {:as _search-ctx}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
