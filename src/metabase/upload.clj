@@ -633,7 +633,7 @@
                                (assoc stats
                                       :event    :csv-upload-successful
                                       :model-id (:id card)))
-        card)
+        (assoc card :table-id (:id table)))
       (catch Throwable e
         (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
                                                            :event :csv-upload-failed))
