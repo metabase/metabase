@@ -669,12 +669,13 @@ describe("issue 28756", () => {
 
 describeEE("issue 29076", () => {
   beforeEach(() => {
-    restore("default-ee");
+    restore();
 
     cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as("cardQuery");
 
     cy.signInAsAdmin();
     setTokenFeatures("all");
+
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
         [SAMPLE_DB_ID]: {
