@@ -225,6 +225,8 @@
                 (*filterable-columns-for-query* database-id dataset-query))))))
 
 (defn- field-id-from-dashcards-filterable-columns
+  "Update the `ctx` with `field-id`. This function is supposed to be used on params where target is a name field, in
+  reducing step of [[field-id-into-context-rf]], when it is certain that param target is no integer id field."
   [ctx param-dashcard-info]
   (let [param-target       (get-in param-dashcard-info [:parameter :target])
         card-id            (get-in param-dashcard-info [:dashcard :card :id])
@@ -242,7 +244,7 @@
   the [[metabase.api.dashboard/hydrate-dashboard-details]]. Meant to be used in the [[field-id-into-context-rf]], to
   re-use values of previous `filterable-columns` computations (during the reduction itself and hydration
   of `:param_fields` and `:param_values` at the time of writing)."
-  (volatile! nil))
+  nil)
 
 (def empty-field-id-context
   "Context for effective field id computation. See the [[field-id-into-context-rf]]'s docstring."
@@ -265,9 +267,9 @@
     (some-> *field-id-context* deref)
     empty-field-id-context))
   ([ctx]
-   (when @*field-id-context*
-     (vswap! *field-id-context* update :card-id->filterable-columns
-             merge (:card-id->filterable-columns ctx)))
+   (when (some-> *field-id-context* deref)
+     (swap! *field-id-context* update :card-id->filterable-columns
+            merge (:card-id->filterable-columns ctx)))
    (set (:field-ids ctx)))
   ([ctx param-dashcard-info]
    (if-not (:param-target-field param-dashcard-info)

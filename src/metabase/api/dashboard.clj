@@ -95,7 +95,7 @@
   (span/with-span!
     {:name       "hydrate-dashboard-details"
      :attributes {:dashboard/id dashboard-id}}
-    (binding [params/*field-id-context* (volatile! params/empty-field-id-context)]
+    (binding [params/*field-id-context* (atom params/empty-field-id-context)]
       (t2/hydrate dashboard [:dashcards
                              ;; disabled :can_run_adhoc_query for performance reasons in 50 release
                              [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
