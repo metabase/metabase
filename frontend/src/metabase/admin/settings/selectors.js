@@ -5,6 +5,7 @@ import _ from "underscore";
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import MetabaseSettings from "metabase/lib/settings";
+import { newVersionAvailable } from "metabase/lib/utils";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
@@ -541,9 +542,30 @@ export const getSettingValues = createSelector(getSettings, settings => {
   return settingValues;
 });
 
-export const getNewVersionAvailable = createSelector(getSettings, settings => {
-  return MetabaseSettings.newVersionAvailable(settings);
-});
+export const getCurrentVersion = createSelector(
+  getDerivedSettingValues,
+  settings => {
+    return settings.version?.tag;
+  },
+);
+
+export const getLatestVersion = createSelector(
+  getDerivedSettingValues,
+  settings => {
+    return settings["version-info"]?.latest?.version;
+  },
+);
+
+export const getNewVersionAvailable = createSelector(
+  getCurrentVersion,
+  getLatestVersion,
+  (currentVersion, latestVersion) => {
+    return newVersionAvailable({
+      currentVersion,
+      latestVersion,
+    });
+  },
+);
 
 export const getSections = createSelector(
   getSettings,

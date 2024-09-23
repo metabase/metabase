@@ -18,6 +18,7 @@ export * from "./metabot";
 export * from "./model-indexes";
 export * from "./native-query-snippet";
 export * from "./revision";
+export * from "./performance";
 export * from "./permissions";
 export * from "./public";
 export * from "./pulse";

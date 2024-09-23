@@ -5,10 +5,11 @@ import { memo } from "react";
 
 import Card from "metabase/components/Card";
 import S from "metabase/components/List/List.module.css";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
-import { ListItemLink, ListItemName, Root } from "./ListItem.styled";
+import { ListItemLink, Root } from "./ListItem.styled";
 
 const ListItem = ({
   "data-testid": dataTestId,
@@ -23,6 +24,7 @@ const ListItem = ({
     <Card
       hoverable
       className={cx(CS.mb2, CS.p3, CS.bgWhite, CS.rounded, CS.bordered)}
+      data-testid="data-reference-list-item"
     >
       <div className={cx(S.item)}>
         <div className={S.itemIcons}>
@@ -30,9 +32,7 @@ const ListItem = ({
         </div>
         <div className={S.itemBody}>
           <div className={S.itemTitle}>
-            <ListItemName tooltip={name} tooltipMaxWidth="100%">
-              <h3>{name}</h3>
-            </ListItemName>
+            <Ellipsified tooltip={name}>{name}</Ellipsified>
           </div>
           {(description || placeholder) && (
             <div className={cx(S.itemSubtitle)}>

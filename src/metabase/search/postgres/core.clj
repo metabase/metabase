@@ -1,5 +1,6 @@
 (ns metabase.search.postgres.core
   (:require
+   [cheshire.core :as json]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
@@ -39,7 +40,7 @@
      :archived?          archived?
      :model-ancestors?   true})))
 
-(defn hybrid
+(defn- hybrid
   "Use the index for appling the search string, but rely on the legacy code path for rendering
   the display data, applying permissions, additional filtering, etc.
 
@@ -59,7 +60,7 @@
       (sql/format {:quoted true})
       t2/reducible-query))
 
-(defn hybrid-multi
+(defn- hybrid-multi
   "Perform multiple legacy searches to see if its faster. Perverse!"
   [search-term & {:as search-ctx}]
   (when-not @#'search.index/initialized?
@@ -78,18 +79,46 @@
                      (t2/query <>)
                      (filter (comp (set ids) :id) <>)))))))
 
+(defn- minimal [search-term & {:as _search-ctx}]
+  (when-not @#'search.index/initialized?
+    (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
+                    {:search-engine :postgres})))
+  (->> (assoc (search.index/search-query search-term) :select [:legacy_input])
+       (t2/query)
+       (map :legacy_input)
+       (map #(json/parse-string % keyword))))
+
+(def ^:private default-engine hybrid-multi)
+
+(defn- search-fn [search-engine]
+  (case search-engine
+    :hybrid       hybrid
+    :hubrid-multi hybrid-multi
+    :minimal      minimal
+    :fulltext     default-engine
+    default-engine))
+
 (defn search
   "Return a reducible-query corresponding to searching the entities via a tsvector."
   [search-ctx]
-  (hybrid-multi (:search-string search-ctx)
-                (dissoc search-ctx :search-string)))
+  (let [f (search-fn (:search-engine search-ctx))]
+    (f (:search-string search-ctx)
+       (dissoc search-ctx :search-string))))
 
 (defn init!
   "Ensure that the search index exists, and has been populated with all the entities."
   [& [force-reset?]]
-  (when (or force-reset? (not (#'search.index/exists? @#'search.index/active-table)))
-    (search.index/reset-index!))
+  (search.index/ensure-ready! force-reset?)
   (search.ingestion/populate-index!))
 
+(defn reindex!
+  "Populate a new index"
+  []
+  (search.index/ensure-ready! false)
+  (search.index/maybe-create-pending!)
+  (search.ingestion/populate-index!)
+  (search.index/activate-pending!))
+
 (comment
-  (init! true))
+  (init! true)
+  (t2/select-fn-vec :legacy_input :search_index))

@@ -23,9 +23,8 @@ const generateSnapshots = async (baseUrl, exitFunction) => {
   const snapshotConfig = Object.assign({}, baseConfig, customBrowser);
 
   try {
-    const { status, message, totalFailed, failures } = await cypress.run(
-      snapshotConfig,
-    );
+    const { status, message, totalFailed, failures } =
+      await cypress.run(snapshotConfig);
 
     // At least one test failed. We can't continue to the next step.
     // Cypress tests rely on snapshots correctly generated at this stage.
