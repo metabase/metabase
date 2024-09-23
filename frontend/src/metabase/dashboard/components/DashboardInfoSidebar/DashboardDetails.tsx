@@ -28,7 +28,9 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
           <Flex gap="sm" align="top">
             <FixedSizeIcon name="ai" className={SidebarStyles.IconMargin} />
             <Text>
-              {c("{0} is a date/time and {1} is a person's name").jt`${(
+              {c(
+                "Describes when a dashbaord was last edited. {0} is a date/time and {1} is a person's name",
+              ).jt`${(
                 <DateTime
                   unit="day"
                   value={lastEditInfo.timestamp}
@@ -43,14 +45,20 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
           <Flex gap="sm" align="top">
             <FixedSizeIcon name="pencil" className={SidebarStyles.IconMargin} />
             <Text>
-              {c("{0} is a date/time and {1} is a person's name").jt`${(
+              {c(
+                "Describes when a dashbaord was last edited. {0} is a date/time and {1} is a person's name",
+              ).jt`${(
                 <DateTime unit="day" value={createdAt} key="date" />
               )} by ${getUserName(creator)}`}
             </Text>
           </Flex>
         )}
       </SidesheetCardSection>
-      <SidesheetCardSection title={t`Saved in`}>
+      <SidesheetCardSection
+        title={c(
+          "This is a heading that appears above a collection that a dashboard is saved in. Feel free to translate this as though it said 'Saved in collection', if you think that would make more sense in your language.",
+        ).t`Saved in`}
+      >
         <Flex gap="sm" align="top">
           <FixedSizeIcon
             name="folder"
