@@ -1,7 +1,7 @@
 import {
   type UseEmbeddingSettingsIconColorsProps,
   useEmbeddingSettingsIconColors,
-} from "./use-embedding-settings-icon-colors";
+} from "../use-embedding-settings-icon-colors";
 
 export const SdkIcon = ({ disabled }: UseEmbeddingSettingsIconColorsProps) => {
   const { primary, secondary } = useEmbeddingSettingsIconColors({ disabled });

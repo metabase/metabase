@@ -6,8 +6,9 @@ import { Badge, Flex, Switch } from "metabase/ui";
 
 import { EmbeddingOption } from "../EmbeddingOption";
 import { LinkButton } from "../LinkButton";
-import { SdkIcon } from "../icons";
 import type { EmbeddingOptionCardProps } from "../types";
+
+import { SdkIcon } from "./SdkIcon";
 
 export function EmbeddingSdkOptionCard({ onToggle }: EmbeddingOptionCardProps) {
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");

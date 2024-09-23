@@ -9,8 +9,9 @@ import { Flex, Switch, Text } from "metabase/ui";
 
 import { EmbeddingOption } from "../EmbeddingOption";
 import { LinkButton } from "../LinkButton";
-import { StaticEmbeddingIcon } from "../icons";
 import type { EmbeddingOptionCardProps } from "../types";
+
+import { StaticEmbeddingIcon } from "./StaticEmbeddingIcon";
 
 export const StaticEmbeddingOptionCard = ({
   onToggle,

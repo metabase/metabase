@@ -10,8 +10,9 @@ import { Badge, Box, Button, Flex, Icon, Switch, Text } from "metabase/ui";
 
 import { EmbeddingOption } from "../EmbeddingOption";
 import { LinkButton } from "../LinkButton";
-import { InteractiveEmbeddingIcon } from "../icons/InteractiveEmbeddingIcon";
 import type { EmbeddingOptionCardProps } from "../types";
+
+import { InteractiveEmbeddingIcon } from "./InteractiveEmbeddingIcon";
 
 export const InteractiveEmbeddingOptionCard = ({
   onToggle,

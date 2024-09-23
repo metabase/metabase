@@ -70,55 +70,55 @@ export function EmbeddingSdkSettings({
   );
   const quickStartUrl = useDocsUrl("https://metaba.se/sdk-quick-start");
   const documentationUrl = useDocsUrl("https://metaba.se/sdk-docs");
-  function getApiKeyBannerText() {
-    const isOSS = !isEE && !isHosted;
-    const isCloudStarter = !isEE && isHosted;
 
-    return match({ isOSS, isCloudStarter, isEE })
-      .with(
-        { isOSS: true },
-        () =>
-          jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(
-            <ExternalLink
-              key="switch-metabase-binaries"
-              href={switchMetabaseBinariesUrl}
-            >
-              switch Metabase binaries
-            </ExternalLink>
-          )}, ${(
-            <ExternalLink key="upgrade-url" href={upgradeUrl}>
-              {t`upgrade to Metabase Pro`}
-            </ExternalLink>
-          )} and ${(
-            <ExternalLink key="implement-jwt" href={implementJwtUrl}>
-              {t`implement JWT SSO`}
-            </ExternalLink>
-          )}.`,
-      )
-      .with(
-        { isCloudStarter: true },
-        () =>
-          jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(
-            <ExternalLink key="upgrade-url" href={upgradeUrl}>
-              {t`upgrade to Metabase Pro`}
-            </ExternalLink>
-          )} and ${(
-            <ExternalLink key="implement-jwt" href={implementJwtUrl}>
-              {t`implement JWT SSO`}
-            </ExternalLink>
-          )}.`,
-      )
-      .with(
-        { isEE: true },
-        () =>
-          jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(
-            <ExternalLink key="implement-jwt" href={implementJwtUrl}>
-              {t`implement JWT SSO`}
-            </ExternalLink>
-          )}.`,
-      )
-      .otherwise(() => null);
-  }
+  const apiKeyBannerText = match({
+    isOSS: !isEE && !isHosted,
+    isCloudStarter: !isEE && isHosted,
+    isEE,
+  })
+    .with(
+      { isOSS: true },
+      () =>
+        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(
+          <ExternalLink
+            key="switch-metabase-binaries"
+            href={switchMetabaseBinariesUrl}
+          >
+            switch Metabase binaries
+          </ExternalLink>
+        )}, ${(
+          <ExternalLink key="upgrade-url" href={upgradeUrl}>
+            {t`upgrade to Metabase Pro`}
+          </ExternalLink>
+        )} and ${(
+          <ExternalLink key="implement-jwt" href={implementJwtUrl}>
+            {t`implement JWT SSO`}
+          </ExternalLink>
+        )}.`,
+    )
+    .with(
+      { isCloudStarter: true },
+      () =>
+        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(
+          <ExternalLink key="upgrade-url" href={upgradeUrl}>
+            {t`upgrade to Metabase Pro`}
+          </ExternalLink>
+        )} and ${(
+          <ExternalLink key="implement-jwt" href={implementJwtUrl}>
+            {t`implement JWT SSO`}
+          </ExternalLink>
+        )}.`,
+    )
+    .with(
+      { isEE: true },
+      () =>
+        jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${(
+          <ExternalLink key="implement-jwt" href={implementJwtUrl}>
+            {t`implement JWT SSO`}
+          </ExternalLink>
+        )}.`,
+    )
+    .otherwise(() => null);
 
   return (
     <Box p="0.5rem 1rem 0">
@@ -152,7 +152,7 @@ export function EmbeddingSdkSettings({
           py="md"
           maw={620}
         >
-          <Text size="sm">{getApiKeyBannerText()}</Text>
+          <Text size="sm">{apiKeyBannerText}</Text>
         </Alert>
 
         <Box>
