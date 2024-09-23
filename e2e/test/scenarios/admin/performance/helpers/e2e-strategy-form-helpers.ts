@@ -109,7 +109,7 @@ export const openSidebarCacheStrategyForm = (
   cy.log("Open the cache strategy form in the sidebar");
   openSidebar(type);
   cy.wait("@getCacheConfig");
-  cy.findByLabelText("Caching policy").click();
+  cy.findByLabelText("When to get new results").click();
 };
 
 export const cancelConfirmationModal = () => {
