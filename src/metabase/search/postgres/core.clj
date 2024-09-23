@@ -153,11 +153,12 @@
   [search-ctx]
   (set
    (filter
-    ;; TODO use a single query, not N+1
+    ;; TODO use a single query
     (fn [m]
       (t2/exists? :search_index
        (-> (search.index/search-query (:search-string search-ctx))
            (sql.helpers/where [:= :model m]))))
+    ;; TODO use only the models that apply to the given filters
     (:models search-ctx search.config/all-models))))
 
 (defn init!
