@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { Box, Card, type CardProps, Stack, Text } from "metabase/ui";
 
 const args = {

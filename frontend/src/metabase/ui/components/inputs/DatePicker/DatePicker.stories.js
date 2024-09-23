@@ -105,7 +105,7 @@ export const DatesRangeSdk_ = {
   render: () => (
     <SdkVisualizationWrapper theme={theme}>
       <Box bg="background">
-        <DatesRangeSdk {...DatesRangeSdk.args} />
+        <DatesRangeSdk {...DatesRange_.args} />
       </Box>
     </SdkVisualizationWrapper>
   ),
