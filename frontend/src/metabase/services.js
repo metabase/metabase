@@ -429,7 +429,6 @@ export const SetupApi = {
 
 export const UserApi = {
   list: GET("/api/user/recipients"),
-  current: GET("/api/user/current"),
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
 };
 
