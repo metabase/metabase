@@ -5,13 +5,16 @@ import type {
   MetricFilterControlsProps,
   MetricFilterSettings,
 } from "metabase/browse/utils";
+import { useUserSetting } from "metabase/common/hooks";
 import { getSetting } from "metabase/selectors/settings";
 import { Button, Icon, Paper, Popover, Switch, Text } from "metabase/ui";
 import type { State } from "metabase-types/store";
 
+const USER_SETTING_KEY = "browse-filter-only-verified-metrics";
+
 export function getDefaultMetricFilters(state: State): MetricFilterSettings {
   return {
-    verified: getSetting(state, "browse-filter-only-verified-metrics") ?? false,
+    verified: getSetting(state, USER_SETTING_KEY) ?? false,
   };
 }
 
@@ -21,11 +24,14 @@ export const MetricFilterControls = ({
 }: MetricFilterControlsProps) => {
   const areAnyFiltersActive = Object.values(metricFilters).some(Boolean);
 
+  const [_, setUserSetting] = useUserSetting(USER_SETTING_KEY);
+
   const handleVerifiedFilterChange = useCallback(
     function (evt: ChangeEvent<HTMLInputElement>) {
       setMetricFilters({ ...metricFilters, verified: evt.target.checked });
+      setUserSetting(evt.target.checked);
     },
-    [metricFilters, setMetricFilters],
+    [metricFilters, setMetricFilters, setUserSetting],
   );
 
   return (
