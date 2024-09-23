@@ -5,6 +5,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.embed.settings :as embed.settings]
    [metabase.test :as mt]
+   [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
 
 (deftest enable-embedding-test
@@ -32,9 +33,11 @@
 
 (deftest deprecation-warning-for-enable-embedding-test
   (mt/with-temporary-setting-values [enable-embedding "false"]
-    (is (re-find
-         #"Setting enable-embedding is deprecated as of Metabase 0.51.0"
-         (with-out-str (embed.settings/enable-embedding! true))))))
+    (log.capture/with-log-messages-for-level [warnings :warn]
+      (embed.settings/enable-embedding! true)
+      (is (re-find
+           #"Setting enable-embedding is deprecated as of Metabase 0.51.0 and may be removed in a future version."
+           (str/join " " (map :message (warnings))))))))
 
 (def ^:private other-ip "1.2.3.4:1234")
 
