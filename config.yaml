@@ -1,0 +1,21 @@
+version: 1
+config:
+  users:
+    - first_name: Simple
+      last_name: User
+      password: simplepassword123
+      email: simple.user@example.com
+      is_superuser: true
+    - first_name: NotAdmin
+      last_name: User
+      password: simplepassword123
+      email: simple.user2@example.com
+  databases:
+    - name: My Postgres Database
+      engine: postgres
+      details:
+        host: localhost
+        port: 5404
+        dbname: sample
+        user: metabase
+        password: metasample123
