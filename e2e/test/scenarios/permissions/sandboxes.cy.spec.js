@@ -8,6 +8,7 @@ import {
 import {
   assertDatasetReqIsSandboxed,
   assertQueryBuilderRowCount,
+  blockUserGroupPermissions,
   chartPathWithFillColor,
   describeEE,
   entityPickerModal,
@@ -49,9 +50,10 @@ const { DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 describeEE("formatting > sandboxes", () => {
   describe("admin", () => {
     beforeEach(() => {
-      restore("default-ee");
+      restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
+      preparePermissions();
       cy.visit("/admin/people");
     });
 
@@ -92,9 +94,10 @@ describeEE("formatting > sandboxes", () => {
     const QUESTION_NAME = "Joined test";
 
     beforeEach(() => {
-      restore("default-ee");
+      restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
+      preparePermissions();
 
       // Add user attribute to existing ("normal" / id:2) user
       cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
@@ -209,9 +212,10 @@ describeEE("formatting > sandboxes", () => {
 
   describe("Sandboxing reproductions", () => {
     beforeEach(() => {
-      restore("default-ee");
+      restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
+      preparePermissions();
     });
 
     it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {
@@ -1187,4 +1191,10 @@ function createJoinedQuestion(name, { visitQuestion = false } = {}) {
     },
     { wrapId: true, visitQuestion },
   );
+}
+
+function preparePermissions() {
+  blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+  blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
+  blockUserGroupPermissions(USER_GROUPS.READONLY_GROUP);
 }
