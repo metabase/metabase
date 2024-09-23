@@ -44,8 +44,8 @@ const List = ListTemplate.bind({});
 export default {
   title: "Icons/Icon",
   component: Icon,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

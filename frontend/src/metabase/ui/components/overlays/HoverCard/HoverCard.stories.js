@@ -64,8 +64,8 @@ const Interactive = DefaultTemplate.bind({});
 export default {
   title: "Overlays/HoverCard",
   component: HoverCard,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

@@ -41,8 +41,8 @@ const Default = DefaultTemplate.bind({});
 export default {
   title: "Overlays/Tooltip",
   component: Tooltip,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

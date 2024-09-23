@@ -69,8 +69,8 @@ const Border = GridTemplate.bind({});
 export default {
   title: "Utils/Paper",
   component: Paper,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

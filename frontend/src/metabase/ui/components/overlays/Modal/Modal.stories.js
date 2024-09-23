@@ -140,8 +140,8 @@ const NoBodyText = args => {
 export default {
   title: "Overlays/Modal",
   component: Modal,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const SentenceCaseTitles = {

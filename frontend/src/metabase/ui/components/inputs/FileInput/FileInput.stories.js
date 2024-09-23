@@ -78,8 +78,8 @@ const IconXs = IconTemplate.bind({});
 export default {
   title: "Inputs/FileInput",
   component: FileInput,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

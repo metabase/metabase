@@ -40,8 +40,8 @@ const BackgroundPosition = DefaultTemplate.bind({});
 export default {
   title: "Data display/Image",
   component: Image,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

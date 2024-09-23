@@ -119,8 +119,8 @@ const LargeSetsXs = VariantTemplate.bind({});
 export default {
   title: "Inputs/Autocomplete",
   component: Autocomplete,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

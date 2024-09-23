@@ -31,7 +31,7 @@ const FullWidth = DefaultTemplate.bind({});
 export default {
   title: "Inputs/SegmentedControl",
   component: SegmentedControl,
-  args: args,
+  args,
 };
 
 export const Default_ = {

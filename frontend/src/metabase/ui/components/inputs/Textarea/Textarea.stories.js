@@ -94,8 +94,8 @@ const AutosizeXs = VariantTemplate.bind({});
 export default {
   title: "Inputs/Textarea",
   component: Textarea,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

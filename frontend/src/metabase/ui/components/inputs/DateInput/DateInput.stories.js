@@ -89,8 +89,8 @@ const NoPopoverXs = VariantTemplate.bind({});
 export default {
   title: "Inputs/DateInput",
   component: DateInput,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

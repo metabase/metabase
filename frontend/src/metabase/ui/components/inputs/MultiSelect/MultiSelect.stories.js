@@ -140,8 +140,8 @@ const CreatableXs = VariantTemplate.bind({});
 export default {
   title: "Inputs/MultiSelect",
   component: MultiSelect,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

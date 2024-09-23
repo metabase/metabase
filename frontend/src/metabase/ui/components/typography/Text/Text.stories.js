@@ -74,8 +74,8 @@ const Truncated = SizeTemplate.bind({});
 export default {
   title: "Typography/Text",
   component: Text,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

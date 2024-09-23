@@ -64,8 +64,8 @@ const CardSectionBorder = CardSectionBorderTemplate.bind({});
 export default {
   title: "Data display/Card",
   component: Card,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

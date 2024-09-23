@@ -146,8 +146,8 @@ const LabelsAndDividers = LabelsAndDividersTemplate.bind({});
 export default {
   title: "Overlays/Menu",
   component: Menu,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

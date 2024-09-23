@@ -38,8 +38,8 @@ const Sizes = SizeTemplate.bind({});
 export default {
   title: "Feedback/Loader",
   component: Loader,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

@@ -84,7 +84,7 @@ const ReadOnlyXs = VariantTemplate.bind({});
 export default {
   title: "Inputs/TimeInput",
   component: TimeInput,
-  args: args,
+  args,
   argTypes,
 };
 

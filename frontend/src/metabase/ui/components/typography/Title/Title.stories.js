@@ -77,8 +77,8 @@ const TruncatedAndUnderlined = TruncatedTemplate.bind({});
 export default {
   title: "Typography/Title",
   component: Title,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

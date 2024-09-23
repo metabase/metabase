@@ -133,8 +133,8 @@ const CompactLoadingFullWidthGrid = LoadingGridTemplate.bind({});
 export default {
   title: "Buttons/Button",
   component: Button,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

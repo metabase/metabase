@@ -59,8 +59,8 @@ const NumberOfColumns = DefaultTemplate.bind({});
 export default {
   title: "Inputs/DatePicker",
   component: DatePicker,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

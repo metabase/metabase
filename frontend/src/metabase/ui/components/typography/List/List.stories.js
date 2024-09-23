@@ -62,8 +62,8 @@ const WithIcons = WithIconsTemplate.bind({});
 export default {
   title: "Typography/List",
   component: List,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

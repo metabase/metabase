@@ -37,8 +37,8 @@ const DefaultTemplate = args => {
 export default {
   title: "Feedback/Alert",
   component: Alert,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

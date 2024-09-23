@@ -48,8 +48,8 @@ const Default = DefaultTemplate.bind(args);
 export default {
   title: "Buttons/PopoverBackButton",
   component: PopoverBackButton,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

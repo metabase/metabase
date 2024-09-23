@@ -48,8 +48,8 @@ const Narrow = NarrowTemplate.bind({});
 export default {
   title: "Upsells/Pill",
   component: _UpsellPill,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

@@ -64,8 +64,8 @@ const Interactive = DefaultTemplate.bind({});
 export default {
   title: "Overlays/Popover",
   component: Popover,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

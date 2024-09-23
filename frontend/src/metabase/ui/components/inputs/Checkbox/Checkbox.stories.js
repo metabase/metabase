@@ -88,8 +88,8 @@ const Stacked = StateTemplate.bind({});
 export default {
   title: "Inputs/Checkbox",
   component: Checkbox,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

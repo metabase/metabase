@@ -17,8 +17,8 @@ const Default = DefaultTemplate.bind({});
 export default {
   title: "Feedback/Progress",
   component: Progress,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

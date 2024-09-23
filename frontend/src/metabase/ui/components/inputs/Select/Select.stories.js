@@ -134,8 +134,8 @@ const SearchableXs = VariantTemplate.bind({});
 export default {
   title: "Inputs/Select",
   component: Select,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

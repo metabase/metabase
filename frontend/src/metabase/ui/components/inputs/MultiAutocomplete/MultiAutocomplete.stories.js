@@ -85,8 +85,8 @@ const ReadOnlyXs = VariantTemplate.bind({});
 export default {
   title: "Inputs/MultiAutocomplete",
   component: MultiAutocomplete,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

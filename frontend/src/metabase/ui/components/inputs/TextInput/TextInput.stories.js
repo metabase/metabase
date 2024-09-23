@@ -92,8 +92,8 @@ const ReadOnlyXs = RightSectionTemplate.bind({});
 export default {
   title: "Inputs/TextInput",
   component: TextInput,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

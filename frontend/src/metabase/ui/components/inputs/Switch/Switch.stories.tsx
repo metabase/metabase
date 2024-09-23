@@ -52,8 +52,8 @@ const DescriptionLeft = StateTemplate.bind({});
 export default {
   title: "Inputs/Switch",
   component: Switch,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

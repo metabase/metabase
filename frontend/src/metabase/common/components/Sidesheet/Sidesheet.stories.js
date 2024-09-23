@@ -88,8 +88,8 @@ const SidesheetButtonStory = SidesheetButtonTemplate.bind({});
 export default {
   title: "Components/Sidesheet",
   component: Sidesheet,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

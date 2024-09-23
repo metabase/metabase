@@ -29,8 +29,8 @@ const Vertical = VerticalTemplate.bind({});
 export default {
   title: "Utils/Divider",
   component: Divider,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

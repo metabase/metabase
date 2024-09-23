@@ -59,8 +59,8 @@ const DescriptionLeft = StateTemplate.bind({});
 export default {
   title: "Inputs/Radio",
   component: Radio,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

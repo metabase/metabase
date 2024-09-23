@@ -48,8 +48,8 @@ const WithoutImage = DefaultTemplate.bind({});
 export default {
   title: "Upsells/Card",
   component: _UpsellCard,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const WithImage_ = {

@@ -62,8 +62,8 @@ const VerticalIcons = IconsTemplate.bind({});
 export default {
   title: "Navigation/Tabs",
   component: Tabs,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {

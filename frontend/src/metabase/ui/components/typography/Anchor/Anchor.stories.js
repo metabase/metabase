@@ -56,8 +56,8 @@ const Sizes = SizeTemplate.bind({});
 export default {
   title: "Typography/Anchor",
   component: Anchor,
-  args: args,
-  argTypes: argTypes,
+  args,
+  argTypes,
 };
 
 export const Default_ = {
