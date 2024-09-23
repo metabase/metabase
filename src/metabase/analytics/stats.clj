@@ -595,7 +595,7 @@
     (boolean
      (some
       (fn [engine]
-        (let [[required-major required-minor] (csv-upload-version-availability engine)]
+        (when-let [[required-major required-minor] (csv-upload-version-availability engine)]
           (and (>= major-version required-major)
                (>= minor-version required-minor))))
       engines))))
