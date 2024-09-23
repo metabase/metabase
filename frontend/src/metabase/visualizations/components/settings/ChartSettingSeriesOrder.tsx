@@ -27,8 +27,6 @@ export interface SortableItem {
 interface ChartSettingSeriesOrderProps {
   onChange: (rows: SortableItem[]) => void;
   value: SortableItem[];
-  addButtonLabel: string;
-  searchPickerPlaceholder: string;
   onShowWidget: (
     widget: { props: { seriesKey: string } },
     ref: HTMLElement | undefined,
@@ -38,6 +36,8 @@ interface ChartSettingSeriesOrderProps {
   onChangeSeriesColor: (seriesKey: string, color: string) => void;
   onSortEnd: (newItems: SortableItem[]) => void;
   includeLightAndDarkColors?: boolean;
+  addButtonLabel?: string;
+  searchPickerPlaceholder?: string;
 }
 
 export const ChartSettingSeriesOrder = ({
