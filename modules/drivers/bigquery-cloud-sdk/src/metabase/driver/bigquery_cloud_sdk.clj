@@ -326,8 +326,10 @@
                             results)]
     (reduce
      (fn [accum col]
-       (when-let [parent (:nfc-path col)]
-         (update-in accum [(:table-name col) parent] (fnil conj []) col)))
+       (let [parent (:nfc-path col)]
+         (cond-> accum
+           parent
+           (update-in [(:table-name col) parent] (fnil conj []) col))))
      {}
      (sort-by (comp count :nfc-path) nested-columns))))
 
