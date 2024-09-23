@@ -9,6 +9,8 @@ import {
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
+import type { StaticChartProps } from "../StaticVisualization";
+
 import { PieChart } from "./PieChart";
 import { data } from "./stories-data";
 
@@ -17,7 +19,7 @@ export default {
   component: PieChart,
 };
 
-const Template: StoryFn<typeof PieChart> = args => {
+const Template: StoryFn<StaticChartProps> = args => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
       <PieChart {...args} isStorybook />

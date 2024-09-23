@@ -3,7 +3,10 @@ import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 
-import ModalContent, { ModalContentActionIcon } from "./index";
+import ModalContent, {
+  ModalContentActionIcon,
+  type ModalContentProps,
+} from "./index";
 
 export default {
   title: "Components/ModalContent",
@@ -24,7 +27,7 @@ export default {
   },
 };
 
-const Template: StoryFn<typeof ModalContent> = args => {
+const Template: StoryFn<ModalContentProps> = args => {
   return (
     <div
       style={{

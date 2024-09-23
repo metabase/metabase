@@ -1,13 +1,13 @@
 import type { StoryFn } from "@storybook/react";
 
-import Alert from "./Alert";
+import Alert, { type AlertProps } from "./Alert";
 
 export default {
   title: "Core/Alert",
   component: Alert,
 };
 
-const Template: StoryFn<typeof Alert> = args => {
+const Template: StoryFn<AlertProps> = args => {
   return <Alert {...args} />;
 };
 

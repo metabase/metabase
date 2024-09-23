@@ -2,14 +2,14 @@ import type { StoryFn } from "@storybook/react";
 import moment from "moment-timezone";
 import { useState } from "react";
 
-import DateSelector from "./DateSelector";
+import DateSelector, { type DateSelectorProps } from "./DateSelector";
 
 export default {
   title: "Core/DateSelector",
   component: DateSelector,
 };
 
-const Template: StoryFn<typeof DateSelector> = args => {
+const Template: StoryFn<DateSelectorProps> = args => {
   const [value, setValue] = useState(args.value);
   return <DateSelector {...args} value={value} onChange={setValue} />;
 };

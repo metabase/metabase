@@ -1,7 +1,9 @@
 import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
-import GaugeContainer from "metabase/static-viz/components/Gauge/GaugeContainer";
+import GaugeContainer, {
+  type GaugeContainerProps,
+} from "metabase/static-viz/components/Gauge/GaugeContainer";
 import {
   DEFAULT,
   TRUNCATED_LABELS,
@@ -13,7 +15,7 @@ export default {
   component: GaugeContainer,
 };
 
-const Template: StoryFn<typeof GaugeContainer> = args => {
+const Template: StoryFn<GaugeContainerProps> = args => {
   return <GaugeContainer {...args} />;
 };
 

@@ -2,7 +2,10 @@ import type { StoryFn } from "@storybook/react";
 
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 
-import { InteractiveDashboard } from "./InteractiveDashboard";
+import {
+  InteractiveDashboard,
+  type InteractiveDashboardProps,
+} from "./InteractiveDashboard";
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || 1;
 
@@ -15,7 +18,7 @@ export default {
   decorators: [CommonSdkStoryWrapper],
 };
 
-const Template: StoryFn<typeof InteractiveDashboard> = args => {
+const Template: StoryFn<InteractiveDashboardProps> = args => {
   return <InteractiveDashboard {...args} />;
 };
 

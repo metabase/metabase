@@ -7,14 +7,14 @@ import {
   createMockTimeline,
 } from "metabase-types/api/mocks";
 
-import TimelinePicker from "./TimelinePicker";
+import TimelinePicker, { type TimelinePickerProps } from "./TimelinePicker";
 
 export default {
   title: "Timelines/TimelinePicker",
   component: TimelinePicker,
 };
 
-const Template: StoryFn<typeof TimelinePicker> = args => {
+const Template: StoryFn<TimelinePickerProps> = args => {
   const [value, setValue] = useState<Timeline>();
   return <TimelinePicker {...args} value={value} onChange={setValue} />;
 };

@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import ProgressBar from "./ProgressBar";
+import ProgressBar, { type ProgressBarProps } from "./ProgressBar";
 import { BELOW_GOAL, EXCEEDS_GOAL, REACHED_GOAL, ZERO } from "./stories-data";
 
 export default {
@@ -8,7 +8,7 @@ export default {
   component: ProgressBar,
 };
 
-const Template: StoryFn<typeof ProgressBar> = args => {
+const Template: StoryFn<ProgressBarProps> = args => {
   return <ProgressBar {...args} />;
 };
 

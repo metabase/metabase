@@ -1,14 +1,14 @@
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 
-import { TextWidget } from "./TextWidget";
+import { TextWidget, type TextWidgetProps } from "./TextWidget";
 
 export default {
   title: "Parameters/TextWidget",
   component: TextWidget,
 };
 
-const Template: StoryFn<typeof TextWidget> = args => {
+const Template: StoryFn<TextWidgetProps> = args => {
   const [{ value }, updateArgs] = useArgs();
 
   const setValue = (value: string | number | null) => {

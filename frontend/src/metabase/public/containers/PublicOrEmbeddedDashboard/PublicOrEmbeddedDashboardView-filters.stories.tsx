@@ -33,7 +33,10 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
+import {
+  PublicOrEmbeddedDashboardView,
+  type PublicOrEmbeddedDashboardViewProps,
+} from "./PublicOrEmbeddedDashboardView";
 
 export default {
   title: "embed/PublicOrEmbeddedDashboardView/filters",
@@ -230,7 +233,7 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<typeof PublicOrEmbeddedDashboardView> = args => {
+const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
   // @ts-expect-error -- custom prop to support non JSON-serializable value as args
   const parameterType: ParameterType = args.parameterType;
   const dashboard = args.dashboard;
@@ -446,7 +449,7 @@ export const LightThemeText = {
   render: Template,
   args: createDefaultArgs(),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", { name: "Category" });
     await userEvent.click(filter);
@@ -457,7 +460,7 @@ export const LightThemeTextWithValue = {
   render: Template,
   args: createDefaultArgs(),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const asyncCallback = createAsyncCallback();
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", { name: "Category" });
@@ -480,7 +483,7 @@ export const LightThemeParameterSearch = {
     parameterType: "search",
   }),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", { name: "Category" });
     await userEvent.click(filter);
@@ -494,7 +497,7 @@ export const LightThemeParameterSearchWithValue = {
     parameterType: "search",
   }),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", { name: "Category" });
     await userEvent.click(filter);
@@ -553,7 +556,7 @@ export const LightThemeParameterList = {
     parameterType: "dropdown_multiple",
   }),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", { name: "Category" });
     await userEvent.click(filter);
@@ -567,7 +570,7 @@ export const LightThemeParameterListWithValue = {
     parameterType: "dropdown_multiple",
   }),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", { name: "Category" });
     await userEvent.click(filter);
@@ -611,7 +614,7 @@ export const LightThemeParameterListSingleWithValue = {
     parameterType: "dropdown_single",
   }),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", { name: "Category" });
     await userEvent.click(filter);
@@ -647,7 +650,7 @@ export const LightThemeDateFilterAllOptions = {
     parameterType: "date_all_options",
   }),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", {
       name: "Date all options",
@@ -681,7 +684,7 @@ export const LightThemeDateFilterMonthYear = {
     },
   }),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", {
       name: "Date Month and Year",
@@ -726,7 +729,7 @@ export const LightThemeDateFilterQuarterYear = {
     },
   }),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", {
       name: "Date Quarter and Year",
@@ -749,7 +752,7 @@ export const LightThemeDateFilterQuarterYearDropdown = {
     },
   }),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", {
       name: "Date Quarter and Year",
@@ -806,7 +809,7 @@ export const LightThemeDateFilterSingle = {
     },
   }),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", {
       name: "Date single",
@@ -842,7 +845,7 @@ export const LightThemeDateFilterRange = {
     },
   }),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", {
       name: "Date range",
@@ -878,7 +881,7 @@ export const LightThemeDateFilterRelative = {
     },
   }),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", {
       name: "Date relative",
@@ -916,7 +919,7 @@ export const LightThemeUnitOfTime = {
     },
   }),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", {
       name: "Time grouping",
@@ -951,7 +954,7 @@ export const LightThemeNumber = {
     parameterType: "number",
   }),
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const canvas = within(canvasElement);
     const filter = await canvas.findByRole("button", {
       name: "Number Equals",

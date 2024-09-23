@@ -7,14 +7,14 @@ import { getStaticChartTheme } from "metabase/static-viz/components/RowChart/the
 import { Box } from "metabase/ui";
 import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
 
-import { RowChart } from "./RowChart";
+import { RowChart, type RowChartProps } from "./RowChart";
 
 export default {
   title: "Visualizations/shared/RowChart",
   component: RowChart,
 };
 
-const Template: StoryFn<typeof RowChart> = args => {
+const Template: StoryFn<RowChartProps<any>> = args => {
   return (
     <Box h={600} bg="white" p="8px">
       <RowChart {...args} />

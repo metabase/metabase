@@ -2,14 +2,17 @@ import type { StoryFn } from "@storybook/react";
 
 import { Box } from "metabase/ui";
 
-import { SdkUsageProblemBanner } from "./SdkUsageProblemBanner";
+import {
+  SdkUsageProblemBanner,
+  type SdkUsageProblemBannerProps,
+} from "./SdkUsageProblemBanner";
 
 export default {
   title: "EmbeddingSDK/SdkUsageProblemBanner",
   component: SdkUsageProblemBanner,
 };
 
-const Template: StoryFn<typeof SdkUsageProblemBanner> = args => {
+const Template: StoryFn<SdkUsageProblemBannerProps> = args => {
   return (
     <Box pos="absolute" bottom="15px" left="15px">
       <SdkUsageProblemBanner {...args} />

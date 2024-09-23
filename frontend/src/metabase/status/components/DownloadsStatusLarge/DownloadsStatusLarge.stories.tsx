@@ -1,13 +1,16 @@
 import type { StoryFn } from "@storybook/react";
 
-import { DownloadsStatusLarge } from "./DownloadsStatusLarge";
+import {
+  DownloadsStatusLarge,
+  type DownloadsStatusLargeProps,
+} from "./DownloadsStatusLarge";
 
 export default {
   title: "Status/DownloadsStatusLarge",
   component: DownloadsStatusLarge,
 };
 
-const Template: StoryFn<typeof DownloadsStatusLarge> = args => {
+const Template: StoryFn<DownloadsStatusLargeProps> = args => {
   return <DownloadsStatusLarge {...args} />;
 };
 

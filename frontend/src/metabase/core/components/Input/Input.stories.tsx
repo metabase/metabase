@@ -1,14 +1,14 @@
 import type { StoryFn } from "@storybook/react";
 import { useState } from "react";
 
-import Input from "./Input";
+import Input, { type InputProps } from "./Input";
 
 export default {
   title: "Core/Input",
   component: Input,
 };
 
-const UncontrolledTemplate: StoryFn<typeof Input> = args => {
+const UncontrolledTemplate: StoryFn<InputProps> = args => {
   return <Input {...args} />;
 };
 

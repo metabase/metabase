@@ -1,13 +1,13 @@
 import type { StoryFn } from "@storybook/react";
 
-import EditableText from "./EditableText";
+import EditableText, { type EditableTextProps } from "./EditableText";
 
 export default {
   title: "Core/EditableText",
   component: EditableText,
 };
 
-const Template: StoryFn<typeof EditableText> = args => {
+const Template: StoryFn<EditableTextProps> = args => {
   return <EditableText {...args} />;
 };
 

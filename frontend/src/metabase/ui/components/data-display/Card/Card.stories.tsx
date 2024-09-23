@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Box, Card, Stack, Text } from "metabase/ui";
+import { Box, Card, type CardProps, Stack, Text } from "metabase/ui";
 
 const args = {
   p: "md",
@@ -27,7 +27,7 @@ const argTypes = {
   },
 };
 
-const DefaultTemplate = args => (
+const DefaultTemplate = (args: CardProps) => (
   <Box maw="20rem">
     <Card {...args}>
       <Stack spacing="sm">
@@ -38,7 +38,10 @@ const DefaultTemplate = args => (
   </Box>
 );
 
-const CardSectionTemplate = ({ withSectionBorder, ...args }) => (
+const CardSectionTemplate = ({
+  withSectionBorder,
+  ...args
+}: CardProps & { withSectionBorder: boolean }) => (
   <Box maw="20rem">
     <Card {...args}>
       <Card.Section withBorder={withSectionBorder}>
@@ -52,9 +55,9 @@ const CardSectionTemplate = ({ withSectionBorder, ...args }) => (
   </Box>
 );
 
-const CardSectionBorderTemplate = args => (
-  <CardSectionTemplate {...args} withSectionBorder />
-);
+const CardSectionBorderTemplate = (
+  args: CardProps & { withSectionBorder: boolean },
+) => <CardSectionTemplate {...args} withSectionBorder />;
 
 const Default = DefaultTemplate.bind({});
 const Border = DefaultTemplate.bind({});

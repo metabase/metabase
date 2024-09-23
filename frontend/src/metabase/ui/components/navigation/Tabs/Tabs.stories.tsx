@@ -1,4 +1,4 @@
-import { Icon, Tabs } from "metabase/ui";
+import { Icon, Tabs, type TabsProps } from "metabase/ui";
 
 const args = {
   orientation: "horizontal",
@@ -19,7 +19,7 @@ const tabs = [
   { value: "filters", label: "Filters", icon: "filter" },
 ];
 
-const DefaultTemplate = args => (
+const DefaultTemplate = (args: TabsProps) => (
   <Tabs {...args}>
     <Tabs.List>
       {tabs.map(tab => (
@@ -29,12 +29,14 @@ const DefaultTemplate = args => (
       ))}
     </Tabs.List>
     {tabs.map(tab => (
-      <Tabs.Panel key={tab.value} value={tab.value} />
+      <Tabs.Panel key={tab.value} value={tab.value}>
+        {tab.label}
+      </Tabs.Panel>
     ))}
   </Tabs>
 );
 
-const IconsTemplate = args => (
+const IconsTemplate = (args: TabsProps) => (
   <Tabs {...args}>
     <Tabs.List>
       {tabs.map(tab => (
@@ -42,14 +44,16 @@ const IconsTemplate = args => (
           key={tab.value}
           value={tab.value}
           disabled={tab.disabled}
-          icon={<Icon name={tab.icon} />}
+          icon={<Icon name={tab.icon as keyof typeof Icon} />}
         >
           {tab.label}
         </Tabs.Tab>
       ))}
     </Tabs.List>
     {tabs.map(tab => (
-      <Tabs.Panel key={tab.value} value={tab.value} />
+      <Tabs.Panel key={tab.value} value={tab.value}>
+        {tab.label}
+      </Tabs.Panel>
     ))}
   </Tabs>
 );

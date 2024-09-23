@@ -1,7 +1,7 @@
 import { action } from "@storybook/addon-actions";
 import type { StoryFn } from "@storybook/react";
 
-import PinnedItemCard from "./PinnedItemCard";
+import PinnedItemCard, { type PinnedItemCardProps } from "./PinnedItemCard";
 
 export default {
   title: "Collections/PinnedItemCard",
@@ -22,7 +22,7 @@ const collection = {
 const onCopy = action("onCopy");
 const onMove = action("onMove");
 
-const Template: StoryFn<typeof PinnedItemCard> = args => {
+const Template: StoryFn<PinnedItemCardProps> = args => {
   return <PinnedItemCard {...args} />;
 };
 

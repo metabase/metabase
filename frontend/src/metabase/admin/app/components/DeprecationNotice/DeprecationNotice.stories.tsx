@@ -1,6 +1,8 @@
 import type { StoryObj } from "@storybook/react";
 
-import DeprecationNotice from "./DeprecationNotice";
+import DeprecationNotice, {
+  type DeprecationNoticeProps,
+} from "./DeprecationNotice";
 
 export default {
   title: "Admin/App/DeprecationNotice",
@@ -10,7 +12,7 @@ export default {
   },
 };
 
-export const Default: StoryObj<typeof DeprecationNotice> = {
+export const Default: StoryObj<DeprecationNoticeProps> = {
   render: args => {
     return <DeprecationNotice {...args} />;
   },

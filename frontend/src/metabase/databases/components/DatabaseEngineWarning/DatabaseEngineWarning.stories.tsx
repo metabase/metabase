@@ -5,7 +5,9 @@ import {
   createMockEngineSource,
 } from "metabase-types/api/mocks";
 
-import DatabaseEngineWarning from "./DatabaseEngineWarning";
+import DatabaseEngineWarning, {
+  type DatabaseEngineWarningProps,
+} from "./DatabaseEngineWarning";
 
 export default {
   title: "Databases/DatabaseEngineWarning",
@@ -13,7 +15,7 @@ export default {
   argTypes: { onChange: { action: "onChange" } },
 };
 
-const Template: StoryFn<typeof DatabaseEngineWarning> = args => {
+const Template: StoryFn<DatabaseEngineWarningProps> = args => {
   return <DatabaseEngineWarning {...args} />;
 };
 Template.args = {

@@ -1,13 +1,13 @@
 import type { StoryFn } from "@storybook/react";
 
-import Button from "./Button";
+import Button, { type ButtonProps } from "./Button";
 
 export default {
   title: "Core/Button",
   component: Button,
 };
 
-const Template: StoryFn<typeof Button> = args => {
+const Template: StoryFn<ButtonProps> = args => {
   return <Button {...args} />;
 };
 

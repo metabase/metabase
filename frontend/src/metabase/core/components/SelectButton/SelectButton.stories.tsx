@@ -1,13 +1,13 @@
 import type { StoryFn } from "@storybook/react";
 
-import SelectButton from "./SelectButton";
+import SelectButton, { type SelectButtonProps } from "./SelectButton";
 
 export default {
   title: "Core/SelectButton",
   component: SelectButton,
 };
 
-const Template: StoryFn<typeof SelectButton> = args => {
+const Template: StoryFn<SelectButtonProps> = args => {
   return <SelectButton {...args} />;
 };
 

@@ -1,14 +1,14 @@
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 
-import Radio from "./Radio";
+import Radio, { type RadioProps } from "./Radio";
 
 export default {
   title: "Deprecated/Radio",
   component: Radio,
 };
 
-const Template: StoryFn<typeof Radio> = args => {
+const Template: StoryFn<RadioProps<any>> = args => {
   const [{ value }, updateArgs] = useArgs();
   const handleChange = (value: unknown) => updateArgs({ value });
 

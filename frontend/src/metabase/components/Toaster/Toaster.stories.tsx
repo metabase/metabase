@@ -1,13 +1,13 @@
 import type { StoryFn } from "@storybook/react";
 
-import Toaster from "./Toaster";
+import Toaster, { type ToasterProps } from "./Toaster";
 
 export default {
   title: "Dashboard/Toaster",
   component: Toaster,
 };
 
-const Template: StoryFn<typeof Toaster> = args => {
+const Template: StoryFn<ToasterProps> = args => {
   return <Toaster {...args} />;
 };
 

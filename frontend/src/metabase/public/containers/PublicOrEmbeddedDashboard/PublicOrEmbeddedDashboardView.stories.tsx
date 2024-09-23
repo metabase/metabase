@@ -32,7 +32,10 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
+import {
+  PublicOrEmbeddedDashboardView,
+  type PublicOrEmbeddedDashboardViewProps,
+} from "./PublicOrEmbeddedDashboardView";
 
 export default {
   title: "embed/PublicOrEmbeddedDashboardView",
@@ -167,7 +170,7 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<typeof PublicOrEmbeddedDashboardView> = args => {
+const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
   return <PublicOrEmbeddedDashboardView {...args} />;
 };
 

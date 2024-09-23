@@ -3,14 +3,14 @@ import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 
-import ColorSelector from "./ColorSelector";
+import ColorSelector, { type ColorSelectorProps } from "./ColorSelector";
 
 export default {
   title: "Core/ColorSelector",
   component: ColorSelector,
 };
 
-const Template: StoryFn<typeof ColorSelector> = args => {
+const Template: StoryFn<ColorSelectorProps> = args => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleChange = (value: string) => {

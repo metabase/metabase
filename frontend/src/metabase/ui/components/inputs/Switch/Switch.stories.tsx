@@ -1,4 +1,4 @@
-import { Stack, Switch } from "metabase/ui";
+import { Stack, Switch, type SwitchProps } from "metabase/ui";
 
 const args = {
   labelPosition: "right",
@@ -32,9 +32,9 @@ const argTypes = {
   },
 };
 
-const DefaultTemplate = args => <Switch {...args} />;
+const DefaultTemplate = (args: SwitchProps) => <Switch {...args} />;
 
-const StateTemplate = args => (
+const StateTemplate = (args: SwitchProps) => (
   <Stack>
     <Switch {...args} label="Unchecked switch" checked={false} />
     <Switch {...args} label="Checked switch" checked />

@@ -30,7 +30,10 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { PublicOrEmbeddedQuestionView } from "./PublicOrEmbeddedQuestionView";
+import {
+  PublicOrEmbeddedQuestionView,
+  type PublicOrEmbeddedQuestionViewProps,
+} from "./PublicOrEmbeddedQuestionView";
 
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(PivotTable);
@@ -99,7 +102,7 @@ const initialState = createMockState({
 
 const store = getStore(publicReducers, initialState);
 
-const Template: StoryFn<typeof PublicOrEmbeddedQuestionView> = args => {
+const Template: StoryFn<PublicOrEmbeddedQuestionViewProps> = args => {
   return <PublicOrEmbeddedQuestionView {...args} />;
 };
 
@@ -148,7 +151,7 @@ export const LightThemeDownload = {
     downloadsEnabled: true,
   },
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const asyncCallback = createAsyncCallback();
     await downloadQuestionAsPng(canvasElement, asyncCallback);
   },
@@ -221,7 +224,7 @@ export const PivotTableLightTheme = {
     }),
   },
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const cell = await within(canvasElement).findByText("field-123");
     (cell.parentNode?.parentNode as HTMLElement).classList.add("pseudo-hover");
   },
@@ -328,7 +331,7 @@ export const SmartScalarLightThemeTooltip = {
 
   decorators: [NarrowContainer],
 
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const value = "vs. July 21, 2024, 12:00 AM";
     const valueElement = await within(canvasElement).findByText(value);
     await userEvent.hover(valueElement);

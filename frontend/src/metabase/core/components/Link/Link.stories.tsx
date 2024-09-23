@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import Link from "./";
+import Link, { type LinkProps } from "./";
 
 export default {
   title: "Core/Link",
@@ -13,7 +13,7 @@ const sampleStyle = {
   gap: "2rem",
 };
 
-const Template: StoryFn<typeof Link> = args => {
+const Template: StoryFn<LinkProps> = args => {
   return (
     <div style={sampleStyle}>
       <Link {...args}>Click Me</Link>

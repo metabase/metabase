@@ -2,14 +2,16 @@ import type { StoryFn } from "@storybook/react";
 
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import FileUploadStatusLarge from "./FileUploadStatusLarge";
+import FileUploadStatusLarge, {
+  type FileUploadLargeProps,
+} from "./FileUploadStatusLarge";
 
 export default {
   title: "Status/FileUploadStatusLarge",
   component: FileUploadStatusLarge,
 };
 
-const Template: StoryFn<typeof FileUploadStatusLarge> = args => {
+const Template: StoryFn<FileUploadLargeProps> = args => {
   return <FileUploadStatusLarge {...args} />;
 };
 

@@ -1,14 +1,17 @@
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 
-import { SegmentedControl } from "./SegmentedControl";
+import {
+  SegmentedControl,
+  type SegmentedControlProps,
+} from "./SegmentedControl";
 
 export default {
   title: "Components/SegmentedControl",
   component: SegmentedControl,
 };
 
-const Template: StoryFn<typeof SegmentedControl> = args => {
+const Template: StoryFn<SegmentedControlProps<number>> = args => {
   const [{ value }, updateArgs] = useArgs();
   const handleChange = (value: unknown) => updateArgs({ value });
 

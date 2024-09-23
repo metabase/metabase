@@ -5,14 +5,14 @@ import {
   DUPLICATED_STEPS,
 } from "metabase/static-viz/components/FunnelChart/stories-data";
 
-import FunnelChart from "./FunnelChart";
+import FunnelChart, { type FunnelProps } from "./FunnelChart";
 
 export default {
   title: "static-viz/FunnelChart",
   component: FunnelChart,
 };
 
-const Template: StoryFn<typeof FunnelChart> = args => {
+const Template: StoryFn<FunnelProps> = args => {
   return <FunnelChart {...args} />;
 };
 

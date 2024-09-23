@@ -6,14 +6,14 @@ import {
   MULTIPLE_SERIES,
 } from "metabase/static-viz/components/RowChart/stories-data";
 
-import RowChart from "./RowChart";
+import RowChart, { type StaticRowChartProps } from "./RowChart";
 
 export default {
   title: "static-viz/RowChart",
   component: RowChart,
 };
 
-const Template: StoryFn<typeof RowChart> = args => {
+const Template: StoryFn<StaticRowChartProps> = args => {
   return <RowChart {...args} />;
 };
 

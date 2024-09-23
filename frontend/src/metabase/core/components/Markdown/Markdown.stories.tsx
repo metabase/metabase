@@ -1,13 +1,13 @@
 import type { StoryFn } from "@storybook/react";
 
-import Markdown from "./Markdown";
+import Markdown, { type MarkdownProps } from "./Markdown";
 
 export default {
   title: "Core/Markdown",
   component: Markdown,
 };
 
-const Template: StoryFn<typeof Markdown> = args => {
+const Template: StoryFn<MarkdownProps> = args => {
   return <Markdown {...args} />;
 };
 

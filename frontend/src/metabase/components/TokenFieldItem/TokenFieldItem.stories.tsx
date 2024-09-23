@@ -1,5 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 import cx from "classnames";
+import type { ComponentProps } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
@@ -17,7 +18,7 @@ const Wrapper = ({ children }: { children: JSX.Element | JSX.Element[] }) => (
   </div>
 );
 
-const Template: StoryFn<typeof TokenFieldItem> = args => {
+const Template: StoryFn<ComponentProps<typeof TokenFieldItem>> = args => {
   return (
     <Wrapper>
       <TokenFieldItem {...args} />
@@ -25,7 +26,7 @@ const Template: StoryFn<typeof TokenFieldItem> = args => {
   );
 };
 
-const ManyTemplate: StoryFn<typeof TokenFieldItem> = args => {
+const ManyTemplate: StoryFn<ComponentProps<typeof TokenFieldItem>> = args => {
   return (
     <Wrapper>
       <TokenFieldItem {...args}> {`${args.children} 1`} </TokenFieldItem>
@@ -37,7 +38,7 @@ const ManyTemplate: StoryFn<typeof TokenFieldItem> = args => {
   );
 };
 
-const AddonTemplate: StoryFn<typeof TokenFieldItem> = args => {
+const AddonTemplate: StoryFn<ComponentProps<typeof TokenFieldItem>> = args => {
   return (
     <Wrapper>
       <TokenFieldItem isValid={args.isValid}>

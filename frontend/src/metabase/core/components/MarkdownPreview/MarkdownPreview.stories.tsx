@@ -1,14 +1,14 @@
 import styled from "@emotion/styled";
 import type { StoryFn } from "@storybook/react";
 
-import { MarkdownPreview } from "./MarkdownPreview";
+import { MarkdownPreview, type MarkdownPreviewProps } from "./MarkdownPreview";
 
 export default {
   title: "Core/MarkdownPreview",
   component: MarkdownPreview,
 };
 
-const Template: StoryFn<typeof MarkdownPreview> = args => {
+const Template: StoryFn<MarkdownPreviewProps> = args => {
   return (
     <Container>
       <MarkdownPreview {...args} />
