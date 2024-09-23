@@ -69,11 +69,11 @@
         (testing term
           (is (= (hybrid term)
                  (#'search.postgres/minimal-with-perms
-                    term
-                    {:current-user-id    (mt/user->id :crowberto)
-                     :is-superuser?      true
-                     :archived?          false
-                     :current-user-perms #{"/"}
-                     :model-ancestors?   false
-                     :models             search/all-models
-                     :search-string      term}))))))))
+                  term
+                  {:current-user-id    (mt/user->id :crowberto)
+                   :is-superuser?      true
+                   :archived?          false
+                   :current-user-perms #{"/"}
+                   :model-ancestors?   false
+                   :models             search/all-models
+                   :search-string      term}))))))))

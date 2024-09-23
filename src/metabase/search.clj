@@ -47,7 +47,7 @@
      :fulltext (when (is-postgres?) search.postgres/model-set)
      :minimal  (when (is-postgres?) search.postgres/model-set)
      :in-place search.impl/query-model-set
-    nil)
+     nil)
 
    (log/warnf "%s search not supported for your AppDb, using %s" search-engine default-engine)
    (recur default-engine)))
@@ -58,7 +58,7 @@
      :fulltext (when (is-postgres?) search.postgres/no-scoring)
      :minimal  (when (is-postgres?) search.postgres/no-scoring)
      :in-place scoring/score-and-result
-    nil)
+     nil)
 
    (log/warnf "%s search not supported for your AppDb, using %s" search-engine default-engine)
    (recur default-engine)))

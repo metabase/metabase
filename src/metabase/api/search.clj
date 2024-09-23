@@ -185,11 +185,11 @@
   (prof/serve-ui 8080)
 
   (prof/profile
-      (count
-       (dotimes [_ 100]
-         (test-search "trivia"))))
+   (count
+    (dotimes [_ 100]
+      (test-search "trivia"))))
 
   (prof/profile
-      (count
-       (dotimes [_ 1000]
-         (test-search "trivia" "minimal")))))
+   (count
+    (dotimes [_ 1000]
+      (test-search "trivia" "minimal")))))
