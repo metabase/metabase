@@ -38,7 +38,7 @@ export const SidebarCacheSection = ({
   return (
     <DelayedLoadingAndErrorWrapper delay={0} loading={loading} error={error}>
       <Flex align="center" justify="space-between">
-        <span id={labelId}>{t`Caching policy`}</span>
+        <span id={labelId}>{t`When to get new results`}</span>
         <FormLauncher
           role="button"
           onClick={() => setPage("caching")}
