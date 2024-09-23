@@ -62,16 +62,26 @@
       },
       "metadata": {
         "description": "Metadata about the anonymous stats collection",
-        "type": "object",
-        "additionalProperties": {
-          "description": "Individual metadataproperties",
-          "type": ["string", "integer"],
-          "maxLength": 255,
-          "minimum": 0,
-          "maximum": 2147483647
+        "type": "array",
+        "items": {
+          "type": "object",
+          "description": "A single metadata key/value",
+          "properties": {
+            "key": {
+              "description": "The key for this metadata",
+              "type": "string",
+              "maxLength": 255
+            },
+            "value": {
+              "description": "The value of this metadata",
+              "type": ["string", "boolean", "integer", "null"],
+              "maxLength": 255,
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          }
         }
-      }
-    },
-    "additionalProperties": false,
-    "required": ["instance_attributes", "features", "metadata"]
-}
+      },
+      "additionalProperties": false,
+      "required": ["instance_attributes", "features", "metadata"]
+    }

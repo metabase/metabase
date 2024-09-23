@@ -720,4 +720,4 @@
           elapsed-secs   (quot (- end-time-ms start-time-ms) 1000)]
       (send-stats-deprecated! stats)
       (snowplow/track-event! ::snowplow/instance_stats
-                             (assoc-in snowplow-stats [:metadata "stats_export_time_seconds"] elapsed-secs)))))
+                             (assoc snowplow-stats :metadata [{"stats_export_time_seconds" elapsed-secs}])))))
