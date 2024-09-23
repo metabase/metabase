@@ -272,6 +272,7 @@
    [:visibility Visibility]
 
    ;; should this setting be encrypted `:never` or `:maybe` (when `MB_ENCRYPTION_SECRET_KEY` is set).
+   ;; Required for `:timestamp`, `:json`, and `:csv`-typed settings. DEFAULTS to `:never` for all other types.
    ;; Defaults to `:maybe` (except for `:boolean` typed settings, where it defaults to `:never`)
    [:encryption [:enum :never :maybe]]
 
@@ -977,7 +978,20 @@
                  :init           nil
                  :tag            (default-tag-for-type setting-type)
                  :visibility     :admin
-                 :encryption     (if (= setting-type :boolean) :never :maybe)
+                 :encryption     (or
+                                  ;; NOTE: if none of the below conditions is met, users of `defsetting` will be required to
+                                  ;; provide a value for `:encryption`.
+                                  ;;
+                                  ;; if a setting is `:sensitive?`, default to encrypting it
+                                  (when (:sensitive? setting)
+                                    :maybe)
+                                  ;; if a setting isn't stored in the DB, the value doesn't really matter, but provide
+                                  ;; a default so the caller doesn't have to
+                                  (when (= (:setter setting) :none)
+                                    :maybe)
+                                  ;; if the setting isn't a type likely to contain secrets, default to plaintext
+                                  (when (contains? #{:boolean :integer :positive-integer :double :keyword :timestamp} setting-type)
+                                    :never))
                  :export?        false
                  :sensitive?     false
                  :cache?         true

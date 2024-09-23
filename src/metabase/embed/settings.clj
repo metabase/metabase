@@ -13,6 +13,7 @@
 (defsetting embedding-app-origin
   (deferred-tru "Allow this origin to embed the full {0} application"
                 (public-settings/application-name-for-setting-descriptions))
+  :type       :boolean
   :feature    :embedding
   :visibility :public
   :audit      :getter)
@@ -33,7 +34,7 @@
                                          {:event                      (if new-value
                                                                         :embedding-enabled
                                                                         :embedding-disabled)
-                                          :embedding-app-origin-set   (boolean (embedding-app-origin))
+                                          :embedding-app-origin-set   (embedding-app-origin)
                                           :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
                                           :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))
 

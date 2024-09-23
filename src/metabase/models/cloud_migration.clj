@@ -43,6 +43,7 @@
 
 (defsetting store-url
   (deferred-tru "Store URL.")
+  :encryption :never
   :visibility :admin ;; should be :internal, but FE doesn't get internal settings
   :default    (str "https://store" (when (store-use-staging) ".staging") ".metabase.com")
   :doc        false
@@ -50,6 +51,7 @@
 
 (defsetting store-api-url
   (deferred-tru "Store API URL.")
+  :encryption :never
   :visibility :internal
   :default    (str "https://store-api" (when (store-use-staging) ".staging") ".metabase.com")
   :doc        false
@@ -57,6 +59,7 @@
 
 (defsetting migration-dump-file
   (deferred-tru "Dump file for migrations.")
+  :encryption :never
   :visibility :internal
   :default    nil
   :doc        false
@@ -64,6 +67,7 @@
 
 (defsetting migration-dump-version
   (deferred-tru "Custom dump version for migrations.")
+  :encryption :never
   :visibility :internal
   ;; Use a known version on staging when there's no real version.
   ;; This will cause the restore to fail on cloud unless you also set `migration-dump-file` to
