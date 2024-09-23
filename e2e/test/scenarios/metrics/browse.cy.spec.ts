@@ -146,40 +146,6 @@ const ALL_METRICS = [
   NON_NUMERIC_METRIC,
 ];
 
-function createMetrics(
-  metrics: StructuredQuestionDetailsWithName[] = ALL_METRICS,
-) {
-  metrics.forEach(metric => createQuestion(metric));
-}
-
-function metricsTable() {
-  return cy.findByLabelText("Table of metrics").should("be.visible");
-}
-
-function findMetric(name: string) {
-  return metricsTable().findByText(name);
-}
-
-function getMetricsTableItem(index: number) {
-  return metricsTable().findAllByTestId("metric-name").eq(index);
-}
-
-function shouldHaveBookmark(name: string) {
-  getSidebarSectionTitle(/Bookmarks/).should("be.visible");
-  navigationSidebar().findByText(name).should("be.visible");
-}
-
-function shouldNotHaveBookmark(name: string) {
-  getSidebarSectionTitle(/Bookmarks/).should("not.exist");
-  navigationSidebar().findByText(name).should("not.exist");
-}
-
-function checkMetricValueAndTooltipExist(value: string, label: string) {
-  metricsTable().findByText(value).should("be.visible");
-  metricsTable().findByText(value).realHover();
-  tooltip().should("contain", label);
-}
-
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 describe("scenarios > browse > metrics", () => {
@@ -600,6 +566,40 @@ describe("scenarios > browse > metrics", () => {
     });
   });
 });
+
+function createMetrics(
+  metrics: StructuredQuestionDetailsWithName[] = ALL_METRICS,
+) {
+  metrics.forEach(metric => createQuestion(metric));
+}
+
+function metricsTable() {
+  return cy.findByLabelText("Table of metrics").should("be.visible");
+}
+
+function findMetric(name: string) {
+  return metricsTable().findByText(name);
+}
+
+function getMetricsTableItem(index: number) {
+  return metricsTable().findAllByTestId("metric-name").eq(index);
+}
+
+function shouldHaveBookmark(name: string) {
+  getSidebarSectionTitle(/Bookmarks/).should("be.visible");
+  navigationSidebar().findByText(name).should("be.visible");
+}
+
+function shouldNotHaveBookmark(name: string) {
+  getSidebarSectionTitle(/Bookmarks/).should("not.exist");
+  navigationSidebar().findByText(name).should("not.exist");
+}
+
+function checkMetricValueAndTooltipExist(value: string, label: string) {
+  metricsTable().findByText(value).should("be.visible");
+  metricsTable().findByText(value).realHover();
+  tooltip().should("contain", label);
+}
 
 function verifyMetric(metric: StructuredQuestionDetailsWithName) {
   metricsTable().findByText(metric.name).should("be.visible").click();
