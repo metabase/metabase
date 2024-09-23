@@ -12,7 +12,7 @@ import type {
 import { DIMENSIONS, OPTION_NAME_SEPERATOR, TOTAL_TEXT } from "./constants";
 import type { PieChartFormatters } from "./format";
 import type { PieChartModel, SliceTreeNode } from "./model/types";
-import { getInnerRingSlices, getSliceTreeNodesFromPath } from "./util";
+import { getArrayFromMapValues, getSliceTreeNodesFromPath } from "./util";
 
 function getTotalGraphicOption(
   settings: ComputedVisualizationSettings,
@@ -44,7 +44,7 @@ function getTotalGraphicOption(
 
       // legend hovered
     } else if (hoveredIndex != null) {
-      const slice = getInnerRingSlices(chartModel)[hoveredIndex];
+      const slice = getArrayFromMapValues(chartModel.sliceTree)[hoveredIndex];
 
       sliceValueOrTotal = slice.displayValue;
       labelText = slice.name.toUpperCase();
@@ -254,7 +254,7 @@ function getSeriesDataFromSlices(
 
       return {
         children: !s.isOther
-          ? getSeriesData(Array(...s.children.values()), ring + 1, name)
+          ? getSeriesData(getArrayFromMapValues(s.children), ring + 1, name)
           : undefined,
         value: s.value,
         name,
@@ -289,7 +289,9 @@ function getSeriesDataFromSlices(
     });
   }
 
-  return getSeriesData(getInnerRingSlices(chartModel).filter(s => s.visible));
+  return getSeriesData(
+    getArrayFromMapValues(chartModel.sliceTree).filter(s => s.visible),
+  );
 }
 
 export function getPieChartOption(

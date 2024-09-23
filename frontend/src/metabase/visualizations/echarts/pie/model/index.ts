@@ -26,6 +26,7 @@ import {
   OTHER_SLICE_NAME,
 } from "../constants";
 import { getDimensionFormatter } from "../format";
+import { getArrayFromMapValues } from "../util";
 import { getColorForRing } from "../util/colors";
 
 import type {
@@ -109,7 +110,7 @@ function aggregateSlices(
   total: number,
   renderingContext: RenderingContext,
 ) {
-  const children = Array(...node.children.values());
+  const children = getArrayFromMapValues(node.children);
   const others = children.filter(s => s.isOther);
   const otherTotal = others.reduce((currTotal, o) => currTotal + o.value, 0);
 
@@ -159,13 +160,12 @@ function computeSliceAngles(
     slices[index].endAngle = d3Slice.endAngle;
   });
 
-  slices.forEach(
-    slice =>
-      computeSliceAngles(
-        Array(...slice.children.values()),
-        slice.startAngle,
-        slice.endAngle,
-      ), // TODO use common func for Array(...node.values())
+  slices.forEach(slice =>
+    computeSliceAngles(
+      getArrayFromMapValues(slice.children),
+      slice.startAngle,
+      slice.endAngle,
+    ),
   );
 }
 
@@ -175,7 +175,7 @@ function countNumRings(node: SliceTreeNode, numRings = 0): number {
   }
 
   return Math.max(
-    ...Array(...node.children.values()).map(node =>
+    ...getArrayFromMapValues(node.children).map(node =>
       countNumRings(node, numRings + 1),
     ),
     numRings + 1,
@@ -510,7 +510,7 @@ export function getPieChartModel(
   // We need start and end angles for the label formatter, to determine if we
   // should the percent label on the chart for a specific slice. To get these we
   // need to use d3.
-  computeSliceAngles(Array(...sliceTree.values()));
+  computeSliceAngles(getArrayFromMapValues(sliceTree));
 
   // If there are no non-zero slices, we'll display a single "other" slice
   if (sliceTree.size === 0) {
@@ -534,7 +534,7 @@ export function getPieChartModel(
   }
 
   const numRings = Math.max(
-    ...Array(...sliceTree.values()).map(node => countNumRings(node)),
+    ...getArrayFromMapValues(sliceTree).map(node => countNumRings(node)),
   );
 
   return {

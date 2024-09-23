@@ -9,6 +9,7 @@ import type {
 import type { RowValue } from "metabase-types/api";
 
 import type { PieChartModel, SliceTree, SliceTreeNode } from "./model/types";
+import { getArrayFromMapValues } from "./util";
 
 export interface PieChartFormatters {
   formatMetric: (value: unknown, isCompact?: boolean) => string;
@@ -53,7 +54,7 @@ export function getPieChartFormatters(
       const percentages =
         location === "chart"
           ? getAllSlicePercentages(chartModel.sliceTree)
-          : Array(...chartModel.sliceTree.values()).map(
+          : getArrayFromMapValues(chartModel.sliceTree).map(
               s => s.normalizedPercentage,
             );
 

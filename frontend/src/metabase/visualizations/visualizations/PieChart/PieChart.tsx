@@ -9,7 +9,7 @@ import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/forma
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
 import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
 import { getTooltipOption } from "metabase/visualizations/echarts/pie/tooltip";
-import { getInnerRingSlices } from "metabase/visualizations/echarts/pie/util";
+import { getArrayFromMapValues } from "metabase/visualizations/echarts/pie/util";
 import {
   useCloseTooltipOnScroll,
   usePieChartValuesColorsClasses,
@@ -104,7 +104,7 @@ export function PieChart(props: VisualizationProps) {
 
   const eventHandlers = useChartEvents(props, chartRef, chartModel);
 
-  const slices = getInnerRingSlices(chartModel);
+  const slices = getArrayFromMapValues(chartModel.sliceTree);
   const legendTitles = slices
     .filter(s => s.includeInLegend)
     .map(s => {

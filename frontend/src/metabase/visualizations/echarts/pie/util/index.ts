@@ -1,7 +1,7 @@
 import { checkNotNull } from "metabase/lib/types";
 
 import { OPTION_NAME_SEPERATOR } from "../constants";
-import type { PieChartModel, SliceTree, SliceTreeNode } from "../model/types";
+import type { SliceTree, SliceTreeNode } from "../model/types";
 import type { EChartsSunburstSeriesMouseEvent } from "../types";
 
 export const getSliceKeyPath = (event: EChartsSunburstSeriesMouseEvent) =>
@@ -25,5 +25,5 @@ export function getSliceTreeNodesFromPath(
   return { sliceTreeNode: checkNotNull(sliceTreeNode), nodes };
 }
 
-export const getInnerRingSlices = (chartModel: PieChartModel) =>
-  Array(...chartModel.sliceTree.values());
+export const getArrayFromMapValues = <_, V>(map: Map<_, V>): V[] =>
+  Array(...map.values());
