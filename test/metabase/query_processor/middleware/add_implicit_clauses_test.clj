@@ -231,6 +231,7 @@
             q1            (lib.tu.macros/mbql-query orders
                             {:filter       [:= $id 1]
                              :aggregation  [[:sum $total]]
+                             :aggregation-idents {0 "VDv6aGk4W8QbFfLlGvFBf"}
                              :breakout     [!day.created-at
                                             $product-id->products.title
                                             $product-id->products.category]})

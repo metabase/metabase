@@ -121,13 +121,16 @@
     (is (=? (mt/mbql-query checkins
               {:source-table $$checkins
                :aggregation  [[:sum &USERS__via__USER_ID.users.id]]
+               :aggregation-idents {0 "2c8EppNlo9KT3zhE-7zgW"}
                :breakout     [$id]
                :joins        [{:source-table $$users
                                :alias        "USERS__via__USER_ID"
+                               :ident        "ccQDorIZBxDWSF6MKm6Ls"
                                :strategy     :left-join
                                :condition    [:= $user_id &USERS__via__USER_ID.users.id]
                                :fk-field-id  (mt/id :checkins :user_id)}
                               {:alias        "u"
+                               :ident        "BRaB01bmd5SjYUSLEcOcy"
                                :source-table $$users
                                :strategy     :left-join
                                :condition    [:=
@@ -216,6 +219,7 @@
                                                  &c.checkins.user_id
                                                  &c.checkins.venue_id]}]
                    :aggregation [[:sum [:field "id" {:base-type :type/Float, :join-alias "c"}]]]
+                   :aggregation-idents {0 "g1fYXXVR3cgoCZ8TQeGG1"}
                    :breakout    [[:field %last_login {:temporal-unit :month}]]})
                 (resolve-joins
                  (mt/mbql-query users
@@ -224,6 +228,7 @@
                                    :source-table $$checkins
                                    :condition    [:= $id [:field "USER_ID" {:base-type :type/Integer, :join-alias "c"}]]}]
                     :aggregation [[:sum [:field "id" {:base-type :type/Float, :join-alias "c"}]]]
+                     :aggregation-idents {0 "g1fYXXVR3cgoCZ8TQeGG1"}
                     :breakout    [[:field %last_login {:temporal-unit :month}]]}))))))
 
 (deftest ^:parallel aggregation-field-ref-test

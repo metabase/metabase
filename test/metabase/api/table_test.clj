@@ -781,7 +781,8 @@
             metric-query          {:database 2
                                    :type     "query"
                                    :query    {:source-table card-virtual-table-id
-                                              :aggregation  [["count"]]}}]
+                                              :aggregation  [["count"]]
+                                              :aggregation-idents {0 "4OWdCZBD5u7LrIA-kG4rb"}}}]
         (t2.with-temp/with-temp [Collection coll   {:name "My Collection"}
                                  Card       metric {:name          "Venues metric"
                                                     :database_id   (mt/id)

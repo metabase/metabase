@@ -190,7 +190,7 @@
                  [[:count-where [:> price 10]] :type/Quantity]
                  [[:sum-where price [:> price 10]] :type/Currency]
                  [[:percentile price 0.9] nil]]]
-          (let [results (mt/run-mbql-query venues {:aggregation aggregation})]
+          (let [results (mt/run-mbql-query venues {:aggregation [aggregation]})]
             (testing (format "The %s Aggregation's semantic-type should be: %s" (first aggregation) expected-semantic-type)
               (is (= expected-semantic-type
                      (:semantic_type

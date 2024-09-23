@@ -199,6 +199,7 @@
                 {:source-query {:source-table $$orders
                                 :joins        [{:source-table $$products
                                                 :condition    [:= $product_id &Products.products.id]
+                                                :ident        "XcOYkXAyGHReF3JMqla4P"
                                                 :alias        "Products"}]}
                  :aggregation  [[:count]]
                  :breakout     [&Products.products.id]
@@ -217,7 +218,7 @@
   (testing (str "Do not add `:join-alias` to top-level `:field` clauses if the Field could come from the "
                 "`:source-table` or `:source-query` (#18502)")
     (mt/dataset test-data
-      (is (query= (mt/mbql-query people
+      (let [query (mt/mbql-query people
                     {:source-query {:source-table $$people
                                     :breakout     [!month.created_at]
                                     :aggregation  [[:count]]
@@ -234,23 +235,6 @@
                                     *count/BigInteger
                                     &Q2.birth_date
                                     &Q2.*count/BigInteger]
-                     :limit        3})
-                  (wrap-joined-fields
-                   (mt/mbql-query people
-                     {:source-query {:source-table $$people
-                                     :breakout     [!month.created_at]
-                                     :aggregation  [[:count]]
-                                     :order-by     [[:asc !month.created_at]]}
-                      :joins        [{:source-query {:source-table $$people
-                                                     :breakout     [!month.birth_date]
-                                                     :aggregation  [[:count]]
-                                                     :order-by     [[:asc !month.birth_date]]}
-                                      :alias        "Q2"
-                                      :condition    [:= !month.created_at !month.&Q2.birth_date]
-                                      :fields       [&Q2.birth_date &Q2.*count/BigInteger]
-                                      :strategy     :left-join}]
-                      :fields       [!default.created_at
-                                     *count/BigInteger
-                                     &Q2.birth_date
-                                     &Q2.*count/BigInteger]
-                      :limit        3})))))))
+                     :limit        3})]
+        (is (query= query
+                    (wrap-joined-fields query)))))))
