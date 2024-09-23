@@ -1,0 +1,26 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Group, Divider, Text } from "metabase/ui";
+import * as DividerStories from "./Divider.stories";
+
+<Meta of={DividerStories} />
+
+# Divider
+
+Our themed wrapper around [Mantine Divider](https://v6.mantine.dev/core/divider/).
+
+## Docs
+
+- [Mantine Divider Docs](https://v6.mantine.dev/core/divider/)
+
+## Examples
+
+<Canvas>
+  <Story of={DividerStories.Default_} />
+</Canvas>
+
+### Vertical orientation
+
+<Canvas>
+  <Story of={DividerStories.VerticalOrientation} />
+</Canvas>

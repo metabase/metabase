@@ -1,0 +1,20 @@
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { ReduxProvider } from "__support__/storybook";
+import { _UpsellCard } from "./UpsellCard";
+import * as UpsellCardStories from "./UpsellCard.stories";
+
+<Meta of={UpsellCardStories} />
+
+# Upsell Card
+
+- Use as a small, visible upsell, with or without an image
+
+## Examples
+
+<Canvas>
+  <Story of={UpsellCardStories.WithImage_} />
+</Canvas>
+
+<Canvas>
+  <Story of={UpsellCardStories.WithoutImage_} />
+</Canvas>

@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import {
   createMockEngine,
@@ -13,7 +13,7 @@ export default {
   argTypes: { onChange: { action: "onChange" } },
 };
 
-const Template: ComponentStory<typeof DatabaseEngineWarning> = args => {
+const Template: StoryFn<typeof DatabaseEngineWarning> = args => {
   return <DatabaseEngineWarning {...args} />;
 };
 Template.args = {
@@ -50,26 +50,38 @@ Template.args = {
   },
 };
 
-export const New = Template.bind({});
-New.args = {
-  engineKey: "presto-jdbc",
-  ...Template.args,
+export const New = {
+  render: Template,
+
+  args: {
+    engineKey: "presto-jdbc",
+    ...Template.args,
+  },
 };
 
-export const Deprecated = Template.bind({});
-Deprecated.args = {
-  engineKey: "presto",
-  ...Template.args,
+export const Deprecated = {
+  render: Template,
+
+  args: {
+    engineKey: "presto",
+    ...Template.args,
+  },
 };
 
-export const Community = Template.bind({});
-Community.args = {
-  engineKey: "communityEngine",
-  ...Template.args,
+export const Community = {
+  render: Template,
+
+  args: {
+    engineKey: "communityEngine",
+    ...Template.args,
+  },
 };
 
-export const Partner = Template.bind({});
-Partner.args = {
-  engineKey: "partnerEngine",
-  ...Template.args,
+export const Partner = {
+  render: Template,
+
+  args: {
+    engineKey: "partnerEngine",
+    ...Template.args,
+  },
 };

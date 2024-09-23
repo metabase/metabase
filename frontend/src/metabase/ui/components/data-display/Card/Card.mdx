@@ -1,0 +1,38 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Box, Card, Stack, Text } from "metabase/ui";
+import * as CardStories from "./Card.stories";
+
+<Meta of={CardStories} />
+
+# Card
+
+Our themed wrapper around [Mantine Card](https://v6.mantine.dev/core/card/).
+
+## Docs
+
+- [Mantine Card Docs](https://v6.mantine.dev/core/card/)
+
+## Examples
+
+<Canvas>
+  <Story of={CardStories.Default_} />
+</Canvas>
+
+### Card border
+
+<Canvas>
+  <Story of={CardStories.Border_} />
+</Canvas>
+
+### Card.Section
+
+<Canvas>
+  <Story of={CardStories.CardSection_} />
+</Canvas>
+
+### Card.Section border
+
+<Canvas>
+  <Story of={CardStories.CardSectionBorder_} />
+</Canvas>

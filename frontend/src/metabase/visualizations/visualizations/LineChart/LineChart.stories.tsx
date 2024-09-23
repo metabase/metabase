@@ -1,4 +1,4 @@
-import type { Story } from "@storybook/react";
+import type { StoryObj } from "@storybook/react";
 
 import {
   SdkVisualizationWrapper,
@@ -45,38 +45,36 @@ const MOCK_SERIES = [
   },
 ];
 
-export const Default: Story = () => (
-  <VisualizationWrapper>
-    <Box h={500}>
-      <Visualization rawSeries={MOCK_SERIES} width={500} />
-    </Box>
-  </VisualizationWrapper>
-);
+export const Default: StoryObj = {
+  render: () => (
+    <VisualizationWrapper>
+      <Box h={500}>
+        <Visualization rawSeries={MOCK_SERIES} width={500} />
+      </Box>
+    </VisualizationWrapper>
+  ),
 
-// This story has become flaky on CI, so we're skipping it for now.
-Default.story = {
   parameters: {
     loki: { skip: true },
   },
 };
 
-export const EmbeddingHugeFont: Story = () => {
-  const theme: MetabaseTheme = {
-    fontSize: "20px",
-    components: { cartesian: { padding: "0.5rem 1rem" } },
-  };
+export const EmbeddingHugeFont: StoryObj = {
+  render: () => {
+    const theme: MetabaseTheme = {
+      fontSize: "20px",
+      components: { cartesian: { padding: "0.5rem 1rem" } },
+    };
 
-  return (
-    <SdkVisualizationWrapper theme={theme}>
-      <Box h={500}>
-        <Visualization rawSeries={MOCK_SERIES} width={500} />
-      </Box>
-    </SdkVisualizationWrapper>
-  );
-};
+    return (
+      <SdkVisualizationWrapper theme={theme}>
+        <Box h={500}>
+          <Visualization rawSeries={MOCK_SERIES} width={500} />
+        </Box>
+      </SdkVisualizationWrapper>
+    );
+  },
 
-// This story has become flaky on CI, so we're skipping it for now.
-EmbeddingHugeFont.story = {
   parameters: {
     loki: { skip: true },
   },

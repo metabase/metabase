@@ -1,0 +1,71 @@
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Checkbox, Stack } from "metabase/ui";
+import * as CheckboxStories from "./Checkbox.stories";
+
+<Meta of={CheckboxStories} />
+
+# Checkbox
+
+Our themed wrapper around [Mantine Checkbox](https://v6.mantine.dev/core/checkbox/).
+
+## When to use Checkbox
+
+Checkbox buttons allow users to select a single option from a list of mutually exclusive options. All possible options are exposed up front for users to compare.
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/sF1qSHk6yVqO1rFgmH0nzT/Input-%2F-Checkbox?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
+- [Mantine Checkbox Docs](https://v6.mantine.dev/core/checkbox/)
+
+## Usage guidelines
+
+- **Use this component if there are more than 5 options**. If there are fewer options, feel free to check out Checkbox or Select.
+- For option ordering, try to use your best judgement on a sensible order. For example, Yes should come before No. Alphabetical ordering is usually a good fallback if there's no inherent order in your set of choices.
+- In almost all circumstances you'll want to use `<Checkbox.Group>` to provide a set of options and help with defaultValues and state management between them.
+
+## Examples
+
+<Canvas>
+  <Story of={CheckboxStories.Default_} />
+</Canvas>
+
+### Checkbox.Group
+
+<Canvas>
+  <Story of={CheckboxStories.CheckboxGroup_} />
+</Canvas>
+
+### Label
+
+<Canvas>
+  <Story of={CheckboxStories.Label_} />
+</Canvas>
+
+#### Left label position
+
+<Canvas>
+  <Story of={CheckboxStories.LabelLeftPosition} />
+</Canvas>
+
+### Description
+
+<Canvas>
+  <Story of={CheckboxStories.Description_} />
+</Canvas>
+
+#### Left label position
+
+<Canvas>
+  <Story of={CheckboxStories.DescriptionLeftPosition} />
+</Canvas>
+
+#### Stacked Variant
+
+<Canvas>
+  <Story of={CheckboxStories.Stacked_} />
+</Canvas>
+
+## Related components
+
+- Radio
+- Select

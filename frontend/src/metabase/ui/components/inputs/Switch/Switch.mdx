@@ -1,0 +1,53 @@
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import * as SwitchStories from "./Switch.stories";
+
+import { Switch, Stack } from "metabase/ui";
+
+<Meta of={SwitchStories} />
+
+# Switch
+
+Our themed wrapper around [Mantine Switch](https://mantine.dev/core/switch/).
+
+## When to use Switch
+
+Use Switch when you have a setting that can be only either on or off, or enabled/disabled. If there are multiple related options in a list that could be selected or chosen, use a checkbox group instead.
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/xdNKMROC99J6Z4Sqg6V3JI/Input-%2F-Switch?type=design&node-id=1-96&mode=design&t=0K7GSP6rqj8M2muz-0)
+- [Mantine Checkbox Docs](https://mantine.dev/core/switch/)
+
+## Usage guidelines
+
+In most situations you should use the `md` size variant, with the label on the left and the toggle on the right. (This allows users to read what the setting or option is first.)
+
+## Examples
+
+<Canvas>
+  <Story of={SwitchStories.Default_} />
+</Canvas>
+
+### Label
+
+<Canvas>
+  <Story of={SwitchStories.Label_} />
+</Canvas>
+
+### Left label position
+
+<Canvas>
+  <Story of={SwitchStories.LabelLeftPosition} />
+</Canvas>
+
+### Description
+
+<Canvas>
+  <Story of={SwitchStories.Description_} />
+</Canvas>
+
+### Left description position
+
+<Canvas>
+  <Story of={SwitchStories.DescriptionLeftPosition} />
+</Canvas>

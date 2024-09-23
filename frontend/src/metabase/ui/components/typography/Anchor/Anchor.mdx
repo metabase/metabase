@@ -1,0 +1,36 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Anchor, Grid, Text } from "metabase/ui";
+import * as AnchorStories from "./Anchor.stories";
+
+<Meta of={AnchorStories} />
+
+# Anchor
+
+Our themed wrapper around [Mantine Anchor](https://v6.mantine.dev/core/anchor/).
+
+## When to use Anchor
+
+The Anchor component allows users to display links with themed styles, and replaces the usage of `<a href="<url>">text</a>`. This component uses the same props as the `Text` component, so it can handle sizing, line clamps, text decoration, and font weight. For regular text, use the `Text` component, and for code, use the `Code` component.
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/8nuIBDQGSGKLfAPsebbASA/Navigation-%2F-Anchor?type=design&node-id=1-96&mode=design&t=2eUYOsqZZeMc4OGT-0)
+- [Mantine Anchor Docs](https://v6.mantine.dev/core/anchor/)
+
+## Examples
+
+<Canvas>
+  <Story of={AnchorStories.Default_} />
+</Canvas>
+
+### Sizes
+
+<Canvas>
+  <Story of={AnchorStories.Sizes_} />
+</Canvas>
+
+## Related components
+
+- Anchor
+- Code

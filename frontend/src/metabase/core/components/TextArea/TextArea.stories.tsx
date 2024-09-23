@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import TextArea from "./TextArea";
 
@@ -7,8 +7,10 @@ export default {
   component: TextArea,
 };
 
-const Template: ComponentStory<typeof TextArea> = args => {
+const Template: StoryFn<typeof TextArea> = args => {
   return <TextArea {...args} />;
 };
 
-export const Default = Template.bind({});
+export const Default = {
+  render: Template,
+};

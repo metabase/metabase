@@ -1,0 +1,92 @@
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Icon } from "metabase/ui";
+import { Stack, FileInput } from "metabase/ui";
+import * as FileInputStories from "./FileInput.stories";
+
+<Meta of={FileInputStories} />
+
+# FileInput
+
+Our themed wrapper around [Mantine FileInput](https://v6.mantine.dev/core/file-input/).
+
+## Docs
+
+- [Mantine FileInput Docs](https://v6.mantine.dev/core/file-input/)
+
+## Examples
+
+<Canvas>
+  <Story of={FileInputStories.Default_} />
+</Canvas>
+
+### Size - md
+
+<Canvas>
+  <Story of={FileInputStories.EmptyMd_} />
+</Canvas>
+
+#### Asterisk
+
+<Canvas>
+  <Story of={FileInputStories.AsteriskMd_} />
+</Canvas>
+
+#### Description
+
+<Canvas>
+  <Story of={FileInputStories.DescriptionMd_} />
+</Canvas>
+
+#### Disabled
+
+<Canvas>
+  <Story of={FileInputStories.DisabledMd_} />
+</Canvas>
+
+#### Error
+
+<Canvas>
+  <Story of={FileInputStories.ErrorMd_} />
+</Canvas>
+
+#### Icon
+
+<Canvas>
+  <Story of={FileInputStories.IconMd_} />
+</Canvas>
+
+### Size - xs
+
+<Canvas>
+  <Story of={FileInputStories.EmptyXs_} />
+</Canvas>
+
+#### Asterisk
+
+<Canvas>
+  <Story of={FileInputStories.AsteriskXs_} />
+</Canvas>
+
+#### Description
+
+<Canvas>
+  <Story of={FileInputStories.DescriptionXs_} />
+</Canvas>
+
+#### Disabled
+
+<Canvas>
+  <Story of={FileInputStories.DisabledXs_} />
+</Canvas>
+
+#### Error
+
+<Canvas>
+  <Story of={FileInputStories.ErrorXs_} />
+</Canvas>
+
+#### Icon
+
+<Canvas>
+  <Story of={FileInputStories.IconXs_} />
+</Canvas>

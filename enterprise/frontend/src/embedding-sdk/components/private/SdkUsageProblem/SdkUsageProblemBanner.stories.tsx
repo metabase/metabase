@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import { Box } from "metabase/ui";
 
@@ -9,7 +9,7 @@ export default {
   component: SdkUsageProblemBanner,
 };
 
-const Template: ComponentStory<typeof SdkUsageProblemBanner> = args => {
+const Template: StoryFn<typeof SdkUsageProblemBanner> = args => {
   return (
     <Box pos="absolute" bottom="15px" left="15px">
       <SdkUsageProblemBanner {...args} />
@@ -20,14 +20,18 @@ const Template: ComponentStory<typeof SdkUsageProblemBanner> = args => {
 const MESSAGE =
   "The embedding SDK is using API keys. This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO.";
 
-export const Warning = Template.bind({});
+export const Warning = {
+  render: Template,
 
-Warning.args = {
-  problem: { severity: "warning", message: MESSAGE },
+  args: {
+    problem: { severity: "warning", message: MESSAGE },
+  },
 };
 
-export const Error = Template.bind({});
+export const Error = {
+  render: Template,
 
-Error.args = {
-  problem: { severity: "error", message: MESSAGE },
+  args: {
+    problem: { severity: "error", message: MESSAGE },
+  },
 };

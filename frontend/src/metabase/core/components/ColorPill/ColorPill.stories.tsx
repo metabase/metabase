@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 
@@ -9,17 +9,23 @@ export default {
   component: ColorPill,
 };
 
-const Template: ComponentStory<typeof ColorPill> = args => {
+const Template: StoryFn<typeof ColorPill> = args => {
   return <ColorPill {...args} />;
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  color: color("brand"),
+export const Default = {
+  render: Template,
+
+  args: {
+    color: color("brand"),
+  },
 };
 
-export const Auto = Template.bind({});
-Auto.args = {
-  color: color("brand"),
-  isAuto: true,
+export const Auto = {
+  render: Template,
+
+  args: {
+    color: color("brand"),
+    isAuto: true,
+  },
 };

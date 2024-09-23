@@ -1,0 +1,104 @@
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Stack, TimeInput } from "metabase/ui";
+import * as TimeInputStories from "./TimeInput.stories";
+
+<Meta of={TimeInputStories} />
+
+# TimeInput
+
+Our themed wrapper around [Mantine TimeInput](https://v6.mantine.dev/dates/time-input/).
+
+## Docs
+
+- [Mantine TimeInput Docs](https://v6.mantine.dev/dates/time-input/)
+- [HTML Time Input Docs](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/time)
+
+# Examples
+
+<Canvas>
+  <Story of={TimeInputStories.Default_} />
+</Canvas>
+
+### Size - md
+
+<Canvas>
+  <Story of={TimeInputStories.EmptyMd_} />
+</Canvas>
+
+#### Filled
+
+<Canvas>
+  <Story of={TimeInputStories.FilledMd_} />
+</Canvas>
+
+#### Asterisk
+
+<Canvas>
+  <Story of={TimeInputStories.AsteriskMd_} />
+</Canvas>
+
+#### Description
+
+<Canvas>
+  <Story of={TimeInputStories.DescriptionMd_} />
+</Canvas>
+
+#### Disabled
+
+<Canvas>
+  <Story of={TimeInputStories.DisabledMd_} />
+</Canvas>
+
+#### Error
+
+<Canvas>
+  <Story of={TimeInputStories.ErrorMd_} />
+</Canvas>
+
+#### Read only
+
+<Canvas>
+  <Story of={TimeInputStories.ReadOnlyMd_} />
+</Canvas>
+
+### Size - xs
+
+<Canvas>
+  <Story of={TimeInputStories.EmptyXs_} />
+</Canvas>
+
+#### Filled
+
+<Canvas>
+  <Story of={TimeInputStories.FilledXs_} />
+</Canvas>
+
+#### Asterisk
+
+<Canvas>
+  <Story of={TimeInputStories.AsteriskXs_} />
+</Canvas>
+
+#### Description
+
+<Canvas>
+  <Story of={TimeInputStories.DescriptionXs_} />
+</Canvas>
+
+#### Disabled
+
+<Canvas>
+  <Story of={TimeInputStories.DisabledXs_} />
+</Canvas>
+
+#### Error
+
+<Canvas>
+  <Story of={TimeInputStories.ErrorXs_} />
+</Canvas>
+
+#### Read only
+
+<Canvas>
+  <Story of={TimeInputStories.ReadOnlyXs_} />
+</Canvas>

@@ -1,5 +1,5 @@
-import { useArgs } from "@storybook/addons";
-import type { ComponentStory } from "@storybook/react";
+import { useArgs } from "@storybook/preview-api";
+import type { StoryFn } from "@storybook/react";
 
 import Radio from "./Radio";
 
@@ -8,7 +8,7 @@ export default {
   component: Radio,
 };
 
-const Template: ComponentStory<typeof Radio> = args => {
+const Template: StoryFn<typeof Radio> = args => {
   const [{ value }, updateArgs] = useArgs();
   const handleChange = (value: unknown) => updateArgs({ value });
 
@@ -23,20 +23,29 @@ Template.args = {
   ],
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  ...Template.args,
-  variant: "normal",
+export const Default = {
+  render: Template,
+
+  args: {
+    ...Template.args,
+    variant: "normal",
+  },
 };
 
-export const Underlined = Template.bind({});
-Underlined.args = {
-  ...Template.args,
-  variant: "underlined",
+export const Underlined = {
+  render: Template,
+
+  args: {
+    ...Template.args,
+    variant: "underlined",
+  },
 };
 
-export const Bubble = Template.bind({});
-Bubble.args = {
-  ...Template.args,
-  variant: "bubble",
+export const Bubble = {
+  render: Template,
+
+  args: {
+    ...Template.args,
+    variant: "bubble",
+  },
 };

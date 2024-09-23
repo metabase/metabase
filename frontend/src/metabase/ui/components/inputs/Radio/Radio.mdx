@@ -1,0 +1,65 @@
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Radio, Stack } from "metabase/ui";
+import * as RadioStories from "./Radio.stories";
+
+<Meta of={RadioStories} />
+
+# Radio
+
+Our themed wrapper around [Mantine Radio](https://v6.mantine.dev/core/radio/).
+
+## When to use Radio
+
+Radio buttons allow users to select a single option from a list of mutually exclusive options. All possible options are exposed up front for users to compare.
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/7LCGPhkbJdrhdIaeiU1O9c/Input-%2F-Radio?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
+- [Mantine Radio Docs](https://v6.mantine.dev/core/radio/)
+
+## Usage guidelines
+
+- **Use this component if there are more than 5 options**. If there are fewer options, feel free to check out Radio or Select.
+- For option ordering, try to use your best judgement on a sensible order. For example, Yes should come before No. Alphabetical ordering is usually a good fallback if there's no inherent order in your set of choices.
+- In almost all circumstances you'll want to use `<Radio.Group>` to provide a set of options and help with defaultValues and state management between them.
+
+## Examples
+
+<Canvas>
+  <Story of={RadioStories.Default_} />
+</Canvas>
+
+### Radio.Group
+
+<Canvas>
+  <Story of={RadioStories.RadioGroup_} />
+</Canvas>
+
+### Label
+
+<Canvas>
+  <Story of={RadioStories.Label_} />
+</Canvas>
+
+#### Left label position
+
+<Canvas>
+  <Story of={RadioStories.LabelLeftPosition} />
+</Canvas>
+
+### Description
+
+<Canvas>
+  <Story of={RadioStories.Description_} />
+</Canvas>
+
+#### Left label position
+
+<Canvas>
+  <Story of={RadioStories.DescriptionLeftPosition} />
+</Canvas>
+
+## Related components
+
+- Checkbox
+- Select

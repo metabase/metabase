@@ -1,0 +1,58 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { DatePicker, Box } from "metabase/ui";
+import { SdkVisualizationWrapper } from "__support__/storybook";
+import * as DatePickerStories from "./DatePicker.stories";
+
+<Meta of={DatePickerStories} />
+
+# DatePicker
+
+Our themed wrapper around [Mantine DatePicker](https://v6.mantine.dev/dates/date-picker/).
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/cncRbkG7XJQs144EG9r9hM/Date-Picker?type=design&node-id=0-1&mode=design&t=v00tLhbD9OFEgy25-0)
+- [Mantine DatePicker Docs](https://v6.mantine.dev/dates/date-picker/)
+
+## Examples
+
+<Canvas>
+  <Story of={DatePickerStories.Default_} />
+</Canvas>
+
+### Allow deselect
+
+<Canvas>
+  <Story of={DatePickerStories.AllowDeselect_} />
+</Canvas>
+
+### Multiple dates
+
+<Canvas>
+  <Story of={DatePickerStories.MultipleDates_} />
+</Canvas>
+
+### Dates range
+
+<Canvas>
+  <Story of={DatePickerStories.DatesRange_} />
+</Canvas>
+
+### Dates range (SDK theme)
+
+<Canvas>
+  <Story of={DatePickerStories.DatesRangeSdk_} />
+</Canvas>
+
+### Single date in range
+
+<Canvas>
+  <Story of={DatePickerStories.SingleDateInRange_} />
+</Canvas>
+
+### Number of columns
+
+<Canvas>
+  <Story of={DatePickerStories.NumberOfColumns_} />
+</Canvas>

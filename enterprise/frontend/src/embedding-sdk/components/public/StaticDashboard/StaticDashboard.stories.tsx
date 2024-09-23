@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import { StaticDashboard } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
@@ -14,11 +14,14 @@ export default {
   decorators: [CommonSdkStoryWrapper],
 };
 
-const Template: ComponentStory<typeof StaticDashboard> = args => {
+const Template: StoryFn<typeof StaticDashboard> = args => {
   return <StaticDashboard {...args} />;
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  dashboardId: DASHBOARD_ID,
+export const Default = {
+  render: Template,
+
+  args: {
+    dashboardId: DASHBOARD_ID,
+  },
 };

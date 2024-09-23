@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import ProgressBar from "./ProgressBar";
 import { BELOW_GOAL, EXCEEDS_GOAL, REACHED_GOAL, ZERO } from "./stories-data";
@@ -8,18 +8,26 @@ export default {
   component: ProgressBar,
 };
 
-const Template: ComponentStory<typeof ProgressBar> = args => {
+const Template: StoryFn<typeof ProgressBar> = args => {
   return <ProgressBar {...args} />;
 };
 
-export const Default = Template.bind({});
-Default.args = ZERO;
+export const Default = {
+  render: Template,
+  args: ZERO,
+};
 
-export const BelowGoal = Template.bind({});
-BelowGoal.args = BELOW_GOAL;
+export const BelowGoal = {
+  render: Template,
+  args: BELOW_GOAL,
+};
 
-export const ReachedGoal = Template.bind({});
-ReachedGoal.args = REACHED_GOAL;
+export const ReachedGoal = {
+  render: Template,
+  args: REACHED_GOAL,
+};
 
-export const ExceedsGoal = Template.bind({});
-ExceedsGoal.args = EXCEEDS_GOAL;
+export const ExceedsGoal = {
+  render: Template,
+  args: EXCEEDS_GOAL,
+};

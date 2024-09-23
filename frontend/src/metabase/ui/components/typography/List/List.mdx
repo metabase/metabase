@@ -1,0 +1,18 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Box, Grid, List, Icon } from "metabase/ui";
+import * as ListStories from "./List.stories";
+
+<Meta of={ListStories} />
+
+# List
+
+Our themed wrapper around [Mantine List](https://v6.mantine.dev/core/list/).
+
+<Canvas>
+  <Story of={ListStories.Default_} />
+</Canvas>
+
+<Canvas>
+  <Story of={ListStories.WithIcons_} />
+</Canvas>

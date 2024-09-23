@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 import { useState } from "react";
 
 import Input from "./Input";
@@ -8,11 +8,11 @@ export default {
   component: Input,
 };
 
-const UncontrolledTemplate: ComponentStory<typeof Input> = args => {
+const UncontrolledTemplate: StoryFn<typeof Input> = args => {
   return <Input {...args} />;
 };
 
-const ControlledTemplate: ComponentStory<typeof Input> = args => {
+const ControlledTemplate: StoryFn<typeof Input> = args => {
   const [value, setValue] = useState("");
   return (
     <Input
@@ -24,17 +24,27 @@ const ControlledTemplate: ComponentStory<typeof Input> = args => {
   );
 };
 
-export const Default = UncontrolledTemplate.bind({});
-
-export const WithError = UncontrolledTemplate.bind({});
-WithError.args = {
-  error: true,
+export const Default = {
+  render: UncontrolledTemplate,
 };
 
-export const WithRightIcon = UncontrolledTemplate.bind({});
-WithRightIcon.args = {
-  rightIcon: "info",
-  rightIconTooltip: "Useful tips",
+export const WithError = {
+  render: UncontrolledTemplate,
+
+  args: {
+    error: true,
+  },
 };
 
-export const Controlled = ControlledTemplate.bind({});
+export const WithRightIcon = {
+  render: UncontrolledTemplate,
+
+  args: {
+    rightIcon: "info",
+    rightIconTooltip: "Useful tips",
+  },
+};
+
+export const Controlled = {
+  render: ControlledTemplate,
+};

@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 import GaugeContainer from "metabase/static-viz/components/Gauge/GaugeContainer";
@@ -13,15 +13,21 @@ export default {
   component: GaugeContainer,
 };
 
-const Template: ComponentStory<typeof GaugeContainer> = args => {
+const Template: StoryFn<typeof GaugeContainer> = args => {
   return <GaugeContainer {...args} />;
 };
 
-export const Default = Template.bind({});
-Default.args = { ...DEFAULT, getColor: color };
+export const Default = {
+  render: Template,
+  args: { ...DEFAULT, getColor: color },
+};
 
-export const WithFormatting = Template.bind({});
-WithFormatting.args = { ...WITH_FORMATTING, getColor: color };
+export const WithFormatting = {
+  render: Template,
+  args: { ...WITH_FORMATTING, getColor: color },
+};
 
-export const TruncatedLabels = Template.bind({});
-TruncatedLabels.args = { ...TRUNCATED_LABELS, getColor: color };
+export const TruncatedLabels = {
+  render: Template,
+  args: { ...TRUNCATED_LABELS, getColor: color },
+};
