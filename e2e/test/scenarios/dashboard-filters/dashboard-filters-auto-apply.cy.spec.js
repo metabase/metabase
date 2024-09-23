@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   closeDashboardSettingsSidebar,
+  dashboardHeader,
   dashboardParametersContainer,
   describeWithSnowplow,
   editDashboard,
@@ -405,8 +406,9 @@ describe(
         openDashboard();
         cy.wait("@cardQuery");
 
-        openDashboardSettingsSidebar();
-        sidesheet().findByLabelText(filterToggleLabel).should("be.disabled");
+        // shouldn't even show settings as an option for this user
+        dashboardHeader().icon("ellipsis").click();
+        popover().findByText("Edit settings").should("not.exist");
       });
 
       it.skip("should not display a toast even when a dashboard takes longer than 15s to load", () => {
