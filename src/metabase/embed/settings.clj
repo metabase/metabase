@@ -86,6 +86,7 @@
                     (->> new-value
                          ignore-localhost
                          (setting/set-value-of-type! :string :embedding-app-origins-sdk)
+                         ;; return the same value that is returned from the getter
                          add-localhost))
                   (add-localhost nil))))
 
