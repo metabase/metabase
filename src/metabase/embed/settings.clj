@@ -6,28 +6,27 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-;; embedding-app-origin is required by make-embedding-toggle-setter (and vice versa)
-(declare embedding-app-origin)
-
 (mu/defn- make-embedding-toggle-setter
   "Creates a boolean setter for various boolean embedding-enabled flavors, all tracked by snowplow."
   [setting-key :- :keyword event-name :- :string]
   (fn [new-value]
-    (when (not= new-value (setting/get-value-of-type :boolean setting-key))
-      (setting/set-value-of-type! :boolean setting-key new-value)
-      (when (and new-value (str/blank? (embed/embedding-secret-key)))
-        (embed/embedding-secret-key! (crypto-random/hex 32)))
-      (snowplow/track-event! ::snowplow/embed_share
-                             {:event  (keyword (str event-name "-" (if new-value "enabled" "disabled")))
-                              :embedding-app-origin-set   (boolean (embedding-app-origin))
-                              :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
-                              :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))
-    new-value))
+    (u/prog1 new-value
+      (let [old-value (setting/get-value-of-type :boolean setting-key)]
+        (when (not= new-value old-value)
+          (setting/set-value-of-type! :boolean setting-key new-value)
+          (when (and new-value (str/blank? (embed/embedding-secret-key)))
+            (embed/embedding-secret-key! (crypto-random/hex 32)))
+          (snowplow/track-event! ::snowplow/embed_share
+                                 {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
+                                  :embedding-app-origin-set   (boolean (setting/get-value-of-type :string :embedding-app-origin))
+                                  :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
+                                  :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Embed Settings ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -79,8 +78,7 @@
   :encryption :never
   :audit      :getter
   :getter    (fn embedding-app-origins-sdk-getter []
-               (when (enable-embedding-sdk)
-                 (add-localhost (setting/get-value-of-type :string :embedding-app-origins-sdk))))
+               (add-localhost (setting/get-value-of-type :string :embedding-app-origins-sdk)))
   :setter   (fn embedding-app-origins-sdk-setter [new-value]
               (or (when (premium-features/has-feature? :embedding-sdk)
                     (->> new-value

@@ -10,6 +10,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.server.request.util :as req.util]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
   (:import
    (java.security MessageDigest SecureRandom)))
@@ -163,9 +164,10 @@
   (let [urls (str/split approved-origins-raw #" +")]
     (keep parse-url urls)))
 
-(defn approved-origin?
+(mu/defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
-  [raw-origin approved-origins-raw]
+  [raw-origin :- [:maybe :string]
+   approved-origins-raw :- [:maybe :string]]
   (boolean
    (when (and (seq raw-origin) (seq approved-origins-raw))
      (let [approved-list (parse-approved-origins approved-origins-raw)
@@ -181,7 +183,8 @@
   "Returns headers for CORS requests"
   [origin]
   (merge
-   (when (approved-origin? origin (embed.settings/embedding-app-origins-sdk))
+   (when (approved-origin? origin (and (embed.settings/enable-embedding-sdk)
+                                       (embed.settings/embedding-app-origins-sdk)))
      {"Access-Control-Allow-Origin" origin
       "Vary"                        "Origin"})
    {"Access-Control-Allow-Headers"   "*"
