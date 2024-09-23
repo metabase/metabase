@@ -108,7 +108,7 @@
 (defn- search-fn [search-engine]
   (case search-engine
     :hybrid       hybrid
-    :hubrid-multi hybrid-multi
+    :hybrid-multi hybrid-multi
     :minimal      minimal
     :fulltext     default-engine
     default-engine))
@@ -119,6 +119,18 @@
   (let [f (search-fn (:search-engine search-ctx))]
     (f (:search-string search-ctx)
        (dissoc search-ctx :search-string))))
+
+(defn model-set
+  "Return a set of the models which have at least one result for the given query.
+  TODO: consider filters and permissions."
+  [search-ctx]
+  (set
+   (filter
+    (fn [m]
+      (t2/exists? :search_index
+       (-> (search.index/search-query (:search-string search-ctx))
+           (sql.helpers/where [:= :model m]))))
+    (:models search-ctx search.config/all-models))))
 
 (defn init!
   "Ensure that the search index exists, and has been populated with all the entities."

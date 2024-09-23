@@ -401,15 +401,13 @@
   "Queries all models with respect to query for one result to see if we get a result or not"
   [search-ctx :- SearchContext]
   (let [model-queries (for [model (search.filter/search-context->applicable-models
+                                   ;; It's unclear why we don't use the existing :models
                                    (assoc search-ctx :models search.config/all-models))]
                         {:nest (sql.helpers/limit (search-query-for-model model search-ctx) 1)})
         query         (when (pos-int? (count model-queries))
                         {:select [:*]
                          :from   [[{:union-all model-queries} :dummy_alias]]})]
-    (set (some->> query
-                  mdb.query/query
-                  (map :model)
-                  set))))
+    (into #{} (map :model) (some-> query mdb.query/query))))
 
 (mu/defn full-search-query
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to trivial case of
