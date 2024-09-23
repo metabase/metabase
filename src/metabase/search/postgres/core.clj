@@ -161,6 +161,12 @@
     ;; TODO use only the models that apply to the given filters
     (:models search-ctx search.config/all-models))))
 
+(defn no-scoring
+  "Do no scoring, whatsover"
+  [result _scoring-ctx]
+  {:score 1
+   :result (assoc result :all-scores [] :relevant-scores [])})
+
 (defn init!
   "Ensure that the search index exists, and has been populated with all the entities."
   [& [force-reset?]]

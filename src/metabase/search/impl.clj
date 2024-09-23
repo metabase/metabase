@@ -699,9 +699,10 @@
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
   ([search-ctx :- search.config/SearchContext]
-   (search in-place query-model-set search-ctx))
+   (search in-place query-model-set scoring/score-and-result search-ctx))
   ([results-fn
     model-set-fn
+    score-fn
     search-ctx :- search.config/SearchContext]
    (let [reducible-results (results-fn search-ctx)
          scoring-ctx       (select-keys search-ctx [:search-string :search-native-query])
@@ -710,7 +711,7 @@
                             (map normalize-result)
                             (filter (partial check-permissions-for-model search-ctx))
                             (map (partial normalize-result-more search-ctx))
-                            (keep #(scoring/score-and-result % scoring-ctx)))
+                            (keep #(score-fn % scoring-ctx)))
          total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                              true                           hydrate-user-metadata
                              (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
