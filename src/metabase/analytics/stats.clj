@@ -27,6 +27,7 @@
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -533,8 +534,8 @@
   completed activation signals. Returns nil for non-Pro or Starter plans."
   []
   (let [plan     (premium-features/plan-alias)
-        pro?     (str/starts-with? plan "pro")
-        starter? (str/starts-with? plan "starter")]
+        pro?     (when plan (str/starts-with? plan "pro"))
+        starter? (when plan (str/starts-with? plan "starter"))]
     (cond
       pro?
       (or (sufficient-users? 4) (sufficient-queries? 201))
@@ -599,11 +600,11 @@
                (>= minor-version required-minor))))
       engines))))
 
-(defenterprise enterprise-snowplow-features
+(defenterprise ee-snowplow-features-data
   "OSS values to use for features which require calling EE code to check whether they are available/enabled."
   metabase-enterprise.snowplow
   []
-  (let [features [:sso_jwt :sso_saml :scim :sandboxes :email_allow_list]]
+  (let [features [:sso-jwt :sso-saml :scim :sandboxes :email-allow-list]]
     (map
      (fn [feature]
        {:name      feature
@@ -611,101 +612,105 @@
         :enabled   false})
      features)))
 
+(defn- snowplow-features-data
+  []
+  [{:name      :email
+    :available true
+    :enabled   (email/email-configured?)}
+   {:name      :slack
+    :available true
+    :enabled   (slack/slack-configured?)}
+   {:name      :sso-google
+    :available (premium-features/enable-sso-google?)
+    :enabled   (google/google-auth-configured)}
+   {:name      :sso-ldap
+    :available (premium-features/enable-sso-ldap?)
+    :enabled   (public-settings/ldap-enabled?)}
+   {:name      :sample-data
+    :available true
+    :enabled   (t2/exists? Database, :is_sample true)}
+   {:name      :interactive-embedding
+    :available (premium-features/hide-embed-branding?)
+    :enabled   (and
+                (embed.settings/enable-embedding)
+                (boolean (embed.settings/embedding-app-origin))
+                (public-settings/sso-enabled?))}
+   {:name      :static-embedding
+    :available true
+    :enabled   (and
+                (embed.settings/enable-embedding)
+                (or
+                 (t2/exists? :model/Dashboard :enable_embedding true)
+                 (t2/exists? :model/Card :enable_embedding true)))}
+   {:name      :public-sharing
+    :available true
+    :enabled   (and
+                (public-settings/enable-public-sharing)
+                (or
+                 (t2/exists? :model/Dashboard :public_uuid [:not= nil])
+                 (t2/exists? :model/Card :public_uuid [:not= nil])))}
+   {:name      :whitelabel
+    :available (premium-features/enable-whitelabeling?)
+    :enabled   (whitelabeling-in-use?)}
+   {:name      :csv-upload
+    :available (csv-upload-available?)
+    :enabled   (t2/exists? :model/Database :uploads_enabled true)}
+   {:name      :mb-analytics
+    :available (premium-features/enable-audit-app?)
+    :enabled   true}
+   {:name      :advanced-permissions
+    :available (premium-features/enable-advanced-permissions?)
+    :enabled   true}
+   {:name      :serialization
+    :available (premium-features/enable-serialization?)
+    :enabled   true}
+   {:name      :official-collections
+    :available (premium-features/enable-official-collections?)
+    :enabled   (t2/exists? :model/Collection :authority_level "official")}
+   {:name      :cache-granular-controls
+    :available (premium-features/enable-cache-granular-controls?)
+    :enabled   (t2/exists? :model/CacheConfig)}
+   {:name      :attached-dwh
+    :available (premium-features/has-attached-dwh?)
+    :enabled   (premium-features/has-attached-dwh?)}
+   {:name      :config-text-file
+    :available (premium-features/enable-config-text-file?)
+    :enabled   (some? (get env/env :mb-config-file-path))}
+   {:name      :content-verification
+    :available (premium-features/enable-content-verification?)
+    :enabled   (t2/exists? :model/ModerationReview)}
+   {:name      :dashboard-subscription-filters
+    :available (premium-features/enable-content-verification?)
+    :enabled   (t2/exists? :model/Pulse {:where [:not= :parameters "[]"]})}
+   {:name      :disable-password-login
+    :available (premium-features/can-disable-password-login?)
+    :enabled   (not (public-settings/enable-password-login))}
+   {:name      :email-restrict-recipients
+    :available (premium-features/enable-email-restrict-recipients?)
+    :enabled   (not= (setting/get-value-of-type :keyword :user-visibility) :all)}
+   {:name      :upload-management
+    :available (premium-features/enable-upload-management?)
+    :enabled   (t2/exists? :model/Table :is_upload true)}
+   {:name      :snippet-collections
+    :available (premium-features/enable-snippet-collections?)
+    :enabled   (t2/exists? :model/Collection :namespace "snippets")}])
+
 (defn- snowplow-features
-  [stats]
-  (let [features
-        [{:name      :email
-          :available true
-          :enabled   (-> stats :email_configured)}
-         {:name      :slack
-          :available true
-          :enabled   (-> stats :slack_configured)}
-         {:name      :sso_google
-          :available (premium-features/enable-sso-google?)
-          :enabled   (google/google-auth-configured)}
-         {:name      :sso_ldap
-          :available (premium-features/enable-sso-ldap?)
-          :enabled   (public-settings/ldap-enabled?)}
-         {:name      :sample_data
-          :available true
-          :enabled   (-> stats :has_sample_data)}
-         {:name      :interactive_embedding
-          :available (premium-features/hide-embed-branding?)
-          :enabled   (and
-                      (embed.settings/enable-embedding)
-                      (boolean (embed.settings/embedding-app-origin))
-                      (public-settings/sso-enabled?))}
-         {:name      :static_embedding
-          :available true
-          :enabled   (and
-                      (embed.settings/enable-embedding)
-                      (or
-                       (t2/exists? :model/Dashboard :enable_embedding true)
-                       (t2/exists? :model/Card :enable_embedding true)))}
-         {:name      :public_sharing
-          :available true
-          :enabled   (and
-                      (public-settings/enable-public-sharing)
-                      (or
-                       (t2/exists? :model/Dashboard :public_uuid [:not= nil])
-                       (t2/exists? :model/Card :public_uuid [:not= nil])))}
-         {:name      :whitelabel
-          :available (premium-features/enable-whitelabeling?)
-          :enabled   (whitelabeling-in-use?)}
-         {:name      :csv_upload
-          :available (csv-upload-available?)
-          :enabled   (t2/exists? :model/Database :uploads_enabled true)}
-         {:name      :mb_analytics
-          :available (premium-features/enable-audit-app?)
-          :enabled   true}
-         {:name      :advanced_permissions
-          :available (premium-features/enable-advanced-permissions?)
-          :enabled   true}
-         {:name      :advanced_permissions
-          :available (premium-features/enable-serialization?)
-          :enabled   true}
-         {:name      :official_collections
-          :available (premium-features/enable-official-collections?)
-          :enabled   (t2/exists? :model/Collection :authority_level "official")}
-         {:name      :cache_granular_controls
-          :available (premium-features/enable-cache-granular-controls?)
-          :enabled   (t2/exists? :model/CacheConfig)}
-         {:name      :attached_dwh
-          :available (premium-features/has-attached-dwh?)
-          :enabled   (premium-features/has-attached-dwh?)}
-         {:name      :config_text_file
-          :available (premium-features/enable-config-text-file?)
-          :enabled   (some? (get env/env :mb-config-file-path))}
-         {:name      :content_verification
-          :available (premium-features/enable-content-verification?)
-          :enabled   (t2/exists? :model/ModerationReview)}
-         {:name      :dashboard_subscription_filters
-          :available (premium-features/enable-content-verification?)
-          :enabled   (t2/exists? :model/Pulse {:where [:not= :parameters "[]"]})}
-         {:name      :disable_password_login
-          :available (premium-features/can-disable-password-login?)
-          :enabled   (not (public-settings/enable-password-login))}
-         {:name      :email_restrict_recipients
-          :available (premium-features/enable-email-restrict-recipients?)
-          :enabled   (not= (setting/get-value-of-type :keyword :user-visibility) :all)}
-         {:name      :upload_management
-          :available (premium-features/enable-upload-management?)
-          :enabled   (t2/exists? :model/Table :is_upload true)}
-         {:name      :snippet_collections
-          :available (premium-features/enable-snippet-collections?)
-          :enabled   (t2/exists? :model/Collection :namespace "snippets")}]]
+  []
+  (let [features (concat (snowplow-features-data) (ee-snowplow-features-data))]
     (mapv
      ;; Convert keys and feature names to strings to match expected Snowplow scheml
      (fn [feature]
        (-> (update feature :name name)
+           (update :name u/->snake_case_en)
            (walk/stringify-keys)))
-     (concat features (enterprise-snowplow-features)))))
+     features)))
 
 (defn- snowplow-anonymous-usage-stats
   "Send stats to Metabase's snowplow collector. Transforms stats into the format required by the Snowplow schema."
   [stats]
   (let [instance-attributes (snowplow-instance-attributes stats)
-        features            (snowplow-features stats)]
+        features            (snowplow-features)]
     {:instance-attributes instance-attributes
      :features            features}))
 

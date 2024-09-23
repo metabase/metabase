@@ -1,5 +1,6 @@
 (ns metabase.analytics.stats-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
@@ -12,6 +13,7 @@
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.query-execution :refer [QueryExecution]]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -389,3 +391,23 @@
       (is (false? (@#'stats/sufficient-queries? 1)))
       (mt/with-temp [:model/QueryExecution _ query-execution-defaults]
         (is (true? (@#'stats/sufficient-queries? 1)))))))
+
+(def ^:private excluded-features
+  "Set of features intentionally excluded from the daily stats ping. If you add a new feature, either add it to the stats ping
+  or to this set, so that [[every-feature-is-accounted-for-test]] passes."
+  #{:audit-app ;; tracked under :mb-analytics
+    :enhancements
+    :embedding
+    :embedding-sdk
+    :collection-cleanup
+    :llm-autodescription
+    :query-reference-validation
+    :session-timeout-config})
+
+(deftest every-feature-is-accounted-for-test
+  (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"
+    (let [included-features (->> (concat (@#'stats/snowplow-features-data) (@#'stats/ee-snowplow-features-data))
+                                 (map :name)
+                                 set)
+          all-features      @premium-features/premium-features]
+      (is (empty? (set/difference all-features included-features excluded-features))))))

@@ -7,15 +7,15 @@
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [toucan2.core :as t2]))
 
-(defenterprise enterprise-snowplow-features
+(defenterprise ee-snowplow-features-data
   "A subset of feature information included in the daily Snowplow stats report. This funciton only returns information
   about features which require calling EE code; other features are defined in [[metabase.analytics.stats/snowplow-features]]"
   :feature :none
   []
-  [{:name      :sso_jwt
+  [{:name      :sso-jwt
     :available (premium-features/enable-sso-jwt?)
     :enabled   (sso-settings/jwt-enabled)}
-   {:name      :sso_saml
+   {:name      :sso-saml
     :available (premium-features/enable-sso-saml?)
     :enabled   (sso-settings/saml-enabled)}
    {:name      :scim
@@ -25,6 +25,6 @@
     :available (and (premium-features/enable-official-collections?)
                     (t2/exists? :model/Database :engine [:in (descendants driver/hierarchy :sql)]))
     :enabled   (t2/exists? :model/GroupTableAccessPolicy)}
-   {:name      :email_allow_list
+   {:name      :email-allow-list
     :available (premium-features/enable-email-allow-list?)
     :enabled   (boolean (some? (advanced-config.models.pulse-channel/subscription-allowed-domains)))}])
