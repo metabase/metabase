@@ -233,7 +233,7 @@ export function getPieRows(
 
   const savedPieRows = hasSortDimensionChanged
     ? []
-    : settings["pie.rows"] ?? [];
+    : (settings["pie.rows"] ?? []);
 
   const savedPieKeys = savedPieRows.map(pieRow => pieRow.key);
 
