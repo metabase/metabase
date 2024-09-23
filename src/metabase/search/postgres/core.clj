@@ -124,7 +124,6 @@
        (t2/query)
        (map :legacy_input)
        (map #(json/parse-string % keyword))
-       (filter (partial #'search.impl/check-permissions-for-model search-ctx))
        (map #(-> %
                  (update :created_at parse-datetime)
                  (update :updated_at parse-datetime)
