@@ -203,6 +203,95 @@ function getIsLabelVisible(
   );
 }
 
+function getSeriesDataFromSlices(
+  chartModel: PieChartModel,
+  settings: ComputedVisualizationSettings,
+  formatters: PieChartFormatters,
+  renderingContext: RenderingContext,
+  borderWidth: number,
+  innerRadius: number,
+  outerRadius: number,
+  fontSize: number,
+): SunburstSeriesOption["data"] {
+  function getSeriesData(
+    slices: SliceTreeNode[],
+    ring = 1,
+    parentName: string | null = null,
+  ): SunburstSeriesOption["data"] {
+    if (slices.length === 0) {
+      return [];
+    }
+
+    let ringBorderWidth = borderWidth;
+    if (ring === 2) {
+      ringBorderWidth = DIMENSIONS.slice.twoRingBorderWidth;
+    }
+    if (ring === 3) {
+      ringBorderWidth = DIMENSIONS.slice.threeRingBorderWidth;
+    }
+
+    return slices.map(s => {
+      const labelColor = getTextColorForBackground(
+        s.color,
+        renderingContext.getColor,
+      );
+      const label = getSliceLabel(s, settings, formatters);
+      const isLabelVisible = getIsLabelVisible(
+        label,
+        s,
+        innerRadius,
+        outerRadius,
+        fontSize,
+        renderingContext,
+        ring,
+        chartModel.numRings,
+      );
+
+      const name =
+        parentName != null
+          ? `${parentName}${OPTION_NAME_SEPERATOR}${s.key}`
+          : s.key;
+
+      return {
+        children: !s.isOther
+          ? getSeriesData(Array(...s.children.values()), ring + 1, name)
+          : undefined,
+        value: s.value,
+        name,
+        itemStyle: { color: s.color, borderWidth: ringBorderWidth },
+        label: {
+          color: labelColor,
+          formatter: () => (isLabelVisible ? label : " "),
+          rotate: ring === 1 ? 0 : "radial",
+        },
+        emphasis: {
+          itemStyle: {
+            color: s.color,
+            borderColor: renderingContext.theme.pie.borderColor,
+          },
+        },
+        blur: {
+          itemStyle: {
+            // We have to fade the slices through `color` rather than `opacity`
+            // becuase echarts' will apply the opacity to the white border,
+            // causing the underlying color to leak. It is safe to use non-hex
+            // values here, since this value will never be used in batik
+            // (there's no emphasis/blur for static viz).
+            color: Color(s.color).fade(0.7).rgb().string(),
+            opacity: 1,
+          },
+          label: {
+            opacity:
+              labelColor === renderingContext.getColor("text-dark") ? 0.3 : 1,
+          },
+        },
+      };
+    });
+  }
+
+  return getSeriesData(getInnerRingSlices(chartModel).filter(s => s.visible));
+}
+
 export function getPieChartOption(
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
@@ -246,87 +335,15 @@ export function getPieChartOption(
   );
 
   // Series data
-  function getSeriesDataFromSlices(
-    slices: SliceTreeNode[],
-    ring = 1,
-    parentName: string | null = null,
-  ): SunburstSeriesOption["data"] {
-    if (slices.length === 0) {
-      return [];
-    }
-
-    let ringBorderWidth = borderWidth;
-    if (ring === 2) {
-      ringBorderWidth = DIMENSIONS.slice.twoRingBorderWidth;
-    }
-    if (ring === 3) {
-      ringBorderWidth = DIMENSIONS.slice.threeRingBorderWidth;
-    }
-
-    return slices.map(s => {
-      const labelColor = getTextColorForBackground(
-        s.color,
-        renderingContext.getColor,
-      );
-      const label = getSliceLabel(s, settings, formatters);
-      const isLabelVisible = getIsLabelVisible(
-        label,
-        s,
-        innerRadius,
-        outerRadius,
-        fontSize,
-        renderingContext,
-        ring,
-        chartModel.numRings,
-      );
-
-      const name =
-        parentName != null
-          ? `${parentName}${OPTION_NAME_SEPERATOR}${s.key}`
-          : s.key;
-
-      return {
-        children: !s.isOther
-          ? getSeriesDataFromSlices(
-              Array(...s.children.values()),
-              ring + 1,
-              name,
-            )
-          : undefined,
-        value: s.value,
-        name,
-        itemStyle: { color: s.color, borderWidth: ringBorderWidth },
-        label: {
-          color: labelColor,
-          formatter: () => (isLabelVisible ? label : " "),
-          rotate: ring === 1 ? 0 : "radial",
-        },
-        emphasis: {
-          itemStyle: {
-            color: s.color,
-            borderColor: renderingContext.theme.pie.borderColor,
-          },
-        },
-        blur: {
-          itemStyle: {
-            // We have to fade the slices through `color` rather than `opacity`
-            // becuase echarts' will apply the opacity to the white border,
-            // causing the underlying color to leak. It is safe to use non-hex
-            // values here, since this value will never be used in batik
-            // (there's no emphasis/blur for static viz).
-            color: Color(s.color).fade(0.7).rgb().string(),
-            opacity: 1,
-          },
-          label: {
-            opacity:
-              labelColor === renderingContext.getColor("text-dark") ? 0.3 : 1,
-          },
-        },
-      };
-    });
-  }
   const data = getSeriesDataFromSlices(
-    getInnerRingSlices(chartModel).filter(s => s.visible),
+    chartModel,
+    settings,
+    formatters,
+    renderingContext,
+    borderWidth,
+    innerRadius,
+    outerRadius,
+    fontSize,
   );
 
   return {

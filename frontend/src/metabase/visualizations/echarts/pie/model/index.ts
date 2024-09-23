@@ -104,6 +104,84 @@ export function getPieColumns(
   return colDescs;
 }
 
+function aggregateSlices(
+  node: SliceTreeNode,
+  total: number,
+  renderingContext: RenderingContext,
+) {
+  const children = Array(...node.children.values());
+  const others = children.filter(s => s.isOther);
+  const otherTotal = others.reduce((currTotal, o) => currTotal + o.value, 0);
+
+  if (others.length > 1 && otherTotal > 0) {
+    const otherSliceChildren: SliceTree = new Map();
+    others.forEach(o => {
+      otherSliceChildren.set(String(o.key), { ...o, color: "" });
+      node.children.delete(String(o.key));
+    });
+
+    node.children.set(OTHER_SLICE_KEY, {
+      key: OTHER_SLICE_KEY,
+      name: OTHER_SLICE_NAME,
+      value: otherTotal,
+      displayValue: otherTotal,
+      normalizedPercentage: otherTotal / total,
+      color: renderingContext.getColor("text-light"),
+      children: otherSliceChildren,
+      visible: true,
+      isOther: true,
+      startAngle: 0,
+      endAngle: 0,
+    });
+  } else if (others.length === 1) {
+    others[0].isOther = false;
+  }
+
+  children.forEach(child => aggregateSlices(child, total, renderingContext));
+}
+
+function computeSliceAngles(
+  slices: SliceTreeNode[],
+  startAngle?: number,
+  endAngle?: number,
+) {
+  const d3Pie = pie<SliceTreeNode>()
+    .sort(null)
+    // 1 degree in radians
+    .padAngle((Math.PI / 180) * 1)
+    .startAngle(startAngle ?? 0)
+    .endAngle(endAngle ?? 2 * Math.PI)
+    .value(s => s.value);
+
+  const d3Slices = d3Pie(slices, { startAngle, endAngle });
+  d3Slices.forEach((d3Slice, index) => {
+    slices[index].startAngle = d3Slice.startAngle;
+    slices[index].endAngle = d3Slice.endAngle;
+  });
+
+  slices.forEach(
+    slice =>
+      computeSliceAngles(
+        Array(...slice.children.values()),
+        slice.startAngle,
+        slice.endAngle,
+      ), // TODO use common func for Array(...node.values())
+  );
+}
+
+function countNumRings(node: SliceTreeNode, numRings = 0): number {
+  if (node.isOther) {
+    return numRings + 1;
+  }
+
+  return Math.max(
+    ...Array(...node.children.values()).map(node =>
+      countNumRings(node, numRings + 1),
+    ),
+    numRings + 1,
+  );
+}
+
 export function getPieChartModel(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
@@ -416,38 +494,10 @@ export function getPieChartModel(
     });
   }
 
-  function aggregateSlices(node: SliceTreeNode) {
-    const children = Array(...node.children.values());
-    const others = children.filter(s => s.isOther);
-    const otherTotal = others.reduce((currTotal, o) => currTotal + o.value, 0);
-
-    if (others.length > 1 && otherTotal > 0) {
-      const otherSliceChildren: SliceTree = new Map();
-      others.forEach(o => {
-        otherSliceChildren.set(String(o.key), { ...o, color: "" });
-        node.children.delete(String(o.key));
-      });
-
-      node.children.set(OTHER_SLICE_KEY, {
-        key: OTHER_SLICE_KEY,
-        name: OTHER_SLICE_NAME,
-        value: otherTotal,
-        displayValue: otherTotal,
-        normalizedPercentage: otherTotal / total,
-        color: renderingContext.getColor("text-light"),
-        children: otherSliceChildren,
-        visible: true,
-        isOther: true,
-        startAngle: 0,
-        endAngle: 0,
-      });
-    } else if (others.length === 1) {
-      others[0].isOther = false;
-    }
-
-    children.forEach(child => aggregateSlices(child));
-  }
-  sliceTreeNodes.forEach(node => aggregateSlices(node));
+  // Aggregate slices in middle and outer ring into "other" slices
+  sliceTreeNodes.forEach(node =>
+    aggregateSlices(node, total, renderingContext),
+  );
 
   // We increase the size of small slices, but only for the first ring, because
   // if we do this for the outer rings, it can lead to overlapping slices.
@@ -460,35 +510,6 @@ export function getPieChartModel(
   // We need start and end angles for the label formatter, to determine if we
   // should the percent label on the chart for a specific slice. To get these we
   // need to use d3.
-  // TODO move this and other functions outside of body
-  function computeSliceAngles(
-    slices: SliceTreeNode[],
-    startAngle?: number,
-    endAngle?: number,
-  ) {
-    const d3Pie = pie<SliceTreeNode>()
-      .sort(null)
-      // 1 degree in radians
-      .padAngle((Math.PI / 180) * 1)
-      .startAngle(startAngle ?? 0)
-      .endAngle(endAngle ?? 2 * Math.PI)
-      .value(s => s.value);
-
-    const d3Slices = d3Pie(slices, { startAngle, endAngle });
-    d3Slices.forEach((d3Slice, index) => {
-      slices[index].startAngle = d3Slice.startAngle;
-      slices[index].endAngle = d3Slice.endAngle;
-    });
-
-    slices.forEach(
-      slice =>
-        computeSliceAngles(
-          Array(...slice.children.values()),
-          slice.startAngle,
-          slice.endAngle,
-        ), // TODO use common func for Array(...node.values())
-    );
-  }
   computeSliceAngles(Array(...sliceTree.values()));
 
   // If there are no non-zero slices, we'll display a single "other" slice
@@ -510,19 +531,6 @@ export function getPieChartModel(
       startAngle: 0,
       endAngle: 2 * Math.PI,
     });
-  }
-
-  function countNumRings(node: SliceTreeNode, numRings = 0): number {
-    if (node.isOther) {
-      return numRings + 1;
-    }
-
-    return Math.max(
-      ...Array(...node.children.values()).map(node =>
-        countNumRings(node, numRings + 1),
-      ),
-      numRings + 1,
-    );
   }
 
   const numRings = Math.max(
