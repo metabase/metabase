@@ -343,17 +343,16 @@
   `:current-user-perms` to be passed in. We should fix things so search works independently of API-specific dynamic
   variables. This might require updating `can-read?` and `can-write?` to take explicit perms sets instead of relying
   on dynamic variables."
+  {:style/indent 0}
   [current-user-perms & body]
   `(with-bindings {(requiring-resolve 'metabase.api.common/*current-user-permissions-set*) (atom ~current-user-perms)}
      ~@body))
 
 (defn- can-write? [{:keys [current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-perms
-    (mi/can-write? instance)))
+  (ensure-current-user-perms-set-is-bound current-user-perms (mi/can-write? instance)))
 
 (defn- can-read? [{:keys [current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-perms
-    (mi/can-read? instance)))
+  (ensure-current-user-perms-set-is-bound current-user-perms (mi/can-read? instance)))
 
 (defmethod check-permissions-for-model :default
   [search-ctx instance]
