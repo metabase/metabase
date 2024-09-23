@@ -449,6 +449,11 @@ describe("scenarios > browse > metrics", () => {
       });
 
       it("should show the verified metrics filter when there are verified metrics", () => {
+        cy.intercept(
+          "PUT",
+          "/api/setting/browse-filter-only-verified-metrics",
+        ).as("setSetting");
+
         createMetrics([ORDERS_SCALAR_METRIC, ORDERS_SCALAR_MODEL_METRIC]);
         cy.visit("/browse/metrics");
 
@@ -461,11 +466,18 @@ describe("scenarios > browse > metrics", () => {
         findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
 
         toggleVerifiedMetricsFilter();
+        cy.get<{ request: Request }>("@setSetting").should(xhr => {
+          expect(xhr.request.body).to.deep.equal({ value: false });
+        });
 
         findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
         findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
 
         toggleVerifiedMetricsFilter();
+        cy.get<{ request: Request }>("@setSetting").should(xhr => {
+          expect(xhr.request.body).to.deep.equal({ value: true });
+        });
+        cy.wait("@setSetting");
 
         findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
         findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
@@ -474,6 +486,37 @@ describe("scenarios > browse > metrics", () => {
 
         findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
         findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
+      });
+
+      it("should respect the user setting on wether or not to only show verified metrics", () => {
+        cy.intercept("GET", "/api/session/properties", req => {
+          req.continue(res => {
+            res.body["browse-filter-only-verified-metrics"] = true;
+            res.send();
+          });
+        });
+
+        createMetrics([ORDERS_SCALAR_METRIC, ORDERS_SCALAR_MODEL_METRIC]);
+        cy.visit("/browse/metrics");
+        verifyMetric(ORDERS_SCALAR_METRIC);
+
+        cy.findByLabelText("Filters").should("be.visible").click();
+        popover()
+          .findByLabelText("Show verified metrics only")
+          .should("be.checked");
+
+        cy.intercept("GET", "/api/session/properties", req => {
+          req.continue(res => {
+            res.body["browse-filter-only-verified-metrics"] = true;
+            res.send();
+          });
+        });
+
+        cy.visit("/browse/metrics");
+        cy.findByLabelText("Filters").should("be.visible").click();
+        popover()
+          .findByLabelText("Show verified metrics only")
+          .should("not.be.checked");
       });
     });
   });
