@@ -8,11 +8,23 @@ import type {
 } from "metabase/visualizations/types";
 import type { RowValue } from "metabase-types/api";
 
-import type { PieChartModel } from "./model/types";
+import type { PieChartModel, SliceTree, SliceTreeNode } from "./model/types";
 
 export interface PieChartFormatters {
   formatMetric: (value: unknown, isCompact?: boolean) => string;
   formatPercent: (value: unknown, location: "legend" | "chart") => string;
+}
+
+function getAllSlicePercentages(sliceTree: SliceTree) {
+  const percentages: number[] = [];
+
+  function getPercentages(node: SliceTreeNode) {
+    percentages.push(node.normalizedPercentage);
+    node.children.forEach(c => getPercentages(c));
+  }
+  sliceTree.forEach(node => getPercentages(node));
+
+  return percentages;
 }
 
 export function getPieChartFormatters(
@@ -38,16 +50,17 @@ export function getPieChartFormatters(
   const formatPercent = (value: unknown, location: "legend" | "chart") => {
     let decimals = settings["pie.decimal_places"];
     if (decimals == null) {
-      decimals = computeMaxDecimalsForValues(
-        // TODO update this to include all values
-        Array(...chartModel.sliceTree.values()).map(
-          s => s.normalizedPercentage,
-        ),
-        {
-          style: "percent",
-          maximumSignificantDigits: location === "legend" ? 3 : 2,
-        },
-      );
+      const percentages =
+        location === "chart"
+          ? getAllSlicePercentages(chartModel.sliceTree)
+          : Array(...chartModel.sliceTree.values()).map(
+              s => s.normalizedPercentage,
+            );
+
+      decimals = computeMaxDecimalsForValues(percentages, {
+        style: "percent",
+        maximumSignificantDigits: location === "legend" ? 3 : 2,
+      });
     }
 
     return renderingContext.formatValue(value, {
