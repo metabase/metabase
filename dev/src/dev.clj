@@ -395,7 +395,7 @@
           (throw (ex-info (format "Test failed after running: `%s`" test)
                           {:test test})))))))
 
-;; bump for ci
+;; bump for ci 2
 (defn setup-email!
   "Set up email settings for sending emails from Metabase. This is useful for testing email sending in the REPL."
   [& settings]
