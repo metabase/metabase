@@ -707,7 +707,7 @@
                             (take search.config/*db-max-results*)
                             (map normalize-result)
                             (filter (partial check-permissions-for-model search-ctx))
-                            (map normalize-result-more)
+                            (map (partial normalize-result-more search-ctx))
                              ;; scoring - note that this can also filter further!
                             (map #(scoring/score-and-result % scoring-ctx))
                             (filter #(pos? (:score %))))
