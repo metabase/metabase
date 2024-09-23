@@ -34,10 +34,21 @@
    (case search-engine
      :fulltext (when (is-postgres?) search.postgres/search)
      :minimal  (when (is-postgres?) search.postgres/search)
-     :in-place search.impl/in-place)
+     :in-place search.impl/in-place
+     nil)
+
+   (recur default-engine)))
+
+(defn- model-set-fn [search-engine]
+  (or
+   (case search-engine
+     :fulltext (when (is-postgres?) search.postgres/model-set)
+     :minimal  (when (is-postgres?) search.postgres/model-set)
+     :in-place search.impl/query-model-set
+    nil)
 
    (log/warnf "%s search not supported for your AppDb, using %s" search-engine default-engine)
-   default-engine))
+   (recur default-engine)))
 
 (defn supports-index?
   "Does this instance support a search index, e.g. has the right kind of AppDb"
@@ -59,5 +70,10 @@
 (mu/defn search
   "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- search.config/SearchContext]
-  (let [query-fn (query-fn (:search-engine search-ctx :in-place))]
-    (search.impl/search query-fn search-ctx)))
+  (let [engine    (:search-engine search-ctx :in-place)
+        query-fn  (query-fn engine)
+        models-fn (model-set-fn engine)]
+    (search.impl/search
+     query-fn
+     models-fn
+     search-ctx)))
