@@ -4776,7 +4776,7 @@
 
 ;; This test is same as [[metabase.api.public-test/dashboard-param-values-param-fields-hydration-test]]
 ;; adjusted to run with NORMAL dashboard.
-(deftest ^:parallel dashboard-param-values-param-fields-hydration-test
+(deftest ^:synchronized dashboard-param-values-param-fields-hydration-test
   (mt/with-temp
     [:model/Dashboard     d   {:name "D"
                                :parameters [{:name      "State filter param 1"
@@ -4834,11 +4834,11 @@
                                  {:parameter_id "p3"
                                   :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}]
     (let [call-count (volatile! 0)
-          orig-filterable-columns-for-query params/*filterable-columns-for-query*]
-      (binding [params/*filterable-columns-for-query*
-                (fn [& args]
-                  (vswap! call-count inc)
-                  (apply orig-filterable-columns-for-query args))]
+          orig-filterable-columns-for-query params/filterable-columns-for-query]
+      (with-redefs [params/filterable-columns-for-query
+                    (fn [& args]
+                      (vswap! call-count inc)
+                      (apply orig-filterable-columns-for-query args))]
         (let [response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d?dashboard_load_id=%s"
                                                                          (:id d) (str (random-uuid))))]
           (testing "Baseline: expected :param_fields (#42829)"

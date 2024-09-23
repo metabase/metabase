@@ -205,8 +205,7 @@
   [cards]
   (reduce set/union #{} (map card->template-tag-field-ids cards)))
 
-;; Following function is dynamic for testing purposes.
-(defn ^:dynamic *filterable-columns-for-query*
+(defn filterable-columns-for-query
   "Get filterable columns for query."
   [database-id dataset-query]
   (-> (lib/query (lib.metadata.jvm/application-database-metadata-provider database-id)
@@ -222,7 +221,7 @@
       (if-not (and (not-empty dataset-query) (pos-int? database-id))
         ctx
         (update ctx :card-id->filterable-columns assoc (:id card)
-                (*filterable-columns-for-query* database-id dataset-query))))))
+                (filterable-columns-for-query database-id dataset-query))))))
 
 (defn- field-id-from-dashcards-filterable-columns
   "Update the `ctx` with `field-id`. This function is supposed to be used on params where target is a name field, in

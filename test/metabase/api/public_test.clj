@@ -1907,11 +1907,11 @@
                                      {:parameter_id "p3"
                                       :target [:dimension [:field "CITY" {:base-type :type/Text}]]}]}]
         (let [call-count (volatile! 0)
-              orig-filterable-columns-for-query params/*filterable-columns-for-query*]
-          (binding [params/*filterable-columns-for-query*
-                    (fn [& args]
-                      (vswap! call-count inc)
-                      (apply orig-filterable-columns-for-query args))]
+              orig-filterable-columns-for-query params/filterable-columns-for-query]
+          (with-redefs [params/filterable-columns-for-query
+                        (fn [& args]
+                          (vswap! call-count inc)
+                          (apply orig-filterable-columns-for-query args))]
             (let [response (client/client :get 200 (format "public/dashboard/%s" (:public_uuid d)))]
               (testing "Baseline: expected :param_fields(#42829)"
                 (is (=? {(mt/id :people :name)  {:name "NAME"}
