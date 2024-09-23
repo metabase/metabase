@@ -2,9 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.test.check.clojure-test :refer [defspec]]
-   [clojure.test.check.properties :as prop]
-   [malli.generator :as mg]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.embed.settings :as embed.settings]
    [metabase.test :as mt]
@@ -38,32 +35,22 @@
 
 (deftest enable-embedding-SDK-true-ignores-localhosts
   (mt/with-premium-features #{:embedding :embedding-sdk}
-    (embed.settings/enable-embedding-sdk! true)
-    (let [origin-value "localhost:*"]
-      (embed.settings/embedding-app-origins-sdk! origin-value)
-      (testing "All localhosty origins should be ignored, so the result should be \"localhost:*\""
-        (embed.settings/embedding-app-origins-sdk! (str origin-value " localhost:8080"))
-        (is (= "localhost:*" (embed.settings/embedding-app-origins-sdk))))
-      (testing "Normal ips are added to the list"
-        (embed.settings/embedding-app-origins-sdk! (str origin-value " " other-ip))
-        (is (= (str "localhost:* " other-ip) (embed.settings/embedding-app-origins-sdk)))))))
+    (mt/with-temporary-setting-values [enable-embedding-sdk true]
+      (let [origin-value "localhost:*"]
+        (embed.settings/embedding-app-origins-sdk! origin-value)
+        (testing "All localhosty origins should be ignored, so the result should be \"localhost:*\""
+          (embed.settings/embedding-app-origins-sdk! (str origin-value " localhost:8080"))
+          (is (= "localhost:*" (embed.settings/embedding-app-origins-sdk))))
+        (testing "Normal ips are added to the list"
+          (embed.settings/embedding-app-origins-sdk! (str origin-value " " other-ip))
+          (is (= (str "localhost:* " other-ip) (embed.settings/embedding-app-origins-sdk))))))))
 
 (deftest enable-embedding-SDK-false-returns-nothing
   (mt/with-premium-features #{:embedding :embedding-sdk}
-    (embed.settings/enable-embedding-sdk! true)
-    (let [origin-value (str "localhost:* 1.2.3.4:5555 "
-                            (str/join " " (map #(str "localhost:" %) (range 1000 2000))))]
-      (embed.settings/embedding-app-origins-sdk! origin-value)
-      (is (= (str "localhost:* " other-ip) (embed.settings/embedding-app-origins-sdk))))))
-
-(defspec enable-embedding-SDK-false=>app-origin-ignores-localhosts-but-keeps-other-ip
-  (mt/with-premium-features #{:embedding :embedding-sdk}
-    (embed.settings/enable-embedding-sdk! true)
-    (prop/for-all [origins (mg/generator [:sequential
-                                          (into [:enum other-ip "localhost:*"]
-                                                (map #(str "localhost:" %) (range 1000 2000)))])]
-      (let [origin-value (str/join " " origins)]
+    (mt/with-temporary-setting-values [enable-embedding-sdk false]
+      (embed.settings/embedding-app-origins-sdk! "")
+      (let [origin-value (str "localhost:* " other-ip " "
+                              (str/join " " (map #(str "localhost:" %) (range 1000 2000))))]
         (embed.settings/embedding-app-origins-sdk! origin-value)
-        (if (str/includes? origin-value other-ip)
-          (= (str "localhost:* " other-ip) (embed.settings/embedding-app-origins-sdk))
-          (= "localhost:*" (embed.settings/embedding-app-origins-sdk)))))))
+        (is (= nil
+               (embed.settings/embedding-app-origins-sdk)))))))
