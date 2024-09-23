@@ -9,12 +9,11 @@ import { Grid } from "metabase/components/Grid";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import { useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 import NewModelOption from "metabase/models/components/NewModelOption";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
-import { getSetting } from "metabase/selectors/settings";
+import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import {
@@ -23,7 +22,7 @@ import {
   OptionsRoot,
 } from "./NewModelOptions.styled";
 
-const EDUCATIONAL_LINK = MetabaseSettings.learnUrl("data-modeling/models");
+const EDUCATIONAL_LINK = getLearnUrl("data-modeling/models");
 
 interface NewModelOptionsProps {
   location: Location;

@@ -66,8 +66,8 @@ const getDownloadedResourceType = ({
   const defaultAccessedVia = process.env.EMBEDDING_SDK_VERSION
     ? "sdk-embed"
     : isInIframe
-    ? "interactive-iframe-embed"
-    : "internal";
+      ? "interactive-iframe-embed"
+      : "internal";
 
   if (dashcardId != null && token != null) {
     return { resourceType: "dashcard", accessedVia: "static-embed" };
