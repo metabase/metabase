@@ -113,7 +113,7 @@ export const SettingsPeople = () => {
         <div
           style={{ display: "flex", justifyContent: "start", width: "100%" }}
         >
-          <CompanyHeader title={"People"} icon={"group"} />
+          <CompanyHeader title={t`People`} icon={"group"} />
         </div>
         <div
           style={{ display: "flex", justifyContent: "start", width: "100%" }}

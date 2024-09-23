@@ -57,7 +57,7 @@ function PeopleListingApp({ children, isAdmin }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2rem", width: "100%", paddingTop: "1rem" }}>
-      <CompanyHeader title={"People"} icon={"group"} />
+      <CompanyHeader title={t`People`} icon={"group"} />
       <AdminPaneLayout
         headingContent={headingContent}
         buttonText={buttonText}

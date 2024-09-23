@@ -85,7 +85,7 @@ export const SettingsDatabases = () => {
         <div
           style={{ display: "flex", justifyContent: "start", width: "100%" }}
         >
-          <CompanyHeader title={"Databases"} icon={"database"} />
+          <CompanyHeader title={t`Databases`} icon={"database"} />
         </div>
       </div>
       <BrowseMain>

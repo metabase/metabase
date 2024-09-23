@@ -76,7 +76,7 @@ export const CompanySettings = () => {
         <div
           style={{ display: "flex", justifyContent: "start", width: "100%" }}
         >
-          <CompanyHeader title={"Company settings"} icon={"gear"} />
+          <CompanyHeader title={t`Company settings`} icon={"gear"} />
         </div>
         <div
           style={{ display: "flex", justifyContent: "start", width: "100%" }}

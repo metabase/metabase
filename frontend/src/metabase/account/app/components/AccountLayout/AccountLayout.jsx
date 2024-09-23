@@ -7,6 +7,8 @@ import {
   AccountContent, BrowseContainer,
   BrowseMain
 } from "./AccountLayout.styled";
+import { t } from "ttag";
+
 
 const propTypes = {
   ...AccountHeader.propTypes,
@@ -31,7 +33,7 @@ const AccountLayout = ({ children, ...props }) => {
         <div
           style={{ display: "flex", justifyContent: "start", width: "100%" }}
         >
-          <CompanyHeader title={"Account settings"} icon={"person"} />
+          <CompanyHeader title={t`Account settings`} icon={"person"} />
         </div>
         <div
           style={{ display: "flex", justifyContent: "start", width: "100%" }}

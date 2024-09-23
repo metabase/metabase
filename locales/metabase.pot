@@ -25241,3 +25241,36 @@ msgstr ""
 #: resources/automagic_dashboards/table/TransactionTable/ByCountry.yaml
 msgid "Top 10 countries by sales"
 msgstr ""
+
+msgid "Company settings"
+msgstr ""
+
+msgid "Invite user"
+msgstr ""
+
+msgid "Connect with your data stack"
+msgstr ""
+
+msgid "Only grant read permissions to data sources. Not should use for answering questions."
+msgstr ""
+
+msgid "Library"
+msgstr ""
+
+msgid "Generate insights for me"
+msgstr ""
+
+msgid "Talk data to me"
+msgstr ""
+
+msgid "What would you like to create? Here are some suggestions"
+msgstr ""
+
+msgid "Enter a prompt here..."
+msgstr ""
+
+msgid "Ask a question to get started"
+msgstr ""
+
+msgid "Ask a question or make a request to get started"
+msgstr ""

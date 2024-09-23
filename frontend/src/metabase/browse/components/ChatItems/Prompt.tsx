@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import { Button, Icon } from "metabase/ui";
 import TextArea from "metabase/core/components/TextArea";
+import { t } from "ttag";
 
 const PromptGreeting = ({ chatType }: any) => {
   return (
@@ -15,8 +16,8 @@ const PromptGreeting = ({ chatType }: any) => {
     >
       <div style={{ fontSize: "20px", color: "#5B26D3", fontWeight: "bolder" }}>
         {chatType === "insights"
-          ? "Ask a question that include the word “insight” to get started "
-          : "Ask a question or make a request to get started"}
+          ? t`Ask a question to get started`
+          : t`Ask a question or make a request to get started`}
       </div>
     </div>
   );
@@ -67,7 +68,7 @@ const ChatPrompt = ({
           value={inputValue}
           onChange={e => setInputValue(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Enter a prompt here..."
+          placeholder={t`Enter a prompt here...`}
           style={{
             width: "100%",
             resize: "none",
