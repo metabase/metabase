@@ -73,20 +73,17 @@ export const DataPickerModal = ({
 
   const { tryLogRecentItem } = useLogRecentItem();
 
-  const modelsShouldShowItem = useMemo(
-    () => createShouldShowItem(MODEL_PICKER_MODELS, databaseId),
-    [databaseId],
-  );
+  const modelsShouldShowItem = useMemo(() => {
+    return createShouldShowItem(["dataset"], databaseId);
+  }, [databaseId]);
 
-  const metricsShouldShowItem = useMemo(
-    () => createShouldShowItem(METRIC_PICKER_MODELS, databaseId),
-    [databaseId],
-  );
+  const metricsShouldShowItem = useMemo(() => {
+    return createShouldShowItem(["metric"], databaseId);
+  }, [databaseId]);
 
-  const questionsShouldShowItem = useMemo(
-    () => createShouldShowItem(QUESTION_PICKER_MODELS, databaseId),
-    [databaseId],
-  );
+  const questionsShouldShowItem = useMemo(() => {
+    return createShouldShowItem(["card"], databaseId);
+  }, [databaseId]);
 
   const recentFilter = useCallback(
     (recentItems: RecentItem[]) => {
