@@ -188,8 +188,7 @@
     (*process-native*
      (fn [cols results]
        (let [col-names (map (comp keyword :name) (:cols cols))]
-         (reduce (fn [accum result]
-                   (conj accum (zipmap col-names result))) [] results)))
+         (into [] (map #(zipmap col-names %)) results)))
      database
      sql
      params
