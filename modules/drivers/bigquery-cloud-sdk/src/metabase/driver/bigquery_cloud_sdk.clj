@@ -206,7 +206,10 @@
                         {:select [:table_name :table_type
                                   [{:select [[[:= :option_value "true"]]]
                                     :from [[(information-schema-table project-id dataset-id "TABLE_OPTIONS") :o]]
-                                    :where [:= :o.table_name :t.table_name]} :require_partition_filter]]
+                                    :where [:and
+                                            [:= :o.table_name :t.table_name]
+                                            [:= :o.option_name "require_partition_filter"]]}
+                                   :require_partition_filter]]
                          :from [[(information-schema-table project-id dataset-id "TABLES") :t]]})]
          {table-name :table_name table-type :table_type require-partition-filter :require_partition_filter} results]
      {:schema dataset-id
