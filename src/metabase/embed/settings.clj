@@ -108,6 +108,36 @@
   :audit      :getter
   :setter     (make-embedding-toggle-setter :enable-embedding-interactive "interactive-embedding"))
 
+(defsetting enable-embedding-static
+  (deferred-tru "Allow admins to embed Metabase via static embedding?")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter
+  :setter     (fn [new-value]
+                (when (not= new-value (setting/get-value-of-type :boolean :enable-embedding-static))
+                  (setting/set-value-of-type! :boolean :enable-embedding-static new-value)
+                  (when (and new-value (str/blank? (embed/embedding-secret-key)))
+                    (embed/embedding-secret-key! (crypto-random/hex 32))))))
+
+(defsetting enable-embedding-sdk
+  (deferred-tru "Allow admins to embed Metabase via the SDK?")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter)
+
+(defsetting enable-embedding-interactive
+  (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
+  :feature    :embedding
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter)
+
 ;; settings for the embedding homepage
 (defsetting embedding-homepage
   (deferred-tru "Embedding homepage status, indicating if it's visible, hidden or has been dismissed")
