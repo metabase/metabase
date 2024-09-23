@@ -262,7 +262,7 @@
   to this function by means of [[*field-id-context*]]."
   ([]
    (or
-    @*field-id-context*
+    (some-> *field-id-context* deref)
     empty-field-id-context))
   ([ctx]
    (when @*field-id-context*
