@@ -36,7 +36,7 @@
         "type": "array",
         "items": {
           "type": "object",
-          "description": "A single instance attribute",
+          "description": "A single instance feature",
           "properties": {
             "name": {
               "description": "The unique name of the feature",
