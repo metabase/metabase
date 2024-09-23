@@ -20,7 +20,9 @@ describe("DashboardSettingsSidebar > premium enterprise", () => {
     await setupEnterprise({}, tokenFeatures);
 
     expect(await screen.findByText("Caching")).toBeInTheDocument();
-    expect(await screen.findByText("Caching policy")).toBeInTheDocument();
+    expect(
+      await screen.findByText("When to get new results"),
+    ).toBeInTheDocument();
   });
 
   it("should show cache form when clicking on caching section", async () => {
