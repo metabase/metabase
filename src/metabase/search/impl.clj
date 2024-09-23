@@ -113,21 +113,21 @@
   [honeysql-query                                :- ms/Map
    model                                         :- :string
    {:keys [filter-items-in-personal-collection
-           archived?
+           archived
            current-user-id
            is-superuser?]} :- SearchContext]
   (let [collection-id-col        (if (= model "collection")
                                    :collection.id
                                    :collection_id)
         collection-filter-clause (collection/visible-collection-filter-clause
-                                    collection-id-col
-                                    {:include-archived-items :all
-                                     :include-trash-collection? true
-                                     :permission-level (if archived?
-                                                         :write
-                                                         :read)}
-                                    {:current-user-id current-user-id
-                                     :is-superuser?   is-superuser?})]
+                                  collection-id-col
+                                  {:include-archived-items :all
+                                   :include-trash-collection? true
+                                   :permission-level (if archived
+                                                       :write
+                                                       :read)}
+                                  {:current-user-id current-user-id
+                                   :is-superuser?   is-superuser?})]
     (cond-> honeysql-query
       true
       (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
@@ -684,7 +684,7 @@
     ;; We get to do this slicing and dicing with the result data because
     ;; the pagination of search is for UI improvement, not for performance.
     ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-    {:available_models (query-model-set search-ctx)
+    {:available_models nil #_(query-model-set search-ctx)
      :data             (cond->> total-results
                          (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
                          (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
@@ -708,9 +708,7 @@
                             (map normalize-result)
                             (filter (partial check-permissions-for-model search-ctx))
                             (map (partial normalize-result-more search-ctx))
-                             ;; scoring - note that this can also filter further!
-                            (map #(scoring/score-and-result % scoring-ctx))
-                            (filter #(pos? (:score %))))
+                            (keep #(scoring/score-and-result % scoring-ctx)))
          total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                              true                           hydrate-user-metadata
                              (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
