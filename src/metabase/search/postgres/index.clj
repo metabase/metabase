@@ -1,5 +1,6 @@
 (ns metabase.search.postgres.index
   (:require
+   [cheshire.core :as json]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.util :as u]
@@ -44,6 +45,9 @@
              [:model [:varchar 254] :not-null] ;; TODO find the right size
              ;; search
              [:search_vector :tsvector :not-null]
+             ;; results
+             [:display_data :text]
+             [:legacy_input :text]
              ;; scoring related
              [:model_rank :int :not-null]
              ;; permission related entities
@@ -85,8 +89,12 @@
         :model_rank
         :collection_id
         :database_id
+        :display_data
+        :legacy_input
         :table_id
         :archived])
+      (update :display_data json/generate-string)
+      (update :legacy_input json/generate-string)
       (assoc
        :model_id      (:id entity)
        :search_vector [:to_tsvector
@@ -167,10 +175,12 @@
   [search-term]
   {:select [:model_id :model]
    :from   [active-table]
-   :where  [:raw
-            "search_vector @@ to_tsquery('"
-            tsv-language "', "
-            [:lift (to-tsquery-expr search-term)] ")"]})
+   :where  (if-not search-term
+             [:= [:inline 1] [:inline 1]]
+             [:raw
+              "search_vector @@ to_tsquery('"
+              tsv-language "', "
+              [:lift (to-tsquery-expr search-term)] ")"])})
 
 (defn search
   "Use the index table to search for records."
