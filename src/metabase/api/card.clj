@@ -484,11 +484,12 @@
 
 (api/defendpoint POST "/"
   "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
-  [:as {{:keys [collection_id collection_position dataset_query description display name dashboard_id
-                parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
+  [:as {{:keys [collection_id collection_position dashboard_id dataset_query description display entity_id
+                name parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
   {name                   ms/NonBlankString
    type                   [:maybe ::card-type]
    dataset_query          ms/Map
+   entity_id              [:maybe ms/NonBlankString] ;; TODO: Make that a NanoID regex schema?
    parameters             [:maybe [:sequential ms/Parameter]]
    parameter_mappings     [:maybe [:sequential ms/ParameterMapping]]
    description            [:maybe ms/NonBlankString]

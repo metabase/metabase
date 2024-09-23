@@ -104,6 +104,7 @@
              :database_id            (data/id)
              :dataset_query          {}
              :display                :table
+             :entity_id              (u/generate-nano-id)
              :name                   (u.random/random-name)
              :visualization_settings {}}))
 

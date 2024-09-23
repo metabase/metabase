@@ -667,13 +667,89 @@
                                                   (lib/query (:dataset_query card))
                                                   lib/suggested-name))))
 
+(defn- derive-ident [prefix entity_id stage-number tail]
+  (let [entity_id (if (instance? clojure.lang.IDeref entity_id)
+                    @entity_id
+                    entity_id)]
+    (if (= entity_id ::before-insert)
+      ;; If this is a fresh insert, it's safe to generate them at random rather than deriving them!
+      (u/generate-nano-id)
+      ;; If entity_id is provided instead, then derive an opaque string based on that entity_id.
+      (str prefix "_" entity_id "@" stage-number "__" tail))))
+
+(defn- ensure-clause-idents-list [existing xs prefix stage-number {:keys [entity_id] :as _ctx}]
+  (into {} (map (fn [i]
+                  [i (or (get existing i)
+                         (derive-ident prefix entity_id stage-number i))]))
+        (range (count xs))))
+
+(defn- ensure-clause-idents-expressions [existing expressions stage-number {:keys [entity_id] :as _ctx}]
+  (m/map-kv-vals (fn [expr-name _expr-clause]
+                   (or (get existing expr-name)
+                       (derive-ident "expression" entity_id stage-number expr-name)))
+                 expressions))
+
+(defn- ensure-clause-idents-joins [joins stage-number {:keys [entity_id] :as _ctx}]
+  (mapv #(assoc % :ident (derive-ident "join" entity_id stage-number (:alias %)))
+        joins))
+
+(defn- ensure-clause-idents-inner [inner-query ctx]
+  (let [{:keys [query stage-number]} (if-let [source-query (:source-query inner-query)]
+                                       (-> (ensure-clause-idents-inner source-query ctx)
+                                           (update :query #(assoc inner-query :source-query %)))
+                                       {:query inner-query
+                                        :stage-number 0})]
+    {:stage-number (inc stage-number)
+     :query (cond-> query
+              (:aggregation query) (update :aggregation-idents
+                                           ensure-clause-idents-list (:aggregation query) "aggregation" stage-number ctx)
+              (:expressions query) (update :expression-idents
+                                           ensure-clause-idents-expressions (:expressions query) stage-number ctx)
+              (:breakout query)    (update :breakout-idents
+                                           ensure-clause-idents-list (:breakout query) "breakout" stage-number ctx)
+              (:joins query)       (update :joins       ensure-clause-idents-joins stage-number ctx))}))
+
+(defn- ensure-clause-idents-outer [{:keys [query type] :as outer-query} ctx]
+  (if-let [{inner-query :query} (when (and (= type :query) query)
+                                  (ensure-clause-idents-inner query ctx))]
+    (assoc outer-query :query inner-query)
+    outer-query))
+
+(defn- ensure-clause-idents
+  ([card]
+   (ensure-clause-idents card nil))
+  ([card forced-entity-id]
+   (let [hashed-eid (atom false)
+         entity-id  (or forced-entity-id
+                        (:entity_id card)
+                        (delay
+                          (when-not (every? #(contains? card %) [:collection_id :created_at :name])
+                            (throw (ex-info "Best-effort backfill of :entity_id on :model/Card failed"
+                                            {::best-effort-backfill true})))
+                          (reset! hashed-eid true)
+                          (serdes/backfill-entity-id card)))
+         ;; Calculate the new query. If we need to backfill its `:entity_id` but fails, it will throw a specific
+         ;; exception that gets caught here, making query' be nil. In that case the query is not changed.
+         query'    (when (:dataset_query card)
+                     (try
+                       (ensure-clause-idents-outer (:dataset_query card) {:entity_id entity-id})
+                       (catch clojure.lang.ExceptionInfo e
+                         (if (::best-effort-backfill (ex-data e))
+                           (log/warnf "Best-effort backfill of :entity_id failed for Card %d" (:id card))
+                           (throw e)))))]
+     (cond-> card
+       query'      (assoc :dataset_query query')
+       ;; If we did have to generate the hashed entity_id, include it on the returned card as well.
+       @hashed-eid (assoc :entity_id @entity-id)))))
+
 (t2/define-after-select :model/Card
   [card]
   (-> card
       (dissoc :dataset_query_metrics_v2_migration_backup)
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
       public-settings/remove-public-uuid-if-public-sharing-is-disabled
-      add-query-description-to-metric-card))
+      add-query-description-to-metric-card
+      ensure-clause-idents))
 
 (t2/define-before-insert :model/Card
   [card]
@@ -682,7 +758,8 @@
       maybe-normalize-query
       card.metadata/populate-result-metadata
       pre-insert
-      populate-query-fields))
+      populate-query-fields
+      (ensure-clause-idents ::before-insert)))
 
 (t2/define-after-insert :model/Card
   [card]

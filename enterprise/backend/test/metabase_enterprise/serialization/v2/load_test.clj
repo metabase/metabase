@@ -225,14 +225,14 @@
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "the serialized form is as desired"
-          (is (= {:type  :query
-                  :query {:source-table ["my-db" nil "customers"]
-                          :filter       [:>= [:field ["my-db" nil "customers" "age"] nil] 18]
-                          :aggregation  [[:count]]}
-                  :database "my-db"}
-                 (->> (by-model @serialized "Card")
-                      first
-                      :dataset_query))))
+          (let [card (first (by-model @serialized "Card"))]
+            (is (=? {:type  :query
+                     :query {:source-table ["my-db" nil "customers"]
+                             :filter       [:>= [:field ["my-db" nil "customers" "age"] nil] 18]
+                             :aggregation  [[:count]]
+                             :aggregation-idents {0 string?}}
+                     :database "my-db"}
+                    (:dataset_query card)))))
 
         (testing "deserializing adjusts the IDs properly"
           (ts/with-db dest-db
@@ -259,12 +259,13 @@
             (is (not= (:dataset_query @card1s)
                       (:dataset_query @card1d)))
             (testing "the Card's query is based on the new Database, Table, and Field IDs"
-              (is (= {:type     :query
-                      :query    {:source-table (:id @table1d)
-                                 :filter       [:>= [:field (:id @field1d) nil] 18]
-                                 :aggregation  [[:count]]}
-                      :database (:id @db1d)}
-                     (:dataset_query @card1d))))))))))
+              (is (=? {:type     :query
+                       :query    {:source-table (:id @table1d)
+                                  :filter       [:>= [:field (:id @field1d) nil] 18]
+                                  :aggregation  [[:count]]
+                                  :aggregation-idents {0 string?}}
+                       :database (:id @db1d)}
+                      (:dataset_query @card1d))))))))))
 
 (deftest segment-test
   ;; Segment.definition is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be

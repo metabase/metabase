@@ -179,7 +179,8 @@
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
-  (let [cards (t2/select [:model/Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query :dashboard_id]
+  (let [cards (t2/select [:model/Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query
+                          :dashboard_id :entity_id :created_at :collection_id :name]
                          {:where (mi/exclude-internal-content-hsql :model/Card)})]
     {:questions (merge-count-maps (for [card cards]
                                     (let [native? (= (keyword (:query_type card)) :native)

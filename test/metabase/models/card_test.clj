@@ -1188,3 +1188,80 @@
                              lib.convert/->legacy-MBQL)}]
         (is (= "Orders, Count"
                (:query_description (t2/select-one :model/Card :id id))))))))
+
+(def ^:private bare-query
+  {:database 1
+   :type     :query
+   :query    {:source-query {:source-table 12
+                             :aggregation [[:count] [:sum [:field 9 nil]]]
+                             :breakout    [[:field 8 nil] [:expression "yo"]]
+                             :expressions {"yo" [:+ [:field 8 nil] 7]}}
+              :joins        [{:alias        "a_join"
+                              :condition    [:= [:field 8 nil] [:field 88 {:join-alias "a_join"}]]
+                              :source-table 21}
+                             {:alias        "another_join"
+                              :condition    [:= [:field 8 nil]
+                                             [:field 88 {:join-alias "another_join"}]]
+                              :source-table 22}]}})
+
+(defn- bare-query-exp [eid]
+  {:source-query {:source-table       12
+                  :aggregation        [[:count] [:sum [:field 9 nil]]]
+                  :aggregation-idents {0 (str "aggregation_" eid "@0__0")
+                                       1 (str "aggregation_" eid "@0__1")}
+                  :breakout           [[:field 8 nil] [:expression "yo"]]
+                  :breakout-idents    {0 (str "breakout_" eid "@0__0")
+                                       1 (str "breakout_" eid "@0__1")}
+                  :expressions        {"yo" [:+ [:field 8 nil] 7]}
+                  :expression-idents  {"yo" (str "expression_" eid "@0__yo")}}
+   :joins        [{:alias "a_join"
+                   :ident (str "join_" eid "@1__a_join")}
+                  {:alias "another_join"
+                   :ident (str "join_" eid "@1__another_join")}]})
+
+(deftest ^:sequential idents-populated-on-insert
+  (mt/with-temp [:model/Card {eid   :entity_id
+                              query :dataset_query} {:name          "A card"
+                                                     :dataset_query bare-query}]
+    (testing "on insert, a :dataset_query with missing idents gets them filled in"
+      (is (string? eid))
+      (is (=? {:source-query {:source-table 12
+                              :aggregation-idents {0 string?}
+                              :breakout-idents    {0 string?}
+                              :expression-idents  {"yo" string?}}
+               :joins        [{:alias "a_join"
+                               :ident string?}
+                              {:alias "another_join"
+                               :ident string?}]}
+              (:query query))))))
+
+(deftest ^:sequential entity-id-used-for-idents-if-missing-test
+  (mt/with-temp [:model/Card {id :id} {:name          "A card"
+                                       :dataset_query bare-query}]
+    ;; :idents are populated on initial insert; update to remove them. (Update does not populate them like insert.)
+    (t2/update! :model/Card id {:dataset_query bare-query})
+    ;; Can't use the one from `with-temp` since it came before the above edit.
+    (let [{eid   :entity_id
+           query :dataset_query} (t2/select-one :model/Card :id id)]
+      (testing "on read, a :dataset_query with missing idents gets them filled in based on entity_id"
+        ;; These idents are: kind_EID@stage__index, eg. "aggregation_4QsLuEnriHKkXCWqbPMQ8@0__0"
+        (is (string? eid))
+        (is (=? (bare-query-exp eid)
+                (:query query)))))))
+
+(deftest ^:sequential fall-back-to-hashing-entity-id-test
+  (mt/with-temp [:model/Card {id :id} {:name          "A card"
+                                       :dataset_query bare-query}]
+    ;; :idents are populated on initial insert; update to remove them. (Update does not populate them like insert.)
+    ;; Also remove the generated :entity_id.
+    (t2/update! :model/Card id {:dataset_query bare-query
+                                :entity_id     nil})
+    ;; Can't use the one from `with-temp` since it came before the above edit.
+    (let [{eid   :entity_id
+           query :dataset_query} (t2/select-one :model/Card :id id)]
+      (testing "on read, a :dataset_query with missing idents AND :entity_id gets a hashed entity_id and idents"
+        ;; These idents are: kind_EID@stage__index, eg. "aggregation_4QsLuEnriHKkXCWqbPMQ8@0__0"
+        ;; The entity_id is hashed based on created_at, so it's still always different!
+        (is (string? eid))
+        (is (=? (bare-query-exp eid)
+                (:query query)))))))
