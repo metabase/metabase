@@ -9,7 +9,6 @@ interface NotebookActionButtonProps {
   icon?: IconName;
   title: string;
   color: string;
-  transparent?: boolean;
   large?: boolean;
   onClick: () => void;
 }
@@ -18,7 +17,6 @@ export function NotebookActionButton({
   icon,
   title,
   color,
-  transparent,
   large,
   onClick,
   ...props
@@ -30,7 +28,6 @@ export function NotebookActionButton({
       icon={icon}
       small={!large}
       color={color}
-      transparent={transparent}
       iconVertical={large}
       iconSize={large ? 20 : 16}
       aria-label={label}
