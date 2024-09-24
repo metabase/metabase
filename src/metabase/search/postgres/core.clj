@@ -87,7 +87,10 @@
   (when s
     (OffsetDateTime/parse s)))
 
-(defn- minimal [search-term & {:as _search-ctx}]
+(defn- minimal
+  "Search via index, and return potentially stale information, without applying filters or
+  restricting to collections we have access to."
+  [search-term & {:as _search-ctx}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))

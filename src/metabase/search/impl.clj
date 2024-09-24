@@ -337,28 +337,27 @@
   {:arglists '([search-ctx search-result])}
   (fn [_search-ctx search-result] ((comp keyword :model) search-result)))
 
-(defn- assert-current-user-perms-set-is-bound
+(defmacro ^:private ensure-current-user-perms-set-is-bound
   "TODO FIXME -- search actually currently still requires [[metabase.api.common/*current-user-permissions-set*]] to be
   bound (since [[mi/can-write?]] and [[mi/can-read?]] depend on it) despite search context requiring
   `:current-user-perms` to be passed in. We should fix things so search works independently of API-specific dynamic
   variables. This might require updating `can-read?` and `can-write?` to take explicit perms sets instead of relying
   on dynamic variables."
-  []
-  (assert (seq @@(requiring-resolve 'metabase.api.common/*current-user-permissions-set*))
-          "metabase.api.common/*current-user-permissions-set* must be bound in order to check search permissions"))
+  {:style/indent 0}
+  [current-user-perms & body]
+  `(with-bindings {(requiring-resolve 'metabase.api.common/*current-user-permissions-set*) (atom ~current-user-perms)}
+     ~@body))
 
-(defn- can-write? [instance]
-  (assert-current-user-perms-set-is-bound)
-  (mi/can-write? instance))
+(defn- can-write? [{:keys [current-user-perms]} instance]
+  (ensure-current-user-perms-set-is-bound current-user-perms (mi/can-write? instance)))
 
-(defn- can-read? [instance]
-  (assert-current-user-perms-set-is-bound)
-  (mi/can-read? instance))
+(defn- can-read? [{:keys [current-user-perms]} instance]
+  (ensure-current-user-perms-set-is-bound current-user-perms (mi/can-read? instance)))
 
 (defmethod check-permissions-for-model :default
   [search-ctx instance]
   (if (:archived? search-ctx)
-    (can-write? instance)
+    (can-write? search-ctx instance)
     ;; We filter what we can (i.e., everything in a collection) out already when querying
     true))
 
@@ -383,20 +382,20 @@
 (defmethod check-permissions-for-model :metric
   [search-ctx instance]
   (if (:archived? search-ctx)
-    (can-write? instance)
-    (can-read? instance)))
+    (can-write? search-ctx instance)
+    (can-read? search-ctx instance)))
 
 (defmethod check-permissions-for-model :segment
   [search-ctx instance]
   (if (:archived? search-ctx)
-    (can-write? instance)
-    (can-read? instance)))
+    (can-write? search-ctx instance)
+    (can-read? search-ctx instance)))
 
 (defmethod check-permissions-for-model :database
   [search-ctx instance]
   (if (:archived? search-ctx)
-    (can-write? instance)
-    (can-read? instance)))
+    (can-write? search-ctx instance)
+    (can-read? search-ctx instance)))
 
 (mu/defn query-model-set :- [:set SearchableModel]
   "Queries all models with respect to query for one result to see if we get a result or not"
@@ -666,22 +665,22 @@
         ;; Collections require some transformation before being scored and returned by search.
         (cond-> (t2/instance-of? :model/Collection instance) map-collection))))
 
-(defn- add-can-write [row]
+(defn- add-can-write [search-ctx row]
   (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card])
-    (assoc row :can_write (can-write? row))
+    (assoc row :can_write (can-write? search-ctx row))
     row))
 
 (defn- normalize-result-more
   "Additional normalization that is done after we've filtered by permissions, as its more expensive."
-  [result]
-  (-> (update result :pk_ref json/parse-string)
-      add-can-write))
+  [search-ctx result]
+  (->> (update result :pk_ref json/parse-string)
+       (add-can-write search-ctx)))
 
 (defn- search-results [search-ctx total-results]
   (let [add-perms-for-col  (fn [item]
                              (cond-> item
                                (mi/instance-of? :model/Collection item)
-                               (assoc :can_write (can-write? item))))]
+                               (assoc :can_write (can-write? search-ctx item))))]
     ;; We get to do this slicing and dicing with the result data because
     ;; the pagination of search is for UI improvement, not for performance.
     ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
@@ -708,7 +707,7 @@
                             (take search.config/*db-max-results*)
                             (map normalize-result)
                             (filter (partial check-permissions-for-model search-ctx))
-                            (map normalize-result-more)
+                            (map (partial normalize-result-more search-ctx))
                              ;; scoring - note that this can also filter further!
                             (map #(scoring/score-and-result % scoring-ctx))
                             (filter #(pos? (:score %))))

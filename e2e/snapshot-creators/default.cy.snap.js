@@ -7,14 +7,7 @@ import {
   USERS,
   USER_GROUPS,
 } from "e2e/support/cypress_data";
-import {
-  deleteToken,
-  describeEE,
-  restore,
-  setTokenFeatures,
-  snapshot,
-  withSampleDatabase,
-} from "e2e/support/helpers";
+import { restore, snapshot, withSampleDatabase } from "e2e/support/helpers";
 
 const {
   STATIC_ORDERS_ID,
@@ -70,29 +63,6 @@ describe("snapshots", () => {
     });
   });
 
-  describeEE("default-ee", () => {
-    it("default-ee", () => {
-      restore("blank");
-      setup();
-      updateSettings();
-      setTokenFeatures("all");
-      addUsersAndGroups(true);
-      createCollections();
-      withSampleDatabase(SAMPLE_DATABASE => {
-        ensureTableIdsAreCorrect(SAMPLE_DATABASE);
-        hideNewSampleTables(SAMPLE_DATABASE);
-        createQuestionsAndDashboards(SAMPLE_DATABASE);
-        createModels(SAMPLE_DATABASE);
-        cy.writeFile(
-          "e2e/support/cypress_sample_database.json",
-          SAMPLE_DATABASE,
-        );
-      });
-      deleteToken();
-      snapshot("default-ee");
-    });
-  });
-
   function setup() {
     cy.request("GET", "/api/session/properties").then(
       ({ body: properties }) => {
@@ -132,9 +102,7 @@ describe("snapshots", () => {
     });
   }
 
-  function addUsersAndGroups(isEE = false) {
-    const lowest_read_data_permission = isEE ? "blocked" : "unrestricted";
-
+  function addUsersAndGroups() {
     // groups
     cy.request("POST", "/api/permissions/group", { name: "collection" }).then(
       ({ body }) => {
@@ -169,7 +137,7 @@ describe("snapshots", () => {
       [ALL_USERS_GROUP]: {
         [SAMPLE_DB_ID]: {
           // set the data permission so the UI doesn't warn us that "all users has higher permissions than X"
-          "view-data": lowest_read_data_permission,
+          "view-data": "unrestricted",
           "create-queries": "no",
         },
       },
@@ -187,13 +155,13 @@ describe("snapshots", () => {
       },
       [COLLECTION_GROUP]: {
         [SAMPLE_DB_ID]: {
-          "view-data": lowest_read_data_permission,
+          "view-data": "unrestricted",
           "create-queries": "no",
         },
       },
       [READONLY_GROUP]: {
         [SAMPLE_DB_ID]: {
-          "view-data": lowest_read_data_permission,
+          "view-data": "unrestricted",
           "create-queries": "no",
         },
       },
