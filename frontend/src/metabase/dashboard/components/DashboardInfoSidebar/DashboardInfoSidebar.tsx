@@ -1,9 +1,10 @@
 import type { FocusEvent, SetStateAction } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import {
   Sidesheet,
   SidesheetCard,
@@ -70,6 +71,13 @@ export function DashboardInfoSidebar({
     query: { model_type: "dashboard", model_id: dashboard.id },
   });
 
+  const isIADashboard = useMemo(
+    () =>
+      dashboard.collection &&
+      isInstanceAnalyticsCollection(dashboard?.collection),
+    [dashboard.collection],
+  );
+
   const currentUser = useSelector(getUser);
   const dispatch = useDispatch();
 
@@ -123,9 +131,11 @@ export function DashboardInfoSidebar({
             defaultValue={Tab.Overview}
             className={SidesheetS.FlexScrollContainer}
           >
-            <Tabs.List mx="lg">
+            <Tabs.List mx="xl">
               <Tabs.Tab value={Tab.Overview}>{t`Overview`}</Tabs.Tab>
-              <Tabs.Tab value={Tab.History}>{t`History`}</Tabs.Tab>
+              {!isIADashboard && (
+                <Tabs.Tab value={Tab.History}>{t`History`}</Tabs.Tab>
+              )}
             </Tabs.List>
             <SidesheetTabPanelContainer>
               <Tabs.Panel value={Tab.Overview}>

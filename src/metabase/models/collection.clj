@@ -500,24 +500,24 @@
    :archive-operation-id nil
    :permission-level :read})
 
-(def ^:private ^{:arglists '([read-or-write])} can-access-root-collection?
+(def ^:private ^{:arglists '([user-scope read-or-write])} can-access-root-collection?
   "Cached function to determine whether the current user can access the root collection"
   (memoize/ttl
-   ^{::memoize/args-fn (fn [[read-or-write]]
+   ^{::memoize/args-fn (fn [[{:keys [current-user-id]} read-or-write]]
                          ;; If this is running in the context of a request, cache it for the duration of that request.
                          ;; Otherwise, don't cache the results at all.)
                          (if-let [req-id *request-id*]
-                           [req-id api/*current-user-id* read-or-write]
-                           [(random-uuid) api/*current-user-id* read-or-write]))}
+                           [req-id current-user-id read-or-write]
+                           [(random-uuid) current-user-id read-or-write]))}
    (fn can-access-root-collection?*
-     [read-or-write]
-     (or api/*is-superuser?*
+     [{:keys [current-user-id is-superuser?]} read-or-write]
+     (or is-superuser?
          (t2/exists? :model/Permissions {:select [:p.*]
                                          :from [[:permissions :p]]
                                          :join [[:permissions_group :pg] [:= :pg.id :p.group_id]
                                                 [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
                                          :where [:and
-                                                 [:= :pgm.user_id api/*current-user-id*]
+                                                 [:= :pgm.user_id current-user-id]
                                                  [:or
                                                   [:= :p.object "/collection/root/"]
                                                   (when (= :read read-or-write)
@@ -527,19 +527,24 @@
 
 (defn- should-display-root-collection?
   "Should this user be shown the root collection, given the `visibility-config` passed?"
-  [visibility-config]
-  (and
-   ;; we have permission for it.
-   (can-access-root-collection? (:permission-level visibility-config))
+  ([visibility-config]
+   (should-display-root-collection?
+    {:current-user-id api/*current-user-id*
+     :is-superuser?   api/*is-superuser?*}
+    visibility-config))
+  ([user-scope visibility-config]
+   (and
+    ;; we have permission for it.
+    (can-access-root-collection? user-scope (:permission-level visibility-config))
 
-   ;; we're not *only* looking for archived items
-   (not= :only (:include-archived-items visibility-config))
+    ;; we're not *only* looking for archived items
+    (not= :only (:include-archived-items visibility-config))
 
-   ;; we're not looking for a particular `archive_operation_id`
-   (not (:archive-operation-id visibility-config))
+    ;; we're not looking for a particular `archive_operation_id`
+    (not (:archive-operation-id visibility-config))
 
-   ;; we're not looking for the children of a collection (root definitely isn't a child!)
-   (not (:effective-child-of visibility-config))))
+    ;; we're not looking for the children of a collection (root definitely isn't a child!)
+    (not (:effective-child-of visibility-config)))))
 
 (mu/defn visible-collection-filter-clause
   "Given a `CollectionVisibilityConfig`, return a honeysql filter clause ready for use in queries."
@@ -554,7 +559,7 @@
                                       :is-superuser?   api/*is-superuser?*}))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
     visibility-config :- CollectionVisibilityConfig
-    {:keys [current-user-id is-superuser?]} :- UserScope]
+    {:keys [current-user-id is-superuser?] :as user-scope} :- UserScope]
    (let [visibility-config (merge default-visibility-config visibility-config)]
      ;; This giant query looks scary, but it's actually only moderately terrifying! Let's walk through it step by
      ;; step. What we're doing here is adding a filter clause to a surrounding query, to make sure that
@@ -572,7 +577,7 @@
      ;; `should-display-root-collection?` but it's pretty simple. We can't include the root collection along with the
      ;; rest because it's not a Real collection.
      [:or
-      (when (should-display-root-collection? visibility-config)
+      (when (should-display-root-collection? user-scope visibility-config)
         [:= collection-id-field nil])
       ;; the non-root collections are here. We're saying "let this row through if..."
       [:in collection-id-field
