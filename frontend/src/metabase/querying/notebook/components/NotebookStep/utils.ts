@@ -25,7 +25,6 @@ import { NotebookStepHeader } from "./NotebookStepHeader";
 type StepUIItem = {
   title: string;
   icon?: IconName;
-  transparent?: boolean;
   compact?: boolean;
   color: () => string;
   Step: ComponentType<NotebookStepProps>;
@@ -49,7 +48,6 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
   expression: {
     title: t`Custom column`,
     icon: "add_data",
-    transparent: true,
     color: () => color("bg-dark"),
     Step: ExpressionStep,
     StepHeader: NotebookStepHeader,
@@ -86,7 +84,6 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     title: t`Sort`,
     icon: "sort",
     compact: true,
-    transparent: true,
     color: () => color("bg-dark"),
     Step: SortStep,
     StepHeader: NotebookStepHeader,
@@ -95,7 +92,6 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     title: t`Row limit`,
     icon: "list",
     compact: true,
-    transparent: true,
     color: () => color("bg-dark"),
     Step: LimitStep,
     StepHeader: NotebookStepHeader,
