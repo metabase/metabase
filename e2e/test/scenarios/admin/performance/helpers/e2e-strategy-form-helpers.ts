@@ -88,14 +88,12 @@ export const getScheduleComponent = (componentType: ScheduleComponentType) =>
 export const openSidebar = (type: "question" | "dashboard") => {
   // this will change when we move to having a dashboard settings sidesheet
   if (type === "dashboard") {
-    cy.icon("info").click();
-    return;
+    cy.findByTestId("dashboard-header").icon("ellipsis").click();
   }
 
   if (type === "question") {
     cy.findByTestId("qb-header").icon("ellipsis").click();
   }
-
   popover().findByText("Edit settings").click();
 };
 
@@ -111,7 +109,7 @@ export const openSidebarCacheStrategyForm = (
   cy.log("Open the cache strategy form in the sidebar");
   openSidebar(type);
   cy.wait("@getCacheConfig");
-  cy.findByLabelText("Caching policy").click();
+  cy.findByLabelText("When to get new results").click();
 };
 
 export const cancelConfirmationModal = () => {
@@ -178,16 +176,6 @@ export const selectCacheStrategy = ({
   }
 
   saveCacheStrategyForm({ strategyType: strategy.type, model: item?.model });
-
-  if (item?.model === "question") {
-    cy.findByLabelText("Close").click();
-  }
-
-  // Once dashboard sidesheets is merged, we can change this to use the same
-  // approach that we use for questions.
-  if (item?.model === "dashboard") {
-    cy.findByLabelText("More info").click();
-  }
 };
 
 export const disableCaching = (

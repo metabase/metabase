@@ -8,6 +8,7 @@
    [metabase.search.config :as search.config]
    [metabase.search.impl :as search.impl]
    [metabase.search.postgres.core :as search.postgres]
+   [metabase.search.scoring :as scoring]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [potemkin :as p]))
@@ -27,13 +28,40 @@
   []
   (= :postgres (metabase.db/db-type)))
 
+(def ^:private default-engine :in-place)
+
 (defn- query-fn [search-engine]
-  (case search-engine
-    :fulltext (if (is-postgres?)
-                search.postgres/search
-                (do (log/warn ":fulltext search not supported for your AppDb, using :in-place")
-                    search.impl/in-place))
-    :in-place search.impl/in-place))
+  (or
+   (case search-engine
+     :fulltext (when (is-postgres?) search.postgres/search)
+     :minimal  (when (is-postgres?) search.postgres/search)
+     :in-place search.impl/in-place
+     nil)
+
+   (log/warnf "%s search not supported for your AppDb, using %s" search-engine default-engine)
+   (recur default-engine)))
+
+(defn- model-set-fn [search-engine]
+  (or
+   (case search-engine
+     :fulltext (when (is-postgres?) search.postgres/model-set)
+     :minimal  (when (is-postgres?) search.postgres/model-set)
+     :in-place search.impl/query-model-set
+     nil)
+
+   (log/warnf "%s search not supported for your AppDb, using %s" search-engine default-engine)
+   (recur default-engine)))
+
+(defn- score-fn [search-engine]
+  (or
+   (case search-engine
+     :fulltext (when (is-postgres?) search.postgres/no-scoring)
+     :minimal  (when (is-postgres?) search.postgres/no-scoring)
+     :in-place scoring/score-and-result
+     nil)
+
+   (log/warnf "%s search not supported for your AppDb, using %s" search-engine default-engine)
+   (recur default-engine)))
 
 (defn supports-index?
   "Does this instance support a search index, e.g. has the right kind of AppDb"
@@ -55,5 +83,12 @@
 (mu/defn search
   "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- search.config/SearchContext]
-  (let [query-fn (query-fn (:search-engine search-ctx :in-place))]
-    (search.impl/search query-fn search-ctx)))
+  (let [engine    (:search-engine search-ctx :in-place)
+        query-fn  (query-fn engine)
+        score-fn  (score-fn engine)
+        models-fn (model-set-fn engine)]
+    (search.impl/search
+     query-fn
+     models-fn
+     score-fn
+     search-ctx)))

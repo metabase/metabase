@@ -5,6 +5,7 @@ import { getColorsForValues } from "metabase/lib/colors/charts";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { checkNotNull, checkNumber, isNumber } from "metabase/lib/types";
 import { SLICE_THRESHOLD } from "metabase/visualizations/echarts/pie/constants";
+import { getPieColumns } from "metabase/visualizations/echarts/pie/model";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
@@ -148,23 +149,26 @@ export function getPieRows(
 ) {
   const [
     {
-      data: { cols, rows: dataRows },
+      data: { rows: dataRows },
     },
   ] = rawSeries;
+
+  if (!settings["pie.metric"] || !settings["pie.dimension"]) {
+    return [];
+  }
+
+  const hasSortDimensionChanged =
+    settings["pie.sort_rows_dimension"] != null &&
+    settings["pie.sort_rows_dimension"] !== settings["pie.dimension"];
+
+  const { metricDesc, dimensionDesc } = getPieColumns(rawSeries, settings);
 
   const getColumnSettings = settings["column"];
   if (!getColumnSettings) {
     throw Error("`settings.column` is undefined");
   }
 
-  const dimensionCol = cols.find(c => c.name === settings["pie.dimension"]);
-  if (dimensionCol == null) {
-    throw Error(
-      `Could not find column based on "pie.dimension setting with value ${settings["pie.dimension"]}`,
-    );
-  }
-
-  const dimensionColSettings = getColumnSettings(dimensionCol);
+  const dimensionColSettings = getColumnSettings(dimensionDesc.column);
 
   const formatDimensionValue = (value: RowValue) => {
     if (value == null) {
@@ -174,13 +178,6 @@ export function getPieRows(
     return formatter(value, dimensionColSettings);
   };
 
-  const dimensionIndex = cols.findIndex(
-    col => col.name === settings["pie.dimension"],
-  );
-  const metricIndex = cols.findIndex(
-    col => col.name === settings["pie.metric"],
-  );
-
   let colors = getColors(rawSeries, settings);
   // `pie.colors` is a legacy setting used by old questions for their
   // colors. We'll still read it to preserve those color selections, but
@@ -189,36 +186,41 @@ export function getPieRows(
   if (settings["pie.colors"] != null) {
     colors = { ...colors, ...settings["pie.colors"] };
   }
-  const savedPieRows = settings["pie.rows"] ?? [];
-
-  const savedPieKeys = savedPieRows.map(pieRow => pieRow.key);
-
-  const keyToSavedPieRow = new Map<PieRow["key"], PieRow>();
-  savedPieRows.map(pieRow => keyToSavedPieRow.set(pieRow.key, pieRow));
 
   const currentDataRows = getAggregatedRows(
     dataRows,
-    dimensionIndex,
-    metricIndex,
+    dimensionDesc.index,
+    metricDesc.index,
   );
+  const keyToCurrentDataRow = new Map<PieRow["key"], RowValues>(
+    currentDataRows.map(dataRow => [
+      getKeyFromDimensionValue(dataRow[dimensionDesc.index]),
+      dataRow,
+    ]),
+  );
+  const currentDataKeys = Array.from(keyToCurrentDataRow.keys());
 
-  const keyToCurrentDataRow = new Map<PieRow["key"], RowValues>();
-  const currentDataKeys = currentDataRows.map(dataRow => {
-    const key = getKeyFromDimensionValue(dataRow[dimensionIndex]);
-    keyToCurrentDataRow.set(key, dataRow);
+  const savedPieRows = hasSortDimensionChanged
+    ? []
+    : (settings["pie.rows"] ?? []);
 
-    return key;
-  });
+  const savedPieKeys = savedPieRows.map(pieRow => pieRow.key);
 
+  const keyToSavedPieRow = new Map<PieRow["key"], PieRow>(
+    savedPieRows.map(pieRow => [pieRow.key, pieRow]),
+  );
   const removed = _.difference(savedPieKeys, currentDataKeys);
 
   let newPieRows: PieRow[] = [];
   // Case 1: Auto sorted, sort existing and new rows together
   if (settings["pie.sort_rows"]) {
-    const sortedCurrentDataRows = getSortedRows(currentDataRows, metricIndex);
+    const sortedCurrentDataRows = getSortedRows(
+      currentDataRows,
+      metricDesc.index,
+    );
 
     newPieRows = sortedCurrentDataRows.map(dataRow => {
-      const dimensionValue = dataRow[dimensionIndex];
+      const dimensionValue = dataRow[dimensionDesc.index];
       const key = getKeyFromDimensionValue(dimensionValue);
       // Historically we have used the dimension value in the `pie.colors`
       // setting instead of the key computed above. For compatibility with
@@ -278,11 +280,11 @@ export function getPieRows(
 
       return dataRow;
     });
-    const sortedAddedRows = getSortedRows(addedRows, metricIndex);
+    const sortedAddedRows = getSortedRows(addedRows, metricDesc.index);
 
     newPieRows.push(
       ...sortedAddedRows.map(addedDataRow => {
-        const dimensionValue = addedDataRow[dimensionIndex];
+        const dimensionValue = addedDataRow[dimensionDesc.index];
 
         const color = Color(colors[String(dimensionValue)]).hex();
         const key = getKeyFromDimensionValue(dimensionValue);
@@ -323,7 +325,7 @@ export function getPieRows(
     return (
       currTotal +
       checkNumber(
-        checkNotNull(keyToCurrentDataRow.get(pieRow.key))[metricIndex],
+        checkNotNull(keyToCurrentDataRow.get(pieRow.key))[metricDesc.index],
       )
     );
   }, 0);
@@ -335,7 +337,7 @@ export function getPieRows(
     }
 
     const metricValue = checkNumber(
-      checkNotNull(keyToCurrentDataRow.get(pieRow.key))[metricIndex],
+      checkNotNull(keyToCurrentDataRow.get(pieRow.key))[metricDesc.index],
     );
     const normalizedPercentage = metricValue / total;
 
@@ -358,5 +360,11 @@ export function getPieRows(
 
   return newPieRows;
 }
+
+export const getPieSortRowsDimensionSetting = (
+  settings: ComputedVisualizationSettings,
+) => {
+  return settings["pie.dimension"];
+};
 
 export const getDefaultSortRows = () => true;

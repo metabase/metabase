@@ -105,6 +105,14 @@ export const getCollectionId = (
     return "root";
   }
 
+  if (
+    "collection_id" in item &&
+    item.model === "dashboard" &&
+    item.collection_id !== undefined
+  ) {
+    return item.collection_id;
+  }
+
   if (item.model === "collection") {
     return (item.id as CollectionId) ?? "root";
   }
