@@ -592,13 +592,14 @@
         minor-version (config/current-minor-version)
         engines       (t2/select-fn-set :engine :model/Database
                                         {:where [:in :engine (map name (keys csv-upload-version-availability))]})]
-    (boolean
-     (some
-      (fn [engine]
-        (when-let [[required-major required-minor] (csv-upload-version-availability engine)]
-          (and (>= major-version required-major)
-               (>= minor-version required-minor))))
-      engines))))
+    (when (and major-version minor-version)
+      (boolean
+       (some
+        (fn [engine]
+          (when-let [[required-major required-minor] (csv-upload-version-availability engine)]
+            (and (>= major-version required-major)
+                 (>= minor-version required-minor))))
+        engines)))))
 
 (defn- ee-snowplow-features-data'
   []
