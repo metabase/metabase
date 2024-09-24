@@ -476,7 +476,7 @@
                       :table      (table-metrics)
                       :user       (user-metrics)}}))
 
-(defn- send-stats-deprecated!
+(defn- ^:deprecated send-stats-deprecated!
   "Send stats to Metabase tracking server."
   [stats]
   (try
@@ -600,9 +600,7 @@
                (>= minor-version required-minor))))
       engines))))
 
-(defenterprise ee-snowplow-features-data
-  "OSS values to use for features which require calling EE code to check whether they are available/enabled."
-  metabase-enterprise.snowplow
+(defn- ee-snowplow-features-data'
   []
   (let [features [:sso-jwt :sso-saml :scim :sandboxes :email-allow-list]]
     (map
@@ -611,6 +609,12 @@
         :available false
         :enabled   false})
      features)))
+
+(defenterprise ee-snowplow-features-data
+  "OSS values to use for features which require calling EE code to check whether they are available/enabled."
+  metabase-enterprise.stats
+  []
+  (ee-snowplow-features-data'))
 
 (defn- snowplow-features-data
   []
@@ -723,6 +727,7 @@
           snowplow-stats (snowplow-anonymous-usage-stats stats)
           end-time-ms    (System/currentTimeMillis)
           elapsed-secs   (quot (- end-time-ms start-time-ms) 1000)]
+      #_{:clj-kondo/ignore [:deprecated-var]}
       (send-stats-deprecated! stats)
       (snowplow/track-event! ::snowplow/instance_stats
                              (assoc snowplow-stats :metadata [{"stats_export_time_seconds" elapsed-secs}])))))

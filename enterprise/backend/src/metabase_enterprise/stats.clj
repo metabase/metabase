@@ -1,4 +1,4 @@
-(ns metabase-enterprise.snowplow
+(ns metabase-enterprise.stats
   (:require
    [metabase-enterprise.advanced-config.models.pulse-channel :as advanced-config.models.pulse-channel]
    [metabase-enterprise.scim.api :as scim-api]
@@ -8,7 +8,7 @@
    [toucan2.core :as t2]))
 
 (defenterprise ee-snowplow-features-data
-  "A subset of feature information included in the daily Snowplow stats report. This funciton only returns information
+  "A subset of feature information included in the daily Snowplow stats report. This function only returns information
   about features which require calling EE code; other features are defined in [[metabase.analytics.stats/snowplow-features]]"
   :feature :none
   []

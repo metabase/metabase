@@ -406,8 +406,12 @@
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"
-    (let [included-features (->> (concat (@#'stats/snowplow-features-data) (@#'stats/ee-snowplow-features-data))
-                                 (map :name)
-                                 set)
+    (let [included-features     (->> (concat (@#'stats/snowplow-features-data) (@#'stats/ee-snowplow-features-data))
+                                     (map :name))
+          included-features-set (set included-features)
           all-features      @premium-features/premium-features]
-      (is (empty? (set/difference all-features included-features excluded-features))))))
+      ;; make sure features are not missing
+      (is (empty? (set/difference all-features included-features-set excluded-features)))
+
+      ;; make sure features are not duplicated
+      (is (= (count included-features) (count included-features-set))))))
