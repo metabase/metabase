@@ -1,5 +1,6 @@
 (ns metabase.driver.databricks-jdbc
   (:require
+   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.hive-like :as driver.hive-like]
@@ -41,6 +42,48 @@
     #"timestamp_ntz" :type/DateTime
     ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
      driver database-type)))
+
+(defmethod sql-jdbc.sync/describe-fields-sql :databricks-jdbc
+  [driver & {:keys [schema-names table-names]}]
+  (sql/format {:select [[:c.column_name :name]
+                        [:c.data_type :database-type]
+                        [:c.ordinal_position :database-position]
+                        [:c.table_schema :table-schema]
+                        [:c.table_name :table-name]
+                        [[:case [:= :cs.constraint_type [:inline "PRIMARY KEY"]] true :else false] :pk?]
+                        [[:case [:not= :c.comment [:inline ""]] :c.comment :else nil] :field-comment]]
+               :from [[:information_schema.columns :c]]
+               ;; Join constraint_type to every row; mapping of one to at most one, thanks
+               ;; to `[:= [:raw "PRIMARY KEY"] :cs.constraint_type]` condition.
+               :left-join [[{:select   [[:tc.table_catalog :table_catalog]
+                                        [:tc.table_schema :table_schema]
+                                        [:tc.table_name :table_name]
+                                        [:ccu.column_name :column_name]
+                                        [:tc.constraint_type :constraint_type]]
+                             :from     [[:information_schema.table_constraints :tc]]
+                             :join     [[:information_schema.constraint_column_usage :ccu]
+                                        [:and
+                                         [:= :tc.table_catalog :ccu.table_catalog]
+                                         [:= :tc.table_schema :ccu.table_schema]
+                                         [:= :tc.table_name :ccu.table_name]]]
+                             :group-by [:tc.table_catalog
+                                        :tc.table_schema
+                                        :tc.table_name
+                                        :ccu.column_name
+                                        :tc.constraint_type]}
+                            :cs]
+                           [:and
+                            [:= :c.table_catalog :cs.table_catalog]
+                            [:= :c.table_schema :cs.table_schema]
+                            [:= :c.table_name :cs.table_name]
+                            [:= :c.column_name :cs.column_name]
+                            [:= [:inline "PRIMARY KEY"] :cs.constraint_type]]]
+               :where [:and
+                       [:not [:in :c.table_schema ["information_schema"]]]
+                       (when schema-names [:in :c.table_schema schema-names])
+                       (when table-names [:in :c.table_name table-names])]
+               :order-by [:table-schema :table-name :database-position]}
+              :dialect (sql.qp/quote-style driver)))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :databricks-jdbc
   [_driver]
