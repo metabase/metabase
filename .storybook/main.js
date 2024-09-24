@@ -28,6 +28,7 @@ module.exports = {
   stories: isEmbeddingSDK ? embeddingSdkStories : mainAppStories,
   staticDirs: ["../resources/frontend_client"],
   addons: [
+    "@storybook/addon-webpack5-compiler-babel",
     "@storybook/addon-essentials",
     "@storybook/addon-links",
     "@storybook/addon-a11y",
