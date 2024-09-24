@@ -43,7 +43,6 @@ export interface Dashboard {
   updated_at: string;
   collection?: Collection | null;
   collection_id: CollectionId | null;
-  creator_id: UserId;
   name: string;
   description: string | null;
   model?: string;
