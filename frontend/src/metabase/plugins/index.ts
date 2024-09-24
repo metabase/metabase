@@ -63,6 +63,7 @@ import type {
   PluginGroupManagersType,
   PluginLLMAutoDescription,
 } from "./types";
+import { CollectionRow } from "metabase-enterprise/snippets/components/CollectionRow";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUNCTIONS = [];
@@ -251,9 +252,32 @@ export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
 
 // snippet sidebar
 export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = [];
-export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = {};
-export const PLUGIN_SNIPPET_SIDEBAR_MODALS = [];
-export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = [];
+export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS: {
+  collection?: typeof CollectionRow;
+} = {};
+export const PLUGIN_SNIPPET_SIDEBAR_MODALS_CONTROLS: {
+  useControls:
+    | (() => {
+        permissionsModalCollectionId: CollectionId | null;
+        setPermissionsModalCollectionId: (c: CollectionId | null) => void;
+        modalSnippetCollection: Collection | null;
+        setModalSnippetCollection: (c: Collection | null) => void;
+      })
+    | undefined;
+} = {
+  useControls: undefined,
+};
+export const PLUGIN_SNIPPET_SIDEBAR_MODALS = {
+  MODAL_SNIPPET_COLLECTION: undefined,
+  PERMISSIONS_MODAL_COLLECTION_ID: undefined,
+};
+export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS: ComponentType<{
+  snippetCollection: Collection;
+  setPermissionsModalCollectionId?: (id: CollectionId) => void;
+  setModalSnippetCollection?: (collection: Collection) => void;
+  user: User;
+  className?: string;
+}>[] = [];
 
 export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
   Component: undefined,

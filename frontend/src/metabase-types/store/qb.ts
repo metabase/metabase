@@ -3,6 +3,7 @@ import type {
   DashboardId,
   Dataset,
   Field,
+  NativeQuerySnippet,
   ParameterValueOrArray,
 } from "metabase-types/api";
 
@@ -32,6 +33,7 @@ export interface QueryBuilderUIControls {
   isShowingRawTable: boolean;
   queryBuilderMode: QueryBuilderMode;
   previousQueryBuilderMode: boolean;
+  modalSnippet: NativeQuerySnippet;
   snippetCollectionId: number | null;
   datasetEditorTab: DatasetEditorTab;
   isShowingNotebookNativePreview: boolean;
