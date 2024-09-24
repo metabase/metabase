@@ -3,8 +3,6 @@ import {
   getLastReleaseTag,
   getMilestoneName,
   getNextVersions,
-  isLatestVersion,
-  isValidVersionString,
 } from "./version-helpers";
 
 export const getMilestones = async ({
@@ -103,28 +101,6 @@ export const getMilestoneIssues = async ({
   });
 
   return (issues ?? []) as Issue[];
-};
-
-export const isLatestRelease = async ({
-  version,
-  github,
-  owner,
-  repo,
-}: ReleaseProps): Promise<boolean> => {
-  if (!isValidVersionString(version)) {
-    console.warn(`Invalid version string: ${version}`);
-    return false;
-  }
-  const releases = await github.rest.repos.listReleases({
-    owner,
-    repo,
-  });
-
-  const releaseNames = releases.data.map(
-    (r: { tag_name: string }) => r.tag_name,
-  );
-
-  return isLatestVersion(version, releaseNames);
 };
 
 export const hasBeenReleased = async ({
