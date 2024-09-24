@@ -5,6 +5,7 @@ import type {
   ReactNode,
   SetStateAction,
 } from "react";
+import type { InjectedRouter, Route } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 import type { AnySchema } from "yup";
@@ -32,6 +33,8 @@ import type {
   ModelFilterControlsProps,
   ModelFilterSettings,
 } from "metabase/browse/models";
+import { InsightsTab } from "metabase/common/components/Sidesheet/components/InsightsTab";
+import type { LinkProps } from "metabase/core/components/Link";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -290,6 +293,10 @@ type GetCollectionIdType = (
   sourceCollectionId?: CollectionId | null,
 ) => CollectionId | null;
 
+export type CollectionAuthorityLevelDisplayProps = {
+  collection: Collection;
+};
+
 export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
@@ -330,6 +337,7 @@ export type CollectionAuthorityLevelIcon = ComponentType<
     collection: Pick<Collection, "authority_level">;
     tooltip?: "default" | "belonging";
     archived?: boolean;
+    showIconForRegularCollection?: boolean;
   }
 >;
 
@@ -351,6 +359,8 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
     PluginPlaceholder as FormCollectionAuthorityLevelPicker,
   CollectionInstanceAnalyticsIcon:
     PluginPlaceholder as CollectionInstanceAnalyticsIcon,
+  CollectionAuthorityLevelDisplay:
+    PluginPlaceholder as ComponentType<CollectionAuthorityLevelDisplayProps>,
 };
 
 export type RevisionOrModerationEvent = {
@@ -401,6 +411,8 @@ export type SidebarCacheFormProps = {
   item: CacheableDashboard | Question;
   model: CacheableModel;
   onClose: () => void;
+  router?: InjectedRouter;
+  route?: Route;
 } & GroupProps;
 
 export const PLUGIN_CACHING = {
@@ -532,8 +544,21 @@ export const PLUGIN_QUERY_BUILDER_HEADER = {
   extraButtons: (_question: Question) => [],
 };
 
+export type InsightsTabOrLinkProps = (
+  | {
+      question: Question;
+      dashboard?: never;
+    }
+  | {
+      question?: never;
+      dashboard: Dashboard;
+    }
+) &
+  Omit<LinkProps, "to">;
+
 export const PLUGIN_AUDIT = {
   isAuditDb: (_db: DatabaseType) => false,
+  InsightsTabOrLink: InsightsTab,
 };
 
 export const PLUGIN_UPLOAD_MANAGEMENT = {

@@ -22,8 +22,9 @@ export const UpsellCacheConfig = ({ source }: { source: string }) => {
         source={source}
       >
         {jt`Get granular caching controls for each database, dashboard, and query with ${(
-          <strong>{t`Metabase Pro.`}</strong>
+          <strong>{t`Metabase Pro`}</strong>
         )}`}
+        .
       </UpsellCard>
     </Box>
   );

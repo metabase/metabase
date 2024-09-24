@@ -320,7 +320,7 @@ describe("entities > collections > utils", () => {
         const [transformed] = buildCollectionTree([collection]);
         expect(transformed.icon).toEqual({
           color: expect.any(String),
-          name: "badge",
+          name: "verified_collection",
           tooltip: "Official collection",
         });
       });
@@ -371,7 +371,7 @@ describe("entities > collections > utils", () => {
       {
         name: "Official collection",
         collection: createMockCollection({ authority_level: "official" }),
-        expectedIcon: "badge",
+        expectedIcon: "verified_collection",
       },
     ];
 

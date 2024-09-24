@@ -62,15 +62,18 @@ export const CollectionCaption = ({
       </CaptionTitleContainer>
       {(isEditable || hasDescription) && (
         <CaptionDescription
-          key={collection.id}
-          initialValue={collection.description}
+          key={
+            // Including the description in the key prevents a stale value from
+            // being stored in the state of EditableText if the collection's
+            // description is modified in another component
+            `${collection.id}-${collection.description}`
+          }
+          description={collection.description}
           placeholder={t`Add description`}
           isVisible={Boolean(collection.description)}
-          isDisabled={!isEditable}
-          isOptional
-          isMultiline
-          isMarkdown
+          canWrite={isEditable}
           onChange={handleChangeDescription}
+          left={0}
         />
       )}
     </CaptionRoot>

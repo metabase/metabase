@@ -69,7 +69,7 @@ describeEE("official collections", () => {
 
       createAndOpenOfficialCollection({ name: COLLECTION_NAME });
       cy.findByTestId("official-collection-marker");
-      assertSidebarIcon(COLLECTION_NAME, "badge");
+      assertSidebarIcon(COLLECTION_NAME, "verified_collection");
 
       changeCollectionTypeTo("regular");
       cy.findByTestId("official-collection-marker").should("not.exist");
@@ -77,7 +77,7 @@ describeEE("official collections", () => {
 
       changeCollectionTypeTo("official");
       cy.findByTestId("official-collection-marker");
-      assertSidebarIcon(COLLECTION_NAME, "badge");
+      assertSidebarIcon(COLLECTION_NAME, "verified_collection");
     });
 
     it("displays official badge throughout the application", () => {
@@ -236,7 +236,7 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
   cy.findByText("Regular Dashboard").click();
 
   cy.findByTestId("dashboard-grid")
-    .icon("badge")
+    .icon("verified_collection")
     .should(expectBadge ? "exist" : "not.exist");
 }
 
@@ -300,7 +300,9 @@ function assertSearchResultBadge(itemName, opts) {
     .parent()
     .first()
     .within(() => {
-      cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
+      cy.icon("verified_collection").should(
+        expectBadge ? "exist" : "not.exist",
+      );
     });
 }
 
@@ -309,9 +311,11 @@ const assertHasCollectionBadgeInNavbar = (expectBadge = true) => {
     .findByText(COLLECTION_NAME)
     .parent()
     .within(() => {
-      cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
+      cy.icon("verified_collection").should(
+        expectBadge ? "exist" : "not.exist",
+      );
       if (expectBadge) {
-        cy.icon("badge").should("be.visible");
+        cy.icon("verified_collection").should("be.visible");
       }
     });
 };

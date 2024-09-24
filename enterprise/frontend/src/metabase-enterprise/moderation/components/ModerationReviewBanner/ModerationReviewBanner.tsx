@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { alpha, color } from "metabase/lib/colors";
@@ -14,7 +12,6 @@ import {
 import type Question from "metabase-lib/v1/Question";
 import type { ModerationReview } from "metabase-types/api";
 
-import Styles from "./ModerationReview.module.css";
 import {
   Container,
   Text,
@@ -93,14 +90,13 @@ export const ModerationReviewText = ({ question }: { question: Question }) => {
   );
 
   return (
-    <Flex gap="sm" align="top">
+    <Flex gap="sm" align="top" lh={1}>
       <FixedSizeIcon
         name={iconName}
         color={color(iconColor)}
         size={ICON_BUTTON_SIZE}
-        className={Styles.IconMargin}
       />
-      <UIText>
+      <UIText lh={1}>
         {bannerText} {relativeCreationTime}
       </UIText>
     </Flex>

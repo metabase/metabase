@@ -110,10 +110,8 @@ describe("Official Collections Header", () => {
   it("should allow admin users to designate official collections", async () => {
     setup(officialCollectionOptions);
     await userEvent.click(getIcon("ellipsis"));
-    expect(
-      await screen.findByText("Make collection official"),
-    ).toBeInTheDocument();
-    expect(await getIcon("badge")).toBeInTheDocument();
+    expect(await screen.findByText("Make official")).toBeInTheDocument();
+    expect(await getIcon("verified_collection")).toBeInTheDocument();
   });
 
   it("should not allow non-admin users to designate official collections", async () => {
@@ -122,10 +120,8 @@ describe("Official Collections Header", () => {
       isAdmin: false,
     });
     await userEvent.click(getIcon("ellipsis"));
-    expect(
-      screen.queryByText("Make collection official"),
-    ).not.toBeInTheDocument();
-    expect(await queryIcon("badge")).not.toBeInTheDocument();
+    expect(screen.queryByText("Make official")).not.toBeInTheDocument();
+    expect(await queryIcon("verified_collection")).not.toBeInTheDocument();
   });
 
   it("should not allow admin users to designate read-only collections as official", async () => {
@@ -137,9 +133,7 @@ describe("Official Collections Header", () => {
       },
     });
     await userEvent.click(getIcon("ellipsis"));
-    expect(
-      screen.queryByText("Make collection official"),
-    ).not.toBeInTheDocument();
-    expect(await queryIcon("badge")).not.toBeInTheDocument();
+    expect(screen.queryByText("Make official")).not.toBeInTheDocument();
+    expect(await queryIcon("verified_collection")).not.toBeInTheDocument();
   });
 });

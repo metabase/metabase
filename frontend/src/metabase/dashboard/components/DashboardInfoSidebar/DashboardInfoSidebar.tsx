@@ -10,21 +10,22 @@ import {
   SidesheetCard,
   SidesheetTabPanelContainer,
 } from "metabase/common/components/Sidesheet";
+import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks";
-import { EntityIdCard } from "metabase/components/EntityIdCard";
-import EditableText from "metabase/core/components/EditableText";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { PLUGIN_AUDIT } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
 import { Stack, Tabs, Text } from "metabase/ui";
 import type { Dashboard, Revision, User } from "metabase-types/api";
 
 import { DashboardDetails } from "./DashboardDetails";
-import DashboardInfoSidebarS from "./DashboardInfoSidebar.module.css";
+import { DashboardEntityIdCard } from "./components/DashboardEntityIdCard";
+import { InsightsUpsellTab } from "./components/InsightsUpsellTab";
 
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
@@ -38,6 +39,7 @@ interface DashboardInfoSidebarProps {
 enum Tab {
   Overview = "overview",
   History = "history",
+  Insights = "insights",
 }
 
 export function DashboardInfoSidebar({
@@ -112,6 +114,7 @@ export function DashboardInfoSidebar({
               {!isIADashboard && (
                 <Tabs.Tab value={Tab.History}>{t`History`}</Tabs.Tab>
               )}
+              <PLUGIN_AUDIT.InsightsTabOrLink dashboard={dashboard} />
             </Tabs.List>
             <SidesheetTabPanelContainer>
               <Tabs.Panel value={Tab.Overview}>
@@ -130,6 +133,9 @@ export function DashboardInfoSidebar({
                   revisions={revisions}
                   currentUser={currentUser}
                 />
+              </Tabs.Panel>
+              <Tabs.Panel value={Tab.Insights}>
+                <InsightsUpsellTab />
               </Tabs.Panel>
             </SidesheetTabPanelContainer>
           </Tabs>
@@ -157,29 +163,23 @@ const OverviewTab = ({
   return (
     <Stack spacing="lg">
       <SidesheetCard title={t`Description`} pb="md">
-        <div className={DashboardInfoSidebarS.EditableTextContainer}>
-          <EditableText
-            initialValue={dashboard.description}
-            isDisabled={!canWrite}
-            onChange={handleDescriptionChange}
-            onFocus={() => setDescriptionError("")}
-            onBlur={handleDescriptionBlur}
-            isOptional
-            isMultiline
-            isMarkdown
-            placeholder={t`Add description`}
-          />
-        </div>
+        <SidesheetEditableDescription
+          description={dashboard.description}
+          onChange={handleDescriptionChange}
+          canWrite={canWrite}
+          onFocus={() => setDescriptionError("")}
+          onBlur={handleDescriptionBlur}
+        />
         {!!descriptionError && (
           <Text color="error" size="xs" mt="xs">
             {descriptionError}
           </Text>
         )}
       </SidesheetCard>
-      <SidesheetCard>
+      <SidesheetCard pb="1.25rem">
         <DashboardDetails dashboard={dashboard} />
       </SidesheetCard>
-      <EntityIdCard entityId={dashboard.entity_id} />
+      <DashboardEntityIdCard dashboard={dashboard} />
     </Stack>
   );
 };

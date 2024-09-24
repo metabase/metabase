@@ -28,7 +28,7 @@ describe("CollectionMenu", () => {
     });
 
     await userEvent.click(getIcon("ellipsis"));
-    await userEvent.click(await screen.findByText("Make collection official"));
+    await userEvent.click(await screen.findByText("Make official"));
     expect(onUpdateCollection).toHaveBeenCalledWith(collection, {
       authority_level: "official",
     });
@@ -61,9 +61,7 @@ describe("CollectionMenu", () => {
     });
 
     await userEvent.click(getIcon("ellipsis"));
-    expect(
-      screen.queryByText("Make collection official"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Make official")).not.toBeInTheDocument();
   });
 
   it("should not be able to make the collection official if it's the root collection", async () => {
@@ -77,9 +75,7 @@ describe("CollectionMenu", () => {
     });
 
     await userEvent.click(getIcon("ellipsis"));
-    expect(
-      screen.queryByText("Make collection official"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Make official")).not.toBeInTheDocument();
   });
 
   it("should be able to make the collection official if it's a personal collection", async () => {
@@ -93,9 +89,7 @@ describe("CollectionMenu", () => {
     });
 
     await userEvent.click(getIcon("ellipsis"));
-    expect(
-      await screen.findByText("Make collection official"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Make official")).toBeInTheDocument();
   });
 
   it("should be able to make the collection official if even it's a personal collection child", async () => {
@@ -109,6 +103,6 @@ describe("CollectionMenu", () => {
     });
 
     await userEvent.click(getIcon("ellipsis"));
-    expect(screen.getByText("Make collection official")).toBeInTheDocument();
+    expect(screen.getByText("Make official")).toBeInTheDocument();
   });
 });

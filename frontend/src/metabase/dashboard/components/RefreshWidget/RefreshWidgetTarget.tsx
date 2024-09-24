@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { CountdownIcon } from "metabase/components/icons/CountdownIcon";
 import { isNotNull } from "metabase/lib/types";
@@ -21,7 +21,7 @@ export const RefreshWidgetTarget = ({
       <ToolbarButton
         tooltipLabel={t`Auto-refresh`}
         icon="clock"
-        aria-label={t`Auto Refresh`}
+        aria-label={t`Auto-refresh`}
       />
     );
   }
@@ -30,16 +30,10 @@ export const RefreshWidgetTarget = ({
 
   return (
     <ToolbarButton
-      tooltipLabel={
-        t`Refreshing in` +
-        " " +
-        Math.floor(remaining / 60) +
-        ":" +
-        (remaining % 60 < 10 ? "0" : "") +
-        Math.round(remaining % 60)
-      }
+      tooltipLabel={c("{0} is a time like 1:30 (meaning 1 minute 30 seconds)")
+        .t`Refreshing in ${formatTime(remaining)}`}
       name="clock"
-      aria-label={t`Auto Refresh`}
+      aria-label={t`Auto-refresh`}
     >
       <CountdownIcon
         width={16}
@@ -48,4 +42,10 @@ export const RefreshWidgetTarget = ({
       />
     </ToolbarButton>
   );
+};
+
+const formatTime = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.round(seconds % 60);
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
 };

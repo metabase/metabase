@@ -23,3 +23,19 @@
 .OverflowAuto {
   overflow: auto;
 }
+
+.InsightsTab {
+  &:not([data-specificity-hack]) {
+    &:disabled {
+      cursor: pointer;
+    }
+  }
+}
+
+.InsightsTabLink {
+  &:not([data-specificity-hack]) {
+    &:hover {
+      color: var(--mb-color-brand);
+    }
+  }
+}

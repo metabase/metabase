@@ -8,20 +8,20 @@ import {
   SidesheetCard,
   SidesheetTabPanelContainer,
 } from "metabase/common/components/Sidesheet";
+import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetStyles from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import { EntityIdCard } from "metabase/components/EntityIdCard";
-import EditableText from "metabase/core/components/EditableText";
 import Link from "metabase/core/components/Link";
+import { InsightsUpsellTab } from "metabase/dashboard/components/DashboardInfoSidebar/components/InsightsUpsellTab";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_AUDIT, PLUGIN_MODERATION } from "metabase/plugins";
 import { onCloseQuestionInfo } from "metabase/query_builder/actions";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
-import { Stack, Tabs } from "metabase/ui";
+import { Stack, Tabs, Title } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { QuestionDetails } from "./QuestionDetails";
-import Styles from "./QuestionInfoSidebar.module.css";
 
 interface QuestionInfoSidebarProps {
   question: Question;
@@ -74,26 +74,22 @@ export const QuestionInfoSidebar = ({
         <Tabs.List mx="xl">
           <Tabs.Tab value="overview">{t`Overview`}</Tabs.Tab>
           {!isIAQuestion && <Tabs.Tab value="history">{t`History`}</Tabs.Tab>}
+          <PLUGIN_AUDIT.InsightsTabOrLink question={question} />
         </Tabs.List>
         <SidesheetTabPanelContainer>
           <Tabs.Panel value="overview">
             <Stack spacing="lg">
-              <SidesheetCard title={t`Description`}>
-                <div className={Styles.EditableTextContainer}>
-                  <EditableText
-                    initialValue={description}
-                    placeholder={
-                      !description && !canWrite
-                        ? t`No description`
-                        : t`Add description`
-                    }
-                    isOptional
-                    isMultiline
-                    isMarkdown
-                    isDisabled={!canWrite}
+              <SidesheetCard>
+                <Stack spacing="sm">
+                  <Title lh={1} size="sm" color="var(--mb-color-text-light)">
+                    {t`Description`}
+                  </Title>
+                  <SidesheetEditableDescription
+                    description={description}
                     onChange={handleSave}
+                    canWrite={canWrite}
                   />
-                </div>
+                </Stack>
                 <PLUGIN_MODERATION.ModerationReviewText question={question} />
                 {question.type() === "model" && !question.isArchived() && (
                   <Link
@@ -102,7 +98,7 @@ export const QuestionInfoSidebar = ({
                   >{t`See more about this model`}</Link>
                 )}
               </SidesheetCard>
-              <SidesheetCard>
+              <SidesheetCard stackProps={{ spacing: "lg" }}>
                 <QuestionDetails question={question} />
               </SidesheetCard>
               <EntityIdCard entityId={question._card.entity_id} />
@@ -112,6 +108,9 @@ export const QuestionInfoSidebar = ({
             <SidesheetCard>
               <QuestionActivityTimeline question={question} />
             </SidesheetCard>
+          </Tabs.Panel>
+          <Tabs.Panel value="insights">
+            <InsightsUpsellTab />
           </Tabs.Panel>
         </SidesheetTabPanelContainer>
       </Tabs>

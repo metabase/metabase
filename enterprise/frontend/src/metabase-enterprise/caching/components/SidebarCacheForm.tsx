@@ -20,6 +20,8 @@ const SidebarCacheForm_Base = ({
   model,
   onClose,
   onBack,
+  router,
+  route,
   ...groupProps
 }: SidebarCacheFormProps & { onBack: () => void }) => {
   const configurableModels = useMemo(() => [model], [model]);
@@ -50,7 +52,7 @@ const SidebarCacheForm_Base = ({
     confirmationModal,
     isStrategyFormDirty,
     setIsStrategyFormDirty,
-  } = useConfirmIfFormIsDirty();
+  } = useConfirmIfFormIsDirty(router, route);
 
   const headingId = `${model}-sidebar-caching-settings-heading`;
 

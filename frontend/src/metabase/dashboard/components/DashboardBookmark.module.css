@@ -1,0 +1,5 @@
+.DashboardBookmarkToggle {
+  &:hover:not([data-specificity-hack]) {
+    background-color: var(--mb-color-bg-light);
+  }
+}

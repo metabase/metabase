@@ -15,6 +15,7 @@ import { Router, useRouterHistory } from "react-router";
 import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
+import { mockSettings } from "__support__/settings";
 import {
   MetabaseProviderInternal,
   type MetabaseProviderProps,
@@ -28,9 +29,12 @@ import { baseStyle } from "metabase/css/core/base.styled";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { ThemeProvider } from "metabase/ui";
+import type { TokenFeature } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
+import { setupEnterprisePlugins } from "./enterprise";
 import { getStore } from "./entities-store";
 
 type ReducerValue = ReducerObject | Reducer;
@@ -50,6 +54,8 @@ export interface RenderWithProvidersOptions {
   withKBar?: boolean;
   withDND?: boolean;
   withUndos?: boolean;
+  /** Token features to enable */
+  withFeatures?: TokenFeature[];
   customReducers?: ReducerObject;
   sdkProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
@@ -70,12 +76,26 @@ export function renderWithProviders(
     withKBar = false,
     withDND = false,
     withUndos = false,
+    withFeatures,
     customReducers,
     sdkProviderProps = null,
     theme,
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
+  if (withFeatures?.length) {
+    const featuresObject = Object.fromEntries(
+      withFeatures.map(feature => [[feature], true]),
+    );
+    storeInitialState.settings = {
+      ...storeInitialState.settings,
+      ...mockSettings({
+        "token-features": createMockTokenFeatures(featuresObject),
+      }),
+    };
+    setupEnterprisePlugins();
+  }
+
   let { routing, ...initialState }: Partial<State> =
     createMockState(storeInitialState);
 

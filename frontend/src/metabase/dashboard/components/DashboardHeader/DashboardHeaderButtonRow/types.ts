@@ -32,6 +32,7 @@ export type HeaderButtonProps = {
   isAdmin: boolean;
   isEmbeddingSdk: boolean;
   openSettingsSidebar: () => void;
+  isBookmarked: boolean;
 } & DashboardHeaderButtonRowProps;
 
 export type DashboardActionButton = {

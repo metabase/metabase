@@ -410,7 +410,12 @@ const SaveAndDiscardButtons = ({
 }) => {
   return (
     <>
-      <Button disabled={!dirty || isFormPending} type="reset">
+      <Button
+        p="sm"
+        variant="subtle"
+        disabled={!dirty || isFormPending}
+        type="reset"
+      >
         {buttonLabels.discard}
       </Button>
       <FormSubmitButton

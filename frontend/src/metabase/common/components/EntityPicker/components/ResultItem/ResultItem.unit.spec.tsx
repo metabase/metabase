@@ -201,7 +201,7 @@ describe("EntityPicker > ResultItem", () => {
     expect(
       screen.getByText("in My official parent collection"),
     ).toBeInTheDocument();
-    expect(getIcon("badge")).toBeInTheDocument();
+    expect(getIcon("verified_collection")).toBeInTheDocument();
   });
 
   it("should render a verified model item", () => {

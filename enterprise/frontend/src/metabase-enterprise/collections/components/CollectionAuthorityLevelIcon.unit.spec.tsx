@@ -41,7 +41,7 @@ describe("CollectionAuthorityLevelIcon", () => {
     }
 
     function queryOfficialIcon() {
-      return screen.getByLabelText("badge icon");
+      return screen.getByLabelText("verified_collection icon");
     }
 
     it(`renders correctly`, () => {

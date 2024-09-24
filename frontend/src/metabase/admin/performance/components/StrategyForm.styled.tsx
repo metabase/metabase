@@ -46,7 +46,7 @@ export const FormBox = styled(Box)<
 
 export const StyledFormButtonsGroup = styled(Group)<{ isInSidebar?: boolean }>`
   padding-block: 1rem;
-  gap: 1rem;
+  gap: 0.75rem;
   ${({ isInSidebar }) =>
     isInSidebar
       ? `

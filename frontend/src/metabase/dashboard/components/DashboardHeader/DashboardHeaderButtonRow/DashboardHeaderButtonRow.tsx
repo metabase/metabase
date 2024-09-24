@@ -74,6 +74,7 @@ export const DashboardHeaderButtonRow = ({
             isPublic,
             isEmbeddingSdk,
             openSettingsSidebar,
+            isBookmarked: true, // FIXME: implement
             ...props,
           };
 

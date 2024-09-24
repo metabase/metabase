@@ -14,7 +14,7 @@ export const REGULAR_COLLECTION: CollectionAuthorityLevelConfig = {
 export const OFFICIAL_COLLECTION: CollectionAuthorityLevelConfig = {
   type: "official",
   name: t`Official`,
-  icon: "badge",
+  icon: "verified_collection",
   color: "saturated-yellow",
   tooltips: {
     default: t`Official collection`,

@@ -50,7 +50,7 @@ describe("Collections plugin utils", () => {
 
     it("official collection", () => {
       const collection = createMockCollection({ authority_level: "official" });
-      expect(getCollectionType(collection).icon).toBe("badge");
+      expect(getCollectionType(collection).icon).toBe("verified_collection");
     });
 
     it("instance analytics collection", () => {
@@ -86,7 +86,7 @@ describe("Collections plugin utils", () => {
       it("should return the correct icon for an official collection", () => {
         expect(
           getIcon({ model: "collection", authority_level: "official" }),
-        ).toEqual({ name: "badge", color: "saturated-yellow" });
+        ).toEqual({ name: "verified_collection", color: "saturated-yellow" });
       });
 
       it("official collection in search", () => {
@@ -95,7 +95,7 @@ describe("Collections plugin utils", () => {
           collection_authority_level: "official",
           model: "collection" as const,
         };
-        expect(getIcon(collection).name).toBe("badge");
+        expect(getIcon(collection).name).toBe("verified_collection");
       });
 
       it("should return the correct icon for an official model", () => {

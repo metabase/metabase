@@ -68,9 +68,19 @@ export const CollectionMenu = ({
 
   if (canMove) {
     items.push({
+      separator: true,
+      key: "separator-before-move",
+    });
+
+    items.push({
       title: t`Move`,
       icon: "move",
       link: `${url}/move`,
+    });
+
+    items.push({
+      separator: true,
+      key: "separator-after-move",
     });
   }
 
