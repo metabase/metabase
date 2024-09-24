@@ -18,8 +18,9 @@ import {
 } from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
 import { clearInitialMessage } from "metabase/redux/initialMessage";
 import { useSelector } from "metabase/lib/redux";
-import { getDBInputValue, getCompanyName } from "metabase/redux/initialDb";
-import { useListDatabasesQuery} from "metabase/api";
+import { getDBInputValue, getCompanyName, getInsightDBInputValue } from "metabase/redux/initialDb";
+import { getInitialSchema } from "metabase/redux/initialSchema";
+import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipToken } from "metabase/api";
 import { SemanticError } from "metabase/components/ErrorPages";
 import { SpinnerIcon } from "metabase/components/LoadingSpinner/LoadingSpinner.styled";
 import { t } from "ttag";
@@ -27,6 +28,7 @@ import { t } from "ttag";
 const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId, chatType, oldCardId, insights, initial_message, setMessages, setInputValue, setThreadId, threadId, inputValue, messages, isChatHistoryOpen, setIsChatHistoryOpen, setShowButton }) => {
     const initialDbName = useSelector(getDBInputValue);
     const initialCompanyName = useSelector(getCompanyName);
+    const initialSchema = useSelector(getInitialSchema);
     const inputRef = useRef(null);
     const dispatch = useDispatch();
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
@@ -62,6 +64,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [insightTextIndex, setInsightTextIndex] = useState(-1);
     const [runId, setRunId] = useState('');
     const [codeInterpreterThreadId, setCodeInterpreterThreadId] = useState('');
+    const [schema, setSchema] = useState([]);
     const [insightStatus, setInsightStatus] = useState([]);
     const [chatLoading, setChatLoading] = useState(false);
     const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
@@ -81,6 +84,31 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             }
         }
     }, [databases]);
+
+    const {
+        data: databaseMetadata,
+        isLoading: databaseMetadataIsLoading,
+        error: databaseMetadataIsError
+    } = useGetDatabaseMetadataWithoutParamsQuery(
+        dbInputValue !== "" ? { id: dbInputValue } : skipToken
+    );
+    const databaseMetadataData = databaseMetadata;
+    useEffect(() => {
+        if (databaseMetadataData) {
+            const schema = databaseMetadata.tables.map((table) => ({
+                display_name: table.display_name,
+                id: table.id,
+                fields: table.fields.map((field) => ({
+                    id: field.id,
+                    name: field.name,
+                    fieldName: field.display_name,
+                    description: field.description,
+                    details: field.fingerprint ? JSON.stringify(field.fingerprint) : null
+                }))
+            }));
+            setSchema(schema)
+        }
+    }, [databaseMetadataData]);
 
     useEffect(() => {
         setMessages([])
@@ -495,6 +523,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         setInisghtPlan(prevPlan => [...prevPlan, ...plan]);
         removeLoadingMessage();
         clearInfoMessage();
+        addServerMessage(
+            "Here is your plan please provide an answer to continue the task",
+            "text",
+        )
     };
 
     const handleGetImage = async func => {
@@ -839,7 +871,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 JSON.stringify({
                     type: "configure",
                     configData: [dbId, companyName],
-                    appType: chatType
+                    appType: chatType,
+                    schema: schema
                 }),
             );
         }
@@ -976,13 +1009,14 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     }, [initial_message, ws, isConnected]);
 
     useEffect(() => {
-        if (initialDbName !== null && initialCompanyName !== '') {
+        if (initialDbName !== null && initialCompanyName !== '' && initialSchema && initialSchema.schema && initialSchema.schema.length > 0) {
             setShowButton(true);
             setIsChatHistoryOpen(true);
             setDBInputValue(initialDbName)
             setCompanyName(initialCompanyName)
+            setSchema(initialSchema.schema)
         }
-    }, [initialDbName, initialCompanyName])
+    }, [initialDbName, initialCompanyName, initialSchema])
 
 
     return (
@@ -1060,7 +1094,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                                 ref={inputRef}
                                                 value={inputValue}
                                                 onChange={handleInputChange}
-                                                disabled={!isConnected || chatLoading || selectedThreadId}
+                                                disabled={!isConnected || chatLoading || schema.length < 1 || selectedThreadId}
                                                 onKeyPress={handleKeyPress}
                                                 placeholder={t`Enter a prompt here...`}
                                                 style={{
@@ -1082,7 +1116,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                             />
                                             <Button
                                                 variant="filled"
-                                                disabled={!isConnected || selectedThreadId}
+                                                disabled={!isConnected || schema.length < 1 || selectedThreadId}
                                                 onClick={chatLoading ? stopMessage : sendMessage}
                                                 style={{
                                                     position: "absolute",
@@ -1093,10 +1127,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                                     height: "30px",
                                                     padding: "0",
                                                     minWidth: "0",
-                                                    backgroundColor: isConnected ? "#8A64DF" : "#F1EBFF",
+                                                    backgroundColor: isConnected && schema.length > 0  ? "#8A64DF" : "#F1EBFF",
                                                     color: "#FFF",
                                                     border: "none",
-                                                    cursor: isConnected ? "pointer" : "not-allowed",
+                                                    cursor: isConnected && schema.length > 0  ? "pointer" : "not-allowed",
                                                     display: "flex",
                                                     justifyContent: "center",
                                                     alignItems: "center",

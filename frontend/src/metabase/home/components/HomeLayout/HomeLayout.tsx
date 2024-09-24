@@ -9,7 +9,8 @@ import {
   getInitialMessage,
   setInitialMessage,
 } from "metabase/redux/initialMessage";
-import { setDBInputValue, setCompanyName } from "metabase/redux/initialDb";
+import { setDBInputValue, setCompanyName, setInsightDBInputValue } from "metabase/redux/initialDb";
+import { setInitialSchema } from "metabase/redux/initialSchema";
 import ChatAssistant from "metabase/query_builder/components/ChatAssistant";
 import {
   BrowseContainer,
@@ -17,8 +18,10 @@ import {
 } from "metabase/browse/components/BrowseContainer.styled";
 import { Flex, Stack, Icon } from "metabase/ui";
 import ChatHistory from "metabase/browse/components/ChatItems/ChatHistory";
-import { useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipToken } from "metabase/api";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { generateRandomId } from "metabase/lib/utils";
+import useWebSocket from "metabase/hooks/useWebSocket";
 
 export const HomeLayout = () => {
   const initialMessage = useSelector(getInitialMessage);
@@ -33,10 +36,12 @@ export const HomeLayout = () => {
   const [insights, setInsights] = useState([]);
   const [dbId, setDbId] = useState<number | null>(null)
   const [company, setCompany] = useState<string | null>(null)
+  const [schema, setSchema] = useState<any[]>([]);
   const [messages, setMessages] = useState([]);
   const [threadId, setThreadId] = useState('')
   const [isChatHistoryOpen, setIsChatHistoryOpen] = useState(false);
   const [showButton, setShowButton] = useState(false);
+  const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
   const dispatch = useDispatch();
   const {
     data,
@@ -60,6 +65,34 @@ export const HomeLayout = () => {
     }
   }, [databases]);
 
+  const { 
+    data: databaseMetadata, 
+    isLoading: databaseMetadataIsLoading, 
+    error: databaseMetadataIsError 
+  } = useGetDatabaseMetadataWithoutParamsQuery(
+      dbId !== null
+      ? { id: dbId }
+      : skipToken 
+  );
+  const databaseMetadataData = databaseMetadata;
+  useEffect(() => {
+    if (databaseMetadataData && Array.isArray(databaseMetadataData.tables)) {
+      const schema = databaseMetadata.tables?.map((table:any) => ({
+        display_name: table.display_name,
+        id: table.id,
+        fields: table.fields.map((field:any) => ({
+          id: field.id,
+          name: field.name,
+          fieldName: field.display_name,
+          description: field.description,
+          details: field.fingerprint ? JSON.stringify(field.fingerprint) : null
+        })) 
+      }));
+      dispatch(setInitialSchema(schema as any))
+      setSchema(schema as any)
+    }
+  }, [databaseMetadataData]);
+
   useEffect(() => {
     setInputValue("");
     dispatch(setInitialMessage(""));
@@ -80,6 +113,32 @@ export const HomeLayout = () => {
       setInsights([]);
     }
   }, [window.location.pathname]);
+
+  const { ws, isConnected } = useWebSocket(
+    assistant_url,
+    async (e:any) => {
+        if (e.data) {
+            const data = JSON.parse(e.data);
+            console.log(data);
+        }
+    },
+    () => console.error("WebSocket error"),
+    () => console.log("WebSocket closed"),
+    () => console.log("WebSocket opened"),
+);
+
+  useEffect(() => {
+    if (isConnected) {
+      ws.send(
+          JSON.stringify({
+              type: "getSuggestions",
+              configData: [dbId, company],
+              appType: selectedChatType,
+              schema: schema
+          }),
+      );
+  }
+  }, [isConnected]);
 
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
@@ -115,6 +174,7 @@ export const HomeLayout = () => {
             <ChatGreeting chatType={selectedChatType} />
             {/* <HomeInitialOptions /> REMOVED UNTIL FUNCTIONALITY IS COMPLETED*/}
           </ContentContainer>
+          {schema.length > 0 ? (
             <ChatSection>
               <ChatPrompt
                 chatType={selectedChatType}
@@ -123,6 +183,18 @@ export const HomeLayout = () => {
                 onSendMessage={handleSendMessage}
               />
             </ChatSection>
+            ): (
+              <ChatSection>
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+                    <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
+                    Please Wait while we initialize the chat
+                      </p>
+                    <LoadingSpinner />
+                  </div>
+                </div>
+              </ChatSection>
+            )}
         </LayoutRoot>
       ) : (
         <BrowseContainer>
