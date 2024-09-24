@@ -2,6 +2,7 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertEChartsTooltip,
+  assertEChartsTooltipNotContain,
   chartPathWithFillColor,
   createQuestion,
   echartsContainer,
@@ -356,13 +357,52 @@ describe("scenarios > visualizations > waterfall", () => {
     assertEChartsTooltip({
       rows: [
         {
-          name: "C1",
-          value: "a",
-        },
-        {
           name: "C2",
           value: "0.2",
         },
+      ],
+    });
+  });
+
+  it("should allow adding non-series columns to the tooltip", () => {
+    function getFirstWaterfallSegment() {
+      return echartsContainer().find("path[fill='#88BF4D']").first();
+    }
+
+    visitQuestionAdhoc({
+      display: "waterfall",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+        },
+      },
+    });
+
+    getFirstWaterfallSegment().realHover();
+    assertEChartsTooltip({
+      header: "2022",
+      rows: [{ name: "Count", value: "744" }],
+    });
+    assertEChartsTooltipNotContain(["Sum of Total"]);
+
+    cy.findByTestId("viz-settings-button").click();
+
+    leftSidebar().within(() => {
+      cy.findByText("Display").click();
+      cy.findByPlaceholderText("Enter metric names").click();
+    });
+    cy.findByRole("option", { name: "Sum of Total" }).click();
+
+    getFirstWaterfallSegment().realHover();
+    assertEChartsTooltip({
+      header: "2022",
+      rows: [
+        { name: "Count", value: "744" },
+        { name: "Sum of Total", value: "42,156.87" },
       ],
     });
   });
