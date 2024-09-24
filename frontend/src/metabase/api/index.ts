@@ -15,6 +15,7 @@ export * from "./entity-id";
 export * from "./field";
 export * from "./login-history";
 export * from "./model-index";
+export * from "./moderation";
 export * from "./parameters";
 export * from "./permission";
 export * from "./persist";
