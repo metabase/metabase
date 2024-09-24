@@ -5,6 +5,7 @@ import Schemas from "metabase/entities/schemas";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { State } from "metabase-types/store";
+import type { DataReferenceStackItem } from "metabase-types/store/data-stack";
 
 import {
   NodeListContainer,
@@ -20,7 +21,7 @@ import { PaneContent } from "./Pane.styled";
 interface SchemaPaneProps {
   onBack: () => void;
   onClose: () => void;
-  onItemClick: (type: string, item: unknown) => void;
+  onItemClick: (item: DataReferenceStackItem) => void;
   schema: Schema;
 }
 
@@ -56,7 +57,14 @@ const SchemaPane = ({
           <ul>
             {tables.map(table => (
               <li key={table.id}>
-                <NodeListItemLink onClick={() => onItemClick("table", table)}>
+                <NodeListItemLink
+                  onClick={() =>
+                    onItemClick({
+                      type: "table",
+                      item: table,
+                    })
+                  }
+                >
                   <NodeListItemIcon name="table" />
                   <NodeListItemName>{table.name}</NodeListItemName>
                 </NodeListItemLink>

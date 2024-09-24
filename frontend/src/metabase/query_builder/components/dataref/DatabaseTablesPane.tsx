@@ -7,6 +7,7 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { SearchResult } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import type { DataReferenceStackItem } from "metabase-types/store/data-stack";
 
 import {
   NodeListContainer,
@@ -23,7 +24,7 @@ import { PaneContent } from "./Pane.styled";
 export interface DatabaseTablesPaneProps {
   onBack: () => void;
   onClose: () => void;
-  onItemClick: (type: string, item: unknown) => void;
+  onItemClick: (item: DataReferenceStackItem) => void;
   database: Database;
   searchResults: SearchResult[];
 }
@@ -74,7 +75,9 @@ export const DatabaseTablesPane = ({
                 {models.map(model => (
                   <li key={model.id}>
                     <NodeListItemLink
-                      onClick={() => onItemClick("question", model)}
+                      onClick={() =>
+                        onItemClick({ type: "question", item: model })
+                      }
                     >
                       <NodeListItemIcon name="model" />
                       <NodeListItemName>{model.name}</NodeListItemName>
@@ -101,7 +104,7 @@ export const DatabaseTablesPane = ({
               <li key={table.id}>
                 <NodeListItemLink
                   disabled={table.initial_sync_status !== "complete"}
-                  onClick={() => onItemClick("table", table)}
+                  onClick={() => onItemClick({ type: "table", item: table })}
                 >
                   <NodeListItemIcon name="table" />
                   <NodeListItemName

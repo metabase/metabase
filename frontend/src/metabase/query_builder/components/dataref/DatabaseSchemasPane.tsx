@@ -6,6 +6,7 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import type { DataReferenceStackItem } from "metabase-types/store/data-stack";
 
 import {
   NodeListContainer,
@@ -22,7 +23,7 @@ import { PaneContent } from "./Pane.styled";
 interface DatabaseSchemasPaneProps {
   onBack: () => void;
   onClose: () => void;
-  onItemClick: (type: string, item: unknown) => void;
+  onItemClick: (item: DataReferenceStackItem) => void;
   database: Database;
   models: Card[];
 }
@@ -64,7 +65,9 @@ const DatabaseSchemasPane = ({
                 {sortedModels.map(model => (
                   <li key={model.id}>
                     <NodeListItemLink
-                      onClick={() => onItemClick("question", model)}
+                      onClick={() =>
+                        onItemClick({ type: "question", item: model })
+                      }
                     >
                       <NodeListItemIcon name="model" />
                       <NodeListItemName>{model.name}</NodeListItemName>
@@ -89,7 +92,9 @@ const DatabaseSchemasPane = ({
           <ul>
             {schemas.map(schema => (
               <li key={schema.id}>
-                <NodeListItemLink onClick={() => onItemClick("schema", schema)}>
+                <NodeListItemLink
+                  onClick={() => onItemClick({ type: "schema", item: schema })}
+                >
                   <NodeListItemIcon name="folder" />
                   <NodeListItemName>{schema.name}</NodeListItemName>
                 </NodeListItemLink>

@@ -3,6 +3,7 @@ export * from "./app";
 export * from "./auth";
 export * from "./collection";
 export * from "./dashboard";
+export * from "./data-stack";
 export * from "./embed";
 export * from "./entities";
 export * from "./metabot";

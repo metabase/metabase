@@ -18,6 +18,7 @@ import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type { Collection } from "metabase-types/api/collection";
 import type { State } from "metabase-types/store";
+import type { DataReferenceStackItem } from "metabase-types/store/data-stack";
 
 import FieldList from "../FieldList";
 import { PaneContent } from "../Pane.styled";
@@ -32,7 +33,7 @@ import {
 } from "./QuestionPane.styled";
 
 interface QuestionPaneProps {
-  onItemClick: (type: string, item: unknown) => void;
+  onItemClick: (item: DataReferenceStackItem) => void;
   onBack: () => void;
   onClose: () => void;
   question: Question;
@@ -109,7 +110,7 @@ const QuestionPane = ({
         {table.fields && (
           <FieldList
             fields={table.fields}
-            onFieldClick={f => onItemClick("field", f)}
+            onFieldClick={f => onItemClick({ type: "field", item: f })}
           />
         )}
       </PaneContent>

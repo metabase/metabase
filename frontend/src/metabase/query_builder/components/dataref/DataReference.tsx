@@ -1,6 +1,9 @@
-/* eslint "react/prop-types": "warn" */
-import PropTypes from "prop-types";
-import { useCallback } from "react";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import {
+  popDataReferenceStack,
+  pushDataReferenceStack,
+} from "metabase/query_builder/actions";
+import type { DataReferenceStackItem } from "metabase-types/store/data-stack";
 
 import DatabasePane from "./DatabasePane";
 import FieldPane from "./FieldPane";
@@ -17,23 +20,19 @@ const PANES = {
   field: FieldPane, // field details and metadata
 };
 
-const DataReferencePropTypes = {
-  dataReferenceStack: PropTypes.array.isRequired,
-  popDataReferenceStack: PropTypes.func.isRequired,
-  pushDataReferenceStack: PropTypes.func.isRequired,
-  onClose: PropTypes.func.isRequired,
+type DataReferenceProps = {
+  onClose: () => void;
 };
 
-const DataReference = ({
-  dataReferenceStack,
-  popDataReferenceStack,
-  pushDataReferenceStack,
-  onClose,
-}) => {
-  const onItemClick = useCallback(
-    (type, item) => pushDataReferenceStack({ type, item }),
-    [pushDataReferenceStack],
+export const DataReference = ({ onClose }: DataReferenceProps) => {
+  const dataReferenceStack = useSelector(
+    state => state.qb.uiControls.dataReferenceStack,
   );
+
+  const dispatch = useDispatch();
+  const pushStack = (item: DataReferenceStackItem) =>
+    dispatch(pushDataReferenceStack(item));
+  const popStack = () => dispatch(popDataReferenceStack());
 
   if (dataReferenceStack.length) {
     const page = dataReferenceStack[dataReferenceStack.length - 1];
@@ -41,16 +40,12 @@ const DataReference = ({
     return (
       <Pane
         {...{ [page.type]: page.item }}
-        onItemClick={onItemClick}
+        onItemClick={pushStack}
         onClose={onClose}
-        onBack={popDataReferenceStack}
+        onBack={popStack}
       />
     );
   } else {
-    return <MainPane onItemClick={onItemClick} onClose={onClose} />;
+    return <MainPane onItemClick={pushStack} onClose={onClose} />;
   }
 };
-
-DataReference.propTypes = DataReferencePropTypes;
-
-export default DataReference;

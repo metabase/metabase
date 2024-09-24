@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
 
 export const DataReferenceInline = ({ onClose }: { onClose: () => void }) => {
   const [dataRefStack, setDataRefStack] = useState<any[]>([]);

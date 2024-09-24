@@ -25,7 +25,9 @@ const MainPane = ({ databases, onClose, onItemClick }) => (
           databases.map(database => (
             <li key={database.id}>
               <NodeListItemLink
-                onClick={() => onItemClick("database", database)}
+                onClick={() =>
+                  onItemClick({ type: "database", item: database })
+                }
               >
                 <NodeListItemIcon name="database" />
                 <NodeListItemName>{database.name}</NodeListItemName>

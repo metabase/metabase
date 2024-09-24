@@ -1,10 +1,12 @@
+import type Field from "metabase-lib/v1/metadata/Field";
 import type {
   Card,
   DashboardId,
   Dataset,
-  Field,
   ParameterValueOrArray,
 } from "metabase-types/api";
+
+import type { DataReferenceStack } from "./data-stack";
 
 export type QueryBuilderMode = "view" | "notebook" | "dataset";
 export type DatasetEditorTab = "query" | "metadata";
@@ -36,6 +38,7 @@ export interface QueryBuilderUIControls {
   datasetEditorTab: DatasetEditorTab;
   isShowingNotebookNativePreview: boolean;
   notebookNativePreviewSidebarWidth: number | null;
+  dataReferenceStack: DataReferenceStack;
 }
 
 export interface QueryBuilderLoadingControls {
