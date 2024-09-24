@@ -8,5 +8,5 @@
                                                ;; clear so we're excluding it
                                                :exclusions [javax.annotation/javax.annotation-api]}
   com.google.guava/guava                      {:mvn/version "33.3.1-jre"} ; specified separately so that Snyk is happy
-  com.google.code.gson/gson                   {:mvn/version "2.11.1"}
+  com.google.code.gson/gson                   {:mvn/version "2.11.0"}
   com.google.oauth-client/google-oauth-client {:mvn/version "1.36.0"}}}
