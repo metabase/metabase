@@ -1,18 +1,23 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
+import {
+  createMockCollection,
+  createMockDashboard,
+} from "metabase-types/api/mocks";
 
 import { setupEnterprise } from "./setup";
 
 const tokenFeatures = {
   cache_granular_controls: true,
+  audit_app: true,
 };
 
-describe("DashboardInfoSidebar > premium enterprise", () => {
+describe("DashboardSettingsSidebar > premium enterprise", () => {
   it("should render the component", async () => {
     await setupEnterprise({}, tokenFeatures);
 
-    expect(screen.getByText("Info")).toBeInTheDocument();
+    expect(screen.getByText("Dashboard settings")).toBeInTheDocument();
     expect(screen.getByTestId("sidesheet")).toBeInTheDocument();
   });
 
@@ -20,7 +25,9 @@ describe("DashboardInfoSidebar > premium enterprise", () => {
     await setupEnterprise({}, tokenFeatures);
 
     expect(await screen.findByText("Caching")).toBeInTheDocument();
-    expect(await screen.findByText("Caching policy")).toBeInTheDocument();
+    expect(
+      await screen.findByText("When to get new results"),
+    ).toBeInTheDocument();
   });
 
   it("should show cache form when clicking on caching section", async () => {
@@ -29,5 +36,18 @@ describe("DashboardInfoSidebar > premium enterprise", () => {
     await userEvent.click(await screen.findByText("Use default"));
 
     expect(await screen.findByText("Caching settings")).toBeInTheDocument();
+  });
+
+  it("should hide history for instance analytics dashboard", async () => {
+    await setupEnterprise(
+      {
+        dashboard: createMockDashboard({
+          collection: createMockCollection({ type: "instance-analytics" }),
+        }),
+      },
+      tokenFeatures,
+    );
+
+    expect(screen.queryByText("History")).not.toBeInTheDocument();
   });
 });

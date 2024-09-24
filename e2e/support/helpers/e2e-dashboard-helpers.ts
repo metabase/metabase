@@ -266,6 +266,13 @@ export function openDashboardInfoSidebar() {
 export function closeDashboardInfoSidebar() {
   sidesheet().findByLabelText("Close").click();
 }
+export const openDashboardSettingsSidebar = () => {
+  dashboardHeader().icon("ellipsis").click();
+  popover().findByText("Edit settings").click();
+};
+export const closeDashboardSettingsSidebar = () => {
+  sidesheet().findByLabelText("Close").click();
+};
 
 export function openDashboardMenu() {
   dashboardHeader().findByLabelText("Move, trash, and more…").click();

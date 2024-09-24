@@ -3,6 +3,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ModelFilterControls } from "./ModelFilterControls";
 import { VerifiedFilter } from "./VerifiedFilter";
+import { MetricFilterControls, getDefaultMetricFilters } from "./metrics";
 import { availableModelFilters, useModelFilterSettings } from "./utils";
 
 if (hasPremiumFeature("content_verification")) {
@@ -11,5 +12,9 @@ if (hasPremiumFeature("content_verification")) {
     ModelFilterControls,
     availableModelFilters,
     useModelFilterSettings,
+
+    contentVerificationEnabled: true,
+    getDefaultMetricFilters,
+    MetricFilterControls,
   });
 }
