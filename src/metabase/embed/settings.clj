@@ -13,10 +13,10 @@
 (defsetting embedding-app-origin
   (deferred-tru "Allow this origin to embed the full {0} application"
                 (public-settings/application-name-for-setting-descriptions))
-  :type       :boolean
   :feature    :embedding
   :visibility :public
-  :audit      :getter)
+  :audit      :getter
+  :encryption :no)
 
 (defsetting enable-embedding
   (deferred-tru "Allow admins to securely embed questions and dashboards within other applications?")
