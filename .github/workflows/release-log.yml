@@ -36,7 +36,7 @@ jobs:
       - name: Install Dependencies
         run: yarn --cwd release --frozen-lockfile && npm i -g tsx
       - name: generate release Log
-        run: cd release && tsx ./src/release-log.ts $VERSION > v$VERSION.html
+        run: cd release && tsx ./src/release-log-run.ts $VERSION > v$VERSION.html
       - name: generate release channel log
         run: cd release && tsx ./src/release-channel-log.ts > channels.html
       - name: upload release log to the web
