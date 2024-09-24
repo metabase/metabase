@@ -2,11 +2,11 @@ import { screen } from "__support__/ui";
 
 import { setupEnterprise } from "./setup";
 
-describe("DashboardInfoSidebar > enterprise", () => {
+describe("DashboardSettingsSidebar > enterprise", () => {
   it("should render the component", async () => {
     await setupEnterprise();
 
-    expect(screen.getByText("Info")).toBeInTheDocument();
+    expect(screen.getByText("Dashboard settings")).toBeInTheDocument();
     expect(screen.getByTestId("sidesheet")).toBeInTheDocument();
   });
 
