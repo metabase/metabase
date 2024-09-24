@@ -687,6 +687,16 @@ jobs:
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
         --paths "/version-info.json" "/version-info-ee.json"
 
+  tag-nightly:
+    if: ${{ inputs.auto }}
+    uses: ./.github/workflows/release-tag.yml
+    with:
+      version: ${{ inputs.version }}
+      tag_name: nightly
+      tag_rollout: 100
+      tag_ee: true
+      tag_oss: true
+
   publish-complete-message:
     if: ${{ !inputs.auto }}
     runs-on: ubuntu-22.04
