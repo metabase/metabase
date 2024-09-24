@@ -13,11 +13,11 @@ const tokenFeatures = {
   audit_app: true,
 };
 
-describe("DashboardInfoSidebar > premium enterprise", () => {
+describe("DashboardSettingsSidebar > premium enterprise", () => {
   it("should render the component", async () => {
     await setupEnterprise({}, tokenFeatures);
 
-    expect(screen.getByText("Info")).toBeInTheDocument();
+    expect(screen.getByText("Dashboard settings")).toBeInTheDocument();
     expect(screen.getByTestId("sidesheet")).toBeInTheDocument();
   });
 
@@ -25,7 +25,9 @@ describe("DashboardInfoSidebar > premium enterprise", () => {
     await setupEnterprise({}, tokenFeatures);
 
     expect(await screen.findByText("Caching")).toBeInTheDocument();
-    expect(await screen.findByText("Caching policy")).toBeInTheDocument();
+    expect(
+      await screen.findByText("When to get new results"),
+    ).toBeInTheDocument();
   });
 
   it("should show cache form when clicking on caching section", async () => {
