@@ -60,7 +60,7 @@ jobs:
           const version = '${{ inputs.version }}';
 
           if (!isValidVersionString(version)) {
-            throw new Error("The version format is invalid! It must start with either 'v0.' or 'v1.'.");
+            throw new Error("The version format is invalid!");
           }
 
           const versions = {
@@ -262,7 +262,7 @@ jobs:
     needs: check-version
     uses: ./.github/workflows/release-log.yml
     with:
-      version: 50 # maybe should be vars.CURRENT_VERSION
+      version: ${{ vars.CURRENT_VERSION }}
     secrets: inherit
 
   update-version-info:

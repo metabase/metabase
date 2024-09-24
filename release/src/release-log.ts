@@ -19,12 +19,12 @@ export async function gitLog(majorVersion: number) {
   return buildTable(processedCommits, majorVersion);
 }
 
-function processCommit(commitLine: string): CommitInfo {
+export function processCommit(commitLine: string): CommitInfo {
   const [refs, message, hash, date] = commitLine.split('||');
   const tags = refs?.match(/tag: ([\w\d-_\.]+)/g) ?? '';
 
   const versions = tags
-    ? tags?.map((v) => v.replace('tag: ', ''))
+    ? tags.map((v) => v.replace('tag: ', ''))
     : [''];
 
   return { versions, message, hash, date};
@@ -68,11 +68,15 @@ function buildTable(commits: CommitInfo[], majorVersion: number) {
     .replace(/{{current-time}}/, currentTime);
 }
 
-const version = Number(process.argv[2]);
 
-if (!version) {
-  console.error('Please provide a version number (e.g. 35, 57)');
-  process.exit(1);
+export async function generateReleaseLog() {
+  const version = Number(process.argv[2]);
+
+  if (!version) {
+    console.error('Please provide a version number (e.g. 35, 57)');
+    process.exit(1);
+  }
+
+  console.log(await gitLog(version));
 }
 
-console.log(await gitLog(version));
