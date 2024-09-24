@@ -52,7 +52,7 @@ import { ChartTypeSidebar } from "./sidebars/ChartTypeSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "./sidebars/QuestionSettingsSidebar";
 import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
-import TimelineSidebar from "./sidebars/TimelineSidebar";
+import { TimelineSidebar } from "./sidebars/TimelineSidebar";
 
 const fadeIn = {
   in: { opacity: 1 },
@@ -221,13 +221,18 @@ class View extends Component {
     if (isShowingTimelineSidebar) {
       return (
         <TimelineSidebar
-          {...this.props}
           onShowTimelineEvent={showTimelineEvent}
           onShowTimelineEvents={showTimelineEvents}
           onHideTimelineEvents={hideTimelineEvents}
           onSelectTimelineEvents={selectTimelineEvents}
           onDeselectTimelineEvents={deselectTimelineEvents}
           onClose={onCloseTimelines}
+          question={this.props.question}
+          timelines={this.props.timelines}
+          visibleTimelineEventIds={this.props.visibleTimelineEventIds}
+          selectedTimelineEventIds={this.props.selectedTimelineEventIds}
+          xDomain={this.props.xDomain}
+          onOpenModal={this.props.onOpenModal}
         />
       );
     }

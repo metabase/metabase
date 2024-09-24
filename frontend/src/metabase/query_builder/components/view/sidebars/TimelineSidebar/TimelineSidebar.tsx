@@ -9,7 +9,7 @@ import TimelinePanel from "metabase/timelines/questions/containers/TimelinePanel
 import type Question from "metabase-lib/v1/Question";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-export interface TimelineSidebarProps {
+export type TimelineSidebarProps = {
   question: Question;
   timelines: Timeline[];
   visibleTimelineEventIds: number[];
@@ -21,9 +21,9 @@ export interface TimelineSidebarProps {
   onDeselectTimelineEvents?: () => void;
   onOpenModal?: (modal: QueryModalType, modalContext?: unknown) => void;
   onClose?: () => void;
-}
+};
 
-const TimelineSidebar = ({
+export const TimelineSidebar = ({
   question,
   timelines,
   visibleTimelineEventIds,
@@ -92,6 +92,3 @@ const formatTitle = (xDomain?: [Moment, Moment]) => {
 const formatDate = (date: Moment) => {
   return date.format("ll");
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TimelineSidebar;
