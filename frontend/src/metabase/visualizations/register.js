@@ -1,4 +1,3 @@
-import ActionViz from "metabase/actions/components/ActionViz";
 import {
   registerVisualization,
   setDefaultVisualization,
@@ -45,6 +44,7 @@ export default function () {
   registerVisualization(ObjectDetail);
   registerVisualization(PivotTable);
 
+  const { ActionViz } = require("metabase/actions/components/ActionViz");
   registerVisualization(ActionViz);
   registerVisualization(DashCardPlaceholder);
   registerVisualization(Heading);
