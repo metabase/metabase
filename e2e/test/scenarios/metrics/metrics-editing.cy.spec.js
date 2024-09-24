@@ -164,6 +164,29 @@ describe("scenarios > metrics > editing", () => {
         verifyScalarValue("18,760");
       });
     });
+
+    it("should not crash when cancelling creation of a new metric (metabase#48024)", () => {
+      startNewMetric();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      cy.findByTestId("metric-editor-header")
+        .findByText("New metric")
+        .should("be.visible");
+      cancelMetricEditing();
+    });
+
+    it("should not crash when cancelling editing of an existing metric (metabase#48024)", () => {
+      createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
+        visitMetric(card.id),
+      );
+      openQuestionActions();
+      popover().findByText("Edit metric definition").click();
+      addBreakout({ tableName: "Product", columnName: "Created At" });
+      cancelMetricEditing();
+      verifyScalarValue("18,760");
+    });
   });
 
   describe("data source", () => {
@@ -615,4 +638,16 @@ function verifyLineAreaBarChart({ xAxis, yAxis }) {
     cy.findByText(yAxis).should("be.visible");
     cy.findByText(xAxis).should("be.visible");
   });
+}
+
+function cancelMetricEditing() {
+  cy.log("click cancel but do not confirm");
+  cy.button("Cancel").click();
+  modal().button("Cancel").click();
+  appBar().should("not.exist");
+
+  cy.log("click cancel and confirm");
+  cy.button("Cancel").click();
+  modal().button("Discard changes").click();
+  appBar().should("be.visible");
 }

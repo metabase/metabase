@@ -71,6 +71,7 @@ const propTypes = {
   isResultDirty: PropTypes.bool.isRequired,
   isRunning: PropTypes.bool.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
+  runDirtyQuestionQuery: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
   setMetadataDiff: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
@@ -201,6 +202,7 @@ function DatasetEditor(props) {
     isDirty: isModelQueryDirty,
     isResultDirty,
     setQueryBuilderMode,
+    runDirtyQuestionQuery,
     runQuestionQuery,
     setDatasetEditorTab,
     setMetadataDiff,
@@ -328,6 +330,7 @@ function DatasetEditor(props) {
     setShowCancelEditWarning(false);
     cancelQuestionChanges();
     setQueryBuilderMode("view");
+    runDirtyQuestionQuery();
   };
 
   const handleCancelEditWarningClose = () => {
