@@ -117,7 +117,9 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   ${({ isFullscreen }) =>
     isFullscreen &&
     css`
-      transition: background-color 1s linear, border-color 1s linear,
+      transition:
+        background-color 1s linear,
+        border-color 1s linear,
         color 1s linear;
     `}
 

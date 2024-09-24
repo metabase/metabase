@@ -31,6 +31,7 @@ export * from "./e2e-setup-helpers";
 export * from "./e2e-sharing-helpers";
 export * from "./e2e-slack-helpers";
 export * from "./e2e-snowplow-helpers";
+export * from "./e2e-table-metadata-helpers";
 export * from "./e2e-ui-elements-helpers";
 export * from "./e2e-ui-elements-overflow-helpers";
 export * from "./e2e-upload-helpers";

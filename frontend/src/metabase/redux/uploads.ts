@@ -54,13 +54,13 @@ export interface UploadFileProps {
 export const uploadFile = createThunkAction(
   UPLOAD_FILE_TO_COLLECTION,
   ({
-      file,
-      collectionId,
-      tableId,
-      modelId,
-      uploadMode,
-      reloadQuestionData,
-    }: UploadFileProps) =>
+    file,
+    collectionId,
+    tableId,
+    modelId,
+    uploadMode,
+    reloadQuestionData,
+  }: UploadFileProps) =>
     async (dispatch: Dispatch) => {
       const id = Date.now();
 

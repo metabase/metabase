@@ -139,7 +139,7 @@ const SingleSelectListField = ({
             <OptionItem
               data-testid={`${option[0]}-filter-value`}
               selectedColor={
-                checkedColor ?? isDashboardFilter
+                (checkedColor ?? isDashboardFilter)
                   ? "var(--mb-color-background-selected)"
                   : "var(--mb-color-filter)"
               }

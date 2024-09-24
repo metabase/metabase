@@ -30,7 +30,7 @@ describe("DateTime", () => {
     };
   }
 
-  function mockFormatting(settings) {
+  function mockFormatting(settings: any) {
     jest
       .spyOn(MetabaseSettings, "formattingOptions")
       .mockImplementation(() => settings);

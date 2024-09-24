@@ -101,6 +101,7 @@ const EditableText = forwardRef(function EditableText(
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key === "Escape") {
+        event.stopPropagation(); // don't close modal
         setInputValue(submitValue);
         submitOnBlur.current = false;
         event.currentTarget.blur();

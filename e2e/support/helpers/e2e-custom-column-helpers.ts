@@ -25,6 +25,7 @@ export function enterCustomColumnDetails({
     .focus()
     .clear()
     .type(formula);
+
   if (blur) {
     cy.get("@formula").blur();
   }
