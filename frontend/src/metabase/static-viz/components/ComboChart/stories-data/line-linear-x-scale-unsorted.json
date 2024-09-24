@@ -93,10 +93,14 @@
       "entity_id": "d4TDahfv70Lvb4PLM2_qt",
       "collection_preview": true,
       "visualization_settings": {
-        "graph.dimensions": ["X"],
+        "graph.dimensions": [
+          "X"
+        ],
         "graph.series_order_dimension": null,
         "graph.series_order": null,
-        "graph.metrics": ["Y"]
+        "graph.metrics": [
+          "Y"
+        ]
       },
       "metabase_version": "v1.48.1-SNAPSHOT (6934865)",
       "parameters": [],
@@ -140,10 +144,14 @@
         "params": null
       },
       "viz-settings": {
-        "graph.dimensions": ["X"],
+        "graph.dimensions": [
+          "X"
+        ],
         "graph.series_order_dimension": null,
         "graph.series_order": null,
-        "graph.metrics": ["Y"],
+        "graph.metrics": [
+          "Y"
+        ],
         "metabase.shared.models.visualization-settings/column-settings": null,
         "metabase.shared.models.visualization-settings/global-column-settings": {}
       },
@@ -214,12 +222,30 @@
       },
       "insights": null,
       "rows": [
-        [5, 20],
-        [3, 15],
-        [8, 25],
-        [1, 10],
-        [4, 18],
-        [-5, -50]
+        [
+          5,
+          20
+        ],
+        [
+          3,
+          15
+        ],
+        [
+          8,
+          25
+        ],
+        [
+          1,
+          10
+        ],
+        [
+          4,
+          18
+        ],
+        [
+          -5,
+          -50
+        ]
       ]
     }
   }

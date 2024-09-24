@@ -45,7 +45,10 @@
         {
           "display_name": "Count",
           "semantic_type": "type/Quantity",
-          "field_ref": ["aggregation", 0],
+          "field_ref": [
+            "aggregation",
+            0
+          ],
           "name": "count",
           "base_type": "type/BigInteger",
           "effective_type": "type/BigInteger",
@@ -82,7 +85,11 @@
         "type": "query",
         "query": {
           "source-table": 5,
-          "aggregation": [["count"]],
+          "aggregation": [
+            [
+              "count"
+            ]
+          ],
           "breakout": [
             [
               "field",
@@ -160,7 +167,10 @@
           "display_name": "Count",
           "semantic_type": "type/Quantity",
           "source": "aggregation",
-          "field_ref": ["aggregation", 0],
+          "field_ref": [
+            "aggregation",
+            0
+          ],
           "aggregation_index": 0,
           "effective_type": "type/BigInteger"
         }
@@ -216,7 +226,10 @@
           {
             "display_name": "Count",
             "semantic_type": "type/Quantity",
-            "field_ref": ["aggregation", 0],
+            "field_ref": [
+              "aggregation",
+              0
+            ],
             "name": "count",
             "base_type": "type/BigInteger",
             "effective_type": "type/BigInteger",
@@ -241,11 +254,26 @@
       },
       "insights": null,
       "rows": [
-        ["Affiliate", 3520],
-        ["Facebook", 3906],
-        ["Google", 3798],
-        ["Organic", 3764],
-        ["Twitter", 3772]
+        [
+          "Affiliate",
+          3520
+        ],
+        [
+          "Facebook",
+          3906
+        ],
+        [
+          "Google",
+          3798
+        ],
+        [
+          "Organic",
+          3764
+        ],
+        [
+          "Twitter",
+          3772
+        ]
       ]
     }
   }

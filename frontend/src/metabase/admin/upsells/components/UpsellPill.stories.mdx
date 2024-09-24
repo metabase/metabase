@@ -34,9 +34,10 @@ export const argTypes = {
 
 # Upsell Pill
 
+
 ## Examples
 
-export const DefaultTemplate = args => (
+export const DefaultTemplate = (args) => (
   <ReduxProvider>
     <Box>
       <_UpsellPill {...args} />
@@ -46,9 +47,10 @@ export const DefaultTemplate = args => (
 
 export const Default = DefaultTemplate.bind({});
 
-export const NarrowTemplate = args => (
+
+export const NarrowTemplate = (args) => (
   <ReduxProvider>
-    <Box style={{ maxWidth: "10rem" }}>
+    <Box style={{ maxWidth: "10rem"}}>
       <_UpsellPill {...args} />
     </Box>
   </ReduxProvider>
@@ -60,6 +62,9 @@ export const Narrow = NarrowTemplate.bind({});
   <Story name="Default">{Default}</Story>
 </Canvas>
 
+
 <Canvas>
   <Story name="Multiline">{Narrow}</Story>
 </Canvas>
+
+

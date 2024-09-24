@@ -33,7 +33,7 @@ export const argTypes = {
   },
   children: {
     control: { type: "text" },
-  },
+  }
 };
 
 <Meta
@@ -49,7 +49,7 @@ export const argTypes = {
 
 ## Examples
 
-export const DefaultTemplate = args => (
+export const DefaultTemplate = (args) => (
   <ReduxProvider>
     <Flex justify="center">
       <_UpsellCard {...args} />
@@ -60,7 +60,7 @@ export const DefaultTemplate = args => (
 export const WithImage = DefaultTemplate.bind({});
 
 export const WithoutImage = DefaultTemplate.bind({});
-WithoutImage.args = { ...args, illustrationSrc: null };
+WithoutImage.args = { ...args, illustrationSrc: null};
 
 <Canvas>
   <Story name="With Image">{WithImage}</Story>

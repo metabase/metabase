@@ -24015,7 +24015,11 @@
             "name": "ID",
             "settings": null,
             "fk_target_field_id": null,
-            "field_ref": ["field", 37, null],
+            "field_ref": [
+              "field",
+              37,
+              null
+            ],
             "effective_type": "type/BigInteger",
             "id": 37,
             "visibility_type": "normal",
@@ -24030,7 +24034,11 @@
             "name": "USER_ID",
             "settings": null,
             "fk_target_field_id": 46,
-            "field_ref": ["field", 43, null],
+            "field_ref": [
+              "field",
+              43,
+              null
+            ],
             "effective_type": "type/Integer",
             "id": 43,
             "visibility_type": "normal",
@@ -24050,7 +24058,11 @@
             "name": "PRODUCT_ID",
             "settings": null,
             "fk_target_field_id": 62,
-            "field_ref": ["field", 40, null],
+            "field_ref": [
+              "field",
+              40,
+              null
+            ],
             "effective_type": "type/Integer",
             "id": 40,
             "visibility_type": "normal",
@@ -24070,7 +24082,11 @@
             "name": "SUBTOTAL",
             "settings": null,
             "fk_target_field_id": null,
-            "field_ref": ["field", 44, null],
+            "field_ref": [
+              "field",
+              44,
+              null
+            ],
             "effective_type": "type/Float",
             "id": 44,
             "visibility_type": "normal",
@@ -24100,7 +24116,11 @@
             "name": "TAX",
             "settings": null,
             "fk_target_field_id": null,
-            "field_ref": ["field", 38, null],
+            "field_ref": [
+              "field",
+              38,
+              null
+            ],
             "effective_type": "type/Float",
             "id": 38,
             "visibility_type": "normal",
@@ -24130,7 +24150,11 @@
             "name": "TOTAL",
             "settings": null,
             "fk_target_field_id": null,
-            "field_ref": ["field", 42, null],
+            "field_ref": [
+              "field",
+              42,
+              null
+            ],
             "effective_type": "type/Float",
             "id": 42,
             "visibility_type": "normal",
@@ -24160,7 +24184,11 @@
             "name": "DISCOUNT",
             "settings": null,
             "fk_target_field_id": null,
-            "field_ref": ["field", 36, null],
+            "field_ref": [
+              "field",
+              36,
+              null
+            ],
             "effective_type": "type/Float",
             "id": 36,
             "visibility_type": "normal",
@@ -24223,7 +24251,11 @@
             "name": "QUANTITY",
             "settings": null,
             "fk_target_field_id": null,
-            "field_ref": ["field", 39, null],
+            "field_ref": [
+              "field",
+              39,
+              null
+            ],
             "effective_type": "type/Integer",
             "id": 39,
             "visibility_type": "normal",
@@ -24289,7 +24321,11 @@
           "settings": null,
           "source": "fields",
           "fk_target_field_id": null,
-          "field_ref": ["field", 37, null],
+          "field_ref": [
+            "field",
+            37,
+            null
+          ],
           "effective_type": "type/BigInteger",
           "nfc_path": null,
           "parent_id": null,
@@ -24309,7 +24345,11 @@
           "settings": null,
           "source": "fields",
           "fk_target_field_id": 46,
-          "field_ref": ["field", 43, null],
+          "field_ref": [
+            "field",
+            43,
+            null
+          ],
           "effective_type": "type/Integer",
           "nfc_path": null,
           "parent_id": null,
@@ -24334,7 +24374,11 @@
           "settings": null,
           "source": "fields",
           "fk_target_field_id": 62,
-          "field_ref": ["field", 40, null],
+          "field_ref": [
+            "field",
+            40,
+            null
+          ],
           "effective_type": "type/Integer",
           "nfc_path": null,
           "parent_id": null,
@@ -24359,7 +24403,11 @@
           "settings": null,
           "source": "fields",
           "fk_target_field_id": null,
-          "field_ref": ["field", 44, null],
+          "field_ref": [
+            "field",
+            44,
+            null
+          ],
           "effective_type": "type/Float",
           "nfc_path": null,
           "parent_id": null,
@@ -24394,7 +24442,11 @@
           "settings": null,
           "source": "fields",
           "fk_target_field_id": null,
-          "field_ref": ["field", 38, null],
+          "field_ref": [
+            "field",
+            38,
+            null
+          ],
           "effective_type": "type/Float",
           "nfc_path": null,
           "parent_id": null,
@@ -24429,7 +24481,11 @@
           "settings": null,
           "source": "fields",
           "fk_target_field_id": null,
-          "field_ref": ["field", 42, null],
+          "field_ref": [
+            "field",
+            42,
+            null
+          ],
           "effective_type": "type/Float",
           "nfc_path": null,
           "parent_id": null,
@@ -24464,7 +24520,11 @@
           "settings": null,
           "source": "fields",
           "fk_target_field_id": null,
-          "field_ref": ["field", 36, null],
+          "field_ref": [
+            "field",
+            36,
+            null
+          ],
           "effective_type": "type/Float",
           "nfc_path": null,
           "parent_id": null,
@@ -24537,7 +24597,11 @@
           "settings": null,
           "source": "fields",
           "fk_target_field_id": null,
-          "field_ref": ["field", 39, null],
+          "field_ref": [
+            "field",
+            39,
+            null
+          ],
           "effective_type": "type/Integer",
           "nfc_path": null,
           "parent_id": null,
@@ -24644,7 +24708,11 @@
           "name": "ID",
           "settings": null,
           "fk_target_field_id": null,
-          "field_ref": ["field", 37, null],
+          "field_ref": [
+            "field",
+            37,
+            null
+          ],
           "effective_type": "type/BigInteger",
           "id": 37,
           "visibility_type": "normal",
@@ -24659,7 +24727,11 @@
           "name": "USER_ID",
           "settings": null,
           "fk_target_field_id": 46,
-          "field_ref": ["field", 43, null],
+          "field_ref": [
+            "field",
+            43,
+            null
+          ],
           "effective_type": "type/Integer",
           "id": 43,
           "visibility_type": "normal",
@@ -24679,7 +24751,11 @@
           "name": "PRODUCT_ID",
           "settings": null,
           "fk_target_field_id": 62,
-          "field_ref": ["field", 40, null],
+          "field_ref": [
+            "field",
+            40,
+            null
+          ],
           "effective_type": "type/Integer",
           "id": 40,
           "visibility_type": "normal",
@@ -24699,7 +24775,11 @@
           "name": "SUBTOTAL",
           "settings": null,
           "fk_target_field_id": null,
-          "field_ref": ["field", 44, null],
+          "field_ref": [
+            "field",
+            44,
+            null
+          ],
           "effective_type": "type/Float",
           "id": 44,
           "visibility_type": "normal",
@@ -24729,7 +24809,11 @@
           "name": "TAX",
           "settings": null,
           "fk_target_field_id": null,
-          "field_ref": ["field", 38, null],
+          "field_ref": [
+            "field",
+            38,
+            null
+          ],
           "effective_type": "type/Float",
           "id": 38,
           "visibility_type": "normal",
@@ -24759,7 +24843,11 @@
           "name": "TOTAL",
           "settings": null,
           "fk_target_field_id": null,
-          "field_ref": ["field", 42, null],
+          "field_ref": [
+            "field",
+            42,
+            null
+          ],
           "effective_type": "type/Float",
           "id": 42,
           "visibility_type": "normal",
@@ -24789,7 +24877,11 @@
           "name": "DISCOUNT",
           "settings": null,
           "fk_target_field_id": null,
-          "field_ref": ["field", 36, null],
+          "field_ref": [
+            "field",
+            36,
+            null
+          ],
           "effective_type": "type/Float",
           "id": 36,
           "visibility_type": "normal",
@@ -24852,7 +24944,11 @@
           "name": "QUANTITY",
           "settings": null,
           "fk_target_field_id": null,
-          "field_ref": ["field", 39, null],
+          "field_ref": [
+            "field",
+            39,
+            null
+          ],
           "effective_type": "type/Integer",
           "id": 39,
           "visibility_type": "normal",
