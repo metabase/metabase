@@ -1,12 +1,27 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import Toggle from "metabase/core/components/Toggle";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 
-const SettingToggle = ({
+import type { SettingElement } from "../../types";
+
+type SettingToggleProps = {
+  disabled: boolean;
+  hideLabel: boolean;
+  id: string;
+  setting: SettingElement;
+  tooltip: ReactNode;
+  onChange: ((value: boolean) => void) | undefined;
+  onChangeSetting?: unknown;
+  reloadSettings?: unknown;
+  settingValues?: unknown;
+};
+
+export const SettingToggle = ({
   disabled,
   hideLabel,
   id,
@@ -19,7 +34,7 @@ const SettingToggle = ({
   reloadSettings,
   settingValues,
   ...props
-}) => {
+}: SettingToggleProps) => {
   const value = setting.value == null ? setting.default : setting.value;
   const on = value === true || value === "true";
   return (
@@ -28,7 +43,7 @@ const SettingToggle = ({
         <Toggle
           id={id}
           value={on}
-          onChange={!disabled ? () => onChange(!on) : null}
+          onChange={!disabled ? () => onChange?.(!on) : null}
           disabled={disabled}
         />
       </Tooltip>
@@ -40,5 +55,3 @@ const SettingToggle = ({
     </div>
   );
 };
-
-export default SettingToggle;

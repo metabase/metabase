@@ -23,7 +23,7 @@ import SettingNumber from "./widgets/SettingNumber";
 import SettingPassword from "./widgets/SettingPassword";
 import SettingRadio from "./widgets/SettingRadio";
 import SettingText from "./widgets/SettingText";
-import SettingToggle from "./widgets/SettingToggle";
+import { SettingToggle } from "./widgets/SettingToggle";
 import SettingSelect from "./widgets/deprecated/SettingSelect";
 
 const SETTING_WIDGET_MAP = {
