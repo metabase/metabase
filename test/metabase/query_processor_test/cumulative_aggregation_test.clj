@@ -443,7 +443,7 @@
             _                   (assert (some? products-category))
             products-created-at (m/find-first (fn [col]
                                                 (= (:id col) (mt/id :products :created_at)))
-                                            (lib/visible-columns (lib/query metadata-provider orders)))
+                                              (lib/visible-columns (lib/query metadata-provider orders)))
             _                   (assert (some? products-created-at))
             base-query          (-> (lib/query metadata-provider orders)
                                     (lib/filter (lib/< created-at "2018"))
