@@ -81,7 +81,7 @@
                                              :git/url "https://github.com/eerohele/pp"}
   io.github.metabase/macaw                  {:mvn/version "0.2.12"}             ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
-  io.github.resilience4j/resilience4j-retry {:mvn/version "2.2.0" #_"must be 1.7.1"} ; Support for retrying operations
+  io.github.resilience4j/resilience4j-retry ^:antq/exclude {:mvn/version "1.7.1" #_"must be 1.7.1"} ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   io.prometheus/simpleclient_jetty          {:mvn/version "0.16.0"}             ; prometheus jetty collector
   javax.servlet/servlet-api                 {:mvn/version "2.5"}                ; used by ring's multipart-params (file upload)
