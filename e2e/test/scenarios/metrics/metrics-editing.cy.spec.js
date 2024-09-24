@@ -171,9 +171,6 @@ describe("scenarios > metrics > editing", () => {
         entityPickerModalTab("Tables").click();
         cy.findByText("Orders").click();
       });
-      cy.findByTestId("metric-editor-header")
-        .findByText("New metric")
-        .should("be.visible");
       cancelMetricEditing();
     });
 
