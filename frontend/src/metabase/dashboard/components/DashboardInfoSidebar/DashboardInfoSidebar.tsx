@@ -1,4 +1,4 @@
-import type { FocusEvent, SetStateAction } from "react";
+import type { FocusEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
