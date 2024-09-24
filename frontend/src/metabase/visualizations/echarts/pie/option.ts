@@ -22,12 +22,16 @@ function getTotalGraphicOption(
   hoveredIndex: number | undefined,
   hoveredSliceKeyPath: string[] | undefined,
   outerRadius: number,
+  innerRadius: number,
 ) {
   let valueText = "";
   let labelText = "";
 
   // Don't display any text if there isn't enough width
-  const hasSufficientWidth = outerRadius * 2 >= DIMENSIONS.total.minWidth;
+  const hasSufficientWidth =
+    chartModel.numRings < 3
+      ? outerRadius * 2 >= DIMENSIONS.total.minWidth
+      : innerRadius * 2 >= DIMENSIONS.total.minWidthThreeRing;
 
   if (hasSufficientWidth && settings["pie.show_total"]) {
     let sliceValueOrTotal = 0;
@@ -334,6 +338,7 @@ export function getPieChartOption(
     hoveredIndex,
     hoveredSliceKeyPath,
     outerRadius,
+    innerRadius,
   );
 
   // Series data
