@@ -43,7 +43,7 @@ export const SettingToggle = ({
         <Toggle
           id={id}
           value={on}
-          onChange={!disabled ? () => onChange?.(!on) : null}
+          onChange={!disabled ? () => onChange?.(!on) : undefined}
           disabled={disabled}
         />
       </Tooltip>
