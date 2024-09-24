@@ -5,7 +5,12 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
-import type { Card, Filter, JoinCondition } from "metabase-types/api";
+import type {
+  Card,
+  Filter,
+  JoinCondition,
+  StructuredQuery,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockStructuredDatasetQuery,
@@ -69,13 +74,7 @@ function setup(opts: SetupOpts = {}, card: Card) {
 
 describe("NotebookStepList", () => {
   it("renders a list of actions for data step", () => {
-    const card = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({
-        query: {
-          "source-table": ORDERS_ID,
-        },
-      }),
-    });
+    const card = createOrdersCard();
 
     setup({}, card);
 
@@ -90,13 +89,8 @@ describe("NotebookStepList", () => {
   });
 
   it("renders a list of actions for join step", () => {
-    const card = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({
-        query: {
-          "source-table": ORDERS_ID,
-          joins: [PRODUCTS_JOIN],
-        },
-      }),
+    const card = createOrdersCard({
+      joins: [PRODUCTS_JOIN],
     });
     setup({}, card);
 
@@ -111,15 +105,10 @@ describe("NotebookStepList", () => {
   });
 
   it("renders a list of actions for Custom column step", () => {
-    const card = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: {
-            "Custom column": ["+", 1, 1],
-          },
-        },
-      }),
+    const card = createOrdersCard({
+      expressions: {
+        "Custom column": ["+", 1, 1],
+      },
     });
     setup({}, card);
 
@@ -127,13 +116,8 @@ describe("NotebookStepList", () => {
   });
 
   it("renders a list of actions for Filter step", () => {
-    const card = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({
-        query: {
-          "source-table": ORDERS_ID,
-          filter: ORDERS_FILTER,
-        },
-      }),
+    const card = createOrdersCard({
+      filter: ORDERS_FILTER,
     });
     setup({}, card);
 
@@ -141,14 +125,9 @@ describe("NotebookStepList", () => {
   });
 
   it("renders a list of actions for Summarize step", () => {
-    const card = createMockCard({
-      dataset_query: createMockStructuredDatasetQuery({
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.CREATED_AT, null]],
-        },
-      }),
+    const card = createOrdersCard({
+      aggregation: [["count"]],
+      breakout: [["field", ORDERS.CREATED_AT, null]],
     });
     setup({}, card);
 
@@ -172,5 +151,16 @@ function assertActionButtonsOrder(buttonNames: string[]) {
   expect(buttons.length).toBe(buttonNames.length);
   buttonNames.forEach((name, index) => {
     expect(buttons[index]).toHaveTextContent(name);
+  });
+}
+
+function createOrdersCard(opts: Partial<StructuredQuery> = {}): Card {
+  return createMockCard({
+    dataset_query: createMockStructuredDatasetQuery({
+      query: {
+        "source-table": ORDERS_ID,
+        ...opts,
+      },
+    }),
   });
 }
