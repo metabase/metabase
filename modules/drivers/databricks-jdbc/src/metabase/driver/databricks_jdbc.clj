@@ -24,8 +24,8 @@
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
-                              :describe-fields                 #_true false
-                              :describe-fks                    #_true false
+                              :describe-fields                 true
+                              :describe-fks                    true
                               :expression-aggregations         true
                               :expressions                     true
                               :native-parameters               true
