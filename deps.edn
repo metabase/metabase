@@ -76,8 +76,8 @@
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   clj-commons/clj-yaml                      {:mvn/version "1.0.28"}             ; Clojure wrapper for YAML library SnakeYAML
   io.github.camsaul/toucan2                 {:mvn/version "1.0.548"}
-  io.github.eerohele/pp                     {:git/tag "2024-01-04.60"           ; super fast pretty-printing library
-                                             :git/sha "a428751"
+  io.github.eerohele/pp                     {:git/tag "2024-09-09.69"           ; super fast pretty-printing library
+                                             :git/sha "bf0b3c1"
                                              :git/url "https://github.com/eerohele/pp"}
   io.github.metabase/macaw                  {:mvn/version "0.2.12"}             ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
@@ -158,7 +158,7 @@
   ;; v. 12 of jetty-server triggers "a org/eclipse/jetty/io/EofException has been compiled by a more recent version of
   ;; the Java Runtime (class file version 61.0), this version of the Java Runtime only recognizes class file versions
   ;; up to 55.0"
-  org.eclipse.jetty/jetty-server            {:mvn/version "11.0.22" #_"must be 11"} ; web server
+  org.eclipse.jetty/jetty-server            ^:antq/exclude {:mvn/version "11.0.22" #_"must be 11"} ; web server
   org.eclipse.jetty.websocket/websocket-jetty-server {:mvn/version "11.0.24"}   ; ring-jetty-adapter needs that
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "24.1.0"}             ; JavaScript engine
