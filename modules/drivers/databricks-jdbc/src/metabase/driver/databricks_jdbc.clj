@@ -79,6 +79,10 @@
                             [:= :c.column_name :cs.column_name]
                             [:= [:inline "PRIMARY KEY"] :cs.constraint_type]]]
                :where [:and
+                       ;; Ignore `timestamp_ntz` type columns. Columns of this type are not recognizable from
+                       ;; `timestamp` columns when fetching the data. This exception should be removed when the problem
+                       ;; is resolved by Databricks in underlying jdbc driver.
+                       [:not= :c.full_data_type [:inline "timestamp_ntz"]]
                        [:not [:in :c.table_schema ["information_schema"]]]
                        (when schema-names [:in :c.table_schema schema-names])
                        (when table-names [:in :c.table_name table-names])]
