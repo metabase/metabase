@@ -51,25 +51,33 @@ function CheckboxListPicker({
 }: ListValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [elevatedValues] = useState(selectedValues);
-  const options = getEffectiveOptions(
+  const availableOptions = getEffectiveOptions(
     fieldValues,
     selectedValues,
     elevatedValues,
   );
-  const visibleOptions = searchOptions(options, searchValue);
-  const isAll = options.length === selectedValues.length;
-  const isNone = selectedValues.length === 0;
+  const visibleOptions = searchOptions(availableOptions, searchValue);
+  const selectedValuesSet = new Set(selectedValues);
+  const selectedVisibleOptions = visibleOptions.filter(option =>
+    selectedValuesSet.has(option.value),
+  );
+  const isAll = selectedVisibleOptions.length === visibleOptions.length;
+  const isNone = selectedVisibleOptions.length === 0;
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     setSearchValue(event.currentTarget.value);
   };
 
   const handleToggleAll = () => {
-    if (isAll) {
-      onChange([]);
-    } else {
-      onChange(options.map(option => option.value));
-    }
+    const newSelectedValuesSet = new Set(selectedValues);
+    visibleOptions.forEach(option => {
+      if (isAll) {
+        newSelectedValuesSet.delete(option.value);
+      } else {
+        newSelectedValuesSet.add(option.value);
+      }
+    });
+    onChange(Array.from(newSelectedValuesSet));
   };
 
   return (
