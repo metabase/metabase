@@ -4,17 +4,18 @@ import { USERS } from "e2e/support/cypress_data";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   appBar,
+  closeDashboardInfoSidebar,
   collectionOnTheGoModal,
   entityPickerModal,
   getDashboardCard,
   modal,
   navigationSidebar,
+  openDashboardInfoSidebar,
   openDashboardMenu,
   openNavigationSidebar,
   popover,
   restore,
-  rightSidebar,
-  toggleDashboardInfoSidebar,
+  sidesheet,
   undoToast,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -71,12 +72,13 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               assertOnRequest("updateDashboard");
               assertOnRequest("getDashboard");
 
-              toggleDashboardInfoSidebar();
+              openDashboardInfoSidebar();
 
-              rightSidebar()
+              sidesheet()
                 .findByPlaceholderText("Add description")
                 .type("Foo")
                 .blur();
+              closeDashboardInfoSidebar();
 
               assertOnRequest("updateDashboard");
               assertOnRequest("getDashboard");

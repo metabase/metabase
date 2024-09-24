@@ -2,7 +2,7 @@ import type React from "react";
 
 import { Button, Flex, Icon, Title } from "metabase/ui";
 
-import { Sidesheet } from "./Sidesheet";
+import { Sidesheet, type SidesheetSize } from "./Sidesheet";
 
 interface SidesheetSubPageTitleProps {
   title: React.ReactNode;
@@ -15,6 +15,7 @@ interface SidesheetSubPageProps {
   onClose: () => void;
   onBack: () => void;
   children: React.ReactNode;
+  size?: SidesheetSize;
 }
 
 export const SidesheetSubPageTitle = ({
@@ -37,11 +38,13 @@ export const SidesheetSubPage = ({
   onBack,
   children,
   isOpen,
+  size,
 }: SidesheetSubPageProps) => (
   <Sidesheet
     isOpen={isOpen}
     title={<SidesheetSubPageTitle title={title} onClick={onBack} />}
     onClose={onClose}
+    size={size}
   >
     {children}
   </Sidesheet>

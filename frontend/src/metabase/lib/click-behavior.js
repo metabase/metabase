@@ -30,10 +30,10 @@ export function getClickBehaviorDescription(dashcard) {
     return linkType == null
       ? t`Go to...`
       : linkType === "dashboard"
-      ? t`Go to dashboard`
-      : linkType === "question"
-      ? t`Go to question`
-      : t`Go to url`;
+        ? t`Go to dashboard`
+        : linkType === "question"
+          ? t`Go to question`
+          : t`Go to url`;
   }
 
   return t`Filter this dashboard`;
