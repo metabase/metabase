@@ -95,6 +95,8 @@
                     {:effective-type effective-type})
                   (when-let [original-effective-type (::original-effective-type opts)]
                     {::original-effective-type original-effective-type})
+                  (when-let [original-temporal-unit (::original-temporal-unit opts)]
+                    {::original-temporal-unit original-temporal-unit})
                   ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if
                   ;; the Field is temporally bucketed, the base-type/effective-type would probably be affected, right?
                   ;; We should probably be taking that into consideration?
@@ -324,13 +326,16 @@
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
-  (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)]
+  (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)
+        original-temporal-unit ((some-fn ::original-temporal-unit ::temporal-unit) metadata)]
     (if unit
-      (assoc metadata
-             ::temporal-unit unit
-             ::original-effective-type original-effective-type)
+      (-> metadata
+          (assoc ::temporal-unit unit
+                 ::original-effective-type original-effective-type)
+          (m/assoc-some ::original-temporal-unit original-temporal-unit))
       (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
-        original-effective-type (assoc :effective-type original-effective-type)))))
+        original-effective-type (assoc :effective-type original-effective-type)
+        original-temporal-unit  (assoc ::original-temporal-unit original-temporal-unit)))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
@@ -444,6 +449,8 @@
                                    {:temporal-unit temporal-unit})
                                  (when-let [original-effective-type (::original-effective-type metadata)]
                                    {::original-effective-type original-effective-type})
+                                 (when-let [original-temporal-unit (::original-temporal-unit metadata)]
+                                   {::original-temporal-unit original-temporal-unit})
                                  (when-let [binning (::binning metadata)]
                                    {:binning binning})
                                  (when-let [source-field-id (when-not inherited-column?

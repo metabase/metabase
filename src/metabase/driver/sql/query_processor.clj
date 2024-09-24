@@ -808,10 +808,13 @@
    :year 6
    :year-of-era 6})
 
+(def ^:private original-temporal-unit
+  (some-fn :temporal-unit :metabase.lib.field/original-temporal-unit))
+
 (defn- column-granularity
   [temporal-attributes]
   (let [effective-type ((some-fn :effective-type :base-type) temporal-attributes)
-        temporal-unit (:temporal-unit temporal-attributes)]
+        temporal-unit (original-temporal-unit temporal-attributes)]
     (when temporal-unit
       (-> (if (= temporal-unit :default)
             (cond

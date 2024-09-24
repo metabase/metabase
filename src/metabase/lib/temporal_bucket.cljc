@@ -1,6 +1,7 @@
 (ns metabase.lib.temporal-bucket
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -255,22 +256,26 @@
   ;; we want to remove it later. We will record this with the key `::original-effective-type`. Note that changing the
   ;; unit multiple times should keep the original first value of `::original-effective-type`.
   (if unit
-    (let [extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
+    (let [original-temporal-unit  ((some-fn :metabase.lib.field/original-temporal-unit :temporal-unit) options)
+          extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
           original-effective-type ((some-fn :metabase.lib.field/original-effective-type :effective-type :base-type)
                                    options)
           new-effective-type      (if extraction-unit?
                                     :type/Integer
                                     original-effective-type)
-          options                 (assoc options
-                                         :temporal-unit unit
-                                         :effective-type new-effective-type
-                                         :metabase.lib.field/original-effective-type original-effective-type)]
+          options                 (-> options
+                                      (assoc :temporal-unit unit
+                                             :effective-type new-effective-type
+                                             :metabase.lib.field/original-effective-type original-effective-type)
+                                      (m/assoc-some :metabase.lib.field/original-temporal-unit original-temporal-unit))]
       [tag options id-or-name])
-    ;; `unit` is `nil`: remove the temporal bucket.
-    (let [options (if-let [original-effective-type (:metabase.lib.field/original-effective-type options)]
-                    (-> options
-                        (assoc :effective-type original-effective-type)
+    ;; `unit` is `nil`: remove the temporal bucket and remember it :metabase.lib.field/original-temporal-unit.
+    (let [original-effective-type (:metabase.lib.field/original-effective-type options)
+          original-temporal-unit ((some-fn :metabase.lib.field/original-temporal-unit :temporal-unit) options)
+          options (cond-> (dissoc options :temporal-unit)
+                    original-effective-type
+                    (-> (assoc :effective-type original-effective-type)
                         (dissoc :metabase.lib.field/original-effective-type))
-                    options)
-          options (dissoc options :temporal-unit)]
+                    original-temporal-unit
+                    (assoc :metabase.lib.field/original-temporal-unit original-temporal-unit))]
       [tag options id-or-name])))
