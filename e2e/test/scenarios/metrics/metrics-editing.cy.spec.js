@@ -641,6 +641,7 @@ function cancelMetricEditing() {
   cy.log("click cancel but do not confirm");
   cy.button("Cancel").click();
   modal().button("Cancel").click();
+  modal().should("not.exist");
   appBar().should("not.exist");
 
   cy.log("click cancel and confirm");

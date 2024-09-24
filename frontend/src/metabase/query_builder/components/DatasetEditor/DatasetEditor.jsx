@@ -329,8 +329,8 @@ function DatasetEditor(props) {
   const handleCancelEdit = () => {
     setShowCancelEditWarning(false);
     cancelQuestionChanges();
-    setQueryBuilderMode("view");
     runDirtyQuestionQuery();
+    setQueryBuilderMode("view");
   };
 
   const handleCancelEditWarningClose = () => {

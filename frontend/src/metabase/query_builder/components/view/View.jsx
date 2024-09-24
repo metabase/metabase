@@ -460,8 +460,8 @@ class View extends Component {
               onCancel={question => {
                 if (question.isSaved()) {
                   cancelQuestionChanges();
-                  setQueryBuilderMode("view");
                   runDirtyQuestionQuery();
+                  setQueryBuilderMode("view");
                 } else {
                   onChangeLocation("/");
                 }
