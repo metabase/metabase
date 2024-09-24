@@ -17,6 +17,10 @@ export const SidebarBookmarkItem = styled(DraggableSidebarLink)`
         outline: none;
       }
     }
+    color: #fff;
+    svg {
+      fill: #fff !important;
+    }
   }
 
   button {
