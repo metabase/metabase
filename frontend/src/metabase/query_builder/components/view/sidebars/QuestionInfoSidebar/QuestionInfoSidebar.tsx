@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import {
   Sidesheet,
   SidesheetCard,
@@ -40,6 +41,11 @@ export const QuestionInfoSidebar = ({
     }
   };
 
+  const isIAQuestion = useMemo(
+    () => isInstanceAnalyticsCollection(question.collection()),
+    [question],
+  );
+
   const dispatch = useDispatch();
   const handleClose = () => dispatch(onCloseQuestionInfo());
 
@@ -59,14 +65,15 @@ export const QuestionInfoSidebar = ({
       isOpen={isOpen}
       removeBodyPadding
       data-testid="question-info-sidebar"
+      size="md"
     >
       <Tabs
         defaultValue="overview"
         className={SidesheetStyles.FlexScrollContainer}
       >
-        <Tabs.List mx="lg">
+        <Tabs.List mx="xl">
           <Tabs.Tab value="overview">{t`Overview`}</Tabs.Tab>
-          <Tabs.Tab value="history">{t`History`}</Tabs.Tab>
+          {!isIAQuestion && <Tabs.Tab value="history">{t`History`}</Tabs.Tab>}
         </Tabs.List>
         <SidesheetTabPanelContainer>
           <Tabs.Panel value="overview">

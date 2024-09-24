@@ -355,22 +355,19 @@
 (defn score-and-result
   "Returns a map with the normalized, combined score from relevant-scores as `:score` and `:result`."
   [result {:keys [search-string search-native-query]}]
-  (let [text-matches     (-> (text-scores-with-match result {:search-string       search-string
-                                                             :search-native-query search-native-query})
-                             (force-weight text-scores-weight))
-        all-scores       (into (vec (score-result result)) text-matches)
-        relevant-scores  (remove #(= 0 (:score %)) all-scores)
-        total-score      (compute-normalized-score all-scores)]
+  (let [text-matches    (-> (text-scores-with-match result {:search-string       search-string
+                                                            :search-native-query search-native-query})
+                            (force-weight text-scores-weight))
+        has-text-match? (some (comp pos? :score) text-matches)
+        all-scores      (into (vec (score-result result)) text-matches)
+        relevant-scores (remove (comp zero? :score) all-scores)
+        total-score     (compute-normalized-score all-scores)]
     ;; Searches with a blank search string mean "show me everything, ranked";
     ;; see https://github.com/metabase/metabase/pull/15604 for archived search.
     ;; If the search string is non-blank, results with no text match have a score of zero.
-    (if (or (str/blank? search-string)
-            (pos? (reduce (fn [acc {:keys [score] :or {score 0}}] (+ acc score))
-                          0
-                          text-matches)))
-      {:score total-score
-       :result (assoc result :all-scores all-scores :relevant-scores relevant-scores)}
-      {:score 0})))
+    (when (or has-text-match? (str/blank? search-string))
+      {:score  total-score
+       :result (assoc result :all-scores all-scores :relevant-scores relevant-scores)})))
 
 (defn compare-score
   "Compare maps of scores and results. Must return -1, 0, or 1. The score is assumed to be a vector, and will be
