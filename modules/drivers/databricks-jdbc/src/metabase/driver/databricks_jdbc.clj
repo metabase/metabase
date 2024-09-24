@@ -120,6 +120,16 @@
   [_driver]
   "SET TIME ZONE %s;")
 
+(defmethod driver/db-default-timezone :databricks-jdbc
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^Connection conn]
+     (with-open [stmt (.prepareStatement conn "select current_timezone()")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (.getString rset 1))))))
+
 (defmethod sql-jdbc.conn/connection-details->spec :databricks-jdbc
   [_driver {:keys [catalog host http-path log-level token additional-options] :as _details}]
   (assert (string? (not-empty catalog)) "Catalog is mandatory.")
