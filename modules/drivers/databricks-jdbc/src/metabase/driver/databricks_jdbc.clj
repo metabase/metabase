@@ -85,6 +85,33 @@
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
+(defmethod sql-jdbc.sync/describe-fks-sql :databricks-jdbc
+  [driver & {:keys [schema-names table-names]}]
+  (sql/format {:select (vec
+                        {:fk_kcu.table_schema  "fk-table-schema"
+                         :fk_kcu.table_name    "fk-table-name"
+                         :fk_kcu.column_name   "fk-column-name"
+                         :pk_kcu.table_schema  "pk-table-schema"
+                         :pk_kcu.table_name    "pk-table-name"
+                         :pk_kcu.column_name   "pk-column-name"})
+               :from [[:information_schema.key_column_usage :fk_kcu]]
+               :join [[:information_schema.referential_constraints :rc]
+                      [:and
+                       [:= :fk_kcu.constraint_catalog :rc.constraint_catalog]
+                       [:= :fk_kcu.constraint_schema :rc.constraint_schema]
+                       [:= :fk_kcu.constraint_name :rc.constraint_name]]
+                      [:information_schema.key_column_usage :pk_kcu]
+                      [[:and
+                        [:= :pk_kcu.constraint_catalog :rc.unique_constraint_catalog]
+                        [:= :pk_kcu.constraint_schema :rc.unique_constraint_schema]
+                        [:= :pk_kcu.constraint_name :rc.unique_constraint_name]]]]
+               :where [:and
+                       [:not [:in :fk_kcu.table_schema ["information_schema"]]]
+                       (when table-names [:in :fk_kcu.table_name table-names])
+                       (when schema-names [:in :fk_kcu.table_schema schema-names])]
+               :order-by [:fk-table-schema :fk-table-name]}
+              :dialect (sql.qp/quote-style driver)))
+
 (defmethod sql-jdbc.execute/set-timezone-sql :databricks-jdbc
   [_driver]
   "SET TIME ZONE %s;")
