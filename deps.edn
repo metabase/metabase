@@ -41,7 +41,7 @@
   com.github.seancorfield/honeysql          {:mvn/version "2.6.1161"}           ; Honey SQL 2. SQL generation from Clojure data maps
   com.github.seancorfield/next.jdbc         {:mvn/version "1.3.939"}            ; Talk to JDBC DBs
   com.github.steffan-westcott/clj-otel-api  {:mvn/version "0.2.7"}              ; Telemetry library
-  com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.6"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
+  com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.5"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
   com.google.guava/guava                    {:mvn/version "33.3.1-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.fasterxml.jackson.core/jackson-databind
   {:mvn/version "2.17.2"}             ; JSON processor used by snowplow-java-tracker
@@ -236,7 +236,7 @@
     {:mvn/version "0.3.0"}                     ; Enables easy memory measurement
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2024.08.29"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
+    clj-kondo/clj-kondo          {:mvn/version "2024.08.01"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
     djblue/portal                {:mvn/version "0.57.3"}                    ; ui for inspecting values
