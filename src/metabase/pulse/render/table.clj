@@ -151,12 +151,22 @@
    (render-table color-selector 0 column-names-map contents))
 
   ([color-selector normalized-zero {:keys [col-names cols-for-color-lookup]} [header & rows]]
-   [:table {:style       (style/style {:max-width     "100%"
-                                       :white-space   :nowrap
-                                       :border        (str "1px solid " style/color-border)
-                                       :border-radius :6px
-                                       :width         "1%"})
-            :cellpadding "0"
-            :cellspacing "0"}
-    (render-table-head (vec col-names) header)
-    (render-table-body (partial color/get-background-color color-selector) normalized-zero cols-for-color-lookup rows)]))
+   (let [pivot-grouping-idx (get (zipmap col-names (range)) "pivot-grouping")
+         col-names          (cond->> col-names
+                              pivot-grouping-idx (m/remove-nth pivot-grouping-idx))
+         header             (cond-> header
+                              pivot-grouping-idx (update :row #(m/remove-nth pivot-grouping-idx %)))
+         rows               (cond->> rows
+                              pivot-grouping-idx (keep (fn [row]
+                                                         (let [group (:num-value (nth (:row row) pivot-grouping-idx))]
+                                                           (when (= 0 group)
+                                                             (update row :row #(m/remove-nth pivot-grouping-idx %)))))))]
+     [:table {:style       (style/style {:max-width     "100%"
+                                         :white-space   :nowrap
+                                         :border        (str "1px solid " style/color-border)
+                                         :border-radius :6px
+                                         :width         "1%"})
+              :cellpadding "0"
+              :cellspacing "0"}
+      (render-table-head (vec col-names) header)
+      (render-table-body (partial color/get-background-color color-selector) normalized-zero cols-for-color-lookup rows)])))
