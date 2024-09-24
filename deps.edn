@@ -49,7 +49,7 @@
   com.h2database/h2                         {:mvn/version "2.3.232"}            ; embedded SQL database
   com.gfredericks/test.chuck                {:mvn/version "0.2.14"}             ; generating strings from regex
   com.snowplowanalytics/snowplow-java-tracker
-  {:mvn/version "2.1.0"               ; Snowplow analytics
+  {:mvn/version "1.0.1"               ; Snowplow analytics
    :exclusions [com.fasterxml.jackson.core/jackson-databind]}
   com.taoensso/nippy                        {:mvn/version "3.4.2"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
