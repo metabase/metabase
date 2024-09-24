@@ -92,6 +92,8 @@ describe("ListField", () => {
     expect(checkbox).not.toBeChecked();
     await userEvent.click(checkbox);
     expect(onChange).toHaveBeenCalledWith(["Doohickey", "Gadget", "Widget"]);
+    expect(screen.getByLabelText("Gadget")).toBeChecked();
+    expect(screen.getByLabelText("Widget")).toBeChecked();
   });
 
   it("should allow to deselect all options", async () => {
@@ -124,5 +126,6 @@ describe("ListField", () => {
     expect(checkbox).toBeChecked();
     await userEvent.click(checkbox);
     expect(onChange).toHaveBeenCalledWith(["Doohickey", "Widget"]);
+    expect(screen.getByLabelText("Gadget")).not.toBeChecked();
   });
 });

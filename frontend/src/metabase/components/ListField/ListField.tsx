@@ -127,6 +127,7 @@ export const ListField = ({
       }
     });
     onChange(Array.from(newSelectedValuesSet));
+    setSelectedValues(newSelectedValuesSet);
   };
 
   return (
