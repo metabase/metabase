@@ -161,8 +161,7 @@
   org.eclipse.jetty/jetty-server            ^:antq/exclude {:mvn/version "11.0.22" #_"must be 11"} ; web server
   org.eclipse.jetty.websocket/websocket-jetty-server {:mvn/version "11.0.24"}   ; ring-jetty-adapter needs that
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
-  org.graalvm.js/js                         ^:antq/exclude {:mvn/version "22.3.5"              ; JavaScript engine
-                                             :extension   "pom"}
+  org.graalvm.js/js                         ^:antq/exclude {:mvn/version "22.3.5"} ; JavaScript engine
   org.jsoup/jsoup                           {:mvn/version "1.18.1"}             ; required by hickory
   org.liquibase/liquibase-core              {:mvn/version "4.29.2"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
