@@ -158,15 +158,19 @@
   ;; v. 12 of jetty-server triggers "a org/eclipse/jetty/io/EofException has been compiled by a more recent version of
   ;; the Java Runtime (class file version 61.0), this version of the Java Runtime only recognizes class file versions
   ;; up to 55.0"
-  org.eclipse.jetty/jetty-server            ^:antq/exclude {:mvn/version "11.0.22" #_"must be 11"} ; web server
+  org.eclipse.jetty/jetty-server            ^:antq/exclude
+                                            {:mvn/version "11.0.22" #_"must be 11"} ; web server
   org.eclipse.jetty.websocket/websocket-jetty-server {:mvn/version "11.0.24"}   ; ring-jetty-adapter needs that
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
-  org.graalvm.js/js                         ^:antq/exclude {:mvn/version "22.3.5"} ; JavaScript engine
+  org.graalvm.js/js                         ^:antq/exclude
+                                            {:mvn/version "22.3.5"} ; JavaScript engine
   org.jsoup/jsoup                           {:mvn/version "1.18.1"}             ; required by hickory
-  org.liquibase/liquibase-core              {:mvn/version "4.29.2"              ; migration management (Java lib)
+  org.liquibase/liquibase-core              ^antq/exclude
+                                            {:mvn/version "4.26.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   ;; The 3.X line of development for mariadb-java-client only supports the jdbc:mariadb protocol, so use 2.X for now.
-  org.mariadb.jdbc/mariadb-java-client      {:mvn/version "3.4.1"}             ; MySQL/MariaDB driver
+  org.mariadb.jdbc/mariadb-java-client      ^:antq/exclude
+                                            {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
   org.postgresql/postgresql                 {:mvn/version "42.7.4"}             ; Postgres driver
   org.quartz-scheduler/quartz               {:mvn/version "2.3.2"}              ; Quartz job scheduler, provided by quartzite but this is a newer version.
