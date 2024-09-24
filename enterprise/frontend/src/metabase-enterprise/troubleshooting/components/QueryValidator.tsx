@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { useGetCollectionQuery } from "metabase/api";
@@ -18,7 +18,9 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
   Button,
@@ -62,6 +64,9 @@ type TableRow = {
 };
 
 export const QueryValidator = () => {
+  const queryAnalysisEnabled = useSelector(state =>
+    getSetting(state, "query-analysis-enabled"),
+  );
   const [sortColumn, setSortColumn] = useState<string>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>(
     SortDirection.Asc,
@@ -78,7 +83,7 @@ export const QueryValidator = () => {
         id: collectionId,
       },
       {
-        skip: isRootCollection,
+        skip: isRootCollection || !queryAnalysisEnabled,
       },
     );
 
@@ -92,6 +97,7 @@ export const QueryValidator = () => {
     },
     {
       refetchOnMountOrArgChange: true,
+      skip: !queryAnalysisEnabled,
     },
   );
 
@@ -120,7 +126,7 @@ export const QueryValidator = () => {
     [invalidCards],
   );
 
-  return (
+  return queryAnalysisEnabled ? (
     <>
       <Box>
         <Flex mb="2rem" justify="space-between" align="center">
@@ -180,6 +186,21 @@ export const QueryValidator = () => {
         />
       )}
     </>
+  ) : (
+    <Flex justify="center" p="1rem">
+      <Text fz="1rem" color="var(--mb-color-text-light)">
+        {jt`Query Validation is currently disabled. ${(
+          <Text
+            fz="inherit"
+            color="var(--mb-color-brand)"
+            component={Link}
+            to="/admin/settings/general#query-analysis-enabled"
+          >
+            {t`Please enable query analysis here.`}
+          </Text>
+        )}`}
+      </Text>
+    </Flex>
   );
 };
 
