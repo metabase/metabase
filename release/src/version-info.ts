@@ -11,6 +11,7 @@ import type {
 import {
   getVersionType,
   isEnterpriseVersion,
+  isPatchVersion,
 } from "./version-helpers";
 
 const generateVersionInfo = ({
@@ -65,6 +66,13 @@ export const updateVersionInfoLatestJson = ({
   existingVersionInfo: VersionInfoFile;
   rollout?: number;
 }) => {
+  if (isPatchVersion(newLatestVersion)) {
+    // currently we don't support patch versions as latest, or store them
+    // in the version-info.json
+    console.warn(`Version ${newLatestVersion} is a patch version, skipping`);
+    return existingVersionInfo;
+  }
+
   if (existingVersionInfo.latest.version === newLatestVersion) {
     console.warn(`Version ${newLatestVersion} already latest, updating rollout % only`);
     return {
