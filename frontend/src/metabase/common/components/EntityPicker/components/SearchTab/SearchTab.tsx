@@ -1,9 +1,13 @@
 import { msgid, ngettext, t } from "ttag";
 
 import { Box, Flex, SegmentedControl, Stack, Text } from "metabase/ui";
-import type { SearchResult, SearchResultId } from "metabase-types/api";
+import type { SearchResultId } from "metabase-types/api";
 
-import type { EntityPickerSearchScope, TypeWithModel } from "../../types";
+import type {
+  EntityPickerSearchScope,
+  SearchItem,
+  TypeWithModel,
+} from "../../types";
 import { isSchemaItem } from "../../utils";
 import { DelayedLoadingSpinner } from "../LoadingSpinner";
 
@@ -17,7 +21,7 @@ interface Props<
   folder: Item | undefined;
   isLoading: boolean;
   searchScope: EntityPickerSearchScope;
-  searchResults: SearchResult[];
+  searchResults: SearchItem[];
   selectedItem: Item | null;
   onItemSelect: (item: Item) => void;
   onSearchScopeChange: (scope: EntityPickerSearchScope) => void;

@@ -1,5 +1,5 @@
 import type { IconName } from "metabase/ui";
-import type { SearchResultId } from "metabase-types/api";
+import type { SearchResult, SearchResultId } from "metabase-types/api";
 
 import type { EntityPickerModalOptions } from "./components/EntityPickerModal";
 
@@ -78,3 +78,17 @@ export type TabFolderState<
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 > = Partial<Record<EntityPickerTabId, Item>>;
+
+export type SearchItem = Pick<SearchResult, "id" | "model" | "name"> &
+  Partial<
+    Pick<
+      SearchResult,
+      | "collection"
+      | "description"
+      | "collection_authority_level"
+      | "moderated_status"
+      | "display"
+      | "database_name"
+      | "table_schema"
+    >
+  >;

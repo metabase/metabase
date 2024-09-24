@@ -16,6 +16,7 @@ import { RECENTS_TAB_ID } from "./constants";
 import type {
   EntityPickerSearchScope,
   EntityPickerTab,
+  SearchItem,
   TypeWithModel,
 } from "./types";
 
@@ -89,7 +90,7 @@ const searchResultTranslationContext = c(
 );
 
 export function getSearchTabText(
-  searchResults: SearchResult[] | null,
+  searchResults: SearchItem[] | null,
   searchQuery: string,
 ): string {
   if (!searchResults || !searchResults.length) {
