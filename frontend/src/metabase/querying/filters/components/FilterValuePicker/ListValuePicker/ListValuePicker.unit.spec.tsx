@@ -75,23 +75,25 @@ describe("ListValuePicker", () => {
       expect(onChange).toHaveBeenCalledWith(allValues);
     });
 
-    it("should allow to select all options after search", async () => {
+    it("should allow to select only visible options after search", async () => {
       const { onChange } = setup({
         fieldValues: allOptions,
-        selectedValues: [],
+        selectedValues: ["Doohickey", "Gadget"],
       });
 
       await userEvent.type(
         screen.getByPlaceholderText("Search the list"),
-        allValues[0],
+        "get",
       );
-      expect(screen.getByLabelText(allValues[0])).toBeInTheDocument();
-      expect(screen.queryByLabelText(allValues[1])).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Gadget")).toBeInTheDocument();
+      expect(screen.getByLabelText("Widget")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Gizmo")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Doohickey")).not.toBeInTheDocument();
 
       const checkbox = screen.getByLabelText("Select all");
       expect(checkbox).not.toBeChecked();
       await userEvent.click(checkbox);
-      expect(onChange).toHaveBeenCalledWith(allValues);
+      expect(onChange).toHaveBeenCalledWith(["Doohickey", "Gadget", "Widget"]);
     });
 
     it("should allow to deselect all options", async () => {
@@ -107,23 +109,23 @@ describe("ListValuePicker", () => {
       expect(onChange).toHaveBeenCalledWith([]);
     });
 
-    it("should allow to deselect all options after search", async () => {
+    it("should allow to deselect only visible options after search", async () => {
       const { onChange } = setup({
         fieldValues: allOptions,
-        selectedValues: allValues,
+        selectedValues: ["Doohickey", "Gadget", "Widget"],
       });
 
       await userEvent.type(
         screen.getByPlaceholderText("Search the list"),
-        allValues[0],
+        "Gadget",
       );
-      expect(screen.getByLabelText(allValues[0])).toBeInTheDocument();
-      expect(screen.queryByLabelText(allValues[1])).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Gadget")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Widget")).not.toBeInTheDocument();
 
       const checkbox = screen.getByLabelText("Select none");
       expect(checkbox).toBeChecked();
       await userEvent.click(checkbox);
-      expect(onChange).toHaveBeenCalledWith([]);
+      expect(onChange).toHaveBeenCalledWith(["Doohickey", "Widget"]);
     });
   });
 });
