@@ -5,7 +5,8 @@
    [metabase.driver :as driver]
    [metabase.driver.databricks-jdbc :as databricks-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel sync-test
   (testing "`driver/describe-database` implementation returns expected resutls."
@@ -21,6 +22,21 @@
                 {:name "orders", :schema "test-data", :description nil}
                 {:name "products", :schema "test-data", :description nil}}}
              (driver/describe-database :databricks-jdbc (mt/db)))))))
+
+(mt/defdataset dataset-with-ntz
+  [["table_with_ntz" [{:field-name "timestamp"
+                       :base-type {:native "timestamp_ntz"}}]
+    [[(t/local-date-time 2024 10 20 10 20 30)]]]])
+
+(deftest timestamp-ntz-ignored-test
+  (mt/test-driver
+   :databricks-jdbc
+   (mt/dataset
+    dataset-with-ntz
+    (testing "timestamp column was ignored during sync"
+      (let [columns (t2/select :model/Field :table_id (t2/select-one-fn :id :model/Table :db_id (mt/id)))]
+        (is (= 1 (count columns)))
+        (is (= "id" (:name (first columns)))))))))
 
 (deftest ^:synchronized date-time->results-local-date-time-test
   (mt/test-driver
