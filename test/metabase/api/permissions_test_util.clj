@@ -4,7 +4,7 @@
             [metabase.api.permission-graph :as api.permission-graph]))
 
 (def ^:private graph-output-schema
-  [:map-of @#'api.permission-graph/GroupId @#'api.permission-graph/StrictDbGraph])
+  [:map-of @#'api.permission-graph/GroupId @#'api.permission-graph/DbGraph])
 
 (defn- decode-and-validate [schema value]
   (mc/validate schema (mc/decode schema value (mtx/string-transformer))))
