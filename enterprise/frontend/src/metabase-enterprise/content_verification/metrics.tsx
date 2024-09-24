@@ -18,6 +18,8 @@ export function getDefaultMetricFilters(state: State): MetricFilterSettings {
   };
 }
 
+// This component is similar to the ModelFilterControls component from ./ModelFilterControls.tsx
+// merging them might be a good idea in the future.
 export const MetricFilterControls = ({
   metricFilters,
   setMetricFilters,
