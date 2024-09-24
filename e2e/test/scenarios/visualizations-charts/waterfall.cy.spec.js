@@ -3,9 +3,12 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertEChartsTooltip,
   chartPathWithFillColor,
+  createQuestion,
   echartsContainer,
+  leftSidebar,
   openNativeEditor,
   openOrdersTable,
+  popover,
   restore,
   summarize,
   visitQuestionAdhoc,
@@ -138,32 +141,79 @@ describe("scenarios > visualizations > waterfall", () => {
     echartsContainer().get("text").contains("Total").should("not.exist");
   });
 
-  it("should show error for multi-series questions (metabase#15152)", () => {
-    visitQuestionAdhoc({
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        },
-        database: SAMPLE_DB_ID,
+  describe("multi-series (metabase#15152)", () => {
+    const DATASET_QUERY = {
+      type: "query",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
       },
-      display: "line",
+      database: SAMPLE_DB_ID,
+    };
+
+    function testSwitchingToWaterfall() {
+      cy.findByTestId("viz-type-button").click();
+      switchToWaterfallDisplay();
+
+      echartsContainer().within(() => {
+        cy.findByText("Created At").should("exist"); // x-axis
+        cy.findByText("Count").should("exist"); // y-axis
+        cy.findByText("Sum of Total").should("not.exist");
+
+        // x-axis labels (some)
+        ["2022", "2023", "2026", "Total"].forEach(label => {
+          cy.findByText(label).should("exist");
+        });
+
+        // y-axis labels (some)
+        ["0", "3,000", "6,000", "18,000", "21,000"].forEach(label => {
+          cy.findByText(label).should("exist");
+        });
+      });
+
+      leftSidebar().within(() => {
+        cy.findByText("Count").should("exist");
+        cy.findByText("Sum of Total").should("not.exist");
+        cy.findByText(/Add another/).should("not.exist");
+
+        cy.findByText("Count").click();
+      });
+      popover().findByText("Sum of Total").click();
+      leftSidebar().within(() => {
+        cy.findByText("Sum of Total").should("exist");
+        cy.findByText("Count").should("not.exist");
+      });
+
+      echartsContainer().within(() => {
+        cy.findByText("Sum of Total").should("exist"); // x-axis
+        cy.findByText("Created At").should("exist"); // y-axis
+        cy.findByText("Count").should("not.exist");
+
+        // x-axis labels (some)
+        ["2022", "2023", "2026", "Total"].forEach(label => {
+          cy.findByText(label).should("exist");
+        });
+
+        // y-axis labels (some)
+        ["0", "300,000", "900,000", "1,800,000"].forEach(label => {
+          cy.findByText(label).should("exist");
+        });
+      });
+    }
+
+    it("should correctly switch into single-series mode for ad-hoc queries", () => {
+      visitQuestionAdhoc({ dataset_query: DATASET_QUERY, display: "line" });
+      testSwitchingToWaterfall();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").click();
-    switchToWaterfallDisplay();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Waterfall chart does not support multiple series");
-
-    echartsContainer().should("not.exist");
-    cy.findByTestId("remove-count").click();
-    echartsContainer().should("exist"); // Chart renders after removing the second metric
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Add another/).should("not.exist");
+    it("should correctly switch into single-series mode for ad-hoc queries", () => {
+      createQuestion(
+        { name: "Q1", query: DATASET_QUERY.query, display: "line" },
+        { visitQuestion: true },
+      );
+      testSwitchingToWaterfall();
+    });
   });
 
   it("should not allow you to choose X-axis breakout", () => {
