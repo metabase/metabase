@@ -46,7 +46,7 @@
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks-jdbc
   [driver & {:keys [schema-names table-names]}]
   (sql/format {:select [[:c.column_name :name]
-                        [:c.data_type :database-type]
+                        [:c.full_data_type :database-type]
                         [:c.ordinal_position :database-position]
                         [:c.table_schema :table-schema]
                         [:c.table_name :table-name]
