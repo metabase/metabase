@@ -54,7 +54,7 @@
                         [[:case [:not= :c.comment [:inline ""]] :c.comment :else nil] :field-comment]]
                :from [[:information_schema.columns :c]]
                ;; Join constraint_type to every row; mapping of one to at most one, thanks
-               ;; to `[:= [:raw "PRIMARY KEY"] :cs.constraint_type]` condition.
+               ;; to `[:= [:inline "PRIMARY KEY"] :cs.constraint_type]` condition.
                :left-join [[{:select   [[:tc.table_catalog :table_catalog]
                                         [:tc.table_schema :table_schema]
                                         [:tc.table_name :table_name]
