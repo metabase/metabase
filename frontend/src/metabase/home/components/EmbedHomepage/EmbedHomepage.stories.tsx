@@ -11,6 +11,7 @@ type Args = Omit<
 
 const meta: Meta<Args> = {
   title: "FEATURES/EmbedHomepage",
+  // @ts-expect-error fix storybook args
   component: EmbedHomepageView,
   parameters: {
     controls: {

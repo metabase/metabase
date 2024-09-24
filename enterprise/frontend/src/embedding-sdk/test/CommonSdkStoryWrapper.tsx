@@ -1,4 +1,4 @@
-import type { Story } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 import * as jose from "jose";
 
 import { MetabaseProvider, type SDKConfig } from "embedding-sdk";
@@ -38,7 +38,7 @@ const DEFAULT_CONFIG: SDKConfig = {
   },
 };
 
-export const CommonSdkStoryWrapper = (Story: Story) => (
+export const CommonSdkStoryWrapper = (Story: StoryFn) => (
   <MetabaseProvider config={DEFAULT_CONFIG}>
     <Story />
   </MetabaseProvider>
