@@ -8,6 +8,8 @@ import { CubeApi } from "./api/cubeApi";
 import { initialMessageReducer } from "./redux/initialMessage";
 import { databaseReducer } from "./redux/initialDb";
 import { initialSchemaReducer } from "./redux/initialSchema";
+import { suggestionsReducer } from "./redux/suggestionsSlice";
+
 
 export function getStore(reducers, history, intialState) {
   const reducer = combineReducers({
@@ -17,7 +19,8 @@ export function getStore(reducers, history, intialState) {
     [CubeApi.reducerPath]: CubeApi.reducer,
     initialMessage: initialMessageReducer,
     database: databaseReducer,
-    initialSchema: initialSchemaReducer
+    initialSchema: initialSchemaReducer,
+    suggestions: suggestionsReducer 
   });
 
   return configureStore({
