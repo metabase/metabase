@@ -5,8 +5,6 @@
    [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.index-test :refer [legacy-results]]
-   [metabase.server.middleware.offset-paging :as mw.offset-paging]
-   [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (defn- basic-view [xs]
@@ -38,11 +36,12 @@
   (defn- mini-bench [n engine search-term & args]
     #_{:clj-kondo/ignore [:discouraged-var]}
     (let [f (case engine
-              :index-only   search.index/search
-              :legacy       legacy-results
-              :hybrid       @#'search.postgres/hybrid
-              :hybrid-multi @#'search.postgres/hybrid-multi
-              :minimal      @#'search.postgres/minimal)]
+              :index-only             search.index/search
+              :legacy                 legacy-results
+              :hybrid                 @#'search.postgres/hybrid
+              :hybrid-multi           @#'search.postgres/hybrid-multi
+              :minimal                @#'search.postgres/minimal
+              :minimal-wth-perms      @#'search.postgres/minimal-with-perms)]
       (time
        (dotimes [_ n]
          (doall (apply f search-term args))))))
@@ -66,7 +65,7 @@
   (mini-bench 100 :minimal "sample"))
 
 (defn- test-search [search-string & [search-engine]]
-  (let [user-id    (mt/user->id :crowberto)
+  (let [user-id    (t2/select-one-pk :model/User :is_superuser true)
         user-perms #{"/"}]
     (binding [api/*current-user*                 (atom (t2/select-one :model/User user-id))
               api/*current-user-id*              user-id
@@ -77,17 +76,17 @@
         {:archived                            nil
          :created-at                          nil
          :created-by                          #{}
-         :current-user-id                     379
+         :current-user-id                     user-id
          :is-superuser?                       true
          :current-user-perms                  user-perms
          :filter-items-in-personal-collection nil
          :last-edited-at                      nil
          :last-edited-by                      #{}
-         :limit                               mw.offset-paging/*limit*
+         :limit                               50
          :model-ancestors?                    nil
          :models                              search/all-models
-         :offset                              mw.offset-paging/*offset*
-         :search-engine                       search-engine
+         :offset                              0
+         :search-engine                       (some-> search-engine name)
          :search-native-query                 nil
          :search-string                       search-string
          :table-db-id                         nil
@@ -96,14 +95,19 @@
 
 (comment
   (require '[clj-async-profiler.core :as prof])
-  (prof/serve-ui 8080)
+  (prof/serve-ui 8081)
 
   (prof/profile
-   (count
-    (dotimes [_ 100]
-      (test-search "trivia"))))
+   #_{:clj-kondo/ignore [:discouraged-var]}
+   (time
+    (count
+     (dotimes [_ 1000]
+       (test-search "trivia")))))
 
   (prof/profile
-   (count
-    (dotimes [_ 1000]
-      (test-search "trivia" "minimal")))))
+   {:event :alloc}
+   #_{:clj-kondo/ignore [:discouraged-var]}
+   (time
+    (count
+     (dotimes [_ 1000]
+       (test-search "trivia" :minimal))))))
