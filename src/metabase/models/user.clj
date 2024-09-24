@@ -454,7 +454,7 @@
 
 (defsetting last-acknowledged-version
   (deferred-tru "The last version for which a user dismissed the 'What's new?' modal.")
-  :encryption :never
+  :encryption :no
   :user-local :only
   :type :string)
 

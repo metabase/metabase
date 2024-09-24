@@ -34,7 +34,7 @@
                                          {:event                      (if new-value
                                                                         :embedding-enabled
                                                                         :embedding-disabled)
-                                          :embedding-app-origin-set   (embedding-app-origin)
+                                          :embedding-app-origin-set   (boolean (embedding-app-origin))
                                           :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
                                           :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))
 

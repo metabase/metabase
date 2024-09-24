@@ -54,7 +54,7 @@ don''t have one.")
 (defsetting saml-identity-provider-uri
   (deferred-tru "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re
 using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :feature    :sso-saml
   :audit      :getter)
 
@@ -73,7 +73,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
 open it in a text editor, then copy and paste the certificate's contents here.")
   :feature    :sso-saml
   :audit      :no-value
-  :encryption :never
+  :encryption :no
   :setter     (fn [new-value]
                 ;; when setting the idp cert validate that it's something we
                 (when new-value
@@ -83,7 +83,7 @@ open it in a text editor, then copy and paste the certificate's contents here.")
 (defsetting saml-identity-provider-issuer
   (deferred-tru "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending
 on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :feature    :sso-saml
   :audit      :getter)
 
@@ -92,17 +92,17 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :default    "Metabase"
   :feature    :sso-saml
   :audit      :getter
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting saml-keystore-path
   (deferred-tru "Absolute path to the Keystore file to use for signing SAML requests")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :feature    :sso-saml
   :audit      :getter)
 
 (defsetting saml-keystore-password
   (deferred-tru "Password for opening the keystore")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :default    "changeit"
   :sensitive? true
   :feature    :sso-saml
@@ -111,7 +111,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 (defsetting saml-keystore-alias
   (deferred-tru "Alias for the key that {0} should use for signing SAML requests"
                 (public-settings/application-name-for-setting-descriptions))
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :default    "metabase"
   :feature    :sso-saml
   :audit      :getter)
@@ -120,20 +120,20 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   (deferred-tru "SAML attribute for the user''s email address")
   :default    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
   :feature    :sso-saml
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (defsetting saml-attribute-firstname
   (deferred-tru "SAML attribute for the user''s first name")
   :default    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :feature    :sso-saml
   :audit      :getter)
 
 (defsetting saml-attribute-lastname
   (deferred-tru "SAML attribute for the user''s last name")
   :default    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname"
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :feature    :sso-saml
   :audit      :getter)
 
@@ -149,13 +149,13 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :default    "member_of"
   :feature    :sso-saml
   :audit      :getter
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting saml-group-mappings
   ;; Should be in the form: {"groupName": [1, 2, 3]} where keys are SAML groups and values are lists of MB groups IDs
   (deferred-tru "JSON containing SAML to {0} group mappings."
                 (public-settings/application-name-for-setting-descriptions))
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :type       :json
   :cache?     false
   :default    {}
@@ -199,7 +199,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
 
 (defsetting jwt-identity-provider-uri
   (deferred-tru "URL of JWT based login page")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :feature    :sso-jwt
   :audit      :getter)
 
@@ -207,28 +207,28 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   (deferred-tru (str "String used to seed the private key used to validate JWT messages."
                      " "
                      "A hexadecimal-encoded 256-bit key (i.e., a 64-character string) is strongly recommended."))
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :type       :string
   :feature    :sso-jwt
   :audit      :no-value)
 
 (defsetting jwt-attribute-email
   (deferred-tru "Key to retrieve the JWT user's email address")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :default    "email"
   :feature    :sso-jwt
   :audit      :getter)
 
 (defsetting jwt-attribute-firstname
   (deferred-tru "Key to retrieve the JWT user's first name")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :default    "first_name"
   :feature    :sso-jwt
   :audit      :getter)
 
 (defsetting jwt-attribute-lastname
   (deferred-tru "Key to retrieve the JWT user's last name")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :default    "last_name"
   :feature    :sso-jwt
   :audit      :getter)
@@ -237,7 +237,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   (deferred-tru "Key to retrieve the JWT user's groups")
   :default    "groups"
   :feature    :sso-jwt
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :audit      :getter)
 
 (defsetting jwt-group-sync
@@ -251,7 +251,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   ;; Should be in the form: {"groupName": [1, 2, 3]} where keys are JWT groups and values are lists of MB groups IDs
   (deferred-tru "JSON containing JWT to {0} group mappings."
                 (public-settings/application-name-for-setting-descriptions))
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :type       :json
   :cache?     false
   :default    {}

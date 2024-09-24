@@ -23,14 +23,14 @@
 
 (defsetting email-from-address
   (deferred-tru "The email address you want to use for the sender of emails.")
-  :encryption :never
+  :encryption :no
   :default    "notifications@metabase.com"
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-from-name
   (deferred-tru "The name you want to use for the sender of emails.")
-  :encryption :never
+  :encryption :no
   :visibility :settings-manager
   :audit      :getter)
 
@@ -48,7 +48,7 @@
 
 (defsetting email-reply-to
   (deferred-tru "The email address you want the replies to go to, if different from the from address.")
-  :encryption :never
+  :encryption :no
   :type       :json
   :visibility :settings-manager
   :audit      :getter
@@ -59,33 +59,33 @@
 
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails.")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-smtp-username
   (deferred-tru "SMTP username.")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-smtp-password
   (deferred-tru "SMTP password.")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :sensitive? true
   :audit      :getter)
 
 (defsetting email-smtp-port
   (deferred-tru "The port your SMTP server uses for outgoing emails.")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :type       :integer
   :visibility :settings-manager
   :audit      :getter)
 
 (defsetting email-smtp-security
   (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :type       :keyword
   :default    :none
   :visibility :settings-manager

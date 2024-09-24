@@ -61,7 +61,7 @@
 
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
-  :encryption :never
+  :encryption :no
   :visibility :settings-manager
   :export?    true
   :audit      :getter

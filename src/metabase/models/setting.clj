@@ -271,10 +271,10 @@
    ;; where this setting should be visible (default: :admin)
    [:visibility Visibility]
 
-   ;; should this setting be encrypted `:never` or `:maybe` (when `MB_ENCRYPTION_SECRET_KEY` is set).
-   ;; Required for `:timestamp`, `:json`, and `:csv`-typed settings. DEFAULTS to `:never` for all other types.
-   ;; Defaults to `:maybe` (except for `:boolean` typed settings, where it defaults to `:never`)
-   [:encryption [:enum :never :maybe]]
+   ;; should this setting be encrypted. Available options are `:no` or `:when-encryption-key-set` (the setting will be
+   ;; encrypted when `MB_ENCRYPTION_SECRET_KEY` is set, otherwise we can't encrypt). This is required for `:timestamp`,
+   ;; `:json`, and `:csv`-typed settings. Defaults to `:no` for all other types.
+   [:encryption [:enum :no :when-encryption-key-set]]
 
    ;; should this setting be serialized?
    [:export? :boolean]
@@ -389,7 +389,7 @@
       (core/get *database-local-values* setting-name))))
 
 (defn- prohibits-encryption? [setting-or-name]
-  (= :never (:encryption (resolve-setting setting-or-name))))
+  (= :no (:encryption (resolve-setting setting-or-name))))
 
 (defn- allows-user-local-values? [setting]
   (#{:only :allowed} (:user-local (resolve-setting setting))))
@@ -979,19 +979,23 @@
                  :tag            (default-tag-for-type setting-type)
                  :visibility     :admin
                  :encryption     (or
+                                  (:encryption setting)
                                   ;; NOTE: if none of the below conditions is met, users of `defsetting` will be required to
                                   ;; provide a value for `:encryption`.
                                   ;;
                                   ;; if a setting is `:sensitive?`, default to encrypting it
                                   (when (:sensitive? setting)
-                                    :maybe)
+                                    :when-encryption-key-set)
                                   ;; if a setting isn't stored in the DB, the value doesn't really matter, but provide
                                   ;; a default so the caller doesn't have to
                                   (when (= (:setter setting) :none)
-                                    :maybe)
+                                    :when-encryption-key-set)
                                   ;; if the setting isn't a type likely to contain secrets, default to plaintext
                                   (when (contains? #{:boolean :integer :positive-integer :double :keyword :timestamp} setting-type)
-                                    :never))
+                                    :no)
+
+                                  (throw (ex-info (trs "`:encryption` is a required option for setting {0}" setting-name)
+                                                  {:setting setting})))
                  :export?        false
                  :sensitive?     false
                  :cache?         true

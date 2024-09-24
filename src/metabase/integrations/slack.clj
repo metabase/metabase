@@ -23,7 +23,7 @@
    (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
         "Please use a new Slack app integration instead."))
   :deprecated "0.42.0"
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :doc        false
   :audit      :never)
@@ -32,7 +32,7 @@
   (deferred-tru
    (str "Bot user OAuth token for connecting the Metabase Slack app. "
         "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :getter (fn []
             (-> (setting/get-value-of-type :string :slack-app-token)
@@ -59,7 +59,7 @@
 
 (defsetting slack-cached-channels-and-usernames
   "A cache shared between instances for storing an instance's slack channels and users."
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :visibility :internal
   :type       :json
   :doc        false
@@ -79,7 +79,7 @@
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :default "metabase_files"
-  :encryption :never
+  :encryption :no
   :visibility :settings-manager
   :audit      :getter
   :setter (fn [channel-name]

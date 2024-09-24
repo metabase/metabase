@@ -8,35 +8,35 @@
 
 (defsetting openai-model
   (deferred-tru "The OpenAI Model (e.g. 'gpt-4-turbo-preview', 'gpt-4', 'gpt-3.5-turbo')")
-  :encryption :never
+  :encryption :no
   :visibility :settings-manager
   :default "gpt-4-turbo-preview")
 
 (defsetting openai-api-key
   (deferred-tru "The OpenAI API Key.")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :visibility :settings-manager)
 
 (defsetting openai-organization
   (deferred-tru "The OpenAI Organization ID.")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :visibility :settings-manager)
 
 (defsetting metabot-default-embedding-model
   (deferred-tru "The default embeddings model to be used for metabot.")
-  :encryption :never
+  :encryption :no
   :visibility :internal
   :default "text-embedding-ada-002")
 
 (defsetting metabot-get-prompt-templates-url
   (deferred-tru "The URL in which metabot versioned prompt templates are stored.")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default "https://stkxezsr2kcnkhusi3fgcc5nqm0ttgfx.lambda-url.us-east-1.on.aws/")
 
 (defsetting metabot-feedback-url
   (deferred-tru "The URL to which metabot feedback is posted.")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :default "https://amtix3l3qvitb2qxstaqtcoqby0monuf.lambda-url.us-east-1.on.aws/")
 

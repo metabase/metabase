@@ -24,12 +24,12 @@
 
 (defsetting ldap-host
   (deferred-tru "Server hostname.")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :audit :getter)
 
 (defsetting ldap-port
   (deferred-tru "Server port, usually 389 or 636 if SSL is used.")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :type       :integer
   :default    389
   :audit      :getter)
@@ -46,30 +46,30 @@
 
 (defsetting ldap-bind-dn
   (deferred-tru "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users.")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :audit :getter)
 
 (defsetting ldap-password
   (deferred-tru "The password to bind with for the lookup user.")
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :sensitive? true
   :audit     :getter)
 
 (defsetting ldap-user-base
   (deferred-tru "Search base for users. (Will be searched recursively)")
-  :encryption :never
+  :encryption :no
   :audit      :getter)
 
 (defsetting ldap-user-filter
   (deferred-tru "User lookup filter. The placeholder '{login'} will be replaced by the user supplied login.")
   :default    "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))"
-  :encryption :never
+  :encryption :no
   :audit      :getter)
 
 (defsetting ldap-attribute-email
   (deferred-tru "Attribute to use for the user''s email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
   :default    "mail"
-  :encryption :never
+  :encryption :no
   :getter     (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-email)))
   :audit      :getter)
 
@@ -77,12 +77,12 @@
   (deferred-tru "Attribute to use for the user''s first name. (usually ''givenName'')")
   :default    "givenName"
   :getter     (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-firstname)))
-  :encryption :never
+  :encryption :no
   :audit      :getter)
 
 (defsetting ldap-attribute-lastname
   (deferred-tru "Attribute to use for the user''s last name. (usually ''sn'')")
-  :encryption :never
+  :encryption :no
   :default    "sn"
   :getter     (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-lastname)))
   :audit      :getter)
@@ -96,13 +96,13 @@
 (defsetting ldap-group-base
   (deferred-tru "Search base for groups. Not required for LDAP directories that provide a ''memberOf'' overlay, such as Active Directory. (Will be searched recursively)")
   :audit      :getter
-  :encryption :never)
+  :encryption :no)
 
 (defsetting ldap-group-mappings
   ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP group DNs and values are lists of
   ;; MB groups IDs
   (deferred-tru "JSON containing LDAP to Metabase group mappings.")
-  :encryption :never
+  :encryption :no
   :type       :json
   :cache?     false
   :default    {}

@@ -28,17 +28,17 @@
 
 (defsetting test-setting-1
   "Test setting - this only shows up in dev (1)"
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-setting-2
   "Test setting - this only shows up in dev (2)"
   :default "[Default Value]"
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-setting-3
   "Test setting - this only shows up in dev (3)"
   :visibility :internal
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-boolean-setting
   "Test setting - this only shows up in dev (3)"
@@ -48,30 +48,30 @@
 (defsetting test-json-setting
   "Test setting - this only shows up in dev (4)"
   :type :json
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-csv-setting
   "Test setting - this only shows up in dev (5)"
   :visibility :internal
   :type :csv
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting ^:private test-csv-setting-with-default
   "Test setting - this only shows up in dev (6)"
   :visibility :internal
   :type :csv
   :default ["A" "B" "C"]
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-env-setting
   "Test setting - this only shows up in dev (7)"
   :visibility :internal
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting toucan-name
   "Name for the Metabase Toucan mascot."
   :visibility :internal
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-setting-calculated-getter
   "Test setting - this only shows up in dev (8)"
@@ -83,7 +83,7 @@
   "Test setting - this only shows up in dev (0)"
   :type       :string
   :init       (comp str random-uuid)
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (def ^:private ^:dynamic *enabled?* false)
 
@@ -92,7 +92,7 @@
   :visibility :internal
   :type       :string
   :enabled?   (fn [] *enabled?*)
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-enabled-setting-default
   "Setting to test the `:enabled?` property of settings. This only shows up in dev."
@@ -100,7 +100,7 @@
   :type       :string
   :default    "setting-default"
   :enabled?   (fn [] *enabled?*)
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-feature-setting
   "Setting to test the `:feature` property of settings. This only shows up in dev."
@@ -108,20 +108,20 @@
   :type       :string
   :default    "setting-default"
   :feature    :test-feature
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-never-encrypted-setting
   "Setting to test the `:encryption` property of settings. This only shows up in dev."
   :visibility :internal
   :type       :string
-  :encryption :never
+  :encryption :no
   :feature    :test-feature)
 
 (defsetting test-boolean-encrypted-setting
   "Setting to test that a boolean setting can be encrypted, even though the default is not to. This only shows up in dev."
   :visibility :internal
   :type       :boolean
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :feature    :test-feature)
 
 ;; ## HELPER FUNCTIONS
@@ -235,14 +235,14 @@
   "Setting to test the `:base` property of settings. This only shows up in dev."
   :visibility :internal
   :base       base-options
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-default-with-base-setting
   "Setting to test the `:base` property of settings. This only shows up in dev."
   :visibility :internal
   :base       base-options
   :default    "fully-bespoke"
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (deftest ^:parallel defsetting-with-base-test
   (testing "A setting which specifies some base options"
@@ -441,7 +441,7 @@
 
 (defsetting test-i18n-setting
   (deferred-tru "Test setting - with i18n")
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (deftest validate-description-test
   (testing "Validate setting description with i18n string"
@@ -460,7 +460,7 @@
 
 (defsetting test-dynamic-i18n-setting
   (deferred-tru "Test setting - with i18n: {0}" (test-i18n-setting))
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (deftest dynamic-description-test
   (testing "Descriptions with i18n string should update if it depends on another setting's value."
@@ -662,7 +662,7 @@
   "A test setting that should *not* be cached."
   :visibility :internal
   :cache? false
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (deftest uncached-settings-test
   (encryption-test/with-secret-key nil
@@ -742,27 +742,27 @@
 (defsetting test-internal-setting
   "test Setting"
   :visibility :internal
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-public-setting
   (deferred-tru "test Setting")
   :visibility :public
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-authenticated-setting
   (deferred-tru "test Setting")
   :visibility :authenticated
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-settings-manager-setting
   (deferred-tru "test Setting")
   :visibility :settings-manager
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-admin-setting
   (deferred-tru "test Setting")
   :visibility :admin
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (deftest can-read-setting-test
   (testing "no authenticated user"
@@ -806,20 +806,20 @@
   :visibility     :internal
   :type           :integer
   :database-local :only
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting ^:private test-database-local-allowed-setting
   (deferred-tru "test Setting")
   :visibility     :authenticated
   :type           :integer
   :database-local :allowed
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting ^:private test-database-local-never-setting
   "test Setting"
   :visibility :internal
   :type       :integer
-  :encryption :maybe) ; `:never` should be the default
+  :encryption :when-encryption-key-set) ; `:no` should be the default for `:database-local`
 
 (deftest database-local-settings-test
   (doseq [[database-local-type {:keys [setting-name setting-getter-fn setting-setter-fn returns]}]
@@ -909,7 +909,7 @@
   :visibility     :authenticated
   :database-local :only
   :default        "DEFAULT"
-  :encryption     :maybe)
+  :encryption     :when-encryption-key-set)
 
 (deftest database-local-only-settings-test
   (testing "Disallow setting Database-local-only Settings"
@@ -953,18 +953,18 @@
   (deferred-tru  "test Setting")
   :visibility :authenticated
   :user-local :only
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-user-local-allowed-setting
   (deferred-tru "test Setting")
   :visibility :authenticated
   :user-local :allowed
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting ^:private test-user-local-never-setting
   (deferred-tru "test Setting")
   :visibility :internal
-  :encryption :maybe) ; `:never` should be the default
+  :encryption :when-encryption-key-set) ; `:no` should be the default for `:user-local`
 
 (deftest user-local-settings-test
   (testing "Reading and writing a user-local-only setting in the context of a user uses the user-local value"
@@ -1019,7 +1019,7 @@
            (deferred-tru "test Setting")
            :user-local     :allowed
            :database-local :allowed
-           :encryption     :maybe)))))
+           :encryption     :when-encryption-key-set)))))
 
 (deftest identity-hash-test
   (testing "Settings are hashed based on the key"
@@ -1076,7 +1076,7 @@
            :default    "setting-default"
            :enabled?   (fn [] false)
            :feature    :test-feature
-           :encryption :maybe)))))
+           :encryption :when-encryption-key-set)))))
 
 ;;; ------------------------------------------------- Misc tests -------------------------------------------------------
 
@@ -1101,7 +1101,7 @@
   "test Setting"
   :visibility :internal
   :type       :integer
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (deftest integer-setting-test
   (testing "Should be able to set integer setting with a string"
@@ -1117,15 +1117,15 @@
   (testing "Should not be able to define a setting with a retired name"
     (with-redefs [setting/retired-setting-names #{"retired-setting"}]
       (try
-        (defsetting retired-setting (deferred-tru "A retired setting name") :encryption :maybe)
+        (defsetting retired-setting (deferred-tru "A retired setting name") :encryption :when-encryption-key-set)
         (catch Exception e
           (is (= "Setting name 'retired-setting' is retired; use a different name instead"
                  (ex-message e))))))))
 
 (deftest duplicated-setting-name
   (testing "can re-register a setting in the same ns (redefining or reloading ns)"
-    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :maybe))
-    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :maybe)))
+    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set))
+    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set)))
   (testing "if attempt to register in a different ns throws an error"
     (let [current-ns (ns-name *ns*)]
       (try
@@ -1133,7 +1133,7 @@
           (:require
            [metabase.models.setting :refer [defsetting]]
            [metabase.util.i18n :as i18n :refer [deferred-tru]]))
-        (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :maybe)
+        (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set)
         (catch Exception e
           (is (=? {:existing-setting
                    {:description (deferred-tru "A testing setting")
@@ -1152,7 +1152,7 @@
 (defsetting test-setting-with-question-mark?
   "Test setting - this only shows up in dev (6)"
   :visibility :internal
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (deftest munged-setting-name-test
   (testing "Only valid characters used for environment lookup"
@@ -1172,33 +1172,33 @@
                        (try (defsetting test-setting-with-question-mark????
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal
-                              :encryption :maybe)
+                              :encryption :when-encryption-key-set)
                             (catch Exception e (ex-data e)))))))
   (testing "Munge collision on first definition"
     (defsetting test-setting-normal
       "Test setting - this only shows up in dev (6)"
       :visibility :internal
-      :encryption :maybe)
+      :encryption :when-encryption-key-set)
     (is (= {:existing-setting {:name :test-setting-normal, :munged-name "test-setting-normal"},
             :new-setting {:name :test-setting-normal??, :munged-name "test-setting-normal"}}
            (m/map-vals #(select-keys % [:name :munged-name])
                        (try (defsetting test-setting-normal??
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal
-                              :encryption :maybe)
+                              :encryption :when-encryption-key-set)
                             (catch Exception e (ex-data e)))))))
   (testing "Munge collision on second definition"
     (defsetting test-setting-normal-1??
       "Test setting - this only shows up in dev (6)"
       :visibility :internal
-      :encryption :maybe)
+      :encryption :when-encryption-key-set)
     (is (= {:new-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1},
             :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
            (m/map-vals #(select-keys % [:name :munged-name])
                        (try (defsetting test-setting-normal-1
                               "Test setting - this only shows up in dev (6)"
                               :visibility :internal
-                              :encryption :maybe)
+                              :encryption :when-encryption-key-set)
                             (catch Exception e (ex-data e)))))))
   (testing "Removes characters not-compliant with shells"
     (is (= "aa1aa-b2b_cc3c"
@@ -1249,7 +1249,7 @@
         (walk/macroexpand-all
          `(defsetting ~'test-asdf-asdf-asdf
             "untranslated description"
-            :encryption :maybe))
+            :encryption :when-encryption-key-set))
         (catch Exception e
           (is (re-matches #"defsetting docstrings must be a \*deferred\* i18n form.*"
                           (:cause (Throwable->map e)))))))))
@@ -1257,7 +1257,7 @@
 (defsetting test-setting-audit-never
   "Test setting with no auditing"
   :audit :never
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-setting-audit-raw-value
   "Test setting with auditing raw values"
@@ -1269,14 +1269,14 @@
   :type       :string
   :getter     (constantly "GETTER VALUE")
   :audit      :getter
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-sensitive-setting-audit
   "Test that a sensitive setting has its value obfuscated before being audited"
   :type       :string
   :sensitive? true
   :audit      :getter
-  :encryption :maybe)
+  :encryption :when-encryption-key-set)
 
 (deftest setting-audit-test
   (mt/with-premium-features #{:audit-app}
@@ -1335,7 +1335,7 @@
   (deferred-tru  "Audited user-local setting")
   :visibility :authenticated
   :user-local :only
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :audit      :raw-value)
 
 (deftest user-local-settings-audit-test
@@ -1362,13 +1362,13 @@
 (defsetting exported-setting
   "This setting would be serialized"
   :export? true
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   ;; make sure it's internal so it doesn't interfere with export test
   :visibility :internal)
 
 (defsetting non-exported-setting
   "This setting would not be serialized"
-  :encryption :maybe
+  :encryption :when-encryption-key-set
   :export? false)
 
 (deftest export?-test
@@ -1400,7 +1400,7 @@
   `(defsetting ~(validation-setting-symbol format)
      "Setting to test validation of this format - this only shows up in dev"
      :type ~(keyword (name format))
-     :encryption :maybe))
+     :encryption :when-encryption-key-set))
 
 (defmacro get-parse-exception [format raw-value]
   `(mt/with-temp-env-var-value! [~(symbol (str "mb-" (validation-setting-symbol format))) ~raw-value]
@@ -1600,6 +1600,6 @@
 
 (deftest boolean-settings-default-to-never-encrypted
   (testing "Boolean settings default to never encrypted"
-    (is (= :never (:encryption (setting/resolve-setting :test-boolean-setting)))))
+    (is (= :no (:encryption (setting/resolve-setting :test-boolean-setting)))))
   (testing "Boolean settings can be encrypted"
-    (is (= :maybe (:encryption (setting/resolve-setting :test-boolean-encrypted-setting))))))
+    (is (= :when-encryption-key-set (:encryption (setting/resolve-setting :test-boolean-encrypted-setting))))))
