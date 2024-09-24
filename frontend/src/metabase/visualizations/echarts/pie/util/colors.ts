@@ -1,8 +1,12 @@
 import { aliases, colors } from "metabase/lib/colors";
 import { checkNumber } from "metabase/lib/types";
-import type { RenderingContext } from "metabase/visualizations/types";
+import type {
+  ColorGetter,
+  RenderingContext,
+} from "metabase/visualizations/types";
 
 const ACCENT_KEY_PREFIX = "accent";
+
 function getAccentNumberFromHex(hexColor: string) {
   const hexToAccentNumber = new Map<string, number>();
 
@@ -59,4 +63,21 @@ export function getColorForRing(
   return renderingContext.getColor(
     `${ACCENT_KEY_PREFIX}${accentNumber}${suffix}`,
   );
+}
+
+export function getColorForPicker(
+  hexColor: string | undefined,
+  hasMultipleRings: boolean,
+  getColor: ColorGetter,
+) {
+  if (!hasMultipleRings || hexColor == null) {
+    return hexColor;
+  }
+
+  const accentNumber = getAccentNumberFromHex(hexColor);
+  if (accentNumber == null) {
+    return hexColor;
+  }
+
+  return getColor(`${ACCENT_KEY_PREFIX}${accentNumber}-dark`);
 }

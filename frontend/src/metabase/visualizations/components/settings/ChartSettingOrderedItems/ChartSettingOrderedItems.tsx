@@ -3,11 +3,12 @@ import { useCallback } from "react";
 
 import type { DragEndEvent } from "metabase/core/components/Sortable";
 import { Sortable, SortableList } from "metabase/core/components/Sortable";
+import type { AccentColorOptions } from "metabase/lib/colors/types";
 import type { IconProps } from "metabase/ui";
 
 import { ColumnItem } from "../ColumnItem";
 
-interface SortableItem {
+export interface SortableItem {
   enabled: boolean;
   color?: string;
   icon?: IconProps["name"];
@@ -22,7 +23,6 @@ interface SortableColumnFunctions<T> {
   onEnable?: (item: T) => void;
   getItemName: (item: T) => string;
   onColorChange?: (item: T, color: string) => void;
-  includeLightAndDarkColors?: boolean;
 }
 interface ChartSettingOrderedItemsProps<T extends SortableItem>
   extends SortableColumnFunctions<T> {
@@ -30,6 +30,8 @@ interface ChartSettingOrderedItemsProps<T extends SortableItem>
   items: T[];
   getId: (item: T) => string | number;
   removeIcon?: IconProps["name"];
+  accentColorOptions?: AccentColorOptions;
+  getItemColor?: (item: SortableItem) => string | undefined;
 }
 
 export function ChartSettingOrderedItems<T extends SortableItem>({
@@ -44,7 +46,8 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   onColorChange,
   getId,
   removeIcon,
-  includeLightAndDarkColors = true,
+  accentColorOptions,
+  getItemColor = item => item.color,
 }: ChartSettingOrderedItemsProps<T>) {
   const isDragDisabled = items.length < 1;
   const pointerSensor = useSensor(PointerSensor, {
@@ -80,12 +83,12 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
                 ? (color: string) => onColorChange(item, color)
                 : undefined
             }
-            color={item.color}
+            color={getItemColor(item)}
             draggable={!isDragDisabled}
             icon={item.icon}
             removeIcon={removeIcon}
             role="listitem"
-            includeLightAndDarkColors={includeLightAndDarkColors}
+            accentColorOptions={accentColorOptions}
           />
         </Sortable>
       ) : null,
@@ -99,7 +102,8 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
       onAdd,
       onEnable,
       onColorChange,
-      includeLightAndDarkColors,
+      accentColorOptions,
+      getItemColor,
     ],
   );
 

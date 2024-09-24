@@ -1,3 +1,4 @@
+import type { AccentColorOptions } from "metabase/lib/colors/types";
 import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
@@ -25,7 +26,7 @@ interface ColumnItemProps {
   onEdit?: (target: HTMLElement) => void;
   onEnable?: (target: HTMLElement) => void;
   onColorChange?: (newColor: string) => void;
-  includeLightAndDarkColors?: boolean;
+  accentColorOptions?: AccentColorOptions;
 }
 
 const BaseColumnItem = ({
@@ -42,7 +43,7 @@ const BaseColumnItem = ({
   onEdit,
   onEnable,
   onColorChange,
-  includeLightAndDarkColors = true,
+  accentColorOptions,
 }: ColumnItemProps) => {
   return (
     <ColumnItemRoot
@@ -61,7 +62,7 @@ const BaseColumnItem = ({
             value={color}
             onChange={onColorChange}
             pillSize="small"
-            includeLightAndDarkColors={includeLightAndDarkColors}
+            accentColorOptions={accentColorOptions}
           />
         )}
         <ColumnItemContent>
