@@ -21,6 +21,10 @@ function getAllSlicePercentages(sliceTree: SliceTree) {
 
   function getPercentages(node: SliceTreeNode) {
     percentages.push(node.normalizedPercentage);
+    if (node.isOther) {
+      return;
+    }
+
     node.children.forEach(c => getPercentages(c));
   }
   sliceTree.forEach(node => getPercentages(node));
