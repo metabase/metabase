@@ -24,12 +24,25 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
   return (
     <>
       <SidesheetCardSection title={t`Creator and last editor`}>
-        {lastEditInfo && (
+        {creator && (
           <Flex gap="sm" align="top">
             <FixedSizeIcon name="ai" className={SidebarStyles.IconMargin} />
             <Text>
               {c(
-                "Describes when a dashbaord was last edited. {0} is a date/time and {1} is a person's name",
+                "Describes when a dashboard was created. {0} is a date/time and {1} is a person's name",
+              ).jt`${(
+                <DateTime unit="day" value={createdAt} key="date" />
+              )} by ${getUserName(creator)}`}
+            </Text>
+          </Flex>
+        )}
+
+        {lastEditInfo && (
+          <Flex gap="sm" align="top">
+            <FixedSizeIcon name="pencil" className={SidebarStyles.IconMargin} />
+            <Text>
+              {c(
+                "Describes when a dashboard was last edited. {0} is a date/time and {1} is a person's name",
               ).jt`${(
                 <DateTime
                   unit="day"
@@ -40,23 +53,10 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
             </Text>
           </Flex>
         )}
-
-        {creator && (
-          <Flex gap="sm" align="top">
-            <FixedSizeIcon name="pencil" className={SidebarStyles.IconMargin} />
-            <Text>
-              {c(
-                "Describes when a dashbaord was last edited. {0} is a date/time and {1} is a person's name",
-              ).jt`${(
-                <DateTime unit="day" value={createdAt} key="date" />
-              )} by ${getUserName(creator)}`}
-            </Text>
-          </Flex>
-        )}
       </SidesheetCardSection>
       <SidesheetCardSection
         title={c(
-          "This is a heading that appears above a collection that a dashboard is saved in. Feel free to translate this as though it said 'Saved in collection', if you think that would make more sense in your language.",
+          "This is a heading that appears above the name of a collection - a collection that a dashboard is saved in. Feel free to translate this heading as though it said 'Saved in collection', if you think that would make more sense in your language.",
         ).t`Saved in`}
       >
         <Flex gap="sm" align="top">
