@@ -31,7 +31,7 @@ import QueryVisualization from "../QueryVisualization";
 import { SavedQuestionIntroModal } from "../SavedQuestionIntroModal";
 import DataReference from "../dataref/DataReference";
 import { SnippetSidebar } from "../template_tags/SnippetSidebar";
-import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
+import { TagEditorSidebar } from "../template_tags/TagEditorSidebar/TagEditorSidebar";
 
 import NewQuestionHeader from "./NewQuestionHeader";
 import { NotebookContainer } from "./View/NotebookContainer";
@@ -203,7 +203,17 @@ class View extends Component {
     if (isShowingTemplateTagsEditor) {
       return (
         <TagEditorSidebar
-          {...this.props}
+          databases={this.props.databases}
+          databaseFields={this.props.databaseFields}
+          sampleDatabaseId={this.props.sampleDatabaseId}
+          setDatasetQuery={this.props.setDatasetQuery}
+          question={this.props.question}
+          setTemplateTag={this.props.setTemplateTag}
+          setTemplateTagConfig={this.props.setTemplateTagConfig}
+          setParameterValue={this.props.setParameterValue}
+          getEmbeddedParameterVisibility={
+            this.props.getEmbeddedParameterVisibility
+          }
           query={question.legacyQuery()}
           onClose={toggleTemplateTagsEditor}
         />

@@ -21,7 +21,7 @@ import { calcInitialEditorHeight } from "metabase/query_builder/components/Nativ
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
-import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
+import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar/TagEditorSidebar";
 import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
@@ -183,8 +183,8 @@ function getColumnTabIndex(columnIndex, focusedFieldIndex) {
   return columnIndex === focusedFieldIndex
     ? EDITOR_TAB_INDEXES.FOCUSED_FIELD
     : columnIndex > focusedFieldIndex
-      ? EDITOR_TAB_INDEXES.NEXT_FIELDS
-      : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
+    ? EDITOR_TAB_INDEXES.NEXT_FIELDS
+    : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
 }
 
 function DatasetEditor(props) {
