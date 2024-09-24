@@ -547,7 +547,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             setInsightsText(prevInsightsText => [...prevInsightsText, generatedTexts.value]);
             setIsLoading(false);
             removeLoadingMessage();
-            // clearInfoMessage();
+            clearInfoMessage();
             if (status === "completed") {
                 setChatLoading(false);
                 setToolWaitingResponse("continue")
@@ -609,6 +609,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const handleInfoMessage = data => {
         removeLoadingMessage();
         clearPlanMessage();
+        if(data.functions.payload.message.includes("There was an error with the AI models. Please contact with Omniloy support team.")){
+            setChatLoading(false);
+        }
 
         if (data.functions.type === "data" || data.functions.type === "error") {
             setMessages(prevMessages => {
@@ -1031,11 +1034,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                     display: "flex",
                                     justifyContent: "center", // Center horizontally
                                     width: "100%",            // Take full width
-                                    maxWidth: `calc(100% - ${isChatHistoryOpen ? "600px" : "300px"})`, // Adjust the width based on the chat history visibility
+                                    maxWidth: `calc(100% - ${isChatHistoryOpen ? "800px" : "500px"})`, // Adjust the width based on the chat history visibility
                                     backgroundColor: "#FFF",
                                     position: "fixed",
                                     bottom: "5rem",
-                                    left: "150px",
                                     zIndex: 10,
                                 }}
                             >
@@ -1058,7 +1060,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                                 ref={inputRef}
                                                 value={inputValue}
                                                 onChange={handleInputChange}
-                                                disabled={!isConnected || selectedThreadId}
+                                                disabled={!isConnected || chatLoading || selectedThreadId}
                                                 onKeyPress={handleKeyPress}
                                                 placeholder={t`Enter a prompt here...`}
                                                 style={{
