@@ -5,5 +5,5 @@
  {"athena" {:url "https://s3.amazonaws.com/maven-athena"}}
 
  :deps
- {com.amazonaws/aws-java-sdk-core {:mvn/version "1.12.770"}
+ {com.amazonaws/aws-java-sdk-core {:mvn/version "1.12.772"}
   com.metabase/athena-jdbc {:mvn/version "2.0.35"}}}
