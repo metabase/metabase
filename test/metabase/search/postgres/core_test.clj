@@ -63,6 +63,5 @@
     (testing "consistent results between both hybrid implementations\n"
       (doseq [term example-terms]
         (testing term
-          ;; Timestamps are not strings after round trip, but this doesn't matter
           (is (= (hybrid term)
                  (minimal term))))))))
