@@ -38,6 +38,12 @@
         (is (= 1 (count columns)))
         (is (= "id" (:name (first columns)))))))))
 
+(deftest ^:parallel db-default-timezone-test
+  (mt/test-driver
+   :databricks-jdbc
+   (testing "`test-data` timezone is `Etc/UTC`"
+     (is (= "Etc/UTC" (:timezone (mt/db)))))))
+
 (deftest ^:synchronized date-time->results-local-date-time-test
   (mt/test-driver
     :databricks-jdbc
