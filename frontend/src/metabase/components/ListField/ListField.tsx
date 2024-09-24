@@ -14,7 +14,6 @@ import type { RowValue } from "metabase-types/api";
 import {
   EmptyStateContainer,
   FilterInputContainer,
-  LabelWrapper,
   OptionContainer,
   OptionsList,
 } from "./ListField.styled";
@@ -62,6 +61,8 @@ export const ListField = ({
   const [filter, setFilter] = useState("");
   const waitTime = useContext(waitTimeContext);
   const debouncedFilter = useDebouncedValue(filter, waitTime);
+  const isAll = selectedValues.size === sortedOptions.length;
+  const isNone = selectedValues.size === 0;
 
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();
@@ -112,6 +113,17 @@ export const ListField = ({
   const handleFilterChange: InputProps["onChange"] = e =>
     setFilter(e.target.value);
 
+  const handleToggleAll = () => {
+    if (isAll) {
+      setSelectedValues(new Set());
+      onChange([]);
+    } else {
+      const allValues = sortedOptions.map(([value]) => value);
+      setSelectedValues(new Set(allValues));
+      onChange(allValues);
+    }
+  };
+
   return (
     <>
       <FilterInputContainer isDashboardFilter={isDashboardFilter}>
@@ -133,12 +145,22 @@ export const ListField = ({
       )}
 
       <OptionsList isDashboardFilter={isDashboardFilter}>
+        <OptionContainer>
+          <Checkbox
+            variant="stacked"
+            label={isAll ? `Select none` : t`Select all`}
+            checked={isAll}
+            indeterminate={!isAll && !isNone}
+            fw="bold"
+            onChange={handleToggleAll}
+          />
+        </OptionContainer>
         {filteredOptions.map((option, index) => (
           <OptionContainer key={index}>
             <Checkbox
               data-testid={`${option[0]}-filter-value`}
               checked={selectedValues.has(option[0])}
-              label={<LabelWrapper>{optionRenderer(option)}</LabelWrapper>}
+              label={optionRenderer(option)}
               onChange={() => handleToggleOption(option[0])}
             />
           </OptionContainer>

@@ -112,7 +112,7 @@ function PinnedItemCard({
   return (
     <ItemLink
       className={className}
-      to={item ? modelToUrl(item) ?? "/" : undefined}
+      to={item ? (modelToUrl(item) ?? "/") : undefined}
       onClick={onClick}
     >
       <ItemCard flat>

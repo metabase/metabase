@@ -2,6 +2,7 @@
   (:require
    [clojure.data.csv]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.formatter :as formatter]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as common]
@@ -73,15 +74,20 @@
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
         ordered-formatters (volatile! nil)
         rows!              (atom [])
-        pivot-options      (atom nil)]
+        pivot-options      (atom nil)
+        ;; if we're processing results from a pivot query, there will be a column 'pivot-grouping' that we don't want to include
+        ;; in the final results, so we get the idx into the row in order to remove it
+        pivot-grouping-idx (volatile! nil)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options]
                    :or   {format-rows? true}} :data} viz-settings]
-        (let [opts      (when (and *pivot-export-post-processing-enabled* pivot-export-options)
-                          (assoc pivot-export-options :column-titles (mapv :display_name ordered-cols)))
+        (let [opts           (when (and *pivot-export-post-processing-enabled* pivot-export-options)
+                               (assoc pivot-export-options :column-titles (mapv :display_name ordered-cols)))
               ;; col-names are created later when exporting a pivot table, so only create them if there are no pivot options
-              col-names (when-not opts (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))]
+              col-names      (when-not opts (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
+              pivot-grouping (qp.pivot.postprocess/pivot-grouping-key col-names)]
           ;; when pivot options exist, we want to save them to access later when processing the complete set of results for export.
+          (when pivot-grouping (vreset! pivot-grouping-idx pivot-grouping))
           (when opts
             (reset! pivot-options (merge {:pivot-rows []
                                           :pivot-cols []} opts)))
@@ -90,15 +96,18 @@
                      (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
                      (vec (repeat (count ordered-cols) identity))))
           ;; write the column names for non-pivot tables
-          (when col-names
-            (write-csv writer [col-names])
+          (when-not opts
+            (let [modified-row (cond->> col-names
+                                 @pivot-grouping-idx (m/remove-nth @pivot-grouping-idx))]
+              (write-csv writer [modified-row]))
             (.flush writer))))
 
       (write-row! [_ row _row-num _ {:keys [output-order]}]
-        (let [ordered-row (if output-order
-                            (let [row-v (into [] row)]
-                              (for [i output-order] (row-v i)))
-                            row)
+        (let [ordered-row (vec
+                           (if output-order
+                             (let [row-v (into [] row)]
+                               (for [i output-order] (row-v i)))
+                             row))
               xf-row      (perf/mapv (fn [formatter r]
                                        (formatter (common/format-value r)))
                                      @ordered-formatters ordered-row)]
@@ -106,9 +115,16 @@
             ;; if we're processing a pivot result, we don't write it out yet, just store it
             ;; so that we can post process the full set of results in finish!
             (swap! rows! conj xf-row)
-            (do
-              (write-csv writer [xf-row])
-              (.flush writer)))))
+            (let [pivot-grouping-key @pivot-grouping-idx
+                  group              (get ordered-row pivot-grouping-key)
+                  cleaned-row        (cond->> xf-row
+                                       pivot-grouping-key (m/remove-nth pivot-grouping-key))]
+              ;; when a pivot-grouping col exists, we check its group number. When it's zero,
+              ;; we keep it, otherwise don't include it in the results as it's a row representing a subtotal of some kind
+              (when (or (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP group)
+                        (not group))
+                (write-csv writer [cleaned-row])
+                (.flush writer))))))
 
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
