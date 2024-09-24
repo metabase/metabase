@@ -3,6 +3,7 @@ import { useState } from "react";
 import { c, t } from "ttag";
 
 import { getTableUrl } from "metabase/browse/containers/TableBrowser/TableBrowser";
+import { getCollectionName } from "metabase/collections/utils";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import DateTime from "metabase/components/DateTime";
 import Link from "metabase/core/components/Link";
@@ -66,7 +67,10 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
               to={`/collection/${question.collectionId() ?? "root"}`}
               variant="brand"
             >
-              {question.collection()?.name}
+              {
+                // We need to use getCollectionName or the name of the root collection will not be displayed
+                getCollectionName(question.collection())
+              }
             </Link>
           </Text>
         </Flex>

@@ -30,6 +30,7 @@ import {
   pickEntity,
   popover,
   restore,
+  sidesheet,
   visitCollection,
 } from "e2e/support/helpers";
 
@@ -207,7 +208,7 @@ describe("scenarios > collection defaults", () => {
     });
   });
 
-  it("should support markdown in collection description", () => {
+  it("should support markdown in collection description in caption", () => {
     cy.request("PUT", `/api/collection/${FIRST_COLLECTION_ID}`, {
       description: "[link](https://metabase.com)",
     });
@@ -225,6 +226,46 @@ describe("scenarios > collection defaults", () => {
     cy.findByRole("tooltip").within(() => {
       cy.findByRole("link").should("include.text", "link");
       cy.findByRole("link").should("not.include.text", "[link]");
+    });
+  });
+
+  it("should allow description to be edited in the sidesheet", () => {
+    cy.request("PUT", `/api/collection/${FIRST_COLLECTION_ID}`, {
+      description: "[link](https://metabase.com)",
+    });
+
+    visitRootCollection();
+    cy.log("Collection description visible on page");
+    const page = cy.findByRole("presentation");
+    page.within(() => {
+      const textarea = cy.findByTestId("editable-text");
+      textarea.should("have.value", "[link](https://metabase.com)");
+    });
+    const getSidesheetToggle = () =>
+      cy.findByTestId("collection-menu").icon("info").click();
+
+    cy.log("Let's edit the description");
+    getSidesheetToggle().click();
+    sidesheet().within(() => {
+      const textarea = cy.findByTestId("editable-text");
+      textarea.click();
+      cy.type("edited ");
+      cy.realPress("Tab");
+      cy.findByLabelText("Close").click();
+    });
+
+    cy.log("The edited description is visible on the page");
+    const pageAfterEdit = cy.findByRole("presentation");
+    pageAfterEdit.within(() => {
+      const textarea = cy.findByTestId("editable-text");
+      textarea.should("have.value", "edited [link](https://metabase.com)");
+    });
+
+    cy.log("The edited description is visible in the sidesheet");
+    getSidesheetToggle().click();
+    sidesheet().within(() => {
+      const textarea = cy.findByTestId("editable-text");
+      textarea.should("have.value", "edited [link](https://metabase.com)");
     });
   });
 
