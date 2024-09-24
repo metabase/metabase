@@ -13,6 +13,11 @@ const SettingToggle = ({
   setting,
   tooltip,
   onChange,
+  // the following three props were being spread into the 'div', causing
+  // unknown prop errors so we're just keeping them here
+  onChangeSetting,
+  reloadSettings,
+  settingValues,
   ...props
 }) => {
   const value = setting.value == null ? setting.default : setting.value;

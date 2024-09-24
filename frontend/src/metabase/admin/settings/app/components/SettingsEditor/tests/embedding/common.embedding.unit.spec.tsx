@@ -510,7 +510,7 @@ describe("[OSS] embedding settings", () => {
           }),
         ).toHaveProperty(
           "href",
-          "https://www.metabase.com/docs/latest/paid-features/activating-the-enterprise-edition?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=oss",
+          "https://www.metabase.com/docs/latest/paid-features/activating-the-enterprise-edition.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=oss",
         );
         expect(
           withinApiKeyBanner.getByRole("link", {
