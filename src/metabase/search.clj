@@ -27,13 +27,34 @@
   []
   (= :postgres (metabase.db/db-type)))
 
+(def ^:private default-engine :in-place)
+
 (defn- query-fn [search-engine]
-  (case search-engine
-    :fulltext (if (is-postgres?)
-                search.postgres/search
-                (do (log/warn ":fulltext search not supported for your AppDb, using :in-place")
-                    search.impl/in-place))
-    :in-place search.impl/in-place))
+  (or
+   (case search-engine
+     :fulltext (when (is-postgres?) search.postgres/search)
+     :minimal  (when (is-postgres?) search.postgres/search)
+     :in-place search.impl/in-place)
+
+   (log/warnf "%s search not supported for your AppDb, using %s" search-engine default-engine)
+   default-engine))
+
+(defn supports-index?
+  "Does this instance support a search index, e.g. has the right kind of AppDb"
+  []
+  (is-postgres?))
+
+(defn init-index!
+  "Ensure there is an index ready to be populated."
+  [& {:keys [force-reset?]}]
+  (when (is-postgres?)
+    (search.postgres/init! force-reset?)))
+
+(defn reindex!
+  "Populate a new index, and make it active. Simultaneously updates the current index."
+  []
+  (when (is-postgres?)
+    (search.postgres/reindex!)))
 
 (mu/defn search
   "Builds a search query that includes all the searchable entities and runs it"

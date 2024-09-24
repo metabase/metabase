@@ -32,7 +32,7 @@ const SUBSCRIPTION = {
   RESUBSCRIBE: "resubscribe",
 } as const;
 
-type Subscription = typeof SUBSCRIPTION[keyof typeof SUBSCRIPTION];
+type Subscription = (typeof SUBSCRIPTION)[keyof typeof SUBSCRIPTION];
 
 export const UnsubscribePage = ({
   location,

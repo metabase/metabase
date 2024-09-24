@@ -328,8 +328,8 @@ class ValueRemappings extends Component {
           mappedOrUndefined !== undefined
             ? mappedOrUndefined.toString()
             : original === null
-            ? "null"
-            : original.toString();
+              ? "null"
+              : original.toString();
 
         return [original, mappedString];
       }),

@@ -84,8 +84,8 @@ export function getLegendTitles(groups, columnSettings) {
     return index === groups.length - 1
       ? `${min} +` // the last value in the list
       : min !== max
-      ? `${min} - ${max}` // typical case
-      : min; // special case to avoid zero-width ranges e.g. $88-$88
+        ? `${min} - ${max}` // typical case
+        : min; // special case to avoid zero-width ranges e.g. $88-$88
   });
 }
 

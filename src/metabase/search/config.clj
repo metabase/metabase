@@ -23,7 +23,8 @@
 (def search-engines
   "Supported search engines."
   #{:in-place
-    :fulltext})
+    :fulltext
+    :minimal})
 
 (def ^:dynamic *db-max-results*
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by

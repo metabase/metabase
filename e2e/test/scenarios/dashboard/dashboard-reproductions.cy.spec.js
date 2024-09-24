@@ -1,7 +1,7 @@
 import { assoc } from "icepick";
 import _ from "underscore";
 
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
@@ -10,9 +10,13 @@ import {
 import {
   addTextBox,
   appBar,
+  assertDatasetReqIsSandboxed,
+  assertQueryBuilderRowCount,
   cartesianChartCircle,
+  closeDashboardInfoSidebar,
   createDashboard,
   createDashboardWithTabs,
+  createSegment,
   dashboardGrid,
   dashboardHeader,
   dashboardParametersContainer,
@@ -27,25 +31,24 @@ import {
   main,
   modal,
   navigationSidebar,
+  openDashboardInfoSidebar,
   openQuestionsSidebar,
   popover,
   queryBuilderHeader,
   removeDashboardCard,
   restore,
-  rightSidebar,
   saveDashboard,
   setFilter,
   setTokenFeatures,
   showDashboardCardActions,
   sidebar,
-  toggleDashboardInfoSidebar,
+  sidesheet,
   undo,
   undoToast,
   updateDashboardCards,
   visitDashboard,
   visitQuestion,
 } from "e2e/support/helpers";
-import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
   createMockDashboardCard,
@@ -329,58 +332,82 @@ describe("issue 16559", () => {
     "should always show the most recent revision (metabase#16559)",
     { tags: "@flaky" },
     () => {
-      toggleDashboardInfoSidebar();
-
-      cy.log("Dashboard creation");
-      cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
-        .eq(0)
-        .findByText("You created this.")
-        .should("be.visible");
+      openDashboardInfoSidebar();
+      sidesheet().within(() => {
+        cy.findByRole("tab", { name: "History" }).click();
+        cy.log("Dashboard creation");
+        cy.findByTestId("dashboard-history-list")
+          .findAllByRole("listitem")
+          .eq(0)
+          .findByText("You created this.")
+          .should("be.visible");
+      });
+      closeDashboardInfoSidebar();
 
       cy.log("Edit dashboard");
       editDashboard();
       openQuestionsSidebar();
       sidebar().findByText("Orders, Count").click();
       cy.button("Save").click();
-      toggleDashboardInfoSidebar();
-      cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
-        .eq(0)
-        .findByText("You added a card.")
-        .should("be.visible");
+
+      openDashboardInfoSidebar();
+      sidesheet().within(() => {
+        cy.findByRole("tab", { name: "History" }).click();
+        cy.findByTestId("dashboard-history-list")
+          .findAllByRole("listitem")
+          .eq(0)
+          .findByText("You added a card.")
+          .should("be.visible");
+      });
+      closeDashboardInfoSidebar();
 
       cy.log("Change dashboard name");
       cy.findByTestId("dashboard-name-heading")
         .click()
         .type(" modified")
         .blur();
-      cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
-        .eq(0)
-        .findByText(
-          'You renamed this Dashboard from "16559 Dashboard" to "16559 Dashboard modified".',
-        )
-        .should("be.visible");
 
-      cy.log("Add description");
-      cy.findByPlaceholderText("Add description")
-        .click()
-        .type("16559 description")
-        .blur();
-      cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
-        .eq(0)
-        .findByText("You added a description.")
-        .should("be.visible");
+      openDashboardInfoSidebar();
+      sidesheet().within(() => {
+        cy.findByRole("tab", { name: "History" }).click();
 
-      cy.log("Toggle auto-apply filters");
-      rightSidebar().findByText("Auto-apply filters").click();
-      cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
-        .eq(0)
-        .findByText("You set auto apply filters to false.")
-        .should("be.visible");
+        cy.findByTestId("dashboard-history-list")
+          .findAllByRole("listitem")
+          .eq(0)
+          .findByText(
+            'You renamed this Dashboard from "16559 Dashboard" to "16559 Dashboard modified".',
+          )
+          .should("be.visible");
+
+        cy.log("Add description");
+        cy.findByRole("tab", { name: "Overview" }).click();
+
+        cy.findByPlaceholderText("Add description")
+          .click()
+          .type("16559 description")
+          .blur();
+
+        cy.findByRole("tab", { name: "History" }).click();
+
+        cy.findByTestId("dashboard-history-list")
+          .findAllByRole("listitem")
+          .eq(0)
+          .findByText("You added a description.")
+          .should("be.visible");
+
+        cy.log("Toggle auto-apply filters");
+
+        cy.findByRole("tab", { name: "Overview" }).click();
+        cy.findByText("Auto-apply filters").click();
+        cy.findByRole("tab", { name: "History" }).click();
+
+        cy.findByTestId("dashboard-history-list")
+          .findAllByRole("listitem")
+          .eq(0)
+          .findByText("You set auto apply filters to false.")
+          .should("be.visible");
+      });
+      closeDashboardInfoSidebar();
 
       cy.log("Move dashboard to another collection");
       dashboardHeader().icon("ellipsis").click();
@@ -389,11 +416,16 @@ describe("issue 16559", () => {
         cy.findByText("First collection").click();
         cy.button("Move").click();
       });
-      cy.findByTestId("dashboard-history-list")
-        .findAllByRole("listitem")
-        .eq(0)
-        .findByText("You moved this Dashboard to First collection.")
-        .should("be.visible");
+
+      openDashboardInfoSidebar();
+      sidesheet().within(() => {
+        cy.findByRole("tab", { name: "History" }).click();
+        cy.findByTestId("dashboard-history-list")
+          .findAllByRole("listitem")
+          .eq(0)
+          .findByText("You moved this Dashboard to First collection.")
+          .should("be.visible");
+      });
     },
   );
 });
@@ -658,9 +690,9 @@ describeEE("issue 29076", () => {
       },
     });
     cy.sandboxTable({
-      table_id: PRODUCTS_ID,
+      table_id: ORDERS_ID,
       attribute_remappings: {
-        attr_uid: ["dimension", ["field", PRODUCTS.ID, null]],
+        attr_uid: ["dimension", ["field", ORDERS.ID, null]],
       },
     });
     cy.signInAsSandboxedUser();
@@ -669,11 +701,19 @@ describeEE("issue 29076", () => {
   it("should be able to drilldown to a saved question in a dashboard with sandboxing (metabase#29076)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@cardQuery");
+    // test that user is sandboxed - normal users has over 2000 rows
+    getDashboardCard().find("tbody > tr").should("have.length", 1);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("be.visible");
+    assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
+    assertDatasetReqIsSandboxed({
+      requestAlias: "@cardQuery",
+      columnId: ORDERS.USER_ID,
+      columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+    });
   });
 });
 
