@@ -28,6 +28,30 @@ on:
         description: Apply to OSS
         type: boolean
         default: true
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+      tag_name:
+        type: string
+        # options:
+        #   - nightly
+        #   - beta
+        #   - latest
+        required: true
+      tag_rollout:
+        description: Rollout % (0-100)
+        type: number
+        default: 100
+      tag_ee:
+        description: Apply to EE
+        type: boolean
+        default: true
+      tag_oss:
+        description: Apply to OSS
+        type: boolean
+        default: true
 
 jobs:
   check-version:
