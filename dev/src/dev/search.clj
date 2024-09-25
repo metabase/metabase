@@ -1,8 +1,12 @@
 (ns dev.search
   (:require
+   [metabase.api.common :as api]
+   [metabase.search :as search]
    [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.index-test :refer [legacy-results]]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (defn- basic-view [xs]
@@ -60,3 +64,46 @@
   ;; oh! this monstrocity is actually 2x faster than baseline B-)
   (mini-bench 100 :hybrid-multi "sample")
   (mini-bench 100 :minimal "sample"))
+
+(defn- test-search [search-string & [search-engine]]
+  (let [user-id    (mt/user->id :crowberto)
+        user-perms #{"/"}]
+    (binding [api/*current-user*                 (atom (t2/select-one :model/User user-id))
+              api/*current-user-id*              user-id
+              api/*is-superuser?*                true
+              api/*current-user-permissions-set* (atom user-perms)]
+      (search/search
+       (search/search-context
+        {:archived                            nil
+         :created-at                          nil
+         :created-by                          #{}
+         :current-user-id                     379
+         :is-superuser?                       true
+         :current-user-perms                  user-perms
+         :filter-items-in-personal-collection nil
+         :last-edited-at                      nil
+         :last-edited-by                      #{}
+         :limit                               mw.offset-paging/*limit*
+         :model-ancestors?                    nil
+         :models                              search/all-models
+         :offset                              mw.offset-paging/*offset*
+         :search-engine                       search-engine
+         :search-native-query                 nil
+         :search-string                       search-string
+         :table-db-id                         nil
+         :verified                            nil
+         :ids                                 nil})))))
+
+(comment
+  (require '[clj-async-profiler.core :as prof])
+  (prof/serve-ui 8080)
+
+  (prof/profile
+   (count
+    (dotimes [_ 100]
+      (test-search "trivia"))))
+
+  (prof/profile
+   (count
+    (dotimes [_ 1000]
+      (test-search "trivia" "minimal")))))
