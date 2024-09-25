@@ -3,7 +3,7 @@ import { type PropsWithChildren, createContext, useContext } from "react";
 import type { DataPickerValue } from "metabase/common/components/DataPicker";
 
 type NotebookContextType = {
-  modelsFilterList: DataPickerValue["model"][];
+  modelsFilterList?: DataPickerValue["model"][];
 };
 
 export const NotebookContext = createContext<NotebookContextType | undefined>(
@@ -11,7 +11,7 @@ export const NotebookContext = createContext<NotebookContextType | undefined>(
 );
 
 export const NotebookProvider = ({
-  modelsFilterList,
+  modelsFilterList = ["table", "card", "dataset", "metric"],
   children,
 }: PropsWithChildren<NotebookContextType>) => {
   return (

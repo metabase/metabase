@@ -36,7 +36,7 @@ export const Notebook = ({
   hasVisualizeButton = true,
   runQuestionQuery,
   setQueryBuilderMode,
-  modelsFilterList = ["table", "card", "dataset", "metric"],
+  modelsFilterList,
 }: NotebookProps) => {
   const dispatch = useDispatch();
 
