@@ -332,8 +332,8 @@
                 (is (= expected-row row))))))))))
 
 (deftest filter-datetime-by-date-in-timezone-relative-to-current-date-test
-  (mt/test-drivers (filter #(driver/database-supports? % :test/dynamic-dataset-loading nil)
-                           (set-timezone-drivers))
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+                                     (set-timezone-drivers))
     (testing "Relative to current date"
       (let [expected-datetime (u.date/truncate (t/zoned-date-time) :second)]
         (mt/with-temp-test-data [["relative_filter"
