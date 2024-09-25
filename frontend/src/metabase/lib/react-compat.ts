@@ -1,19 +1,17 @@
 // Support React 17 backwards compatibility for the Embedding SDK
-
-import React from "react";
+import type React from "react";
 import ReactDOM from "react-dom";
 import { type Root, createRoot } from "react-dom/client";
 
-import { isReactVersionLessThanOrEqualTo17 } from "./compat/check-version";
-
-// React 18 and later has the useSyncExternalStore hook.
-export const isReact17OrEarlier = () => !("useSyncExternalStore" in React);
+import { getMajorReactVersion } from "./compat/check-version";
 
 export function renderRoot(
   content: React.JSX.Element,
   element: Element,
 ): Root | undefined {
-  if (isReactVersionLessThanOrEqualTo17(React.version)) {
+  const reactVersion = getMajorReactVersion();
+
+  if (reactVersion <= 17) {
     ReactDOM.render(content, element);
     return;
   }
@@ -25,7 +23,9 @@ export function renderRoot(
 }
 
 export function unmountRoot(root?: Root, element?: Element) {
-  if (isReactVersionLessThanOrEqualTo17(React.version) && element) {
+  const reactVersion = getMajorReactVersion();
+
+  if (reactVersion <= 17 && element) {
     ReactDOM.unmountComponentAtNode(element);
     return;
   }
