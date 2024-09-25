@@ -56,7 +56,7 @@
    :last_editor_id             false
    :last_edited_at             false
    :pk_ref                     nil
-   :model_index_id             false                        ;; columns ending in _id get booleaned
+   :model_index_id             false ;; columns ending in _id get booleaned
    :table_description          nil
    :table_id                   false
    :table_name                 nil
@@ -133,10 +133,10 @@
 
 (defn- default-results-with-collection []
   (on-search-types #{"dashboard" "pulse" "card" "dataset" "metric" "action"}
-                   #(assoc % :collection {:id              true,
-                                          :name            (if (= (:model %) "action") nil true)
+                   #(assoc % :collection {:id true,
+                                          :name (if (= (:model %) "action") nil true)
                                           :authority_level nil
-                                          :type            nil})
+                                          :type nil})
                    (default-search-results)))
 
 (defn- do-with-search-items [search-string in-root-collection? f]
@@ -146,26 +146,26 @@
                         (merge (data-map instance-name)
                                (when-not in-root-collection?
                                  {:collection_id (u/the-id collection)})))]
-    (mt/with-temp [Collection coll (data-map "collection %s collection")
-                   Card action-model (if in-root-collection?
-                                       action-model-params
-                                       (assoc action-model-params :collection_id (u/the-id coll)))
-                   Action {action-id :id
-                           :as       action} (merge (data-map "action %s action")
-                                                    {:type :query, :model_id (u/the-id action-model)})
-                   Database {db-id :id
-                             :as   db} (data-map "database %s database")
-                   Table table (merge (data-map "database %s database")
-                                      {:db_id db-id})
+    (mt/with-temp [Collection  coll           (data-map "collection %s collection")
+                   Card        action-model   (if in-root-collection?
+                                                action-model-params
+                                                (assoc action-model-params :collection_id (u/the-id coll)))
+                   Action      {action-id :id
+                                :as action}   (merge (data-map "action %s action")
+                                                     {:type :query, :model_id (u/the-id action-model)})
+                   Database    {db-id :id
+                                :as db}       (data-map "database %s database")
+                   Table       table          (merge (data-map "database %s database")
+                                                     {:db_id db-id})
 
                    QueryAction _qa (query-action action-id)
-                   Card card (coll-data-map "card %s card" coll)
-                   Card dataset (assoc (coll-data-map "dataset %s dataset" coll)
-                                       :type :model)
-                   Dashboard dashboard (coll-data-map "dashboard %s dashboard" coll)
-                   Card metric (assoc (coll-data-map "metric %s metric" coll)
-                                      :type :metric)
-                   Segment segment (data-map "segment %s segment")]
+                   Card        card           (coll-data-map "card %s card" coll)
+                   Card        dataset        (assoc (coll-data-map "dataset %s dataset" coll)
+                                                     :type :model)
+                   Dashboard   dashboard      (coll-data-map "dashboard %s dashboard" coll)
+                   Card        metric         (assoc (coll-data-map "metric %s metric" coll)
+                                                     :type :metric)
+                   Segment     segment        (data-map "segment %s segment")]
       (f {:action     action
           :collection coll
           :card       card
@@ -195,7 +195,7 @@
 (defn- process-raw-data [raw-data keep-database-id]
   (for [result raw-data
         ;; filter out any results not from the usual test data DB (e.g. results from other drivers)
-        :when (contains? #{keep-database-id nil} (:database_id result))]
+        :when  (contains? #{keep-database-id nil} (:database_id result))]
     (-> result
         mt/boolean-ids-and-timestamps
         (update-in [:collection :name] #(some-> % string?))
@@ -303,7 +303,7 @@
 (deftest archived-models-test
   (testing "It returns some stuff when you get results"
     (with-search-items-in-root-collection "test"
-                                          ;; sometimes there is a "table" in these responses. might be do to garbage in CI
+      ;; sometimes there is a "table" in these responses. might be do to garbage in CI
       (is (set/subset? #{"dashboard" "dataset" "segment" "collection" "database" "metric" "card"}
                        (-> (mt/user-http-request :crowberto :get 200 "search" :q "test")
                            :available_models
@@ -325,10 +325,10 @@
                                           :created_by (mt/user->id :rasta))))))
       (testing "return a subset of model for verified filter"
         (t2.with-temp/with-temp
-          [:model/Card {v-card-id :id} {:name (format "%s Verified Card" search-term)}
-           :model/Card {v-model-id :id} {:name (format "%s Verified Model" search-term) :type :model}
-           :model/Card {v-metric-id :id} {:name (format "%s Verified Metric" search-term) :type :metric}
-           :model/Collection {_v-coll-id :id} {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
+          [:model/Card       {v-card-id :id}   {:name (format "%s Verified Card" search-term)}
+           :model/Card       {v-model-id :id}  {:name (format "%s Verified Model" search-term) :type :model}
+           :model/Card       {v-metric-id :id} {:name (format "%s Verified Metric" search-term) :type :metric}
+           :model/Collection {_v-coll-id :id}  {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
           (testing "when has both :content-verification features"
             (mt/with-premium-features #{:content-verification}
               (mt/with-verified-cards! [v-card-id v-model-id v-metric-id]
@@ -366,18 +366,18 @@
 
 (deftest dashboard-count-test
   (testing "It sorts by dashboard count"
-    (mt/with-temp [Card {card-id-3 :id} {:name "dashboard-count 3"}
-                   Card {card-id-5 :id} {:name "dashboard-count 5"}
-                   Card _ {:name "dashboard-count 0"}
-                   Dashboard {dash-id :id} {}
-                   DashboardCard _ {:card_id card-id-3 :dashboard_id dash-id}
-                   DashboardCard _ {:card_id card-id-3 :dashboard_id dash-id}
-                   DashboardCard _ {:card_id card-id-3 :dashboard_id dash-id}
-                   DashboardCard _ {:card_id card-id-5 :dashboard_id dash-id}
-                   DashboardCard _ {:card_id card-id-5 :dashboard_id dash-id}
-                   DashboardCard _ {:card_id card-id-5 :dashboard_id dash-id}
-                   DashboardCard _ {:card_id card-id-5 :dashboard_id dash-id}
-                   DashboardCard _ {:card_id card-id-5 :dashboard_id dash-id}]
+    (mt/with-temp [Card          {card-id-3 :id} {:name "dashboard-count 3"}
+                   Card          {card-id-5 :id} {:name "dashboard-count 5"}
+                   Card          _               {:name "dashboard-count 0"}
+                   Dashboard     {dash-id :id}   {}
+                   DashboardCard _               {:card_id card-id-3 :dashboard_id dash-id}
+                   DashboardCard _               {:card_id card-id-3 :dashboard_id dash-id}
+                   DashboardCard _               {:card_id card-id-3 :dashboard_id dash-id}
+                   DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}
+                   DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}
+                   DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}
+                   DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}
+                   DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}]
       (is (=? (sort-by :dashboardcard_count dashboard-count-results)
               (sort-by :dashboardcard_count (unsorted-search-request-data :rasta :q "dashboard-count")))))))
 
@@ -444,7 +444,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (with-search-items-in-root-collection "test"
         (mt/with-full-data-perms-for-all-users!
-          (mt/with-temp [PermissionsGroup group {}
+          (mt/with-temp [PermissionsGroup           group {}
                          PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
             (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
             (is (mt/ordered-subset? (->> (default-search-results)
@@ -459,7 +459,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (with-search-items-in-collection {:keys [collection]} "test"
         (with-search-items-in-root-collection "test2"
-          (mt/with-temp [PermissionsGroup group {}
+          (mt/with-temp [PermissionsGroup           group {}
                          PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
             (mt/with-full-data-perms-for-all-users!
               (perms/grant-collection-read-permissions! group (u/the-id collection))
@@ -468,9 +468,9 @@
                                    (contains? #{"collection" "dashboard" "card" "dataset" "metric"} (:model %))
                                    (assoc :can_write false)))
                            (concat (map #(merge default-search-row % (table-search-results))
-                                        [{:name  "segment test2 segment", :description "Lookin' for a blueberry",
+                                        [{:name "segment test2 segment", :description "Lookin' for a blueberry",
                                           :model "segment" :creator_id true :creator_common_name "Rasta Toucan"}]))
-                                                                                            ;; This reverse is hokey; it's because the test2 results happen to come first in the API response
+                           ;; This reverse is hokey; it's because the test2 results happen to come first in the API response
                            reverse
                            sorted-results)
                       (search-request-data :rasta :q "test"))))))))))
@@ -481,7 +481,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (with-search-items-in-collection {:keys [collection]} "test"
         (with-search-items-in-root-collection "test2"
-          (mt/with-temp [PermissionsGroup group {}
+          (mt/with-temp [PermissionsGroup           group {}
                          PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id group)}]
             (mt/with-full-data-perms-for-all-users!
               (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
@@ -501,7 +501,7 @@
   (testing "Users with access to multiple collections should see results from all collections they have access to"
     (with-search-items-in-collection {coll-1 :collection} "test"
       (with-search-items-in-collection {coll-2 :collection} "test2"
-        (mt/with-temp [PermissionsGroup group {}
+        (mt/with-temp [PermissionsGroup           group {}
                        PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id group)}]
           (mt/with-full-data-perms-for-all-users!
             (perms/grant-collection-read-permissions! group (u/the-id coll-1))
@@ -520,12 +520,12 @@
       (with-search-items-in-collection {coll-1 :collection} "test"
         (with-search-items-in-collection _ "test2"
           (mt/with-full-data-perms-for-all-users!
-            (mt/with-temp [PermissionsGroup group {}
+            (mt/with-temp [PermissionsGroup           group {}
                            PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (u/the-id group)}]
               (perms/grant-collection-read-permissions! group (u/the-id coll-1))
               (is (= (->> (default-results-with-collection)
                           (concat (map #(merge default-search-row % (table-search-results))
-                                       [{:name       "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"
+                                       [{:name "segment test2 segment" :description "Lookin' for a blueberry" :model "segment"
                                          :creator_id true :creator_common_name "Rasta Toucan"}]))
                           (map #(cond-> %
                                   (contains? #{"collection" "dashboard" "card" "dataset" "metric"} (:model %))
@@ -537,17 +537,17 @@
 (deftest permissions-test-7
   (testing "Segments on tables for which the user does not have access to should not show up in results"
     (mt/with-temp [Database {db-id :id} {}
-                   Table {table-id :id} {:db_id  db-id
-                                         :schema nil}
-                   Segment _ {:table_id table-id
-                              :name     "test segment"}]
+                   Table    {table-id :id} {:db_id  db-id
+                                            :schema nil}
+                   Segment  _ {:table_id table-id
+                               :name     "test segment"}]
       (mt/with-no-data-perms-for-all-users!
         (is (= []
                (search-request-data :rasta :q "test")))))))
 
 (deftest permissions-test-8
   (testing "Databases for which the user does not have access to should not show up in results"
-    (mt/with-temp [Database _db-1 {:name "db-1"}
+    (mt/with-temp [Database _db-1  {:name "db-1"}
                    Database _db-2 {:name "db-2"}]
       (is (set/subset? #{"db-2" "db-1"}
                        (->> (search-request-data-with sorted-results :rasta :q "db")
@@ -562,8 +562,8 @@
 (deftest bookmarks-test
   (testing "Bookmarks are per user, so other user's bookmarks don't cause search results to be altered"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
-      (mt/with-temp [CardBookmark _ {:card_id (u/the-id card)
-                                     :user_id (mt/user->id :rasta)}
+      (mt/with-temp [CardBookmark      _ {:card_id (u/the-id card)
+                                          :user_id (mt/user->id :rasta)}
                      DashboardBookmark _ {:dashboard_id (u/the-id dashboard)
                                           :user_id      (mt/user->id :rasta)}]
         (is (= (default-results-with-collection)
@@ -571,8 +571,8 @@
 
   (testing "Basic search, should find 1 of each entity type and include bookmarks when available"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
-      (mt/with-temp [CardBookmark _ {:card_id (u/the-id card)
-                                     :user_id (mt/user->id :crowberto)}
+      (mt/with-temp [CardBookmark      _ {:card_id (u/the-id card)
+                                          :user_id (mt/user->id :crowberto)}
                      DashboardBookmark _ {:dashboard_id (u/the-id dashboard)
                                           :user_id      (mt/user->id :crowberto)}]
         (is (= (on-search-types #{"dashboard" "card"}
@@ -589,13 +589,13 @@
                    Database _ {:name "user_favorite_places" :description "Join table between users and their favorite places, which could include aviaries"}
                    Database _ {:name "users" :description "As it sounds"}]
       (letfn [(result [db]
-                (merge {:name        nil
-                        :model       "database"
+                (merge {:name nil
+                        :model "database"
                         :description nil}
                        db))]
         (is (= (sorted-results
                 (map result [{:name "aviaries"}
-                             {:name        "user_favorite_places"
+                             {:name "user_favorite_places"
                               :description "Join table between users and their favorite places, which could include aviaries"}]))
                (map #(select-keys % [:name :model :description])
                     (search-request-data-with sorted-results :crowberto :q "aviaries"))))))))
@@ -638,14 +638,14 @@
 (deftest indexed-entity-perms-test
   (mt/dataset airports
     (let [query (mt/mbql-query municipality)]
-      (mt/with-temp [Collection collection {:name     "test"
-                                            :location "/"}
-                     Card root-model {:type          :model
-                                      :dataset_query query
-                                      :collection_id nil}
-                     Card sub-collection-model {:type          :model
-                                                :dataset_query query
-                                                :collection_id (u/id collection)}]
+      (mt/with-temp [Collection collection           {:name     "test"
+                                                      :location "/"}
+                     Card       root-model           {:type         :model
+                                                      :dataset_query query
+                                                      :collection_id nil}
+                     Card       sub-collection-model {:type          :model
+                                                      :dataset_query query
+                                                      :collection_id (u/id collection)}]
         (let [model-index-1 (model-index/create
                              (mt/$ids {:model-id   (:id root-model)
                                        :pk-ref     $municipality.id
@@ -668,7 +668,7 @@
           (model-index/add-values! model-index-2)
 
           (testing "Indexed entities returned if a non-admin user has full data perms and collection access"
-            (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+            (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted
                                                            :create-queries :query-builder-and-native}}
               (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
                                  :name           "Rome"
@@ -684,20 +684,20 @@
                             (search! "rom" :rasta))))))
 
           (testing "Indexed entities are not returned if a user doesn't have full data perms for the DB"
-            (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+            (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted
                                                            :create-queries :no}}
               (is (= #{}
                      (into #{} (comp relevant-1 (map (juxt :name normalize)))
                            (search! "rom" :rasta)))))
 
-            (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+            (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted
                                                            :create-queries :query-builder}}
               (is (= #{}
                      (into #{} (comp relevant-1 (map (juxt :name normalize)))
                            (search! "rom" :rasta)))))
 
             (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
-              (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+              (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :unrestricted
                                                              :create-queries {"PUBLIC" {id-1 :query-builder
                                                                                         id-2 :query-builder
                                                                                         id-3 :query-builder
@@ -707,7 +707,7 @@
                              (search! "rom" :rasta))))))
 
             (mt/with-additional-premium-features #{:advanced-permissions}
-              (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
+              (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data :blocked
                                                              :create-queries :no}}
                 (is (= #{}
                        (into #{} (comp relevant-1 (map (juxt :name normalize)))
@@ -744,55 +744,55 @@
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
-      (mt/with-temp [Card action-model {:type :model}
-                     Action {action-id :id} (archived {:name     "action test action 2"
-                                                       :type     :query
-                                                       :model_id (u/the-id action-model)})
+      (mt/with-temp [Card        action-model {:type :model}
+                     Action      {action-id :id} (archived {:name     "action test action 2"
+                                                            :type     :query
+                                                            :model_id (u/the-id action-model)})
                      QueryAction _ (query-action action-id)
-                     Card _ (archived {:name "card test card 2"})
-                     Card _ (archived {:name "dataset test dataset" :type :model})
-                     Dashboard _ (archived {:name "dashboard test dashboard 2"})
-                     Collection _ (archived-collection {:name "collection test collection 2"})
-                     Card _ (archived {:name "metric test metric 2" :type :metric})
-                     Segment _ (archived {:name "segment test segment 2"})]
+                     Card        _ (archived {:name "card test card 2"})
+                     Card        _ (archived {:name "dataset test dataset" :type :model})
+                     Dashboard   _ (archived {:name "dashboard test dashboard 2"})
+                     Collection  _ (archived-collection {:name "collection test collection 2"})
+                     Card        _ (archived {:name "metric test metric 2" :type :metric})
+                     Segment     _ (archived {:name "segment test segment 2"})]
         (is (= (default-search-results)
                (search-request-data :crowberto :q "test")))))))
 
 (deftest archived-results-test-2
   (testing "Should return archived results when specified"
     (with-search-items-in-root-collection "test2"
-      (mt/with-temp [Card action-model action-model-params
-                     Action {action-id :id} (archived {:name     "action test action"
-                                                       :type     :query
-                                                       :model_id (u/the-id action-model)})
+      (mt/with-temp [Card        action-model action-model-params
+                     Action      {action-id :id} (archived {:name     "action test action"
+                                                            :type     :query
+                                                            :model_id (u/the-id action-model)})
                      QueryAction _ (query-action action-id)
-                     Action _ (archived {:name     "action that will not appear in results"
-                                         :type     :query
-                                         :model_id (u/the-id action-model)})
-                     Card _ (archived {:name "card test card"})
-                     Card _ (archived {:name "card that will not appear in results"})
-                     Card _ (archived {:name "dataset test dataset" :type :model})
-                     Dashboard _ (archived {:name "dashboard test dashboard"})
-                     Collection _ (archived-collection {:name "collection test collection"})
-                     Card _ (archived {:name "metric test metric" :type :metric})
-                     Segment _ (archived {:name "segment test segment"})]
+                     Action      _ (archived {:name     "action that will not appear in results"
+                                              :type     :query
+                                              :model_id (u/the-id action-model)})
+                     Card        _ (archived {:name "card test card"})
+                     Card        _ (archived {:name "card that will not appear in results"})
+                     Card        _ (archived {:name "dataset test dataset" :type :model})
+                     Dashboard   _ (archived {:name "dashboard test dashboard"})
+                     Collection  _ (archived-collection {:name "collection test collection"})
+                     Card        _ (archived {:name "metric test metric" :type :metric})
+                     Segment     _ (archived {:name "segment test segment"})]
         (is (= (default-archived-results)
                (search-request-data :crowberto :q "test", :archived "true")))))))
 
 (deftest archived-results-test-3
   (testing "Should return archived results when specified without a search query"
     (with-search-items-in-root-collection "test2"
-      (mt/with-temp [Card action-model action-model-params
-                     Action {action-id :id} (archived {:name     "action test action"
-                                                       :type     :query
-                                                       :model_id (u/the-id action-model)})
+      (mt/with-temp [Card        action-model action-model-params
+                     Action      {action-id :id} (archived {:name     "action test action"
+                                                            :type     :query
+                                                            :model_id (u/the-id action-model)})
                      QueryAction _ (query-action action-id)
-                     Card _ (archived {:name "card test card"})
-                     Card _ (archived {:name "dataset test dataset" :type :model})
-                     Dashboard _ (archived {:name "dashboard test dashboard"})
-                     Collection _ (archived-collection {:name "collection test collection"})
-                     Card _ (archived {:name "metric test metric" :type :metric})
-                     Segment _ (archived {:name "segment test segment"})]
+                     Card        _ (archived {:name "card test card"})
+                     Card        _ (archived {:name "dataset test dataset" :type :model})
+                     Dashboard   _ (archived {:name "dashboard test dashboard"})
+                     Collection  _ (archived-collection {:name "collection test collection"})
+                     Card        _ (archived {:name "metric test metric" :type :metric})
+                     Segment     _ (archived {:name "segment test segment"})]
         (is (mt/ordered-subset? (default-archived-results)
                                 (search-request-data :crowberto :archived "true")))))))
 
@@ -878,7 +878,7 @@
 (deftest table-test-7
   (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
     (mt/with-temp [Database {db-id :id} {}
-                   Table table {:db_id db-id}]
+                   Table    table {:db_id db-id}]
       (mt/with-no-data-perms-for-all-users!
         (is (= []
                (binding [*search-request-results-database-id* db-id]
@@ -887,9 +887,9 @@
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
                 "does have perms, they should still be able to see it (#12332)")
-    (mt/with-temp [Database {db-id :id} {:name "test-data (h2)"}
-                   Table table {:name "RoundTable" :db_id db-id}
-                   PermissionsGroup {group-id :id} {}
+    (mt/with-temp [Database                   {db-id :id} {:name "test-data (h2)"}
+                   Table                      table {:name "RoundTable" :db_id db-id}
+                   PermissionsGroup           {group-id :id} {}
                    PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
       (mt/with-no-data-perms-for-all-users!
         (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
@@ -901,8 +901,8 @@
 
 (deftest all-users-no-data-perms-table-test
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
-    (mt/with-temp [Database {db-id :id} {}
-                   Table table {:name "RoundTable", :db_id db-id}]
+    (mt/with-temp [Database                   {db-id :id} {}
+                   Table                      table {:name "RoundTable", :db_id db-id}]
       (mt/with-restored-data-perms-for-group! (:id (perms-group/all-users))
         (data-perms/set-table-permission! (perms-group/all-users) table :perms/create-queries :no)
         (is (= []
@@ -930,9 +930,9 @@
       (t2.with-temp/with-temp [Pulse pulse {:name "Electro-Magnetic Pulse"}]
         (testing "Pulses are not searchable"
           (is (= nil (search-for-pulses pulse))))
-        (mt/with-temp [Card card-1 {}
+        (mt/with-temp [Card      card-1 {}
                        PulseCard _ {:pulse_id (:id pulse), :card_id (:id card-1)}
-                       Card card-2 {}
+                       Card      card-2 {}
                        PulseCard _ {:pulse_id (:id pulse), :card_id (:id card-2)}]
           (testing "Create some Pulse Cards: we should not find them."
             (is (= nil (search-for-pulses pulse))))
@@ -945,16 +945,16 @@
   (let [search-term "Created by Filter"]
     (with-search-items-in-root-collection search-term
       (mt/with-temp
-        [:model/User {user-id :id} {:first_name "Explorer" :last_name "Curious"}
-         :model/User {user-id-2 :id} {:first_name "Explorer" :last_name "Hubble"}
-         :model/Card {card-id :id} {:name (format "%s Card 1" search-term) :creator_id user-id}
-         :model/Card {card-id-2 :id} {:name          (format "%s Card 2" search-term) :creator_id user-id
-                                      :collection_id (:id (collection/user->personal-collection user-id))}
-         :model/Card {card-id-3 :id} {:name (format "%s Card 3" search-term) :creator_id user-id :archived true}
-         :model/Card {card-id-4 :id} {:name (format "%s Card 4" search-term) :creator_id user-id-2}
-         :model/Card {model-id :id} {:name (format "%s Dataset 1" search-term) :type :model :creator_id user-id}
+        [:model/User      {user-id :id}      {:first_name "Explorer" :last_name "Curious"}
+         :model/User      {user-id-2 :id}    {:first_name "Explorer" :last_name "Hubble"}
+         :model/Card      {card-id :id}      {:name (format "%s Card 1" search-term) :creator_id user-id}
+         :model/Card      {card-id-2 :id}    {:name (format "%s Card 2" search-term) :creator_id user-id
+                                              :collection_id (:id (collection/user->personal-collection user-id))}
+         :model/Card      {card-id-3 :id}    {:name (format "%s Card 3" search-term) :creator_id user-id :archived true}
+         :model/Card      {card-id-4 :id}    {:name (format "%s Card 4" search-term) :creator_id user-id-2}
+         :model/Card      {model-id :id}     {:name (format "%s Dataset 1" search-term) :type :model :creator_id user-id}
          :model/Dashboard {dashboard-id :id} {:name (format "%s Dashboard 1" search-term) :creator_id user-id}
-         :model/Action {action-id :id} {:name (format "%s Action 1" search-term) :model_id model-id :creator_id user-id :type :http}]
+         :model/Action    {action-id :id}    {:name (format "%s Action 1" search-term) :model_id model-id :creator_id user-id :type :http}]
 
         (testing "sanity check that without search by created_by we have more results than if a filter is provided"
           (is (> (:total (mt/user-http-request :crowberto :get 200 "search" :q search-term))
@@ -968,10 +968,10 @@
 
             (testing "results contains only entities with the specified creator"
               (is (= #{[dashboard-id "dashboard" "Created by Filter Dashboard 1"]
-                       [card-id "card" "Created by Filter Card 1"]
-                       [card-id-2 "card" "Created by Filter Card 2"]
-                       [model-id "dataset" "Created by Filter Dataset 1"]
-                       [action-id "action" "Created by Filter Action 1"]}
+                       [card-id      "card"      "Created by Filter Card 1"]
+                       [card-id-2    "card"      "Created by Filter Card 2"]
+                       [model-id     "dataset"   "Created by Filter Dataset 1"]
+                       [action-id    "action"    "Created by Filter Action 1"]}
                      (->> (:data resp)
                           (map (juxt :id :model :name))
                           set))))))
@@ -984,18 +984,18 @@
 
             (testing "results contains only entities with the specified creator"
               (is (= #{[dashboard-id "dashboard" "Created by Filter Dashboard 1"]
-                       [card-id "card" "Created by Filter Card 1"]
-                       [card-id-2 "card" "Created by Filter Card 2"]
-                       [card-id-4 "card" "Created by Filter Card 4"]
-                       [model-id "dataset" "Created by Filter Dataset 1"]
-                       [action-id "action" "Created by Filter Action 1"]}
+                       [card-id      "card"      "Created by Filter Card 1"]
+                       [card-id-2    "card"      "Created by Filter Card 2"]
+                       [card-id-4    "card"      "Created by Filter Card 4"]
+                       [model-id     "dataset"   "Created by Filter Dataset 1"]
+                       [action-id    "action"    "Created by Filter Action 1"]}
                      (->> (:data resp)
                           (map (juxt :id :model :name))
                           set))))))
 
         (testing "Works with archived filter"
-          (is (=? [{:model    "card"
-                    :id       card-id-3
+          (is (=? [{:model "card"
+                    :id     card-id-3
                     :archived true}]
                   (:data (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :archived true)))))
 
@@ -1031,14 +1031,14 @@
 (deftest filter-by-last-edited-by-test
   (let [search-term "last-edited-by"]
     (mt/with-temp
-      [:model/Card {rasta-card-id :id} {:name search-term}
-       :model/Card {lucky-card-id :id} {:name search-term}
-       :model/Card {rasta-model-id :id} {:name search-term :type :model}
-       :model/Card {lucky-model-id :id} {:name search-term :type :model}
-       :model/Dashboard {rasta-dash-id :id} {:name search-term}
-       :model/Dashboard {lucky-dash-id :id} {:name search-term}
-       :model/Card {rasta-metric-id :id} {:name search-term :type :metric}
-       :model/Card {lucky-metric-id :id} {:name search-term :type :metric}]
+      [:model/Card       {rasta-card-id :id}   {:name search-term}
+       :model/Card       {lucky-card-id :id}   {:name search-term}
+       :model/Card       {rasta-model-id :id}  {:name search-term :type :model}
+       :model/Card       {lucky-model-id :id}  {:name search-term :type :model}
+       :model/Dashboard  {rasta-dash-id :id}   {:name search-term}
+       :model/Dashboard  {lucky-dash-id :id}   {:name search-term}
+       :model/Card       {rasta-metric-id :id} {:name search-term :type :metric}
+       :model/Card       {lucky-metric-id :id} {:name search-term :type :metric}]
       (let [rasta-user-id (mt/user->id :rasta)
             lucky-user-id (mt/user->id :lucky)]
         (doseq [[model id user-id] [[:model/Card rasta-card-id rasta-user-id] [:model/Card rasta-model-id rasta-user-id]
@@ -1062,9 +1062,9 @@
 
             (testing "results contains only entities with the specified creator"
               (is (= #{[rasta-metric-id "metric"]
-                       [rasta-card-id "card"]
-                       [rasta-model-id "dataset"]
-                       [rasta-dash-id "dashboard"]}
+                       [rasta-card-id   "card"]
+                       [rasta-model-id  "dataset"]
+                       [rasta-dash-id   "dashboard"]}
                      (->> (:data resp)
                           (map (juxt :id :model))
                           set))))))
@@ -1077,13 +1077,13 @@
 
             (testing "results contains only entities with the specified creator"
               (is (= #{[rasta-metric-id "metric"]
-                       [rasta-card-id "card"]
-                       [rasta-model-id "dataset"]
-                       [rasta-dash-id "dashboard"]
+                       [rasta-card-id   "card"]
+                       [rasta-model-id  "dataset"]
+                       [rasta-dash-id   "dashboard"]
                        [lucky-metric-id "metric"]
-                       [lucky-card-id "card"]
-                       [lucky-model-id "dataset"]
-                       [lucky-dash-id "dashboard"]}
+                       [lucky-card-id   "card"]
+                       [lucky-model-id  "dataset"]
+                       [lucky-dash-id   "dashboard"]}
                      (->> (:data resp)
                           (map (juxt :id :model))
                           set))))))
@@ -1096,9 +1096,9 @@
 (deftest verified-filter-test
   (let [search-term "Verified filter"]
     (t2.with-temp/with-temp
-      [:model/Card {v-card-id :id} {:name (format "%s Verified Card" search-term)}
-       :model/Card {_card-id :id} {:name (format "%s Normal Card" search-term)}
-       :model/Card {_model-id :id} {:name (format "%s Normal Model" search-term) :type :model}
+      [:model/Card {v-card-id :id}  {:name (format "%s Verified Card" search-term)}
+       :model/Card {_card-id :id}   {:name (format "%s Normal Card" search-term)}
+       :model/Card {_model-id :id}  {:name (format "%s Normal Model" search-term) :type :model}
        :model/Card {v-model-id :id} {:name (format "%s Verified Model" search-term) :type :model}]
       (mt/with-verified-cards! [v-card-id v-model-id]
         (mt/with-premium-features #{:content-verification}
@@ -1114,8 +1114,8 @@
                 (is (= #{"card" "dataset"} (set (:available_models resp)))))
 
               (testing "results contains only verified entities"
-                (is (= #{[v-card-id "card" "Verified filter Verified Card"]
-                         [v-model-id "dataset" "Verified filter Verified Model"]}
+                (is (= #{[v-card-id  "card"       "Verified filter Verified Card"]
+                         [v-model-id "dataset"    "Verified filter Verified Model"]}
 
                        (->> (:data resp)
                             (map (juxt :id :model :name))
@@ -1142,7 +1142,7 @@
                 (is (= #{"card" "dataset"} (set (:available_models resp)))))
 
               (testing "results contains only verified entities"
-                (is (= #{[v-card-id "card" "Verified filter Verified Card"]
+                (is (= #{[v-card-id  "card"    "Verified filter Verified Card"]
                          [v-model-id "dataset" "Verified filter Verified Model"]}
                        (->> (:data resp)
                             (map (juxt :id :model :name))
@@ -1174,13 +1174,13 @@
 (deftest filter-by-last-edited-at-test
   (let [search-term "last-edited-at-filtering"]
     (t2.with-temp/with-temp
-      [:model/Card {card-id :id} {:name search-term}
-       :model/Card {model-id :id} {:name search-term :type :model}
-       :model/Dashboard {dash-id :id} {:name search-term}
-       :model/Card {metric-id :id} {:name search-term :type :metric}
-       :model/Action {action-id :id} {:name     search-term
-                                      :model_id model-id
-                                      :type     :http}]
+      [:model/Card       {card-id :id}   {:name search-term}
+       :model/Card       {model-id :id}  {:name search-term :type :model}
+       :model/Dashboard  {dash-id :id}   {:name search-term}
+       :model/Card       {metric-id :id} {:name search-term :type :metric}
+       :model/Action     {action-id :id} {:name       search-term
+                                          :model_id   model-id
+                                          :type       :http}]
       (doseq [[model id] [[:model/Card card-id] [:model/Card model-id]
                           [:model/Dashboard dash-id] [:model/Card metric-id]]]
         (revision/push-revision!
@@ -1194,9 +1194,9 @@
       (testing "returns only applicable models"
         (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today")]
           (is (= #{[action-id "action"]
-                   [card-id "card"]
-                   [dash-id "dashboard"]
-                   [model-id "dataset"]
+                   [card-id   "card"]
+                   [dash-id   "dashboard"]
+                   [model-id  "dataset"]
                    [metric-id "metric"]}
                  (->> (:data resp)
                       (map (juxt :id :model))
@@ -1267,15 +1267,15 @@
 (deftest search-native-query-test
   (let [search-term "search-native-query"]
     (mt/with-temp
-      [:model/Card {mbql-card :id} {:name search-term}
-       :model/Card {native-card-in-name :id} {:name search-term}
-       :model/Card {native-card-in-query :id} {:dataset_query (mt/native-query {:query (format "select %s" search-term)})}
-       :model/Card {mbql-model :id} {:name search-term :type :model}
-       :model/Card {native-model-in-name :id} {:name search-term :type :model}
+      [:model/Card {mbql-card :id}             {:name search-term}
+       :model/Card {native-card-in-name :id}   {:name search-term}
+       :model/Card {native-card-in-query :id}  {:dataset_query (mt/native-query {:query (format "select %s" search-term)})}
+       :model/Card {mbql-model :id}            {:name search-term :type :model}
+       :model/Card {native-model-in-name :id}  {:name search-term :type :model}
        :model/Card {native-model-in-query :id} {:dataset_query (mt/native-query {:query (format "select %s" search-term)}) :type :model}]
       (mt/with-actions
-       [_ {:type :model :dataset_query (mt/mbql-query venues)}
-        {http-action :action-id} {:type :http :name search-term}
+       [_                         {:type :model :dataset_query (mt/mbql-query venues)}
+        {http-action :action-id}  {:type :http :name search-term}
         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
         (testing "by default do not search for native content"
           (is (= #{["card" mbql-card]
@@ -1355,10 +1355,10 @@
 (deftest models-archived-string-test
   (testing "search/models request includes `archived-string` param"
     (with-search-items-in-root-collection "Available models"
-      (mt/with-temp [Card {model-id :id} action-model-params
-                     Action _ (archived {:name     "test action"
-                                         :type     :query
-                                         :model_id model-id})]
+      (mt/with-temp [Card   {model-id :id} action-model-params
+                     Action _              (archived {:name     "test action"
+                                                      :type     :query
+                                                      :model_id model-id})]
         (testing "`archived-string` is 'false'"
           (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
                  (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "false")))))
@@ -1367,25 +1367,25 @@
                  (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "true")))))))))
 
 (deftest filter-items-in-personal-collection-test
-  (let [search-term                "filter-items-in-personal-collection"
+  (let [search-term "filter-items-in-personal-collection"
         rasta-personal-coll-id     (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :rasta))
         crowberto-personal-coll-id (t2/select-one-pk :model/Collection :personal_owner_id (mt/user->id :crowberto))
-        search                     (fn [user filter-type]
-                                     (->> (mt/user-http-request user :get 200 "search" :q search-term
-                                                                :filter_items_in_personal_collection filter-type)
-                                          :data
-                                          (map (juxt :model :id))
-                                          set))]
+        search                      (fn [user filter-type]
+                                      (->> (mt/user-http-request user :get 200 "search" :q search-term
+                                                                 :filter_items_in_personal_collection filter-type)
+                                           :data
+                                           (map (juxt :model :id))
+                                           set))]
     (mt/with-temp
-      [:model/Collection {coll-sub-public :id} {:location "/" :name search-term}
-       :model/Dashboard {dash-public :id} {:collection_id nil :name search-term}
-       :model/Dashboard {dash-sub-public :id} {:collection_id coll-sub-public :name search-term}
-       :model/Collection {coll-sub-rasta :id} {:location (format "/%d/" rasta-personal-coll-id) :name search-term}
-       :model/Card {card-rasta :id} {:collection_id rasta-personal-coll-id :name search-term}
-       :model/Card {card-sub-rasta :id} {:collection_id coll-sub-rasta :name search-term}
-       :model/Collection {coll-sub-crowberto :id} {:location (format "/%d/" crowberto-personal-coll-id) :name search-term}
-       :model/Card {model-crowberto :id} {:collection_id crowberto-personal-coll-id :type :model :name search-term}
-       :model/Card {model-sub-crowberto :id} {:collection_id coll-sub-crowberto :type :model :name search-term}]
+      [:model/Collection {coll-sub-public :id}     {:location "/" :name search-term}
+       :model/Dashboard  {dash-public :id}         {:collection_id nil :name search-term}
+       :model/Dashboard  {dash-sub-public :id}     {:collection_id coll-sub-public :name search-term}
+       :model/Collection {coll-sub-rasta :id}      {:location (format "/%d/" rasta-personal-coll-id) :name search-term}
+       :model/Card       {card-rasta :id}          {:collection_id rasta-personal-coll-id :name search-term}
+       :model/Card       {card-sub-rasta :id}      {:collection_id coll-sub-rasta :name search-term}
+       :model/Collection {coll-sub-crowberto :id}  {:location (format "/%d/" crowberto-personal-coll-id) :name search-term}
+       :model/Card       {model-crowberto :id}     {:collection_id crowberto-personal-coll-id :type :model :name search-term}
+       :model/Card       {model-sub-crowberto :id} {:collection_id coll-sub-crowberto :type :model :name search-term}]
       (testing "admin only"
         (is (= #{["dataset" model-crowberto]
                  ["dataset" model-sub-crowberto]
@@ -1415,8 +1415,8 @@
                                           :filter_items_in_personal_collection "exclude"))))))))
 
 (deftest collection-effective-parent-test
-  (mt/with-temp [:model/Collection coll-1 {:name "Collection 1"}
-                 :model/Collection coll-2 {:name "Collection 2", :location (collection/location-path coll-1)}
+  (mt/with-temp [:model/Collection coll-1  {:name "Collection 1"}
+                 :model/Collection coll-2  {:name "Collection 2", :location (collection/location-path coll-1)}
                  :model/Collection _coll-3 {:name "Collection 3", :location (collection/location-path coll-1 coll-2)}]
     (testing "Collection search results are properly hydrated with their effective parent in the :collection field"
       (let [result (mt/user-http-request :rasta :get 200 "search" :q "Collection 3" :models ["collection"])]
@@ -1445,15 +1445,15 @@
 (deftest archived-search-results-with-no-write-perms-test
   (testing "Results which the searching user has no write permissions for are filtered out. (#24018, #33602)"
     ;; note that the collection does not start out archived, so that we can revoke/grant permissions on it
-    (mt/with-temp [Collection {collection-id :id} {:name "collection test collection"}
-                   Card {card-1-id :id} (archived-with-trashed-from-id {:name "card test card is returned"})
-                   Card {card-2-id :id} (archived-with-trashed-from-id {:name          "card test card"
-                                                                        :collection_id collection-id})
-                   Card {card-3-id :id} (archived-with-trashed-from-id {:name          "dataset test dataset"
-                                                                        :type          :model
-                                                                        :collection_id collection-id})
-                   Dashboard _ (archived-with-trashed-from-id {:name          "dashboard test dashboard"
-                                                               :collection_id collection-id})]
+    (mt/with-temp [Collection  {collection-id :id} {:name "collection test collection"}
+                   Card        {card-1-id :id} (archived-with-trashed-from-id {:name "card test card is returned"})
+                   Card        {card-2-id :id} (archived-with-trashed-from-id {:name "card test card"
+                                                                               :collection_id collection-id})
+                   Card        {card-3-id :id} (archived-with-trashed-from-id {:name "dataset test dataset"
+                                                                               :type :model
+                                                                               :collection_id collection-id})
+                   Dashboard   _ (archived-with-trashed-from-id {:name          "dashboard test dashboard"
+                                                                 :collection_id collection-id})]
       ;; remove read/write access and add back read access to the collection
       (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
@@ -1497,7 +1497,7 @@
 
 (deftest model-ancestors-gets-ancestor-collections-3
   (testing "Non-models don't get collection_ancestors"
-    (mt/with-temp [Card _ {:name          "question"
+    (mt/with-temp [Card _ {:name "question"
                            :collection_id nil}]
       (is (not (contains? (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "question" :models ["dataset" "card"])
                                :data
@@ -1523,8 +1523,8 @@
           named       #(str search-name "-" %)]
       (mt/with-temp [:model/Collection {parent-id :id :as parent} {}
                      :model/Collection _ {:location (collection/children-location parent)
-                                          :name     (named "collection")
-                                          :type     "meow mix"}
+                                          :name (named "collection")
+                                          :type "meow mix"}
                      :model/Dashboard _ {:collection_id parent-id :name (named "dashboard")}
                      :model/Card _ {:collection_id parent-id :name (named "card")}
                      :model/Card _ {:collection_id parent-id :type :model :name (named "model")}]
@@ -1550,11 +1550,11 @@
                                         :data
                                         (filter #(= (:id %) leaf-card-id))
                                         first)]
-            (is (= {:id                  mid-col-id
-                    :name                "middle level col"
-                    :type                "bar"
-                    :authority_level     nil
-                    :effective_ancestors [{:id   top-col-id
+            (is (= {:id mid-col-id
+                    :name "middle level col"
+                    :type "bar"
+                    :authority_level nil
+                    :effective_ancestors [{:id top-col-id
                                            :name "top level col"
                                            :type "foo"}]}
                    (:collection leaf-card-response)))))))))
