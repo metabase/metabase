@@ -222,6 +222,8 @@
                    (mt/db)
                    nil
                    (fn [^java.sql.Connection conn]
+                     ;; Databricks does not support setting auto commit to false. Catching the setAutoCommit
+                     ;; exception results in testing the true value only.
                      (try
                        (.setAutoCommit conn auto-commit)
                        (catch Exception _
