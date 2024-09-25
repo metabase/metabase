@@ -23,8 +23,8 @@ const getUserFromQueryParams = () => {
     params.get(key) || defaultValue;
 
   return {
-    first_name: getParam("first_name"),
-    last_name: getParam("last_name"),
+    first_name: getParam("first_name") || null,
+    last_name: getParam("last_name") || null,
     email: getParam("email"),
     site_name: getParam("site_name"),
     password: "",
