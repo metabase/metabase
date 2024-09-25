@@ -183,14 +183,15 @@
    db-or-id-or-spec
    options
    (fn [^Connection conn]
-     (try
-       (.setReadOnly conn false)
-       (catch Throwable e
-         (log/debug e "Error setting readOnly false on connection")))
-     ;; Method is re-implemented because `legacy_time_parser_policy` has to be set to pass the test suite.
-     ;; https://docs.databricks.com/en/sql/language-manual/parameters/legacy_time_parser_policy.html
-     (with-open [^Statement stmt (.createStatement conn)]
-       (.execute stmt "set legacy_time_parser_policy = legacy"))
+     (let [read-only? (.isReadOnly conn)]
+       (try
+         (.setReadOnly conn false)
+         ;; Method is re-implemented because `legacy_time_parser_policy` has to be set to pass the test suite.
+         ;; https://docs.databricks.com/en/sql/language-manual/parameters/legacy_time_parser_policy.html
+         (with-open [^Statement stmt (.createStatement conn)]
+           (.execute stmt "set legacy_time_parser_policy = legacy"))
+         (finally
+           (.setReadOnly conn read-only?))))
      (sql-jdbc.execute/set-default-connection-options! driver db-or-id-or-spec conn options)
      (f conn))))
 
