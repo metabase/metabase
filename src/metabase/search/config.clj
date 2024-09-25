@@ -129,7 +129,8 @@
    [:table-db-id                         {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
-   [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]])
+   [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:include-dashboard-questions?        {:optional true} :boolean]])
 
 (def all-search-columns
   "All columns that will appear in the search results, and the types of those columns. The generated search query is a

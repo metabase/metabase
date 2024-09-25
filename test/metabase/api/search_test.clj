@@ -1603,18 +1603,23 @@
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
         (testing "The card data includes the `dashboard_id`"
           (is (= dash-id
-                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                       :data
                       (filter #(= card-id (:id %)))
                       first
                       :dashboard_id))))
         (testing "Regular cards don't have it"
           (is (nil?
-               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                     :data
                     (filter #(= reg-card-id (:id %)))
                     first
-                    :dashboard_id)))))))
+                    :dashboard_id))))
+        (testing "Dashboard questions are only returned if you pass `include_dashboard_questions=true`"
+          (is (= []
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "false")
+                      :data
+                      (filter #(= card-id (:id %))))))))))
   (testing "Dashboard questions aren't searchable without a DashboardCard"
     (let [search-name (random-uuid)
           named #(str search-name "-" %)]
@@ -1623,5 +1628,5 @@
         (is (= {:total 0
                 :data []}
                (select-keys
-                (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                 [:total :data])))))))

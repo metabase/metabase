@@ -253,7 +253,8 @@
    [:search-native-query                 {:optional true} [:maybe true?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
-   [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]])
+   [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
+   [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -275,7 +276,8 @@
            table-db-id
            search-native-query
            verified
-           ids]} :- ::search-context.input]
+           ids
+           include-dashboard-questions?]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -301,6 +303,7 @@
                  (some? offset)                              (assoc :offset-int offset)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
+                 (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (seq ids)                                   (assoc :ids ids))]
     (when (and (seq ids)
                (not= (count models) 1))
