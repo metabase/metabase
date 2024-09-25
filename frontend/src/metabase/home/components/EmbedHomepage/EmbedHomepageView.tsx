@@ -15,6 +15,7 @@ import {
 } from "metabase/ui";
 import type { EmbeddingHomepageDismissReason } from "metabase-types/api";
 
+import { Badge } from "./Badge";
 import { InteractiveTabContent } from "./InteractiveTabContent";
 import { StaticTabContent } from "./StaticTabContent";
 import type { EmbeddingHomepageInitialTab } from "./types";
@@ -31,6 +32,7 @@ export type EmbedHomepageViewProps = {
   analyticsDocsUrl: string;
   learnMoreStaticEmbedUrl: string;
   learnMoreInteractiveEmbedUrl: string;
+  sdkUrl: string;
 };
 
 export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
@@ -39,6 +41,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
     initialTab,
     embeddingDocsUrl,
     analyticsDocsUrl,
+    sdkUrl,
     onDismiss,
   } = props;
   return (
@@ -84,6 +87,26 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
             <StaticTabContent {...props} />
           </Tabs.Panel>
         </Tabs>
+      </Card>
+
+      <Card>
+        <Text color="text-medium" fw="bold" size="sm">
+          {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
+          {t`New in Metabase 0.51`}
+        </Text>
+        <Group spacing="sm">
+          <Text color="text-dark" fw="bold">{t`Embedded analytics SDK`}</Text>
+          <Badge color="brand">{t`PRO & ENTERPRISE`}</Badge>
+          <Badge color="gray">{t`Beta`}</Badge>
+        </Group>
+
+        <Text color="text-light" size="sm">
+          {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
+          {t`Interactive embedding with full, granular control. Embed and style individual Metabase components in your app, and tailor the experience to each person. Allows for CSS styling, custom user flows, event subscriptions, and more. Only available with SSO via JWT.`}{" "}
+          <Anchor size="sm" href={sdkUrl}>
+            {t`Read more in the docs.`}
+          </Anchor>
+        </Text>
       </Card>
 
       {embeddingAutoEnabled && (
