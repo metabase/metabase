@@ -14,7 +14,7 @@ on:
     inputs:
       version:
         description: 'Major Metabase version (e.g. 45, 52, 68)'
-        type: number
+        type: number # needs to be a number to pass variables
         required: true
 
 jobs:
@@ -22,7 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || vars.CURRENT_VERSION }}
+      VERSION: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call')
+        && inputs.version || vars.CURRENT_VERSION }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
