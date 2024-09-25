@@ -48,7 +48,9 @@
 (defn- google-auth-enabled? []
   (boolean (setting/get :google-auth-enabled)))
 
-(defn- ldap-enabled? []
+(defn ldap-enabled?
+  "Is LDAP enabled?"
+  []
   (classloader/require 'metabase.api.ldap)
   ((resolve 'metabase.api.ldap/ldap-enabled)))
 
