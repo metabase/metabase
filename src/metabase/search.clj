@@ -1,94 +1,47 @@
 (ns metabase.search
-  "API namespace for the `metabase.search` module.
-
-  TODO: a lot of this stuff wouldn't need to be exposed if we moved more of the search stuff
-  from [[metabase.api.search]] into the `metabase.search` module."
+  "API namespace for the `metabase.search` module"
   (:require
-   [metabase.db]
+   [metabase.db :as mdb]
+   [metabase.search.api :as search.api]
    [metabase.search.config :as search.config]
+   [metabase.search.fulltext :as search.fulltext]
    [metabase.search.impl :as search.impl]
    [metabase.search.postgres.core :as search.postgres]
-   [metabase.search.scoring :as scoring]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
+
+(comment
+  search.api/keep-me
+  search.config/keep-me
+  search.impl/keep-me)
 
 (p/import-vars
  [search.config
   SearchableModel
   all-models]
+ [search.api
+  model-set]
  [search.impl
-  query-model-set
+  search
+  ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
   search-context])
 
-(defn is-postgres?
-  "Check whether we can create this index"
-  []
-  (= :postgres (metabase.db/db-type)))
-
-(def ^:private default-engine :in-place)
-
-(defn- query-fn [search-engine]
-  (or
-   (case search-engine
-     :fulltext (when (is-postgres?) search.postgres/search)
-     :minimal  (when (is-postgres?) search.postgres/search)
-     :in-place search.impl/in-place
-     nil)
-
-   (log/warnf "%s search not supported for your AppDb, using %s" search-engine default-engine)
-   (recur default-engine)))
-
-(defn- model-set-fn [search-engine]
-  (or
-   (case search-engine
-     :fulltext (when (is-postgres?) search.postgres/model-set)
-     :minimal  (when (is-postgres?) search.postgres/model-set)
-     :in-place search.impl/query-model-set
-     nil)
-
-   (log/warnf "%s search not supported for your AppDb, using %s" search-engine default-engine)
-   (recur default-engine)))
-
-(defn- score-fn [search-engine]
-  (or
-   (case search-engine
-     :fulltext (when (is-postgres?) search.postgres/no-scoring)
-     :minimal  (when (is-postgres?) search.postgres/no-scoring)
-     :in-place scoring/score-and-result
-     nil)
-
-   (log/warnf "%s search not supported for your AppDb, using %s" search-engine default-engine)
-   (recur default-engine)))
-
-(defn supports-index?
-  "Does this instance support a search index, e.g. has the right kind of AppDb"
-  []
-  (is-postgres?))
+;; TODO The following need to be cleaned up to use multimethods.
 
 (defn init-index!
   "Ensure there is an index ready to be populated."
   [& {:keys [force-reset?]}]
-  (when (is-postgres?)
+  (when (search.fulltext/supported-db? (mdb/db-type))
     (search.postgres/init! force-reset?)))
+
+(defn supports-index?
+  "Does this instance support a search index?"
+  []
+  (search.fulltext/supported-db? (mdb/db-type)))
 
 (defn reindex!
   "Populate a new index, and make it active. Simultaneously updates the current index."
   []
-  (when (is-postgres?)
+  (when (supports-index?)
     (search.postgres/reindex!)))
-
-(mu/defn search
-  "Builds a search query that includes all the searchable entities and runs it"
-  [search-ctx :- search.config/SearchContext]
-  (let [engine    (:search-engine search-ctx :in-place)
-        query-fn  (query-fn engine)
-        score-fn  (score-fn engine)
-        models-fn (model-set-fn engine)]
-    (search.impl/search
-     query-fn
-     models-fn
-     score-fn
-     search-ctx)))

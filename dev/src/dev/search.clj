@@ -35,13 +35,13 @@
 
   (defn- mini-bench [n engine search-term & args]
     #_{:clj-kondo/ignore [:discouraged-var]}
-    (let [f (case engine
-              :index-only             search.index/search
-              :legacy                 legacy-results
-              :hybrid                 @#'search.postgres/hybrid
-              :hybrid-multi           @#'search.postgres/hybrid-multi
-              :minimal                @#'search.postgres/minimal
-              :minimal-wth-perms      @#'search.postgres/minimal-with-perms)]
+    (let [f (case (keyword "search.engine" (name engine))
+              :search.engine/index-only        search.index/search
+              :search.engine/legacy            legacy-results
+              :search.engine/hybrid            @#'search.postgres/hybrid
+              :search.engine/hybrid-multi      @#'search.postgres/hybrid-multi
+              :search.engine/minimal           @#'search.postgres/minimal
+              :search.engine/minimal-wth-perms @#'search.postgres/minimal-with-perms)]
       (time
        (dotimes [_ n]
          (doall (apply f search-term args))))))

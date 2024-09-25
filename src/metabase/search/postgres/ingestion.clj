@@ -6,7 +6,7 @@
   (:require
    [clojure.string :as str]
    [metabase.search.config :as search.config]
-   [metabase.search.impl :as search.impl]
+   [metabase.search.legacy :as search.legacy]
    [metabase.search.postgres.index :as search.index]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -57,7 +57,7 @@
        :archived?          nil
        ;; only need this for display data
        :model-ancestors?   false}
-      search.impl/full-search-query
+      search.legacy/full-search-query
       (dissoc :limit)
       t2/reducible-query))
 
