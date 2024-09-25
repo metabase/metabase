@@ -1,6 +1,8 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { DATA_PERMISSION_OPTIONS } from "metabase/admin/permissions/constants/data-permissions";
+import { getWillRevokeNativeAccessWarningModal } from "metabase/admin/permissions/selectors/confirmations";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import {
   getDatabaseFocusPermissionsUrl,
@@ -12,8 +14,12 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES,
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_CONFIRMATIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_CREATE_QUERIES_OPTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CREATE_QUERIES_OPTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_VIEW_DATA_OPTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_VIEW_DATA_OPTIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,
   PLUGIN_REDUCERS,
@@ -22,6 +28,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ImpersonationModal } from "./components/ImpersonationModal";
 import {
+  restrictNativePermissions,
   shouldRestrictNativeQueryPermissions,
   upgradeViewPermissionsIfNeeded,
 } from "./graph";
@@ -42,6 +49,18 @@ const BLOCK_PERMISSION_OPTION = {
   iconColor: "danger",
 };
 
+function removeGetWillRevokeNativeAccessWarningModalConfirmation(
+  confirmations,
+) {
+  const index = confirmations.findIndex(
+    confirmation => confirmation === getWillRevokeNativeAccessWarningModal,
+  );
+
+  if (index !== -1) {
+    confirmations.splice(index, 1);
+  }
+}
+
 if (hasPremiumFeature("advanced_permissions")) {
   const addSelectedAdvancedPermission = (options, value) => {
     if (value === IMPERSONATED_PERMISSION_OPTION.value) {
@@ -51,8 +70,28 @@ if (hasPremiumFeature("advanced_permissions")) {
     return options;
   };
 
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS.push(BLOCK_PERMISSION_OPTION);
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(BLOCK_PERMISSION_OPTION);
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_VIEW_DATA_OPTIONS.push(
+    BLOCK_PERMISSION_OPTION,
+  );
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_CREATE_QUERIES_OPTIONS.push(
+    DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
+  );
+
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_VIEW_DATA_OPTIONS.push(
+    BLOCK_PERMISSION_OPTION,
+  );
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CREATE_QUERIES_OPTIONS.push(
+    DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
+  );
+
+  // remove warning about blanket removal of native query permissions as we don't have to do this
+  // in EE as we can do table level blocking
+  removeGetWillRevokeNativeAccessWarningModalConfirmation(
+    PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,
+  );
+  removeGetWillRevokeNativeAccessWarningModalConfirmation(
+    PLUGIN_ADMIN_PERMISSIONS_TABLE_CONFIRMATIONS,
+  );
 
   PLUGIN_ADVANCED_PERMISSIONS.addTablePermissionOptions =
     addSelectedAdvancedPermission;
@@ -145,6 +184,8 @@ if (hasPremiumFeature("advanced_permissions")) {
 
   PLUGIN_DATA_PERMISSIONS.shouldRestrictNativeQueryPermissions =
     shouldRestrictNativeQueryPermissions;
+
+  PLUGIN_DATA_PERMISSIONS.restrictNativePermissions = restrictNativePermissions;
 }
 
 const getDatabaseViewImpersonationModalUrl = (entityId, groupId) => {
