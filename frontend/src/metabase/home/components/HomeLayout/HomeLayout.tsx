@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LayoutRoot, ContentContainer, ChatSection } from "./HomeLayout.styled";
 import { ChatGreeting } from "metabase/browse/components/ChatItems/Welcome";
 import { HomeInitialOptions } from "metabase/browse/components/ChatItems/InitialOptions";
@@ -22,9 +22,12 @@ import { useListDatabasesQuery, useGetDatabaseMetadataWithoutParamsQuery, skipTo
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { generateRandomId } from "metabase/lib/utils";
 import useWebSocket from "metabase/hooks/useWebSocket";
+import { t } from "ttag";
+import { getSuggestions, setSuggestions } from "metabase/redux/suggestionsSlice";
 
 export const HomeLayout = () => {
   const initialMessage = useSelector(getInitialMessage);
+  const suggestions = useSelector(getSuggestions);
   const [inputValue, setInputValue] = useState("");
   const [showChatAssistant, setShowChatAssistant] = useState(false);
   const [selectedChatHistory, setSelectedChatHistory] = useState([]);
@@ -42,6 +45,7 @@ export const HomeLayout = () => {
   const [isChatHistoryOpen, setIsChatHistoryOpen] = useState(false);
   const [showButton, setShowButton] = useState(false);
   const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
+
   const dispatch = useDispatch();
   const {
     data,
@@ -49,7 +53,7 @@ export const HomeLayout = () => {
     error: dbError,
   } = useListDatabasesQuery();
   const databases = data?.data;
-  useEffect(() => {
+  useMemo(() => {
     if (databases) {
       const cubeDatabase = databases.find(
         database => database.is_cube === true,
@@ -65,29 +69,30 @@ export const HomeLayout = () => {
     }
   }, [databases]);
 
-  const { 
-    data: databaseMetadata, 
-    isLoading: databaseMetadataIsLoading, 
-    error: databaseMetadataIsError 
+  const {
+    data: databaseMetadata,
+    isLoading: databaseMetadataIsLoading,
+    error: databaseMetadataIsError
   } = useGetDatabaseMetadataWithoutParamsQuery(
-      dbId !== null
+    dbId !== null
       ? { id: dbId }
-      : skipToken 
+      : skipToken
   );
   const databaseMetadataData = databaseMetadata;
   useEffect(() => {
     if (databaseMetadataData && Array.isArray(databaseMetadataData.tables)) {
-      const schema = databaseMetadata.tables?.map((table:any) => ({
+      const schema = databaseMetadata.tables?.map((table: any) => ({
         display_name: table.display_name,
         id: table.id,
-        fields: table.fields.map((field:any) => ({
+        fields: table.fields.map((field: any) => ({
           id: field.id,
           name: field.name,
           fieldName: field.display_name,
           description: field.description,
           details: field.fingerprint ? JSON.stringify(field.fingerprint) : null
-        })) 
+        }))
       }));
+      console.log("schema: ",schema);
       dispatch(setInitialSchema(schema as any))
       setSchema(schema as any)
     }
@@ -116,29 +121,50 @@ export const HomeLayout = () => {
 
   const { ws, isConnected } = useWebSocket(
     assistant_url,
-    async (e:any) => {
-        if (e.data) {
-            const data = JSON.parse(e.data);
-            console.log(data);
+    async (e: any) => {
+      if (e.data) {
+        const data = JSON.parse(e.data);
+        switch (data.type) {
+          case "tool":
+            await handleFunctionalityMessages(data.functions);
+            break;
+          default:
+            break;
         }
+      }
     },
     () => console.error("WebSocket error"),
     () => console.log("WebSocket closed"),
     () => console.log("WebSocket opened"),
-);
+  );
+
+
+  const handleFunctionalityMessages = async (functions: any[]) => {
+    functions.forEach(async func => {
+        switch (func.function_name) {
+            case "getSuggestions":
+                console.log(func.arguments.suggestions);
+                dispatch(setSuggestions(func.arguments.suggestions));
+                break;
+            default:
+                console.log(func);
+                break;
+        }
+    });
+};
 
   useEffect(() => {
-    if (isConnected) {
+    //TODO: No se hace el envio si no tiene suggestion ni schemas
+    if (isConnected && !suggestions.suggestions && schema.length > 0) {
       ws.send(
-          JSON.stringify({
-              type: "getSuggestions",
-              configData: [dbId, company],
-              appType: selectedChatType,
-              schema: schema
-          }),
-      );
-  }
-  }, [isConnected]);
+        JSON.stringify({
+            type: "getSuggestions",
+            appType: selectedChatType, //No hará falta porque cargaremos las dos de golpe
+            schema: schema,
+        }),
+    );
+    }
+  }, [isConnected, suggestions, schema, selectedChatType]);
 
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
@@ -154,13 +180,24 @@ export const HomeLayout = () => {
     setInputValue(""); // Clear the input value
   };
 
+  const handleSuggestionClick = (message: string) => {
+    dispatch(setInitialMessage(message)); // Set the initial message from the card in Redux
+
+    if (window.location.pathname === "/") {
+      dispatch(push("/browse/chat")); // Navigate to /browse/chat
+    } else if (window.location.pathname === "/browse/insights") {
+      setShowChatAssistant(true); // Show the ChatAssistant component
+    }
+    setInputValue(""); // Clear the input value if needed (or skip this line)
+  };
+
   const handleStartNewChat = () => {
     setSelectedThreadId(null)
     setMessages([])
     setInputValue("")
     let thread_Id = generateRandomId();
     setThreadId(thread_Id)
-};
+  };
 
   const toggleChatHistory = () => {
     setIsChatHistoryOpen(!isChatHistoryOpen);
@@ -171,8 +208,20 @@ export const HomeLayout = () => {
       {!showChatAssistant ? (
         <LayoutRoot data-testid="home-page">
           <ContentContainer>
-            <ChatGreeting chatType={selectedChatType} />
-            {/* <HomeInitialOptions /> REMOVED UNTIL FUNCTIONALITY IS COMPLETED*/}
+            <ChatGreeting chatType={selectedChatType}  />
+            {suggestions.suggestions ? (
+              <HomeInitialOptions suggestions={suggestions.suggestions} chatType={selectedChatType} onClick={handleSuggestionClick}/>
+            ) : (
+              // Mientras no haya sugerencias, mostramos un mensaje de carga
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+                  <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
+                    {t`Loading suggestions...`}
+                  </p>
+                  <LoadingSpinner />
+                </div>
+              </div>
+            )}
           </ContentContainer>
           {schema.length > 0 ? (
             <ChatSection>
@@ -183,51 +232,51 @@ export const HomeLayout = () => {
                 onSendMessage={handleSendMessage}
               />
             </ChatSection>
-            ): (
-              <ChatSection>
-                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
-                    <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
+          ) : (
+            <ChatSection>
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+                  <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
                     Please Wait while we initialize the chat
-                      </p>
-                    <LoadingSpinner />
-                  </div>
+                  </p>
+                  <LoadingSpinner />
                 </div>
-              </ChatSection>
-            )}
+              </div>
+            </ChatSection>
+          )}
         </LayoutRoot>
       ) : (
         <BrowseContainer>
-        {showButton && (
-          <Flex
-        style={{
-          justifyContent: "flex-end",
-          alignItems: "center",
-          marginRight: "3rem",
-          gap: "1rem", 
-        }}
-      >
-        <button
-          style={{ color: isChatHistoryOpen ? "#8A64DF" : "#76797D", cursor: "pointer", marginTop: ".2rem" }}
-          onClick={toggleChatHistory}
-        >
-          <Icon
-            name="chatHistory"
-            size={18}
-            style={{ fill: isChatHistoryOpen ? "#8A64DF" : "#76797D", paddingTop: "2px", paddingLeft: "2px" }}
-          />
-        </button>
+          {showButton && (
+            <Flex
+              style={{
+                justifyContent: "flex-end",
+                alignItems: "center",
+                marginRight: "3rem",
+                gap: "1rem",
+              }}
+            >
+              <button
+                style={{ color: isChatHistoryOpen ? "#8A64DF" : "#76797D", cursor: "pointer", marginTop: ".2rem" }}
+                onClick={toggleChatHistory}
+              >
+                <Icon
+                  name="chatHistory"
+                  size={18}
+                  style={{ fill: isChatHistoryOpen ? "#8A64DF" : "#76797D", paddingTop: "2px", paddingLeft: "2px" }}
+                />
+              </button>
 
-        <button
-          style={{ color: "#8A64DF", cursor: "pointer" }}
-          onClick={handleStartNewChat}
-        >
-          <p style={{ fontSize: "14px", color: "#8A64DF", fontWeight: "500" }}>
-            New Thread
-          </p>
-        </button>
-      </Flex>
-        )}
+              <button
+                style={{ color: "#8A64DF", cursor: "pointer" }}
+                onClick={handleStartNewChat}
+              >
+                <p style={{ fontSize: "14px", color: "#8A64DF", fontWeight: "500" }}>
+                  New Thread
+                </p>
+              </button>
+            </Flex>
+          )}
           <BrowseMain>
             <Flex style={{ height: "85vh", width: "100%" }}>
               <Stack

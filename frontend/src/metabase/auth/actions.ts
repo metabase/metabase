@@ -22,6 +22,7 @@ import {
   trackPasswordReset,
 } from "./analytics";
 import type { LoginData } from "./types";
+import { clearSuggestions } from "metabase/redux/suggestionsSlice";
 
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
 export const refreshLocale = createAsyncThunk(
@@ -112,6 +113,7 @@ export const logout = createAsyncThunk(
       if (user?.sso_source === "saml") {
         const { "saml-logout-url": samlLogoutUrl } = await initiateSLO();
 
+        dispatch(clearSuggestions())
         dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
         trackLogout();

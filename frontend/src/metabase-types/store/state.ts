@@ -20,6 +20,7 @@ import type { FileUploadState } from "./upload";
 import type { InitialMessageState } from "./initialMessage";
 import type { DatabaseState } from "./database";
 import type { InitialSchemaState } from "./InitialSchema";
+import type { SuggestionsState } from "./Suggestions";
 
 type ModalName = null | "collection" | "dashboard" | "action";
 
@@ -45,6 +46,7 @@ export interface State {
   initialMessage: InitialMessageState;
   database: DatabaseState;
   initialSchema: InitialSchemaState;
+  suggestions: SuggestionsState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;

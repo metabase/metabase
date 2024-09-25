@@ -35243,3 +35243,6 @@ msgstr "Realiza una pregunta para empezar"
 
 msgid "Ask a question or make a request to get started"
 msgstr "Realiza una pregunta o haz una petición para empezar"
+
+msgid "Loading suggestions"
+msgstr "Cargando sugerencias"

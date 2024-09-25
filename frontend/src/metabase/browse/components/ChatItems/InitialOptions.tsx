@@ -9,7 +9,13 @@ import type { DatabaseXray } from "metabase-types/api";
 import _ from "underscore";
 import { HomeXrayCard } from "metabase/home/components/HomeXrayCard";
 
-export const HomeInitialOptions = () => {
+interface HomeInitialOptionsProps {
+  suggestions: any;
+  chatType: string;
+  onClick?: (message: string) => void;
+}
+
+export const HomeInitialOptions = ({ suggestions, chatType, onClick }: HomeInitialOptionsProps) => {
   const databaseListState = useDatabaseListQuery();
   const database = getXrayDatabase(databaseListState.data);
   const candidateListState = useListDatabaseXraysQuery(
@@ -25,11 +31,12 @@ export const HomeInitialOptions = () => {
   if (!database) {
     return null;
   }
-
   return (
     <HomeInitialOptionsView
       database={database}
       candidates={candidateListState.data}
+      suggestions={chatType === 'insights' ? suggestions.insightsSuggestions.slice(0, 2) : suggestions.getDataSuggestions.slice(0, 2)}
+      onClick={onClick}
     />
   );
 };
@@ -37,28 +44,26 @@ export const HomeInitialOptions = () => {
 interface HomeInitialOptionsViewProps {
   database: Database;
   candidates?: DatabaseXray[];
+  suggestions: string[],
+  onClick?: (message: string) => void;
 }
 
 const HomeInitialOptionsView = ({
-  database,
-  candidates = [],
+  suggestions,
+  onClick
 }: HomeInitialOptionsViewProps) => {
-  const schemas = candidates.map(d => d.schema);
-  const [schema, setSchema] = useState(schemas[0]);
-  const candidate = candidates.find(d => d.schema === schema);
-  const tableCount = candidate ? candidate.tables.length : 0;
-  const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
 
   return (
     <div
       style={{ display: "flex", gap: "16px", width: "100%", marginTop: "3rem" }}
     >
-      {candidate?.tables.slice(0, 4).map((table, index) => (
+      {suggestions.map((msg: string) => (
         <HomeXrayCard
-          key={table.url}
-          title={table.title}
-          url={table.url}
-          message={tableMessages[index]}
+          key={""}
+          title={""}
+          url={""}
+          message={msg}
+          onClick={() => onClick?.(msg)} // Pass the specific message when clicked
         />
       ))}
     </div>
@@ -71,17 +76,3 @@ const getXrayDatabase = (databases: Database[] = []) => {
   return userDatabase ?? sampleDatabase;
 };
 
-const getMessages = (count: number) => {
-  const options = [
-    t`A look at`,
-    t`A summary of`,
-    t`A glance at`,
-    t`Some insights about`,
-  ];
-
-  return _.chain(count)
-    .range()
-    .map(index => options[index % options.length])
-    .sample(count)
-    .value();
-};

@@ -12,19 +12,22 @@ interface HomeXrayCardProps {
   title: string;
   url: string;
   message: string;
+  onClick?: () => void;
 }
 
 export const HomeXrayCard = ({
   title,
   url,
   message,
+  onClick
 }: HomeXrayCardProps): JSX.Element => {
+
   return (
-    <CardContainer as={HomeCard}>
+    <CardContainer as={HomeCard} onClick={onClick}>
       <CardIcon name="bolt_filled" size={24} />
       <CardTitle>
-        <CardTitlePrimary>{title}</CardTitlePrimary>
-        <CardTitleSecondary>{message}</CardTitleSecondary>
+        <CardTitlePrimary>{message}</CardTitlePrimary>
+        {/*<CardTitleSecondary>{message}</CardTitleSecondary>*/}
       </CardTitle>
     </CardContainer>
   );
