@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
+import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
-import { Badge, Flex, Switch } from "metabase/ui";
+import { Flex, Switch } from "metabase/ui";
 
 import { EmbeddingOption } from "../EmbeddingOption";
 import { LinkButton } from "../LinkButton";
@@ -21,22 +22,18 @@ export function EmbeddingSdkOptionCard({ onToggle }: EmbeddingOptionCardProps) {
       label={
         <Flex gap="sm">
           <Badge
-            h="100%"
+            color="brand"
             fz="sm"
             px="sm"
-            radius="xs"
-            tt="uppercase"
-            c="white"
+            py="xs"
+            uppercase
           >{t`Pro and Enterprise`}</Badge>
           <Badge
-            h="100%"
+            color="gray"
             fz="sm"
             px="sm"
-            radius="xs"
-            tt="uppercase"
-            c="text-dark"
-            bg="bg-medium"
-            variant="filled"
+            py="xs"
+            uppercase
           >{t`Beta`}</Badge>
         </Flex>
       }

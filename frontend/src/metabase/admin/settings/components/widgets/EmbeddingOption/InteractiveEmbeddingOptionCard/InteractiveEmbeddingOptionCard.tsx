@@ -3,10 +3,11 @@ import { jt, t } from "ttag";
 import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
-import { Badge, Box, Button, Flex, Icon, Switch, Text } from "metabase/ui";
+import { Box, Button, Flex, Icon, Switch, Text } from "metabase/ui";
 
 import { EmbeddingOption } from "../EmbeddingOption";
 import { LinkButton } from "../LinkButton";
@@ -42,12 +43,11 @@ export const InteractiveEmbeddingOptionCard = ({
       title={t`Interactive embedding`}
       label={
         <Badge
-          h="100%"
           fz="sm"
           px="sm"
-          radius="xs"
-          tt="uppercase"
-          c="white"
+          py="xs"
+          color="brand"
+          uppercase
         >{t`Pro and Enterprise`}</Badge>
       }
       description={jt`Use interactive embedding when you want to ${(
