@@ -90,6 +90,24 @@ export function getPermissionWarning(
   return null;
 }
 
+export function getTableBlockWarning(
+  dbValue: DataPermissionValue,
+  schemaValue: DataPermissionValue,
+  tableValue?: DataPermissionValue,
+) {
+  if (dbValue === DataPermissionValue.BLOCKED) {
+    return;
+  }
+
+  if (schemaValue === DataPermissionValue.BLOCKED) {
+    return t`Users in groups with Blocked on a schema can't view native queries on this database.`;
+  }
+
+  if (tableValue === DataPermissionValue.BLOCKED) {
+    return t`Users in groups with Blocked on a table can't view native queries on this database.`;
+  }
+}
+
 function getEntityTypeFromId(entityId: EntityId): [string, string] {
   return isTableEntityId(entityId)
     ? [t`table`, t`tables`]
