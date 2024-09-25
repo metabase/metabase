@@ -19,7 +19,6 @@ import {
   getLinkCardDetails,
   getTextCardDetails,
   modal,
-  multiAutocompleteInput,
   openStaticEmbeddingModal,
   popover,
   queryBuilderHeader,
@@ -684,7 +683,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       filterWidget().contains("Hello").click();
       popover().within(() => {
-        multiAutocompleteInput().type("{backspace}World{enter}");
+        cy.findByPlaceholderText(/^Search by /).type("{backspace}World{enter}");
         cy.button("Update filter").click();
       });
 
@@ -766,7 +765,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .parent()
         .click();
       popover().within(() => {
-        multiAutocompleteInput().type("John Doe{enter}");
+        cy.findByPlaceholderText(/^Search by /).type("John Doe{enter}");
         cy.button("Add filter").click();
       });
 
@@ -775,7 +774,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .parent()
         .click();
       popover().within(() => {
-        multiAutocompleteInput().type("{backspace}World{enter}");
+        cy.findByPlaceholderText(/^Search by /).type("{backspace}World{enter}");
         cy.button("Update filter").click();
       });
 
