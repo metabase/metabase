@@ -249,6 +249,68 @@ describe("scenarios > organization > entity picker", () => {
         startNewQuestion();
 
         tabs.forEach(tab => {
+          cy.log("inaccessible root collection - automatically selected");
+          entityPickerModal().within(() => {
+            entityPickerModalTab(tab).click();
+          });
+          testLocalSearch({
+            searchPlaceholder: "Search this collection or everywhere…",
+            searchText: "1",
+            selectedItem: "Collections",
+            notFoundItems: [
+              "Root metric 1",
+              "Regular metric 1",
+              "Admin personal metric 1",
+              "Normal personal metric 2",
+            ],
+          });
+          entityPickerModal().within(() => {
+            cy.findByText("Didn't find anything").should("be.visible");
+          });
+
+          cy.log("regular collection");
+          entityPickerModal().within(() => {
+            entityPickerModalTab(tab).click();
+            cy.findByText("First collection").click();
+          });
+          testLocalSearch({
+            searchPlaceholder: "Search this collection or everywhere…",
+            searchText: "1",
+            selectedItem: "First collection",
+            foundItems: [
+              "Regular question 1",
+              "Regular model 1",
+              "Regular metric 1",
+            ],
+            notFoundItems: [
+              "Root question 1",
+              "Regular question 2",
+              "Admin personal question 1",
+              "Normal personal question 1",
+              "No collection personal question 1",
+            ],
+          });
+
+          cy.log("inaccessible root collection - manually selected");
+          entityPickerModal().within(() => {
+            entityPickerModalTab(tab).click();
+            cy.findByText("Collections").click();
+          });
+          testLocalSearch({
+            searchPlaceholder: "Search this collection or everywhere…",
+            searchText: "1",
+            selectedItem: "Collections",
+            notFoundItems: [
+              "Root metric 1",
+              "Regular metric 1",
+              "Admin personal metric 1",
+              "Normal personal metric 2",
+            ],
+          });
+          entityPickerModal().within(() => {
+            cy.findByText("Didn't find anything").should("be.visible");
+          });
+
           cy.log("personal collection");
           entityPickerModal().within(() => {
             entityPickerModalTab(tab).click();
