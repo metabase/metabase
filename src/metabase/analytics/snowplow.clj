@@ -62,7 +62,7 @@
   (deferred-tru
    (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
         "This is a public setting since some analytics events are sent prior to initial setup."))
-  :encryption :never
+  :encryption :no
   :visibility :public
   :base       setting/uuid-nonce-base
   :doc        false)
@@ -90,6 +90,7 @@
 
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to.")
+  :encryption :no
   :default    (if config/is-prod?
                 "https://sp.metabase.com"
                 ;; See the iglu-schema-registry repo for instructions on how to run Snowplow Micro locally for development
