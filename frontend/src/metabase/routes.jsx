@@ -300,7 +300,7 @@ export const getRoutes = store => {
             <Route path="semantic-layer/:slug" component={BrowseSemanticLayerTable} />
             <Route path="semantic-layer/:slug/cubes/:cubeName" component={BrowseCubes} />
             <Route path="semantic-layer/:slug/data-map" component={CubeFlow} />
-            <Route path="chat" component={BrowseChat} />
+            <Route path="chat" component={HomeLayout} />
             <Route path="insights" component={HomeLayout} />
             <Route path="databases/:slug" component={BrowseSchemas} />
             <Route
