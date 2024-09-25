@@ -137,9 +137,9 @@ jobs:
     env:
       CI: 'true'
       DRIVERS: databricks
-      MB_DATABRICKS_TEST_HOST: ${{ secrets.MB_DATABRICKS_TEST_HOST }}
-      MB_DATABRICKS_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_TEST_HTTP_PATH }}
-      MB_DATABRICKS_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_TEST_TOKEN }}
+      MB_DATABRICKS_TEST_HOST: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HOST }}
+      MB_DATABRICKS_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
+      MB_DATABRICKS_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
       MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
     steps:
     - uses: actions/checkout@v4
