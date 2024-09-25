@@ -89,8 +89,9 @@
 ;;   (mt/dataset <dataset-name>
 ;;     (mt/db)))
 ;;
-;; Dataset can be destroyed normally using `tx/destroy-db` to remove the data from Databricks instance and `t2/delete!`
-;; to remove the reference from application database.
+;; Dataset can be destroyed using `tx/destroy-db` to remove the data from Databricks instance.
+;; [[*allow-database-deletion*]] must be bound to true. Then `t2/delete!` can be used to remove the reference from
+;; application database.
 (def ^:private ^:dynamic *allow-database-creation*
   "Same approach is used in Databricks driver as in Athena. Dataset creation is disabled by default. Datasets are
   preloaded in Databricks instance that tests run against. If you need to create new database on the instance,
@@ -116,9 +117,16 @@
         (log/infof "Creating Databricks database %s" (pr-str schema))
         (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options)))))
 
+(def ^:dynamic *allow-database-deletion*
+  "This is used to control `tx/destroy-db!`. Disabling database deletion is useful in CI. Specifically, if initial sync
+  of some test dataset our test code destroys the database. In Databricks we want to avoid this, because datasets are
+  preloaded and failing sync is likely sync problem. If you need to destroy some dataset bind this to true prior
+  to calling `tx/destroy-db!`."
+  false)
+
 (defmethod tx/destroy-db! :databricks
   [driver dbdef]
-  (if *allow-database-creation*
+  (if *allow-database-deletion*
     ((get-method tx/destroy-db! :sql-jdbc/test-extensions) driver dbdef)
     (log/warn "`*allow-database-creation*` is `false`. Database removal is suppressed.")))
 
