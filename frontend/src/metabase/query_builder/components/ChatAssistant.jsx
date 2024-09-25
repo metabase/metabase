@@ -614,7 +614,11 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     };
 
     const handleResultMessage = data => {
-        if (data.type === "result") {
+        if(data.message.includes("The semantic layer requires an update to proceed with the task.")) {
+            setIsLoading(false);
+            return;
+        }
+        if (data.type === "result" && !data.message.includes("Unable to generate a suitable query after 3 attempts. Here is the feedback message:")) {
             setVisualizationIndex((prevIndex) => {
                 const currentIndex = prevIndex + 1;
                 addServerMessageWithInfo(
