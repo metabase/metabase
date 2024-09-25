@@ -23,6 +23,104 @@
                 {:name "products", :schema "test-data", :description nil}}}
              (driver/describe-database :databricks-jdbc (mt/db)))))))
 
+(deftest ^:parallel describe-fields-test
+  (testing "`describe-fields` returns expected values"
+    (mt/test-driver
+     :databricks-jdbc
+     (is (= #{{:table-schema "test-data"
+               :table-name "orders"
+               :pk? true
+               :name "id"
+               :database-type "int"
+               :database-position 0
+               :base-type :type/Integer
+               :json-unfolding false}
+              {:table-schema "test-data"
+               :table-name "orders"
+               :pk? false
+               :name "user_id"
+               :database-type "int"
+               :database-position 1
+               :base-type :type/Integer
+               :json-unfolding false}
+              {:table-schema "test-data"
+               :table-name "orders"
+               :pk? false
+               :name "product_id"
+               :database-type "int"
+               :database-position 2
+               :base-type :type/Integer
+               :json-unfolding false}
+              {:table-schema "test-data"
+               :table-name "orders"
+               :pk? false
+               :name "subtotal"
+               :database-type "double"
+               :database-position 3
+               :base-type :type/Float
+               :json-unfolding false}
+              {:table-schema "test-data"
+               :table-name "orders"
+               :pk? false
+               :name "tax"
+               :database-type "double"
+               :database-position 4
+               :base-type :type/Float
+               :json-unfolding false}
+              {:table-schema "test-data"
+               :table-name "orders"
+               :pk? false
+               :name "total"
+               :database-type "double"
+               :database-position 5
+               :base-type :type/Float
+               :json-unfolding false}
+              {:table-schema "test-data"
+               :table-name "orders"
+               :pk? false
+               :name "discount"
+               :database-type "double"
+               :database-position 6
+               :base-type :type/Float
+               :json-unfolding false}
+              {:table-schema "test-data"
+               :table-name "orders"
+               :pk? false
+               :name "created_at"
+               :database-type "timestamp"
+               :database-position 7
+               :base-type :type/DateTimeWithLocalTZ
+               :json-unfolding false}
+              {:table-schema "test-data"
+               :table-name "orders"
+               :pk? false
+               :name "quantity"
+               :database-type "int"
+               :database-position 8
+               :base-type :type/Integer
+               :json-unfolding false}}
+            (reduce conj #{} (driver/describe-fields :databricks-jdbc (mt/db) {:schema-names ["test-data"]
+                                                                               :table-names ["orders"]})))))))
+
+(deftest ^:parallel describe-fks-test
+  (testing "`describe-fks` returns expected values"
+    (mt/test-driver
+     :databricks-jdbc
+     (is (= #{{:fk-table-schema "test-data"
+               :fk-table-name "orders"
+               :fk-column-name "product_id"
+               :pk-table-schema "test-data"
+               :pk-table-name "products"
+               :pk-column-name "id"}
+              {:fk-table-schema "test-data"
+               :fk-table-name "orders"
+               :fk-column-name "user_id"
+               :pk-table-schema "test-data"
+               :pk-table-name "people"
+               :pk-column-name "id"}}
+            (reduce conj #{} (driver/describe-fks :databricks-jdbc (mt/db) {:schema-names ["test-data"]
+                                                                            :table-names ["orders"]})))))))
+
 (mt/defdataset dataset-with-ntz
   [["table_with_ntz" [{:field-name "timestamp"
                        :base-type {:native "timestamp_ntz"}}]
