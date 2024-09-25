@@ -1,5 +1,4 @@
-// isReactVersion.test.js
-import { isReactVersionLessThanOrEqualTo17 } from "./check-version"; // Adjust the path as necessary
+import { isReactVersionLessThanOrEqualTo17 } from "./check-version";
 
 describe("isReactVersionLessThanOrEqualTo17", () => {
   const versions = [
