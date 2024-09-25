@@ -1,9 +1,9 @@
-(ns metabase.driver.databricks-jdbc-test
+(ns metabase.driver.databricks-test
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.driver.databricks-jdbc :as databricks-jdbc]
+   [metabase.driver.databricks :as databricks]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -11,7 +11,7 @@
 (deftest ^:parallel sync-test
   (testing "`driver/describe-database` implementation returns expected resutls."
     (mt/test-driver
-      :databricks-jdbc
+      :databricks
       (is (= {:tables
               #{{:name "venues", :schema "test-data", :description nil}
                 {:name "checkins", :schema "test-data", :description nil}
@@ -21,12 +21,12 @@
                 {:name "reviews", :schema "test-data", :description nil}
                 {:name "orders", :schema "test-data", :description nil}
                 {:name "products", :schema "test-data", :description nil}}}
-             (driver/describe-database :databricks-jdbc (mt/db)))))))
+             (driver/describe-database :databricks (mt/db)))))))
 
 (deftest ^:parallel describe-fields-test
   (testing "`describe-fields` returns expected values"
     (mt/test-driver
-     :databricks-jdbc
+     :databricks
      (is (= #{{:table-schema "test-data"
                :table-name "orders"
                :pk? true
@@ -99,13 +99,13 @@
                :database-position 8
                :base-type :type/Integer
                :json-unfolding false}}
-            (reduce conj #{} (driver/describe-fields :databricks-jdbc (mt/db) {:schema-names ["test-data"]
+            (reduce conj #{} (driver/describe-fields :databricks (mt/db) {:schema-names ["test-data"]
                                                                                :table-names ["orders"]})))))))
 
 (deftest ^:parallel describe-fks-test
   (testing "`describe-fks` returns expected values"
     (mt/test-driver
-     :databricks-jdbc
+     :databricks
      (is (= #{{:fk-table-schema "test-data"
                :fk-table-name "orders"
                :fk-column-name "product_id"
@@ -118,7 +118,7 @@
                :pk-table-schema "test-data"
                :pk-table-name "people"
                :pk-column-name "id"}}
-            (reduce conj #{} (driver/describe-fks :databricks-jdbc (mt/db) {:schema-names ["test-data"]
+            (reduce conj #{} (driver/describe-fks :databricks (mt/db) {:schema-names ["test-data"]
                                                                             :table-names ["orders"]})))))))
 
 (mt/defdataset dataset-with-ntz
@@ -128,7 +128,7 @@
 
 (deftest timestamp-ntz-ignored-test
   (mt/test-driver
-   :databricks-jdbc
+   :databricks
    (mt/dataset
     dataset-with-ntz
     (testing "timestamp column was ignored during sync"
@@ -138,29 +138,29 @@
 
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver
-   :databricks-jdbc
+   :databricks
    (testing "`test-data` timezone is `Etc/UTC`"
      (is (= "Etc/UTC" (:timezone (mt/db)))))))
 
 (deftest ^:synchronized date-time->results-local-date-time-test
   (mt/test-driver
-    :databricks-jdbc
+    :databricks
     (mt/with-metadata-provider (mt/id)
       (mt/with-results-timezone-id "America/Los_Angeles"
         (let [expected (t/local-date-time 2024 8 29 10 20 30)]
           (testing "LocalDateTime is not modified"
             (is (= expected
-                   (#'databricks-jdbc/date-time->results-local-date-time (t/local-date-time 2024 8 29 10 20 30)))))
+                   (#'databricks/date-time->results-local-date-time (t/local-date-time 2024 8 29 10 20 30)))))
           (testing "OffsetDateTime is shifted by results timezone"
             (is (= expected
-                   (#'databricks-jdbc/date-time->results-local-date-time (t/offset-date-time 2024 8 29 17 20 30)))))
+                   (#'databricks/date-time->results-local-date-time (t/offset-date-time 2024 8 29 17 20 30)))))
           (testing "ZonedDateTime is shifted by results timezone"
             (is (= expected
-                   (#'databricks-jdbc/date-time->results-local-date-time (t/zoned-date-time 2024 8 29 17 20 30))))))))))
+                   (#'databricks/date-time->results-local-date-time (t/zoned-date-time 2024 8 29 17 20 30))))))))))
 
 (deftest ^:synchronized timezone-in-set-and-read-functions-test
   (mt/test-driver
-   :databricks-jdbc
+   :databricks
    ;;
    ;; `created_at` value that is filtered for is 2017-04-18T16:53:37.046Z. That corresponds to filters used in query
    ;; considering the report timezone.
@@ -214,7 +214,7 @@
 
 (deftest additional-options-test
   (mt/test-driver
-   :databricks-jdbc
+   :databricks
    (testing "Additional options are added to :subname key of generated spec"
      (is (re-find #";IgnoreTransactions=0$"
                   (->> {:http-path "p/a/t/h",
@@ -222,10 +222,10 @@
                         :schema-filters-patterns "xix",
                         :access-token "xixix",
                         :host "localhost",
-                        :engine "databricks-jdbc",
+                        :engine "databricks",
                         :catalog "ccc"
                         :additional-options ";IgnoreTransactions=0"}
-                       (sql-jdbc.conn/connection-details->spec :databricks-jdbc)
+                       (sql-jdbc.conn/connection-details->spec :databricks)
                        :subname))))
    (testing "Leading semicolon is added when missing"
      (is (re-find #";IgnoreTransactions=0;bla=1$"
@@ -234,8 +234,8 @@
                         :schema-filters-patterns "xix",
                         :access-token "xixix",
                         :host "localhost",
-                        :engine "databricks-jdbc",
+                        :engine "databricks",
                         :catalog "ccc"
                         :additional-options "IgnoreTransactions=0;bla=1"}
-                       (sql-jdbc.conn/connection-details->spec :databricks-jdbc)
+                       (sql-jdbc.conn/connection-details->spec :databricks)
                        :subname))))))

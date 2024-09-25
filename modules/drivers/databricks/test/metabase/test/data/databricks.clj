@@ -1,4 +1,4 @@
-(ns metabase.test.data.databricks-jdbc
+(ns metabase.test.data.databricks
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -19,7 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
-(sql-jdbc.tx/add-test-extensions! :databricks-jdbc)
+(sql-jdbc.tx/add-test-extensions! :databricks)
 
 (doseq [[base-type database-type] {:type/BigInteger             "BIGINT"
                                    :type/Boolean                "BOOLEAN"
@@ -41,22 +41,22 @@
                                    :type/Float                  "DOUBLE"
                                    :type/Integer                "INTEGER"
                                    :type/Text                   "STRING"}]
-  (defmethod sql.tx/field-base-type->sql-type [:databricks-jdbc base-type] [_driver _base-type] database-type))
+  (defmethod sql.tx/field-base-type->sql-type [:databricks base-type] [_driver _base-type] database-type))
 
 (doseq [feature [:test/time-type
                  :test/timestamptz-type
                  :test/dynamic-dataset-loading]]
-  (defmethod driver/database-supports? [:databricks-jdbc feature]
+  (defmethod driver/database-supports? [:databricks feature]
     [_driver _feature _database]
     false))
 
-(defmethod tx/dbdef->connection-details :databricks-jdbc
+(defmethod tx/dbdef->connection-details :databricks
   [_driver _connection-type {:keys [database-name] :as _dbdef}]
   (merge
-   {:host      (tx/db-test-env-var-or-throw :databricks-jdbc :host)
-    :token     (tx/db-test-env-var-or-throw :databricks-jdbc :token)
-    :http-path (tx/db-test-env-var-or-throw :databricks-jdbc :http-path)
-    :catalog   (tx/db-test-env-var-or-throw :databricks-jdbc :catalog)}
+   {:host      (tx/db-test-env-var-or-throw :databricks :host)
+    :token     (tx/db-test-env-var-or-throw :databricks :token)
+    :http-path (tx/db-test-env-var-or-throw :databricks :http-path)
+    :catalog   (tx/db-test-env-var-or-throw :databricks :catalog)}
    ;; Databricks' namespace model: catalog, schema, table. With current implementation user can add all schemas
    ;; in catalog on one Metabase database connection. Following expression generates schema filters so only one schema
    ;; is treated as a Metabase database, for compatibility with existing tests.
@@ -68,14 +68,14 @@
   "Set of databases that already exist. Used to avoid creating those"
   []
   (sql-jdbc.execute/do-with-connection-with-options
-   :databricks-jdbc
-   (->> (tx/dbdef->connection-details :databricks-jdbc nil nil)
-        (sql-jdbc.conn/connection-details->spec :databricks-jdbc))
+   :databricks
+   (->> (tx/dbdef->connection-details :databricks nil nil)
+        (sql-jdbc.conn/connection-details->spec :databricks))
    nil
    (fn [^java.sql.Connection conn]
      (into #{} (map :databasename) (jdbc/query {:connection conn} ["SHOW DATABASES;"])))))
 
-(defmethod tx/dataset-already-loaded? :databricks-jdbc
+(defmethod tx/dataset-already-loaded? :databricks
   [_driver dbdef]
   (contains? (existing-databases) (:database-name dbdef)))
 
@@ -85,7 +85,7 @@
 ;; If you need to add new dataset, rebind the `*allow-database-creation*` and use standard functions, eg.:
 ;;
 ;; (mt/test-driver
-;;   :databricks-jdbc
+;;   :databricks
 ;;   (mt/dataset <dataset-name>
 ;;     (mt/db)))
 ;;
@@ -97,7 +97,7 @@
   run your test with this var bound to true."
   false)
 
-(defmethod tx/create-db! :databricks-jdbc
+(defmethod tx/create-db! :databricks
   [driver {:keys [database-name], :as dbdef} & options]
   (let [schema (ddl.i/format-name driver database-name)]
     (cond
@@ -106,7 +106,7 @@
 
       (not *allow-database-creation*)
       (log/fatalf (str "Databricks database creation is disabled: not creating database %s. Tests will likely fail.\n"
-                       "See metabase.test.data.databricks-jdbc/*allow-database-creation* for more info.")
+                       "See metabase.test.data.databricks/*allow-database-creation* for more info.")
                   (pr-str schema))
 
       :else
@@ -119,7 +119,7 @@
 ;;
 ;; Timezone has to be set using `.execute` because `jdbc/execute` seems to expect returned ResultSet. That's not the
 ;; case on Databricks.
-(mu/defmethod load-data/do-insert! :databricks-jdbc
+(mu/defmethod load-data/do-insert! :databricks
   [driver                    :- :keyword
    ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
    table-identifier
@@ -151,24 +151,24 @@
 
 ;; With jdbc driver version 2.6.40 test data load fails due to ~statment using more parameters than driver's able to
 ;; handle. `chunk-size` 25 works with 2.6.40, but dataset loading is really slow.
-(defmethod load-data/chunk-size :databricks-jdbc
+(defmethod load-data/chunk-size :databricks
   [_driver _dbdef _tabledef]
   200)
 
-(defmethod load-data/row-xform :databricks-jdbc
+(defmethod load-data/row-xform :databricks
   [_driver _dbdef tabledef]
   (load-data/maybe-add-ids-xform tabledef))
 
-(defmethod execute/execute-sql! :databricks-jdbc [& args]
+(defmethod execute/execute-sql! :databricks [& args]
   (apply execute/sequentially-execute-sql! args))
 
-(defmethod sql.tx/pk-sql-type :databricks-jdbc [_] "INT")
+(defmethod sql.tx/pk-sql-type :databricks [_] "INT")
 
-(defmethod sql.tx/drop-db-if-exists-sql :databricks-jdbc
+(defmethod sql.tx/drop-db-if-exists-sql :databricks
   [driver {:keys [database-name]}]
   (format "DROP DATABASE IF EXISTS %s CASCADE" (sql.tx/qualify-and-quote driver database-name)))
 
-(defmethod sql.tx/qualified-name-components :databricks-jdbc
+(defmethod sql.tx/qualified-name-components :databricks
   ([_ db-name]                       [db-name])
   ([_ db-name table-name]            [db-name table-name])
   ([_ db-name table-name field-name] [db-name table-name field-name]))

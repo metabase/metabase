@@ -118,7 +118,7 @@
               :redshift
               (assoc details :additional-options "defaultRowFetchSize=1000")
 
-              :databricks-jdbc
+              :databricks
               (assoc details :log-level 0)
 
               (cond-> details

@@ -9,7 +9,7 @@
  :deps
  {metabase/athena             {:local/root "athena"}
   metabase/bigquery-cloud-sdk {:local/root "bigquery-cloud-sdk"}
-  metabase/databricks-jdbc    {:local/root "databricks-jdbc"}
+  metabase/databricks         {:local/root "databricks"}
   metabase/druid              {:local/root "druid"}
   metabase/druid-jdbc         {:local/root "druid-jdbc"}
   metabase/mongo              {:local/root "mongo"}

@@ -1,10 +1,10 @@
 info:
-  name: Databricks JDBC driver
+  name: Databricks driver
   version: 1.0.0
   description: Allows Metabase to connect to Databricks SQL warehouse
 driver:
-  - name: databricks-jdbc
-    display-name: Databricks JDBC
+  - name: databricks
+    display-name: Databricks
     lazy-load: true
     parent: hive-like
     connection-properties:
@@ -30,6 +30,6 @@ init:
   - step: load-namespace
     namespace: metabase.driver.hive-like
   - step: load-namespace
-    namespace: metabase.driver.databricks-jdbc
+    namespace: metabase.driver.databricks
   - step: register-jdbc-driver
     class: com.databricks.client.jdbc.Driver

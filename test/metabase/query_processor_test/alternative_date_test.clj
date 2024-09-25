@@ -240,7 +240,7 @@
       (assoc (mt/mbql-query just-dates {:order-by [[:asc $id]]})
              :middleware {:format-rows? false}))))
 
-(defmethod iso-8601-text-fields-query :databricks-jdbc
+(defmethod iso-8601-text-fields-query :databricks
   [_driver]
   (mt/dataset
     just-dates
@@ -267,7 +267,7 @@
    [2 "bar" #t "2008-10-19T10:23:54Z[UTC]" #t "2008-10-19"]
    [3 "baz" #t "2012-10-19T10:23:54Z[UTC]" #t "2012-10-19"]])
 
-(defmethod iso-8601-text-fields-expected-rows :databricks-jdbc
+(defmethod iso-8601-text-fields-expected-rows :databricks
   [_driver]
   [[1 "foo" (t/offset-date-time #t "2004-10-19T10:23:54Z") #t "2004-10-19"]
    [2 "bar" (t/offset-date-time #t "2008-10-19T10:23:54Z") #t "2008-10-19"]
@@ -335,7 +335,7 @@
     {:filter [:= !day.ts "2008-10-19"]
      :fields [$ts]}))
 
-(defmethod iso-8601-text-fields-should-be-queryable-datetime-test-query :databricks-jdbc
+(defmethod iso-8601-text-fields-should-be-queryable-datetime-test-query :databricks
   [_driver]
   (mt/mbql-query
     times

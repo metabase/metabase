@@ -136,17 +136,17 @@ jobs:
     timeout-minutes: 90
     env:
       CI: 'true'
-      DRIVERS: databricks-jdbc
-      MB_DATABRICKS_JDBC_TEST_HOST: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HOST }}
-      MB_DATABRICKS_JDBC_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
-      MB_DATABRICKS_JDBC_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
-      MB_DATABRICKS_JDBC_TEST_CATALOG: 'metabase_ci'
+      DRIVERS: databricks
+      MB_DATABRICKS_TEST_HOST: ${{ secrets.MB_DATABRICKS_TEST_HOST }}
+      MB_DATABRICKS_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_TEST_HTTP_PATH }}
+      MB_DATABRICKS_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_TEST_TOKEN }}
+      MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
     steps:
     - uses: actions/checkout@v4
-    - name: Test Databricks JDBC driver
+    - name: Test Databricks driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-databricks-jdbc-ee'
+        junit-name: 'be-tests-databricks-ee'
         test-args: ":exclude-tags '[:mb/once]'"
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results

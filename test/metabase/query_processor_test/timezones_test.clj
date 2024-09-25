@@ -226,7 +226,7 @@
   true)
 
 ;; TODO: Remove this when https://github.com/metabase/metabase/issues/47359 is addressed.
-(defmethod driver/database-supports? [:databricks-jdbc :test/date-time-type]
+(defmethod driver/database-supports? [:databricks :test/date-time-type]
   [_driver _feature _database]
   false #_true)
 

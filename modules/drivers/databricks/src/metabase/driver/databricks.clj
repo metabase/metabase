@@ -1,4 +1,4 @@
-(ns metabase.driver.databricks-jdbc
+(ns metabase.driver.databricks
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -21,7 +21,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :databricks-jdbc, :parent :hive-like)
+(driver/register! :databricks, :parent :hive-like)
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
@@ -34,9 +34,9 @@
                               :set-timezone                    true
                               :standard-deviation-aggregations true
                               :test/jvm-timezone-setting       false}]
-  (defmethod driver/database-supports? [:databricks-jdbc feature] [_driver _feature _db] supported?))
+  (defmethod driver/database-supports? [:databricks feature] [_driver _feature _db] supported?))
 
-(defmethod sql-jdbc.sync/database-type->base-type :databricks-jdbc
+(defmethod sql-jdbc.sync/database-type->base-type :databricks
   [driver database-type]
   (condp re-matches (u/lower-case-en (name database-type))
     #"timestamp" :type/DateTimeWithLocalTZ
@@ -44,7 +44,7 @@
     ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
      driver database-type)))
 
-(defmethod sql-jdbc.sync/describe-fields-sql :databricks-jdbc
+(defmethod sql-jdbc.sync/describe-fields-sql :databricks
   [driver & {:keys [schema-names table-names]}]
   (sql/format {:select [[:c.column_name :name]
                         [:c.full_data_type :database-type]
@@ -93,7 +93,7 @@
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
-(defmethod sql-jdbc.sync/describe-fks-sql :databricks-jdbc
+(defmethod sql-jdbc.sync/describe-fks-sql :databricks
   [driver & {:keys [schema-names table-names]}]
   (sql/format {:select (vec
                         {:fk_kcu.table_schema  "fk-table-schema"
@@ -120,11 +120,11 @@
                :order-by [:fk-table-schema :fk-table-name]}
               :dialect (sql.qp/quote-style driver)))
 
-(defmethod sql-jdbc.execute/set-timezone-sql :databricks-jdbc
+(defmethod sql-jdbc.execute/set-timezone-sql :databricks
   [_driver]
   "SET TIME ZONE %s;")
 
-(defmethod driver/db-default-timezone :databricks-jdbc
+(defmethod driver/db-default-timezone :databricks
   [driver database]
   (sql-jdbc.execute/do-with-connection-with-options
    driver database nil
@@ -139,7 +139,7 @@
   (when (string? (not-empty additional-options))
     (str/replace-first additional-options #"^(?!;)" ";")))
 
-(defmethod sql-jdbc.conn/connection-details->spec :databricks-jdbc
+(defmethod sql-jdbc.conn/connection-details->spec :databricks
   [_driver {:keys [catalog host http-path log-level token additional-options] :as _details}]
   (assert (string? (not-empty catalog)) "Catalog is mandatory.")
   (merge
@@ -163,18 +163,18 @@
    (when log-level
      {:LogLevel log-level})))
 
-(defmethod sql.qp/quote-style :databricks-jdbc
+(defmethod sql.qp/quote-style :databricks
   [_driver]
   :mysql)
 
-(defmethod sql.qp/date [:databricks-jdbc :day-of-week] [driver _ expr]
+(defmethod sql.qp/date [:databricks :day-of-week] [driver _ expr]
   (sql.qp/adjust-day-of-week driver [:dayofweek (h2x/->timestamp expr)]))
 
-(defmethod driver/db-start-of-week :databricks-jdbc
+(defmethod driver/db-start-of-week :databricks
   [_]
   :sunday)
 
-(defmethod sql.qp/date [:databricks-jdbc :week]
+(defmethod sql.qp/date [:databricks :week]
   [driver _unit expr]
   (let [week-extract-fn (fn [expr]
                           (-> [:date_sub
@@ -184,7 +184,7 @@
                               (h2x/with-database-type-info "timestamp")))]
     (sql.qp/adjust-start-of-week driver week-extract-fn expr)))
 
-(defmethod sql-jdbc.execute/do-with-connection-with-options :databricks-jdbc
+(defmethod sql-jdbc.execute/do-with-connection-with-options :databricks
   [driver db-or-id-or-spec options f]
   (sql-jdbc.execute/do-with-resolved-connection
    driver
@@ -203,7 +203,7 @@
      (sql-jdbc.execute/set-default-connection-options! driver db-or-id-or-spec conn options)
      (f conn))))
 
-(defmethod sql.qp/datetime-diff [:databricks-jdbc :second]
+(defmethod sql.qp/datetime-diff [:databricks :second]
   [_driver _unit x y]
   [:-
    [:unix_timestamp y (if (instance? LocalDate y)
@@ -219,7 +219,7 @@
 ;; clock with date in session timezone. Hence the following implementation adds the results timezone in LocalDateTime
 ;; gathered from JDBC driver and then adjusts the value to ZULU. Presentation tweaks (ie. changing to report for users'
 ;; pleasure) are done in `wrap-value-literals` middleware.
-(defmethod sql-jdbc.execute/read-column-thunk [:databricks-jdbc java.sql.Types/TIMESTAMP]
+(defmethod sql-jdbc.execute/read-column-thunk [:databricks java.sql.Types/TIMESTAMP]
   [_driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   ;; TIMESTAMP is returned also for TIMESTAMP_NTZ type!!! Hence only true branch is hit until this is fixed upstream.
   (let [database-type-name (.getColumnTypeName rsmeta i)]
@@ -256,11 +256,11 @@
   ((get-method sql-jdbc.execute/set-parameter [::sql-jdbc.legacy/use-legacy-classes-for-read-and-set LocalDateTime])
    driver prepared-statement index (date-time->results-local-date-time object)))
 
-(defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc OffsetDateTime]
+(defmethod sql-jdbc.execute/set-parameter [:databricks OffsetDateTime]
   [driver prepared-statement index object]
   (set-parameter-to-local-date-time driver prepared-statement index object))
 
-(defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc ZonedDateTime]
+(defmethod sql-jdbc.execute/set-parameter [:databricks ZonedDateTime]
   [driver prepared-statement index object]
   (set-parameter-to-local-date-time driver prepared-statement index object))
 
@@ -269,12 +269,12 @@
 ;; It enables creation of `attempted-murders` dataset, hence making the driver compatible with more of existing tests.
 ;;
 
-(defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc LocalTime]
+(defmethod sql-jdbc.execute/set-parameter [:databricks LocalTime]
   [driver prepared-statement index object]
   (set-parameter-to-local-date-time driver prepared-statement index
                                     (t/local-date-time (t/local-date 1970 1 1) object)))
 
-(defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc OffsetTime]
+(defmethod sql-jdbc.execute/set-parameter [:databricks OffsetTime]
   [driver prepared-statement index object]
   (set-parameter-to-local-date-time driver prepared-statement index
                                     (t/local-date-time (t/local-date 1970 1 1) object)))
