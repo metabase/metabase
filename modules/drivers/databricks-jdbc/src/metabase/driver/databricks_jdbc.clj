@@ -1,5 +1,6 @@
 (ns metabase.driver.databricks-jdbc
   (:require
+   [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
@@ -133,6 +134,11 @@
        (when (.next rset)
          (.getString rset 1))))))
 
+(defn- preprocess-additional-options
+  [additional-options]
+  (when (string? (not-empty additional-options))
+    (str/replace-first additional-options #"^(?!;)" ";")))
+
 (defmethod sql-jdbc.conn/connection-details->spec :databricks-jdbc
   [_driver {:keys [catalog host http-path log-level token additional-options] :as _details}]
   (assert (string? (not-empty catalog)) "Catalog is mandatory.")
@@ -144,8 +150,7 @@
     ;; https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/jdbc/2.6.40/docs/release-notes.txt
     :subname          (str "//" host ":443/;EnableArrow=0"
                            ";ConnCatalog=" (codec/url-encode catalog)
-                           (when (string? (not-empty additional-options))
-                             additional-options))
+                           (preprocess-additional-options additional-options))
     :transportMode  "http"
     :ssl            1
     :AuthMech       3
