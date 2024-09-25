@@ -55,4 +55,4 @@ jobs:
         run: |
           aws cloudfront create-invalidation \
           --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
-          --paths /release-log/v$VERSION.html
+          --paths "/release-log/v$VERSION.html" "/release-log/channels.html"
