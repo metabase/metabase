@@ -299,7 +299,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
         cy.findByRole("contentinfo").icon("download").click();
 
         popover().within(() => {
-          cy.findByText("Download full results");
+          cy.findAllByText("Download").should("have.length", 2);
           cy.findByText(".csv");
           cy.findByText(".xlsx");
           cy.findByText(".json");

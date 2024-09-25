@@ -16,6 +16,7 @@ import {
   entityPickerModalTab,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
+  exportFromDashcard,
   filterWidget,
   getDashboardCard,
   getDashboardCardMenu,
@@ -94,57 +95,59 @@ describe("scenarios > question > download", () => {
     });
   });
 
-  it("should allow downloading unformatted CSV data", () => {
-    const fieldRef = ["field", ORDERS.TOTAL, null];
-    const columnKey = `["ref",${JSON.stringify(fieldRef)}]`;
+  testCases.forEach(fileType => {
+    it(`should allow downloading unformatted ${fileType} data`, () => {
+      const fieldRef = ["field", ORDERS.TOTAL, null];
+      const columnKey = `["ref",${JSON.stringify(fieldRef)}]`;
 
-    createQuestion(
-      {
-        query: {
-          "source-table": ORDERS_ID,
-          fields: [fieldRef],
-        },
-        visualization_settings: {
-          column_settings: {
-            [columnKey]: {
-              currency: "USD",
-              currency_in_header: false,
-              currency_style: "code",
-              number_style: "currency",
+      createQuestion(
+        {
+          query: {
+            "source-table": ORDERS_ID,
+            fields: [fieldRef],
+          },
+          visualization_settings: {
+            column_settings: {
+              [columnKey]: {
+                currency: "USD",
+                currency_in_header: false,
+                currency_style: "code",
+                number_style: "currency",
+              },
             },
           },
         },
-      },
-      { visitQuestion: true, wrapId: true },
-    );
-
-    queryBuilderMain().findByText("USD 39.72").should("exist");
-
-    cy.get("@questionId").then(questionId => {
-      const opts = { questionId, fileType: "csv" };
-
-      downloadAndAssert(
-        {
-          ...opts,
-          enableFormatting: true,
-        },
-        sheet => {
-          expect(sheet["A1"].v).to.eq("Total");
-          expect(sheet["A2"].v).to.eq("USD 39.72");
-        },
+        { visitQuestion: true, wrapId: true },
       );
 
-      downloadAndAssert(
-        {
-          ...opts,
-          enableFormatting: false,
-        },
-        sheet => {
-          expect(sheet["A1"].v).to.eq("Total");
-          expect(sheet["A2"].v).to.eq(39.718145389078366);
-          expect(sheet["A2"].w).to.eq("39.718145389078366");
-        },
-      );
+      queryBuilderMain().findByText("USD 39.72").should("exist");
+
+      cy.get("@questionId").then(questionId => {
+        const opts = { questionId, fileType };
+
+        downloadAndAssert(
+          {
+            ...opts,
+            enableFormatting: true,
+          },
+          sheet => {
+            expect(sheet["A1"].v).to.eq("Total");
+            expect(sheet["A2"].v).to.eq("USD 39.72");
+          },
+        );
+
+        downloadAndAssert(
+          {
+            ...opts,
+            enableFormatting: false,
+          },
+          sheet => {
+            expect(sheet["A1"].v).to.eq("Total");
+            expect(sheet["A2"].v).to.eq(39.718145389078366);
+            expect(sheet["A2"].w).to.eq("39.718145389078366");
+          },
+        );
+      });
     });
   });
 
@@ -275,10 +278,7 @@ describe("scenarios > question > download", () => {
       getDashboardCard(0).findByText("Created At").should("be.visible");
       getDashboardCardMenu(0).click();
 
-      popover().within(() => {
-        cy.findByText("Download results").click();
-        cy.findByText(".png").click();
-      });
+      exportFromDashcard(".png");
 
       showDashboardCardActions(1);
       getDashboardCard(1).findByText("User ID").should("be.visible");
@@ -299,6 +299,7 @@ describe("scenarios > question > download", () => {
 
       popover().within(() => {
         cy.findByText(".png").click();
+        cy.findByTestId("download-results-button").click();
       });
 
       cy.verifyDownload(".png", { contains: true });
@@ -374,10 +375,7 @@ describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
     getDashboardCard(0).findByText("Created At").should("be.visible");
     getDashboardCardMenu(0).click();
 
-    popover().within(() => {
-      cy.findByText("Download results").click();
-      cy.findByText(".png").click();
-    });
+    exportFromDashcard(".png");
 
     expectGoodSnowplowEvent({
       event: "download_results_clicked",
