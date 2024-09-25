@@ -1,7 +1,7 @@
 info:
   name: Databricks JDBC driver
   version: 1.0.0
-  description: Allows Metabase to connect to Databricks SQL werehouse
+  description: Allows Metabase to connect to Databricks SQL warehouse
 driver:
   - name: databricks-jdbc
     display-name: Databricks JDBC
