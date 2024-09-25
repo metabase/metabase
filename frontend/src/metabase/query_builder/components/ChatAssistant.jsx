@@ -1075,8 +1075,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                     maxWidth: `calc(100% - ${isChatHistoryOpen ? "800px" : "500px"})`, // Adjust the width based on the chat history visibility
                                     backgroundColor: "#FFF",
                                     position: "fixed",
-                                    bottom: "5rem",
-                                    zIndex: 10,
+                                    bottom: "5rem"
                                 }}
                             >
                                 <div
