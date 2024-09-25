@@ -352,7 +352,7 @@
   `:effective-type`, which is not used in options maps in legacy MBQL."
   [m]
   (not-empty
-   (into {}
+   (-> (into {}
          (comp (disqualify)
                (remove (fn [[k _v]]
                          (= k :effective-type))))
@@ -362,7 +362,8 @@
            (dissoc m
                    :metabase.lib.query/transformation-added-base-type
                    :base-type)
-           m))))
+           m))
+       (m/assoc-some :original-temporal-unit (:metabase.lib.field/original-temporal-unit m)))))
 
 (defmulti ^:private aggregation->legacy-MBQL
   {:arglists '([aggregation-clause])}
