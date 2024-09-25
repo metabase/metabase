@@ -130,6 +130,7 @@ export function getPermissionWarningModal(
   }
 }
 
+// consumed by PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS and disabled in EE
 export function getWillRevokeNativeAccessWarningModal(
   permissions: GroupsPermissions,
   groupId: number,

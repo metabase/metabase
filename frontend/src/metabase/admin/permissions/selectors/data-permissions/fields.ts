@@ -1,12 +1,16 @@
 import _ from "underscore";
 
 import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
-import { getFieldsPermission } from "metabase/admin/permissions/utils/graph";
+import {
+  getFieldsPermission,
+  getTablesPermission,
+} from "metabase/admin/permissions/utils/graph";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CREATE_QUERIES_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_VIEW_DATA_OPTIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
@@ -15,17 +19,16 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
-import type {
+import type { PermissionSectionConfig, TableEntityId } from "../../types";
+import {
+  DataPermission,
+  DataPermissionType,
   DataPermissionValue,
-  PermissionSectionConfig,
-  TableEntityId,
 } from "../../types";
-import { DataPermission, DataPermissionType } from "../../types";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
   getRevokingAccessToAllTablesWarningModal,
-  getWillRevokeNativeAccessWarningModal,
 } from "../confirmations";
 
 const buildAccessPermission = (
@@ -90,7 +93,7 @@ const buildAccessPermission = (
   const options = PLUGIN_ADVANCED_PERMISSIONS.addTablePermissionOptions(
     _.compact([
       DATA_PERMISSION_OPTIONS.unrestricted,
-      ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
+      ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_VIEW_DATA_OPTIONS,
       originalValue === DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated.value &&
         DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated,
     ]),
@@ -130,6 +133,23 @@ const buildNativePermission = (
     DataPermission.CREATE_QUERIES,
   );
 
+  const schemaValue = getTablesPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.CREATE_QUERIES,
+  );
+
+  const options = _.uniq(
+    _.compact([
+      schemaValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+        DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
+      ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CREATE_QUERIES_OPTIONS,
+      DATA_PERMISSION_OPTIONS.queryBuilder,
+      DATA_PERMISSION_OPTIONS.no,
+    ]),
+  );
+
   const disabledTooltip = getNativePermissionDisabledTooltip(
     isAdmin,
     accessPermissionValue,
@@ -142,17 +162,11 @@ const buildNativePermission = (
     disabledTooltip,
     isHighlighted: isAdmin,
     value,
-    options: [
-      DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
-      DATA_PERMISSION_OPTIONS.queryBuilder,
-      DATA_PERMISSION_OPTIONS.no,
-    ],
-    confirmations: (newValue: DataPermissionValue) => [
-      getWillRevokeNativeAccessWarningModal(permissions, groupId, entityId),
-      ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.map(confirmation =>
+    options,
+    confirmations: (newValue: DataPermissionValue) =>
+      PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.map(confirmation =>
         confirmation(permissions, groupId, entityId, newValue),
       ),
-    ],
   };
 };
 
