@@ -60,6 +60,60 @@
             (is (= expected
                    (#'databricks-jdbc/date-time->results-local-date-time (t/zoned-date-time 2024 8 29 17 20 30))))))))))
 
+(deftest ^:synchronized timezone-in-set-and-read-functions-test
+  (mt/test-driver
+   :databricks-jdbc
+   ;;
+   ;; `created_at` value that is filtered for is 2017-04-18T16:53:37.046Z. That corresponds to filters used in query
+   ;; considering the report timezone.
+   ;;
+   ;; This test ensures that `set-parameter` and `read-column-thunk` datetime implementations work correctly, including
+   ;; helpers as `date-time->results-local-date-time`.
+   ;;
+   ;; This functionality is also exercised in general timezone tests, but it is good to be explicit about it here,
+   ;; as the driver has specific implementation of those methods, dealing with the fact (1) that even values that should
+   ;; have some timezone info are returned using java.sql.Types/TIMESTAMP (ie. no timezone) and (2) only LocalDateTime
+   ;; can be used as parameter (ie. no _Offset_ or _Zoned_).
+   ;;
+   (mt/with-metadata-provider (mt/id)
+     (mt/with-report-timezone-id! "America/Los_Angeles"
+       (testing "local-date-time"
+         (let [rows (-> (mt/run-mbql-query
+                         people
+                         {:filter [:and
+                                   [:>= $created_at (t/local-date-time 2017 4 18 9 0 0)]
+                                   [:< $created_at (t/local-date-time 2017 4 18 10 0 0)]]})
+                        mt/rows)]
+           (testing "Baseline: only one row is returned"
+             (is (= 1 (count rows))))
+           (testing "`created_at` column has expected value"
+             (is (= "2017-04-18T09:53:37.046-07:00"
+                    (last (first rows)))))))
+       (testing "offset-date-time"
+         (let [rows (-> (mt/run-mbql-query
+                         people
+                         {:filter [:and
+                                   [:>= $created_at (t/offset-date-time 2017 4 18 9 0 0 0 (t/zone-offset "-07:00"))]
+                                   [:< $created_at (t/offset-date-time 2017 4 18 10 0 0 0 (t/zone-offset "-07:00"))]]})
+                        mt/rows)]
+           (testing "Baseline: only one row is returned"
+             (is (= 1 (count rows))))
+           (testing "`created_at` column has expected value"
+             (is (= "2017-04-18T09:53:37.046-07:00"
+                    (last (first rows)))))))
+       (testing "zoned-date-time"
+         (let [rows (-> (mt/run-mbql-query
+                         people
+                         {:filter [:and
+                                   [:>= $created_at (t/zoned-date-time 2017 4 18 9 0 0 0 (t/zone-id "America/Los_Angeles"))]
+                                   [:< $created_at (t/zoned-date-time 2017 4 18 10 0 0 0 (t/zone-id "America/Los_Angeles"))]]})
+                        mt/rows)]
+           (testing "Baseline: only one row is returned"
+             (is (= 1 (count rows))))
+           (testing "`created_at` column has expected value"
+             (is (= "2017-04-18T09:53:37.046-07:00"
+                    (last (first rows)))))))))))
+
 (deftest additional-options-test
   (mt/test-driver
    :databricks-jdbc
