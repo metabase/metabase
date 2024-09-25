@@ -14,13 +14,12 @@ import {
 } from "metabase/common/components/CollectionPicker";
 import { EllipsifiedPath } from "metabase/common/components/EllipsifiedPath";
 import { Table } from "metabase/common/components/Table";
+import { useSetting } from "metabase/common/hooks";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
-import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
   Button,
@@ -64,9 +63,7 @@ type TableRow = {
 };
 
 export const QueryValidator = () => {
-  const queryAnalysisEnabled = useSelector(state =>
-    getSetting(state, "query-analysis-enabled"),
-  );
+  const queryAnalysisEnabled = useSetting("query-analysis-enabled");
   const [sortColumn, setSortColumn] = useState<string>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>(
     SortDirection.Asc,
