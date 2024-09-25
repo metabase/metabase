@@ -43,13 +43,3 @@ function createResizeObserver() {
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default createResizeObserver();
-
-// window.addEventListener('error', function(e){
-//   if (e.message === "ResizeObserver loop completed with undelivered notifications.") {
-//     console.log(e)
-//     // prevent React's listener from firing
-//     e.stopImmediatePropagation();
-//     // prevent the browser's console error message
-//     e.preventDefault();
-//   }
-// });
