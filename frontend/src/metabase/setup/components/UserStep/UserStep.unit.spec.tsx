@@ -46,7 +46,8 @@ describe("UserStep", () => {
   });
 
   it("should autofocus the password input field for hosted instances", () => {
-    setup({ step: "user_info", isHosted: true });
+    const user = createMockUserInfo();
+    setup({ step: "user_info", isHosted: true, user });
 
     expect(screen.getByLabelText("Create a password")).toHaveFocus();
   });
