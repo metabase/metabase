@@ -8,12 +8,13 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import SettingsUpdatesForm from "./SettingsUpdatesForm";
+import {SettingsUpdatesForm} from "./SettingsUpdatesForm";
 
 const elements = [
   {
-    key: "key",
-    widget: "span",
+    key: "check-for-updates",
+    display_name: 'Check for updates',
+    type: "boolean",
   },
 ];
 
@@ -37,6 +38,7 @@ function setup({
     "is-hosted?": isHosted,
     version,
     "version-info": versionInfo,
+    "check-for-updates": true,
     "token-status": createMockTokenStatus({ valid: isPaid }),
   });
 
@@ -45,7 +47,11 @@ function setup({
     currentUser: { is_superuser: true },
   });
 
-  renderWithProviders(<SettingsUpdatesForm elements={elements} />, {
+  renderWithProviders(<
+    SettingsUpdatesForm
+      elements={elements}
+      updateSetting={() => {}}
+    />, {
     storeInitialState: state,
   });
 }
@@ -56,6 +62,18 @@ describe("SettingsUpdatesForm", () => {
     expect(
       await screen.findByText(/Metabase Cloud keeps your instance up-to-date/),
     ).toBeInTheDocument();
+  });
+
+  it("shows check for updates toggle", async () => {
+    setup({ currentVersion: "v1.0.0", latestVersion: "v1.0.0" });
+
+    expect(await screen.findByText(/Check for updates/i)).toBeInTheDocument();
+  });
+
+  it("shows release channel selection", async () => {
+    setup({ currentVersion: "v1.0.0", latestVersion: "v1.0.0" });
+
+    expect(await screen.findByText("Update Channel")).toBeInTheDocument();
   });
 
   it("shows correct message when latest version is installed", async () => {

@@ -181,12 +181,15 @@ export type PasswordComplexity = {
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
 
+export type UpdateChannel = 'latest' | 'beta' | 'nightly';
+
 export interface SettingDefinition {
   key: string;
   env_name?: string;
   is_env_setting: boolean;
   value?: unknown;
   default?: unknown;
+  description?: string;
 }
 
 export interface OpenAiModel {
@@ -283,6 +286,7 @@ interface PublicSettings {
   "application-name": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-homepage": boolean;
@@ -323,6 +327,7 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
+  "update-channel": UpdateChannel;
   version: Version;
   "version-info-last-checked": string | null;
 }
