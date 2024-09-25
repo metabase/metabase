@@ -1,7 +1,5 @@
 (ns metabase.query-analysis.native-query-analyzer.parameter-substitution
-  "Replace {{variable}}s and {{field filters}} in SQL queries with parse-able equivalents."
-  (:require
-   [metabase.query-processor.compile :as qp.compile]))
+  "Replace {{variable}}s and {{field filters}} in SQL queries with parse-able equivalents.")
 
 (def default-values
   "Map of default values for each type"
@@ -56,5 +54,6 @@
   template tags."
   [query]
   (if-let [name->tag (seq (get-in query [:native :template-tags]))]
-    (qp.compile/compile (assoc-in query [:native :template-tags] (update-vals name->tag tag-default)))
+    ((requiring-resolve 'qp.compile/compile)
+     (assoc-in query [:native :template-tags] (update-vals name->tag tag-default)))
     (:native query)))
