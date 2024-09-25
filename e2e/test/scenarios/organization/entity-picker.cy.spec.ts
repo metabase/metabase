@@ -1,9 +1,10 @@
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
   NORMAL_PERSONAL_COLLECTION_ID,
+  NO_COLLECTION_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   type StructuredQuestionDetails,
@@ -16,7 +17,9 @@ import {
   resyncDatabase,
   startNewQuestion,
 } from "e2e/support/helpers";
+
 const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ALL_USERS_GROUP } = USER_GROUPS;
 
 const cardDetails: StructuredQuestionDetails = {
   name: "Question",
@@ -143,13 +146,14 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     describe("cards", () => {
+      const tabs = ["Saved questions", "Models", "Metrics"];
+
       it("should search for cards for a normal user", () => {
         cy.signInAsAdmin();
         createTestCards();
         cy.signInAsNormalUser();
         startNewQuestion();
 
-        const tabs = ["Saved questions", "Models", "Metrics"];
         tabs.forEach(tab => {
           cy.log("root collection - automatically selected");
           entityPickerModal().within(() => {
@@ -231,6 +235,43 @@ describe("scenarios > organization > entity picker", () => {
           });
         });
       });
+
+      it("should search for cards when there is no access to the root collection", () => {
+        cy.signInAsAdmin();
+        createTestCards();
+        cy.log("grant `nocollection` user access to `First collection`");
+        cy.log("personal collections are always available");
+        cy.updateCollectionGraph({
+          [ALL_USERS_GROUP]: { [FIRST_COLLECTION_ID]: "read" },
+        });
+
+        cy.signIn("nocollection");
+        startNewQuestion();
+
+        tabs.forEach(tab => {
+          cy.log("personal collection");
+          entityPickerModal().within(() => {
+            entityPickerModalTab(tab).click();
+            cy.findByText(/Personal Collection/).click();
+          });
+          testLocalSearch({
+            searchPlaceholder: "Search this collection or everywhere…",
+            searchText: "1",
+            selectedItem: "No Collection Tableton's Personal Collection",
+            foundItems: [
+              "No collection personal question 1",
+              "No collection personal model 1",
+              "No collection personal metric 1",
+            ],
+            notFoundItems: [
+              "Root metric 1",
+              "Regular metric 1",
+              "Admin personal metric 1",
+              "Normal personal metric 2",
+            ],
+          });
+        });
+      });
     });
   });
 });
@@ -268,6 +309,10 @@ function createTestCards() {
     { id: FIRST_COLLECTION_ID, name: "Regular" },
     { id: ADMIN_PERSONAL_COLLECTION_ID, name: "Admin personal" },
     { id: NORMAL_PERSONAL_COLLECTION_ID, name: "Normal personal" },
+    {
+      id: NO_COLLECTION_PERSONAL_COLLECTION_ID,
+      name: "No collection personal",
+    },
   ];
 
   types.forEach(type => {
