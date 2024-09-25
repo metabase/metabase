@@ -82,16 +82,30 @@ export function getDashboardDrillUrl(clicked) {
     clickBehavior,
   );
 
+  const targetDashboard = extraData.dashboards[targetId];
+  const targetDefaultParameters = Object.fromEntries(
+    targetDashboard.parameters.map(parameter => [
+      parameter.slug,
+      parameter.default ?? "",
+    ]),
+  );
+
   const baseQueryParams = getParameterValuesBySlug(parameterMapping, {
     data,
     extraData,
     clickBehavior,
   });
 
-  const queryParams =
+  const tabParams =
     typeof clickBehavior.tabId === "undefined"
-      ? baseQueryParams
-      : { ...baseQueryParams, tab: clickBehavior.tabId };
+      ? {}
+      : { tab: clickBehavior.tabId };
+
+  const queryParams = {
+    ...targetDefaultParameters,
+    ...baseQueryParams,
+    ...tabParams,
+  };
 
   const path = Urls.dashboard({ id: targetId });
   return `${path}?${querystring.stringify(queryParams)}`;

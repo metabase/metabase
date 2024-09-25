@@ -5,7 +5,7 @@ import { $ } from 'zx';
 import { issueNumberRegex } from './linked-issues';
 
 type CommitInfo = {
-  version: string,
+  versions: string[],
   message: string,
   hash: string,
   date: string,
@@ -19,11 +19,15 @@ export async function gitLog(majorVersion: number) {
   return buildTable(processedCommits, majorVersion);
 }
 
-function processCommit(commitLine: string): CommitInfo {
+export function processCommit(commitLine: string): CommitInfo {
   const [refs, message, hash, date] = commitLine.split('||');
-  const version = refs?.match(/(v[\d\.\-RCrc]+)/)?.[1] ?? '';
+  const tags = refs?.match(/tag: ([\w\d-_\.]+)/g) ?? '';
 
-  return { version, message, hash, date};
+  const versions = tags
+    ? tags.map((v) => v.replace('tag: ', ''))
+    : [''];
+
+  return { versions, message, hash, date};
 }
 
 const issueLink = (issueNumber: string) => `https://github.com/metabase/metabase/issues/${issueNumber}`;
@@ -36,7 +40,7 @@ function linkifyIssueNumbers(message: string) {
 
 function tableRow(commit: CommitInfo) {
   return `<tr>
-    <td><strong>${commit.version}</strong></td>
+    <td><strong>${commit.versions.join('<br>')}</strong></td>
     <td>${linkifyIssueNumbers(commit.message)}</td>
     <td>${commit.date}</td>
   </tr>`;
@@ -64,11 +68,15 @@ function buildTable(commits: CommitInfo[], majorVersion: number) {
     .replace(/{{current-time}}/, currentTime);
 }
 
-const version = Number(process.argv[2]);
 
-if (!version) {
-  console.error('Please provide a version number (e.g. 35, 57)');
-  process.exit(1);
+export async function generateReleaseLog() {
+  const version = Number(process.argv[2]);
+
+  if (!version) {
+    console.error('Please provide a version number (e.g. 35, 57)');
+    process.exit(1);
+  }
+
+  console.log(await gitLog(version));
 }
 
-console.log(await gitLog(version));

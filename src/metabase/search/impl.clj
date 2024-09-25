@@ -676,7 +676,7 @@
   (->> (update result :pk_ref json/parse-string)
        (add-can-write search-ctx)))
 
-(defn- search-results [search-ctx total-results]
+(defn- search-results [search-ctx model-set-fn total-results]
   (let [add-perms-for-col  (fn [item]
                              (cond-> item
                                (mi/instance-of? :model/Collection item)
@@ -684,7 +684,7 @@
     ;; We get to do this slicing and dicing with the result data because
     ;; the pagination of search is for UI improvement, not for performance.
     ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-    {:available_models (query-model-set search-ctx)
+    {:available_models (model-set-fn search-ctx)
      :data             (cond->> total-results
                          (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
                          (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
@@ -699,8 +699,11 @@
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
   ([search-ctx :- search.config/SearchContext]
-   (search in-place search-ctx))
-  ([results-fn search-ctx :- search.config/SearchContext]
+   (search in-place query-model-set scoring/score-and-result search-ctx))
+  ([results-fn
+    model-set-fn
+    score-fn
+    search-ctx :- search.config/SearchContext]
    (let [reducible-results (results-fn search-ctx)
          scoring-ctx       (select-keys search-ctx [:search-string :search-native-query])
          xf                (comp
@@ -708,12 +711,10 @@
                             (map normalize-result)
                             (filter (partial check-permissions-for-model search-ctx))
                             (map (partial normalize-result-more search-ctx))
-                             ;; scoring - note that this can also filter further!
-                            (map #(scoring/score-and-result % scoring-ctx))
-                            (filter #(pos? (:score %))))
+                            (keep #(score-fn % scoring-ctx)))
          total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                              true                           hydrate-user-metadata
                              (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                              true                           (add-collection-effective-location)
                              true                           (map serialize))]
-     (search-results search-ctx total-results))))
+     (search-results search-ctx model-set-fn total-results))))

@@ -103,14 +103,41 @@
                  (update :updated_at parse-datetime)
                  (update :last_edited_at parse-datetime)))))
 
+;; filters:
+;; - the obvious ones in the ui
+;; - db-id
+;; - personal collection (include / exclude), including sub
+
+(defn- minimal-with-perms
+  "Search via index, and return potentially stale information, without applying filters,
+  but applying permissions. Does not perform ranking."
+  [search-term & {:as search-ctx}]
+  (when-not @#'search.index/initialized?
+    (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
+                    {:search-engine :postgres})))
+  (->> (search.impl/add-collection-join-and-where-clauses
+        (assoc (search.index/search-query search-term)
+               :select [:legacy_input])
+        ;; we just need this to not be "collection"
+        "__search_index__"
+        search-ctx)
+       (t2/query)
+       (map :legacy_input)
+       (map #(json/parse-string % keyword))
+       (map #(-> %
+                 (update :created_at parse-datetime)
+                 (update :updated_at parse-datetime)
+                 (update :last_edited_at parse-datetime)))))
+
 (def ^:private default-engine hybrid-multi)
 
 (defn- search-fn [search-engine]
   (case search-engine
-    :hybrid       hybrid
-    :hubrid-multi hybrid-multi
-    :minimal      minimal
-    :fulltext     default-engine
+    :hybrid             hybrid
+    :hubrid-multi       hybrid-multi
+    :minimal            minimal
+    :minimal-with-perms minimal-with-perms
+    :fulltext           default-engine
     default-engine))
 
 (defn search
@@ -119,6 +146,26 @@
   (let [f (search-fn (:search-engine search-ctx))]
     (f (:search-string search-ctx)
        (dissoc search-ctx :search-string))))
+
+(defn model-set
+  "Return a set of the models which have at least one result for the given query.
+  TODO: consider filters and permissions."
+  [search-ctx]
+  (set
+   (filter
+    ;; TODO use a single query
+    (fn [m]
+      (t2/exists? :search_index
+                  (-> (search.index/search-query (:search-string search-ctx))
+                      (sql.helpers/where [:= :model m]))))
+    ;; TODO use only the models that apply to the given filters
+    (:models search-ctx search.config/all-models))))
+
+(defn no-scoring
+  "Do no scoring, whatsover"
+  [result _scoring-ctx]
+  {:score 1
+   :result (assoc result :all-scores [] :relevant-scores [])})
 
 (defn init!
   "Ensure that the search index exists, and has been populated with all the entities."
