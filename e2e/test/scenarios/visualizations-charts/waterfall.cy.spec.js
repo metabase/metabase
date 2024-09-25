@@ -365,8 +365,10 @@ describe("scenarios > visualizations > waterfall", () => {
   });
 
   it("should allow adding non-series columns to the tooltip", () => {
+    const INCREASE_COLOR = "#00FF00";
+
     function getFirstWaterfallSegment() {
-      return echartsContainer().find("path[fill='#88BF4D']").first();
+      return echartsContainer().find(`path[fill='${INCREASE_COLOR}']`).first();
     }
 
     visitQuestionAdhoc({
@@ -380,12 +382,15 @@ describe("scenarios > visualizations > waterfall", () => {
           breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
         },
       },
+      visualization_settings: {
+        "waterfall.increase_color": INCREASE_COLOR,
+      },
     });
 
     getFirstWaterfallSegment().realHover();
     assertEChartsTooltip({
       header: "2022",
-      rows: [{ name: "Count", value: "744" }],
+      rows: [{ name: "Count", value: "744", color: INCREASE_COLOR }],
     });
     assertEChartsTooltipNotContain(["Sum of Total"]);
 
@@ -401,7 +406,7 @@ describe("scenarios > visualizations > waterfall", () => {
     assertEChartsTooltip({
       header: "2022",
       rows: [
-        { name: "Count", value: "744" },
+        { name: "Count", value: "744", color: INCREASE_COLOR },
         { name: "Sum of Total", value: "42,156.87" },
       ],
     });
