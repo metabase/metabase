@@ -139,10 +139,10 @@
                           e)))))))
 
 ;; With jdbc driver version 2.6.40 test data load fails due to ~statment using more parameters than driver's able to
-;; handle.
+;; handle. `chunk-size` 25 works with 2.6.40, but dataset loading is really slow.
 (defmethod load-data/chunk-size :databricks-jdbc
   [_driver _dbdef _tabledef]
-  #_25 200)
+  200)
 
 (defmethod load-data/row-xform :databricks-jdbc
   [_driver _dbdef tabledef]
