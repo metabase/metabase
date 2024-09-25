@@ -226,4 +226,16 @@
                         :catalog "ccc"
                         :additional-options ";IgnoreTransactions=0"}
                        (sql-jdbc.conn/connection-details->spec :databricks-jdbc)
+                       :subname))))
+   (testing "Leading semicolon is added when missing"
+     (is (re-find #";IgnoreTransactions=0;bla=1$"
+                  (->> {:http-path "p/a/t/h",
+                        :schema-filters-type "inclusion",
+                        :schema-filters-patterns "xix",
+                        :access-token "xixix",
+                        :host "localhost",
+                        :engine "databricks-jdbc",
+                        :catalog "ccc"
+                        :additional-options "IgnoreTransactions=0;bla=1"}
+                       (sql-jdbc.conn/connection-details->spec :databricks-jdbc)
                        :subname))))))
