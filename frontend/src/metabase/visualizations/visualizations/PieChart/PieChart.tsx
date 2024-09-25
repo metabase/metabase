@@ -3,6 +3,7 @@ import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
 
 import { isNotNull } from "metabase/lib/types";
+import { extractRemappings } from "metabase/visualizations";
 import ChartWithLegend from "metabase/visualizations/components/ChartWithLegend";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
@@ -52,16 +53,26 @@ export function PieChart(props: VisualizationProps) {
     isDashboard,
     isFullscreen,
   });
+  const rawSeriesWithRemappings = useMemo(
+    () => extractRemappings(rawSeries),
+    [rawSeries],
+  );
   const chartModel = useMemo(
     () =>
       getPieChartModel(
-        rawSeries,
+        rawSeriesWithRemappings,
         settings,
         Array.from(hiddenSlices),
         renderingContext,
         showWarning,
       ),
-    [rawSeries, settings, hiddenSlices, renderingContext, showWarning],
+    [
+      rawSeriesWithRemappings,
+      settings,
+      hiddenSlices,
+      renderingContext,
+      showWarning,
+    ],
   );
   const formatters = useMemo(
     () => getPieChartFormatters(chartModel, settings, renderingContext),
