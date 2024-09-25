@@ -19,18 +19,17 @@ import { CollectionRow } from "./components/CollectionRow";
 import SnippetCollectionFormModal from "./components/SnippetCollectionFormModal";
 
 if (hasPremiumFeature("snippet_collections")) {
-  PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push(snippetSidebar => ({
-    icon: "folder",
-    name: t`New folder`,
-    onClick: () =>
-      snippetSidebar.setState({
-        modalSnippetCollection: {
-          parent_id: canonicalCollectionId(
-            snippetSidebar.props.snippetCollection.id,
-          ),
-        },
-      }),
-  }));
+  PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.push(
+    ({ snippetCollectionId, setModalSnippetCollection }) => ({
+      icon: "folder",
+      name: t`New folder`,
+      onClick: () => {
+        setModalSnippetCollection({
+          parent_id: canonicalCollectionId(snippetCollectionId),
+        });
+      },
+    }),
+  );
 
   PLUGIN_SNIPPET_SIDEBAR_MODALS_CONTROLS.useControls = () => {
     const [modalSnippetCollection, setModalSnippetCollection] = useState(null);
@@ -45,37 +44,33 @@ if (hasPremiumFeature("snippet_collections")) {
     };
   };
 
-  PLUGIN_SNIPPET_SIDEBAR_MODALS.MODAL_SNIPPET_COLLECTION = ({
-    modalSnippetCollection,
-    setModalSnippetCollection,
-  }) =>
-    modalSnippetCollection && (
-      <Modal onClose={() => setModalSnippetCollection(null)}>
-        <SnippetCollectionFormModal
-          collection={modalSnippetCollection}
-          onClose={() => setModalSnippetCollection(null)}
-          onSaved={() => {
-            setModalSnippetCollection(null);
-          }}
-        />
-      </Modal>
-    );
+  PLUGIN_SNIPPET_SIDEBAR_MODALS.push(
+    ({ modalSnippetCollection, setModalSnippetCollection }) =>
+      modalSnippetCollection && (
+        <Modal onClose={() => setModalSnippetCollection(null)}>
+          <SnippetCollectionFormModal
+            collection={modalSnippetCollection}
+            onClose={() => setModalSnippetCollection(null)}
+            onSaved={() => {
+              setModalSnippetCollection(null);
+            }}
+          />
+        </Modal>
+      ),
 
-  PLUGIN_SNIPPET_SIDEBAR_MODALS.PERMISSIONS_MODAL_COLLECTION_ID = ({
-    permissionsModalCollectionId,
-    setPermissionsModalCollectionId,
-  }) =>
-    permissionsModalCollectionId != null && (
-      <Modal onClose={() => setPermissionsModalCollectionId(null)}>
-        <CollectionPermissionsModal
-          params={{
-            slug: permissionsModalCollectionId,
-          }}
-          onClose={() => setPermissionsModalCollectionId(null)}
-          namespace="snippets"
-        />
-      </Modal>
-    );
+    ({ permissionsModalCollectionId, setPermissionsModalCollectionId }) =>
+      permissionsModalCollectionId != null && (
+        <Modal onClose={() => setPermissionsModalCollectionId(null)}>
+          <CollectionPermissionsModal
+            params={{
+              slug: permissionsModalCollectionId,
+            }}
+            onClose={() => setPermissionsModalCollectionId(null)}
+            namespace="snippets"
+          />
+        </Modal>
+      ),
+  );
 
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS.collection = CollectionRow;
 

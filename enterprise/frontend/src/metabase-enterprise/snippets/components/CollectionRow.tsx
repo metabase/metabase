@@ -4,16 +4,17 @@ import cx from "classnames";
 import { useGetSnippetCollectionQuery } from "metabase/api/snippet-collection";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
-import type { CollectionId, CollectionItem, User } from "metabase-types/api";
+import type { Collection, CollectionId, User } from "metabase-types/api";
 
 import { CollectionOptionsButton } from "./CollectionOptionsButton";
 
 const ICON_SIZE = 16;
 
-type CollectionRowProps = {
-  item: CollectionItem;
+export type CollectionRowProps = {
+  item: Collection;
   setSnippetCollectionId: (id: CollectionId) => void;
-  setSidebarState: (value: Record<string, unknown>) => void;
+  setPermissionsModalCollectionId?: (c: CollectionId | null) => void;
+  setModalSnippetCollection?: (c: Collection | null) => void;
   user: User;
   className?: string;
 };
@@ -21,7 +22,8 @@ type CollectionRowProps = {
 export const CollectionRow = ({
   item,
   setSnippetCollectionId,
-  setSidebarState,
+  setPermissionsModalCollectionId,
+  setModalSnippetCollection,
   user,
   className,
 }: CollectionRowProps) => {
@@ -54,7 +56,8 @@ export const CollectionRow = ({
         {collection.name}
       </span>
       <CollectionOptionsButton
-        setSidebarState={setSidebarState}
+        setPermissionsModalCollectionId={setPermissionsModalCollectionId}
+        setModalSnippetCollection={setModalSnippetCollection}
         user={user}
         className={className}
         collection={collection}

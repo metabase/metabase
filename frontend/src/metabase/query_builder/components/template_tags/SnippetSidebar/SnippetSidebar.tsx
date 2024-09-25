@@ -1,17 +1,19 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import PropTypes from "prop-types";
 import * as React from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useListSnippetsQuery, useSearchQuery } from "metabase/api";
+import {
+  useGetSnippetCollectionQuery,
+  useListSnippetCollectionsQuery,
+} from "metabase/api/snippet-collection";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import Search from "metabase/entities/search";
-import SnippetCollections from "metabase/entities/snippet-collections";
-import Snippets from "metabase/entities/snippets";
 import { color } from "metabase/lib/colors";
 import {
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
@@ -20,7 +22,14 @@ import {
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
 } from "metabase/plugins";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import { Icon } from "metabase/ui";
+import { Icon, type IconName } from "metabase/ui";
+import type {
+  Collection,
+  CollectionId,
+  NativeQuerySnippet,
+  SearchResult,
+  User,
+} from "metabase-types/api";
 
 import { ArchivedSnippets } from "../ArchivedSnippets";
 import { SnippetSidebarRow } from "../SnippetSidebarRow";
@@ -34,32 +43,43 @@ import {
   SidebarIcon,
   SnippetTitle,
 } from "./SnippetSidebar.styled";
-import { useState } from "react";
 
 const ICON_SIZE = 16;
 const HEADER_ICON_SIZE = 16;
 const MIN_SNIPPETS_FOR_SEARCH = 15;
 
-type SnippetSidebarInnerProps = {
-  onClose: any;
-  setModalSnippet: any;
-  openSnippetModalWithSelectedText: any;
-  insertSnippet: any;
+type SnippetSidebarInnerData = {
+  snippets: NativeQuerySnippet[];
+  snippetCollections: Collection[];
+  snippetCollection: Collection;
+  search: SearchResult[];
 };
 
-export const SnippetSidebarInner2 = ({
+type SnippetSidebarLoaderProps = {
+  snippetCollectionId: CollectionId;
+};
+
+type SnippetSidebarInnerProps = {
+  setModalSnippet?: (snippet: NativeQuerySnippet) => void;
+  openSnippetModalWithSelectedText: () => void;
+  insertSnippet: (snippet: NativeQuerySnippet) => void;
+  setSnippetCollectionId: (
+    collectionId: CollectionId | null | undefined,
+  ) => void;
+  user: User;
+};
+
+export const SnippetSidebarInner = ({
   snippets,
   openSnippetModalWithSelectedText,
   snippetCollection,
   search,
-  onClose,
   setModalSnippet,
   insertSnippet,
   snippetCollections,
   setSnippetCollectionId,
   user,
-  canWrite,
-}: SnippetSidebarInnerProps) => {
+}: SnippetSidebarInnerProps & SnippetSidebarInnerData) => {
   const [showSearch, setShowSearch] = useState(false);
   const [searchString, setSearchString] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -94,7 +114,7 @@ export const SnippetSidebarInner2 = ({
   }
 
   const displayedItems = showSearch
-    ? snippets.filter(snippet =>
+    ? snippets.filter((snippet: NativeQuerySnippet) =>
         snippet.name.toLowerCase().includes(searchString.toLowerCase()),
       )
     : _.sortBy(search, "model"); // relies on "collection" sorting before "snippet";
@@ -161,7 +181,7 @@ export const SnippetSidebarInner2 = ({
                       setSnippetCollectionId(
                         // if this collection's parent isn't in the list, we don't have perms to see it, return to the root instead
                         snippetCollections.some(
-                          sc =>
+                          (sc: Collection) =>
                             canonicalCollectionId(sc.id) ===
                             canonicalCollectionId(parentId),
                         )
@@ -221,29 +241,45 @@ export const SnippetSidebarInner2 = ({
                     <div className={cx(CS.flex, CS.flexColumn)}>
                       {[
                         {
-                          icon: "snippet",
+                          icon: "snippet" as IconName,
                           name: t`New snippet`,
                           onClick: openSnippetModalWithSelectedText,
                         },
-                        ...PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.map(f =>
-                          f(this),
+                        ...PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.map(
+                          option =>
+                            option({
+                              snippetCollectionId:
+                                canonicalCollectionId(snippetCollection.id) ??
+                                undefined,
+                              setModalSnippetCollection,
+                            }),
                         ),
-                      ].map(({ icon, name, onClick }) => (
-                        <MenuIconContainer
-                          key={name}
-                          onClick={() => {
-                            onClick();
-                            closePopover();
-                          }}
-                        >
-                          <Icon
-                            name={icon}
-                            size={ICON_SIZE}
-                            className={CS.mr2}
-                          />
-                          <h4>{name}</h4>
-                        </MenuIconContainer>
-                      ))}
+                      ].map(
+                        ({
+                          icon,
+                          name,
+                          onClick,
+                        }: {
+                          icon: IconName;
+                          name: string;
+                          onClick: () => void;
+                        }) => (
+                          <MenuIconContainer
+                            key={name}
+                            onClick={() => {
+                              onClick();
+                              closePopover();
+                            }}
+                          >
+                            <Icon
+                              name={icon}
+                              size={ICON_SIZE}
+                              className={CS.mr2}
+                            />
+                            <h4>{name}</h4>
+                          </MenuIconContainer>
+                        ),
+                      )}
                     </div>
                   )}
                 />
@@ -280,24 +316,48 @@ export const SnippetSidebarInner2 = ({
           </div>
         </div>
       )}
-      {PLUGIN_SNIPPET_SIDEBAR_MODALS.map(f => f(this))}
+      {Object.values(PLUGIN_SNIPPET_SIDEBAR_MODALS).map(Component => (
+        <Component
+          key="key"
+          permissionsModalCollectionId={permissionsModalCollectionId}
+          setPermissionsModalCollectionId={setPermissionsModalCollectionId}
+          modalSnippetCollection={modalSnippetCollection}
+          setModalSnippetCollection={setModalSnippetCollection}
+        />
+      ))}
     </SidebarContent>
   );
 };
 
-export const SnippetSidebar = _.compose(
-  Snippets.loadList(),
-  SnippetCollections.loadList(),
-  SnippetCollections.load({
-    id: (state, props) =>
-      props.snippetCollectionId === null ? "root" : props.snippetCollectionId,
-    wrapped: true,
-  }),
-  Search.loadList({
-    query: (state, props) => ({
-      collection:
-        props.snippetCollectionId === null ? "root" : props.snippetCollectionId,
-      namespace: "snippets",
-    }),
-  }),
-)(SnippetSidebarInner);
+export const SnippetSidebar = ({
+  setModalSnippet,
+  openSnippetModalWithSelectedText,
+  insertSnippet,
+  snippetCollectionId,
+  setSnippetCollectionId,
+  user,
+}: SnippetSidebarLoaderProps & SnippetSidebarInnerProps) => {
+  const { data: snippets = [] } = useListSnippetsQuery();
+  const { data: snippetCollections = [] } = useListSnippetCollectionsQuery({});
+  const { data: snippetCollection } = useGetSnippetCollectionQuery({
+    id: snippetCollectionId ?? "root",
+  });
+  const { data: search } = useSearchQuery({
+    collection: snippetCollectionId ?? "root",
+    namespace: "snippets",
+  });
+
+  return (
+    <SnippetSidebarInner
+      snippets={snippets}
+      snippetCollections={snippetCollections}
+      snippetCollection={snippetCollection}
+      search={search?.data ?? []}
+      user={user}
+      setModalSnippet={setModalSnippet}
+      openSnippetModalWithSelectedText={openSnippetModalWithSelectedText}
+      insertSnippet={insertSnippet}
+      setSnippetCollectionId={setSnippetCollectionId}
+    />
+  );
+};

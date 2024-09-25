@@ -51,6 +51,7 @@ import type {
   GroupPermissions,
   GroupsPermissions,
   ModelCacheRefreshStatus,
+  RegularCollectionId,
   Revision,
   SearchResult,
   User,
@@ -63,7 +64,6 @@ import type {
   PluginGroupManagersType,
   PluginLLMAutoDescription,
 } from "./types";
-import { CollectionRow } from "metabase-enterprise/snippets/components/CollectionRow";
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUNCTIONS = [];
@@ -251,33 +251,49 @@ export type IllustrationValue = {
 export const PLUGIN_FORM_WIDGETS: Record<string, ComponentType<any>> = {};
 
 // snippet sidebar
-export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = [];
+type SnippetSidebarModalControls = {
+  permissionsModalCollectionId: CollectionId | null;
+  setPermissionsModalCollectionId: (c: CollectionId | null) => void;
+  modalSnippetCollection: Collection | null;
+  setModalSnippetCollection: (c: Collection | null) => void;
+};
+
+export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS: (({
+  snippetCollectionId,
+  setModalSnippetCollection,
+}: {
+  snippetCollectionId?: RegularCollectionId;
+} & Pick<SnippetSidebarModalControls, "setModalSnippetCollection">) => {
+  icon: IconName;
+  name: string;
+  onClick: () => void;
+})[] = [];
+
 export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS: {
-  collection?: typeof CollectionRow;
+  collection?: ComponentType<{
+    item: Collection;
+  }>;
 } = {};
+
 export const PLUGIN_SNIPPET_SIDEBAR_MODALS_CONTROLS: {
-  useControls:
-    | (() => {
-        permissionsModalCollectionId: CollectionId | null;
-        setPermissionsModalCollectionId: (c: CollectionId | null) => void;
-        modalSnippetCollection: Collection | null;
-        setModalSnippetCollection: (c: Collection | null) => void;
-      })
-    | undefined;
-} = {
-  useControls: undefined,
-};
-export const PLUGIN_SNIPPET_SIDEBAR_MODALS = {
-  MODAL_SNIPPET_COLLECTION: undefined,
-  PERMISSIONS_MODAL_COLLECTION_ID: undefined,
-};
-export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS: ComponentType<{
-  snippetCollection: Collection;
-  setPermissionsModalCollectionId?: (id: CollectionId) => void;
-  setModalSnippetCollection?: (collection: Collection) => void;
-  user: User;
-  className?: string;
-}>[] = [];
+  useControls?: () => SnippetSidebarModalControls;
+} = {};
+
+export const PLUGIN_SNIPPET_SIDEBAR_MODALS: ComponentType<SnippetSidebarModalControls>[] =
+  [];
+
+export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS: ComponentType<
+  {
+    snippetCollection: Collection;
+    setPermissionsModalCollectionId?: (id: CollectionId) => void;
+    setModalSnippetCollection?: (collection: Collection) => void;
+    user: User;
+    className?: string;
+  } & Pick<
+    SnippetSidebarModalControls,
+    "setPermissionsModalCollectionId" | "setModalSnippetCollection"
+  >
+>[] = [];
 
 export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE = {
   Component: undefined,

@@ -18,7 +18,6 @@ const ICON_SIZE = 16;
 
 type CollectionOptionsButtonProps = {
   collection: Collection;
-  setSidebarState: (value: Record<string, unknown>) => void;
   user: User;
   className?: string;
   setPermissionsModalCollectionId?: (c: CollectionId | null) => void;

@@ -19,7 +19,7 @@ type SnippetSidebarRowProps = {
   setPermissionsModalCollectionId?: (c: CollectionId | null) => void;
   modalSnippetCollection?: Collection | null;
   setModalSnippetCollection?: (c: Collection | null) => void;
-} & (CollectionSnippetRowComponent | SnippetRowComponent);
+};
 
 type CollectionSnippetRowComponent = {
   item: Collection;
@@ -33,11 +33,17 @@ type SnippetRowComponent = {
 
 export const SnippetSidebarRow = ({
   type,
+  item,
   ...props
-}: SnippetSidebarRowProps) => {
-  const Component = {
+}: SnippetSidebarRowProps &
+  (CollectionSnippetRowComponent | SnippetRowComponent)) => {
+  const componentMap = {
     snippet: SnippetRow,
     ...PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
-  }[type];
+  };
+
+  const Component = componentMap[type];
+
+  // @ts-expect-error - just need to figure this out
   return Component ? <Component {...props} /> : null;
 };
