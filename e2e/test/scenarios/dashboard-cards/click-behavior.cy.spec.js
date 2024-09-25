@@ -683,7 +683,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       filterWidget().contains("Hello").click();
       popover().within(() => {
-        cy.findByPlaceholderText(/^Search by /).type("{backspace}World{enter}");
+        cy.get(".Icon-close").click();
+        cy.findByPlaceholderText("Search by Name").type("World{enter}");
         cy.button("Update filter").click();
       });
 
@@ -765,7 +766,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .parent()
         .click();
       popover().within(() => {
-        cy.findByPlaceholderText(/^Search by /).type("John Doe{enter}");
+        cy.findByPlaceholderText("Search by Name").type("John Doe{enter}");
         cy.button("Add filter").click();
       });
 
@@ -774,7 +775,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .parent()
         .click();
       popover().within(() => {
-        cy.findByPlaceholderText(/^Search by /).type("{backspace}World{enter}");
+        cy.get(".Icon-close").click();
+        cy.findByPlaceholderText("Search by Name").type("World{enter}");
         cy.button("Update filter").click();
       });
 
