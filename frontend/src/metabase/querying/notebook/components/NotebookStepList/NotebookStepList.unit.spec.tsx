@@ -1,24 +1,14 @@
 /* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["assertActionButtonsOrder"] }] */
 import type { ComponentProps } from "react";
 
+import { createMockMetadata } from "__support__/metadata";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { getMetadata } from "metabase/selectors/metadata";
+import * as Lib from "metabase-lib";
+import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type {
-  Card,
-  Filter,
-  JoinCondition,
-  StructuredQuery,
-} from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 import {
-  createMockCard,
-  createMockStructuredDatasetQuery,
-} from "metabase-types/api/mocks";
-import {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
   PRODUCTS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -29,35 +19,25 @@ import {
 
 import { NotebookStepList } from "./NotebookStepList";
 
-const ORDERS_PRODUCT_JOIN_CONDITION: JoinCondition = [
-  "=",
-  ["field", ORDERS.PRODUCT_ID, null],
-  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-];
-
-const PRODUCTS_JOIN = {
-  alias: "Products",
-  condition: ORDERS_PRODUCT_JOIN_CONDITION,
-  "source-table": PRODUCTS_ID,
-};
-const ORDERS_FILTER: Filter = [">", ["field", ORDERS.TAX, null], 10];
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 type SetupOpts = Partial<ComponentProps<typeof NotebookStepList>>;
 
-function setup(opts: SetupOpts = {}, card: Card) {
+function setup(opts: SetupOpts = {}, query: Lib.Query = createQuery()) {
   const database = createSampleDatabase();
   const reportTimezone = "UTC";
+  const question = new Question(createMockCard(), metadata).setQuery(query);
 
   const state = createMockState({
     qb: createMockQueryBuilderState({
-      card,
+      card: question.card(),
     }),
     entities: createMockEntitiesState({
       databases: [database],
     }),
   });
-  const metadata = getMetadata(state);
-  const question = new Question(card, metadata);
 
   renderWithProviders(
     <NotebookStepList
@@ -74,9 +54,7 @@ function setup(opts: SetupOpts = {}, card: Card) {
 
 describe("NotebookStepList", () => {
   it("renders a list of actions for data step", () => {
-    const card = createOrdersCard();
-
-    setup({}, card);
+    setup();
 
     assertActionButtonsOrder([
       "Join data",
@@ -89,10 +67,26 @@ describe("NotebookStepList", () => {
   });
 
   it("renders a list of actions for join step", () => {
-    const card = createOrdersCard({
-      joins: [PRODUCTS_JOIN],
-    });
-    setup({}, card);
+    const query = createQuery();
+    const joinTable = Lib.tableOrCardMetadata(query, PRODUCTS_ID);
+    const queryWithJoin = Lib.join(
+      query,
+      -1,
+      Lib.joinClause(
+        joinTable,
+        [
+          Lib.joinConditionClause(
+            query,
+            -1,
+            Lib.joinConditionOperators(query, -1)[0],
+            Lib.joinConditionLHSColumns(query, -1)[0],
+            Lib.joinConditionRHSColumns(query, -1, joinTable)[0],
+          ),
+        ],
+        Lib.availableJoinStrategies(query, -1)[0],
+      ),
+    );
+    setup({}, queryWithJoin);
 
     assertActionButtonsOrder([
       "Join data",
@@ -105,31 +99,43 @@ describe("NotebookStepList", () => {
   });
 
   it("renders a list of actions for Custom column step", () => {
-    const card = createOrdersCard({
-      expressions: {
-        "Custom column": ["+", 1, 1],
-      },
+    const query = createQueryWithClauses({
+      expressions: [
+        {
+          name: "Custom Column",
+          operator: "+",
+          args: [1, 1],
+        },
+      ],
     });
-    setup({}, card);
+    setup({}, query);
 
     assertActionButtonsOrder(["Filter", "Summarize", "Sort", "Row limit"]);
   });
 
   it("renders a list of actions for Filter step", () => {
-    const card = createOrdersCard({
-      filter: ORDERS_FILTER,
-    });
-    setup({}, card);
+    const queryWithFilter = Lib.filter(
+      createQuery(),
+      -1,
+      Lib.expressionClause("=", [1, 1]),
+    );
+    setup({}, queryWithFilter);
 
     assertActionButtonsOrder(["Summarize", "Sort", "Row limit"]);
   });
 
   it("renders a list of actions for Summarize step", () => {
-    const card = createOrdersCard({
-      aggregation: [["count"]],
-      breakout: [["field", ORDERS.CREATED_AT, null]],
+    const query = createQueryWithClauses({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [
+        {
+          columnName: "CREATED_AT",
+          tableName: "ORDERS",
+          temporalBucketName: "Month",
+        },
+      ],
     });
-    setup({}, card);
+    setup({}, query);
 
     assertActionButtonsOrder([
       "Sort",
@@ -151,16 +157,5 @@ function assertActionButtonsOrder(buttonNames: string[]) {
   expect(buttons.length).toBe(buttonNames.length);
   buttonNames.forEach((name, index) => {
     expect(buttons[index]).toHaveTextContent(name);
-  });
-}
-
-function createOrdersCard(opts: Partial<StructuredQuery> = {}): Card {
-  return createMockCard({
-    dataset_query: createMockStructuredDatasetQuery({
-      query: {
-        "source-table": ORDERS_ID,
-        ...opts,
-      },
-    }),
   });
 }
