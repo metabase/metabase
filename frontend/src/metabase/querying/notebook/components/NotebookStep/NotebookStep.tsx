@@ -7,6 +7,7 @@ import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
 import type { Query } from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import type {
   NotebookStep as INotebookStep,
@@ -52,8 +53,14 @@ export function NotebookStep({
     useToggle(false);
 
   const actionButtons = useMemo(() => {
+    const { query, stageIndex } = step;
+    const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
+    const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
+
     const hasLargeActionButtons =
-      isLastStep && step.actions.some(hasLargeButton);
+      isLastStep &&
+      !(hasAggregations && !hasBreakouts) &&
+      step.actions.some(hasLargeButton);
 
     const actions = step.actions.map(action => {
       const stepUi = getStepConfig(action.type);
@@ -76,7 +83,7 @@ export function NotebookStep({
     });
 
     return actions;
-  }, [step.actions, isLastStep, openStep]);
+  }, [step, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
     if (step.revert) {

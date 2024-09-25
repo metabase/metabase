@@ -146,6 +146,15 @@ describe("NotebookStepList", () => {
       "Summarize",
     ]);
   });
+
+  it("renders a list of actions for Summarize step with no breakouts", () => {
+    const query = createQueryWithClauses({
+      aggregations: [{ operatorName: "count" }],
+    });
+    setup({}, query);
+
+    assertActionButtonsOrder(["Join data", "Custom column"]);
+  });
 });
 
 function assertActionButtonsOrder(buttonNames: string[]) {
@@ -156,6 +165,6 @@ function assertActionButtonsOrder(buttonNames: string[]) {
 
   expect(buttons.length).toBe(buttonNames.length);
   buttonNames.forEach((name, index) => {
-    expect(buttons[index]).toHaveTextContent(name);
+    expect(buttons[index]).toHaveAccessibleName(name);
   });
 }
