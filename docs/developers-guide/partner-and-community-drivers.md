@@ -56,7 +56,7 @@ If you have interest in becoming a partner, please fill the [partner form](https
 
 ## Community drivers
 
-> Note: Metabase Cloud doesn't support community drivers
+> You install these drivers at your own risk. The plugins run as part of your Metabase and will have access to anything your Metabase does. And since we can’t vet for them, we don’t make them available on Metabase Cloud.
 
 Anyone can build a community driver. These are the currently known third-party database drivers for Metabase.
 
