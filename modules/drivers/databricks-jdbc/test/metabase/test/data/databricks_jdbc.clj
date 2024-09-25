@@ -79,12 +79,23 @@
   [_driver dbdef]
   (contains? (existing-databases) (:database-name dbdef)))
 
-;; TODO: Disable when done with development!
+;; Shared datasets are used in the CI testing as per discussion on QPD weekly. This makes the testing code simpler,
+;; CI job faster and avoids reaching the quotas as it happened with Redshift.
+;;
+;; If you need to add new dataset, rebind the `*allow-database-creation*` and use standard functions, eg.:
+;;
+;; (mt/test-driver
+;;   :databricks-jdbc
+;;   (mt/dataset <dataset-name>
+;;     (mt/db)))
+;;
+;; Dataset can be destroyed normally using `tx/destroy-db` to remove the data from Databricks instance and `t2/delete!`
+;; to remove the reference from application database.
 (def ^:private ^:dynamic *allow-database-creation*
   "Same approach is used in Databricks driver as in Athena. Dataset creation is disabled by default. Datasets are
   preloaded in Databricks instance that tests run against. If you need to create new database on the instance,
   run your test with this var bound to true."
-  true #_false)
+  false)
 
 (defmethod tx/create-db! :databricks-jdbc
   [driver {:keys [database-name], :as dbdef} & options]
