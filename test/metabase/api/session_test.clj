@@ -451,6 +451,7 @@
     (testing "Includes user-local settings"
       (defsetting test-session-api-setting
         "test setting"
+        :encryption :no
         :user-local :only
         :type       :string
         :default    "FOO")

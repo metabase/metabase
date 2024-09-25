@@ -493,24 +493,25 @@
   ;; Should be in the form "{\"amount\":60,\"unit\":\"minutes\"}" where the unit is one of "seconds", "minutes" or "hours".
   ;; The amount is nillable.
   (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
-  :type    :json
-  :default nil
-  :getter  (fn []
-             (let [value (setting/get-value-of-type :json :session-timeout)]
-               (if-let [error-key (check-session-timeout value)]
-                 (do (log/warn (case error-key
-                                 :amount-must-be-positive            "Session timeout amount must be positive."
-                                 :amount-must-be-less-than-100-years "Session timeout must be less than 100 years."))
-                     nil)
-                 value)))
-  :setter  (fn [new-value]
-             (when-let [error-key (check-session-timeout new-value)]
-               (throw (ex-info (case error-key
-                                 :amount-must-be-positive            "Session timeout amount must be positive."
-                                 :amount-must-be-less-than-100-years "Session timeout must be less than 100 years.")
-                               {:status-code 400})))
-             (setting/set-value-of-type! :json :session-timeout new-value))
-  :doc "Has to be in the JSON format `\"{\"amount\":120,\"unit\":\"minutes\"}\"` where the unit is one of \"seconds\", \"minutes\" or \"hours\".")
+  :encryption :no
+  :type       :json
+  :default    nil
+  :getter     (fn []
+                (let [value (setting/get-value-of-type :json :session-timeout)]
+                  (if-let [error-key (check-session-timeout value)]
+                    (do (log/warn (case error-key
+                                    :amount-must-be-positive            "Session timeout amount must be positive."
+                                    :amount-must-be-less-than-100-years "Session timeout must be less than 100 years."))
+                        nil)
+                    value)))
+  :setter     (fn [new-value]
+                (when-let [error-key (check-session-timeout new-value)]
+                  (throw (ex-info (case error-key
+                                    :amount-must-be-positive            "Session timeout amount must be positive."
+                                    :amount-must-be-less-than-100-years "Session timeout must be less than 100 years.")
+                                  {:status-code 400})))
+                (setting/set-value-of-type! :json :session-timeout new-value))
+  :doc        "Has to be in the JSON format `\"{\"amount\":120,\"unit\":\"minutes\"}\"` where the unit is one of \"seconds\", \"minutes\" or \"hours\".")
 
 (defn session-timeout->seconds
   "Convert the session-timeout setting value to seconds."
