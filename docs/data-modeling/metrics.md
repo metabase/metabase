@@ -9,7 +9,7 @@ redirect_from:
 
 Create metrics to define the official way to calculate important numbers for your team.
 
-Metrics are like pre-defined calculations: create your aggregations once, save them as metrics, and use them whenever you need to analyze your data. They're like [models](./models.md), but for single values like a count, average, or sum.
+Metrics are like pre-defined calculations: create your aggregations once, save them as metrics, and use them whenever you need to analyze your data.
 
 For example, you may want to create a metric that calculates revenue, so people can refer to revenue in their own questions. That way you standardize how revenue is calculated (so you don't end up with five different calculations for the revenue).
 
@@ -20,13 +20,22 @@ You can:
 - Save metrics to [collections](../exploration-and-organization/collections.md).
 - Add metrics to [dashboards](../dashboards/introduction.md).
 - View metrics in the [data browser](../exploration-and-organization/exploration.md#browse-your-data).
-- Refer to metrics in questions.
+- Pick metrics as aggregation columns in the Summarize block when creating questions, modify them or combine.
+- [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans include the ability to mark metrics as verified.
 
 ### Metrics in the query builder
 
-When asking questions in the query builder, you can find metrics that your team created in the summarization section under **Common metrics**.
+When asking questions in the query builder, you can find metrics that your team created in the summarization section under **Common metrics**. You can pick multiple metrics and they will be calculated independently and joined automatically along the chosen dimensions.
 
 ![Common metrics](./images/common-metrics.png)
+
+You can also pick a metric as a data source when creating a new question. In the query builder it will be shown in the same way. If time dimension for this metric is defined it will be added as a grouping. You can change the groupings to break out the metric by other dimensions.
+
+**TODO** Picture of the entity picker with Metrics tab opened
+
+You can use custom expressions editor to combine multiple metrics or perform any calculations on top of them.
+
+**TODO** Picture like metrics-built-on-other-metrics.png but from the question editor
 
 ## Creating a metric
 
@@ -55,7 +64,7 @@ You can build metrics on top of existing metrics.
 
 ## Metric default time dimension
 
-You can optionally set a default time dimension for the metric. Metabase will use this default time dimension only when displaying the metric on a card in a collection or dashboard. In the image below that shows two pinned metrics at the top of a collection, the left metric lacks a default time dimension, so Metabase displays the metric as a number chart. The right metric has a default time dimension, so Metabase displays it as a line chart.
+You can optionally set a default time dimension for the metric. Metabase will use this default time dimension when the metric is opened or displayed on a card in a collection or dashboard. In the image below that shows two pinned metrics at the top of a collection, the left metric lacks a default time dimension, so Metabase displays the metric as a number chart. The right metric has a default time dimension, so Metabase displays it as a line chart.
 
 ![Pinned metrics](./images/pinned-metrics.png)
 
