@@ -161,6 +161,7 @@ export const dashboardActionButtons: Record<
         dashboard,
         canEdit,
         location,
+        openSettingsSidebar,
       }) => (
         <DashboardActionMenu
           items={getExtraButtons({
@@ -171,6 +172,7 @@ export const dashboardActionButtons: Record<
             dashboard,
             canEdit,
             pathname: location?.pathname,
+            openSettingsSidebar,
           })}
         />
       ),

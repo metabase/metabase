@@ -9,6 +9,7 @@
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.lib.metadata :as lib.metadata]
@@ -29,10 +30,9 @@
   (:import
    (clojure.lang PersistentList)
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
-                              BigQuery$TableListOption BigQuery$TableOption BigQueryException BigQueryOptions Dataset
-                              DatasetId Field Field$Mode FieldValue FieldValueList MaterializedViewDefinition QueryJobConfiguration Schema
-                              RangePartitioning TimePartitioning
-                              StandardTableDefinition Table TableDefinition TableDefinition$Type TableId TableResult)
+                              BigQuery$TableOption BigQueryException BigQueryOptions Dataset
+                              Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema
+                              Table TableDefinition$Type TableId TableResult)
    (java.util Iterator)))
 
 (set! *warn-on-reflection* true)
@@ -121,31 +121,24 @@
 ;;; |                                                      Sync                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- get-project-id
+  [{:keys [project-id] :as details}]
+  (or project-id (bigquery.common/database-details->credential-project-id details)))
+
 (defn- list-datasets
   "Fetch all datasets given database `details`, applying dataset filters if specified."
-  [{:keys [project-id dataset-filters-type dataset-filters-patterns] :as details}]
+  [{:keys [dataset-filters-type dataset-filters-patterns] :as details}]
   (let [client (database-details->client details)
-        project-id (or project-id (bigquery.common/database-details->credential-project-id details))
+        project-id (get-project-id details)
         datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
         inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
         exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)]
     (for [^Dataset dataset (.iterateAll datasets)
-          :let [^DatasetId dataset-id (.. dataset getDatasetId)]
+          :let [dataset-id (.. dataset getDatasetId getDataset)]
           :when (driver.s/include-schema? inclusion-patterns
                                           exclusion-patterns
-                                          (.getDataset dataset-id))]
+                                          dataset-id)]
       dataset-id)))
-
-(defn- list-tables
-  "Fetch all tables (new pages are loaded automatically by the API)."
-  (^Iterable [details]
-   (let [client (database-details->client details)
-         dataset-iter (list-datasets details)]
-     (apply concat (for [^DatasetId dataset-id dataset-iter]
-                     (-> (.listTables client dataset-id (u/varargs BigQuery$TableListOption))
-                         .iterateAll
-                         .iterator
-                         iterator-seq))))))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
   [_ details]
@@ -180,80 +173,100 @@
      (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
      (.getTable client dataset-id table-id empty-table-options))))
 
-(defn- tabledef->range-partition
-  [^TableDefinition tabledef]
-  (condp = (.getType tabledef)
-    TableDefinition$Type/TABLE
-    (.getRangePartitioning ^StandardTableDefinition tabledef)
-    TableDefinition$Type/MATERIALIZED_VIEW
-    (.getRangePartitioning ^MaterializedViewDefinition tabledef)
-    nil))
+(declare *process-native*)
 
-(defn- tabledef->time-partition
-  [^TableDefinition tabledef]
-  (condp = (.getType tabledef)
-    TableDefinition$Type/TABLE
-    (.getTimePartitioning ^StandardTableDefinition tabledef)
-    TableDefinition$Type/MATERIALIZED_VIEW
-    (.getTimePartitioning ^MaterializedViewDefinition tabledef)
-    nil))
+(defn- information-schema-table [project-id dataset-id table]
+  (keyword (format "%s.%s.INFORMATION_SCHEMA.%s" project-id dataset-id table)))
 
-(defn- table-is-partitioned?
-  [^TableDefinition tabledef]
-  (when (#{TableDefinition$Type/TABLE TableDefinition$Type/MATERIALIZED_VIEW} (.getType tabledef))
-    (or (tabledef->range-partition tabledef)
-        (tabledef->time-partition tabledef))))
+(defn- query-honeysql
+  "Query database with honeysql. Returns rows as maps with column names"
+  [driver database honeysql-form]
+  (let [[sql & params] (sql.qp/format-honeysql
+                        driver
+                        honeysql-form)]
+
+    (*process-native*
+     (fn [cols results]
+       (let [col-names (map (comp keyword :name) (:cols cols))]
+         (into [] (map #(zipmap col-names %)) results)))
+     database
+     sql
+     params
+     nil)))
+
+(defn- describe-database-tables
+  [driver database]
+  (set
+   (for [dataset-id (list-datasets (:details database))
+         :let [project-id (get-project-id (:details database))
+               results (query-honeysql
+                        driver
+                        database
+                        {:select [:table_name :table_type
+                                  [{:select [[[:= :option_value "true"]]]
+                                    :from [[(information-schema-table project-id dataset-id "TABLE_OPTIONS") :o]]
+                                    :where [:and
+                                            [:= :o.table_name :t.table_name]
+                                            [:= :o.option_name "require_partition_filter"]]}
+                                   :require_partition_filter]]
+                         :from [[(information-schema-table project-id dataset-id "TABLES") :t]]})]
+         {table-name :table_name table-type :table_type require-partition-filter :require_partition_filter} results]
+     {:schema dataset-id
+      :name table-name
+      :database_require_filter
+      (boolean (and
+                ;; Materialiezed views can be partitioned, and whether the view require a filter or not is based
+                ;; on the base table it selects from, without parsing the view query we can't find out the base table,
+                ;; thus we can't know whether the view require a filter or not.
+                ;; Maybe this is something we can do once we can parse sql
+                (= "BASE TABLE" table-type)
+                require-partition-filter))})))
 
 (defmethod driver/describe-database :bigquery-cloud-sdk
-  [_ database]
-  (let [tables (list-tables (:details database))]
-    {:tables (set (for [^Table table tables
-                        :let  [^TableId                 table-id   (.getTableId table)
-                               ^String                  dataset-id (.getDataset table-id)
-                               ^TableDefinition         tabledef   (.getDefinition table)
-                               table-name (str (.getTable table-id))]]
-                    {:schema                  dataset-id
-                     :name                    table-name
-                     :database_require_filter
-                     (boolean
-                      (and
-                       ;; Materialiezed views can be partitioned, and whether the view require a filter or not is based
-                       ;; on the base table it selects from, without parsing the view query we can't find out the base table,
-                       ;; thus we can't know whether the view require a filter or not.
-                       ;; Maybe this is something we can do once we can parse sql
-                       (= TableDefinition$Type/TABLE (. tabledef getType))
-                       (when (table-is-partitioned? tabledef)
-                         ;; having to use `get-table` here is inefficient, but calling `(.getRequirePartitionFilter)`
-                         ;; on the `table` object from `list-tables` will return `nil` even though the table requires
-                         ;; a partition filter.
-                         ;; This is an upstream bug where the v2 API is incomplete when setting object values see
-                         ;; https://github.com/googleapis/java-bigquery/blob/main/google-cloud-bigquery/src/main/java/com/google/cloud/bigquery/spi/v2/HttpBigQueryRpc.java#L343C23-L343C23
-                         ;; Anyway, we only call it when the table is partitioned, so I don't think it's a big deal
-                         (.getRequirePartitionFilter (get-table database dataset-id table-name)))))}))}))
+  [driver database]
+  {:tables (describe-database-tables driver database)})
 
-(defn- bigquery-type->base-type
-  "Returns the base type for the given BigQuery field's `field-mode` and `field-type`. In BQ, an ARRAY of INTEGER has
-  \"REPEATED\" as the mode, and \"INTEGER\" as the type name.
+(defn- database-type->base-type
+  [database-type]
+  (case database-type
+    "ARRAY"      :type/Array
+    "BOOLEAN"    :type/Boolean
+    "FLOAT"      :type/Float
+    "INTEGER"    :type/Integer
+    "RECORD"     :type/Dictionary ; RECORD -> field has a nested schema
+    "STRING"     :type/Text
+    "DATE"       :type/Date
+    "DATETIME"   :type/DateTime
+    "TIMESTAMP"  :type/DateTimeWithLocalTZ
+    "TIME"       :type/Time
+    "JSON"       :type/JSON
+    "NUMERIC"    :type/Decimal
+    "BIGNUMERIC" :type/Decimal
+    :type/*))
 
-  If/when we are able to represent complex types more precisely, we may want to capture that information separately.
-  For now, though, we will check if the `field-mode` is \"REPEATED\" and return our :type/Array for that case, then
-  proceed to check the `field-type` otherwise."
-  [field-mode field-type]
-  (if (= Field$Mode/REPEATED field-mode)
-    :type/Array
-    (case field-type
-      "BOOLEAN"    :type/Boolean
-      "FLOAT"      :type/Float
-      "INTEGER"    :type/Integer
-      "RECORD"     :type/Dictionary ; RECORD -> field has a nested schema
-      "STRING"     :type/Text
-      "DATE"       :type/Date
-      "DATETIME"   :type/DateTime
-      "TIMESTAMP"  :type/DateTimeWithLocalTZ
-      "TIME"       :type/Time
-      "NUMERIC"    :type/Decimal
-      "BIGNUMERIC" :type/Decimal
-      :type/*)))
+(defn- field->database+base-type
+  "Returns a normalized `database-type` and its `base-type` for a type from BigQuery Field type.
+
+   In BQ, an ARRAY of INTEGER has \"REPEATED\" as the mode, and \"INTEGER\" as the type name."
+  [^Field field]
+  (let [field-type (.. field getType name)
+        field-mode (.getMode field)
+        database-type (if (= Field$Mode/REPEATED field-mode)
+                        "ARRAY"
+                        field-type)]
+    [database-type (database-type->base-type database-type)]))
+
+(defn- raw-type->database+base-type
+  "Returns a normalized `database-type` and its `base-type` for a type from `INFORMATION_SCHEMA.COLUMNS.data_type`."
+  [raw-data-type]
+  (let [database-type (cond
+                        (str/starts-with? raw-data-type "ARRAY") "ARRAY" ;; ARRAY<INT64>
+                        (str/starts-with? raw-data-type "STRUCT") "RECORD" ;; STRUCT<INT64, FLOAT64>
+                        (str/starts-with? raw-data-type "INT") "INTEGER" ;; INT64
+                        (str/starts-with? raw-data-type "FLOAT") "FLOAT" ;; FLOAT 64
+                        (= raw-data-type "BOOL") "BOOLEAN"
+                        :else raw-data-type)]
+    [database-type (database-type->base-type database-type)]))
 
 (mu/defn- fields->metabase-field-info
   ([fields]
@@ -263,14 +276,12 @@
     []
     (map
      (fn [[idx ^Field field]]
-       (let [type-name (.. field getType name)
-             f-mode    (.getMode field)
-             database-position (or database-position idx)
+       (let [database-position (or database-position idx)
              field-name (.getName field)
-             base-type (bigquery-type->base-type f-mode type-name)]
+             [database-type base-type] (field->database+base-type field)]
          (into
           (cond-> {:name              field-name
-                   :database-type     type-name
+                   :database-type     database-type
                    :base-type         base-type
                    :database-position database-position}
             nfc-path (assoc :nfc-path nfc-path)
@@ -291,39 +302,106 @@
   See https://cloud.google.com/bigquery/docs/querying-partitioned-tables#query_an_ingestion-time_partitioned_table"
   "_PARTITIONDATE")
 
-(defmethod driver/describe-table :bigquery-cloud-sdk
-  [_ database {table-name :name, dataset-id :schema}]
-  (let [table                     (get-table database dataset-id table-name)
-        ^TableDefinition tabledef (.getDefinition table)
-        is-partitioned?           (table-is-partitioned? tabledef)
-        ;; a table can only have one partitioned field
-        partitioned-field-name    (when is-partitioned?
-                                    (or (some-> ^RangePartitioning (tabledef->range-partition tabledef) .getField)
-                                        (some-> ^TimePartitioning (tabledef->time-partition tabledef) .getField)))
-        fields                    (set
-                                   (map
-                                    #(assoc % :database-partitioned (= (:name %) partitioned-field-name))
-                                    (fields->metabase-field-info (.. tabledef getSchema getFields))))]
-    {:schema dataset-id
-     :name   table-name
-     :fields (cond-> fields
-               ;; if table has time partition but no field is specified as partitioned
-               ;; meaning this table is partitioned by ingestion time
-               ;; so we manually sync the 2 pseudo-columns _PARTITIONTIME AND _PARTITIONDATE
-               (and is-partitioned?
-                    (some? (tabledef->time-partition tabledef))
-                    (nil? partitioned-field-name))
-               (conj
-                {:name                 partitioned-time-field-name
-                 :database-type        "TIMESTAMP"
-                 :base-type            (bigquery-type->base-type nil "TIMESTAMP")
-                 :database-position    (count fields)
-                 :database-partitioned true}
-                {:name                 partitioned-date-field-name
-                 :database-type        "DATE"
-                 :base-type            (bigquery-type->base-type nil "DATE")
-                 :database-position    (inc (count fields))
-                 :database-partitioned true}))}))
+(defn- build-nested-column-lookup
+  "Returns a map of table-name->parent-path->nested-columns"
+  [driver database project-id dataset-id table-names]
+  (let [results (query-honeysql
+                 driver
+                 database
+                 (cond->
+                  {:select [:table_name :column_name :data_type :field_path]
+                   :from [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :c]]}
+                   (not-empty table-names)
+                   (assoc :where [:in :table_name table-names])))
+        nested-columns (map (fn [{data-type :data_type field-path-str :field_path table-name :table_name}]
+                              (let [field-path (str/split field-path-str #"\.")
+                                    nfc-path (not-empty (pop field-path))
+                                    [database-type base-type] (raw-type->database+base-type data-type)]
+                                {:name (peek field-path)
+                                 :table-name table-name
+                                 :table-schema dataset-id
+                                 :database-type database-type
+                                 :base-type base-type
+                                 :nfc-path nfc-path}))
+                            results)]
+    (reduce
+     (fn [accum col]
+       (let [parent (:nfc-path col)]
+         (cond-> accum
+           parent
+           (update-in [(:table-name col) parent] (fnil conj []) col))))
+     {}
+     (sort-by (comp count :nfc-path) nested-columns))))
+
+(defn- describe-dataset-fields
+  [driver database project-id dataset-id table-names]
+  (let [named-rows (query-honeysql
+                    driver
+                    database
+                    (cond->
+                     {:select [:table_name :column_name :data_type :ordinal_position
+                               [[:= :is_partitioning_column "YES"] :partitioned]]
+                      :from [[(information-schema-table project-id dataset-id "COLUMNS") :c]]}
+                      (not-empty table-names)
+                      (assoc :where [:in :table_name table-names])))
+        nested-column-lookup (build-nested-column-lookup driver database project-id dataset-id table-names)
+        maybe-add-nested-fields (fn maybe-add-nested-fields [col nfc-path root-database-position]
+                                  (let [new-path ((fnil conj []) nfc-path (:name col))
+                                        nested-fields (get-in nested-column-lookup [(:table-name col) new-path])]
+                                    (cond-> (assoc col :database-position root-database-position)
+                                      nested-fields
+                                      (assoc :nested-fields (into #{}
+                                                                  (map #(maybe-add-nested-fields % new-path root-database-position))
+                                                                  nested-fields)))))
+        max-position-per-table (reduce
+                                (fn [accum {table-name :table_name pos :ordinal_position}]
+                                  (if (> (or pos 0) (get accum table-name -1))
+                                    (assoc accum table-name (or pos 0))
+                                    accum))
+                                {}
+                                named-rows)]
+    (mapcat (fn [{column-name :column_name
+                  data-type :data_type
+                  database-position :ordinal_position
+                  partitioned? :partitioned
+                  table-name :table_name}]
+              (let [database-position (or (some-> database-position dec)
+                                          (get max-position-per-table table-name 0))
+                    [database-type base-type] (raw-type->database+base-type data-type)]
+                (cond-> [(maybe-add-nested-fields
+                          {:name column-name
+                           :table-name table-name
+                           :table-schema dataset-id
+                           :database-type database-type
+                           :base-type base-type
+                           :database-partitioned partitioned?
+                           :database-position database-position}
+                          nil
+                          database-position)]
+                  ;; _PARTITIONDATE does not appear so add it in if we see _PARTITIONTIME
+                  (= column-name partitioned-time-field-name)
+                  (conj {:name partitioned-date-field-name
+                         :table-name table-name
+                         :table-schema dataset-id
+                         :database-type "DATE"
+                         :base-type :type/Date
+                         :database-position (inc database-position)
+                         :database-partitioned true}))))
+            named-rows)))
+
+(defmethod driver/describe-fields :bigquery-cloud-sdk
+  [driver database & {:keys [schema-names table-names]}]
+  (let [project-id (get-project-id (:details database))
+        dataset-ids (or schema-names
+                        (list-datasets (:details database)))]
+    (sort-by
+     (juxt :table-schema :table-name :database-position :name)
+     (into
+      []
+      (mapcat
+       (fn [dataset-id]
+         (describe-dataset-fields driver database project-id dataset-id table-names)))
+      dataset-ids))))
 
 (defn- get-field-parsers [^Schema schema]
   (let [default-parser (get-method bigquery.qp/parse-result-of-type :default)]
@@ -567,6 +645,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:convert-timezone         true
+                              :describe-fields          true
                               :nested-fields            true
                               :datetime-diff            true
                               :expressions              true

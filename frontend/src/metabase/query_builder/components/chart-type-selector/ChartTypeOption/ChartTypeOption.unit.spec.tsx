@@ -20,30 +20,38 @@ const EXPECTED_VISUALIZATION_VALUES: Array<{
   iconName: IconName | (string & unknown);
 }> = [
   { visualizationType: "scalar", displayName: "Number", iconName: "number" },
-  // {
-  //   visualizationType:  "smartscalar",
-  //   displayName: "Trend",
-  //   iconName: "smartscalar",
-  // },
-  // { visualizationType:  "progress", displayName: "Progress", iconName: "progress" },
-  // { visualizationType:  "gauge", displayName: "Gauge", iconName: "gauge" },
-  // { visualizationType:  "table", displayName: "Table", iconName: "table2" },
-  // { visualizationType:  "line", displayName: "Line", iconName: "line" },
-  // { visualizationType:  "area", displayName: "Area", iconName: "area" },
-  // { visualizationType:  "bar", displayName: "Bar", iconName: "bar" },
-  // {
-  //   visualizationType:  "waterfall",
-  //   displayName: "Waterfall",
-  //   iconName: "waterfall",
-  // },
-  // { visualizationType:  "combo", displayName: "Combo", iconName: "lineandbar" },
-  // { visualizationType:  "row", displayName: "Row", iconName: "horizontal_bar" },
-  // { visualizationType:  "scatter", displayName: "Scatter", iconName: "bubble" },
-  // { visualizationType:  "pie", displayName: "Pie", iconName: "pie" },
-  // { visualizationType:  "map", displayName: "Map", iconName: "pinmap" },
-  // { visualizationType:  "funnel", displayName: "Funnel", iconName: "funnel" },
-  // { visualizationType:  "object", displayName: "Detail", iconName: "document" },
-  // { visualizationType:  "pivot", displayName: "Pivot Table", iconName: "pivot_table" },
+  {
+    visualizationType: "smartscalar",
+    displayName: "Trend",
+    iconName: "smartscalar",
+  },
+  {
+    visualizationType: "progress",
+    displayName: "Progress",
+    iconName: "progress",
+  },
+  { visualizationType: "gauge", displayName: "Gauge", iconName: "gauge" },
+  { visualizationType: "table", displayName: "Table", iconName: "table2" },
+  { visualizationType: "line", displayName: "Line", iconName: "line" },
+  { visualizationType: "area", displayName: "Area", iconName: "area" },
+  { visualizationType: "bar", displayName: "Bar", iconName: "bar" },
+  {
+    visualizationType: "waterfall",
+    displayName: "Waterfall",
+    iconName: "waterfall",
+  },
+  { visualizationType: "combo", displayName: "Combo", iconName: "lineandbar" },
+  { visualizationType: "row", displayName: "Row", iconName: "horizontal_bar" },
+  { visualizationType: "scatter", displayName: "Scatter", iconName: "bubble" },
+  { visualizationType: "pie", displayName: "Pie", iconName: "pie" },
+  { visualizationType: "map", displayName: "Map", iconName: "pinmap" },
+  { visualizationType: "funnel", displayName: "Funnel", iconName: "funnel" },
+  { visualizationType: "object", displayName: "Detail", iconName: "document" },
+  {
+    visualizationType: "pivot",
+    displayName: "Pivot Table",
+    iconName: "pivot_table",
+  },
 ];
 
 const setup = ({
