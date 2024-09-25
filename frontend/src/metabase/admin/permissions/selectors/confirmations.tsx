@@ -90,23 +90,6 @@ export function getPermissionWarning(
   return null;
 }
 
-export function getBlockWarning(
-  dbValue: DataPermissionValue,
-  schemaValue: DataPermissionValue,
-  tableValue?: DataPermissionValue,
-) {
-  if (dbValue === DataPermissionValue.BLOCKED) {
-    return;
-  }
-
-  if (
-    schemaValue === DataPermissionValue.BLOCKED ||
-    tableValue === DataPermissionValue.BLOCKED
-  ) {
-    return t`Groups with a database, schema, or table set to Blocked can't view native queries on this database.`;
-  }
-}
-
 function getEntityTypeFromId(entityId: EntityId): [string, string] {
   return isTableEntityId(entityId)
     ? [t`table`, t`tables`]
