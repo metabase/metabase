@@ -1,16 +1,8 @@
-import styled from "@emotion/styled";
-import type { ComponentProps, MouseEventHandler, ReactNode } from "react";
+import type { MouseEventHandler, ReactNode } from "react";
 
-import {
-  Box,
-  Center,
-  Group,
-  Icon,
-  Paper,
-  type PaperProps,
-  Stack,
-  Title,
-} from "metabase/ui";
+import { Box, Center, Group, Icon, Paper, Stack, Title } from "metabase/ui";
+
+import S from "./SharingPaneButton.module.css";
 
 type SharingOptionProps = {
   illustration: JSX.Element;
@@ -31,7 +23,8 @@ export const SharingPaneButton = ({
   externalLink = false,
   "data-testid": dataTestId,
 }: SharingOptionProps) => (
-  <Container
+  <Paper
+    className={S.Container}
     p={24}
     pt={52}
     withBorder
@@ -39,7 +32,6 @@ export const SharingPaneButton = ({
     onClick={onClick}
     h="100%"
     pos="relative"
-    style={{ cursor: "pointer" }}
   >
     <Stack>
       {externalLink && (
@@ -54,17 +46,5 @@ export const SharingPaneButton = ({
       </Group>
       {children}
     </Stack>
-  </Container>
+  </Paper>
 );
-
-const Container = styled(Paper)<PaperProps & ComponentProps<"div">>`
-  cursor: pointer;
-  border-color: var(--mb-color-brand-light);
-  --external-link-icon-color: var(--mb-color-text-light);
-
-  &:hover {
-    border-color: var(--mb-base-color-blue-40);
-    background-color: var(--mb-color-bg-light);
-    --external-link-icon-color: var(--mb-base-color-blue-40);
-  }
-`;
