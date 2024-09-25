@@ -689,6 +689,7 @@ jobs:
 
   tag-nightly:
     if: ${{ inputs.auto }}
+    needs: [push-tags, verify-docker-pull, verify-s3-download]
     uses: ./.github/workflows/release-tag.yml
     with:
       version: ${{ inputs.version }}
@@ -729,7 +730,7 @@ jobs:
   auto-publish-complete-message:
     if: ${{ inputs.auto }}
     runs-on: ubuntu-22.04
-    needs: [push-tags, verify-docker-pull, verify-s3-download]
+    needs: tag-nightly
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
