@@ -20,7 +20,6 @@ import type {
 } from "../../types";
 import { DataPermission, DataPermissionType } from "../../types";
 import {
-  getBlockWarning,
   getPermissionWarning,
   getPermissionWarningModal,
   getViewDataPermissionsTooRestrictiveWarningModal,
@@ -56,25 +55,13 @@ const buildAccessPermission = (
     DataPermission.VIEW_DATA,
   );
 
-  const dbValue = getSchemasPermission(
-    permissions,
-    groupId,
-    entityId,
-    DataPermission.VIEW_DATA,
-  );
-
-  const permissionWarning = getPermissionWarning(
+  const warning = getPermissionWarning(
     value,
     defaultGroupValue,
     "tables",
     defaultGroup,
     groupId,
   );
-
-  const blockWarning = getBlockWarning(dbValue, value);
-
-  // permissionWarning should always trump a blockWarning
-  const warning = permissionWarning || blockWarning;
 
   const confirmations = (newValue: DataPermissionValue) => [
     getPermissionWarningModal(
