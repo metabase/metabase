@@ -97,7 +97,7 @@
   run your test with this var bound to true.
 
   This var also controls whether `tx/destroy-db!` is allowed."
-  false)
+  true #_false)
 
 (defmethod tx/create-db! :databricks
   [driver {:keys [database-name], :as dbdef} & options]
