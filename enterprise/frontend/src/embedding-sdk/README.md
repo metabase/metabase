@@ -21,7 +21,8 @@ Features currently supported:
 - embedding dashboards - static
 - embedding dashboards - w/drill-down
 - embedding the collection browser
-- ability for the user to modify existing questions
+- Add new questions
+- Modify existing questions
 - theming with CSS variables
 - plugins for custom actions, overriding dashboard card menu items
 - subscribing to events
@@ -523,7 +524,13 @@ With the `CreateQuestion` component, you can create a new question from scratch 
 
 - **plugins**: `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
   drill-down menu. [See this section](#implementing-custom-actions) for more details
+- **entityTypeFilter**: `("table" | "question" | "model" | "metric")[]` (optional) - An array that specifies which entity types are available to the user in the data picker
+- **isSaveEnabled**: `boolean` (optional) – Determines if the save functionality is enabled.
 
+_Note: Only enabled when `isSaveEnabled = true`_
+
+- **onBeforeSave**: `() => void` (optional) – A callback function that triggers before saving.
+- **onSave**: `() => void` (optional) – A callback function that triggers when a user saves the question
 ```tsx
 import React from "react";
 import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
@@ -553,7 +560,13 @@ With the `ModifyQuestion` component, you can edit an existing question using the
     Collection Browser to return data
 - **plugins**: `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
   drill-down menu. [See this section](#implementing-custom-actions) for more details
+- **entityTypeFilter**: `("table" | "question" | "model" | "metric")[]` (optional) - An array that specifies which entity types are available to the user in the data picker
+- **isSaveEnabled**: `boolean` (optional) – Determines if the save functionality is enabled.
 
+_Note: Only enabled when `isSaveEnabled = true`_
+
+- **onBeforeSave**: `() => void` (optional) – A callback function that triggers before saving.
+- **onSave**: `() => void` (optional) – A callback function that triggers when a user saves the question
 ```tsx
 import React from "react";
 import {MetabaseProvider, ModifyQuestion} from "@metabase/embedding-sdk-react";
