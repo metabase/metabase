@@ -2,13 +2,19 @@ import cx from "classnames";
 import { useState } from "react";
 import { c, t } from "ttag";
 
+import { getTableUrl } from "metabase/browse/containers/TableBrowser/TableBrowser";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import DateTime from "metabase/components/DateTime";
+import Link from "metabase/core/components/Link";
 import Styles from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
+import { getMetadata } from "metabase/selectors/metadata";
 import { QuestionPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
-import { Box, Flex, Icon, Text } from "metabase/ui";
+import { Box, Flex, FixedSizeIcon as Icon, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
+import type { Database } from "metabase-types/api";
 
 import SidebarStyles from "./QuestionInfoSidebar.module.css";
 
@@ -21,8 +27,8 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
     <>
       <SidesheetCardSection title={t`Creator and last editor`}>
         {lastEditInfo && (
-          <Flex gap="sm" align="center">
-            <Icon name="ai" />
+          <Flex gap="sm" align="top">
+            <Icon name="ai" className={SidebarStyles.IconMargin} />
             <Text>
               {c("{0} is a date/time and {1} is a person's name").jt`${(
                 <DateTime
@@ -35,8 +41,8 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
           </Flex>
         )}
 
-        <Flex gap="sm" align="center">
-          <Icon name="pencil" />
+        <Flex gap="sm" align="top">
+          <Icon name="pencil" className={SidebarStyles.IconMargin} />
           <Text>
             {c("{0} is a date/time and {1} is a person's name").jt`${(
               <DateTime unit="day" value={createdAt} key="date" />
@@ -45,9 +51,20 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
         </Flex>
       </SidesheetCardSection>
       <SidesheetCardSection title={t`Saved in`}>
-        <Flex gap="sm" align="center">
-          <Icon name="folder" />
-          <Text>{question.collection()?.name}</Text>
+        <Flex gap="sm" align="top" color="var(--mb-color-brand)">
+          <Icon
+            name="folder"
+            color="var(--mb-color-brand)"
+            className={SidebarStyles.IconMargin}
+          />
+          <Text>
+            <Link
+              to={`/collection/${question.collection()?.id}`}
+              variant="brand"
+            >
+              {question.collection()?.name}
+            </Link>
+          </Text>
         </Flex>
       </SidesheetCardSection>
       <SharingDisplay question={question} />
@@ -58,21 +75,40 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
 
 function SourceDisplay({ question }: { question: Question }) {
   const sourceInfo = question.legacyQueryTable();
+  const metadata = useSelector(getMetadata);
 
   if (!sourceInfo) {
     return null;
   }
+
+  const model = String(sourceInfo.id).includes("card__") ? "card" : "table";
+
+  const sourceUrl =
+    model === "card"
+      ? Urls.browseDatabase(sourceInfo.db as Database)
+      : getTableUrl(sourceInfo, metadata);
 
   return (
     <SidesheetCardSection title={t`Based on`}>
       <Flex gap="sm" align="center">
         {sourceInfo.db && (
           <>
-            <Text>{sourceInfo.db.name}</Text>
+            <Text>
+              <Link
+                to={`/browse/databases/${sourceInfo.db.id}`}
+                variant="brand"
+              >
+                {sourceInfo.db.name}
+              </Link>
+            </Text>
             {"/"}
           </>
         )}
-        <Text>{sourceInfo?.display_name}</Text>
+        <Text>
+          <Link to={sourceUrl} variant="brand">
+            {sourceInfo?.display_name}
+          </Link>
+        </Text>
       </Flex>
     </SidesheetCardSection>
   );
@@ -102,7 +138,7 @@ function SharingDisplay({ question }: { question: Question }) {
                 className={cx(
                   Styles.cursorPointer,
                   Styles.textBrandHover,
-                  SidebarStyles.LinkIcon,
+                  SidebarStyles.IconMargin,
                 )}
               />
             }

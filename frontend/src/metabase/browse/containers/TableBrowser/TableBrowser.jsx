@@ -35,7 +35,7 @@ const getSchemaName = props => {
 const getReloadInterval = (_state, _props, tables = []) =>
   tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
 
-const getTableUrl = (table, metadata) => {
+export const getTableUrl = (table, metadata) => {
   const metadataTable = metadata?.table(table.id);
   return ML_Urls.getUrl(metadataTable?.newQuestion(), { clean: false });
 };
