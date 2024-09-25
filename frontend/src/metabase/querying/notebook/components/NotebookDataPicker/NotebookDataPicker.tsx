@@ -45,18 +45,14 @@ export function NotebookDataPicker({
   table,
   databaseId,
   placeholder = title,
-  hasMetrics,
+  hasMetrics = false,
   isDisabled,
   onChange,
 }: NotebookDataPickerProps) {
-  const {
-    modelsFilterList = [
-      "table",
-      "card",
-      "dataset",
-      ...(hasMetrics ? ["metric" as const] : []),
-    ],
-  } = useNotebookContext();
+  const { modelsFilterList } = useNotebookContext();
+  const filterList = hasMetrics
+    ? modelsFilterList
+    : modelsFilterList.filter(model => model !== "metric");
 
   const [isOpen, setIsOpen] = useState(!table);
   const store = useStore();
@@ -143,7 +139,7 @@ export function NotebookDataPicker({
           title={title}
           value={tableValue}
           databaseId={databaseId}
-          models={modelsFilterList}
+          models={filterList}
           onChange={handleChange}
           onClose={() => setIsOpen(false)}
         />
