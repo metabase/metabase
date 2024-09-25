@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 
 import { nonUserFacingLabels, hiddenLabels } from "./constants";
-import { getMilestoneIssues, isLatestRelease, hasBeenReleased } from "./github";
+import { getMilestoneIssues, hasBeenReleased } from "./github";
 import type { Issue, ReleaseProps } from "./types";
 import {
   isEnterpriseVersion,
@@ -260,12 +260,6 @@ export async function publishRelease({
 
   const issues = await getMilestoneIssues({ version, github, owner, repo });
 
-  const isLatest: "true" | "false" =
-    !isEnterpriseVersion(version) &&
-    (await isLatestRelease({ version, github, owner, repo }))
-      ? "true"
-      : "false";
-
   const payload = {
     owner,
     repo,
@@ -274,7 +268,6 @@ export async function publishRelease({
     body: generateReleaseNotes({ version, checksum, issues }),
     draft: true,
     prerelease: isRCVersion(version),
-    make_latest: isLatest,
   };
 
   return github.rest.repos.createRelease(payload);

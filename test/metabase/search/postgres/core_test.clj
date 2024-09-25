@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [metabase.search :refer [is-postgres?]]
+   [metabase.search :as search :refer [is-postgres?]]
    [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index-test :refer [legacy-results]]
    [metabase.test :as mt]
@@ -10,10 +10,6 @@
 
 (def ^:private hybrid
   (comp t2.realize/realize #'search.postgres/hybrid))
-
-(def ^:private hybrid-multi #'search.postgres/hybrid-multi)
-
-(def ^:private minimal #'search.postgres/minimal)
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-setup [& body]
@@ -56,12 +52,28 @@
       (doseq [term example-terms]
         (testing term
           (is (= (hybrid term)
-                 (hybrid-multi term))))))))
+                 (#'search.postgres/hybrid-multi term))))))))
 
 (deftest minimal-test
   (with-setup
-    (testing "consistent results between both hybrid implementations\n"
+    (testing "consistent results with minimal implementations\n"
       (doseq [term example-terms]
         (testing term
           (is (= (hybrid term)
-                 (minimal term))))))))
+                 (#'search.postgres/minimal term))))))))
+
+(deftest minimal-with-perms-test
+  (with-setup
+    (testing "consistent results with minimal implementations\n"
+      (doseq [term (take 1 example-terms)]
+        (testing term
+          (is (= (hybrid term)
+                 (#'search.postgres/minimal-with-perms
+                  term
+                  {:current-user-id    (mt/user->id :crowberto)
+                   :is-superuser?      true
+                   :archived?          false
+                   :current-user-perms #{"/"}
+                   :model-ancestors?   false
+                   :models             search/all-models
+                   :search-string      term}))))))))
