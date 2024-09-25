@@ -554,10 +554,9 @@ describeEE("scenarios > embedding > full app", () => {
           res.headers["X-Metabase-Anti-CSRF-Token"] = CSRF_TOKEN;
         });
       });
-      cy.intercept(
-        "POST",
-        "/api/dashboard/*/dashcard/*/card/*/query/csv?format_rows=true",
-      ).as("CsvDownload");
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query/csv").as(
+        "CsvDownload",
+      );
       visitDashboardUrl({
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
       });

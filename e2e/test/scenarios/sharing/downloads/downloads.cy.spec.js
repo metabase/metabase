@@ -142,7 +142,6 @@ describe("scenarios > question > download", () => {
             enableFormatting: false,
           },
           sheet => {
-            cy.log(sheet);
             expect(sheet["A1"].v).to.eq("Total");
             expect(sheet["A2"].v).to.eq(39.718145389078366);
             expect(sheet["A2"].w).to.eq("39.718145389078366");
