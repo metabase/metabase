@@ -104,19 +104,18 @@ export const HomeLayout = () => {
   }, []);
 
   useEffect(() => {
-    if (window.location.pathname === "/") {
-      setSelectedChatType("default");
-      setSelectedChatHistoryType("dataAgent");
-      setInsights([]);
-    } else if (window.location.pathname === "/browse/insights") {
+    if (window.location.pathname === "/browse/insights") {
       setSelectedChatType("insights");
       setSelectedChatHistoryType("getInsights");
       setInsights(insights);
-    } else if (window.location.pathname === "/browse/chat") {
-      setSelectedChatType("default");
-      setSelectedChatHistoryType("dataAgent");
-      setInsights([]);
-    }
+      return;
+    }   
+
+    // "/" ||  "/browse/chat"
+    setSelectedChatType("default");
+    setSelectedChatHistoryType("dataAgent");
+    setInsights([]);
+   
   }, [window.location.pathname]);
 
   const { ws, isConnected } = useWebSocket(
@@ -170,12 +169,7 @@ export const HomeLayout = () => {
     if (!inputValue.trim()) return;
 
     dispatch(setInitialMessage(inputValue)); // Set the initial message in Redux
-
-    if (window.location.pathname === "/") {
-      dispatch(push("/browse/chat")); // Navigate to /browse/chat
-    } else if (window.location.pathname === "/browse/insights") {
-      setShowChatAssistant(true); // Show the ChatAssistant component
-    }
+    setShowChatAssistant(true);
 
     setInputValue(""); // Clear the input value
   };
@@ -183,11 +177,7 @@ export const HomeLayout = () => {
   const handleSuggestionClick = (message: string) => {
     dispatch(setInitialMessage(message)); // Set the initial message from the card in Redux
 
-    if (window.location.pathname === "/") {
-      dispatch(push("/browse/chat")); // Navigate to /browse/chat
-    } else if (window.location.pathname === "/browse/insights") {
-      setShowChatAssistant(true); // Show the ChatAssistant component
-    }
+    setShowChatAssistant(true);
     setInputValue(""); // Clear the input value if needed (or skip this line)
   };
 
