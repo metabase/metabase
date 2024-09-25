@@ -29,13 +29,11 @@ When asking questions in the query builder, you can find metrics that your team 
 
 ![Common metrics](./images/common-metrics.png)
 
-You can also pick a metric as a data source when creating a new question. In the query builder it will be shown in the same way. If time dimension for this metric is defined it will be added as a grouping. You can change the groupings to break out the metric by other dimensions.
+You can also pick a metric as a data source when creating a new question. If the metric has a time dimension, Metabase will include the time dimension as a grouping. You can change the groupings to break out the metric by other dimensions.
 
-**TODO** Picture of the entity picker with Metrics tab opened
+![Metrics tab in the entity picker](./images/entity-picker-metrics-tab.png)
 
-You can use custom expressions editor to combine multiple metrics or perform any calculations on top of them.
-
-**TODO** Picture like metrics-built-on-other-metrics.png but from the question editor
+You can use custom expressions to combine multiple metrics, or perform calculations on top of metrics.
 
 ## Creating a metric
 
