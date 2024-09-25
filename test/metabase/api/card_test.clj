@@ -3933,6 +3933,9 @@
       (is (t2/select-one-fn :archived :model/Card card-id))
       (is (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false}))
       (is (not (t2/select-one-fn :archived :model/Card card-id))))
+    (testing "we can update the name"
+      (is (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:name "foo"}))
+      (is (= "foo" (t2/select-one-fn :name :model/Card card-id))))
     (testing "We can't update with `dashboard_id` for a normal card."
       ;; we get a 200 because the param is ignored
       (is (mt/user-http-request :crowberto :put 200 (str "card/" other-card-id) {:dashboard_id dash-id}))
