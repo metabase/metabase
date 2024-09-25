@@ -101,7 +101,7 @@ function initiateAction(actionType, mode) {
   const icon = getIcon(actionType);
 
   if (mode === "notebook") {
-    cy.findAllByTestId("action-buttons").find(`.Icon-${icon}`).click();
+    cy.findAllByTestId("action-buttons").first().find(`.Icon-${icon}`).click();
   } else {
     // This line could potentially reduce or completely eliminate binning flakes where sidebar renders empty because of the race condition
     cy.findByText(/^Doing science/).should("not.exist");

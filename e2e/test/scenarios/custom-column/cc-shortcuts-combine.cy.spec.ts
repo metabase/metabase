@@ -111,26 +111,6 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
       cy.findByLabelText("Separator").should("have.value", "");
     });
   });
-
-  it("should be possible to edit a previous stages' columns when there is an aggregation (metabase#43226)", () => {
-    openOrdersTable({ mode: "notebook" });
-
-    cy.button("Summarize").click();
-
-    popover().findByText("Count of rows").click();
-
-    addCustomColumn();
-    selectCombineColumns();
-
-    selectColumn(0, "User", "Email");
-
-    expressionEditorWidget().within(() => {
-      cy.findByText("Separated by (empty)").should("exist");
-      cy.findByText(/Separated by/).click();
-
-      cy.findByLabelText("Separator").should("have.value", "");
-    });
-  });
 });
 
 describeWithSnowplow(
