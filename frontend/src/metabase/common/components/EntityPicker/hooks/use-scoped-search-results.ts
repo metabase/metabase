@@ -106,16 +106,21 @@ const collectionItemsToSearchResults = <
   items: CollectionItem[],
   folder: Item | undefined,
 ): SearchItem[] => {
-  return items.map(item => ({
-    ...item,
-    model: "collection",
-    collection: folder && { ...folder, id: Number(folder.id) },
-    database_name: null,
-    display: null,
-    table_schema: null,
-    moderated_status: null,
-    collection_authority_level: null,
-  }));
+  return items.reduce((items: SearchItem[], item) => {
+    if (item.model !== "snippet") {
+      items.push({
+        ...item,
+        model: item.model,
+        collection: folder && { ...folder, id: Number(folder.id) },
+        database_name: null,
+        display: null,
+        table_schema: null,
+        moderated_status: null,
+        collection_authority_level: null,
+      });
+    }
+    return items;
+  }, []);
 };
 
 const tablesToSearchResults = (
