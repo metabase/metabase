@@ -71,11 +71,11 @@
                              ;; In case on pk constraint is used by multiple columns this query would return duplicate
                              ;; rows. Group by ensures all rows are distinct. This may not be necessary, but rather
                              ;; safe than sorry.
-                             :group-by [[:tc.table_catalog :table_catalog]
-                                        [:tc.table_schema :table_schema]
-                                        [:tc.table_name :table_name]
-                                        [:ccu.column_name :column_name]
-                                        [:tc.constraint_type :constraint_type]]}
+                             :group-by [:tc.table_catalog
+                                        :tc.table_schema
+                                        :tc.table_name
+                                        :ccu.column_name
+                                        :tc.constraint_type]}
                             :cs]
                            [:and
                             [:= :c.table_catalog :cs.table_catalog]

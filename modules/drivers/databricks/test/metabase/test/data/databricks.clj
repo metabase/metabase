@@ -94,7 +94,9 @@
 (def ^:private ^:dynamic *allow-database-creation*
   "Same approach is used in Databricks driver as in Athena. Dataset creation is disabled by default. Datasets are
   preloaded in Databricks instance that tests run against. If you need to create new database on the instance,
-  run your test with this var bound to true."
+  run your test with this var bound to true.
+
+  This var also controls whether `tx/destroy-db!` is allowed."
   false)
 
 (defmethod tx/create-db! :databricks
@@ -113,6 +115,12 @@
       (do
         (log/infof "Creating Databricks database %s" (pr-str schema))
         (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options)))))
+
+(defmethod tx/destroy-db! :databricks
+  [driver dbdef]
+  (if *allow-database-creation*
+    ((get-method tx/destroy-db! :sql-jdbc/test-extensions) driver dbdef)
+    (log/warn "`*allow-database-creation*` is `false`. Database removal is suppressed.")))
 
 ;; Differences to the :sql-jdbc/test-extensions original: false transactions, not using `jdbc/execute!` for
 ;; timezone setting, not overriding database timezone.
