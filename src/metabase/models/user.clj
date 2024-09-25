@@ -521,6 +521,14 @@
   :type       :boolean
   :default    true)
 
+(defsetting browse-filter-only-verified-metrics
+  (deferred-tru "User preference for whether the 'Browse metrics' page should be filtered to show only verified metrics.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
+
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
 
 (defmethod audit-log/model-details :model/User

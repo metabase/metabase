@@ -339,6 +339,7 @@ export type UserSettings = {
   "expand-browse-in-nav"?: boolean;
   "expand-bookmarks-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
+  "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
 };

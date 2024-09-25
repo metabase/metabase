@@ -10,13 +10,19 @@ on:
         required: true
   schedule:
     - cron: '45 * * * *' # hourly
+  workflow_call:
+    inputs:
+      version:
+        description: 'Major Metabase version (e.g. 45, 52, 68)'
+        type: number
+        required: true
 
 jobs:
   update-release-log:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || 50 }} # Update this for the next major release
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || vars.CURRENT_VERSION }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -31,11 +37,19 @@ jobs:
         run: yarn --cwd release --frozen-lockfile && npm i -g tsx
       - name: generate release Log
         run: cd release && tsx ./src/release-log.ts $VERSION > v$VERSION.html
+      - name: generate release channel log
+        run: cd release && tsx ./src/release-channel-log.ts > channels.html
       - name: upload release log to the web
         run: |
           aws s3 cp \
           release/v$VERSION.html \
           s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/v$VERSION.html
+      - name: upload release channel log to the web
+        run: |
+          aws s3 cp \
+          release/channels.html \
+          s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/channels.html
+
       - name: Create cloudfront invalidation
         run: |
           aws cloudfront create-invalidation \

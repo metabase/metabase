@@ -895,7 +895,7 @@ jobs:
   be-tests-sqlserver-2017-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     timeout-minutes: 90
     env:
       CI: 'true'
