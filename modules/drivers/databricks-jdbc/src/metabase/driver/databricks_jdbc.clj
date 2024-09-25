@@ -53,8 +53,8 @@
                         [[:case [:= :cs.constraint_type [:inline "PRIMARY KEY"]] true :else false] :pk?]
                         [[:case [:not= :c.comment [:inline ""]] :c.comment :else nil] :field-comment]]
                :from [[:information_schema.columns :c]]
-               ;; Join constraint_type to every row; mapping of one to at most one, thanks
-               ;; to `[:= [:inline "PRIMARY KEY"] :cs.constraint_type]` condition.
+               ;; Following links contains contains diagram of `information_schema`:
+               ;; https://docs.databricks.com/en/sql/language-manual/sql-ref-information-schema.html
                :left-join [[{:select   [[:tc.table_catalog :table_catalog]
                                         [:tc.table_schema :table_schema]
                                         [:tc.table_name :table_name]
@@ -63,21 +63,24 @@
                              :from     [[:information_schema.table_constraints :tc]]
                              :join     [[:information_schema.constraint_column_usage :ccu]
                                         [:and
-                                         [:= :tc.table_catalog :ccu.table_catalog]
-                                         [:= :tc.table_schema :ccu.table_schema]
-                                         [:= :tc.table_name :ccu.table_name]]]
-                             :group-by [:tc.table_catalog
-                                        :tc.table_schema
-                                        :tc.table_name
-                                        :ccu.column_name
-                                        :tc.constraint_type]}
+                                         [:= :tc.constraint_catalog :ccu.constraint_catalog]
+                                         [:= :tc.constraint_schema :ccu.constraint_schema]
+                                         [:= :tc.constraint_name :ccu.constraint_name]]]
+                             :where [:= :tc.constraint_type [:inline "PRIMARY KEY"]]
+                             ;; In case on pk constraint is used by multiple columns this query would return duplicate
+                             ;; rows. Group by ensures all rows are distinct. This may not be necessary, but rather
+                             ;; safe than sorry.
+                             :group-by [[:tc.table_catalog :table_catalog]
+                                        [:tc.table_schema :table_schema]
+                                        [:tc.table_name :table_name]
+                                        [:ccu.column_name :column_name]
+                                        [:tc.constraint_type :constraint_type]]}
                             :cs]
                            [:and
                             [:= :c.table_catalog :cs.table_catalog]
                             [:= :c.table_schema :cs.table_schema]
                             [:= :c.table_name :cs.table_name]
-                            [:= :c.column_name :cs.column_name]
-                            [:= [:inline "PRIMARY KEY"] :cs.constraint_type]]]
+                            [:= :c.column_name :cs.column_name]]]
                :where [:and
                        ;; Ignore `timestamp_ntz` type columns. Columns of this type are not recognizable from
                        ;; `timestamp` columns when fetching the data. This exception should be removed when the problem
