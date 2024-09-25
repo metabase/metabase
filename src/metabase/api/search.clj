@@ -113,7 +113,7 @@
   A search query that has both filters applied will only return models and cards."
   [q archived created_at created_by table_db_id models last_edited_at last_edited_by
    filter_items_in_personal_collection model_ancestors search_engine search_native_query
-   verified ids]
+   verified ids include_dashboard_questions]
   {q                                   [:maybe ms/NonBlankString]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
@@ -127,7 +127,8 @@
    search_engine                       [:maybe string?]
    search_native_query                 [:maybe true?]
    verified                            [:maybe true?]
-   ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]}
+   ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]
+   include_dashboard_questions         [:maybe :boolean]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let  [models-set (if (seq models)
                       (set models)
@@ -152,6 +153,7 @@
        :search-string                       q
        :table-db-id                         table_db_id
        :verified                            verified
-       :ids                                 (set ids)}))))
+       :ids                                 (set ids)
+       :include-dashboard-questions?        include_dashboard_questions}))))
 
 (api/define-routes +engine-cookie)
