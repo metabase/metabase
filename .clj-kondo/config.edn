@@ -336,7 +336,8 @@
                                      metabase.pulse.render.style}                                   ; TODO -- consolidate these into a real API namespace.
     metabase.query-processor       :any                                                             ; TODO omg scream, 29 namespaces used outside of the module. WHAT THE HECC
     metabase.query-analysis        #{metabase.query-analysis
-                                     metabase.query-analysis.failure-map}
+                                     metabase.query-analysis.failure-map
+                                     metabase.query-analysis.native-query-analyzer}
     metabase.related               #{metabase.related}
     metabase.sample-data           #{metabase.sample-data}
     metabase.search                #{metabase.search}
