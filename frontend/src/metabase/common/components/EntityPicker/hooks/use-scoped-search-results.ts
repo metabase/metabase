@@ -10,12 +10,15 @@ import { isNotNull } from "metabase/lib/types";
 import type {
   CollectionId,
   CollectionItem,
-  SearchResult,
   SearchResultId,
   Table,
 } from "metabase-types/api";
 
-import type { EntityPickerSearchScope, TypeWithModel } from "../types";
+import type {
+  EntityPickerSearchScope,
+  SearchItem,
+  TypeWithModel,
+} from "../types";
 import { isSchemaItem } from "../utils";
 
 export const useScopedSearchResults = <
@@ -27,7 +30,7 @@ export const useScopedSearchResults = <
   searchModels: string[],
   searchScope: EntityPickerSearchScope,
   folder: Item | undefined,
-): SearchResult[] | null => {
+): SearchItem[] | null => {
   const isScopedSearchEnabled = searchScope === "folder" && folder != null;
 
   const shouldUseCollectionItems =
@@ -66,7 +69,7 @@ export const useScopedSearchResults = <
     return tablesToSearchResults(tables ?? [], database?.name);
   }, [tables, database]);
 
-  const scopedSearchResults: SearchResult[] | null = useMemo(() => {
+  const scopedSearchResults: SearchItem[] | null = useMemo(() => {
     if (isScopedSearchEnabled && shouldUseCollectionItems) {
       return isFetchingCollectionItems
         ? null
@@ -102,27 +105,42 @@ const collectionItemsToSearchResults = <
 >(
   items: CollectionItem[],
   folder: Item | undefined,
-): SearchResult[] => {
-  return items.map(item => ({
-    ...item,
-    collection: folder,
-  })) as unknown as SearchResult[];
+): SearchItem[] => {
+  return items.reduce((items: SearchItem[], item) => {
+    if (item.model !== "snippet") {
+      items.push({
+        ...item,
+        model: item.model,
+        collection: folder && { ...folder, id: Number(folder.id) },
+        database_name: null,
+        display: null,
+        table_schema: null,
+        moderated_status: null,
+        collection_authority_level: null,
+      });
+    }
+    return items;
+  }, []);
 };
 
 const tablesToSearchResults = (
   tables: Table[],
   dbName: string | undefined,
-): SearchResult[] => {
+): SearchItem[] => {
   return tables.map(table => ({
     ...table,
+    id: Number(table.id),
     model: "table",
-    database_name: dbName,
+    database_name: dbName ?? null,
     table_schema: table.schema,
-  })) as unknown as SearchResult[];
+    display: null,
+    moderated_status: null,
+    collection_authority_level: null,
+  }));
 };
 
 const filterSearchResults = (
-  results: SearchResult[],
+  results: SearchItem[],
   searchQuery: string,
   searchModels: string[],
 ) => {

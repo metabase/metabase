@@ -161,8 +161,8 @@ const DashboardPickerInner = (
         0;
 
       if (!isParentCollectionInPath) {
-        setPath(oldPath => [
-          ...oldPath,
+        onPathChange([
+          ...path,
           {
             query: {
               id: parentCollectionId,
@@ -176,7 +176,13 @@ const DashboardPickerInner = (
       }
       handleItemSelect(newCollectionItem);
     },
-    [path, onItemSelect, userPersonalCollectionId, handleItemSelect],
+    [
+      path,
+      onItemSelect,
+      userPersonalCollectionId,
+      handleItemSelect,
+      onPathChange,
+    ],
   );
 
   // Exposing onNewDashboard so that parent can select newly created

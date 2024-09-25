@@ -5,9 +5,9 @@ import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import { trackSearchClick } from "metabase/search/analytics";
 import { Box, Flex, Stack } from "metabase/ui";
-import type { SearchResult, SearchResultId } from "metabase-types/api";
+import type { SearchResultId } from "metabase-types/api";
 
-import type { TypeWithModel } from "../../types";
+import type { SearchItem, TypeWithModel } from "../../types";
 import { ChunkyList, ResultItem } from "../ResultItem";
 
 interface Props<
@@ -16,7 +16,7 @@ interface Props<
   Item extends TypeWithModel<Id, Model>,
 > {
   folder: Item | undefined;
-  searchResults: SearchResult[];
+  searchResults: SearchItem[];
   selectedItem: Item | null;
   onItemSelect: (item: Item) => void;
 }

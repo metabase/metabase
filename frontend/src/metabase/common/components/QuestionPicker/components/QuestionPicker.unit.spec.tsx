@@ -477,6 +477,7 @@ describe("QuestionPickerModal", () => {
     await setupModal({ models: ["card", "dataset", "metric"] });
     const searchInput = await screen.findByPlaceholderText(/search/i);
     await userEvent.type(searchInput, myMetric.name);
+    await userEvent.click(screen.getByText("Everywhere"));
     expect(await screen.findByText(myMetric.name)).toBeInTheDocument();
     expect(screen.queryByText(myQuestion.name)).not.toBeInTheDocument();
   });

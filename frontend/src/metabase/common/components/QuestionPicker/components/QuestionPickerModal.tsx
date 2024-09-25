@@ -69,10 +69,6 @@ export const QuestionPickerModal = ({
     [onChange, tryLogRecentItem],
   );
 
-  const handleInit = useCallback((item: QuestionPickerItem) => {
-    setSelectedItem(current => current ?? item);
-  }, []);
-
   const handleItemSelect = useCallback(
     (item: QuestionPickerItem) => {
       if (options.hasConfirmButtons) {
@@ -111,7 +107,7 @@ export const QuestionPickerModal = ({
           models={["card"]}
           options={options}
           path={questionsPath}
-          onInit={handleInit}
+          onInit={onItemSelect}
           onItemSelect={onItemSelect}
           onPathChange={setQuestionsPath}
         />
@@ -129,7 +125,7 @@ export const QuestionPickerModal = ({
           models={["dataset"]}
           options={options}
           path={modelsPath}
-          onInit={handleInit}
+          onInit={onItemSelect}
           onItemSelect={onItemSelect}
           onPathChange={setModelsPath}
         />
@@ -147,7 +143,7 @@ export const QuestionPickerModal = ({
           models={["metric"]}
           options={options}
           path={metricsPath}
-          onInit={handleInit}
+          onInit={onItemSelect}
           onItemSelect={onItemSelect}
           onPathChange={setMetricsPath}
         />
