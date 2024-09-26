@@ -32,7 +32,7 @@ import type {
   ActualModelFilters,
   AvailableModelFilters,
   ModelFilterControlsProps,
-} from "metabase/browse/models/utils";
+} from "metabase/browse/models";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";

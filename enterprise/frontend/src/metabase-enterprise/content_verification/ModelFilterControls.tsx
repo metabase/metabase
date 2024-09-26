@@ -5,7 +5,7 @@ import _ from "underscore";
 import type {
   ActualModelFilters,
   ModelFilterControlsProps,
-} from "metabase/browse/models/utils";
+} from "metabase/browse/models";
 import { useUserSetting } from "metabase/common/hooks";
 import { Button, Icon, Paper, Popover, Switch, Text } from "metabase/ui";
 

@@ -16,16 +16,16 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import type { RecentMetric } from "metabase/browse/metrics";
 import {
   createMockMetricResult,
   createMockRecentMetric,
 } from "metabase/browse/metrics/test-utils";
-import type { RecentMetric } from "metabase/browse/metrics/types";
+import type { RecentModel } from "metabase/browse/models";
 import {
   createMockModelResult,
   createMockRecentModel,
 } from "metabase/browse/models/test-utils";
-import type { RecentModel } from "metabase/browse/models/types";
 import type { DataPickerValue } from "metabase/common/components/DataPicker";
 import { checkNotNull } from "metabase/lib/types";
 import type { IconName } from "metabase/ui";

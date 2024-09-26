@@ -1,4 +1,3 @@
-import type { Dispatch, SetStateAction } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,7 +7,13 @@ import type { IconName } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
-import type { FilterableModel, ModelResult, RecentModel } from "./types";
+import type {
+  ActualModelFilters,
+  AvailableModelFilters,
+  FilterableModel,
+  ModelResult,
+  RecentModel,
+} from "./types";
 
 export const isModel = (item: SearchResult) => item.model === "dataset";
 
@@ -92,23 +97,6 @@ export const getMaxRecentModelCount = (
   }
   return 0;
 };
-
-export type AvailableModelFilters = Record<
-  string,
-  {
-    predicate: (value: FilterableModel) => boolean;
-    activeByDefault: boolean;
-  }
->;
-
-export type ModelFilterControlsProps = {
-  actualModelFilters: ActualModelFilters;
-  setActualModelFilters: Dispatch<SetStateAction<ActualModelFilters>>;
-};
-
-/** Mapping of filter names to true if the filter is active
- * or false if it is inactive */
-export type ActualModelFilters = Record<string, boolean>;
 
 export const filterModels = <T extends FilterableModel>(
   unfilteredModels: T[] | undefined,

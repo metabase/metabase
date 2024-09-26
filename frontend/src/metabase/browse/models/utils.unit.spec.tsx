@@ -4,8 +4,11 @@ import { createMockCollection } from "metabase-types/api/mocks";
 import { SortDirection } from "metabase-types/api/sorting";
 
 import { createMockModelResult } from "./test-utils";
-import type { ModelResult } from "./types";
-import type { ActualModelFilters, AvailableModelFilters } from "./utils";
+import type {
+  ActualModelFilters,
+  AvailableModelFilters,
+  ModelResult,
+} from "./types";
 import { filterModels, getMaxRecentModelCount, sortModels } from "./utils";
 
 describe("sortModels", () => {
