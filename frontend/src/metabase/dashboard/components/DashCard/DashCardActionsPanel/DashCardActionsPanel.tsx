@@ -4,10 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isActionDashCard } from "metabase/actions/utils";
-import ConfirmContent from "metabase/components/ConfirmContent";
-import Modal from "metabase/components/Modal";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
-import { useModal } from "metabase/hooks/use-modal";
 import { Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type {
@@ -38,7 +35,6 @@ interface Props {
   isPreviewing: boolean;
   hasError: boolean;
   onRemove: (dashcard: DashboardCard) => void;
-  onTrash: (dashcard: DashboardCard) => void;
   onAddSeries: (dashcard: DashboardCard) => void;
   onReplaceCard: (dashcard: DashboardCard) => void;
   onReplaceAllVisualizationSettings: (
@@ -63,7 +59,6 @@ function DashCardActionsPanelInner({
   isPreviewing,
   hasError,
   onRemove,
-  onTrash,
   onAddSeries,
   onReplaceCard,
   onReplaceAllVisualizationSettings,
@@ -80,13 +75,9 @@ function DashCardActionsPanelInner({
     disableClickBehavior,
   } = getVisualizationRaw(series) ?? {};
 
-  const isDashboardQuestion = _.isNumber(dashcard?.card.dashboard_id);
-
   const buttons = [];
 
   const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
-
-  const trashConfirmationModal = useModal(false);
 
   const handleOnUpdateVisualizationSettings = useCallback(
     (settings: VisualizationSettings) => {
@@ -133,22 +124,6 @@ function DashCardActionsPanelInner({
 
     onRemove(dashcard);
   }, [dashcard, onRemove]);
-
-  const handleConfirmMoveToTrash = useCallback(() => {
-    if (!dashcard) {
-      return;
-    }
-
-    trashConfirmationModal.open();
-  }, [dashcard, trashConfirmationModal]);
-
-  const handleMoveToTrash = useCallback(() => {
-    if (!dashcard) {
-      return;
-    }
-
-    onTrash(dashcard);
-  }, [dashcard, onTrash]);
 
   if (dashcard) {
     buttons.push(
@@ -207,12 +182,7 @@ function DashCardActionsPanelInner({
     }
   }
 
-  if (
-    !isLoading &&
-    dashcard &&
-    !isVirtualDashCard(dashcard) &&
-    !isDashboardQuestion
-  ) {
+  if (!isLoading && dashcard && !isVirtualDashCard(dashcard)) {
     buttons.push(
       <DashCardActionButton
         key="replace-question"
@@ -281,41 +251,11 @@ function DashCardActionsPanelInner({
       >
         <DashCardActionButtonsContainer>
           {buttons}
-          {isDashboardQuestion ? (
-            <DashCardActionButton
-              onClick={handleConfirmMoveToTrash}
-              tooltip={t`Move to trash`}
-            >
-              <DashCardActionButton.Icon name="trash" />
-            </DashCardActionButton>
-          ) : (
-            <DashCardActionButton
-              onClick={handleRemoveCard}
-              tooltip={t`Remove`}
-            >
-              <DashCardActionButton.Icon name="close" />
-            </DashCardActionButton>
-          )}
+          <DashCardActionButton onClick={handleRemoveCard} tooltip={t`Remove`}>
+            <DashCardActionButton.Icon name="close" />
+          </DashCardActionButton>
         </DashCardActionButtonsContainer>
       </DashCardActionsPanelContainer>
-      {isDashboardQuestion && (
-        <Modal
-          isOpen={isDashboardQuestion && trashConfirmationModal.opened}
-          onClose={trashConfirmationModal.close}
-          trapFocus
-        >
-          <ConfirmContent
-            title={t`Move this question to trash?`}
-            message={t`This question will be removed from this dashboard and any alerts using it.`}
-            cancelButtonText={t`Cancel`}
-            confirmButtonText={t`Move to trash`}
-            data-testid="trash-confirmation"
-            onAction={handleMoveToTrash}
-            onCancel={trashConfirmationModal.close}
-            onClose={trashConfirmationModal.close}
-          />
-        </Modal>
-      )}
     </>
   );
 }

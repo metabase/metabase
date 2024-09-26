@@ -39,7 +39,7 @@ export const SaveQuestionForm = ({
     ? t`Save changes`
     : t`Replace original question, "${originalQuestion?.displayName()}"`;
 
-  const showPickerInput = values.saveType === "create" || !saveToDashboard;
+  const showPickerInput = values.saveType === "create" && !saveToDashboard;
   const showTabSelect =
     values.saveType === "overwrite" &&
     saveToDashboard &&
@@ -87,7 +87,7 @@ export const SaveQuestionForm = ({
               name="tab_id"
               title="Which tab should this go on?"
               containerClassName={CS.dashboardTabSelectContainer}
-              options={saveToDashboard.tabs.map(tab => ({
+              options={saveToDashboard.tabs?.map(tab => ({
                 name: tab.name,
                 value: tab.id,
               }))}

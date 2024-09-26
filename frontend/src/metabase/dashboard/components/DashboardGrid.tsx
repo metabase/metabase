@@ -482,17 +482,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     });
   };
 
-  onTrashDashboardQuestion = (dc: DashboardCard) => {
-    const isDashboardCard = _.isNumber(dc.card.dashboard_id);
-
-    if (isDashboardCard) {
-      this.props.trashDashboardQuestion({
-        dashcardId: dc.id,
-        cardId: dc.card_id,
-      });
-    }
-  };
-
   onDashCardAddSeries = (dc: BaseDashboardCard) => {
     this.setState({ addSeriesModalDashCard: dc });
   };
@@ -531,7 +520,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         isXray={this.props.isXray}
         withTitle={this.props.withCardTitle}
         onRemove={this.onDashCardRemove}
-        onTrash={this.onTrashDashboardQuestion}
         onAddSeries={this.onDashCardAddSeries}
         onReplaceCard={this.onReplaceCard}
         onUpdateVisualizationSettings={

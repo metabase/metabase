@@ -141,7 +141,7 @@ export const DashboardPickerModal = ({
 
   const tabs: EntityTab<CollectionPickerModel>[] = [
     {
-      displayName: t`Dashboards`,
+      displayName: canSelectCollection ? t`Browse` : t`Dashboards`,
       model: "dashboard",
       additionalModels: canSelectCollection ? ["collection"] : undefined,
       icon: "dashboard",

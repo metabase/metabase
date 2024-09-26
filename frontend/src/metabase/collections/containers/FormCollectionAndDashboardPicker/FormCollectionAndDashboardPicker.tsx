@@ -198,7 +198,7 @@ export function FormCollectionAndDashboardPicker({
       {isPickerOpen && (
         <>
           <DashboardPickerModal
-            title={t`Save this question to a dashboard`}
+            title={t`Pick where to save this`}
             value={pickerValue}
             onChange={handleChange}
             onClose={() => setIsPickerOpen(false)}
