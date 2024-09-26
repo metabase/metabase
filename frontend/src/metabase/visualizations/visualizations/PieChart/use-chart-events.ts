@@ -150,6 +150,10 @@ function handleClick(
         }))
       : undefined;
 
+  if (data != null) {
+    data[chartModel.colDescs.metricDesc.index].value = sliceTreeNode.value;
+  }
+
   const clickObject: ClickObject = {
     value: sliceTreeNode.value,
     column: chartModel.colDescs.metricDesc.column,
