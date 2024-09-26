@@ -1565,3 +1565,10 @@
                                            :name "top level col"
                                            :type "foo"}]}
                    (:collection leaf-card-response)))))))))
+
+(deftest force-reindex-test
+  (mt/with-temp [Card {id :id} {:name "It boggles the mind!"}]
+    (let [search-results #(:data (mt/user-http-request :rasta :get 200 "search" :q "boggle" :search_engine "fulltext"))]
+      (is (empty? (search-results)))
+      (mt/user-http-request :crowberto :post 200 "search/force-reindex")
+      (is (some (comp #{id} :id) (search-results))))))
