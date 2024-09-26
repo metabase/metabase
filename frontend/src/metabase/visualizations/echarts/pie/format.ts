@@ -1,4 +1,5 @@
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { formatValue } from "metabase/lib/formatting";
 import { computeMaxDecimalsForValues } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
@@ -35,7 +36,6 @@ function getAllSlicePercentages(sliceTree: SliceTree) {
 export function getPieChartFormatters(
   chartModel: PieChartModel,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
 ): PieChartFormatters {
   const { column: getColumnSettings } = settings;
   if (!getColumnSettings) {
@@ -47,10 +47,12 @@ export function getPieChartFormatters(
   );
 
   const formatMetric = (value: unknown, isCompact: boolean = false) =>
-    renderingContext.formatValue(value, {
-      ...metricColSettings,
-      compact: isCompact,
-    });
+    String(
+      formatValue(value, {
+        ...metricColSettings,
+        compact: isCompact,
+      }),
+    );
 
   const formatPercent = (value: unknown, location: "legend" | "chart") => {
     let decimals = settings["pie.decimal_places"];
@@ -68,12 +70,14 @@ export function getPieChartFormatters(
       });
     }
 
-    return renderingContext.formatValue(value, {
-      column: metricColSettings.column,
-      number_separators: metricColSettings.number_separators as string,
-      number_style: "percent",
-      decimals,
-    });
+    return String(
+      formatValue(value, {
+        column: metricColSettings.column,
+        number_separators: metricColSettings.number_separators as string,
+        number_style: "percent",
+        decimals,
+      }),
+    );
   };
 
   return { formatMetric, formatPercent };

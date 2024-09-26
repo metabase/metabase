@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import {
   getObjectEntries,
@@ -414,7 +415,7 @@ const getYAxisFormatter = (
 
   if (isNormalized) {
     return (value: RowValue) =>
-      renderingContext.formatValue(value, {
+      formatValue(value, {
         column,
         number_style: "percent",
       });
@@ -432,7 +433,7 @@ const getYAxisFormatter = (
       ...(settings.column?.(column) ?? {}),
       ...formattingOptions,
     });
-    return renderingContext.formatValue(value, options);
+    return formatValue(value, options);
   };
 };
 
@@ -689,7 +690,7 @@ export function getTimeSeriesXAxisModel(
       column,
     };
 
-    return renderingContext.formatValue(value, params);
+    return formatValue(value, params);
   };
 
   // ECharts, when selecting chart ticks, can use either the browser timezone or UTC when `useUTC` is true.
@@ -745,7 +746,7 @@ function getNumericXAxisModel(
     computeNumericDataInverval(xValues);
 
   const formatter = (value: RowValue) =>
-    renderingContext.formatValue(value, {
+    formatValue(value, {
       column: dimensionColumn,
       ...(settings.column?.(dimensionColumn) ?? {}),
       compact: settings["graph.x_axis.axis_enabled"] === "compact",
@@ -820,7 +821,7 @@ export function getXAxisModel(
       return NULL_DISPLAY_VALUE;
     }
 
-    return renderingContext.formatValue(value, {
+    return formatValue(value, {
       column: dimensionColumn,
       ...(settings.column?.(dimensionColumn) ?? {}),
       compact: settings["graph.x_axis.axis_enabled"] === "compact",
