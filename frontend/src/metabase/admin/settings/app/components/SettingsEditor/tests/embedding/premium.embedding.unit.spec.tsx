@@ -115,15 +115,16 @@ describe("[EE, with token] embedding settings", () => {
       it("should show info about embedding SDK", async () => {
         const withinEmbeddingSdkCard = within(
           screen.getByRole("article", {
-            name: "Embedding SDK for React",
+            name: "Embedded analytics SDK",
           }),
         );
 
         expect(
           withinEmbeddingSdkCard.getByRole("heading", {
-            name: "Embedding SDK for React",
+            name: "Embedded analytics SDK",
           }),
         ).toBeInTheDocument();
+        expect(withinEmbeddingSdkCard.getByText("Beta")).toBeInTheDocument();
         expect(
           withinEmbeddingSdkCard.getByText(
             /Interactive embedding with full, granular control./,
@@ -140,16 +141,16 @@ describe("[EE, with token] embedding settings", () => {
         await userEvent.click(
           within(
             screen.getByRole("article", {
-              name: "Embedding SDK for React",
+              name: "Embedded analytics SDK",
             }),
           ).getByRole("button", { name: "Configure" }),
         );
 
         expect(
-          screen.getByLabelText("Enable Embedding SDK for React"),
+          screen.getByLabelText("Enable Embedded analytics SDK"),
         ).not.toBeChecked();
         expect(
-          screen.getByLabelText("Enable Embedding SDK for React"),
+          screen.getByLabelText("Enable Embedded analytics SDK"),
         ).toBeEnabled();
         expect(
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
@@ -343,15 +344,16 @@ describe("[EE, with token] embedding settings", () => {
       it("should show info about embedding SDK", async () => {
         const withinEmbeddingSdkCard = within(
           screen.getByRole("article", {
-            name: "Embedding SDK for React",
+            name: "Embedded analytics SDK",
           }),
         );
 
         expect(
           withinEmbeddingSdkCard.getByRole("heading", {
-            name: "Embedding SDK for React",
+            name: "Embedded analytics SDK",
           }),
         ).toBeInTheDocument();
+        expect(withinEmbeddingSdkCard.getByText("Beta")).toBeInTheDocument();
         expect(
           withinEmbeddingSdkCard.getByText(
             /Interactive embedding with full, granular control./,
@@ -366,16 +368,16 @@ describe("[EE, with token] embedding settings", () => {
         await userEvent.click(
           within(
             screen.getByRole("article", {
-              name: "Embedding SDK for React",
+              name: "Embedded analytics SDK",
             }),
           ).getByRole("button", { name: "Configure" }),
         );
 
         expect(
-          screen.getByLabelText("Enable Embedding SDK for React"),
+          screen.getByLabelText("Enable Embedded analytics SDK"),
         ).toBeChecked();
         expect(
-          screen.getByLabelText("Enable Embedding SDK for React"),
+          screen.getByLabelText("Enable Embedded analytics SDK"),
         ).toBeEnabled();
         expect(
           screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
@@ -511,7 +513,193 @@ describe("[EE, with token] embedding settings", () => {
 
     expect(screen.queryByText("Static embedding")).not.toBeInTheDocument();
     expect(
-      screen.queryByText("Embedding SDK for React"),
+      screen.queryByText("Embedded analytics SDK"),
     ).not.toBeInTheDocument();
+  });
+
+  describe("self-hosted (pro)", () => {
+    beforeEach(async () => {
+      await setupPremium({
+        isHosted: false,
+        settingValues: { "is-hosted?": false },
+      });
+
+      // Go to embedding SDK settings page
+      await userEvent.click(
+        within(
+          screen.getByRole("article", {
+            name: "Embedded analytics SDK",
+          }),
+        ).getByRole("button", { name: "Configure" }),
+      );
+    });
+
+    describe("Embedding SDK settings page", () => {
+      it("should show API key banner", () => {
+        const apiKeyBanner = screen.getByText(
+          /You can test Embedded analytics SDK/,
+        );
+        expect(apiKeyBanner).toHaveTextContent(
+          "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, implement JWT SSO.",
+        );
+
+        const withinApiKeyBanner = within(apiKeyBanner);
+        expect(
+          withinApiKeyBanner.getByRole("link", {
+            name: "implement JWT SSO",
+          }),
+        ).toHaveProperty(
+          "href",
+          "https://www.metabase.com/learn/metabase-basics/embedding/securing-embeds?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-self-hosted",
+        );
+      });
+
+      it("should show quick start section", () => {
+        expect(screen.getByText("Get started")).toBeInTheDocument();
+        expect(
+          screen.queryByText("Use the SDK with API keys for development."),
+        ).not.toBeInTheDocument();
+
+        expect(
+          screen.getByRole("link", { name: "Check out the Quick Start" }),
+        ).toHaveProperty(
+          "href",
+          "https://metaba.se/sdk-quick-start?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-self-hosted",
+        );
+      });
+
+      it("should show CORS settings", () => {
+        expect(
+          screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
+        ).toBeInTheDocument();
+
+        expect(
+          screen.getByText(
+            "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included.",
+          ),
+        ).toBeInTheDocument();
+      });
+
+      it("should show documentation link", () => {
+        const documentationText = screen.getByTestId("sdk-documentation");
+        expect(documentationText).toHaveTextContent(
+          "Check out the documentation for more.",
+        );
+
+        expect(
+          within(documentationText).getByRole("link", {
+            name: "documentation",
+          }),
+        ).toHaveProperty(
+          "href",
+          "https://metaba.se/sdk-docs?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-self-hosted",
+        );
+      });
+
+      it("should not show version pinning section", () => {
+        expect(screen.queryByText("Version pinning")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(
+            "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.",
+          ),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("link", { name: "Request version pinning" }),
+        ).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("cloud (Pro)", () => {
+    beforeEach(async () => {
+      await setupPremium({
+        isHosted: true,
+        settingValues: { "is-hosted?": true },
+      });
+
+      // Go to embedding SDK settings page
+      await userEvent.click(
+        within(
+          screen.getByRole("article", {
+            name: "Embedded analytics SDK",
+          }),
+        ).getByRole("button", { name: "Configure" }),
+      );
+    });
+
+    describe("Embedding SDK settings page", () => {
+      it("should show API key banner", () => {
+        const apiKeyBanner = screen.getByText(
+          /You can test Embedded analytics SDK/,
+        );
+        expect(apiKeyBanner).toHaveTextContent(
+          "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, implement JWT SSO.",
+        );
+
+        const withinApiKeyBanner = within(apiKeyBanner);
+        expect(
+          withinApiKeyBanner.getByRole("link", {
+            name: "implement JWT SSO",
+          }),
+        ).toHaveProperty(
+          "href",
+          "https://www.metabase.com/learn/metabase-basics/embedding/securing-embeds?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-cloud",
+        );
+      });
+
+      it("should show quick start section", () => {
+        expect(screen.getByText("Get started")).toBeInTheDocument();
+        expect(
+          screen.queryByText("Use the SDK with API keys for development."),
+        ).not.toBeInTheDocument();
+
+        expect(
+          screen.getByRole("link", { name: "Check out the Quick Start" }),
+        ).toHaveProperty(
+          "href",
+          "https://metaba.se/sdk-quick-start?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-cloud",
+        );
+      });
+
+      it("should show CORS settings", () => {
+        expect(
+          screen.getByLabelText("Cross-Origin Resource Sharing (CORS)"),
+        ).toBeInTheDocument();
+
+        expect(
+          screen.getByText(
+            "Enter the origins for the websites or apps where you want to allow SDK embedding, separated by a space. Localhost is automatically included.",
+          ),
+        ).toBeInTheDocument();
+      });
+
+      it("should show documentation link", () => {
+        const documentationText = screen.getByTestId("sdk-documentation");
+        expect(documentationText).toHaveTextContent(
+          "Check out the documentation for more.",
+        );
+
+        expect(
+          within(documentationText).getByRole("link", {
+            name: "documentation",
+          }),
+        ).toHaveProperty(
+          "href",
+          "https://metaba.se/sdk-docs?utm_source=product&utm_medium=docs&utm_campaign=embedding-sdk&utm_content=embedding-sdk-admin&source_plan=pro-cloud",
+        );
+      });
+
+      it("should show version pinning section", () => {
+        expect(screen.getByText("Version pinning")).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion.",
+          ),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole("link", { name: "Request version pinning" }),
+        ).toHaveProperty("href", "mailto:help@metabase.com");
+      });
+    });
   });
 });

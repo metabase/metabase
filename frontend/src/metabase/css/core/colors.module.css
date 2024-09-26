@@ -67,6 +67,7 @@
   --mb-color-text-brand: var(--mb-base-color-brand-40);
   --mb-color-text-white: var(--mb-base-color-white);
   --mb-color-background: var(--mb-base-color-white);
+  --mb-color-background-info: var(--mb-base-color-gray-5);
   --mb-color-background-selected: var(--mb-base-color-brand-40);
   --mb-color-background-hover: var(--mb-base-color-brand-10);
   --mb-color-background-disabled: var(--mb-base-color-gray-10);

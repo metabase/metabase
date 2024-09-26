@@ -3,7 +3,10 @@ import { useMemo } from "react";
 import { useSelector } from "metabase/lib/redux";
 import type { SettingKey, Settings } from "metabase-types/api";
 
-type DisplaySetting<Key extends SettingKey> = { key: Key };
+type DisplaySetting<Key extends SettingKey> = {
+  key: Key;
+  [key: string]: any;
+};
 type SettingWithValue<Key extends SettingKey> = {
   key: Key;
   value: Settings[Key];
