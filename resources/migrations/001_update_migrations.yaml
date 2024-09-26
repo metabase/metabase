@@ -9288,6 +9288,46 @@ databaseChangeLog:
                   name: type
             indexName: idx_collection_type
 
+  - changeSet:
+      id: v51.2024-09-26T03:01:00
+      author: escherize
+      comment: Clone enbable-embedding setting -> enable-embedding-interactive
+      changes:
+        - sql:
+            dbms: mysql,mariadb,h2,postgresql
+            sql: >-
+              insert into setting (key,value) VALUES
+              ('enable-embedding-interactive',
+                coalesce((select value from setting where key = 'enable-embedding'), 'false'));
+      rollback: # not necessary, the setting will be ignored. (and restored on up migration)
+
+  - changeSet:
+      id: v51.2024-09-26T03:02:00
+      author: escherize
+      comment: Clone enbable-embedding setting -> enable-embedding-static
+      changes:
+        - sql:
+            dbms: mysql,mariadb,h2,postgresql
+            sql: >-
+              insert into setting (key,value) VALUES
+              ('enable-embedding-static',
+                coalesce((select value from setting where key = 'enable-embedding'), 'false'));
+      rollback: # not necessary, the setting will be ignored. (and restored on up migration)
+
+  - changeSet:
+      id: v51.2024-09-26T03:03:00
+      author: escherize
+      comment: Clone enbable-embedding-origin setting -> embedding-app-origins-interactive
+      changes:
+        - sql:
+            dbms: mysql,mariadb,h2,postgresql
+            sql: >-
+              insert into setting (key,value)
+              VALUES
+              ('embedding-app-origins-interactive',
+              coalesce((select value from setting where key = 'embedding-app-origin'), ''));
+      rollback: # not necessary, the setting will be ignored. (and restored on up migration)
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -28,25 +28,25 @@
                  (public-settings/enable-password-login))))))))
 
 (deftest toggle-full-app-embedding-test
-  (mt/discard-setting-changes [embedding-app-origin]
-    (testing "can't change embedding-app-origin if :embedding feature is not available"
+  (mt/discard-setting-changes [embedding-app-origin-interactive]
+    (testing "can't change embedding-app-origin-interactive if :embedding feature is not available"
       (mt/with-premium-features #{}
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Setting embedding-app-origin is not enabled because feature :embedding is not available"
-             (embed.settings/embedding-app-origin! "https://metabase.com")))
+             #"Setting embedding-app-origin-interactive is not enabled because feature :embedding is not available"
+             (embed.settings/embedding-app-origin-interactive! "https://metabase.com")))
 
         (testing "even if env is set, return the default value"
-          (mt/with-temp-env-var-value! [mb-embedding-app-origin "https://metabase.com"]
-            (is (nil? (embed.settings/embedding-app-origin)))))))
+          (mt/with-temp-env-var-value! [mb-embedding-app-origin-interactive "https://metabase.com"]
+            (is (nil? (embed.settings/embedding-app-origin-interactive)))))))
 
-    (testing "can change embedding-app-origin if :embedding is enabled"
+    (testing "can change embedding-app-origin-interactive if :embedding is enabled"
       (mt/with-premium-features #{:embedding}
-        (embed.settings/embedding-app-origin! "https://metabase.com")
+        (embed.settings/embedding-app-origin-interactive! "https://metabase.com")
         (is (= "https://metabase.com"
-               (embed.settings/embedding-app-origin)))
+               (embed.settings/embedding-app-origin-interactive)))
 
         (testing "it works with env too"
-          (mt/with-temp-env-var-value! [mb-embedding-app-origin "ssh://metabase.com"]
+          (mt/with-temp-env-var-value! [mb-embedding-app-origin-interactive "ssh://metabase.com"]
             (is (= "ssh://metabase.com"
-                   (embed.settings/embedding-app-origin)))))))))
+                   (embed.settings/embedding-app-origin-interactive)))))))))

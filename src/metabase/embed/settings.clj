@@ -30,7 +30,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Embed Settings ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defsetting enable-embedding
+(defsetting ^:deprecated enable-embedding
+  ;; To be removed in 0.53.0
   (deferred-tru "Allow admins to securely embed questions and dashboards within other applications?")
   :type       :boolean
   :default    false
@@ -40,10 +41,12 @@
   :deprecated "0.51.0"
   :setter     (make-embedding-toggle-setter :enable-embedding "embedding"))
 
-(defsetting embedding-app-origin
+(defsetting ^:deprecated embedding-app-origin
+  ;; To be removed in 0.53.0
   (deferred-tru "Allow this origin to embed the full Metabase application.")
   ;; This value is usually gated by [[enable-embedding]]
   :feature    :embedding
+  :deprecated "0.51.0"
   :type       :string
   :export?    false
   :visibility :public
@@ -58,6 +61,16 @@
   :export?    false
   :audit      :getter
   :setter     (make-embedding-toggle-setter :enable-embedding-sdk "sdk-embedding"))
+
+(defsetting embedding-app-origin-interactive
+  (deferred-tru "Allow this origin to embed the full Metabase application.")
+  ;; This value is usually gated by [[enable-embedding-interactive]]
+  :feature    :embedding
+  :type       :string
+  :export?    false
+  :visibility :public
+  :audit      :getter
+  :encryption :no)
 
 (mu/defn- ignore-localhost :- :string
   "Remove localhost:* or localhost:<port> from the list of origins."
@@ -98,6 +111,24 @@
                (add-localhost (setting/get-value-of-type :string :embedding-app-origins-sdk)))
   :setter   embedding-app-origins-sdk-setter)
 
+(defsetting enable-embedding-interactive
+  (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
+  :feature    :embedding
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter
+  :setter     (make-embedding-toggle-setter :enable-embedding-interactive "interactive-embedding"))
+
+(defsetting embedding-app-origins-interactive
+  (deferred-tru "Allow this origin to embed Metabase interactive.")
+  :type       :string
+  :export?    false
+  :visibility :public
+  :encryption :no
+  :audit      :getter)
+
 (defsetting enable-embedding-static
   (deferred-tru "Allow admins to embed Metabase via static embedding?")
   :type       :boolean
@@ -108,15 +139,13 @@
   :audit      :getter
   :setter     (make-embedding-toggle-setter :enable-embedding-static "static-embedding"))
 
-(defsetting enable-embedding-interactive
-  (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
-  :feature    :embedding
-  :type       :boolean
-  :default    false
-  :visibility :authenticated
-  :export?    false
-  :audit      :getter
-  :setter     (make-embedding-toggle-setter :enable-embedding-interactive "interactive-embedding"))
+(mu/defn some-embedding-enabled? :- :boolean
+  "Is any kind of embedding setup?"
+  []
+  (or
+   (enable-embedding-static)
+   (enable-embedding-interactive)
+   (enable-embedding-sdk)))
 
 ;; settings for the embedding homepage
 (defsetting embedding-homepage

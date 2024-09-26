@@ -118,8 +118,8 @@
   (update (content-security-policy-header nonce)
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (if allow-iframes? "*"
-                                                  (if-let [eao (and (embed.settings/enable-embedding)
-                                                                    (embed.settings/embedding-app-origin))]
+                                                  (if-let [eao (and (embed.settings/enable-embedding-interactive)
+                                                                    (embed.settings/embedding-app-origin-interactive))]
                                                     eao
                                                     "'none'")))))
 
@@ -202,8 +202,8 @@
      (access-control-headers origin))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
-     {"X-Frame-Options"                 (if-let [eao (and (embed.settings/enable-embedding)
-                                                          (embed.settings/embedding-app-origin))]
+     {"X-Frame-Options"                 (if-let [eao (and (embed.settings/enable-embedding-interactive)
+                                                          (embed.settings/embedding-app-origin-interactive))]
                                           (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
                                           "DENY")})
    {;; Tell browser to block suspected XSS attacks

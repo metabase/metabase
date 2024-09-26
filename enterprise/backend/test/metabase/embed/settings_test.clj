@@ -60,6 +60,5 @@
       (let [origin-value (str "localhost:* " other-ip " "
                               (str/join " " (map #(str "localhost:" %) (range 1000 2000))))]
         (embed.settings/embedding-app-origins-sdk! origin-value)
-        (is (not (and
-                  (embed.settings/enable-embedding-sdk)
-                  (embed.settings/embedding-app-origins-sdk))))))))
+        (is (not (and (embed.settings/enable-embedding-sdk)
+                      (embed.settings/embedding-app-origins-sdk))))))))
