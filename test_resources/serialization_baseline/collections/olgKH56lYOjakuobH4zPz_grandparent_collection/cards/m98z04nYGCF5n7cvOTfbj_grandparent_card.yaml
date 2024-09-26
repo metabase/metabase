@@ -1,0 +1,31 @@
+name: grandparent card
+description: null
+entity_id: m98z04nYGCF5n7cvOTfbj
+created_at: '2024-08-28T12:50:14.408123Z'
+creator_id: rasta@metabase.com
+display: table
+archived: false
+collection_id: olgKH56lYOjakuobH4zPz
+collection_preview: true
+collection_position: null
+query_type: null
+database_id: test-data (h2)
+table_id: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query: {}
+result_metadata: null
+visualization_settings:
+  column_settings: null
+serdes/meta:
+- id: m98z04nYGCF5n7cvOTfbj
+  label: grandparent_card
+  model: Card
+archived_directly: false
+metabase_version: v1.48.1-SNAPSHOT (53cf083)
+source_card_id: null
+type: question

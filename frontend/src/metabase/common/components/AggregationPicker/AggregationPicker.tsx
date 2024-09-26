@@ -39,7 +39,8 @@ interface AggregationPickerProps {
   clause?: Lib.AggregationClause;
   clauseIndex?: number;
   operators: Lib.AggregationOperator[];
-  hasExpressionInput?: boolean;
+  allowCustomExpressions?: boolean;
+  allowTemporalComparisons?: boolean;
   onClose?: () => void;
   onQueryChange: (query: Lib.Query) => void;
 }
@@ -74,7 +75,8 @@ export function AggregationPicker({
   clause,
   clauseIndex,
   operators,
-  hasExpressionInput = true,
+  allowCustomExpressions = false,
+  allowTemporalComparisons = false,
   onClose,
   onQueryChange,
 }: AggregationPickerProps) {
@@ -133,7 +135,9 @@ export function AggregationPicker({
     const metrics = Lib.availableMetrics(query, stageIndex);
     const databaseId = Lib.databaseID(query);
     const database = metadata.database(databaseId);
-    const canUseExpressions = database?.hasFeature("expression-aggregations");
+    const supportsCustomExpressions = database?.hasFeature(
+      "expression-aggregations",
+    );
 
     if (operators.length > 0) {
       const operatorItems = operators.map(operator =>
@@ -159,7 +163,10 @@ export function AggregationPicker({
       });
     }
 
-    if (canAddTemporalCompareAggregation(query, stageIndex)) {
+    if (
+      allowTemporalComparisons &&
+      canAddTemporalCompareAggregation(query, stageIndex)
+    ) {
       sections.push({
         type: "action",
         key: "compare",
@@ -169,7 +176,7 @@ export function AggregationPicker({
       });
     }
 
-    if (hasExpressionInput && canUseExpressions) {
+    if (allowCustomExpressions && supportsCustomExpressions) {
       sections.push({
         key: "custom-expression",
         name: t`Custom Expression`,
@@ -180,7 +187,15 @@ export function AggregationPicker({
     }
 
     return sections;
-  }, [metadata, query, stageIndex, clauseIndex, operators, hasExpressionInput]);
+  }, [
+    metadata,
+    query,
+    stageIndex,
+    clauseIndex,
+    operators,
+    allowCustomExpressions,
+    allowTemporalComparisons,
+  ]);
 
   const checkIsItemSelected = useCallback(
     (item: ListItem) => item.selected,

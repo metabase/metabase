@@ -638,7 +638,7 @@
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
-         ;; preparation
+          ;; preparation
           (t2.with-temp/with-temp
             [Dashboard           {dashboard-id :id
                                   dashboard-eid :entity_id} {:name "Dashboard with tab"}
@@ -667,7 +667,7 @@
 
             (testing "ingest and load"
               (ts/with-db dest-db
-               ;; ingest
+                ;; ingest
                 (testing "doing ingestion"
                   (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                       "successful"))
@@ -832,3 +832,24 @@
               (testing ".yaml files not containing valid yaml are just logged and do not break ingestion process"
                 (is (=? [{:level :error, :e Throwable, :message "Error reading file unreadable.yaml"}]
                         (logs)))))))))))
+
+(deftest channel-test
+  (mt/test-helpers-set-global-values!
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (mt/with-temp
+            [:model/Channel _ {:name "My HTTP channel"
+                               :type :channel/http
+                               :details {:url         "http://example.com"
+                                         :auth-method :none}}]
+            (storage/store! (seq (serdes/with-cache (into [] (extract/extract {})))) dump-dir)
+            (ts/with-db dest-db
+              (testing "doing ingestion"
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                    "successful")
+                (is (=? {:name    "My HTTP channel"
+                         :type    :channel/http
+                         :details {:url         "http://example.com"
+                                   :auth-method "none"}}
+                        (t2/select-one :model/Channel :name "My HTTP channel")))))))))))

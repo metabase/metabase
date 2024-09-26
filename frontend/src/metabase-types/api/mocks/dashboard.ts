@@ -9,9 +9,12 @@ import type {
 } from "metabase-types/api";
 
 import { createMockCard } from "./card";
+import { createMockEntityId } from "./entity-id";
+const MOCK_DASHBOARD_ENTITY_ID = createMockEntityId();
 
 export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   id: 1,
+  entity_id: MOCK_DASHBOARD_ENTITY_ID,
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
   collection_id: null,
@@ -37,20 +40,24 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   embedding_params: null,
   initially_published_at: null,
   width: "fixed",
+  creator_id: 1,
   ...opts,
 });
 
+const MOCK_DASHBOARD_TAB_ENTITY_ID = createMockEntityId();
 export const createMockDashboardTab = (
   opts?: Partial<DashboardTab>,
 ): DashboardTab => ({
   id: 1,
   dashboard_id: 1,
   name: "Tab 1",
-  entity_id: "abc_123",
+  entity_id: MOCK_DASHBOARD_TAB_ENTITY_ID,
   created_at: "2020-01-01T12:30:30.000000",
   updated_at: "2020-01-01T12:30:30.000000",
   ...opts,
 });
+
+const MOCK_DASHBOARD_CARD_ENTITY_ID = createMockEntityId();
 
 export const createMockDashboardCard = (
   opts?: Partial<QuestionDashboardCard>,
@@ -63,7 +70,7 @@ export const createMockDashboardCard = (
   card_id: 1,
   size_x: 1,
   size_y: 1,
-  entity_id: "abc_123",
+  entity_id: MOCK_DASHBOARD_CARD_ENTITY_ID,
   visualization_settings: {},
   card: createMockCard(),
   created_at: "2020-01-01T12:30:30.000000",
@@ -122,7 +129,7 @@ export const createMockVirtualDashCard = (
     row: 0,
     size_x: 1,
     size_y: 1,
-    entity_id: "abc_123",
+    entity_id: createMockEntityId(),
     created_at: "2020-01-01T12:30:30.000000",
     updated_at: "2020-01-01T12:30:30.000000",
     card_id: null,

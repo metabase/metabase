@@ -21,8 +21,17 @@ export const sessionApi = Api.injectEndpoints({
         body: { email },
       }),
     }),
+    getSessionProperties: builder.query<void, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/session/properties",
+      }),
+    }),
   }),
 });
 
-export const { useGetPasswordResetTokenStatusQuery, useForgotPasswordQuery } =
-  sessionApi;
+export const {
+  useGetPasswordResetTokenStatusQuery,
+  useForgotPasswordQuery,
+  useGetSessionPropertiesQuery,
+} = sessionApi;

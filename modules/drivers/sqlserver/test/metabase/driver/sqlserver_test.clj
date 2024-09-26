@@ -234,7 +234,7 @@
              (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)
                          rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
                (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
-                 (is (= [#t "2019-02-01"]
+                 (is (= [#t "2019-02-01T00:00:00"]
                         (row-thunk))))))
            ;; rollback transaction so `temp` table gets discarded
            (finally
@@ -364,7 +364,116 @@
                      (take 5 (mt/rows
                               (mt/run-mbql-query checkins
                                 {:aggregation [[:count]]
-                                 :breakout    [[:field $date {:temporal-unit unit}]]}))))))))))))
+                                 :breakout    [[:field $date {:temporal-unit unit}]]})))))
+              (is (= [:type/Date :type/Integer]
+                     (->> {:aggregation [[:count]]
+                           :breakout    [[:field $date {:temporal-unit unit}]]}
+                          (mt/run-mbql-query checkins)
+                          :data
+                          :results_metadata
+                          :columns
+                          (map :base_type)))))))))))
+
+(deftest ^:parallel truncated-datetime-still-datetime-test
+  (mt/test-driver :sqlserver
+    (testing "When truncating a `:type/DateTime` to a date-sized unit, return datetime"
+      (letfn [(query-with-bucketing [unit]
+                (mt/mbql-query orders
+                  {:aggregation [[:count]]
+                   :breakout    [[:field $created_at {:temporal-unit unit}]]}))]
+        (doseq [[unit {:keys [expected-sql expected-rows]}]
+                {"year"
+                 {:expected-sql
+                  ["SELECT"
+                   "  CAST(",
+                   "    DATEFROMPARTS(YEAR(dbo.orders.created_at), 1, 1) AS datetime2"
+                   "  ) AS created_at,"
+                   "  COUNT(*) AS count"
+                   "FROM"
+                   "  dbo.orders"
+                   "GROUP BY"
+                   "  YEAR(dbo.orders.created_at)"
+                   "ORDER BY"
+                   "  YEAR(dbo.orders.created_at) ASC"]
+
+                  :expected-rows
+                  [["2013-01-01T00:00:00Z" 235]
+                   ["2014-01-01T00:00:00Z" 498]
+                   ["2015-01-01T00:00:00Z" 267]]}
+
+                 "month"
+                 {:expected-sql
+                  ["SELECT"
+                   "  CAST("
+                   "    DATEFROMPARTS("
+                   "      YEAR(dbo.orders.created_at),"
+                   "      MONTH(dbo.orders.created_at),"
+                   "      1"
+                   "    ) AS datetime2"
+                   "  ) AS created_at,"
+                   "  COUNT(*) AS count"
+                   "FROM"
+                   "  dbo.orders"
+                   "GROUP BY"
+                   "  YEAR(dbo.orders.created_at),"
+                   "  MONTH(dbo.orders.created_at)"
+                   "ORDER BY"
+                   "  YEAR(dbo.orders.created_at) ASC,"
+                   "  MONTH(dbo.orders.created_at) ASC"]
+
+                  :expected-rows
+                  [["2013-01-01T00:00:00Z" 8]
+                   ["2013-02-01T00:00:00Z" 11]
+                   ["2013-03-01T00:00:00Z" 21]
+                   ["2013-04-01T00:00:00Z" 26]
+                   ["2013-05-01T00:00:00Z" 23]]}
+
+                 "day"
+                 {:expected-sql
+                  ["SELECT"
+                   "  CAST("
+                   "    DATEFROMPARTS("
+                   "      YEAR(dbo.orders.created_at),"
+                   "      MONTH(dbo.orders.created_at),"
+                   "      DAY(dbo.orders.created_at)"
+                   "    ) AS datetime2"
+                   "  ) AS created_at,"
+                   "  COUNT(*) AS count"
+                   "FROM"
+                   "  dbo.orders"
+                   "GROUP BY"
+                   "  YEAR(dbo.orders.created_at),"
+                   "  MONTH(dbo.orders.created_at),"
+                   "  DAY(dbo.orders.created_at)"
+                   "ORDER BY"
+                   "  YEAR(dbo.orders.created_at) ASC,"
+                   "  MONTH(dbo.orders.created_at) ASC,"
+                   "  DAY(dbo.orders.created_at) ASC"]
+
+                  :expected-rows
+                  [["2013-01-03T00:00:00Z" 1]
+                   ["2013-01-10T00:00:00Z" 1]
+                   ["2013-01-19T00:00:00Z" 1]
+                   ["2013-01-22T00:00:00Z" 1]
+                   ["2013-01-23T00:00:00Z" 1]]}}]
+          (testing (format "\nUnit = %s\n" unit)
+            (testing "Should generate the correct SQL query"
+              (is (= expected-sql
+                     (pretty-sql (:query (qp.compile/compile (query-with-bucketing unit)))))))
+            (testing "Should still return correct results"
+              (is (= expected-rows
+                     (take 5 (mt/rows
+                              (mt/run-mbql-query checkins
+                                {:aggregation [[:count]]
+                                 :breakout    [[:field $date {:temporal-unit unit}]]})))))
+              (is (= [:type/DateTime :type/Integer]
+                     (->> {:aggregation [[:count]]
+                           :breakout    [[:field $created_at {:temporal-unit unit}]]}
+                          (mt/run-mbql-query orders)
+                          :data
+                          :results_metadata
+                          :columns
+                          (map :base_type)))))))))))
 
 (deftest filter-by-datetime-fields-test
   (mt/test-driver :sqlserver

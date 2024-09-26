@@ -14,21 +14,9 @@ const setupEnterprise = (opts: SetupOpts) => {
   });
 };
 
-describe("QuestionInfoSidebar", () => {
-  describe("cache ttl", () => {
-    it("should not allow to configure caching", async () => {
-      const card = createMockCard({
-        cache_ttl: 10,
-        description: "abc",
-      });
-      await setupEnterprise({ card });
-      expect(screen.getByText(card.description ?? "")).toBeInTheDocument();
-      expect(screen.queryByText("Cache Configuration")).not.toBeInTheDocument();
-    });
-  });
-
+describe("QuestionInfoSidebar > enterprise", () => {
   describe("moderation reviews", () => {
-    it("should not show the verification badge", async () => {
+    it("should not show the verification badge without content verification feature", async () => {
       const card = createMockCard({
         moderation_reviews: [
           createMockModerationReview({ status: "verified" }),

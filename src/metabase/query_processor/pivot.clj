@@ -5,9 +5,11 @@
   instead of running like 10 separate queries? -- Cam"
   (:require
    [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -15,6 +17,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -95,7 +98,7 @@
    (partial group-bitmask num-breakouts)
    (distinct
     (map
-     vec
+     (comp vec sort)
      ;; this can happen for the public/embed endpoints, where we aren't given a pivot-rows / pivot-cols parameter, so
      ;; we'll just generate everything
      (if (empty? (concat pivot-rows pivot-cols))
@@ -423,6 +426,59 @@
             (get canonical-index->subquery-index i))
           (range num-canonical-cols))))
 
+(defn- remapped-field
+  [breakout]
+  (when (and (vector? breakout)
+             (= (first breakout) :field))
+    (not-empty (select-keys (second breakout)
+                            [::qp.add-dimension-projections/original-field-dimension-id
+                             ::qp.add-dimension-projections/new-field-dimension-id]))))
+
+(defn- remapped-indexes
+  [breakouts]
+  (let [remap-pairs (first
+                     (reduce (fn [[m i] breakout]
+                               [(reduce-kv (fn [m remap-key id]
+                                             (assoc-in m [id remap-key] i))
+                                           m
+                                           (remapped-field breakout))
+                                (inc i)])
+                             [{} 0]
+                             breakouts))]
+    (into {}
+          (map (juxt ::qp.add-dimension-projections/original-field-dimension-id
+                     ::qp.add-dimension-projections/new-field-dimension-id))
+          (vals remap-pairs))))
+
+(mu/defn- splice-in-remap :- ::breakout-combination
+  "Returns the breakout combination corresponding to `breakout-combination` belonging to the base query (the one without
+  remapped fields) accounting for the field remapping specified by `remap`.
+
+  To produce the breakout combination for the real query, the target indexes have to be included whenever a source
+  index is selected, we have to shift the indexes before which a mapped index is inserted."
+  [breakout-combination :- ::breakout-combination
+   remap                :- [:map-of ::index ::index]]
+  (if (or (empty? remap)
+          (empty? breakout-combination))
+    breakout-combination
+    (let [limit (apply max breakout-combination)
+          selected (set breakout-combination)
+          inserted (set (vals remap))]
+      (loop [index 0, offset 0, combination #{}]
+        (if (> index limit)
+          (-> combination sort vec)
+          (let [offset (cond-> offset
+                         (inserted (+ index offset)) inc)
+                spliced-index (+ index offset)
+                selected? (selected index)
+                mapped-index (when selected?
+                               (remap spliced-index))]
+            (recur (inc index)
+                   offset
+                   (cond-> combination
+                     selected?    (conj spliced-index)
+                     mapped-index (into (take-while some? (iterate remap mapped-index)))))))))))
+
 (mu/defn- make-column-mapping-fn :- ::column-mapping-fn
   "This returns a function with the signature
 
@@ -439,13 +495,20 @@
   Some pivot subqueries exclude certain breakouts, so we need to fill in those missing columns with `nil` in the overall
   results -- "
   [query :- ::lib.schema/query]
-  (let [canonical-query         (add-pivot-group-breakout query 0) ; a query that returns ALL the result columns.
+  (let [remapped-query          (->> query
+                                     lib.convert/->legacy-MBQL
+                                     qp.add-dimension-projections/add-remapped-columns
+                                     (lib.query/query (qp.store/metadata-provider)))
+        remap                   (remapped-indexes (lib/breakouts remapped-query))
+        canonical-query         (add-pivot-group-breakout remapped-query 0) ; a query that returns ALL the result columns.
         canonical-cols          (lib/returned-columns canonical-query)
         num-canonical-cols      (count canonical-cols)
         num-canonical-breakouts (count (filter #(= (:lib/source %) :source/breakouts)
                                                canonical-cols))]
     (fn column-mapping-fn* [subquery]
-      (column-mapping-for-subquery num-canonical-cols num-canonical-breakouts (:qp.pivot/breakout-combination subquery)))))
+      (let [breakout-combination (:qp.pivot/breakout-combination subquery)
+            full-breakout-combination (splice-in-remap breakout-combination remap)]
+        (column-mapping-for-subquery num-canonical-cols num-canonical-breakouts full-breakout-combination)))))
 
 (mu/defn run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]

@@ -46,3 +46,7 @@ export const printInfo = (message: string) =>
 /** Aligns the message with the rest of the input prompt. */
 export const printWithPadding = (message: string) =>
   console.log(`  ` + message);
+
+/** Print the helper text above the input prompt. */
+export const printHelperText = (message: string) =>
+  printWithPadding(chalk.gray(message));

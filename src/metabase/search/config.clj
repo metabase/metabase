@@ -106,9 +106,12 @@
    ;;
    [:archived?          [:maybe :boolean]]
    [:current-user-id    pos-int?]
+   [:is-superuser?      :boolean]
    [:current-user-perms [:set perms.u/PathSchema]]
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]
+   ;; TODO this is optional only for tests, clean those up!
+   [:search-engine       {:optional true} keyword?]
    [:search-string      [:maybe ms/NonBlankString]]
    ;;
    ;; optional

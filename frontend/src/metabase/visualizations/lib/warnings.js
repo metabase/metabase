@@ -28,6 +28,16 @@ export function unaggregatedDataWarning(col, axis = "x") {
   };
 }
 
+const UNAGGREGATED_DATA_WARNING_PIE = "UNAGGREGATED_DATA_WARNING_PIE";
+export function unaggregatedDataWarningPie(col) {
+  return {
+    key: UNAGGREGATED_DATA_WARNING_PIE,
+    text: t`"${getFriendlyName(
+      col,
+    )}" is an unaggregated field: if it has more than one row with the same value, their measure values will be summed.`,
+  };
+}
+
 const UNEXPECTED_QUERY_TIMEZONE = "UNEXPECTED_QUERY_TIMEZONE";
 export function unexpectedTimezoneWarning({
   results_timezone,

@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.lib.core :as lib]
@@ -1014,7 +1013,7 @@
   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         query             (lib/query metadata-provider venues)]
-    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+    (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card card {:dataset_query query}
                      :model/Card no-query {}]
         (is (=? {:can_run_adhoc_query true}

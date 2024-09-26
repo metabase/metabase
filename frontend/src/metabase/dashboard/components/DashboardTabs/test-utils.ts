@@ -4,6 +4,7 @@ import {
   createMockCard,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
+import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import type { DashboardState } from "metabase-types/store";
 
@@ -24,9 +25,11 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
   dashboards: {
     1: {
       id: 1,
+      entity_id: createMockEntityId(),
       created_at: "2024-01-01T00:00:00Z",
       updated_at: "2024-01-01T00:00:00Z",
       collection_id: 1,
+      creator_id: 1,
       name: "",
       description: "",
       can_write: true,

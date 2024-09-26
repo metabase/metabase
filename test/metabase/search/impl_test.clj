@@ -10,6 +10,7 @@
    [metabase.config :as config]
    [metabase.search.config :as search.config]
    [metabase.search.impl :as search.impl]
+   [metabase.search.legacy :as search.legacy]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -31,7 +32,7 @@
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
              [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
              :else [:inline 1]]]
-           (search.impl/order-clause "Foo")))))
+           (search.legacy/order-clause "Foo")))))
 
 (deftest search-db-call-count-test
   (let [search-string (mt/random-name)]
@@ -63,6 +64,7 @@
                                                  :archived?          false
                                                  :models             search.config/all-models
                                                  :current-user-id    (mt/user->id :crowberto)
+                                                 :is-superuser?      true
                                                  :current-user-perms #{"/"}
                                                  :model-ancestors?   false
                                                  :limit-int          100}))]
@@ -137,6 +139,7 @@
                                                                   :models             search.config/all-models
                                                                   :created-at         created-at
                                                                   :current-user-id    (mt/user->id :crowberto)
+                                                                  :is-superuser?      true
                                                                   :current-user-perms @api/*current-user-permissions-set*}))
                                             :data
                                             (map (juxt :model :id))
@@ -222,6 +225,7 @@
                                                                   :models             search.config/all-models
                                                                   :last-edited-at     last-edited-at
                                                                   :current-user-id    (mt/user->id :crowberto)
+                                                                  :is-superuser?      true
                                                                   :current-user-perms @api/*current-user-permissions-set*}))
                                             :data
                                             (map (juxt :model :id))

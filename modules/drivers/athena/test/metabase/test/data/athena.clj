@@ -183,6 +183,7 @@
                               :type/Float          "DOUBLE"
                               :type/Integer        "INT"
                               :type/Text           "STRING"
+                              :type/UUID           "UUID"
                               :type/Time           "TIMESTAMP"}]
   (defmethod sql.tx/field-base-type->sql-type [:athena base-type] [_ _] sql-type))
 

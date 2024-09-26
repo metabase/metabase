@@ -39,6 +39,8 @@ export function channelIsValid(channel: Channel, channelSpec: ChannelSpec) {
         fieldsAreValid(channel, channelSpec) &&
         scheduleIsValid(channel)
       );
+    case "http":
+      return channel.channel_id && scheduleIsValid(channel);
     default:
       return false;
   }
@@ -178,7 +180,10 @@ export function getDefaultChannel(channelSpecs: ChannelSpecs) {
   }
 }
 
-export function createChannel(channelSpec: ChannelSpec): Channel {
+export function createChannel(
+  channelSpec: ChannelSpec,
+  opts?: Partial<Channel>,
+): Channel {
   const details = {};
 
   return {
@@ -190,6 +195,7 @@ export function createChannel(channelSpec: ChannelSpec): Channel {
     schedule_day: "mon",
     schedule_hour: 8,
     schedule_frame: "first",
+    ...opts,
   };
 }
 

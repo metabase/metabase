@@ -201,11 +201,11 @@
    "table"      4
    "collection" 5})
 
-(mu/defn get-popular-items-model-and-id
+(mu/defn get-popular-items-model-and-id :- [:sequential recent-views/Item]
   "Returns the 'popular' items for the current user. This is a list of 5 items that the user has viewed recently.
    The items are sorted by a weighted score that takes into account the total count of views, the recency of the view,
    whether the item is 'official' or 'verified', and more."
-  [] :- [:sequential recent-views/Item]
+  []
   ;; we do a weighted score which incorporates:
   ;; - total count -> higher = higher score
   ;; - recently viewed -> more recent = higher score

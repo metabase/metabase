@@ -213,8 +213,16 @@ class ChartSettings extends Component {
     const seriesSettingsWidget =
       currentWidget && widgets.find(widget => widget.id === "series_settings");
 
+    const display = series?.[0]?.card?.display;
+    // In the pie the chart, clicking on the "measure" settings menu will only
+    // open a formatting widget, and we don't want the style widget (used only
+    // for dimension) to override that
+    if (display === "pie" && currentWidget?.id === "column_settings") {
+      return null;
+    }
+
     //We don't want to show series settings widget for waterfall charts
-    if (series?.[0]?.card?.display === "waterfall" || !seriesSettingsWidget) {
+    if (display === "waterfall" || !seriesSettingsWidget) {
       return null;
     }
 

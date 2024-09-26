@@ -9,7 +9,7 @@ import { getComponentSnippets } from "../utils/get-component-snippets";
 import { printError, printSuccess } from "../utils/print";
 
 export const generateReactComponentFiles: CliStepMethod = async state => {
-  const { instanceUrl, apiKey, dashboards = [] } = state;
+  const { instanceUrl, apiKey, dashboards = [], token } = state;
 
   if (!instanceUrl || !apiKey) {
     return [
@@ -42,6 +42,10 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     instanceUrl,
     apiKey,
     dashboards,
+
+    // Enable user switching only when a valid license is present,
+    // as JWT requires a valid license.
+    userSwitcherEnabled: !!token,
   });
 
   // Generate sample components files in the specified directory.
@@ -62,5 +66,5 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
 
   printSuccess(getGeneratedComponentFilesMessage(path));
 
-  return [{ type: "done" }, state];
+  return [{ type: "done" }, { ...state, reactComponentDir: path }];
 };

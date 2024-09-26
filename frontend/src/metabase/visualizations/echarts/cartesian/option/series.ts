@@ -864,6 +864,7 @@ export const buildEChartsSeries = (
   const hasMultipleSeries = chartModel.seriesModels.length > 1;
 
   const series = chartModel.seriesModels
+    .filter(seriesModel => seriesModel.visible)
     .map(seriesModel => {
       const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
       const yAxisIndex = seriesYAxisIndexByDataKey[seriesModel.dataKey];

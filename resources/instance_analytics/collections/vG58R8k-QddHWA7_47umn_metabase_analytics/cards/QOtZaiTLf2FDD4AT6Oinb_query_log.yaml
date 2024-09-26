@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: 11
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -197,7 +196,11 @@ result_metadata:
     - v_query_log
     - user_id
   - null
-  fk_target_field_id: 739
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - user_id
   id:
   - Internal Metabase Database
   - public
@@ -241,7 +244,11 @@ result_metadata:
     - v_query_log
     - card_qualified_id
   - null
-  fk_target_field_id: 1484
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_qualified_id
   id:
   - Internal Metabase Database
   - public
@@ -285,7 +292,11 @@ result_metadata:
     - v_query_log
     - dashboard_qualified_id
   - null
-  fk_target_field_id: 1484
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_qualified_id
   id:
   - Internal Metabase Database
   - public
@@ -351,7 +362,11 @@ result_metadata:
     - v_query_log
     - database_qualified_id
   - null
-  fk_target_field_id: 1556
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_databases
+  - entity_qualified_id
   id:
   - Internal Metabase Database
   - public
@@ -417,14 +432,18 @@ result_metadata:
     - v_query_log
     - action_qualified_id
   - null
-  fk_target_field_id: null
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_qualified_id
   id:
   - Internal Metabase Database
   - public
   - v_query_log
   - action_qualified_id
   name: action_qualified_id
-  semantic_type: type/Category
+  semantic_type: type/FK
   settings: null
   visibility_type: normal
 - base_type: type/Text
@@ -452,12 +471,51 @@ result_metadata:
 visualization_settings:
   column_settings: null
   table.cell_column: running_time_seconds
+  table.columns:
+  - enabled: true
+    name: entity_id
+  - enabled: true
+    name: started_at
+  - enabled: true
+    name: running_time_seconds
+  - enabled: true
+    name: result_rows
+  - enabled: true
+    name: is_native
+  - enabled: true
+    name: query_source
+  - enabled: true
+    name: error
+  - enabled: true
+    name: user_id
+  - enabled: true
+    name: card_id
+  - enabled: true
+    name: card_qualified_id
+  - enabled: true
+    name: dashboard_id
+  - enabled: true
+    name: dashboard_qualified_id
+  - enabled: true
+    name: pulse_id
+  - enabled: true
+    name: database_id
+  - enabled: true
+    name: database_qualified_id
+  - enabled: true
+    name: cache_hit
+  - enabled: true
+    name: action_id
+  - enabled: true
+    name: action_qualified_id
+  - enabled: true
+    name: query
   table.pivot_column: error
 serdes/meta:
 - id: QOtZaiTLf2FDD4AT6Oinb
   label: query_log
   model: Card
-initially_published_at: null
-last_used_at: '2024-05-16T14:50:34.302372Z'
+archived_directly: false
 metabase_version: vUNKNOWN (0e09ac7)
+source_card_id: null
 type: model

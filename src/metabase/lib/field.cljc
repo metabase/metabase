@@ -167,8 +167,8 @@
                   {:display-name (or (:display-name opts)
                                      (lib.metadata.calculation/display-name query stage-number field-ref))})]
     (cond-> metadata
+      base-type      (assoc :base-type base-type, :effective-type base-type)
       effective-type (assoc :effective-type effective-type)
-      base-type      (assoc :base-type base-type)
       temporal-unit  (assoc ::temporal-unit temporal-unit)
       binning        (assoc ::binning binning)
       source-field   (assoc :fk-field-id source-field)
@@ -319,31 +319,8 @@
   (::temporal-unit metadata))
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :field
-  [[_tag options id-or-name] unit]
-  ;; if `unit` is an extraction unit like `:month-of-year`, then the `:effective-type` of the ref changes to
-  ;; `:type/Integer` (month of year returns an int). We need to record the ORIGINAL effective type somewhere in case
-  ;; we need to refer back to it, e.g. to see what temporal buckets are available if we want to change the unit, or if
-  ;; we want to remove it later. We will record this with the key `::original-effective-type`. Note that changing the
-  ;; unit multiple times should keep the original first value of `::original-effective-type`.
-  (if unit
-    (let [extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
-          original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) options)
-          new-effective-type      (if extraction-unit?
-                                    :type/Integer
-                                    original-effective-type)
-          options                 (assoc options
-                                         :temporal-unit unit
-                                         :effective-type new-effective-type
-                                         ::original-effective-type original-effective-type)]
-      [:field options id-or-name])
-    ;; `unit` is `nil`: remove the temporal bucket.
-    (let [options (if-let [original-effective-type (::original-effective-type options)]
-                    (-> options
-                        (assoc :effective-type original-effective-type)
-                        (dissoc ::original-effective-type))
-                    options)
-          options (dissoc options :temporal-unit)]
-      [:field options id-or-name])))
+  [field-ref unit]
+  (lib.temporal-bucket/add-temporal-bucket-to-ref field-ref unit))
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
@@ -381,17 +358,15 @@
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/column
   [_query _stage-number field-metadata]
-  (if (not= (:lib/source field-metadata) :source/expressions)
-    (let [effective-type ((some-fn :effective-type :base-type) field-metadata)
-          fingerprint-default (some-> field-metadata :fingerprint fingerprint-based-default-unit)]
-      (cond-> (cond
-                (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
-                (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
-                (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
-                :else                                [])
-        fingerprint-default              (mark-unit :default fingerprint-default)
-        (::temporal-unit field-metadata) (mark-unit :selected (::temporal-unit field-metadata))))
-    []))
+  (let [effective-type ((some-fn :effective-type :base-type) field-metadata)
+        fingerprint-default (some-> field-metadata :fingerprint fingerprint-based-default-unit)]
+    (cond-> (cond
+              (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
+              (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
+              (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
+              :else                                [])
+      fingerprint-default              (mark-unit :default fingerprint-default)
+      (::temporal-unit field-metadata) (mark-unit :selected (::temporal-unit field-metadata)))))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
 

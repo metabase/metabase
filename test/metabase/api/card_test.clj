@@ -724,6 +724,14 @@
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(deftest ^:parallel docstring-test
+  (testing "Make sure generated docstring resolves Malli schemas in the registry correctly (#46799)"
+    (let [doc (-> #'api.card/POST_ meta :doc)]
+      (testing 'type
+        (is (str/includes? doc "**`type`** nullable enum of :question, :metric, :model.")))
+      (testing 'result_metadata
+        (is (str/includes? doc "**`result_metadata`** nullable value must be an array of valid results column metadata maps."))))))
+
 (deftest create-a-card
   (testing "POST /api/card"
     (testing "Test that we can create a new Card"
@@ -2639,7 +2647,7 @@
           (update-card card {:description "a new description"})
           (is (empty? (reviews card)))))
       (testing "Does not add nil moderation reviews when there are reviews but not verified"
-          ;; testing that we aren't just adding a nil moderation each time we update a card
+         ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
           (moderation-review/create-review! {:moderated_item_id   (u/the-id card)

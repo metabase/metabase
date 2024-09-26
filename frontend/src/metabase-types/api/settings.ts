@@ -150,6 +150,7 @@ export const tokenFeatures = [
   "disable_password_login",
   "content_verification",
   "embedding",
+  "embedding_sdk",
   "hosting",
   "llm_autodescription",
   "official_collections",
@@ -167,9 +168,10 @@ export const tokenFeatures = [
   "email_restrict_recipients",
   "upload_management",
   "collection_cleanup",
+  "query_reference_validation",
 ] as const;
 
-export type TokenFeature = typeof tokenFeatures[number];
+export type TokenFeature = (typeof tokenFeatures)[number];
 export type TokenFeatures = Record<TokenFeature, boolean>;
 
 export type PasswordComplexity = {
@@ -221,6 +223,7 @@ interface InstanceSettings {
   "subscription-allowed-domains": string | null;
   "uploads-settings": UploadsSettings;
   "user-visibility": string | null;
+  "query-analysis-enabled": boolean;
 }
 
 export type EmbeddingHomepageDismissReason =
@@ -245,6 +248,7 @@ interface AdminSettings {
   "premium-embedding-token": string | null;
   "saml-configured"?: boolean;
   "saml-enabled"?: boolean;
+  "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
   "version-info": VersionInfo | null;
@@ -332,6 +336,7 @@ export type UserSettings = {
   "expand-browse-in-nav"?: boolean;
   "expand-bookmarks-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
+  "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
 };

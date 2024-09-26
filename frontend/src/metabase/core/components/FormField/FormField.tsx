@@ -2,7 +2,7 @@ import type { HTMLAttributes, ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { Tooltip } from "metabase/ui";
 
 import {
   FieldCaption,
@@ -82,7 +82,7 @@ const FormField = forwardRef(function FormField(
               <OptionalTag>{t`(optional)`}</OptionalTag>
             )}
             {(infoLabel || infoTooltip) && (
-              <Tooltip tooltip={infoTooltip} maxWidth="100%">
+              <Tooltip multiline label={infoTooltip}>
                 {infoLabel ? (
                   <FieldInfoLabel>{infoLabel}</FieldInfoLabel>
                 ) : (

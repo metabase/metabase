@@ -13,8 +13,10 @@
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.formatter :as formatter]
    [metabase.public-settings :as public-settings]
    [metabase.pulse :as pulse]
    [metabase.pulse.test-util :as pulse.test-util]
@@ -40,12 +42,20 @@
                  (->>  (spreadsheet/cell-seq r)
                        (mapv read-cell-with-formatting)))))))
 
+(defn- tabulate-maps
+  [result]
+  (let [ks (keys (first result))]
+    (cons
+     (mapv name ks)
+     (map #(mapv % ks) result))))
+
 (defn- process-results
   [export-format results]
   (when (seq results)
     (case export-format
       :csv  (csv/read-csv results)
-      :xlsx (read-xlsx results))))
+      :xlsx (read-xlsx results)
+      :json (tabulate-maps results))))
 
 (defn- card-download
   [{:keys [id] :as _card} export-format format-rows?]
@@ -531,12 +541,12 @@
                                                                  [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
           (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
                             csv/read-csv)]
-            (is (= [["Category" "Created At" "pivot-grouping" "Sum of Price"]
-                    ["Doohickey" "2016-05-01T00:00:00Z" "0" "144.12"]
-                    ["Doohickey" "2016-06-01T00:00:00Z" "0" "82.92"]
-                    ["Doohickey" "2016-07-01T00:00:00Z" "0" "78.22"]
-                    ["Doohickey" "2016-08-01T00:00:00Z" "0" "71.09"]
-                    ["Doohickey" "2016-09-01T00:00:00Z" "0" "45.65"]]
+            (is (= [["Category" "Created At" "Sum of Price"]
+                    ["Doohickey" "2016-05-01T00:00:00Z" "144.12"]
+                    ["Doohickey" "2016-06-01T00:00:00Z" "82.92"]
+                    ["Doohickey" "2016-07-01T00:00:00Z" "78.22"]
+                    ["Doohickey" "2016-08-01T00:00:00Z" "71.09"]
+                    ["Doohickey" "2016-09-01T00:00:00Z" "45.65"]]
                    (take 6 result)))))))
     (testing "for xlsx"
       (mt/dataset test-data
@@ -560,12 +570,11 @@
                                          (mapv (fn [row] (->> (spreadsheet/cell-seq row)
                                                               (mapv spreadsheet/read-cell)))))]
                            data))]
-            (is (= [["Category" "pivot-grouping" "Sum of Price"]
-                    ["Doohickey" 0.0 2185.89]
-                    ["Gadget" 0.0 3019.2]
-                    ["Gizmo" 0.0 2834.88]
-                    ["Widget" 0.0 3109.31]
-                    [nil 1.0 11149.28]]
+            (is (= [["Category" "Sum of Price"]
+                    ["Doohickey" 2185.89]
+                    ["Gadget" 3019.2]
+                    ["Gizmo" 2834.88]
+                    ["Widget" 3109.31]]
                    (take 6 data)))))))))
 
 (deftest ^:parallel dashcard-viz-settings-downloads-test
@@ -742,3 +751,66 @@
           ;; the [$$] part will appear as $ when you open the Excel file in a spreadsheet app
           (is (= [["Discount"] ["[$$]6.42"]]
                  (-> (card-download card :xlsx true)))))))))
+
+(deftest clean-errors-test
+  (testing "Queries that error should not include visualization settings (metabase-private #233)"
+    (with-redefs [formatter/number-formatter (fn [& _args] (fn [_] (throw (Exception. "Test Exception"))))]
+      (mt/with-temp [:model/Card {card-id :id} {:display                :table
+                                                :type                   :model
+                                                :dataset_query          {:database (mt/id)
+                                                                         :type     :query
+                                                                         :query    {:source-table (mt/id :orders)
+                                                                                    :filter       [:not-null [:field (mt/id :orders :discount) {:base-type :type/Float}]]
+                                                                                    :limit        1}}
+                                                :visualization_settings {:table.columns
+                                                                         [{:name "ID" :enabled false}
+                                                                          {:name "USER_ID" :enabled false}
+                                                                          {:name "PRODUCT_ID" :enabled false}
+                                                                          {:name "SUBTOTAL" :enabled false}
+                                                                          {:name "TAX" :enabled false}
+                                                                          {:name "TOTAL" :enabled false}
+                                                                          {:name "DISCOUNT" :enabled true}
+                                                                          {:name "CREATED_AT" :enabled false}
+                                                                          {:name "QUANTITY" :enabled false}]
+                                                                         :table.cell_column "SUBTOTAL"
+                                                                         :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :discount))
+                                                                                             {:currency_in_header false}}}}]
+        (let [illegal-strings ["visualization-settings" ":viz-settings" "visualization_settings"]]
+          (doseq [export-format ["csv" "json" #_"xlsx"]]
+            ;; for now, don't try to read xlsx back in, it will not be correct since we end up writing
+            ;; a json blob to the output stream, it creates an invalid xlsx anyway.
+            ;; This is not new behaviour, we'll just fix it when a better solution to 'errors in downloaded files' comes along
+            (let [results (mt/user-http-request :rasta :post 200 (format "card/%d/query/%s?format_rows=true" card-id export-format))
+                  results-string (if (= "xlsx" export-format)
+                                   (read-xlsx results)
+                                   (str results))]
+              (testing (format "Testing export format: %s" export-format)
+                (doseq [illegal illegal-strings]
+                  (is (false? (str/blank? results-string)))
+                  (is (true? (str/includes? results-string "Test Exception")))
+                  (testing (format "String \"%s\" is not in the error message." illegal)
+                    (is (false? (str/includes? results-string illegal)))))))))))))
+
+(deftest unpivoted-pivot-results-do-not-include-pivot-grouping
+  (testing "If a pivot question is downloaded or exported unpivoted, the results do not include 'pivot-grouping' column"
+    (doseq [export-format ["csv" "xlsx" "json"]]
+      (testing (format "for %s" export-format)
+        (mt/dataset test-data
+          (mt/with-temp [:model/Card {pivot-card-id :id}
+                         {:display                :pivot
+                          :visualization_settings {:pivot_table.column_split
+                                                   {:rows    []
+                                                    :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                    :values  [[:aggregation 0]]}}
+                          :dataset_query          {:database (mt/id)
+                                                   :type     :query
+                                                   :query
+                                                   {:source-table (mt/id :products)
+                                                    :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                    :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
+            (let [result (mt/user-http-request :crowberto :post 200
+                                               (format "card/%d/query/%s?format_rows=false" pivot-card-id export-format)
+                                               {})
+                  data   (process-results (keyword export-format) result)]
+              (is (= ["Category" "Sum of Price"]
+                     (first data))))))))))

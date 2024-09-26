@@ -452,7 +452,7 @@
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
 (mr/def ::card-type
-  (into [:enum {:decode/json keyword}] (mapcat (juxt identity u/qualified-name)) card/card-types))
+  (into [:enum {:decode/json keyword}] card/card-types))
 
 (defn- check-if-card-can-be-saved
   [dataset-query card-type]
@@ -464,7 +464,7 @@
                        :status-code 400})))))
 
 (api/defendpoint POST "/"
-  "Create a new `Card`."
+  "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
   {name                   ms/NonBlankString
@@ -495,7 +495,7 @@
   [id]
   {id [:maybe ms/PositiveInt]}
   (let [orig-card (api/read-check Card id)
-        new-name  (str (trs "Copy of ") (:name orig-card))
+        new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
     (-> (card/create-card! new-card @api/*current-user*)
         hydrate-card-details
@@ -888,8 +888,9 @@
                                             :db-id         (or (:db_id uploads-db-settings)
                                                                (throw (ex-info (tru "The uploads database is not configured.")
                                                                                {:status-code 422})))})]
-      {:status 200
-       :body   (:id model)})
+      {:status  200
+       :body    (:id model)
+       :headers {"metabase-table-id" (str (:table-id model))}})
     (catch Throwable e
       {:status (or (-> e ex-data :status-code)
                    500)

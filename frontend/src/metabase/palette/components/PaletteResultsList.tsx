@@ -71,7 +71,15 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
         // having to calculate the current action to perform based
         // on the `activeIndex`, which we would have needed to add
         // as part of the dependencies array.
-        activeRef.current?.click();
+
+        //If we have a link for a child, then click that instead
+        const childAnchor = activeRef.current?.querySelector("a");
+
+        if (childAnchor) {
+          childAnchor.click();
+        } else {
+          activeRef.current?.click();
+        }
       }
     };
     window.addEventListener("keydown", handler, { capture: true });

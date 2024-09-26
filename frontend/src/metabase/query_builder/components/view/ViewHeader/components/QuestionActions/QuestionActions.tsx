@@ -13,11 +13,13 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import {
-  PLUGIN_MODEL_PERSISTENCE,
   PLUGIN_MODERATION,
   PLUGIN_QUERY_BUILDER_HEADER,
 } from "metabase/plugins";
-import { softReloadCard } from "metabase/query_builder/actions";
+import {
+  onOpenQuestionSettings,
+  softReloadCard,
+} from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -26,13 +28,11 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import {
-  checkCanBeModel,
-  checkDatabaseCanPersistDatasets,
-} from "metabase-lib/v1/metadata/utils/models";
+import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import { UploadMode } from "metabase-types/store/upload";
 
+import { shouldShowQuestionSettingsSidebar } from "../../../sidebars/QuestionSettingsSidebar";
 import { ViewHeaderIconButtonContainer } from "../../ViewTitleHeader.styled";
 
 import {
@@ -45,7 +45,6 @@ const HEADER_ICON_SIZE = 16;
 const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 const MOVE_TESTID = "move-button";
 const TURN_INTO_DATASET_TESTID = "turn-into-dataset";
-const TOGGLE_MODEL_PERSISTENCE_TESTID = "toggle-persistence";
 const CLONE_TESTID = "clone-button";
 const ARCHIVE_TESTID = "archive-button";
 
@@ -76,7 +75,6 @@ export const QuestionActions = ({
   onSetQueryBuilderMode,
   onTurnModelIntoQuestion,
   onInfoClick,
-  onModelPersistenceChange,
 }: Props) => {
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
   const isMetabotEnabled = useSetting("is-metabot-enabled");
@@ -85,7 +83,8 @@ export const QuestionActions = ({
 
   const dispatch = useDispatch();
 
-  const dispatchSoftReloadCard = () => dispatch(softReloadCard());
+  const reload = () => dispatch(softReloadCard());
+  const onOpenSettingsSidebar = () => dispatch(onOpenQuestionSettings());
 
   const infoButtonColor = isShowingQuestionInfoSidebar
     ? color("brand")
@@ -96,20 +95,13 @@ export const QuestionActions = ({
   const isMetric = question.type() === "metric";
   const isModelOrMetric = isModel || isMetric;
   const hasCollectionPermissions = question.canWrite();
-  const isSaved = question.isSaved();
   const database = question.database();
   const canAppend =
     hasCollectionPermissions && !!question._card.based_on_upload;
   const { isEditable: hasDataPermissions } = Lib.queryDisplayInfo(
     question.query(),
   );
-
-  const canPersistDataset =
-    PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
-    hasCollectionPermissions &&
-    isSaved &&
-    isModel &&
-    checkDatabaseCanPersistDatasets(question.database());
+  const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
 
   const handleEditQuery = useCallback(() => {
     onSetQueryBuilderMode("dataset", {
@@ -133,6 +125,15 @@ export const QuestionActions = ({
 
   const extraButtons = [];
 
+  if (isQuestion || isMetric) {
+    extraButtons.push({
+      title: t`Add to dashboard`,
+      icon: "add_to_dash",
+      action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
+      testId: ADD_TO_DASH_TESTID,
+    });
+  }
+
   if (
     isMetabotEnabled &&
     isModel &&
@@ -146,13 +147,12 @@ export const QuestionActions = ({
     });
   }
 
-  extraButtons.push(
-    ...PLUGIN_MODERATION.getMenuItems(
-      question,
-      isModerator,
-      dispatchSoftReloadCard,
-    ),
+  const moderationItems = PLUGIN_MODERATION.useMenuItems(
+    question,
+    isModerator,
+    reload,
   );
+  extraButtons.push(...moderationItems);
 
   if (hasCollectionPermissions) {
     if (isModelOrMetric && hasDataPermissions) {
@@ -176,43 +176,6 @@ export const QuestionActions = ({
     }
   }
 
-  if (canPersistDataset) {
-    extraButtons.push({
-      ...PLUGIN_MODEL_PERSISTENCE.getMenuItems(
-        question,
-        onModelPersistenceChange,
-      ),
-      testId: TOGGLE_MODEL_PERSISTENCE_TESTID,
-    });
-  }
-
-  if (isQuestion || isMetric) {
-    extraButtons.push({
-      title: t`Add to dashboard`,
-      icon: "add_to_dash",
-      action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
-      testId: ADD_TO_DASH_TESTID,
-    });
-  }
-
-  if (hasCollectionPermissions) {
-    extraButtons.push({
-      title: t`Move`,
-      icon: "move",
-      action: () => onOpenModal(MODAL_TYPES.MOVE),
-      testId: MOVE_TESTID,
-    });
-  }
-
-  if (hasDataPermissions) {
-    extraButtons.push({
-      title: t`Duplicate`,
-      icon: "clone",
-      action: () => onOpenModal(MODAL_TYPES.CLONE),
-      testId: CLONE_TESTID,
-    });
-  }
-
   if (hasCollectionPermissions) {
     if (isQuestion) {
       extraButtons.push({
@@ -233,7 +196,42 @@ export const QuestionActions = ({
 
   extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
 
+  if (enableSettingsSidebar) {
+    extraButtons.push({
+      title: t`Edit settings`,
+      icon: "gear",
+      action: onOpenSettingsSidebar,
+      testId: "question-settings-button",
+    });
+  }
+
   if (hasCollectionPermissions) {
+    extraButtons.push({
+      separator: true,
+      key: "move-separator",
+    });
+    extraButtons.push({
+      title: t`Move`,
+      icon: "move",
+      action: () => onOpenModal(MODAL_TYPES.MOVE),
+      testId: MOVE_TESTID,
+    });
+  }
+
+  if (hasDataPermissions) {
+    extraButtons.push({
+      title: t`Duplicate`,
+      icon: "clone",
+      action: () => onOpenModal(MODAL_TYPES.CLONE),
+      testId: CLONE_TESTID,
+    });
+  }
+
+  if (hasCollectionPermissions) {
+    extraButtons.push({
+      separator: true,
+      key: "trash-separator",
+    });
     extraButtons.push({
       title: t`Move to trash`,
       icon: "trash",

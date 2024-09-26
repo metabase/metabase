@@ -8,9 +8,12 @@ import {
   expectNoBadSnowplowEvents,
   isEE,
   main,
+  mockSessionProperty,
+  onlyOnEE,
   popover,
   resetSnowplow,
   restore,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 import { SUBSCRIBE_URL } from "metabase/setup/constants";
 
@@ -230,6 +233,29 @@ describe("scenarios > setup", () => {
         "have.value",
         "Epic Team",
       );
+    });
+  });
+
+  it("should pre-fill user info for hosted instances (infra-frontend#1109)", () => {
+    onlyOnEE();
+    setTokenFeatures("none");
+    mockSessionProperty("is-hosted?", true);
+
+    cy.visit(
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
+    );
+
+    skipWelcomePage();
+    selectPreferredLanguageAndContinue();
+
+    cy.findByTestId("setup-forms").within(() => {
+      cy.findByDisplayValue("John").should("exist");
+      cy.findByDisplayValue("Doe").should("exist");
+      cy.findByDisplayValue("john@doe.test").should("exist");
+      cy.findByDisplayValue("Doe Unlimited").should("exist");
+      cy.findByLabelText("Create a password")
+        .should("be.focused")
+        .and("be.empty");
     });
   });
 
@@ -544,6 +570,26 @@ describeWithSnowplow("scenarios > setup", () => {
       });
 
       expectGoodSnowplowEvents(goodEvents);
+
+      cy.findByText(
+        "Get infrequent emails about new releases and feature updates.",
+      ).click();
+
+      expectGoodSnowplowEvent({
+        event: "newsletter-toggle-clicked",
+        triggered_from: "setup",
+        event_detail: "opted-in",
+      });
+
+      cy.findByText(
+        "Get infrequent emails about new releases and feature updates.",
+      ).click();
+
+      expectGoodSnowplowEvent({
+        event: "newsletter-toggle-clicked",
+        triggered_from: "setup",
+        event_detail: "opted-out",
+      });
     });
   });
 

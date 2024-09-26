@@ -2074,6 +2074,32 @@
         (is (= '()
                (->> (timelines-request coll-c true) first :events)))))))
 
+(deftest timelines-permissions-test
+  (testing "GET /api/collection/id/timelines"
+    (t2.with-temp/with-temp [Collection coll-a {:name "Collection A"}
+                             Timeline tl-a      {:name          "Timeline A"
+                                                 :collection_id (u/the-id coll-a)}
+                             TimelineEvent _event-aa {:name        "event-aa"
+                                                      :timeline_id (u/the-id tl-a)}]
+      (testing "You can't query a collection's timelines if you don't have perms on it."
+        (perms/revoke-collection-permissions! (perms-group/all-users) coll-a)
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 (str "collection/" (u/the-id coll-a) "/timelines") :include "events"))))
+      (testing "If we grant perms, then we can read the timelines"
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll-a)
+        (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id coll-a) "/timelines") :include "events"))))
+  (testing "GET /api/collection/root/timelines"
+    (t2.with-temp/with-temp [Timeline tl-a      {:name          "Timeline A"
+                                                 :collection_id nil}
+                             TimelineEvent _event-aa {:name        "event-aa"
+                                                      :timeline_id (u/the-id tl-a)}]
+      (testing "You can't query a collection's timelines if you don't have perms on it."
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "collection/root/timelines" :include "events")))))
+      (testing "If we grant perms, then we can read the timelines"
+        (mt/user-http-request :rasta :get 200 "collection/root/timelines" :include "events")))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            GET /api/collection/graph and PUT /api/collection/graph                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+

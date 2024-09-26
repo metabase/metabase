@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: 3
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -77,7 +76,7 @@ dataset_query:
 result_metadata:
 - base_type: type/Integer
   coercion_strategy: null
-  description: null
+  description: View ID, each question, dashboard, model, collection view generated one new sequential ID.
   display_name: ID
   effective_type: type/Integer
   field_ref:
@@ -99,7 +98,7 @@ result_metadata:
   visibility_type: normal
 - base_type: type/DateTimeWithLocalTZ
   coercion_strategy: null
-  description: null
+  description: When the view happened
   display_name: Timestamp
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
@@ -117,13 +116,13 @@ result_metadata:
   - v_view_log
   - timestamp
   name: timestamp
-  semantic_type: null
+  semantic_type: type/CreationTimestamp
   settings: null
   unit: default
   visibility_type: normal
 - base_type: type/Integer
   coercion_strategy: null
-  description: null
+  description: Who viewed the content
   display_name: User ID
   effective_type: type/Integer
   field_ref:
@@ -133,7 +132,11 @@ result_metadata:
     - v_view_log
     - user_id
   - base-type: type/Integer
-  fk_target_field_id: 739
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - user_id
   id:
   - Internal Metabase Database
   - public
@@ -145,7 +148,7 @@ result_metadata:
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
-  description: null
+  description: card (question, model, metric), table, dashboard or collection
   display_name: Entity Type
   effective_type: type/Text
   field_ref:
@@ -167,7 +170,7 @@ result_metadata:
   visibility_type: normal
 - base_type: type/Integer
   coercion_strategy: null
-  description: null
+  description: The sequential ID of the card, dashboard, collection
   display_name: Entity ID
   effective_type: type/Integer
   field_ref:
@@ -199,7 +202,11 @@ result_metadata:
     - v_view_log
     - entity_qualified_id
   - base-type: type/Text
-  fk_target_field_id: null
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_qualified_id
   id:
   - Internal Metabase Database
   - public
@@ -217,6 +224,7 @@ serdes/meta:
 - id: P6Ityjj7igswKh4NgZZjz
   label: view_log
   model: Card
-initially_published_at: null
+archived_directly: false
 metabase_version: vUNKNOWN (7c47e04)
+source_card_id: null
 type: model

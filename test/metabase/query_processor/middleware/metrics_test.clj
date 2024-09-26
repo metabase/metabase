@@ -16,7 +16,8 @@
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.metrics :as metrics]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]))
 
 (def ^:private counter (atom 2000))
 
@@ -669,3 +670,50 @@
       (let [query (lib/query mp (lib.metadata/card mp (:id metric)))]
         (is (=? (mt/rows (qp/process-query metric-query))
                 (mt/rows (qp/process-query query))))))))
+
+(deftest ^:parallel filtered-metric-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
+    (mt/with-temp [:model/Card metric {:dataset_query (lib.convert/->legacy-MBQL metric-query)
+                                       :database_id (mt/id)
+                                       :name "Orders Total Sum metric"
+                                       :type :metric}]
+      (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib.metadata/metric mp (:id metric)))
+                      (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at)) :month))
+                      (lib/append-stage)
+                      (lib/limit 3))
+            metric-column (second (lib/returned-columns query))
+            query (lib/filter query (lib/> metric-column 53))]
+        (is (=? [["2016-05-01T00:00:00Z" 1265]
+                 ["2016-06-01T00:00:00Z" 2072]
+                 ["2016-07-01T00:00:00Z" 3734]]
+                (mt/format-rows-by
+                 [u.date/temporal-str->iso8601-str int]
+                 (mt/rows (qp/process-query query)))))))))
+
+(deftest ^:parallel metric-in-offset-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                         (lib/aggregate (lib/count)))]
+    (mt/with-temp [:model/Card metric {:dataset_query (lib.convert/->legacy-MBQL metric-query)
+                                       :database_id (mt/id)
+                                       :name "Orders, Count"
+                                       :type :metric}]
+      (let [metric-meta (lib.metadata/metric mp (:id metric))
+            metric-offset #(lib/offset metric-meta -1)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate metric-meta)
+                      (lib/aggregate (metric-offset))
+                      (lib/aggregate (lib/- (lib// metric-meta (metric-offset)) 1))
+                      (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at)) :month))
+                      (lib/limit 5))]
+        (is (=? [["2016-04-01T00:00:00Z" 1 nil nil]
+                 ["2016-05-01T00:00:00Z" 19 1 18.0]
+                 ["2016-06-01T00:00:00Z" 37 19 0.947]
+                 ["2016-07-01T00:00:00Z" 64 37 0.73]
+                 ["2016-08-01T00:00:00Z" 79 64 0.234]]
+                (mt/format-rows-by
+                 [u.date/temporal-str->iso8601-str int int 3.0]
+                 (mt/rows (qp/process-query query)))))))))

@@ -14,7 +14,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.humanization :as humanization]
    [metabase.query-processor.debug :as qp.debug]
@@ -80,7 +79,7 @@
                          :type             qp.error-type/qp}))))))
 
 (defn- annotate-native-cols [cols]
-  (let [unique-name-fn (lib.util/unique-name-generator (qp.store/metadata-provider))]
+  (let [unique-name-fn (mbql.u/unique-name-generator)]
     (mapv (fn [{col-name :name, base-type :base_type, :as driver-col-metadata}]
             (let [col-name (name col-name)]
               (merge
@@ -137,6 +136,8 @@
     true
 
     [:field _ (_ :guard :temporal-unit)]
+    true
+    [:expression _ (_ :guard :temporal-unit)]
     true
 
     :+
@@ -223,14 +224,16 @@
           [:expression expression-name])))))
 
 (defn- col-info-for-expression
-  [inner-query [_expression expression-name :as clause]]
+  [inner-query [_expression expression-name {:keys [temporal-unit] :as _opts} :as clause]]
   (merge
    (infer-expression-type (mbql.u/expression-with-name inner-query expression-name))
    {:name            expression-name
     :display_name    expression-name
     ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
     :expression_name expression-name
-    :field_ref       (fe-friendly-expression-ref clause)}))
+    :field_ref       (fe-friendly-expression-ref clause)}
+   (when temporal-unit
+     {:unit temporal-unit})))
 
 (mu/defn- col-info-for-field-clause*
   [{:keys [source-metadata], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]

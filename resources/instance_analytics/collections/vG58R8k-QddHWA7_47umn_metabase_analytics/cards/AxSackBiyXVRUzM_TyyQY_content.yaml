@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: 13
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -277,7 +276,11 @@ result_metadata:
     - v_content
     - creator_id
   - base-type: type/Integer
-  fk_target_field_id: 739
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - user_id
   id:
   - Internal Metabase Database
   - public
@@ -343,14 +346,18 @@ result_metadata:
     - v_content
     - collection_id
   - base-type: type/Integer
-  fk_target_field_id: 919
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - event_timestamp
   id:
   - Internal Metabase Database
   - public
   - v_content
   - collection_id
   name: collection_id
-  semantic_type: type/FK
+  semantic_type: null
   settings: null
   visibility_type: normal
 - base_type: type/Integer
@@ -365,7 +372,11 @@ result_metadata:
     - v_content
     - made_public_by_user
   - base-type: type/Integer
-  fk_target_field_id: 739
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - user_id
   id:
   - Internal Metabase Database
   - public
@@ -453,14 +464,18 @@ result_metadata:
     - v_content
     - action_model_id
   - base-type: type/Integer
-  fk_target_field_id: 919
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - event_timestamp
   id:
   - Internal Metabase Database
   - public
   - v_content
   - action_model_id
   name: action_model_id
-  semantic_type: type/FK
+  semantic_type: null
   settings: null
   visibility_type: normal
 - base_type: type/Boolean
@@ -541,7 +556,11 @@ result_metadata:
     - v_content
     - question_database_id
   - base-type: type/Text
-  fk_target_field_id: null
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_databases
+  - entity_qualified_id
   id:
   - Internal Metabase Database
   - public
@@ -605,7 +624,7 @@ serdes/meta:
 - id: AxSackBiyXVRUzM_TyyQY
   label: content
   model: Card
-initially_published_at: null
-last_used_at: '2024-05-16T21:01:38.038034Z'
+archived_directly: false
 metabase_version: null
+source_card_id: null
 type: model

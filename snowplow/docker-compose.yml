@@ -8,3 +8,8 @@ services:
     volumes:
       - .:/config
     command: "--collector-config /config/micro.conf --iglu /config/iglu.json"
+
+  iglu:
+    image: halverneus/static-file-server
+    volumes:
+      - ./iglu-client-embedded:/web

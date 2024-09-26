@@ -2,7 +2,9 @@ import type {
   Card,
   CardId,
   CardQueryMetadata,
+  CardQueryRequest,
   CreateCardRequest,
+  Dataset,
   GetCardRequest,
   ListCardsRequest,
   UpdateCardRequest,
@@ -15,8 +17,11 @@ import {
   listTag,
   provideCardListTags,
   provideCardQueryMetadataTags,
+  provideCardQueryTags,
   provideCardTags,
 } from "./tags";
+
+const PERSISTED_MODEL_REFRESH_DELAY = 200;
 
 export const cardApi = Api.injectEndpoints({
   endpoints: builder => ({
@@ -44,6 +49,14 @@ export const cardApi = Api.injectEndpoints({
       }),
       providesTags: (metadata, error, id) =>
         metadata ? provideCardQueryMetadataTags(id, metadata) : [],
+    }),
+    getCardQuery: builder.query<Dataset, CardQueryRequest>({
+      query: ({ cardId, ...body }) => ({
+        method: "POST",
+        url: `/api/card/${cardId}/query`,
+        body,
+      }),
+      providesTags: (_data, _error, { cardId }) => provideCardQueryTags(cardId),
     }),
     createCard: builder.mutation<Card, CreateCardRequest>({
       query: body => ({
@@ -85,10 +98,29 @@ export const cardApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
     }),
-    refreshModelCache: builder.mutation<void, CardId>({
+    persistModel: builder.mutation<void, CardId>({
       query: id => ({
         method: "POST",
-        url: `/api/card/${id}/refresh`,
+        url: `/api/card/${id}/persist`,
+      }),
+      async onQueryStarted(id, { dispatch, queryFulfilled }) {
+        await queryFulfilled;
+        // we wait to invalidate this tag so the cache refresh has time to start before we refetch
+        setTimeout(() => {
+          dispatch(
+            Api.util.invalidateTags([
+              idTag("card", id),
+              idTag("persisted-model", id),
+              listTag("persisted-info"),
+            ]),
+          );
+        }, PERSISTED_MODEL_REFRESH_DELAY);
+      },
+    }),
+    unpersistModel: builder.mutation<void, CardId>({
+      query: id => ({
+        method: "POST",
+        url: `/api/card/${id}/unpersist`,
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [
@@ -97,6 +129,25 @@ export const cardApi = Api.injectEndpoints({
           listTag("persisted-info"),
         ]),
     }),
+    refreshModelCache: builder.mutation<void, CardId>({
+      query: id => ({
+        method: "POST",
+        url: `/api/card/${id}/refresh`,
+      }),
+      async onQueryStarted(id, { dispatch, queryFulfilled }) {
+        await queryFulfilled;
+        // we wait to invalidate this tag so the cache refresh has time to start before we refetch
+        setTimeout(() => {
+          dispatch(
+            Api.util.invalidateTags([
+              idTag("card", id),
+              idTag("persisted-model", id),
+              listTag("persisted-info"),
+            ]),
+          );
+        }, PERSISTED_MODEL_REFRESH_DELAY);
+      },
+    }),
   }),
 });
 
@@ -104,9 +155,12 @@ export const {
   useListCardsQuery,
   useGetCardQuery,
   useGetCardQueryMetadataQuery,
+  useGetCardQueryQuery,
   useCreateCardMutation,
   useUpdateCardMutation,
   useDeleteCardMutation,
   useCopyCardMutation,
   useRefreshModelCacheMutation,
+  usePersistModelMutation,
+  useUnpersistModelMutation,
 } = cardApi;

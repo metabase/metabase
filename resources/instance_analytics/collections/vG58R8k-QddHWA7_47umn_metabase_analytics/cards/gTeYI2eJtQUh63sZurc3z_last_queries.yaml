@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -553,6 +552,8 @@ visualization_settings:
       column_title: Question ID
     '["name","entity_id_2"]':
       column_title: Dashboard ID
+    '["name","entity_id_3"]':
+      column_title: Database ID
     '["name","name"]':
       column_title: Question name
       link_text: ''
@@ -562,8 +563,6 @@ visualization_settings:
       column_title: Dashboard name
       link_url: /dashboard/{{entity_id_2}}
       view_as: link
-    '["name","entity_id_3"]':
-      column_title: Database ID
     '["name","name_3"]':
       column_title: Database name
       link_url: /browse/{{entity_id_3}}
@@ -690,6 +689,7 @@ serdes/meta:
 - id: gTeYI2eJtQUh63sZurc3z
   label: last_queries
   model: Card
-initially_published_at: null
+archived_directly: false
 metabase_version: vUNKNOWN (ad99d37)
+source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

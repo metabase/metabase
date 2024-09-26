@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -260,7 +259,11 @@ result_metadata:
     - database_id
   - base-type: type/Integer
     join-alias: Tables - Entity Qualified
-  fk_target_field_id: 1051
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_databases
+  - entity_id
   id:
   - Internal Metabase Database
   - public
@@ -291,6 +294,21 @@ visualization_settings:
       column_title: Table name
       link_url: /question#?db={{database_id}}&table={{entity_id}}
       view_as: link
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","description"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
+    : column_title: Description
+    '["ref",["field",["Internal Metabase Database","public","v_content","description"],{"join-alias":"Question 35"}]]':
+      column_title: Description
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
+    : column_title: Question ID
+    '["ref",["field",["Internal Metabase Database","public","v_content","id"],{"join-alias":"Question 35"}]]':
+      column_title: Dashboard ID
+      link_text: Dashboard {{id}}
+      link_url: ''
+      view_as: null
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
+    : column_title: Question name
+    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]':
+      column_title: Dashboard name
   table.cell_column: model_id
   table.columns:
   - enabled: true
@@ -348,6 +366,7 @@ serdes/meta:
 - id: 95Om4AllyfyB5wtl6TeGi
   label: last_viewed_tables
   model: Card
-initially_published_at: null
+archived_directly: false
 metabase_version: vUNKNOWN (ad99d37)
+source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

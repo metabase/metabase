@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -149,7 +148,7 @@ serdes/meta:
 - id: LN9YtKcxZk_kybyRjJx1J
   label: total_time_looking_for_field_values_per_day
   model: Card
-initially_published_at: null
-last_used_at: '2024-05-15T20:34:49.850139Z'
+archived_directly: false
 metabase_version: vUNKNOWN (a98530f)
+source_card_id: PKhlEfegdbTozSMfj0aLB
 type: question

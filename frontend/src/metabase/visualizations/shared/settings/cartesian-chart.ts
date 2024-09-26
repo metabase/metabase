@@ -1,7 +1,12 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getMaxDimensionsSupported } from "metabase/visualizations";
+import { isNotNull } from "metabase/lib/types";
+import {
+  getMaxDimensionsSupported,
+  getMaxMetricsSupported,
+} from "metabase/visualizations";
+import { getCardsColumns } from "metabase/visualizations/echarts/cartesian/model";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
@@ -11,6 +16,7 @@ import {
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isAny,
   isDate,
@@ -35,19 +41,19 @@ export function getDefaultMetricFilter(display: string) {
 }
 
 export function getAreDimensionsAndMetricsValid(rawSeries: RawSeries) {
-  return rawSeries.some(
-    ({ card, data }) =>
-      columnsAreValid(
-        card.visualization_settings["graph.dimensions"],
-        data,
-        getDefaultDimensionFilter(card.display),
-      ) &&
-      columnsAreValid(
-        card.visualization_settings["graph.metrics"],
-        data,
-        getDefaultMetricFilter(card.display),
-      ),
-  );
+  return rawSeries.some(({ card, data }) => {
+    const dimensions = card.visualization_settings["graph.dimensions"];
+    const metrics = card.visualization_settings["graph.metrics"];
+
+    const dimensionsFilter = getDefaultDimensionFilter(card.display);
+    const metricsFilter = getDefaultMetricFilter(card.display);
+
+    return (
+      columnsAreValid(dimensions, data, dimensionsFilter) &&
+      columnsAreValid(metrics, data, metricsFilter) &&
+      (metrics ?? []).length <= getMaxMetricsSupported(card.display)
+    );
+  });
 }
 
 export function getDefaultDimensions(
@@ -71,6 +77,7 @@ export function getDefaultMetrics(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) {
+  const [{ card }] = rawSeries;
   const prevMetrics = settings["graph.metrics"] ?? [];
   const defaultMetrics = getDefaultColumns(rawSeries).metrics;
   if (
@@ -80,8 +87,7 @@ export function getDefaultMetrics(
   ) {
     return prevMetrics;
   }
-
-  return defaultMetrics;
+  return defaultMetrics.slice(0, getMaxMetricsSupported(card.display));
 }
 
 export const STACKABLE_SERIES_DISPLAY_TYPES = new Set(["area", "bar"]);
@@ -381,4 +387,53 @@ function getDefaultLineAreaBarColumns(series: RawSeries) {
     series,
     getMaxDimensionsSupported(display),
   );
+}
+
+export function getAvailableAdditionalColumns(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+): DatasetColumn[] {
+  const alreadyIncludedColumns = new Set<DatasetColumn>();
+
+  if (
+    _.isEmpty(settings["graph.dimensions"]?.filter(isNotNull)) ||
+    _.isEmpty(settings["graph.metrics"]?.filter(isNotNull))
+  ) {
+    return [];
+  }
+
+  getCardsColumns(rawSeries, settings).forEach(cardColumns => {
+    alreadyIncludedColumns.add(cardColumns.dimension.column);
+    if ("breakout" in cardColumns) {
+      alreadyIncludedColumns.add(cardColumns.breakout.column);
+      alreadyIncludedColumns.add(cardColumns.metric.column);
+    } else {
+      cardColumns.metrics.forEach(columnDescriptor =>
+        alreadyIncludedColumns.add(columnDescriptor.column),
+      );
+    }
+  });
+
+  return rawSeries
+    .flatMap(singleSeries => {
+      return singleSeries.data.cols;
+    })
+    .filter(column => isMetric(column) && !alreadyIncludedColumns.has(column));
+}
+
+export function getComputedAdditionalColumnsValue(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  const availableAdditionalColumnKeys = new Set(
+    getAvailableAdditionalColumns(rawSeries, settings).map(column =>
+      getColumnKey(column),
+    ),
+  );
+
+  const filteredStoredColumns = (
+    settings["graph.tooltip_columns"] ?? []
+  ).filter((columnKey: string) => availableAdditionalColumnKeys.has(columnKey));
+
+  return filteredStoredColumns;
 }

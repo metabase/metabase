@@ -37,6 +37,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { createMockNotebookStep } from "../../test-utils";
 import type { NotebookStep } from "../../types";
+import { NotebookProvider } from "../Notebook/context";
 
 import { JoinStep } from "./JoinStep";
 
@@ -187,16 +188,18 @@ function setup({
     };
 
     return (
-      <JoinStep
-        step={step}
-        stageIndex={step.stageIndex}
-        query={query}
-        color="brand"
-        isLastOpened={false}
-        readOnly={readOnly}
-        reportTimezone="UTC"
-        updateQuery={onChange}
-      />
+      <NotebookProvider>
+        <JoinStep
+          step={step}
+          stageIndex={step.stageIndex}
+          query={query}
+          color="brand"
+          isLastOpened={false}
+          readOnly={readOnly}
+          reportTimezone="UTC"
+          updateQuery={onChange}
+        />
+      </NotebookProvider>
     );
   }
 
@@ -343,7 +346,7 @@ describe("Notebook Editor > Join Step", () => {
 
     const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
 
-    expect(within(lhsColumnPicker).getByText("Order")).toBeInTheDocument();
+    expect(within(lhsColumnPicker).getByText("Orders")).toBeInTheDocument();
     expect(within(lhsColumnPicker).getByText("Product ID")).toBeInTheDocument();
     expect(
       within(lhsColumnPicker).queryByText(/Review/i),

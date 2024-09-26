@@ -2,12 +2,17 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   chartPathWithFillColor,
+  getDraggableElements,
+  getNotebookStep,
   leftSidebar,
+  moveDnDKitElement,
+  openNotebook,
   pieSlices,
   popover,
   restore,
   tableHeaderClick,
   visitQuestionAdhoc,
+  visualize,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -87,7 +92,9 @@ describe("scenarios > visualizations > pie chart", () => {
     });
   });
 
-  it("should truncate the center dimension label if it overflows", () => {
+  // Skipping since the mousemove trigger flakes too often, and there's already a loki
+  // test to cover truncation
+  it.skip("should truncate the center dimension label if it overflows", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -108,19 +115,93 @@ describe("scenarios > visualizations > pie chart", () => {
       display: "pie",
     });
 
-    chartPathWithFillColor("#F9D45C").trigger("mousemove");
+    chartPathWithFillColor("#A989C5").as("slice");
+    cy.get("@slice").trigger("mousemove");
 
     cy.findByTestId("query-visualization-root")
-      .findByText("DOOHICKEY THE QUICK BROWN FOX J…")
+      .findByText("WIDGET THE QUICK BROWN FOX JUMP…")
       .should("be.visible");
+  });
+
+  it("should add new slices to the chart if they appear in the query result", () => {
+    visitQuestionAdhoc({
+      dataset_query: getLimitedQuery(testQuery, 2),
+      display: "pie",
+    });
+
+    ensurePieChartRendered(["Gadget", "Doohickey"]);
+
+    changeRowLimit(2, 4);
+
+    ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"]);
+  });
+
+  it("should preserve a slice's settings if its row is removed then reappears in the query result", () => {
+    visitQuestionAdhoc({
+      dataset_query: getLimitedQuery(testQuery, 4),
+      display: "pie",
+    });
+
+    ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"]);
+
+    cy.findByTestId("viz-settings-button").click();
+
+    // Open color picker
+    cy.findByLabelText("#F2A86F").click();
+
+    popover().within(() => {
+      // Change color
+      cy.findByLabelText("#509EE3").click();
+    });
+
+    cy.findByTestId("Widget-settings-button").click();
+
+    cy.findByDisplayValue("Widget").type("{selectall}Woooget").realPress("Tab");
+
+    moveDnDKitElement(getDraggableElements().contains("Woooget"), {
+      vertical: 100,
+    });
+
+    ensurePieChartRendered(["Woooget", "Gadget", "Gizmo", "Doohickey"]);
+    chartPathWithFillColor("#509EE3").should("be.visible");
+
+    cy.findByTestId("chart-legend").within(() => {
+      cy.get("li").eq(2).contains("Woooget");
+    });
+
+    changeRowLimit(4, 2);
+    ensurePieChartRendered(["Gadget", "Doohickey"]);
+
+    // Ensure row settings should show only two rows
+    cy.findByTestId("viz-settings-button").click();
+    getDraggableElements().should("have.length", 2);
+    getDraggableElements().contains("Woooget").should("not.exist");
+    getDraggableElements().contains("Gizmo").should("not.exist");
+
+    cy.findByTestId("Gadget-settings-button").click();
+    cy.findByDisplayValue("Gadget").type("{selectall}Katget").realPress("Tab");
+    moveDnDKitElement(getDraggableElements().contains("Katget"), {
+      vertical: 30,
+    });
+
+    changeRowLimit(2, 4);
+    ensurePieChartRendered(["Doohickey", "Katget", "Gizmo", "Woooget"]);
+    chartPathWithFillColor("#509EE3").should("be.visible");
+
+    cy.findByTestId("chart-legend").within(() => {
+      cy.get("li").eq(1).contains("Katget");
+      cy.get("li").eq(3).contains("Woooget");
+    });
   });
 });
 
 function ensurePieChartRendered(rows, totalValue) {
   cy.findByTestId("query-visualization-root").within(() => {
     // detail
-    cy.findByText("TOTAL").should("be.visible");
-    cy.findByText(totalValue).should("be.visible");
+    if (totalValue != null) {
+      cy.findByText("TOTAL").should("be.visible");
+      cy.findByText(totalValue).should("be.visible");
+    }
 
     // slices
     pieSlices().should("have.length", rows.length);
@@ -136,4 +217,25 @@ function checkLegendItemAriaCurrent(title, value) {
   cy.findByTestId("chart-legend")
     .findByTestId(`legend-item-${title}`)
     .should("have.attr", "aria-current", value);
+}
+
+function getLimitedQuery(query, limit) {
+  return {
+    ...query,
+    query: {
+      ...query.query,
+      limit,
+    },
+  };
+}
+
+function changeRowLimit(from, to) {
+  openNotebook();
+  getNotebookStep("limit").within(() => {
+    cy.findByDisplayValue(String(from))
+      .type(`{selectall}${String(to)}`)
+      .realPress("Tab");
+  });
+
+  visualize();
 }

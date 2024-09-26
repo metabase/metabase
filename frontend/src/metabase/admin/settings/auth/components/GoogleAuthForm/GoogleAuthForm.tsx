@@ -2,13 +2,13 @@ import { useMemo } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import { useDocsUrl } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { FormProvider } from "metabase/forms";
-import MetabaseSettings from "metabase/lib/settings";
 import type { SettingDefinition, Settings } from "metabase-types/api";
 
 import { GOOGLE_SCHEMA } from "../../constants";
@@ -52,6 +52,11 @@ const GoogleAuthForm = ({
     return { ...values, [ENABLED_KEY]: true };
   }, [settingValues]);
 
+  const { url: docsUrl } = useDocsUrl(
+    "people-and-groups/google-and-ldap",
+    "enabling-google-sign-in",
+  );
+
   return (
     <FormProvider
       initialValues={initialValues}
@@ -69,7 +74,7 @@ const GoogleAuthForm = ({
           </GoogleFormCaption>
           <GoogleFormCaption>
             {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
-              <ExternalLink key="link" href={getDocsLink()}>
+              <ExternalLink key="link" href={docsUrl}>
                 {t`here`}
               </ExternalLink>
             )}.`}
@@ -112,13 +117,6 @@ const getFormFieldProps = (setting?: SettingDefinition) => {
   if (setting?.is_env_setting) {
     return { placeholder: t`Using ${setting.env_name}`, readOnly: true };
   }
-};
-
-const getDocsLink = (): string => {
-  return MetabaseSettings.docsUrl(
-    "people-and-groups/google-and-ldap",
-    "enabling-google-sign-in",
-  );
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

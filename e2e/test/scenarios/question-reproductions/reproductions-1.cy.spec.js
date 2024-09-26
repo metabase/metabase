@@ -28,9 +28,9 @@ import {
   popover,
   questionInfoButton,
   restore,
-  rightSidebar,
   saveDashboard,
   showDashboardCardActions,
+  sidesheet,
   startNewQuestion,
   summarize,
   tableHeaderClick,
@@ -512,7 +512,7 @@ describe("issue 17514", () => {
   };
 
   const filter = {
-    name: "Date Filter",
+    name: "All Options",
     slug: "date_filter",
     id: "23ccbbf",
     type: "date/all-options",
@@ -708,11 +708,11 @@ describe("issue 17910", () => {
 
     questionInfoButton().click();
 
-    rightSidebar().within(() => {
+    sidesheet().within(() => {
       cy.findAllByPlaceholderText("Add description")
         .type("A description")
         .blur();
-      cy.findByText("History");
+      cy.findByRole("tab", { name: "History" }).click();
       cy.findByTestId("saved-question-history-list")
         .children()
         .should("have.length", 2);

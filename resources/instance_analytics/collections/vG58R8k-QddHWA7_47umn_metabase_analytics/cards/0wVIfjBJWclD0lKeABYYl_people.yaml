@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: 12
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -349,7 +348,7 @@ serdes/meta:
 - id: 0wVIfjBJWclD0lKeABYYl
   label: people
   model: Card
-initially_published_at: null
-last_used_at: '2024-05-16T21:01:38.038034Z'
+archived_directly: false
 metabase_version: null
+source_card_id: null
 type: model
