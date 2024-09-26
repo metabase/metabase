@@ -72,7 +72,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: 'kondo'
+          m2-cache-key: "kondo"
       - name: Run clj-kondo
         run: ./bin/kondo.sh
 
@@ -166,19 +166,33 @@ jobs:
           name: static-viz-bundle-${{ github.sha }}
           path: resources/frontend_client/app/dist
 
-      - name: Run tests
-        id: run-java-tests
-        if: matrix.java-version != 21
+      - name: Run tests EE
+        id: run-java-tests-ee
+        if: matrix.java-version != 21 && matrix.edition == 'ee'
+        run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+        env:
+          MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
+
+      - name: Run tests OSS
+        id: run-java-tests-oss
+        if: matrix.java-version != 21 && matrix.edition != 'ee'
         run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
 
-      - name: If using Java 21, only run tests on `master`
-        id: run-java-tests-21
-        if: matrix.java-version == 21 && github.ref_name == 'master'
+      - name: If using Java 21, only run tests on `master` (EE)
+        id: run-java-tests-21-ee
+        if: matrix.java-version == 21 && github.ref_name == 'master' && matrix.edition == 'ee'
+        run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+        env:
+          MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
+
+      - name: If using Java 21, only run tests on `master` (OSS)
+        id: run-java-tests-21-oss
+        if: matrix.java-version == 21 && github.ref_name == 'master' && matrix.edition != 'ee'
         run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always() && (steps.run-java-tests.conclusion != 'skipped' || steps.run-java-tests-21.conclusion != 'skipped')
+        if: always() && ((steps.run-java-tests-${{ matrix.edition }}.conclusion != 'skipped' ) || steps.run-java-tests-21-${{ matrix.edition }}.conclusion != 'skipped')
         with:
           input-path: ./target/junit/
           output-name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
@@ -266,6 +280,6 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: 'cljfmt'
+          m2-cache-key: "cljfmt"
       - name: Run cljfmt
         run: clojure -T:cljfmt check
