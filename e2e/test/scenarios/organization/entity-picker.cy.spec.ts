@@ -9,6 +9,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   type StructuredQuestionDetails,
+  createCollection,
   createQuestion,
   entityPickerModal,
   entityPickerModalTab,
@@ -20,7 +21,6 @@ import {
   resyncDatabase,
   startNewQuestion,
   visitQuestion,
-  createCollection,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
