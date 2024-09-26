@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
@@ -67,6 +68,83 @@
           lib/ref)
       (lib.util/fresh-uuids &match))))
 
+(def ^:private granularity
+  {:time-unbucketed 0
+   :minute 1
+   :minute-of-hour 2
+   :hour 3
+   :hour-of-day 4
+   :day 5
+   :date-unbucketed 5
+   :day-of-week 6
+   :day-of-month 7
+   :day-of-year 8
+   :week 9
+   :week-of-year 10
+   :month 11
+   :month-of-year 12
+   :quarter 13
+   :quarter-of-year 14
+   :year 15
+   :year-of-era 16})
+
+(defn- original-temporal-unit
+  [temporal-attributes]
+  (let [temporal-unit (:temporal-unit temporal-attributes)]
+    (if (and (some? temporal-unit) (not= temporal-unit :default))
+      temporal-unit
+      (or (:original-temporal-unit temporal-attributes)
+          temporal-unit))))
+
+(defn- column-granularity
+  [temporal-attributes]
+  (let [effective-type ((some-fn :effective-type :base-type) temporal-attributes)
+        temporal-unit (original-temporal-unit temporal-attributes)]
+    (when temporal-unit
+      (-> (if (or (nil? temporal-unit) (= temporal-unit :default))
+            (cond
+              (isa? effective-type :type/DateTime) :time-unbucketed
+              (isa? effective-type :type/Date)     :date-unbucketed
+              (isa? effective-type :type/Time)     :time-unbucketed
+              :else                                nil)
+            temporal-unit)
+          granularity))))
+
+(defn finest-temporal-breakout-index
+  "Returns the index of leftmost breakout among the breakouts with the finest temporal granularity."
+  [breakouts option-index]
+  (loop [bs (seq breakouts)
+         i 0
+         min-granularity (inc (apply max (vals granularity)))
+         finest-index nil]
+    (if-not bs
+      finest-index
+      (let [b (first bs)
+            granularity (-> b (get option-index) column-granularity)]
+        (if (and granularity (< granularity min-granularity))
+          (recur (next bs) (inc i) granularity     i)
+          (recur (next bs) (inc i) min-granularity finest-index))))))
+
+(defn- add-implicit-breakouts
+  [stage]
+  (if-let [breakouts (not-empty (:breakout stage))]
+    (let [finest-temp-breakout (finest-temporal-breakout-index breakouts 1)
+          breakout-exprs (if finest-temp-breakout
+                           (concat (m/remove-nth finest-temp-breakout breakouts)
+                                   [(nth breakouts finest-temp-breakout)])
+                           breakouts)
+          explicit-order-bys (vec (:order-by stage))
+          remove-uuid #(lib.options/update-options % dissoc :lib/uuid)
+          explicit-order-by-exprs (into #{} (map #(remove-uuid (get % 2))) explicit-order-bys)
+          order-bys (into explicit-order-bys
+                          (comp (map remove-uuid)
+                                (remove explicit-order-by-exprs)
+                                (map (fn [expr]
+                                       (lib.options/ensure-uuid [:asc (lib.options/ensure-uuid expr)]))))
+                          breakout-exprs)]
+      (assoc stage :order-by order-bys))
+    stage))
+
 (mu/defn- new-second-stage :- ::lib.schema/stage
   "All references need to be updated to be prior-stage references using the desired alias from the previous stage.
   Remove expressions, joins, and source(s)."
@@ -78,7 +156,8 @@
         first-stage-cols (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)]
     (-> stage
         (dissoc :expressions :joins :source-table :source-card :lib/stage-metadata :filters)
-        (update-second-stage-refs first-stage-cols))))
+        (update-second-stage-refs first-stage-cols)
+        add-implicit-breakouts)))
 
 (mu/defn- nest-breakouts-in-stage :- [:maybe [:sequential {:min 2, :max 2} ::lib.schema/stage]]
   [query :- ::lib.schema/query

@@ -788,48 +788,6 @@
    (->honeysql driver mbql-expr)
    (->honeysql driver power)])
 
-(def ^:private granularity
-  {:time-unbucketed 0
-   :minute 1
-   :minute-of-hour 2
-   :hour 3
-   :hour-of-day 4
-   :day 5
-   :date-unbucketed 5
-   :day-of-week 6
-   :day-of-month 7
-   :day-of-year 8
-   :week 9
-   :week-of-year 10
-   :month 11
-   :month-of-year 12
-   :quarter 13
-   :quarter-of-year 14
-   :year 15
-   :year-of-era 16})
-
-(defn- original-temporal-unit
-  [temporal-attributes]
-  (let [temporal-unit (:temporal-unit temporal-attributes)]
-    (if (and (some? temporal-unit) (not= temporal-unit :default))
-      temporal-unit
-      (or (:original-temporal-unit temporal-attributes)
-          temporal-unit))))
-
-(defn- column-granularity
-  [temporal-attributes]
-  (let [effective-type ((some-fn :effective-type :base-type) temporal-attributes)
-        temporal-unit (original-temporal-unit temporal-attributes)]
-    (when temporal-unit
-      (-> (if (or (nil? temporal-unit) (= temporal-unit :default))
-            (cond
-              (isa? effective-type :type/DateTime) :time-unbucketed
-              (isa? effective-type :type/Date)     :date-unbucketed
-              (isa? effective-type :type/Time)     :time-unbucketed
-              :else                                nil)
-            temporal-unit)
-          granularity))))
-
 (defn- aggregation?
   [expr]
   (and (vector? expr)
@@ -857,28 +815,13 @@
                     [(->honeysql driver expr) direction])))
           order-bys)))
 
-(defn- finest-temporal-breakout-index
-  "Returns the index of leftmost breakout among the breakouts with the finest temporal granularity."
-  [breakouts]
-  (loop [bs (seq breakouts)
-         i 0
-         min-granularity (inc (apply max (vals granularity)))
-         finest-index nil]
-    (if-not bs
-      finest-index
-      (let [b (first bs)
-            granularity (-> b (get 2) column-granularity)]
-        (if (and granularity (< granularity min-granularity))
-          (recur (next bs) (inc i) granularity     i)
-          (recur (next bs) (inc i) min-granularity finest-index))))))
-
 (defn- window-aggregation-over-expr-for-query-with-breakouts
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
   (let [breakouts (:breakout inner-query)
         group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
-        finest-temp-breakout (finest-temporal-breakout-index breakouts)
+        finest-temp-breakout (qp.util.transformations.nest-breakouts/finest-temporal-breakout-index breakouts 2)
         partition-exprs (when (> (count breakouts) 1)
                           (if finest-temp-breakout
                             (m/remove-nth finest-temp-breakout group-bys)
@@ -1853,24 +1796,6 @@
         lib.convert/->legacy-MBQL
         :query)))
 
-(mu/defn- add-implicit-breakouts :- mbql.s/MBQLQuery
-  [inner-query :- mbql.s/MBQLQuery]
-  (if-let [breakouts (:breakout inner-query)]
-    (let [finest-temp-breakout (finest-temporal-breakout-index breakouts)
-          breakout-exprs (if finest-temp-breakout
-                           (concat (m/remove-nth finest-temp-breakout breakouts)
-                                   [(nth breakouts finest-temp-breakout)])
-                           breakouts)
-          explicit-order-bys (vec (:order-by inner-query))
-          explicit-order-by-exprs (into #{} (map second) explicit-order-bys)
-          order-bys (into explicit-order-bys
-                          (comp (remove explicit-order-by-exprs)
-                                (map (fn [expr]
-                                       [:asc expr])))
-                          breakout-exprs)]
-      (assoc inner-query :order-by order-bys))
-    inner-query))
-
 ;;; [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation]] already does
 ;;; basically the same check, this is here mostly to avoid the performance hit of converting to pMBQL and back in
 ;;; queries that have no cumulative aggregations at all. Once we convert the SQL QP to pMBQL we can remove this.
@@ -1885,9 +1810,7 @@
   [inner-query]
   (cond-> inner-query
     (has-window-function-aggregations? inner-query)
-    (-> #_inner-query
-     nest-breakouts-in-queries-with-window-fn-aggregations
-        add-implicit-breakouts)))
+    nest-breakouts-in-queries-with-window-fn-aggregations))
 
 (defmethod preprocess :sql
   [_driver inner-query]
