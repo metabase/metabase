@@ -10,6 +10,7 @@ const Message = ({
   approvalChangeButtons,
   onApproveClick,
   onDenyClick,
+  onSuggestion,
   showCubeEditButton
 }) => {
   const isUser = message.sender === "user";
@@ -97,6 +98,34 @@ const Message = ({
                 }}
               >
                 Provide feedback
+              </span>
+            </Button>
+            <Button
+              variant="outlined"
+              style={{
+                cursor: "pointer",
+                border: "1px solid #587330",
+                borderRadius: "8px",
+                color: "#587330",
+                backgroundColor: "#FFF",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0.3rem 0.8rem",
+                lineHeight: "1",
+                fontWeight: "bold",
+                width: "10rem",
+              }}
+              onClick={onSuggestion}
+            >
+            <span
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "lighter",
+                  verticalAlign: "middle",
+                }}
+              >
+                Ask Suggestion
               </span>
             </Button>
             {showCubeEditButton && (
