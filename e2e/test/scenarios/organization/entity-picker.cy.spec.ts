@@ -42,15 +42,17 @@ describe("scenarios > organization > entity picker", () => {
         startNewQuestion();
         entityPickerModal().within(() => {
           entityPickerModalTab("Tables").click();
+          enterSearchText({
+            text: "prod",
+            placeholder: "Search this database or everywhere…",
+          });
+          localSearchTab("Public").should("be.checked");
+          assertSearchResults({
+            foundItems: ["Products"],
+            notFoundItems: ["Orders"],
+          });
+          cy.findByText("Products").click();
         });
-        testLocalSearch({
-          searchPlaceholder: "Search this database or everywhere…",
-          searchText: "prod",
-          selectedItem: "Public",
-          foundItems: ["Products"],
-          notFoundItems: ["Orders"],
-        });
-        entityPickerModal().findByText("Products").click();
         getNotebookStep("data").findByText("Products").should("be.visible");
       });
 
@@ -68,26 +70,30 @@ describe("scenarios > organization > entity picker", () => {
           startNewQuestion();
           entityPickerModal().within(() => {
             entityPickerModalTab("Tables").click();
-          });
-          testLocalSearch({
-            searchPlaceholder: "Search this database or everywhere…",
-            searchText: "prod",
-            selectedItem: "Public",
-            foundItems: ["Products"],
-            notFoundItems: ["Orders"],
+            enterSearchText({
+              text: "prod",
+              placeholder: "Search this database or everywhere…",
+            });
+            localSearchTab("Public").should("be.checked");
+            assertSearchResults({
+              foundItems: ["Products"],
+              notFoundItems: ["Orders"],
+            });
           });
 
           cy.log("second database");
           entityPickerModal().within(() => {
             entityPickerModalTab("Tables").click();
             cy.findByText("Writable Postgres12").click();
-          });
-          testLocalSearch({
-            searchPlaceholder: "Search this schema or everywhere…",
-            searchText: "s",
-            selectedItem: "Domestic",
-            foundItems: ["Animals"],
-            notFoundItems: ["Birds"],
+            enterSearchText({
+              text: "s",
+              placeholder: "Search this schema or everywhere…",
+            });
+            localSearchTab("Domestic").should("be.checked");
+            assertSearchResults({
+              foundItems: ["Animals"],
+              notFoundItems: ["Birds"],
+            });
           });
 
           cy.log("first database - manually selected");
@@ -95,13 +101,15 @@ describe("scenarios > organization > entity picker", () => {
           entityPickerModal().within(() => {
             entityPickerModalTab("Tables").click();
             cy.findByText("Sample Database").click();
-          });
-          testLocalSearch({
-            searchPlaceholder: "Search this database or everywhere…",
-            searchText: "prod",
-            selectedItem: "Public",
-            foundItems: ["Products"],
-            notFoundItems: ["Orders"],
+            enterSearchText({
+              text: "prod",
+              placeholder: "Search this database or everywhere…",
+            });
+            localSearchTab("Public").should("be.checked");
+            assertSearchResults({
+              foundItems: ["Products"],
+              notFoundItems: ["Orders"],
+            });
           });
         },
       );
@@ -121,25 +129,29 @@ describe("scenarios > organization > entity picker", () => {
           entityPickerModal().within(() => {
             entityPickerModalTab("Tables").click();
             cy.findByText("Writable Postgres12").click();
-          });
-          testLocalSearch({
-            searchPlaceholder: "Search this schema or everywhere…",
-            searchText: "s",
-            selectedItem: "Domestic",
-            foundItems: ["Animals"],
-            notFoundItems: ["Birds"],
+            enterSearchText({
+              text: "s",
+              placeholder: "Search this schema or everywhere…",
+            });
+            localSearchTab("Domestic").should("be.checked");
+            assertSearchResults({
+              foundItems: ["Animals"],
+              notFoundItems: ["Birds"],
+            });
           });
 
           cy.log("second schema");
           entityPickerModal().within(() => {
             entityPickerModalTab("Tables").click();
             cy.findByText("Wild").click();
-          });
-          testLocalSearch({
-            searchPlaceholder: "Search this schema or everywhere…",
-            searchText: "s",
-            selectedItem: "Wild",
-            foundItems: ["Animals", "Birds"],
+            enterSearchText({
+              text: "s",
+              placeholder: "Search this schema or everywhere…",
+            });
+            localSearchTab("Wild").should("be.checked");
+            assertSearchResults({
+              foundItems: ["Animals", "Birds"],
+            });
           });
         },
       );
@@ -158,80 +170,90 @@ describe("scenarios > organization > entity picker", () => {
           cy.log("root collection - automatically selected");
           entityPickerModal().within(() => {
             entityPickerModalTab(tab).click();
-          });
-          testLocalSearch({
-            searchPlaceholder: "Search this collection or everywhere…",
-            searchText: "2",
-            selectedItem: "Our analytics",
-            foundItems: ["Root question 2", "Root model 2", "Root metric 2"],
-            notFoundItems: [
-              "Root question 1",
-              "Regular question 2",
-              "Admin personal question 2",
-              "Normal personal question 2",
-            ],
+            enterSearchText({
+              text: "2",
+              placeholder: "Search this collection or everywhere…",
+            });
+            localSearchTab("Our analytics").should("be.checked");
+            assertSearchResults({
+              foundItems: ["Root question 2", "Root model 2", "Root metric 2"],
+              notFoundItems: [
+                "Root question 1",
+                "Regular question 2",
+                "Admin personal question 2",
+                "Normal personal question 2",
+              ],
+            });
           });
 
           cy.log("regular collection");
           entityPickerModal().within(() => {
             entityPickerModalTab(tab).click();
             cy.findByText("First collection").click();
-          });
-          testLocalSearch({
-            searchPlaceholder: "Search this collection or everywhere…",
-            searchText: "1",
-            selectedItem: "First collection",
-            foundItems: [
-              "Regular question 1",
-              "Regular model 1",
-              "Regular metric 1",
-            ],
-            notFoundItems: [
-              "Root question 1",
-              "Regular question 2",
-              "Admin personal question 1",
-              "Normal personal question 1",
-            ],
+            enterSearchText({
+              text: "1",
+              placeholder: "Search this collection or everywhere…",
+            });
+            localSearchTab("First collection").should("be.checked");
+            assertSearchResults({
+              foundItems: [
+                "Regular question 1",
+                "Regular model 1",
+                "Regular metric 1",
+              ],
+              notFoundItems: [
+                "Root question 1",
+                "Regular question 2",
+                "Admin personal question 1",
+                "Normal personal question 1",
+              ],
+            });
           });
 
           cy.log("root collection - manually selected");
           entityPickerModal().within(() => {
             entityPickerModalTab(tab).click();
             cy.findByText("Our analytics").click();
-          });
-          testLocalSearch({
-            searchPlaceholder: "Search this collection or everywhere…",
-            searchText: "2",
-            selectedItem: "Our analytics",
-            foundItems: ["Root question 2", "Root model 2", "Root metric 2"],
-            notFoundItems: [
-              "Root model 1",
-              "Regular model 2",
-              "Admin personal model 2",
-              "Normal personal model 2",
-            ],
+            enterSearchText({
+              text: "2",
+              placeholder: "Search this collection or everywhere…",
+            });
+            localSearchTab("Our analytics").should("be.checked");
+            assertSearchResults({
+              foundItems: ["Root question 2", "Root model 2", "Root metric 2"],
+              notFoundItems: [
+                "Root model 1",
+                "Regular model 2",
+                "Admin personal model 2",
+                "Normal personal model 2",
+              ],
+            });
           });
 
           cy.log("personal collection");
           entityPickerModal().within(() => {
             entityPickerModalTab(tab).click();
             cy.findByText(/Personal Collection/).click();
-          });
-          testLocalSearch({
-            searchPlaceholder: "Search this collection or everywhere…",
-            searchText: "1",
-            selectedItem: "Robert Tableton's Personal Collection",
-            foundItems: [
-              "Normal personal question 1",
-              "Normal personal model 1",
-              "Normal personal metric 1",
-            ],
-            notFoundItems: [
-              "Root metric 1",
-              "Regular metric 1",
-              "Admin personal metric 1",
-              "Normal personal metric 2",
-            ],
+            enterSearchText({
+              text: "1",
+              placeholder: "Search this collection or everywhere…",
+            });
+            localSearchTab("Robert Tableton's Personal Collection").should(
+              "be.checked",
+            );
+            assertSearchResults({
+              foundItems: [
+                "Normal personal question 1",
+                "Normal personal model 1",
+                "Normal personal metric 1",
+              ],
+              notFoundItems: [
+                "Root metric 1",
+                "Regular metric 1",
+                "Admin personal metric 1",
+                "Normal personal metric 2",
+              ],
+            });
           });
         });
       });
@@ -252,19 +274,19 @@ describe("scenarios > organization > entity picker", () => {
           cy.log("inaccessible root collection - automatically selected");
           entityPickerModal().within(() => {
             entityPickerModalTab(tab).click();
-          });
-          testLocalSearch({
-            searchPlaceholder: "Search this collection or everywhere…",
-            searchText: "1",
-            selectedItem: "Collections",
-            notFoundItems: [
-              "Root metric 1",
-              "Regular metric 1",
-              "Admin personal metric 1",
-              "Normal personal metric 2",
-            ],
-          });
-          entityPickerModal().within(() => {
+            enterSearchText({
+              text: "1",
+              placeholder: "Search this collection or everywhere…",
+            });
+            localSearchTab("Collections").should("be.checked");
+            assertSearchResults({
+              notFoundItems: [
+                "Root metric 1",
+                "Regular metric 1",
+                "Admin personal metric 1",
+                "Normal personal metric 2",
+              ],
+            });
             cy.findByText("Didn't find anything").should("be.visible");
           });
 
@@ -272,42 +294,44 @@ describe("scenarios > organization > entity picker", () => {
           entityPickerModal().within(() => {
             entityPickerModalTab(tab).click();
             cy.findByText("First collection").click();
-          });
-          testLocalSearch({
-            searchPlaceholder: "Search this collection or everywhere…",
-            searchText: "1",
-            selectedItem: "First collection",
-            foundItems: [
-              "Regular question 1",
-              "Regular model 1",
-              "Regular metric 1",
-            ],
-            notFoundItems: [
-              "Root question 1",
-              "Regular question 2",
-              "Admin personal question 1",
-              "Normal personal question 1",
-              "No collection personal question 1",
-            ],
+            enterSearchText({
+              text: "1",
+              placeholder: "Search this collection or everywhere…",
+            });
+            localSearchTab("First collection").should("be.checked");
+            assertSearchResults({
+              foundItems: [
+                "Regular question 1",
+                "Regular model 1",
+                "Regular metric 1",
+              ],
+              notFoundItems: [
+                "Root question 1",
+                "Regular question 2",
+                "Admin personal question 1",
+                "Normal personal question 1",
+                "No collection personal question 1",
+              ],
+            });
           });
 
           cy.log("inaccessible root collection - manually selected");
           entityPickerModal().within(() => {
             entityPickerModalTab(tab).click();
             cy.findByText("Collections").click();
-          });
-          testLocalSearch({
-            searchPlaceholder: "Search this collection or everywhere…",
-            searchText: "1",
-            selectedItem: "Collections",
-            notFoundItems: [
-              "Root metric 1",
-              "Regular metric 1",
-              "Admin personal metric 1",
-              "Normal personal metric 2",
-            ],
-          });
-          entityPickerModal().within(() => {
+            enterSearchText({
+              text: "1",
+              placeholder: "Search this collection or everywhere…",
+            });
+            localSearchTab("Collections").should("be.checked");
+            assertSearchResults({
+              notFoundItems: [
+                "Root metric 1",
+                "Regular metric 1",
+                "Admin personal metric 1",
+                "Normal personal metric 2",
+              ],
+            });
             cy.findByText("Didn't find anything").should("be.visible");
           });
 
@@ -315,53 +339,32 @@ describe("scenarios > organization > entity picker", () => {
           entityPickerModal().within(() => {
             entityPickerModalTab(tab).click();
             cy.findByText(/Personal Collection/).click();
-          });
-          testLocalSearch({
-            searchPlaceholder: "Search this collection or everywhere…",
-            searchText: "1",
-            selectedItem: "No Collection Tableton's Personal Collection",
-            foundItems: [
-              "No collection personal question 1",
-              "No collection personal model 1",
-              "No collection personal metric 1",
-            ],
-            notFoundItems: [
-              "Root metric 1",
-              "Regular metric 1",
-              "Admin personal metric 1",
-              "Normal personal metric 2",
-            ],
+            enterSearchText({
+              text: "1",
+              placeholder: "Search this collection or everywhere…",
+            });
+            localSearchTab(
+              "No Collection Tableton's Personal Collection",
+            ).should("be.checked");
+            assertSearchResults({
+              foundItems: [
+                "No collection personal question 1",
+                "No collection personal model 1",
+                "No collection personal metric 1",
+              ],
+              notFoundItems: [
+                "Root metric 1",
+                "Regular metric 1",
+                "Admin personal metric 1",
+                "Normal personal metric 2",
+              ],
+            });
           });
         });
       });
     });
   });
 });
-
-function testLocalSearch({
-  searchPlaceholder,
-  searchText,
-  selectedItem,
-  foundItems = [],
-  notFoundItems = [],
-}: {
-  searchPlaceholder: string;
-  searchText: string;
-  selectedItem: string;
-  foundItems?: string[];
-  notFoundItems?: string[];
-}) {
-  entityPickerModal().within(() => {
-    cy.findByPlaceholderText(searchPlaceholder).clear().type(searchText);
-    cy.findByLabelText(`“${selectedItem}”`).should("be.checked");
-    foundItems.forEach(item => {
-      cy.findByText(item).should("be.visible");
-    });
-    notFoundItems.forEach(item => {
-      cy.findByText(item).should("not.exist");
-    });
-  });
-}
 
 function createTestCards() {
   const types = ["question", "model", "metric"] as const;
@@ -388,5 +391,38 @@ function createTestCards() {
         });
       });
     });
+  });
+}
+
+// function globalSearchTab() {
+//   return cy.findByLabelText("Everywhere");
+// }
+
+function localSearchTab(selectedItem: string) {
+  return cy.findByLabelText(`“${selectedItem}”`);
+}
+
+function enterSearchText({
+  text,
+  placeholder,
+}: {
+  text: string;
+  placeholder: string;
+}) {
+  cy.findByPlaceholderText(placeholder).clear().type(text);
+}
+
+function assertSearchResults({
+  foundItems = [],
+  notFoundItems = [],
+}: {
+  foundItems?: string[];
+  notFoundItems?: string[];
+}) {
+  foundItems.forEach(item => {
+    cy.findByText(item).should("be.visible");
+  });
+  notFoundItems.forEach(item => {
+    cy.findByText(item).should("not.exist");
   });
 }
