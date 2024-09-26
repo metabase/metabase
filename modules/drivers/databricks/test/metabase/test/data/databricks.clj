@@ -96,7 +96,7 @@
   "Same approach is used in Databricks driver as in Athena. Dataset creation is disabled by default. Datasets are
   preloaded in Databricks instance that tests run against. If you need to create new database on the instance,
   run your test with this var bound to true."
-  true #_false)
+  false)
 
 (defmethod tx/create-db! :databricks
   [driver {:keys [database-name], :as dbdef} & options]
