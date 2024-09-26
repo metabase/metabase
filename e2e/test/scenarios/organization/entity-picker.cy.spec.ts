@@ -10,6 +10,7 @@ import {
 import {
   type StructuredQuestionDetails,
   createCollection,
+  createDashboard,
   createQuestion,
   entityPickerModal,
   entityPickerModalTab,
@@ -21,7 +22,6 @@ import {
   resyncDatabase,
   startNewQuestion,
   visitQuestion,
-  createDashboard,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -542,7 +542,7 @@ describe("scenarios > organization > entity picker", () => {
     });
   });
 
-  describe.skip("dashboard picker", () => {
+  describe("dashboard picker", () => {
     it("should search for dashboards for a normal user", () => {
       createTestDashboards();
       cy.signInAsNormalUser();
@@ -597,7 +597,7 @@ describe("scenarios > organization > entity picker", () => {
 
       cy.log("personal collection");
       entityPickerModal().within(() => {
-        entityPickerModalTab("Collections").click();
+        entityPickerModalTab("Dashboards").click();
         cy.findByText(/Personal Collection/).click();
         enterSearchText({
           text: "personal dashboard 1",
