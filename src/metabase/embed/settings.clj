@@ -22,7 +22,7 @@
   :feature    :embedding-sdk
   :export?    false
   :visibility :public
-  :encryption :never
+  :encryption :no
   :audit      :getter)
 
 (defsetting enable-embedding
