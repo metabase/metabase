@@ -30,7 +30,7 @@ export const NoStylesError = () => (
         <h1>This is inside of the provider</h1>
       </div>
 
-      <StaticQuestion questionId={1} />
+      <StaticQuestion questionId={(window as any).QUESTION_ID || 1} />
     </MetabaseProvider>
   </div>
 );
@@ -47,6 +47,17 @@ export const NoStylesSuccess = () => (
         <h1>This is inside of the provider</h1>
       </div>
 
+      <StaticQuestion questionId={(window as any).QUESTION_ID || 1} />
+    </MetabaseProvider>
+  </div>
+);
+
+export const FontFromConfig = () => (
+  <div>
+    <MetabaseProvider
+      config={storybookSdkDefaultConfig}
+      theme={{ fontFamily: "Impact" }}
+    >
       <StaticQuestion questionId={(window as any).QUESTION_ID || 1} />
     </MetabaseProvider>
   </div>
