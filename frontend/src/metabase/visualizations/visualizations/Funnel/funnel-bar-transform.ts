@@ -32,9 +32,11 @@ export const funnelToBarTransform: TransformSeries = (rawSeries, settings) => {
       : rows;
 
   return orderedRows.map(row => {
-    const name = formatValue(row[dimensionIndex], {
-      column: cols[dimensionIndex],
-    });
+    const name = String(
+      formatValue(row[dimensionIndex], {
+        column: cols[dimensionIndex],
+      }),
+    );
     return {
       card: {
         ...card,

@@ -1,6 +1,6 @@
 import type { NumberLike, StringLike } from "@visx/scale";
 
-import { formatValue, getRemappedValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 import { getFormattingOptionsWithoutScaling } from "metabase/visualizations/echarts/cartesian/model/util";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
@@ -96,7 +96,6 @@ export const getLabelsStaticFormatter = (
 
 export const getColumnValueStaticFormatter = () => {
   return (value: RowValue, column: DatasetColumn) => {
-    const valueToFormat = getRemappedValue(value, column);
-    return String(formatValue(valueToFormat, { column }));
+    return String(formatValue(value, { column }));
   };
 };

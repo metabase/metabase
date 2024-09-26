@@ -31,7 +31,6 @@ export type ColorGetter = (colorName: string) => string;
 
 export interface RenderingContext {
   getColor: ColorGetter;
-
   measureText: TextWidthMeasurer;
   measureTextHeight: TextHeightMeasurer;
   fontFamily: string;
