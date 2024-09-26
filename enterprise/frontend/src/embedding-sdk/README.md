@@ -21,7 +21,8 @@ Features currently supported:
 - embedding dashboards - static
 - embedding dashboards - w/drill-down
 - embedding the collection browser
-- ability for the user to modify existing questions
+- Add new questions
+- Modify existing questions
 - theming with CSS variables
 - plugins for custom actions, overriding dashboard card menu items
 - subscribing to events
@@ -299,10 +300,26 @@ documentation for more information.
 ### Embedding an interactive question (with drill-down)
 
 - **questionId**: `number | string` (required) – The ID of the question. This is either:
-  - the numerical ID when accessing a question
-    link, i.e. `http://localhost:3000/question/1-my-question` where the ID is `1`
-  - the string ID found in the `entity_id` key of the question object when using the API directly or using the SDK
-    Collection Browser to return data
+
+  - the numerical ID when accessing a question link, i.e., `http://localhost:3000/question/1-my-question` where the ID is `1`
+  - the string ID found in the `entity_id` key of the question object when using the API directly or using the SDK Collection Browser to return data
+
+- **plugins**: `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
+  drill-down menu. [See this section](#implementing-custom-actions) for more details
+- **height**: `number | string` (optional) – A number or string specifying a CSS size value that specifies the height of the component
+- **entityTypeFilter**: `("table" | "question" | "model" | "metric")[]` (optional) – An array that specifies which entity types are available to the user in the data picker
+- **isSaveEnabled**: `boolean` (optional) – Determines if the save functionality is enabled.
+
+_Note: These props are only used when using the ![default layout](#customizing-interactive-questions)_
+
+- **withResetButton**: `boolean` (optional, default: `true`) – Determines whether a reset button is displayed.
+- **withTitle**: `boolean` (optional, default: `false`) – Determines whether the question title is displayed.
+- **customTitle**: `string | undefined` (optional) – Allows a custom title to be displayed instead of the default question title.
+
+_Note: Only enabled when `isSaveEnabled = true`_
+
+- **onBeforeSave**: `() => void` (optional) – A callback function that triggers before saving.
+- **onSave**: `() => void` (optional) – A callback function that triggers when a user saves the question
 
 ```typescript jsx
 import React from "react";
@@ -507,7 +524,13 @@ With the `CreateQuestion` component, you can create a new question from scratch 
 
 - **plugins**: `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
   drill-down menu. [See this section](#implementing-custom-actions) for more details
+- **entityTypeFilter**: `("table" | "question" | "model" | "metric")[]` (optional) - An array that specifies which entity types are available to the user in the data picker
+- **isSaveEnabled**: `boolean` (optional) – Determines if the save functionality is enabled.
 
+_Note: Only enabled when `isSaveEnabled = true`_
+
+- **onBeforeSave**: `() => void` (optional) – A callback function that triggers before saving.
+- **onSave**: `() => void` (optional) – A callback function that triggers when a user saves the question
 ```tsx
 import React from "react";
 import {MetabaseProvider, CreateQuestion} from "@metabase/embedding-sdk-react";
@@ -537,7 +560,13 @@ With the `ModifyQuestion` component, you can edit an existing question using the
     Collection Browser to return data
 - **plugins**: `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
   drill-down menu. [See this section](#implementing-custom-actions) for more details
+- **entityTypeFilter**: `("table" | "question" | "model" | "metric")[]` (optional) - An array that specifies which entity types are available to the user in the data picker
+- **isSaveEnabled**: `boolean` (optional) – Determines if the save functionality is enabled.
 
+_Note: Only enabled when `isSaveEnabled = true`_
+
+- **onBeforeSave**: `() => void` (optional) – A callback function that triggers before saving.
+- **onSave**: `() => void` (optional) – A callback function that triggers when a user saves the question
 ```tsx
 import React from "react";
 import {MetabaseProvider, ModifyQuestion} from "@metabase/embedding-sdk-react";

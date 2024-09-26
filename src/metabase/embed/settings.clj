@@ -14,7 +14,8 @@
   :feature    :embedding
   :export?    false
   :visibility :public
-  :audit      :getter)
+  :audit      :getter
+  :encryption :no)
 
 (defsetting embedding-app-origins-sdk
   (deferred-tru "Allow this origin to embed Metabase SDK")

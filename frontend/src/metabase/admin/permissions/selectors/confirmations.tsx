@@ -90,7 +90,7 @@ export function getPermissionWarning(
   return null;
 }
 
-export function getTableBlockWarning(
+export function getBlockWarning(
   dbValue: DataPermissionValue,
   schemaValue: DataPermissionValue,
   tableValue?: DataPermissionValue,
@@ -99,12 +99,11 @@ export function getTableBlockWarning(
     return;
   }
 
-  if (schemaValue === DataPermissionValue.BLOCKED) {
-    return t`Users in groups with Blocked on a schema can't view native queries on this database.`;
-  }
-
-  if (tableValue === DataPermissionValue.BLOCKED) {
-    return t`Users in groups with Blocked on a table can't view native queries on this database.`;
+  if (
+    schemaValue === DataPermissionValue.BLOCKED ||
+    tableValue === DataPermissionValue.BLOCKED
+  ) {
+    return t`Groups with a database, schema, or table set to Blocked can't view native queries on this database.`;
   }
 }
 
