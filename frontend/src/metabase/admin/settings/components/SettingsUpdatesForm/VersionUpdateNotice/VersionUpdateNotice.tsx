@@ -72,7 +72,10 @@ function DefaultUpdateMessage({ currentVersion }: { currentVersion: string }) {
 
 function NewVersionAvailable({ currentVersion }: { currentVersion: string }) {
   const versionInfo = useSetting("version-info");
+  const updateChannel = useSetting("update-channel");
   const latestVersion = useSelector(getLatestVersion);
+
+  const lastestVersionInfo = versionInfo?.[updateChannel];
 
   return (
     <div>
@@ -123,7 +126,7 @@ function NewVersionAvailable({ currentVersion }: { currentVersion: string }) {
         >
           <h3 className={cx(CS.pb3, CS.textUppercase)}>{t`What's Changed:`}</h3>
 
-          {versionInfo.latest && <Version version={versionInfo.latest} />}
+          {lastestVersionInfo && <Version version={lastestVersionInfo} />}
 
           {versionInfo.older &&
             versionInfo.older.map((version, index) => (
@@ -142,9 +145,7 @@ function Version({ version }: { version: VersionInfoRecord }) {
 
   return (
     <div className={CS.pb3}>
-      <h3 className={CS.textMedium}>
-        {formatVersion(version.version)}
-      </h3>
+      <h3 className={CS.textMedium}>{formatVersion(version.version)}</h3>
       <ul style={{ listStyleType: "disc", listStylePosition: "inside" }}>
         {version.highlights &&
           version.highlights.map((highlight, index) => (

@@ -112,6 +112,8 @@ export interface VersionInfoRecord {
 }
 
 export interface VersionInfo {
+  nightly?: VersionInfoRecord;
+  beta?: VersionInfoRecord;
   latest?: VersionInfoRecord;
   older?: VersionInfoRecord[];
 }
@@ -181,7 +183,7 @@ export type PasswordComplexity = {
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
 
-export type UpdateChannel = 'latest' | 'beta' | 'nightly';
+export type UpdateChannel = "latest" | "beta" | "nightly";
 
 export interface SettingDefinition {
   key: string;
@@ -262,7 +264,6 @@ interface AdminSettings {
   "setup-license-active-at-setup": boolean;
   "store-url": string;
 }
-
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
   "ee-openai-api-key"?: string;
