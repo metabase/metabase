@@ -21,6 +21,7 @@ import {
   resyncDatabase,
   startNewQuestion,
   visitQuestion,
+  createDashboard,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -184,8 +185,8 @@ describe("scenarios > organization > entity picker", () => {
               notFoundItems: [
                 "Root question 1",
                 "Regular question 2",
-                "Admin personal question 2",
-                "Normal personal question 2",
+                "Admin personal collection question 2",
+                "Normal personal collection question 2",
               ],
             });
           });
@@ -208,8 +209,8 @@ describe("scenarios > organization > entity picker", () => {
               notFoundItems: [
                 "Root question 1",
                 "Regular question 2",
-                "Admin personal question 1",
-                "Normal personal question 1",
+                "Admin personal collection question 1",
+                "Normal personal collection question 1",
               ],
             });
           });
@@ -228,8 +229,8 @@ describe("scenarios > organization > entity picker", () => {
               notFoundItems: [
                 "Root model 1",
                 "Regular model 2",
-                "Admin personal model 2",
-                "Normal personal model 2",
+                "Admin personal collection model 2",
+                "Normal personal collection model 2",
               ],
             });
           });
@@ -247,15 +248,15 @@ describe("scenarios > organization > entity picker", () => {
             );
             assertSearchResults({
               foundItems: [
-                "Normal personal question 1",
-                "Normal personal model 1",
-                "Normal personal metric 1",
+                "Normal personal collection question 1",
+                "Normal personal collection model 1",
+                "Normal personal collection metric 1",
               ],
               notFoundItems: [
                 "Root metric 1",
                 "Regular metric 1",
-                "Admin personal metric 1",
-                "Normal personal metric 2",
+                "Admin personal collection metric 1",
+                "Normal personal collection metric 2",
               ],
             });
           });
@@ -286,8 +287,8 @@ describe("scenarios > organization > entity picker", () => {
               notFoundItems: [
                 "Root metric 1",
                 "Regular metric 1",
-                "Admin personal metric 1",
-                "Normal personal metric 2",
+                "Admin personal collection metric 1",
+                "Normal personal collection metric 2",
               ],
             });
             cy.findByText("Didn't find anything").should("be.visible");
@@ -311,9 +312,9 @@ describe("scenarios > organization > entity picker", () => {
               notFoundItems: [
                 "Root question 1",
                 "Regular question 2",
-                "Admin personal question 1",
-                "Normal personal question 1",
-                "No collection personal question 1",
+                "Admin personal collection question 1",
+                "Normal personal collection question 1",
+                "No collection personal collection question 1",
               ],
             });
           });
@@ -331,8 +332,8 @@ describe("scenarios > organization > entity picker", () => {
               notFoundItems: [
                 "Root metric 1",
                 "Regular metric 1",
-                "Admin personal metric 1",
-                "Normal personal metric 2",
+                "Admin personal collection metric 1",
+                "Normal personal collection metric 2",
               ],
             });
             cy.findByText("Didn't find anything").should("be.visible");
@@ -351,15 +352,15 @@ describe("scenarios > organization > entity picker", () => {
             ).should("be.checked");
             assertSearchResults({
               foundItems: [
-                "No collection personal question 1",
-                "No collection personal model 1",
-                "No collection personal metric 1",
+                "No collection personal collection question 1",
+                "No collection personal collection model 1",
+                "No collection personal collection metric 1",
               ],
               notFoundItems: [
                 "Root metric 1",
                 "Regular metric 1",
-                "Admin personal metric 1",
-                "Normal personal metric 2",
+                "Admin personal collection metric 1",
+                "Normal personal collection metric 2",
               ],
             });
           });
@@ -392,7 +393,6 @@ describe("scenarios > organization > entity picker", () => {
   describe("collection picker", () => {
     it("should search for collections for a normal user", () => {
       createTestCollections();
-
       cy.signInAsNormalUser();
       visitQuestion(ORDERS_QUESTION_ID);
       openQuestionActions();
@@ -440,15 +440,18 @@ describe("scenarios > organization > entity picker", () => {
         entityPickerModalTab("Collections").click();
         cy.findByText(/Personal Collection/).click();
         enterSearchText({
-          text: "personal",
+          text: "personal collection 1",
           placeholder: "Search this collection or everywhere…",
         });
         localSearchTab("Robert Tableton's Personal Collection").should(
           "be.checked",
         );
         assertSearchResults({
-          foundItems: ["Normal personal"],
-          notFoundItems: ["Admin personal"],
+          foundItems: ["Normal personal collection 1"],
+          notFoundItems: [
+            "Normal personal collection 2",
+            "Admin personal collection 1",
+          ],
         });
       });
     });
@@ -495,15 +498,19 @@ describe("scenarios > organization > entity picker", () => {
         entityPickerModalTab("Collections").click();
         cy.findByText(/Personal Collection/).click();
         enterSearchText({
-          text: "personal",
+          text: "personal collection 2",
           placeholder: "Search this collection or everywhere…",
         });
         localSearchTab("No Collection Tableton's Personal Collection").should(
           "be.checked",
         );
         assertSearchResults({
-          foundItems: ["No collection personal"],
-          notFoundItems: ["Admin personal", "Normal personal"],
+          foundItems: ["No collection personal collection 2"],
+          notFoundItems: [
+            "No collection personal collection 1",
+            "Admin personal collection 2",
+            "Normal personal collection 2",
+          ],
         });
       });
     });
@@ -518,13 +525,94 @@ describe("scenarios > organization > entity picker", () => {
         entityPickerModalTab("Collections").click();
         cy.findByText("All personal collections").click();
         enterSearchText({
-          text: "personal",
+          text: "personal collection",
           placeholder: "Search…",
         });
         globalSearchTab().should("not.exist");
         localSearchTab("All personal collections").should("not.exist");
         assertSearchResults({
-          foundItems: ["Admin personal", "Normal personal"],
+          foundItems: [
+            "Admin personal collection 1",
+            "Admin personal collection 2",
+            "Normal personal collection 1",
+            "Normal personal collection 2",
+          ],
+        });
+      });
+    });
+  });
+
+  describe.skip("dashboard picker", () => {
+    it("should search for dashboards for a normal user", () => {
+      createTestDashboards();
+      cy.signInAsNormalUser();
+      visitQuestion(ORDERS_QUESTION_ID);
+      openQuestionActions();
+      popover().findByText("Add to dashboard").click();
+
+      cy.log("root collection - automatically selected");
+      entityPickerModal().within(() => {
+        enterSearchText({
+          text: "dashboard 1",
+          placeholder: "Search this collection or everywhere…",
+        });
+        localSearchTab("Our analytics").should("be.checked");
+        assertSearchResults({
+          foundItems: ["Root dashboard 1"],
+          notFoundItems: ["Root dashboard 2", "Regular dashboard 1"],
+        });
+        globalSearchTab().click({ force: true });
+        assertSearchResults({
+          foundItems: ["Root dashboard 1", "Regular dashboard 1"],
+        });
+        localSearchTab("Our analytics").click({ force: true });
+        assertSearchResults({
+          foundItems: ["Root dashboard 1"],
+          notFoundItems: [
+            "Root dashboard 2",
+            "Regular dashboard 1",
+            "Personal dashboard 1",
+          ],
+        });
+      });
+
+      cy.log("regular collection");
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Dashboards").click();
+        cy.findByText("First collection").click();
+        enterSearchText({
+          text: "dashboard 2",
+          placeholder: "Search this collection or everywhere…",
+        });
+        localSearchTab("First collection").should("be.checked");
+        assertSearchResults({
+          foundItems: ["Regular dashboard 2"],
+          notFoundItems: [
+            "Regular dashboard 1",
+            "Root dashboard 2",
+            "Personal dashboard 2",
+          ],
+        });
+      });
+
+      cy.log("personal collection");
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Collections").click();
+        cy.findByText(/Personal Collection/).click();
+        enterSearchText({
+          text: "personal dashboard 1",
+          placeholder: "Search this collection or everywhere…",
+        });
+        localSearchTab("Robert Tableton's Personal Collection").should(
+          "be.checked",
+        );
+        assertSearchResults({
+          foundItems: ["Normal personal dashboard 1"],
+          notFoundItems: [
+            "Normal personal dashboard 2",
+            "Root dashboard 1",
+            "Regular dashboard 1",
+          ],
         });
       });
     });
@@ -537,11 +625,11 @@ function createTestCards() {
   const collections = [
     { id: null, name: "Root" },
     { id: FIRST_COLLECTION_ID, name: "Regular" },
-    { id: ADMIN_PERSONAL_COLLECTION_ID, name: "Admin personal" },
-    { id: NORMAL_PERSONAL_COLLECTION_ID, name: "Normal personal" },
+    { id: ADMIN_PERSONAL_COLLECTION_ID, name: "Admin personal collection" },
+    { id: NORMAL_PERSONAL_COLLECTION_ID, name: "Normal personal collection" },
     {
       id: NO_COLLECTION_PERSONAL_COLLECTION_ID,
-      name: "No collection personal",
+      name: "No collection personal collection",
     },
   ];
 
@@ -560,22 +648,53 @@ function createTestCards() {
 }
 
 function createTestCollections() {
+  const suffixes = ["1", "2"];
   const collections = [
     {
-      name: "Admin personal",
+      name: "Admin personal collection",
       parent_id: ADMIN_PERSONAL_COLLECTION_ID,
     },
     {
-      name: "Normal personal",
+      name: "Normal personal collection",
       parent_id: NORMAL_PERSONAL_COLLECTION_ID,
     },
     {
-      name: "No collection personal",
+      name: "No collection personal collection",
       parent_id: NO_COLLECTION_PERSONAL_COLLECTION_ID,
     },
   ];
 
-  collections.forEach(createCollection);
+  suffixes.forEach(suffix => {
+    collections.forEach(collection =>
+      createCollection({ ...collection, name: `${collection.name} ${suffix}` }),
+    );
+  });
+}
+
+function createTestDashboards() {
+  const suffixes = ["1", "2"];
+  const dashboards = [
+    { name: "Root dashboard", collection_id: null },
+    { name: "Regular dashboard", collection_id: FIRST_COLLECTION_ID },
+    {
+      name: "Admin personal dashboard",
+      collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+    },
+    {
+      name: "Normal personal dashboard",
+      collection_id: NORMAL_PERSONAL_COLLECTION_ID,
+    },
+    {
+      name: "No collection personal dashboard",
+      collection_id: NO_COLLECTION_PERSONAL_COLLECTION_ID,
+    },
+  ];
+
+  suffixes.forEach(suffix => {
+    dashboards.forEach(dashboard =>
+      createDashboard({ ...dashboard, name: `${dashboard.name} ${suffix}` }),
+    );
+  });
 }
 
 function enterSearchText({
