@@ -206,7 +206,7 @@
 
 (defn- known-engine? [engine]
   (let [registered? #(contains? (methods supported-engine?) %)]
-     (some registered? (cons engine (ancestors engine)))))
+    (some registered? (cons engine (ancestors engine)))))
 
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)

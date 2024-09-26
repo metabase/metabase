@@ -65,10 +65,10 @@
 
 (deftest job-exists?-test
   (with-temp-scheduler-and-cleanup!
-   (is (false? (task/job-exists? (.getKey (job)))))
-   (task/schedule-task! (job) (trigger-1))
-   (is (true? (task/job-exists? (.getKey (job)))))
-   (is (false? (task/job-exists? "not-found")))))
+    (is (false? (task/job-exists? (.getKey (job)))))
+    (task/schedule-task! (job) (trigger-1))
+    (is (true? (task/job-exists? (.getKey (job)))))
+    (is (false? (task/job-exists? "not-found")))))
 
 (deftest schedule-job-test
   (testing "can we schedule a job?"
