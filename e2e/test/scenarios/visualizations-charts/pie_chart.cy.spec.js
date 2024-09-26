@@ -462,22 +462,18 @@ describe("scenarios > visualizations > pie chart", () => {
       header: "Saturday",
       rows: [
         {
-          color: "#7172AD",
           name: "Doohickey",
           value: "606",
         },
         {
-          color: "#7172AD",
           name: "Gadget",
           value: "740",
         },
         {
-          color: "#7172AD",
           name: "Gizmo",
           value: "640",
         },
         {
-          color: "#7172AD",
           name: "Widget",
           value: "761",
         },
