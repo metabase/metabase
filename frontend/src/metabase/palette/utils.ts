@@ -4,7 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-import { getSubpathSafeUrl } from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import type { RecentItem } from "metabase-types/api";
 
@@ -98,15 +97,11 @@ export const getCommandPaletteIcon = (
   return icon;
 };
 
-const isRelativeUrl = (url: string) =>
-  !url.startsWith("http://") && !url.startsWith("https://");
-
 export const locationDescriptorToURL = (
   locationDescriptor: LocationDescriptor,
 ) => {
-  let url = null;
   if (typeof locationDescriptor === "string") {
-    url = locationDescriptor;
+    return locationDescriptor;
   } else {
     const { pathname = "", query = null, hash = null } = locationDescriptor;
     const queryString = query
@@ -114,10 +109,8 @@ export const locationDescriptorToURL = (
       : "";
     const hashString = hash ? "#" + hash : "";
 
-    url = `${pathname}${queryString}${hashString}`;
+    return `${pathname}${queryString}${hashString}`;
   }
-
-  return isRelativeUrl(url) ? getSubpathSafeUrl(url) : url;
 };
 
 export const isNormalClick = (e: MouseEvent): boolean =>
