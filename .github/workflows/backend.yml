@@ -194,7 +194,7 @@ jobs:
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always() && (steps.run-java-tests-${{ matrix.edition }}.conclusion != 'skipped' || steps.run-java-tests-21-${{ matrix.edition }}.conclusion != 'skipped')
+        if: always() && (steps.run-java-tests-21-oss.conclusion != 'skipped')
         with:
           input-path: ./target/junit/
           output-name: be-tests-java-${{ matrix.java-version }}-${{ matrix.edition }}
