@@ -1,4 +1,4 @@
-import { createMockModelResult } from "metabase/browse/test-utils";
+import { createMockModelResult } from "metabase/browse/models/test-utils";
 
 import { availableModelFilters } from "./utils";
 

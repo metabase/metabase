@@ -6,11 +6,11 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { BrowseModels } from "metabase/browse/components/BrowseModels";
+import { BrowseModels } from "metabase/browse";
 import {
   createMockModelResult,
   createMockRecentModel,
-} from "metabase/browse/test-utils";
+} from "metabase/browse/models/test-utils";
 import type { RecentCollectionItem } from "metabase-types/api";
 import {
   createMockCollection,

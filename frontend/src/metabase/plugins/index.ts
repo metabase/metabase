@@ -25,12 +25,14 @@ import {
 } from "metabase/admin/permissions/types";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
-  ActualModelFilters,
-  AvailableModelFilters,
   MetricFilterControlsProps,
   MetricFilterSettings,
+} from "metabase/browse/metrics/types";
+import type {
+  ActualModelFilters,
+  AvailableModelFilters,
   ModelFilterControlsProps,
-} from "metabase/browse/utils";
+} from "metabase/browse/models/utils";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";

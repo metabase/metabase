@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type {
   ActualModelFilters,
   AvailableModelFilters,
-} from "metabase/browse/utils";
+} from "metabase/browse/models/utils";
 import { useUserSetting } from "metabase/common/hooks";
 
 export const availableModelFilters: AvailableModelFilters = {
