@@ -422,7 +422,12 @@
         case-statement      (into [:case]
                                   (mapcat identity)
                                   (for [[n display-name] field->display-name]
-                                    [[:= [:lower :name] n] display-name]))]
+                                    [[:= [:lower :name] n]
+                                     [:case
+                                      ;; Only update the display name if it still matches the automatic humanization.
+                                      [:= :display_name (humanization/name->human-readable-name n)] display-name
+                                      ;; Otherwise, it could have been set manually, so leave it as is.
+                                      true                                                          :display_name]]))]
     ;; Using t2/update! results in an invalid query for certain versions of PostgreSQL
     ;; SELECT * FROM \"metabase_field\" WHERE \"id\" AND (\"table_id\" = ?) AND ...
     ;;                                        ^^^^^
