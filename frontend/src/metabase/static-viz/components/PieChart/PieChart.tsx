@@ -23,11 +23,7 @@ export function PieChart({
     [],
     renderingContext,
   );
-  const formatters = getPieChartFormatters(
-    chartModel,
-    settings,
-    renderingContext,
-  );
+  const formatters = getPieChartFormatters(chartModel, settings);
   const option = getPieChartOption(
     chartModel,
     formatters,

@@ -1,12 +1,9 @@
+import { formatValue } from "metabase/lib/formatting";
 import { isNotNull } from "metabase/lib/types";
 import type { TransformSeries } from "metabase/visualizations/components/TransformedVisualization";
 import type { RowValue } from "metabase-types/api";
 
-export const funnelToBarTransform: TransformSeries = (
-  rawSeries,
-  settings,
-  renderingContext,
-) => {
+export const funnelToBarTransform: TransformSeries = (rawSeries, settings) => {
   const [series] = rawSeries;
   const {
     card,
@@ -35,7 +32,7 @@ export const funnelToBarTransform: TransformSeries = (
       : rows;
 
   return orderedRows.map(row => {
-    const name = renderingContext.formatValue(row[dimensionIndex], {
+    const name = formatValue(row[dimensionIndex], {
       column: cols[dimensionIndex],
     });
     return {

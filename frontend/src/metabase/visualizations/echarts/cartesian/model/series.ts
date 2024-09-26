@@ -50,6 +50,7 @@ import { cachedFormatter } from "../utils/formatter";
 import { WATERFALL_VALUE_KEY } from "../waterfall/constants";
 
 import { getFormattingOptionsWithoutScaling } from "./util";
+import { formatValue } from "metabase/lib/formatting";
 
 export const getSeriesVizSettingsKey = (
   column: DatasetColumn,
@@ -223,7 +224,7 @@ export const getCardSeriesModels = (
     // which can be different based on a user's locale.
     const formattedBreakoutValue =
       breakoutValue != null && breakoutValue !== ""
-        ? renderingContext.formatValue(breakoutValue, {
+        ? formatValue(breakoutValue, {
             column: breakout.column,
           })
         : NULL_DISPLAY_VALUE;
@@ -655,7 +656,7 @@ const createSeriesLabelsFormatter = (
       compact: isCompact,
       ...formattingOptions,
     });
-    return renderingContext.formatValue(value, options);
+    return formatValue(value, options);
   });
 
 const getSeriesLabelsFormattingInfo = (
