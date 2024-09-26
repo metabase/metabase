@@ -614,7 +614,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     };
 
     const handleResultMessage = data => {
-        if (data.message.includes("the semantic layer needs to be updated with the following field")) {
+        if (data.message.includes("the semantic layer needs to be updated with the following field") || data.message.includes("The semantic layer requires an update to proceed with the task.")) {
             setIsLoading(false);
             setShowCubeEditButton(true);
             return;
@@ -956,7 +956,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
     const clearQueryMessage = () => {
         setMessages(prevMessages => prevMessages.filter(
-            message => !message.text.includes("Query executed successfully")
+            message => !message.text.includes("Query executed successfully") &&
+            !message.text.includes("Executing query")
         ));
     }
 
