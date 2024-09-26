@@ -20,7 +20,6 @@ interface Props<
 > {
   folder: Item | undefined;
   isLoading: boolean;
-  isScopedSearchEnabled: boolean;
   searchScope: EntityPickerSearchScope;
   searchResults: SearchItem[];
   selectedItem: Item | null;
@@ -35,7 +34,6 @@ export const SearchTab = <
 >({
   folder,
   isLoading,
-  isScopedSearchEnabled,
   searchScope,
   searchResults,
   selectedItem,
@@ -44,7 +42,7 @@ export const SearchTab = <
 }: Props<Id, Model, Item>) => {
   return (
     <Stack bg="bg-light" h="100%" spacing={0}>
-      {folder && isScopedSearchEnabled && (
+      {folder && (
         <Flex align="center" justify="space-between" p="xl">
           <Flex align="center">
             <Text mr={12} weight="bold">

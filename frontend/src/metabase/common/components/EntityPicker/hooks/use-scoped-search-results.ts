@@ -21,11 +21,6 @@ import type {
 } from "../types";
 import { isSchemaItem } from "../utils";
 
-type UseScopedSearchResults = {
-  scopedSearchResults: SearchItem[] | null;
-  isScopedSearchEnabled: boolean;
-};
-
 export const useScopedSearchResults = <
   Id extends SearchResultId,
   Model extends string,
@@ -35,9 +30,8 @@ export const useScopedSearchResults = <
   searchModels: string[],
   searchScope: EntityPickerSearchScope,
   folder: Item | undefined,
-): UseScopedSearchResults => {
-  const isScopedSearchEnabled =
-    searchScope === "folder" && folder != null && folder.id !== "personal";
+): SearchItem[] | null => {
+  const isScopedSearchEnabled = searchScope === "folder" && folder != null;
 
   const shouldUseCollectionItems =
     isScopedSearchEnabled && folder.model === "collection";
@@ -101,7 +95,7 @@ export const useScopedSearchResults = <
     isScopedSearchEnabled,
   ]);
 
-  return { isScopedSearchEnabled, scopedSearchResults };
+  return scopedSearchResults;
 };
 
 const collectionItemsToSearchResults = <

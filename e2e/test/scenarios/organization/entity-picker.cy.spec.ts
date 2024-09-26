@@ -5,6 +5,7 @@ import {
   FIRST_COLLECTION_ID,
   NORMAL_PERSONAL_COLLECTION_ID,
   NO_COLLECTION_PERSONAL_COLLECTION_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   type StructuredQuestionDetails,
@@ -12,10 +13,13 @@ import {
   entityPickerModal,
   entityPickerModalTab,
   getNotebookStep,
+  openQuestionActions,
+  popover,
   resetTestTable,
   restore,
   resyncDatabase,
   startNewQuestion,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -383,6 +387,51 @@ describe("scenarios > organization > entity picker", () => {
       });
     });
   });
+
+  describe("collection picker", () => {
+    it("should search for collections for a normal user", () => {
+      cy.signInAsNormalUser();
+      visitQuestion(ORDERS_QUESTION_ID);
+      openQuestionActions();
+      popover().findByText("Move").click();
+
+      cy.log("root collection - automatically selected");
+      entityPickerModal().within(() => {
+        enterSearchText({
+          text: "collection",
+          placeholder: "Search this collection or everywhere…",
+        });
+        localSearchTab("Our analytics").should("be.checked");
+        assertSearchResults({
+          foundItems: ["First collection"],
+          notFoundItems: ["Second collection"],
+        });
+        globalSearchTab().click({ force: true });
+        assertSearchResults({
+          foundItems: ["First collection", "Second collection"],
+        });
+        localSearchTab("Our analytics").click({ force: true });
+        assertSearchResults({
+          foundItems: ["First collection"],
+          notFoundItems: ["Second collection"],
+        });
+      });
+
+      cy.log("regular collection");
+      entityPickerModal().within(() => {
+        cy.findByText("First collection").click();
+        enterSearchText({
+          text: "collection",
+          placeholder: "Search this collection or everywhere…",
+        });
+        localSearchTab("First collection").should("be.checked");
+        assertSearchResults({
+          foundItems: ["Second collection"],
+          notFoundItems: ["First collection", "Third collection"],
+        });
+      });
+    });
+  });
 });
 
 function createTestCards() {
@@ -413,14 +462,6 @@ function createTestCards() {
   });
 }
 
-function globalSearchTab() {
-  return cy.findByLabelText("Everywhere");
-}
-
-function localSearchTab(selectedItem: string) {
-  return cy.findByLabelText(`“${selectedItem}”`);
-}
-
 function enterSearchText({
   text,
   placeholder,
@@ -429,6 +470,14 @@ function enterSearchText({
   placeholder: string;
 }) {
   cy.findByPlaceholderText(placeholder).clear().type(text);
+}
+
+function globalSearchTab() {
+  return cy.findByLabelText("Everywhere");
+}
+
+function localSearchTab(selectedItem: string) {
+  return cy.findByLabelText(`“${selectedItem}”`);
 }
 
 function assertSearchResults({

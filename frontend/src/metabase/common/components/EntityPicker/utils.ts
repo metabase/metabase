@@ -136,12 +136,7 @@ export const getSearchInputPlaceholder = <
   Item extends TypeWithModel<Id, Model>,
 >(
   folder: Item | undefined,
-  isScopedSearchEnabled: boolean,
 ): string => {
-  if (!folder || !isScopedSearchEnabled) {
-    return t`Search…`;
-  }
-
   if (folder?.model === "collection") {
     return t`Search this collection or everywhere…`;
   }
