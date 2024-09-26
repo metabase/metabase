@@ -29,6 +29,7 @@ import {
   getDefaultIsAutoSplitEnabled,
   getDefaultIsHistogram,
   getDefaultLegendIsReversed,
+  getDefaultMaxCategories,
   getDefaultMetricFilter,
   getDefaultMetrics,
   getDefaultShowDataLabels,
@@ -420,6 +421,16 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
       ],
     },
     default: getDefaultDataLabelsFormatting(),
+  },
+  "graph.max_categories": {
+    section: t`Display`,
+    title: t`Maximum number of categories`,
+    widget: "number",
+    getDefault: getDefaultMaxCategories,
+    getHidden: series => {
+      const isAllBar = series.every(s => s.card.display === "bar");
+      return isAllBar && series.length < 2;
+    },
   },
 };
 

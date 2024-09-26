@@ -150,6 +150,7 @@ export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
   "graph.show_stack_values"?: StackValuesDisplay;
+  "graph.max_categories"?: number;
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
