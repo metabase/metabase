@@ -34,7 +34,7 @@
         "pie.middle_dimension": "type_1",
         "pie.outer_dimension": "type_2",
         "pie.metric": "count",
-        "pie.slice_threshold": 7
+        "pie.slice_threshold": 11
       },
       "last-edit-info": {
         "id": 1,

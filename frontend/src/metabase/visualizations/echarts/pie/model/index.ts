@@ -105,6 +105,18 @@ export function getPieColumns(
   return colDescs;
 }
 
+function markOtherNodes(
+  node: SliceTreeNode,
+  parent: SliceTreeNode,
+  settings: ComputedVisualizationSettings,
+) {
+  node.isOther =
+    node.displayValue / parent.displayValue <
+    (settings["pie.slice_threshold"] ?? 0) / 100;
+
+  node.children.forEach(child => markOtherNodes(child, node, settings));
+}
+
 function aggregateSlices(
   node: SliceTreeNode,
   total: number,
@@ -351,10 +363,6 @@ export function getPieChartModel(
       if (middleDimensionNode == null) {
         // If there is no node for this middle dimension value in the tree
         // create it.
-        const normalizedPercentage = metricValue / total;
-        const isOther =
-          normalizedPercentage < (settings["pie.slice_threshold"] ?? 0) / 100;
-
         middleDimensionNode = {
           key: middleDimensionKey,
           name: formatMiddleDimensionValue(
@@ -362,7 +370,7 @@ export function getPieChartModel(
           ),
           value: metricValue,
           displayValue: metricValue,
-          normalizedPercentage,
+          normalizedPercentage: metricValue / total,
           color: getColorForRing(
             dimensionNode.color,
             "middle",
@@ -372,7 +380,7 @@ export function getPieChartModel(
           visible: true,
           column: colDescs.middleDimensionDesc.column,
           rowIndex: index,
-          isOther,
+          isOther: false,
           children: new Map(),
           startAngle: 0,
           endAngle: 0,
@@ -386,13 +394,8 @@ export function getPieChartModel(
         // to it.
         middleDimensionNode.value += metricValue;
         middleDimensionNode.displayValue += metricValue;
-
-        const normalizedPercentage = middleDimensionNode.value / total;
-        const isOther =
-          normalizedPercentage < (settings["pie.slice_threshold"] ?? 0) / 100;
-
-        middleDimensionNode.normalizedPercentage = normalizedPercentage;
-        middleDimensionNode.isOther = isOther;
+        middleDimensionNode.normalizedPercentage =
+          middleDimensionNode.value / total;
 
         if (colDescs.outerDimensionDesc == null) {
           showWarning?.(
@@ -415,10 +418,6 @@ export function getPieChartModel(
       );
 
       if (outerDimensionNode == null) {
-        const normalizedPercentage = metricValue / total;
-        const isOther =
-          normalizedPercentage < (settings["pie.slice_threshold"] ?? 0) / 100;
-
         outerDimensionNode = {
           key: outerDimensionKey,
           name:
@@ -427,7 +426,7 @@ export function getPieChartModel(
             ) ?? "",
           value: metricValue,
           displayValue: metricValue,
-          normalizedPercentage,
+          normalizedPercentage: metricValue / total,
           color: getColorForRing(
             dimensionNode.color,
             "outer",
@@ -437,7 +436,7 @@ export function getPieChartModel(
           visible: true,
           column: colDescs.outerDimensionDesc.column,
           rowIndex: index,
-          isOther,
+          isOther: false,
           children: new Map(),
           startAngle: 0,
           endAngle: 0,
@@ -449,13 +448,8 @@ export function getPieChartModel(
       } else {
         outerDimensionNode.value += metricValue;
         outerDimensionNode.displayValue += metricValue;
-
-        const normalizedPercentage = outerDimensionNode.value / total;
-        const isOther =
-          normalizedPercentage < (settings["pie.slice_threshold"] ?? 0) / 100;
-
-        outerDimensionNode.normalizedPercentage = normalizedPercentage;
-        outerDimensionNode.isOther = isOther;
+        outerDimensionNode.normalizedPercentage =
+          outerDimensionNode.value / total;
 
         showWarning?.(
           unaggregatedDataWarningPie(colDescs.outerDimensionDesc.column).text,
@@ -463,6 +457,10 @@ export function getPieChartModel(
       }
     });
   }
+
+  sliceTree.forEach(node =>
+    node.children.forEach(child => markOtherNodes(child, node, settings)),
+  );
 
   // Only add "other" slice if there are slices below threshold with non-zero total
   const otherTotal = others.reduce((currTotal, o) => currTotal + o.value, 0);
