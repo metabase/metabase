@@ -7,7 +7,7 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
 import { Box, type ButtonProps, Collapse, Icon } from "metabase/ui";
 
-import { BrowseGrid } from "./BrowseContainer.styled";
+import { BrowseGrid } from "../components/BrowseContainer.styled";
 
 export const ModelCardLink = styled(Link)`
   margin: 0.5rem 0;

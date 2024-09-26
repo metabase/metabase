@@ -24,18 +24,17 @@ import { FixedSizeIcon, Flex, Icon, Skeleton } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
-import { trackModelClick } from "../analytics";
-import type { ModelResult } from "../types";
-import { getIcon } from "../utils";
-
 import {
   Cell,
   CollectionLink,
   CollectionTableCell,
   NameColumn,
   TableRow,
-} from "./BrowseTable.styled";
-import { getModelDescription, sortModels } from "./utils";
+} from "../components/BrowseTable.styled";
+
+import { trackModelClick } from "./analytics";
+import type { ModelResult } from "./types";
+import { getIcon, getModelDescription, sortModels } from "./utils";
 
 export interface ModelsTableProps {
   models?: ModelResult[];

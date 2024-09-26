@@ -1,12 +1,19 @@
+import type { Dispatch, SetStateAction } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { getCollectionPathAsString } from "metabase/collections/utils";
-import type { SearchResult } from "metabase-types/api";
+import { entityForObject } from "metabase/lib/schema";
+import type { IconName } from "metabase/ui";
+import type { RecentItem, SearchResult } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
-import type { ModelResult } from "../types";
+import type { FilterableModel, ModelResult, RecentModel } from "./types";
 
 export const isModel = (item: SearchResult) => item.model === "dataset";
+
+export const isRecentModel = (item: RecentItem): item is RecentModel =>
+  item.model === "dataset";
 
 export const getModelDescription = (item: ModelResult) => {
   if (item.collection && !item.description?.trim()) {
@@ -15,8 +22,6 @@ export const getModelDescription = (item: ModelResult) => {
     return item.description;
   }
 };
-
-export const isMetric = (item: SearchResult) => item.model === "metric";
 
 const getValueForSorting = (
   model: ModelResult,
@@ -42,7 +47,7 @@ export const getSecondarySortColumn = (
 };
 
 export function sortModels(
-  modelsOrMetrics: ModelResult[],
+  models: ModelResult[],
   sortingOptions: SortingOptions,
   localeCode: string = "en",
 ) {
@@ -50,21 +55,21 @@ export function sortModels(
 
   if (!isValidSortColumn(sort_column)) {
     console.error("Invalid sort column", sort_column);
-    return modelsOrMetrics;
+    return models;
   }
 
   const compare = (a: string, b: string) =>
     a.localeCompare(b, localeCode, { sensitivity: "base" });
 
-  return [...modelsOrMetrics].sort((modelOrMetricA, modelOrMetricB) => {
-    const a = getValueForSorting(modelOrMetricA, sort_column);
-    const b = getValueForSorting(modelOrMetricB, sort_column);
+  return [...models].sort((modelA, modelB) => {
+    const a = getValueForSorting(modelA, sort_column);
+    const b = getValueForSorting(modelB, sort_column);
 
     let result = compare(a, b);
     if (result === 0) {
       const sort_column2 = getSecondarySortColumn(sort_column);
-      const a2 = getValueForSorting(modelOrMetricA, sort_column2);
-      const b2 = getValueForSorting(modelOrMetricB, sort_column2);
+      const a2 = getValueForSorting(modelA, sort_column2);
+      const b2 = getValueForSorting(modelB, sort_column2);
       result = compare(a2, b2);
     }
 
@@ -86,4 +91,41 @@ export const getMaxRecentModelCount = (
     return 4;
   }
   return 0;
+};
+
+export type AvailableModelFilters = Record<
+  string,
+  {
+    predicate: (value: FilterableModel) => boolean;
+    activeByDefault: boolean;
+  }
+>;
+
+export type ModelFilterControlsProps = {
+  actualModelFilters: ActualModelFilters;
+  setActualModelFilters: Dispatch<SetStateAction<ActualModelFilters>>;
+};
+
+/** Mapping of filter names to true if the filter is active
+ * or false if it is inactive */
+export type ActualModelFilters = Record<string, boolean>;
+
+export const filterModels = <T extends FilterableModel>(
+  unfilteredModels: T[] | undefined,
+  actualModelFilters: ActualModelFilters,
+  availableModelFilters: AvailableModelFilters,
+): T[] => {
+  return _.reduce(
+    actualModelFilters,
+    (acc, shouldFilterBeActive, filterName) =>
+      shouldFilterBeActive
+        ? acc.filter(availableModelFilters[filterName].predicate)
+        : acc,
+    unfilteredModels || [],
+  );
+};
+
+export const getIcon = (item: unknown): { name: IconName; color: string } => {
+  const entity = entityForObject(item);
+  return entity?.objectSelectors?.getIcon?.(item) || { name: "folder" };
 };
