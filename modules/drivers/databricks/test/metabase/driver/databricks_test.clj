@@ -130,11 +130,11 @@
   (mt/test-driver
     :databricks
     (mt/dataset
-     dataset-with-ntz
-     (testing "timestamp column was ignored during sync"
-       (let [columns (t2/select :model/Field :table_id (t2/select-one-fn :id :model/Table :db_id (mt/id)))]
-         (is (= 1 (count columns)))
-         (is (= "id" (:name (first columns)))))))))
+      dataset-with-ntz
+      (testing "timestamp column was ignored during sync"
+        (let [columns (t2/select :model/Field :table_id (t2/select-one-fn :id :model/Table :db_id (mt/id)))]
+          (is (= 1 (count columns)))
+          (is (= "id" (:name (first columns)))))))))
 
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver
@@ -177,10 +177,10 @@
       (mt/with-report-timezone-id! "America/Los_Angeles"
         (testing "local-date-time"
           (let [rows (-> (mt/run-mbql-query
-                          people
-                          {:filter [:and
-                                    [:>= $created_at (t/local-date-time 2017 4 18 9 0 0)]
-                                    [:< $created_at (t/local-date-time 2017 4 18 10 0 0)]]})
+                           people
+                           {:filter [:and
+                                     [:>= $created_at (t/local-date-time 2017 4 18 9 0 0)]
+                                     [:< $created_at (t/local-date-time 2017 4 18 10 0 0)]]})
                          mt/rows)]
             (testing "Baseline: only one row is returned"
               (is (= 1 (count rows))))
@@ -189,10 +189,10 @@
                      (last (first rows)))))))
         (testing "offset-date-time"
           (let [rows (-> (mt/run-mbql-query
-                          people
-                          {:filter [:and
-                                    [:>= $created_at (t/offset-date-time 2017 4 18 9 0 0 0 (t/zone-offset "-07:00"))]
-                                    [:< $created_at (t/offset-date-time 2017 4 18 10 0 0 0 (t/zone-offset "-07:00"))]]})
+                           people
+                           {:filter [:and
+                                     [:>= $created_at (t/offset-date-time 2017 4 18 9 0 0 0 (t/zone-offset "-07:00"))]
+                                     [:< $created_at (t/offset-date-time 2017 4 18 10 0 0 0 (t/zone-offset "-07:00"))]]})
                          mt/rows)]
             (testing "Baseline: only one row is returned"
               (is (= 1 (count rows))))
@@ -201,10 +201,10 @@
                      (last (first rows)))))))
         (testing "zoned-date-time"
           (let [rows (-> (mt/run-mbql-query
-                          people
-                          {:filter [:and
-                                    [:>= $created_at (t/zoned-date-time 2017 4 18 9 0 0 0 (t/zone-id "America/Los_Angeles"))]
-                                    [:< $created_at (t/zoned-date-time 2017 4 18 10 0 0 0 (t/zone-id "America/Los_Angeles"))]]})
+                           people
+                           {:filter [:and
+                                     [:>= $created_at (t/zoned-date-time 2017 4 18 9 0 0 0 (t/zone-id "America/Los_Angeles"))]
+                                     [:< $created_at (t/zoned-date-time 2017 4 18 10 0 0 0 (t/zone-id "America/Los_Angeles"))]]})
                          mt/rows)]
             (testing "Baseline: only one row is returned"
               (is (= 1 (count rows))))
