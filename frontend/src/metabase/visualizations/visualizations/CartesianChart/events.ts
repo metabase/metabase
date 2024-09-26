@@ -63,6 +63,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
+  CardDisplayType,
   CardId,
   RawSeries,
   TimelineEvent,
@@ -371,6 +372,7 @@ export const getTooltipModel = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   echartsDataIndex: number,
+  display: CardDisplayType,
   seriesDataKey: DataKey,
 ): EChartsTooltipModel | null => {
   const dataIndex = getDataIndex(
@@ -419,6 +421,7 @@ export const getTooltipModel = (
     settings,
     datum,
     dataIndex,
+    display,
     hoveredSeries,
   );
 };
@@ -473,6 +476,7 @@ export const getSeriesOnlyTooltipModel = (
   settings: ComputedVisualizationSettings,
   datum: Datum,
   dataIndex: number,
+  display: CardDisplayType,
   hoveredSeries: SeriesModel,
 ): EChartsTooltipModel | null => {
   const header = String(
@@ -498,7 +502,9 @@ export const getSeriesOnlyTooltipModel = (
       return {
         isFocused,
         name: seriesModel.name,
-        markerColorClass: getMarkerColorClass(seriesModel.color),
+        markerColorClass: getMarkerColorClass(
+          getSeriesOnlyTooltipRowColor(seriesModel, datum, settings, display),
+        ),
         values: [
           formatValueForTooltip({
             value: datum[seriesModel.dataKey],
@@ -528,6 +534,23 @@ export const getSeriesOnlyTooltipModel = (
     header,
     rows,
   };
+};
+
+const getSeriesOnlyTooltipRowColor = (
+  seriesModel: SeriesModel,
+  datum: Datum,
+  settings: ComputedVisualizationSettings,
+  display: CardDisplayType,
+) => {
+  const value = datum[seriesModel.dataKey];
+  if (display === "waterfall" && typeof value === "number") {
+    const color =
+      value >= 0
+        ? settings["waterfall.increase_color"]
+        : settings["waterfall.decrease_color"];
+    return color ?? seriesModel.color;
+  }
+  return seriesModel.color;
 };
 
 export const getStackedTooltipModel = (

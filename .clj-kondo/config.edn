@@ -146,6 +146,7 @@
               ;; module drivers
               :athena
               :bigquery-cloud-sdk
+              :databricks
               :druid
               :druid-jdbc
               :googleanalytics
