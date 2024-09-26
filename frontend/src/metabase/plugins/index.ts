@@ -27,7 +27,7 @@ import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors"
 import type {
   MetricFilterControlsProps,
   MetricFilterSettings,
-} from "metabase/browse/metrics/types";
+} from "metabase/browse/metrics";
 import type {
   ActualModelFilters,
   AvailableModelFilters,

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import type {
   MetricFilterControlsProps,
   MetricFilterSettings,
-} from "metabase/browse/metrics/types";
+} from "metabase/browse/metrics";
 import { useUserSetting } from "metabase/common/hooks";
 import { getSetting } from "metabase/selectors/settings";
 import { Button, Icon, Paper, Popover, Switch, Text } from "metabase/ui";
