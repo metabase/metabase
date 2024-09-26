@@ -47,7 +47,8 @@
   :type       :string
   :export?    false
   :visibility :public
-  :audit      :getter)
+  :audit      :getter
+  :encryption :no)
 
 (defsetting enable-embedding-sdk
   (deferred-tru "Allow admins to embed Metabase via the SDK?")
