@@ -616,6 +616,97 @@ describe("scenarios > organization > entity picker", () => {
         });
       });
     });
+
+    it("should search for dashboards when there is no access to the root collection", () => {
+      createTestDashboards();
+      cy.log("grant `nocollection` user access to `First collection`");
+      cy.log("personal collections are always available");
+      cy.updateCollectionGraph({
+        [ALL_USERS_GROUP]: { [FIRST_COLLECTION_ID]: "write" },
+      });
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+        collection_id: FIRST_COLLECTION_ID,
+      });
+
+      cy.signIn("nocollection");
+      visitQuestion(ORDERS_QUESTION_ID);
+      openQuestionActions();
+      popover().findByText("Add to dashboard").click();
+
+      cy.log("root collection");
+      entityPickerModal().within(() => {
+        cy.findByText("Collections").click();
+        enterSearchText({
+          text: "dashboard 1",
+          placeholder: "Search this collection or everywhere…",
+        });
+        localSearchTab("Collections").should("be.checked");
+        assertSearchResults({
+          notFoundItems: [
+            "Regular dashboard 1",
+            "Regular dashboard 2",
+            "Root dashboard 1",
+            "No collection personal dashboard 1",
+          ],
+        });
+        cy.findByText("Didn't find anything").should("be.visible");
+        globalSearchTab().click({ force: true });
+        assertSearchResults({
+          foundItems: [
+            "Regular dashboard 1",
+            "No collection personal dashboard 1",
+          ],
+        });
+      });
+
+      cy.log("personal collection");
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Dashboards").click();
+        cy.findByText(/Personal Collection/).click();
+        enterSearchText({
+          text: "personal dashboard 2",
+          placeholder: "Search this collection or everywhere…",
+        });
+        localSearchTab("No Collection Tableton's Personal Collection").should(
+          "be.checked",
+        );
+        assertSearchResults({
+          foundItems: ["No collection personal dashboard 2"],
+          notFoundItems: [
+            "No collection personal dashboard 1",
+            "Root dashboard 2",
+            "Admin personal dashboard 2",
+            "Normal personal dashboard 2",
+          ],
+        });
+      });
+    });
+
+    it("should not allow local search for `all personal collections`", () => {
+      createTestDashboards();
+      visitQuestion(ORDERS_QUESTION_ID);
+      openQuestionActions();
+      popover().findByText("Add to dashboard").click();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Dashboards").click();
+        cy.findByText("All personal collections").click();
+        enterSearchText({
+          text: "personal dashboard",
+          placeholder: "Search…",
+        });
+        globalSearchTab().should("not.exist");
+        localSearchTab("All personal collections").should("not.exist");
+        assertSearchResults({
+          foundItems: [
+            "Admin personal dashboard 1",
+            "Admin personal dashboard 2",
+            "Normal personal dashboard 1",
+            "Normal personal dashboard 2",
+          ],
+        });
+      });
+    });
   });
 });
 
