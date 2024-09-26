@@ -4,6 +4,7 @@ import _ from "underscore";
 import { getMilestoneIssues } from "./github";
 import type {
   Issue,
+  ReleaseChannel,
   ReleaseProps,
   VersionInfo,
   VersionInfoFile,
@@ -52,6 +53,7 @@ export const generateVersionInfoJson = ({
   const newVersionInfo = generateVersionInfo({ version, milestoneIssues });
 
   return {
+    ...existingVersionInfo,
     latest: existingVersionInfo.latest,
     older: [newVersionInfo, ...existingVersionInfo.older],
   };
@@ -142,24 +144,59 @@ export async function getVersionInfo({
   return newVersionJson;
 }
 
-// for updating the latest version in version info
-export const updateVersionInfoLatest = async ({
-  newLatestVersion,
+// for updating the version in version info for a specific channel
+export const updateVersionInfoChannel = async ({
+  channel,
+  newVersion,
   rollout = 100,
 }: {
-  newLatestVersion: string;
+  channel: ReleaseChannel;
+  newVersion: string;
   rollout?: number;
 }) => {
-  const url = getVersionInfoUrl(newLatestVersion);
+  const url = getVersionInfoUrl(newVersion);
   const existingFile = (await fetch(url).then(r =>
     r.json(),
   )) as VersionInfoFile;
 
-  const newVersionJson = updateVersionInfoLatestJson({
-    newLatestVersion,
+  const newVersionJson = updateVersionInfoChannelJson({
+    channel,
+    version: newVersion,
     existingVersionInfo: existingFile,
     rollout,
   });
 
   return newVersionJson;
 };
+
+export function updateVersionInfoChannelJson({
+  existingVersionInfo,
+  channel,
+  version,
+  rollout = 100,
+}: {
+  existingVersionInfo: VersionInfoFile;
+  channel: ReleaseChannel;
+  version: string;
+  rollout?: number;
+}): VersionInfoFile {
+  if (channel === "latest") {
+    // tagging latest requires moving the current latest to the "older" array
+    return updateVersionInfoLatestJson({
+      newLatestVersion: version,
+      existingVersionInfo,
+      rollout,
+    });
+  }
+
+  // everything else is just setting the correct key in the version info
+  return {
+    ...existingVersionInfo,
+    [channel]: {
+      version,
+      released: new Date().toISOString().slice(0, 10),
+      rollout,
+      highlights: [],
+    },
+  };
+}

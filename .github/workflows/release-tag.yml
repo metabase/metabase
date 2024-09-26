@@ -318,7 +318,7 @@ jobs:
       with:
         result-encoding: string
         script: | # js
-          const { updateVersionInfoLatest } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const { updateVersionInfoChannel } = require('${{ github.workspace }}/release/dist/index.cjs');
           const fs = require('fs');
 
           const edition = '${{ matrix.edition }}';
@@ -327,8 +327,9 @@ jobs:
             ? '${{ needs.check-version.outputs.ee }}'
             : '${{ needs.check-version.outputs.oss }}';
 
-          const newVersionInfo = await updateVersionInfoLatest({
-            newLatestVersion: canonical_version,
+          const newVersionInfo = await updateVersionInfoChannel({
+            channel: '${{ inputs.tag_name }}',
+            newVersion: canonical_version,
             rollout: ${{ inputs.tag_rollout }},
           });
 

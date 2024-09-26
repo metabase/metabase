@@ -38,6 +38,8 @@ export interface VersionInfoFile {
   older: VersionInfo[];
 }
 
+export type ReleaseChannel = "latest" | "beta" | "nightly";
+
 export type Issue = {
   number: number;
   node_id: string;
