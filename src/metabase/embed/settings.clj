@@ -71,6 +71,19 @@
 (mu/defn- add-localhost :- :string [s :- [:maybe :string]]
   (->> s ignore-localhost (str "localhost:* ") str/trim))
 
+(defn embedding-app-origins-sdk-setter
+  "The setter for [[embedding-app-origins-sdk]].
+
+  Checks that we have SDK embedding feature and that it's enabled, then sets the value accordingly."
+  [new-value]
+  (add-localhost ;; return the same value that is returned from the getter
+   (when (and (premium-features/has-feature? :embedding-sdk)
+              ;; Cannot set the SDK origins if the SDK embedding is disabled. so it will remain localhost:*.
+              (setting/get-value-of-type :boolean :enable-embedding-sdk))
+     (->> new-value
+          ignore-localhost
+          (setting/set-value-of-type! :string :embedding-app-origins-sdk)))))
+
 (defsetting embedding-app-origins-sdk
   (deferred-tru "Allow this origin to embed Metabase SDK")
   :type       :string
@@ -80,14 +93,7 @@
   :audit      :getter
   :getter    (fn embedding-app-origins-sdk-getter []
                (add-localhost (setting/get-value-of-type :string :embedding-app-origins-sdk)))
-  :setter   (fn embedding-app-origins-sdk-setter [new-value]
-              (or (when (premium-features/has-feature? :embedding-sdk)
-                    (->> new-value
-                         ignore-localhost
-                         (setting/set-value-of-type! :string :embedding-app-origins-sdk)
-                         ;; return the same value that is returned from the getter
-                         add-localhost))
-                  (add-localhost nil))))
+  :setter   embedding-app-origins-sdk-setter)
 
 (defsetting enable-embedding-static
   (deferred-tru "Allow admins to embed Metabase via static embedding?")

@@ -183,13 +183,12 @@
   "Returns headers for CORS requests"
   [origin]
   (merge
-   (when (approved-origin? origin (and (embed.settings/enable-embedding-sdk)
-                                       (embed.settings/embedding-app-origins-sdk)))
+   (when (approved-origin? origin (embed.settings/embedding-app-origins-sdk))
      {"Access-Control-Allow-Origin" origin
       "Vary"                        "Origin"})
-   {"Access-Control-Allow-Headers"   "*"
-    "Access-Control-Allow-Methods"   "*"
-    "Access-Control-Expose-Headers"  "X-Metabase-Anti-CSRF-Token"}))
+   {"Access-Control-Allow-Headers"  "*"
+    "Access-Control-Allow-Methods"  "*"
+    "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token"}))
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."

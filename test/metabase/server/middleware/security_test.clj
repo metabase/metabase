@@ -188,10 +188,15 @@
                                        embedding-app-origins-sdk nil]
       (is (= "http://localhost:8080" (get (mw.security/access-control-headers "http://localhost:8080") "Access-Control-Allow-Origin")))))
 
-  (testing "Should disable CORS when embedding is disabled"
+  (testing "Should disable CORS when enable-embedding-sdk is disabled"
     (tu/with-temporary-setting-values [enable-embedding-sdk      false
                                        embedding-app-origins-sdk nil]
-      (is (= nil (get (mw.security/access-control-headers "http://localhost:8080") "Access-Control-Allow-Origin")))))
+      (is (= "http://localhost:8080"
+             (get (mw.security/access-control-headers "http://localhost:8080")
+                  "Access-Control-Allow-Origin"))
+          "Localhost is always permitted.")
+      (is (= nil (get (mw.security/access-control-headers "http://1.2.3.4:5555")
+                      "Access-Control-Allow-Origin")))))
 
   (testing "Should work with embedding-app-origin"
     (mt/with-premium-features #{:embedding-sdk}
