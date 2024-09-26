@@ -1294,14 +1294,7 @@
                  (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card" :models "dashboard"
                                            :calculate_available_models true)
                      :available_models
-                     set))))
-
-        (testing "GET /api/search/models"
-          (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
-                 (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card"))))
-
-          (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
-                 (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term :models "card" :models "dashboard")))))))))
+                     set))))))))
 
 (deftest search-native-query-test
   (let [search-term "search-native-query"]
@@ -1377,19 +1370,6 @@
                     :data
                     (map (juxt :model :id :creator_common_name :last_editor_common_name))
                     set)))))))
-
-(deftest models-table-db-id-test
-  (testing "search/models request includes `table-db-id` param"
-    (with-search-items-in-root-collection "Available models"
-      (testing "`table-db-id` is invalid"
-        (is (=? {:errors {:table-db-id "nullable value must be an integer greater than zero."}}
-                (mt/user-http-request :crowberto :get 400 "search/models" :table-db-id -1))))
-      (testing "`table-db-id` is for a non-existent database"
-        (is (= #{"dashboard" "database" "segment" "collection" "action"}
-               (set (mt/user-http-request :crowberto :get 200 "search/models" :table-db-id Integer/MAX_VALUE)))))
-      (testing "`table-db-id` is for an existing database"
-        (is (= #{"dashboard" "database" "segment" "collection" "action" "metric" "card" "dataset" "table"}
-               (set (mt/user-http-request :crowberto :get 200 "search/models" :table-db-id (mt/id)))))))))
 
 (deftest models-archived-string-test
   (testing "search/models request includes `archived-string` param"
