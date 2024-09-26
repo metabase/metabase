@@ -54,7 +54,7 @@ export const getTooltipModel = (
     .map(slice => ({
       name: slice.name,
       value: slice.displayValue,
-      color: slice.color,
+      color: nodes.length === 1 ? slice.color : undefined,
       formatter: formatters.formatMetric,
       key: slice.key,
     }));
