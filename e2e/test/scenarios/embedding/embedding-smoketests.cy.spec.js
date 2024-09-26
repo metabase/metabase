@@ -8,6 +8,7 @@ import {
   openSharingMenu,
   openStaticEmbeddingModal,
   restore,
+  setTokenFeatures,
   sharingMenu,
   sharingMenuButton,
   visitDashboard,
@@ -52,6 +53,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     });
 
     it("should display the embedding page correctly", () => {
+      setTokenFeatures("all");
       cy.visit("/admin/settings/setup");
       sidebar().within(() => {
         cy.findByRole("link", { name: "Embedding" }).click();
@@ -65,7 +67,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.log("The first section: 'Static embedding'");
       cy.findByRole("article", { name: "Static embedding" }).within(() => {
         // FE unit tests are making sure this section doesn't exist when a valid token is provided,
-        // so we don't have to do it here usign a conditional logic
+        // so we don't have to do it here using conditional logic
         assertLinkMatchesUrl("upgrade to a paid plan", upgradeUrl);
 
         cy.findByRole("link", { name: "Manage" })

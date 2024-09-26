@@ -82,6 +82,9 @@
               (setting/get-value-of-type :boolean :enable-embedding-sdk))
      (->> new-value
           ignore-localhost
+          ;; Why ignore-localhost?, because localhost:* will always be allowed, so we don't need to store it, if we
+          ;; were to store it, and the value was set N times, it would have localhost:* prefixed N times. Also, we
+          ;; should not store localhost:port, since it's covered by localhost:* (which is the minumum value).
           (setting/set-value-of-type! :string :embedding-app-origins-sdk)))))
 
 (defsetting embedding-app-origins-sdk
