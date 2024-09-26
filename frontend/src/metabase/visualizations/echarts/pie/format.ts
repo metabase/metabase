@@ -5,7 +5,6 @@ import type {
   ComputedVisualizationSettings,
   Formatter,
   RemappingHydratedDatasetColumn,
-  RenderingContext,
 } from "metabase/visualizations/types";
 import type { RowValue } from "metabase-types/api";
 

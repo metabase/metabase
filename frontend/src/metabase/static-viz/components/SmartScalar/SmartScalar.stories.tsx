@@ -1,5 +1,4 @@
 import { colors } from "metabase/lib/colors";
-import { formatValue } from "metabase/lib/formatting";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import {
   measureTextHeight,
@@ -134,7 +133,6 @@ const createTemplate = ({ rows, vizSettings }: SmartScalarSeriesOpts) =>
         rawSeries={[series]}
         renderingContext={{
           fontFamily: "Lato",
-          formatValue: formatValue as any,
           getColor: createColorGetter(colors),
           measureText: (text, style) =>
             measureTextWidth(text, Number(style.size), Number(style.weight)),
