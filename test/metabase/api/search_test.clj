@@ -21,11 +21,18 @@
    [metabase.models.revision :as revision]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search.config]
+   [metabase.search.fulltext :as search.fulltext]
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(comment
+  ;; We need this to ensure the engine hierarchy is registered
+  search.fulltext/keep-me)
+
+(set! *warn-on-reflection* true)
 
 (def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
 
@@ -1569,6 +1576,14 @@
 (deftest force-reindex-test
   (mt/with-temp [Card {id :id} {:name "It boggles the mind!"}]
     (let [search-results #(:data (mt/user-http-request :rasta :get 200 "search" :q "boggle" :search_engine "fulltext"))]
+      (try
+        (t2/delete! :search_index)
+        (catch Exception _))
       (is (empty? (search-results)))
       (mt/user-http-request :crowberto :post 200 "search/force-reindex")
-      (is (some (comp #{id} :id) (search-results))))))
+      (is (loop [attempts-left 5]
+            (if (some (comp #{id} :id) (search-results))
+              ::success
+              (when (pos? attempts-left)
+                (Thread/sleep 200)
+                (recur (dec attempts-left)))))))))

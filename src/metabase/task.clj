@@ -311,7 +311,9 @@
 (defn job-exists?
   "Check whether there is a Job with the given key."
   [job-key]
-  (boolean (qs/get-job (scheduler) (->job-key job-key))))
+  (boolean
+   (when-let [s (scheduler)]
+     (qs/get-job s (->job-key job-key)))))
 
 (defn job-info
   "Get info about a specific Job (`job-key` can be either a String or `JobKey`).
