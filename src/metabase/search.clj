@@ -29,16 +29,16 @@
 
 ;; TODO The following need to be cleaned up to use multimethods.
 
-(defn init-index!
-  "Ensure there is an index ready to be populated."
-  [& {:keys [force-reset?]}]
-  (when (search.fulltext/supported-db? (mdb/db-type))
-    (search.postgres/init! force-reset?)))
-
 (defn supports-index?
   "Does this instance support a search index?"
   []
   (search.fulltext/supported-db? (mdb/db-type)))
+
+(defn init-index!
+  "Ensure there is an index ready to be populated."
+  [& {:keys [force-reset?]}]
+  (when (supports-index?)
+    (search.postgres/init! force-reset?)))
 
 (defn reindex!
   "Populate a new index, and make it active. Simultaneously updates the current index."
