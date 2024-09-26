@@ -6,8 +6,6 @@ import { Box, Flex, Icon, Text } from "metabase/ui";
 import type { PaletteActionImpl } from "../types";
 import { getCommandPaletteIcon, locationDescriptorToURL } from "../utils";
 
-import Styles from "./PaletteResultItem.module.css";
-
 interface PaletteResultItemProps {
   item: PaletteActionImpl;
   active: boolean;
@@ -126,10 +124,9 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
         component={Link}
         to={url}
         target={item.extra.openInNewTab ? "_blank" : undefined}
-        className={Styles.Link}
+        role="link"
         w="100%"
         lh={1}
-        role="link"
       >
         {content}
       </Box>

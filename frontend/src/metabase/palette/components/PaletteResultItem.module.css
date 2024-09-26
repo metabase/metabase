@@ -1,8 +1,0 @@
-.Link {
-  &:not([data-css-specificity-hack]) {
-    &:hover,
-    &:active {
-      text-decoration: none;
-    }
-  }
-}
