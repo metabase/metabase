@@ -433,7 +433,7 @@
                        [:= :table_id table-id]
                        [:in [:lower :name] (keys field->display-name)]
                        ;; Only replace display names that have not been overridden already.
-                       [:= [:lower :name] [:lower :display_name]]]})))
+                       [:= :updated_at :created_at]]})))
 
 (defn- uploads-enabled? []
   (some? (:db_id (public-settings/uploads-settings))))
