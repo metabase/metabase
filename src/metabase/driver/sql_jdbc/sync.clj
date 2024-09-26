@@ -34,6 +34,7 @@
   describe-fks-sql
   describe-table
   describe-table-fields
+  describe-table-fields-xf
   describe-table-fks
   describe-table-indexes
   get-catalogs

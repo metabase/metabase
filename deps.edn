@@ -387,6 +387,7 @@
   {:extra-paths
    ["modules/drivers/athena/test"
     "modules/drivers/bigquery-cloud-sdk/test"
+    "modules/drivers/databricks/test"
     "modules/drivers/druid/test"
     "modules/drivers/druid-jdbc/test"
     "modules/drivers/mongo/test"
@@ -478,6 +479,7 @@
                 "enterprise/backend/src"
                 "modules/drivers/athena/src"
                 "modules/drivers/bigquery-cloud-sdk/src"
+                "modules/drivers/databricks/src"
                 "modules/drivers/druid/src"
                 "modules/drivers/druid-jdbc/src"
                 "modules/drivers/mongo/src"
@@ -500,6 +502,7 @@
                                  "enterprise/backend/src"
                                  "modules/drivers/athena/src"
                                  "modules/drivers/bigquery-cloud-sdk/src"
+                                 "modules/drivers/databricks/src"
                                  "modules/drivers/druid/src"
                                  "modules/drivers/druid-jdbc/src"
                                  "modules/drivers/mongo/src"
