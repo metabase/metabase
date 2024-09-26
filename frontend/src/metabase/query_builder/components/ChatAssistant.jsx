@@ -72,6 +72,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [showCubeEditButton, setShowCubeEditButton] = useState(false)
     const [requestedFields, setRequestedFields] = useState([]);
     const [suggestionQuestion, setSuggestionQuestion] = useState(null);
+    const [pendingInfoMessage, setPendingInfoMessage] = useState(null);
+
     const databases = data?.data;
     useEffect(() => {
         if (databases) {
@@ -613,6 +615,27 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         }
     };
 
+    useEffect(() => {
+        if (pendingInfoMessage && visualizationIndex >= 0) {
+            setMessages(prevMessages => {
+                const newMessage = {
+                    id: Date.now() + Math.random(),
+                    text: pendingInfoMessage,
+                    sender: "server",
+                    type: "text",
+                    info: true,
+                    isInsightData: false,
+                    isInsightError: true,
+                    typeMessage: "error",
+                };
+    
+                return [...prevMessages, newMessage];
+            });
+    
+            setPendingInfoMessage(null);
+        }
+    }, [pendingInfoMessage, visualizationIndex, setMessages]);
+
     const handleResultMessage = data => {
         if (data.message.includes("the semantic layer needs to be updated with the following field") || data.message.includes("The semantic layer requires an update to proceed with the task.")) {
             setIsLoading(false);
@@ -640,14 +663,20 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         removeLoadingMessage();
         clearPlanMessage();
         clearQueryMessage();
-        // clearInfoMessage();
     };
 
     const handleInfoMessage = data => {
         removeLoadingMessage();
         clearPlanMessage();
-        if (data.functions.payload.message.includes("There was an error with the AI models. Please contact with Omniloy support team.")) {
+        const infoMessage = data.functions.payload.message;
+
+        if(infoMessage.includes("There was an error with the AI models. Please contact with Omniloy support team.")){
             setChatLoading(false);
+        }
+
+        if (infoMessage.includes('This information may not be accurate')) {
+            setPendingInfoMessage(infoMessage);
+            return;
         }
 
         if (data.functions.type === "data" || data.functions.type === "error") {
@@ -663,7 +692,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 // Prepare the new message
                 const newMessage = {
                     id: Date.now() + Math.random(),
-                    text: data.functions.payload.message,
+                    text: infoMessage,
                     sender: "server",
                     type: "text",
                     info: true,
@@ -687,7 +716,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             });
 
             // Check for the specific error message format
-            const message = data.functions.payload.message;
+            const message = infoMessage;
             const semanticLayerMessageStart = "To complete this task, the semantic layer needs to be updated with the following field:";
             const semanticLayerMessageEnd = "Please reach out to support for assistance.";
             const suggestionKey = "Here is a suggestion related to your original query: ";
