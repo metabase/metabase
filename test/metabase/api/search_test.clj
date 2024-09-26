@@ -321,24 +321,29 @@
     (with-search-items-in-root-collection "test"
       ;; sometimes there is a "table" in these responses. might be do to garbage in CI
       (is (set/subset? #{"dashboard" "dataset" "segment" "collection" "database" "metric" "card"}
-                       (-> (mt/user-http-request :crowberto :get 200 "search" :q "test")
+                       (-> (mt/user-http-request :crowberto :get 200 "search" :q "test"
+                                                 :calculate_available_models true)
                            :available_models
                            set)))))
   (testing "It returns nothing if there are no results"
     (with-search-items-in-root-collection "test"
-      (is (= [] (:available_models (mt/user-http-request :crowberto :get 200 "search" :q "noresults")))))))
+      (is (= [] (:available_models (mt/user-http-request :crowberto :get 200 "search" :q "noresults"
+                                                         :calculate_available_models true)))))))
 
-(deftest query-model-set-test
+(defn- get-available-models [& args]
+  (set
+   (:available_models
+    (apply mt/user-http-request :crowberto :get 200 "search" :calculate_available_models true args))))
+
+(deftest available-models-test
   (let [search-term "query-model-set"]
     (with-search-items-in-root-collection search-term
       (testing "should returns a list of models that search result will return"
         (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
-               (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term)))))
+               (get-available-models :q search-term))))
       (testing "return a subset of model for created-by filter"
         (is (= #{"dashboard" "dataset" "card" "metric" "action"}
-               (set (mt/user-http-request :crowberto :get 200 "search/models"
-                                          :q search-term
-                                          :created_by (mt/user->id :rasta))))))
+               (get-available-models :q search-term :created_by (mt/user->id :rasta)))))
       (testing "return a subset of model for verified filter"
         (t2.with-temp/with-temp
           [:model/Card       {v-card-id :id}   {:name (format "%s Verified Card" search-term)}
@@ -349,27 +354,19 @@
             (mt/with-premium-features #{:content-verification}
               (mt/with-verified-cards! [v-card-id v-model-id v-metric-id]
                 (is (= #{"card" "dataset" "metric"}
-                       (set (mt/user-http-request :crowberto :get 200 "search/models"
-                                                  :q search-term
-                                                  :verified true)))))))
+                       (get-available-models :q search-term :verified true))))))
           (testing "when has :content-verification feature only"
             (mt/with-premium-features #{:content-verification}
               (mt/with-verified-cards! [v-card-id]
                 (is (= #{"card"}
-                       (set (mt/user-http-request :crowberto :get 200 "search/models"
-                                                  :q search-term
-                                                  :verified true)))))))))
+                       (get-available-models :q search-term :verified true))))))))
       (testing "return a subset of model for created_at filter"
         (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
-               (set (mt/user-http-request :crowberto :get 200 "search/models"
-                                          :q search-term
-                                          :created_at "today")))))
+               (get-available-models :q search-term :created_at "today"))))
 
       (testing "return a subset of model for search_native_query filter"
         (is (= #{"dataset" "action" "card" "metric"}
-               (set (mt/user-http-request :crowberto :get 200 "search/models"
-                                          :q search-term
-                                          :search_native_query true))))))))
+               (get-available-models :q search-term :search_native_query true)))))))
 
 (def ^:private dashboard-count-results
   (letfn [(make-card [dashboard-count]
@@ -977,7 +974,10 @@
                  5)))
 
         (testing "Able to filter by creator"
-          (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id)]
+          (let [resp (mt/user-http-request :crowberto :get 200 "search"
+                                           :q search-term
+                                           :created_by user-id
+                                           :calculate_available_models true)]
 
             (testing "only a subset of models are applicable"
               (is (= #{"card" "dataset" "dashboard" "action"} (set (:available_models resp)))))
@@ -993,7 +993,11 @@
                           set))))))
 
         (testing "Able to filter by multiple creators"
-          (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_by user-id :created_by user-id-2)]
+          (let [resp (mt/user-http-request :crowberto :get 200 "search"
+                                           :q search-term
+                                           :created_by user-id
+                                           :created_by user-id-2
+                                           :calculate_available_models true)]
 
             (testing "only a subset of models are applicable"
               (is (= #{"card" "dataset" "dashboard" "action"} (set (:available_models resp)))))
@@ -1071,7 +1075,10 @@
                                    {:type "question"}))}))
 
         (testing "Able to filter by last editor"
-          (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_by rasta-user-id)]
+          (let [resp (mt/user-http-request :crowberto :get 200 "search"
+                                           :q search-term
+                                           :last_edited_by rasta-user-id
+                                           :calculate_available_models true)]
 
             (testing "only a subset of models are applicable"
               (is (= #{"dashboard" "dataset" "metric" "card"} (set (:available_models resp)))))
@@ -1086,7 +1093,11 @@
                           set))))))
 
         (testing "Able to filter by multiple last editor"
-          (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_by rasta-user-id :last_edited_by lucky-user-id)]
+          (let [resp (mt/user-http-request :crowberto :get 200 "search"
+                                           :q search-term
+                                           :last_edited_by rasta-user-id
+                                           :last_edited_by lucky-user-id
+                                           :calculate_available_models true)]
 
             (testing "only a subset of models are applicable"
               (is (= #{"dashboard" "dataset" "metric" "card"} (set (:available_models resp)))))
@@ -1119,7 +1130,10 @@
       (mt/with-verified-cards! [v-card-id v-model-id]
         (mt/with-premium-features #{:content-verification}
           (testing "Able to filter only verified items"
-            (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :verified true)]
+            (let [resp (mt/user-http-request :crowberto :get 200 "search"
+                                             :q search-term
+                                             :verified true
+                                             :calculate_available_models true)]
               (testing "do not returns duplicated verified cards"
                 (is (= 1 (->> resp
                               :data
@@ -1152,7 +1166,10 @@
 
         (mt/with-premium-features #{:content-verification}
           (testing "Returns verified cards and models only if :content-verification is enabled"
-            (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :verified true)]
+            (let [resp (mt/user-http-request :crowberto :get 200 "search"
+                                             :q search-term
+                                             :verified true
+                                             :calculate_available_models true)]
 
               (testing "only a subset of models are applicable"
                 (is (= #{"card" "dataset"} (set (:available_models resp)))))
@@ -1175,11 +1192,13 @@
       (testing "returns only applicable models"
         (is (=? {:available_models #(= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
                                        (set %))}
-                (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today"))))
+                (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today"
+                                      :calculate_available_models true))))
 
       (testing "works with others filter too"
         (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
-               (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today" :creator_id (mt/user->id :rasta))
+               (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today" :creator_id (mt/user->id :rasta)
+                                         :calculate_available_models true)
                    :available_models
                    set))))
 
@@ -1208,7 +1227,8 @@
                                (when (= model :model/Card)
                                  {:type "question"}))}))
       (testing "returns only applicable models"
-        (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today")]
+        (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today"
+                                         :calculate_available_models true)]
           (is (= #{[action-id "action"]
                    [card-id   "card"]
                    [dash-id   "dashboard"]
@@ -1235,7 +1255,8 @@
                                  (when (= model :model/Card)
                                    {:type "question"}))}))
         (is (= #{"dashboard" "dataset" "metric" "card"}
-               (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today" :last_edited_by (mt/user->id :rasta))
+               (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :last_edited_at "today" :last_edited_by (mt/user->id :rasta)
+                                         :calculate_available_models true)
                    :available_models
                    set))))
 
@@ -1264,12 +1285,14 @@
       (with-search-items-in-root-collection search-term
         (testing "GET /api/search"
           (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
-                 (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card")
+                 (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card"
+                                           :calculate_available_models true)
                      :available_models
                      set)))
 
           (is (= #{"dashboard" "dataset" "segment" "collection" "action" "metric" "card" "table" "database"}
-                 (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card" :models "dashboard")
+                 (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "card" :models "dashboard"
+                                           :calculate_available_models true)
                      :available_models
                      set))))
 

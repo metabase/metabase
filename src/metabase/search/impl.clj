@@ -253,29 +253,31 @@
    [:search-native-query                 {:optional true} [:maybe true?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
-   [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]])
+   [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
+   [:calculate-available-models?         {:optional true} [:maybe :boolean]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
   [{:keys [archived
+           calculate-available-models?
            created-at
            created-by
            current-user-id
-           is-superuser?
            current-user-perms
+           filter-items-in-personal-collection
+           ids
+           is-superuser?
            last-edited-at
            last-edited-by
            limit
+           model-ancestors?
            models
-           filter-items-in-personal-collection
            offset
            search-engine
-           search-string
-           model-ancestors?
-           table-db-id
            search-native-query
-           verified
-           ids]} :- ::search-context.input]
+           search-string
+           table-db-id
+           verified]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -283,14 +285,15 @@
      [:content-verification :official-collections]
      (deferred-tru "Content Management or Official Collections")))
   (let [models (if (string? models) [models] models)
-        ctx    (cond-> {:archived?          (boolean archived)
-                        :current-user-id    current-user-id
-                        :is-superuser?      is-superuser?
-                        :current-user-perms current-user-perms
-                        :model-ancestors?   (boolean model-ancestors?)
-                        :models             models
-                        :search-engine      (parse-engine search-engine)
-                        :search-string      search-string}
+        ctx    (cond-> {:archived?                   (boolean archived)
+                        :calculate-available-models? (boolean calculate-available-models?)
+                        :current-user-id             current-user-id
+                        :current-user-perms          current-user-perms
+                        :is-superuser?               is-superuser?
+                        :models                      models
+                        :model-ancestors?            (boolean model-ancestors?)
+                        :search-engine               (parse-engine search-engine)
+                        :search-string               search-string}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
@@ -349,17 +352,20 @@
     ;; We get to do this slicing and dicing with the result data because
     ;; the pagination of search is for UI improvement, not for performance.
     ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-    {:available_models (model-set-fn search-ctx)
-     :data             (cond->> total-results
-                         (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-                         (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
-                         true (map add-perms-for-col))
-     :limit            (:limit-int search-ctx)
-     :models           (:models search-ctx)
-     :offset           (:offset-int search-ctx)
-     :table_db_id      (:table-db-id search-ctx)
-     :engine           (:search-engine search-ctx)
-     :total            (count total-results)}))
+    (cond->
+      {:data             (cond->> total-results
+                                  (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+                                  (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
+                                  true (map add-perms-for-col))
+       :limit            (:limit-int search-ctx)
+       :models           (:models search-ctx)
+       :offset           (:offset-int search-ctx)
+       :table_db_id      (:table-db-id search-ctx)
+       :engine           (:search-engine search-ctx)
+       :total            (count total-results)}
+
+      (:calculate-available-models? search-ctx)
+      (assoc :available_models (model-set-fn search-ctx)))))
 
 (mu/defn search
   "Builds a search query that includes all the searchable entities, and runs it."
