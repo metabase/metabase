@@ -256,7 +256,7 @@ export const createMockSettings = (
   "notebook-native-preview-shown": false,
   "notebook-native-preview-sidebar-width": null,
   "query-analysis-enabled": false,
-  'check-for-updates': true,
-  'update-channel': 'latest',
+  "check-for-updates": true,
+  "update-channel": "latest",
   ...opts,
 });

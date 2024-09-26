@@ -24,10 +24,16 @@ const updateChannelSetting = {
   ],
 };
 
-export function SettingsUpdatesForm({ elements, updateSetting }: {
+export function SettingsUpdatesForm({
+  elements,
+  updateSetting,
+}: {
   elements: SettingDefinition[];
   // typing this properly is a fool's errand without a major settings refactor
-  updateSetting: (setting: Partial<SettingDefinition> & Record<string, any>, newValue: unknown) => void;
+  updateSetting: (
+    setting: Partial<SettingDefinition> & Record<string, any>,
+    newValue: unknown,
+  ) => void;
 }) {
   const [setting] = elements;
   const isHosted = useSetting("is-hosted?");
@@ -35,14 +41,14 @@ export function SettingsUpdatesForm({ elements, updateSetting }: {
   const updateChannelValue = useSetting("update-channel");
 
   return (
-    <Flex justify="space-between">
+    <Flex justify="space-between" data-testid="settings-updates">
       <div style={{ width: "585px" }}>
         {!isHosted && (
           <ul>
             <SettingsSetting
               key={setting.key}
               setting={setting}
-              onChange={(value: boolean)=> updateSetting(setting, value)}
+              onChange={(value: boolean) => updateSetting(setting, value)}
             />
             {checkForUpdates && (
               <li>
@@ -53,7 +59,8 @@ export function SettingsUpdatesForm({ elements, updateSetting }: {
                     value: updateChannelValue,
                   }}
                   onChange={(newValue: UpdateChannel) =>
-                    updateSetting(updateChannelSetting, newValue)}
+                    updateSetting(updateChannelSetting, newValue)
+                  }
                 />
               </li>
             )}

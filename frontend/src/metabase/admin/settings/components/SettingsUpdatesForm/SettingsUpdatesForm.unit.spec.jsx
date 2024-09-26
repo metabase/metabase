@@ -8,12 +8,12 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import {SettingsUpdatesForm} from "./SettingsUpdatesForm";
+import { SettingsUpdatesForm } from "./SettingsUpdatesForm";
 
 const elements = [
   {
     key: "check-for-updates",
-    display_name: 'Check for updates',
+    display_name: "Check for updates",
     type: "boolean",
   },
 ];
@@ -47,13 +47,12 @@ function setup({
     currentUser: { is_superuser: true },
   });
 
-  renderWithProviders(<
-    SettingsUpdatesForm
-      elements={elements}
-      updateSetting={() => {}}
-    />, {
-    storeInitialState: state,
-  });
+  renderWithProviders(
+    <SettingsUpdatesForm elements={elements} updateSetting={() => {}} />,
+    {
+      storeInitialState: state,
+    },
+  );
 }
 
 describe("SettingsUpdatesForm", () => {

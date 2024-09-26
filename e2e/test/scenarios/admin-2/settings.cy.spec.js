@@ -1279,3 +1279,107 @@ describe("notifications", { tags: "@external" }, () => {
     cy.findByRole("heading", { name: "Add a webhook" }).should("exist");
   });
 });
+
+describe("admin > settings > updates", () => {
+  const versionInfo = {
+    latest: {
+      version: "v1.86.76",
+      released: "2022-10-14",
+      rollout: 60,
+      highlights: ["New latest feature", "Another new feature"],
+    },
+    beta: {
+      version: "v1.86.75.309",
+      released: "2022-10-15",
+      rollout: 70,
+      highlights: ["New beta feature", "Another new feature"],
+    },
+    nightly: {
+      version: "v1.86.75.311",
+      released: "2022-10-16",
+      rollout: 80,
+      highlights: ["New nightly feature", "Another new feature"],
+    },
+    older: [
+      {
+        version: "v1.86.75",
+        released: "2022-10-10",
+        rollout: 100,
+        highlights: ["Some old feature", "Another old feature"],
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.visit("/admin/settings/updates");
+
+    cy.intercept("GET", "/api/setting", (req, res) => {
+      req.continue(res => {
+        const versionInfoIndex = res.body.findIndex(
+          setting => setting.key === "version-info",
+        );
+        res.body[versionInfoIndex].value = versionInfo;
+        return res.body;
+      });
+    });
+
+    cy.intercept("GET", "/api/session/properties", (req, res) => {
+      req.continue(res => {
+        res.body["version-info"] = versionInfo;
+        return res.body;
+      });
+    });
+  });
+
+  it("should show the updates page", () => {
+    cy.findByLabelText("Check for updates").should("be.visible");
+    cy.findByTestId("update-channel-setting")
+      .findByText("Update Channel")
+      .should("be.visible");
+
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText(/Metabase 1\.86\.76 is available/).should("be.visible");
+      cy.findByText("Some old feature").should("be.visible");
+    });
+
+    cy.log("hide most things if updates are turned off");
+
+    cy.findByLabelText("Check for updates").click();
+
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText("Update Channel").should("not.exist");
+      cy.findByText("Some old feature").should("not.exist");
+    });
+  });
+
+  it("should change release notes based on the selected update channel", () => {
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText(/Metabase 1\.86\.75\.309 is available/).should(
+        "be.visible",
+      );
+      cy.findByText("Some old feature").should("be.visible");
+      cy.findByText("Stable").click();
+    });
+
+    popover().findByText("Beta").click();
+
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText(/Metabase 1\.86\.75\.309 is available/).should(
+        "be.visible",
+      );
+      cy.findByText("Some beta feature").should("be.visible");
+      cy.findByText("Beta").click();
+    });
+
+    popover().findByText("Nightly").click();
+
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText(/Metabase 1\.86\.75\.311 is available/).should(
+        "be.visible",
+      );
+      cy.findByText("Some nightly feature").should("be.visible");
+    });
+  });
+});
