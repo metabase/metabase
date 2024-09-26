@@ -4,7 +4,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-import { getSubpathSafeUrl } from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import type { RecentItem } from "metabase-types/api";
 
