@@ -16,12 +16,13 @@ import {
   BrowseContainer,
   BrowseMain,
   BrowseSection,
-} from "./BrowseContainer.styled";
-import { BrowseDataHeader } from "./BrowseDataHeader";
-import { BrowseHeaderContent } from "./BrowseHeader.styled";
+} from "../components/BrowseContainer.styled";
+import { BrowseDataHeader } from "../components/BrowseDataHeader";
+import { BrowseHeaderContent } from "../components/BrowseHeader.styled";
+
 import { SchemaGridItem, SchemaLink } from "./BrowseSchemas.styled";
 
-const BrowseSchemas = ({
+const BrowseSchemasContainer = ({
   schemas,
   params,
 }: {
@@ -90,9 +91,8 @@ const BrowseSchemas = ({
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Schema.loadList({
+export const BrowseSchemas = Schema.loadList({
   query: (state: any, { params: { slug } }: { params: { slug: string } }) => ({
     dbId: Urls.extractEntityId(slug),
   }),
-})(BrowseSchemas);
+})(BrowseSchemasContainer);
