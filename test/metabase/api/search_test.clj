@@ -316,24 +316,20 @@
           ;; The index is not populated here, so there's not much interesting to assert.
           (is (= "search.engine/fulltext" (:engine resp))))))))
 
+(defn- get-available-models [& args]
+  (set
+   (:available_models
+    (apply mt/user-http-request :crowberto :get 200 "search" :calculate_available_models true args))))
+
 (deftest archived-models-test
   (testing "It returns some stuff when you get results"
     (with-search-items-in-root-collection "test"
       ;; sometimes there is a "table" in these responses. might be do to garbage in CI
       (is (set/subset? #{"dashboard" "dataset" "segment" "collection" "database" "metric" "card"}
-                       (-> (mt/user-http-request :crowberto :get 200 "search" :q "test"
-                                                 :calculate_available_models true)
-                           :available_models
-                           set)))))
+                       (get-available-models :q "test")))))
   (testing "It returns nothing if there are no results"
     (with-search-items-in-root-collection "test"
-      (is (= [] (:available_models (mt/user-http-request :crowberto :get 200 "search" :q "noresults"
-                                                         :calculate_available_models true)))))))
-
-(defn- get-available-models [& args]
-  (set
-   (:available_models
-    (apply mt/user-http-request :crowberto :get 200 "search" :calculate_available_models true args))))
+      (is (= #{} (get-available-models :q "noresults"))))))
 
 (deftest available-models-test
   (let [search-term "query-model-set"]
@@ -1372,7 +1368,7 @@
                     set)))))))
 
 (deftest models-archived-string-test
-  (testing "search/models request includes `archived-string` param"
+  (testing "search request includes `archived-string` param"
     (with-search-items-in-root-collection "Available models"
       (mt/with-temp [Card   {model-id :id} action-model-params
                      Action _              (archived {:name     "test action"
@@ -1380,10 +1376,10 @@
                                                       :model_id model-id})]
         (testing "`archived-string` is 'false'"
           (is (= #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "metric" "card"}
-                 (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "false")))))
+                 (get-available-models :archived "false"))))
         (testing "`archived-string` is 'true'"
           (is (= #{"action"}
-                 (set (mt/user-http-request :crowberto :get 200 "search/models" :archived "true")))))))))
+                 (get-available-models :archived "true"))))))))
 
 (deftest filter-items-in-personal-collection-test
   (let [search-term "filter-items-in-personal-collection"
@@ -1430,8 +1426,7 @@
                (search :rasta "exclude"))))
       (testing "getting models should return only models that are applied"
         (is (= #{"dashboard" "collection"}
-               (set (mt/user-http-request :crowberto :get 200 "search/models" :q search-term
-                                          :filter_items_in_personal_collection "exclude"))))))))
+               (get-available-models :q search-term :filter_items_in_personal_collection "exclude")))))))
 
 (deftest collection-effective-parent-test
   (mt/with-temp [:model/Collection coll-1  {:name "Collection 1"}
