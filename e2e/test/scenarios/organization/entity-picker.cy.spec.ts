@@ -62,6 +62,7 @@ describe("scenarios > organization > entity picker", () => {
         () => {
           resetTestTable({ type: "postgres", table: "multi_schema" });
           restore("postgres-writable");
+          cy.signInAsAdmin();
           resyncDatabase({ dbId: WRITABLE_DB_ID });
           cy.signInAsNormalUser();
 
@@ -119,6 +120,7 @@ describe("scenarios > organization > entity picker", () => {
         () => {
           resetTestTable({ type: "postgres", table: "multi_schema" });
           restore("postgres-writable");
+          cy.signInAsAdmin();
           resyncDatabase({ dbId: WRITABLE_DB_ID });
           cy.signInAsNormalUser();
 
