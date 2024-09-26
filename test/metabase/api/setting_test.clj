@@ -380,7 +380,8 @@
 
 (defsetting test-deprecated-setting
   (deferred-tru "Setting to test deprecation warning.")
-  :deprecated "0.51.0")
+  :deprecated "0.51.0"
+  :encryption :no)
 
 (deftest deprecation-warning-for-deprecated-setting-test
   (log.capture/with-log-messages-for-level [warnings :warn]

@@ -31,14 +31,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Embed Settings ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defsetting embedding-app-origins-sdk
-  (deferred-tru "Allow this origin to embed Metabase SDK")
-  :feature    :embedding-sdk
-  :export?    false
-  :visibility :public
-  :encryption :no
-  :audit      :getter)
-
 (defsetting enable-embedding
   (deferred-tru "Allow admins to securely embed questions and dashboards within other applications?")
   :type       :boolean
