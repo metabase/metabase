@@ -138,7 +138,7 @@ export function EntityPickerModal<
         ? (previousTabId ?? selectedTabId)
         : selectedTabId
     ];
-  const scopedSearchResults = useScopedSearchResults(
+  const { scopedSearchResults, isScopedSearchEnabled } = useScopedSearchResults(
     searchQuery,
     searchModels,
     searchScope,
@@ -164,7 +164,7 @@ export function EntityPickerModal<
       ...searchParams,
     },
     {
-      skip: !debouncedSearchQuery || searchScope === "folder",
+      skip: !debouncedSearchQuery || isScopedSearchEnabled,
     },
   );
 
@@ -177,7 +177,7 @@ export function EntityPickerModal<
   }, [isFetching, data, searchResultFilter]);
 
   const finalSearchResults =
-    (searchScope === "folder" ? scopedSearchResults : searchResults) ?? [];
+    (isScopedSearchEnabled ? scopedSearchResults : searchResults) ?? [];
 
   const filteredRecents = useMemo(() => {
     if (!recentItems) {
@@ -234,6 +234,7 @@ export function EntityPickerModal<
           <SearchTab
             folder={selectedFolder}
             isLoading={isFetching}
+            isScopedSearchEnabled={isScopedSearchEnabled}
             searchScope={searchScope}
             searchResults={finalSearchResults}
             selectedItem={selectedItem}
@@ -344,7 +345,10 @@ export function EntityPickerModal<
                 icon={<Icon name="search" size={16} />}
                 miw={400}
                 mr="2rem"
-                placeholder={getSearchInputPlaceholder(selectedFolder)}
+                placeholder={getSearchInputPlaceholder(
+                  selectedFolder,
+                  isScopedSearchEnabled,
+                )}
                 value={searchQuery}
                 onChange={e => handleQueryChange(e.target.value ?? "")}
               />

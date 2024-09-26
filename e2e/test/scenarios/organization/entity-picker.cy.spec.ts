@@ -33,7 +33,7 @@ const cardDetails: StructuredQuestionDetails = {
 describe("scenarios > organization > entity picker", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsNormalUser();
+    cy.signInAsAdmin();
   });
 
   describe("data picker", () => {
@@ -62,7 +62,6 @@ describe("scenarios > organization > entity picker", () => {
         () => {
           resetTestTable({ type: "postgres", table: "multi_schema" });
           restore("postgres-writable");
-          cy.signInAsAdmin();
           resyncDatabase({ dbId: WRITABLE_DB_ID });
           cy.signInAsNormalUser();
 
@@ -120,7 +119,6 @@ describe("scenarios > organization > entity picker", () => {
         () => {
           resetTestTable({ type: "postgres", table: "multi_schema" });
           restore("postgres-writable");
-          cy.signInAsAdmin();
           resyncDatabase({ dbId: WRITABLE_DB_ID });
           cy.signInAsNormalUser();
 
@@ -161,7 +159,6 @@ describe("scenarios > organization > entity picker", () => {
       const tabs = ["Saved questions", "Models", "Metrics"];
 
       it("should search for cards for a normal user", () => {
-        cy.signInAsAdmin();
         createTestCards();
         cy.signInAsNormalUser();
         startNewQuestion();
@@ -259,7 +256,6 @@ describe("scenarios > organization > entity picker", () => {
       });
 
       it("should search for cards when there is no access to the root collection", () => {
-        cy.signInAsAdmin();
         createTestCards();
         cy.log("grant `nocollection` user access to `First collection`");
         cy.log("personal collections are always available");
@@ -362,6 +358,27 @@ describe("scenarios > organization > entity picker", () => {
           });
         });
       });
+
+      it("should not allow local search for `all personal collections`", () => {
+        createTestCards();
+        startNewQuestion();
+
+        tabs.forEach(tab => {
+          entityPickerModal().within(() => {
+            entityPickerModalTab(tab).click();
+            cy.findByText("All personal collections").click();
+            enterSearchText({
+              text: "root",
+              placeholder: "Search…",
+            });
+            globalSearchTab().should("not.exist");
+            localSearchTab("All personal collections").should("not.exist");
+            assertSearchResults({
+              foundItems: ["Root question 1", "Root model 1", "Root metric 1"],
+            });
+          });
+        });
+      });
     });
   });
 });
@@ -394,9 +411,9 @@ function createTestCards() {
   });
 }
 
-// function globalSearchTab() {
-//   return cy.findByLabelText("Everywhere");
-// }
+function globalSearchTab() {
+  return cy.findByLabelText("Everywhere");
+}
 
 function localSearchTab(selectedItem: string) {
   return cy.findByLabelText(`“${selectedItem}”`);
