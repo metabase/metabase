@@ -2310,26 +2310,26 @@
   (testing "Upload a CSV file with unique column names that get sanitized to the same string\n"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
-       (let [data         ["a" 1]
-             bespoke-name "i put a lot of effort into this display name"]
-         (with-upload-table!
-           [table (create-from-csv-and-sync-with-defaults!
-                   :file (csv-file-with data))]
-           (testing "Initially, we get the inferred name"
-             (is (= (header-with-auto-pk ["A"])
-                    (column-display-names-for-table table))))
-           (testing "But we can configure it"
-             (t2/update! :model/Field {:name "a" :table_id (:id table)}
-                         {:display_name bespoke-name})
-             (is (= (header-with-auto-pk [bespoke-name])
-                    (column-display-names-for-table table))))
-           (let [file (csv-file-with data (mt/random-name))]
-             (is (= {:row-count 1}
-                    (update-csv! ::upload/append {:file file, :table-id (:id table)})))
-             (testing "And our configuration is preserved when we append more data"
-               (is (= (header-with-auto-pk [bespoke-name])
-                      (column-display-names-for-table table))))
-             (io/delete-file file))))))))
+        (let [data         ["a" 1]
+              bespoke-name "i put a lot of effort into this display name"]
+          (with-upload-table!
+            [table (create-from-csv-and-sync-with-defaults!
+                    :file (csv-file-with data))]
+            (testing "Initially, we get the inferred name"
+              (is (= (header-with-auto-pk ["A"])
+                     (column-display-names-for-table table))))
+            (testing "But we can configure it"
+              (t2/update! :model/Field {:name "a" :table_id (:id table)}
+                          {:display_name bespoke-name})
+              (is (= (header-with-auto-pk [bespoke-name])
+                     (column-display-names-for-table table))))
+            (let [file (csv-file-with data (mt/random-name))]
+              (is (= {:row-count 1}
+                     (update-csv! ::upload/append {:file file, :table-id (:id table)})))
+              (testing "And our configuration is preserved when we append more data"
+                (is (= (header-with-auto-pk [bespoke-name])
+                       (column-display-names-for-table table))))
+              (io/delete-file file))))))))
 
 (deftest append-with-really-long-names-that-duplicate-test
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
