@@ -76,7 +76,7 @@
   :type       :string
   :export?    false
   :visibility :public
-  :encryption :never
+  :encryption :no
   :audit      :getter
   :getter    (fn embedding-app-origins-sdk-getter []
                (add-localhost (setting/get-value-of-type :string :embedding-app-origins-sdk)))
