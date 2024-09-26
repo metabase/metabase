@@ -1,7 +1,6 @@
 export { BrowseModels } from "./BrowseModels";
 export type {
-  AvailableModelFilters,
-  ActualModelFilters,
+  ModelFilterSettings,
   ModelFilterControlsProps,
   ModelResult,
   RecentModel,

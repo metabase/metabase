@@ -29,9 +29,8 @@ import type {
   MetricFilterSettings,
 } from "metabase/browse/metrics";
 import type {
-  ActualModelFilters,
-  AvailableModelFilters,
   ModelFilterControlsProps,
+  ModelFilterSettings,
 } from "metabase/browse/models";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
@@ -507,20 +506,18 @@ export const PLUGIN_EMBEDDING = {
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
+  contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
-  availableModelFilters: {} as AvailableModelFilters,
-  ModelFilterControls: (() => null) as ComponentType<ModelFilterControlsProps>,
   sortCollectionsByVerification: (
     _a: CollectionEssentials,
     _b: CollectionEssentials,
   ) => 0,
-  useModelFilterSettings: () =>
-    [{}, _.noop] as [
-      ActualModelFilters,
-      Dispatch<SetStateAction<ActualModelFilters>>,
-    ],
 
-  contentVerificationEnabled: false,
+  ModelFilterControls: (_props: ModelFilterControlsProps) => null,
+  getDefaultModelFilters: (_state: State): ModelFilterSettings => ({
+    verified: false,
+  }),
+
   getDefaultMetricFilters: (_state: State): MetricFilterSettings => ({
     verified: false,
   }),

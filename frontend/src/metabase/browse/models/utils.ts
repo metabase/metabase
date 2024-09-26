@@ -7,13 +7,7 @@ import type { IconName } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
-import type {
-  ActualModelFilters,
-  AvailableModelFilters,
-  FilterableModel,
-  ModelResult,
-  RecentModel,
-} from "./types";
+import type { ModelResult, RecentModel } from "./types";
 
 export const isModel = (item: SearchResult) => item.model === "dataset";
 
@@ -96,21 +90,6 @@ export const getMaxRecentModelCount = (
     return 4;
   }
   return 0;
-};
-
-export const filterModels = <T extends FilterableModel>(
-  unfilteredModels: T[] | undefined,
-  actualModelFilters: ActualModelFilters,
-  availableModelFilters: AvailableModelFilters,
-): T[] => {
-  return _.reduce(
-    actualModelFilters,
-    (acc, shouldFilterBeActive, filterName) =>
-      shouldFilterBeActive
-        ? acc.filter(availableModelFilters[filterName].predicate)
-        : acc,
-    unfilteredModels || [],
-  );
 };
 
 export const getIcon = (item: unknown): { name: IconName; color: string } => {

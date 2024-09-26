@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import { useListRecentsQuery } from "metabase/api";
+import { skipToken, useListRecentsQuery } from "metabase/api";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
@@ -22,63 +23,21 @@ import {
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
 import { ModelsTable } from "./ModelsTable";
 import { RecentModels } from "./RecentModels";
-import type { ModelResult } from "./types";
-import { filterModels, getMaxRecentModelCount, isRecentModel } from "./utils";
+import type { ModelFilterSettings, ModelResult } from "./types";
+import { getMaxRecentModelCount, isRecentModel } from "./utils";
 
-const { availableModelFilters, useModelFilterSettings, ModelFilterControls } =
-  PLUGIN_CONTENT_VERIFICATION;
+const {
+  contentVerificationEnabled,
+  ModelFilterControls,
+  getDefaultModelFilters,
+} = PLUGIN_CONTENT_VERIFICATION;
 
 export const BrowseModels = () => {
-  /** Mapping of filter names to true if the filter is active or false if it is inactive */
-  const [actualModelFilters, setActualModelFilters] = useModelFilterSettings();
+  const [modelFilters, setModelFilters] = useModelFilterSettings();
+  const { isLoading, error, models, recentModels, hasVerifiedModels } =
+    useFilteredModels(modelFilters);
 
-  const modelsResult = useFetchModels({ model_ancestors: true });
-
-  const { models, doVerifiedModelsExist } = useMemo(() => {
-    const unfilteredModels =
-      (modelsResult.data?.data as ModelResult[] | undefined) ?? [];
-    const doVerifiedModelsExist = unfilteredModels.some(
-      model => model.moderated_status === "verified",
-    );
-    const models =
-      PLUGIN_COLLECTIONS.filterOutItemsFromInstanceAnalytics(unfilteredModels);
-    return { models, doVerifiedModelsExist };
-  }, [modelsResult]);
-
-  const { filteredModels } = useMemo(() => {
-    const filteredModels = filterModels(
-      models,
-      // If no models are verified, don't filter them
-      doVerifiedModelsExist ? actualModelFilters : {},
-      availableModelFilters,
-    );
-    return { filteredModels };
-  }, [actualModelFilters, models, doVerifiedModelsExist]);
-
-  const recentModelsResult = useListRecentsQuery(undefined, {
-    refetchOnMountOrArgChange: true,
-  });
-
-  const filteredRecentModels = useMemo(
-    () =>
-      filterModels(
-        recentModelsResult.data?.filter(isRecentModel),
-        // If no models are verified, don't filter them
-        doVerifiedModelsExist ? actualModelFilters : {},
-        availableModelFilters,
-      ),
-    [recentModelsResult.data, actualModelFilters, doVerifiedModelsExist],
-  );
-
-  const recentModels = useMemo(() => {
-    const cap = getMaxRecentModelCount(models.length);
-    return filteredRecentModels.slice(0, cap);
-  }, [filteredRecentModels, models.length]);
-
-  const isEmpty =
-    !recentModelsResult.isLoading &&
-    !modelsResult.isLoading &&
-    !filteredModels.length;
+  const isEmpty = !isLoading && models.length === 0;
 
   return (
     <BrowseContainer>
@@ -101,10 +60,10 @@ export const BrowseModels = () => {
                 {t`Models`}
               </Group>
             </Title>
-            {doVerifiedModelsExist && (
+            {hasVerifiedModels && (
               <ModelFilterControls
-                actualModelFilters={actualModelFilters}
-                setActualModelFilters={setActualModelFilters}
+                modelFilters={modelFilters}
+                setModelFilters={setModelFilters}
               />
             )}
           </Flex>
@@ -129,25 +88,20 @@ export const BrowseModels = () => {
               <>
                 <ModelExplanationBanner />
                 <DelayedLoadingAndErrorWrapper
-                  error={recentModelsResult.error}
-                  loading={
-                    // If the main models result is still pending, the list of recently viewed
-                    // models isn't ready yet, since the number of recently viewed models is
-                    // capped according to the size of the main models result
-                    recentModelsResult.isLoading || modelsResult.isLoading
-                  }
+                  error={error}
+                  loading={isLoading}
                   style={{ flex: 1 }}
                   loader={<RecentModels skeleton />}
                 >
                   <RecentModels models={recentModels} />
                 </DelayedLoadingAndErrorWrapper>
                 <DelayedLoadingAndErrorWrapper
-                  error={modelsResult.error}
-                  loading={modelsResult.isLoading}
+                  error={error}
+                  loading={isLoading}
                   style={{ flex: 1 }}
                   loader={<ModelsTable skeleton />}
                 >
-                  <ModelsTable models={filteredModels} />
+                  <ModelsTable models={models} />
                 </DelayedLoadingAndErrorWrapper>
               </>
             )}
@@ -157,3 +111,101 @@ export const BrowseModels = () => {
     </BrowseContainer>
   );
 };
+
+function useModelFilterSettings() {
+  const defaultModelFilters = useSelector(getDefaultModelFilters);
+  return useState(defaultModelFilters);
+}
+
+function useHasVerifiedModels() {
+  const result = useFetchModels(
+    contentVerificationEnabled
+      ? {
+          filter_items_in_personal_collection: "exclude",
+          model_ancestors: false,
+          limit: 0,
+          verified: true,
+        }
+      : skipToken,
+  );
+
+  if (!contentVerificationEnabled) {
+    return {
+      isLoading: false,
+      error: null,
+      result: false,
+    };
+  }
+
+  const total = result.data?.total ?? 0;
+
+  return {
+    isLoading: result.isLoading,
+    error: result.error,
+    result: total > 0,
+  };
+}
+
+function useFilteredModels(modelFilters: ModelFilterSettings) {
+  const hasVerifiedModels = useHasVerifiedModels();
+
+  const filters = cleanModelFilters(modelFilters, hasVerifiedModels.result);
+
+  const modelsResult = useFetchModels(
+    hasVerifiedModels.isLoading || hasVerifiedModels.error
+      ? skipToken
+      : {
+          filter_items_in_personal_collection: "exclude",
+          model_ancestors: false,
+          ...filters,
+        },
+  );
+
+  const models = modelsResult.data?.data as ModelResult[] | undefined;
+
+  const recentsCap = getMaxRecentModelCount(models?.length ?? 0);
+
+  const recentModelsResult = useListRecentsQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+    skip: recentsCap === 0,
+  });
+
+  const isLoading =
+    hasVerifiedModels.isLoading ||
+    modelsResult.isLoading ||
+    recentModelsResult.isLoading;
+
+  const error =
+    hasVerifiedModels.error || modelsResult.error || recentModelsResult.error;
+
+  return {
+    isLoading,
+    error,
+    hasVerifiedModels: hasVerifiedModels.result,
+    models: PLUGIN_COLLECTIONS.filterOutItemsFromInstanceAnalytics(
+      models ?? [],
+    ),
+
+    // TODO: filter out verified models from recent models
+    recentModels: (recentModelsResult.data ?? [])
+      .filter(isRecentModel)
+      .filter(
+        model =>
+          !modelFilters.verified || model.moderated_status === "verified",
+      )
+      .slice(0, recentsCap),
+  };
+}
+
+function cleanModelFilters(
+  modelFilters: ModelFilterSettings,
+  hasVerifiedModels: boolean,
+) {
+  const filters = { ...modelFilters };
+  if (!hasVerifiedModels || !filters.verified) {
+    // we cannot pass false or undefined to the backend
+    // delete the key instead
+    delete filters.verified;
+  }
+  return filters;
+}
