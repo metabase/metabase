@@ -2,9 +2,14 @@ import { t } from "ttag";
 
 import Link from "metabase/core/components/Link";
 import { Box, Flex, Icon, Text } from "metabase/ui";
+import { Link as RouterLink } from "react-router";
 
 import type { PaletteActionImpl } from "../types";
-import { getCommandPaletteIcon, locationDescriptorToURL } from "../utils";
+import {
+  getCommandPaletteIcon,
+  isAbsoluteURL,
+  locationDescriptorToURL,
+} from "../utils";
 
 interface PaletteResultItemProps {
   item: PaletteActionImpl;
@@ -119,9 +124,15 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
   );
   if (item.extra?.href) {
     const url: string = locationDescriptorToURL(item.extra.href);
+    console.log("url", url);
+    console.log("isAbsoluteURL(url)", isAbsoluteURL(url));
+    // React Router's Link component only supports relative URLs
+    const LinkComponent = (
+      isAbsoluteURL(url) ? Link : RouterLink
+    ) as typeof Link;
     return (
       <Box
-        component={Link}
+        component={LinkComponent}
         to={url}
         target={item.extra.openInNewTab ? "_blank" : undefined}
         role="link"
