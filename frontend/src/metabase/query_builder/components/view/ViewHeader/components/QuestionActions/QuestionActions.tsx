@@ -10,22 +10,15 @@ import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
-import {
-  PLUGIN_MODERATION,
-  PLUGIN_QUERY_BUILDER_HEADER,
-} from "metabase/plugins";
-import {
-  onOpenQuestionSettings,
-  softReloadCard,
-} from "metabase/query_builder/actions";
+import { PLUGIN_QUERY_BUILDER_HEADER } from "metabase/plugins";
+import { onOpenQuestionSettings } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -80,11 +73,8 @@ export const QuestionActions = ({
   const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
   const isMetabotEnabled = useSetting("is-metabot-enabled");
 
-  const isModerator = useSelector(getUserIsAdmin) && question.canWrite?.();
-
   const dispatch = useDispatch();
 
-  const reload = () => dispatch(softReloadCard());
   const onOpenSettingsSidebar = () => dispatch(onOpenQuestionSettings());
 
   const infoButtonColor = isShowingQuestionInfoSidebar
@@ -150,13 +140,6 @@ export const QuestionActions = ({
       link: Urls.modelMetabot(question.id()),
     });
   }
-
-  const moderationItems = PLUGIN_MODERATION.useMenuItems(
-    question,
-    isModerator,
-    reload,
-  );
-  extraButtons.push(...moderationItems);
 
   if (hasCollectionPermissions) {
     if (isModelOrMetric && hasDataPermissions) {
@@ -236,12 +219,15 @@ export const QuestionActions = ({
       separator: true,
       key: "trash-separator",
     });
-    extraButtons.push({
-      title: t`Move to trash`,
-      icon: "trash",
-      action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
-      testId: ARCHIVE_TESTID,
-    });
+
+    if (isStandaloneQuestion) {
+      extraButtons.push({
+        title: t`Move to trash`,
+        icon: "trash",
+        action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
+        testId: ARCHIVE_TESTID,
+      });
+    }
   }
 
   const fileInputRef = useRef<HTMLInputElement>(null);

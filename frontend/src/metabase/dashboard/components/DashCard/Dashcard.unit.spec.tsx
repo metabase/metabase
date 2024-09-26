@@ -82,7 +82,6 @@ function setup({
       onAddSeries={jest.fn()}
       onReplaceCard={onReplaceCard}
       onRemove={jest.fn()}
-      onTrash={jest.fn()}
       markNewCardSeen={jest.fn()}
       navigateToNewCardFromDashboard={jest.fn()}
       onReplaceAllVisualizationSettings={jest.fn()}
