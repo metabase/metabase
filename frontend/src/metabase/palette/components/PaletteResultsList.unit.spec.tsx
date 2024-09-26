@@ -75,7 +75,7 @@ describe("PaletteResultsList interactions should work", () => {
     };
 
     // NOTE: This test will correctly fail if openInNewTab is set to false
-    it("should not navigate via React router on click", async () => {
+    it("should NOT navigate via React router on click", async () => {
       const { history, link } = setup({ item: searchDocs });
       fireEvent.click(link);
       expect(history?.getCurrentLocation()).toMatchObject(initialLocation);
@@ -106,7 +106,6 @@ describe("PaletteResultsList interactions should work", () => {
     it("should navigate via React router when the Enter key is pressed", async () => {
       const { history, link } = setup({ item: viewResults });
       fireEvent(window, new KeyboardEvent("keydown", { key: "Enter" }));
-      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
       await waitFor(() => {
         expect(history?.getCurrentLocation()).toMatchObject(searchLocation);
       });
