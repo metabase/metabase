@@ -14,8 +14,8 @@ import {
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 
-import { trackTableClick } from "../../analytics";
-import { BrowseHeaderContent } from "../BrowseHeader.styled";
+import { BrowseHeaderContent } from "../../components/BrowseHeader.styled";
+import { trackTableClick } from "../analytics";
 
 import {
   TableActionLink,

@@ -5,9 +5,8 @@ import { Box, Text } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type { RecentCollectionItem } from "metabase-types/api";
 
-import { trackModelClick } from "../analytics";
-
 import { RecentModelsGrid } from "./RecentModels.styled";
+import { trackModelClick } from "./analytics";
 
 export function RecentModels({
   models = [],

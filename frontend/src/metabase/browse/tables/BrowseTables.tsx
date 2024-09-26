@@ -1,11 +1,10 @@
-import TableBrowser from "../containers/TableBrowser";
-
 import {
   BrowseContainer,
   BrowseMain,
   BrowseSection,
-} from "./BrowseContainer.styled";
-import { BrowseDataHeader } from "./BrowseDataHeader";
+} from "../components/BrowseContainer.styled";
+import { BrowseDataHeader } from "../components/BrowseDataHeader";
+import TableBrowser from "../containers/TableBrowser";
 
 export const BrowseTables = ({
   params: { dbId, schemaName },
