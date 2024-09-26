@@ -71,7 +71,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [selectedHash, setSelectedHash] = useState(null)
     const [showCubeEditButton, setShowCubeEditButton] = useState(false)
     const [requestedFields, setRequestedFields] = useState([]);
-
+    const [suggestionQuestion, setSuggestionQuestion] = useState(null);
     const databases = data?.data;
     useEffect(() => {
         if (databases) {
@@ -614,8 +614,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     };
 
     const handleResultMessage = data => {
-        if(data.message.includes("The semantic layer requires an update to proceed with the task.")) {
+        if (data.message.includes("the semantic layer needs to be updated with the following field") || data.message.includes("The semantic layer requires an update to proceed with the task.")) {
             setIsLoading(false);
+            setShowCubeEditButton(true);
             return;
         }
         if (data.type === "result" && !data.message.includes("Unable to generate a suitable query after 3 attempts. Here is the feedback message:")) {
@@ -645,7 +646,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const handleInfoMessage = data => {
         removeLoadingMessage();
         clearPlanMessage();
-        if(data.functions.payload.message.includes("There was an error with the AI models. Please contact with Omniloy support team.")){
+        if (data.functions.payload.message.includes("There was an error with the AI models. Please contact with Omniloy support team.")) {
             setChatLoading(false);
         }
 
@@ -689,16 +690,18 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             const message = data.functions.payload.message;
             const semanticLayerMessageStart = "To complete this task, the semantic layer needs to be updated with the following field:";
             const semanticLayerMessageEnd = "Please reach out to support for assistance.";
-
-            if (message.startsWith(semanticLayerMessageStart) && message.endsWith(semanticLayerMessageEnd)) {
+            const suggestionKey = "Here is a suggestion related to your original query: ";
+            if (message.startsWith(semanticLayerMessageStart)) {
                 // Extract the part of the message containing the fields
                 const fieldsString = message
                     .slice(semanticLayerMessageStart.length, message.indexOf(semanticLayerMessageEnd))
                     .trim();
 
                 // Split the string into an array of field names
+                const SuggestionParts = message.split(suggestionKey);
                 const requestedFields = fieldsString.split(',').map(field => field.trim());
-
+                const suggestion = SuggestionParts[1].trim();
+                setSuggestionQuestion(suggestion);
                 console.log('Extracted fields:', requestedFields);
 
                 // You can now use or store the `requestedFields` array in your component
@@ -710,7 +713,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
 
     const handleDirectResponse = data => {
-        if(data.message.includes("We had a problem creating a response for your requests. Please try again or contact support.")) {
+        if (data.message.includes("We had a problem creating a response for your requests. Please try again or contact support.")) {
             setMessages(prevMessages => [
                 ...prevMessages,
                 {
@@ -772,6 +775,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
             setShowCubeEditButton(true)
             return;
         }
+        console.log("MESSAGE: false ")
         setMessages(prevMessages => [
             ...prevMessages,
             {
@@ -912,7 +916,26 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         setInputValue("");
         dispatch(clearInitialMessage())
     };
-
+    const handleSuggestion = () => {
+        setMessages(prevMessages => [
+            ...prevMessages,
+            {
+                id: Date.now() + Math.random(),
+                text: suggestionQuestion,
+                typeMessage: "data",
+                sender: "user",
+                type: "text",
+                // thread_id: threadId,
+            }
+        ]);
+        const response = {
+            type: "query",
+            task: suggestionQuestion,
+            thread_id: threadId,
+            appType: chatType,
+        };
+        ws && ws.send(JSON.stringify(response));
+    }
     const removeLoadingMessage = () => {
         setMessages(prevMessages => prevMessages.filter(
             message => message.text !== "Please wait until we generate the response...." && message.text !== "Please wait until we generate the visualization for you...."
@@ -933,7 +956,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
     const clearQueryMessage = () => {
         setMessages(prevMessages => prevMessages.filter(
-            message => !message.text.includes("Query executed successfully")
+            message => !message.text.includes("Query executed successfully") &&
+            !message.text.includes("Executing query")
         ));
     }
 
@@ -1065,7 +1089,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                 approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
                                 card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} insightsList={insightsList}
                                 showError={showError} insightsPlan={inisghtPlan}
-                                insightsText={insightsText} insightsImg={insightsImg} insightsCode={insightsCode} showCubeEditButton={showCubeEditButton} sendAdminRequest={handleCubeRequestDialogOpen}
+                                insightsText={insightsText} insightsImg={insightsImg} insightsCode={insightsCode} showCubeEditButton={showCubeEditButton} sendAdminRequest={handleCubeRequestDialogOpen} onSuggestion={handleSuggestion}
                             />
                             <div
                                 style={{
@@ -1130,10 +1154,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                                     height: "30px",
                                                     padding: "0",
                                                     minWidth: "0",
-                                                    backgroundColor: isConnected && schema.length > 0  ? "#8A64DF" : "#F1EBFF",
+                                                    backgroundColor: isConnected && schema.length > 0 ? "#8A64DF" : "#F1EBFF",
                                                     color: "#FFF",
                                                     border: "none",
-                                                    cursor: isConnected && schema.length > 0  ? "pointer" : "not-allowed",
+                                                    cursor: isConnected && schema.length > 0 ? "pointer" : "not-allowed",
                                                     display: "flex",
                                                     justifyContent: "center",
                                                     alignItems: "center",

@@ -18,6 +18,7 @@ const ChatMessageList = ({
   approvalChangeButtons,
   onApproveClick,
   onDenyClick,
+  onSuggestion,
   card,
   defaultQuestion,
   result,
@@ -70,6 +71,7 @@ const ChatMessageList = ({
             onDenyClick={onDenyClick}
             showCubeEditButton={showCubeEditButton}
             sendAdminRequest={sendAdminRequest}
+            onSuggestion={onSuggestion}
           />
 
           {/* Loop over insightsPlan and display matching items */}

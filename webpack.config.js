@@ -229,17 +229,17 @@ const config = {
   },
   cache: useFilesystemCache
     ? {
-        type: "filesystem",
-        cacheDirectory: path.resolve(
-          __dirname,
-          "node_modules/.cache/",
-          edition === "oss" ? "webpack-oss" : "webpack-ee",
-        ),
-        buildDependencies: {
-          // invalidates the cache on configuration change
-          config: [__filename],
-        },
-      }
+      type: "filesystem",
+      cacheDirectory: path.resolve(
+        __dirname,
+        "node_modules/.cache/",
+        edition === "oss" ? "webpack-oss" : "webpack-ee",
+      ),
+      buildDependencies: {
+        // invalidates the cache on configuration change
+        config: [__filename],
+      },
+    }
     : undefined,
   optimization: {
     runtimeChunk: "single",
