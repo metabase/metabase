@@ -1,8 +1,8 @@
 import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
+import { formatValue } from "metabase/lib/formatting";
 import { data } from "metabase/static-viz/components/WaterfallChart/stories-data";
-import { formatStaticValue } from "metabase/static-viz/lib/format";
 import {
   measureTextHeight,
   measureTextWidth,
@@ -28,7 +28,7 @@ const Template: StoryFn<StaticChartProps> = args => {
 
 const renderingContext: RenderingContext = {
   getColor: color,
-  formatValue: formatStaticValue as any,
+  formatValue: formatValue,
   measureText: (text, style) =>
     measureTextWidth(text, Number(style.size), Number(style.weight)),
   measureTextHeight: (_, style) => measureTextHeight(Number(style.size)),

@@ -80,7 +80,6 @@ export type ComputedVisualizationSettings = VisualizationSettings & {
 export interface StaticVisualizationProps {
   rawSeries: RawSeries;
   renderingContext: RenderingContext;
-  settings: ComputedVisualizationSettings;
   isStorybook?: boolean;
 }
 
