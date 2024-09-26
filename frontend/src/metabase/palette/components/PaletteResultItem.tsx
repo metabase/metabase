@@ -127,7 +127,11 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
     if (isAbsoluteURL(url)) {
       return (
         <Box
-          component={ExternalLink}
+          component={
+            // This is needed to make external links work when Metabase is
+            // hosted on a subpath
+            ExternalLink
+          }
           href={url}
           target="_blank"
           role="link"
