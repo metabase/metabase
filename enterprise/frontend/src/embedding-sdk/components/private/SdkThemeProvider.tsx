@@ -2,6 +2,7 @@ import { Global } from "@emotion/react";
 import { useMemo } from "react";
 
 import type { MetabaseTheme } from "embedding-sdk";
+import { DEFAULT_FONT } from "embedding-sdk/config";
 import {
   getEmbeddingThemeOverride,
   setGlobalEmbeddingColors,
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export const SdkThemeProvider = ({ theme, children }: Props) => {
+  const font = useSelector(getFont);
   const appColors = useSelector(state =>
     getApplicationColors(getSettings(state)),
   );
@@ -28,20 +30,22 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
     // This must be done before ThemeProvider calls getThemeOverrides.
     setGlobalEmbeddingColors(theme?.colors, appColors);
 
-    return theme && getEmbeddingThemeOverride(theme);
-  }, [appColors, theme]);
+    return theme && getEmbeddingThemeOverride(theme, font);
+  }, [appColors, theme, font]);
 
   return (
     <ThemeProvider theme={themeOverride}>
-      <SDKGlobalStyles />
+      <GlobalSdkCssVariables />
       {children}
     </ThemeProvider>
   );
 };
 
-function SDKGlobalStyles() {
+function GlobalSdkCssVariables() {
   const theme = useMantineTheme();
-  const font = useSelector(getFont);
+
+  // the default is needed for when the sdk can't connect to the instance and get the default from there
+  const font = useSelector(getFont) ?? DEFAULT_FONT;
 
   return <Global styles={getMetabaseSdkCssVariables(theme, font)} />;
 }

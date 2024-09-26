@@ -106,6 +106,7 @@ export const createMockTokenFeatures = (
   disable_password_login: false,
   content_verification: false,
   embedding: false,
+  embedding_sdk: false,
   hosting: false,
   official_collections: false,
   llm_autodescription: false,
@@ -254,5 +255,6 @@ export const createMockSettings = (
   "setup-license-active-at-setup": false,
   "notebook-native-preview-shown": false,
   "notebook-native-preview-sidebar-width": null,
+  "query-analysis-enabled": false,
   ...opts,
 });

@@ -1,7 +1,7 @@
 (ns metabase.search.postgres.index-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.search :refer [is-postgres?]]
+   [metabase.db :as mdb]
    [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
@@ -11,7 +11,7 @@
 (defn legacy-results
   "Use the source tables directly to search for records."
   [search-term & {:as opts}]
-  (t2/query (#'search.postgres/in-place-query (assoc opts :search-term search-term))))
+  (t2/query (#'search.postgres/in-place-query (assoc opts :search-engine :search.engine/in-place :search-term search-term))))
 
 (def legacy-models
   "Just the identity of the matches"
@@ -27,7 +27,7 @@
 (defmacro with-index
   "Ensure a clean, small index."
   [& body]
-  `(when (is-postgres?)
+  `(when (= :postgres (mdb/db-type))
      (mt/dataset ~(symbol "test-data")
        (mt/with-temp [:model/Card {} {:name "Customer Satisfaction" :collection_id 1}
                       :model/Card {} {:name "The Latest Revenue Projections" :collection_id 1}

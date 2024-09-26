@@ -5,6 +5,7 @@ import {
   addOrUpdateDashboardCard,
   cartesianChartCircle,
   createNativeQuestion,
+  createSegment,
   editDashboard,
   enterCustomColumnDetails,
   entityPickerModal,
@@ -37,7 +38,6 @@ import {
   visualize,
   withDatabase,
 } from "e2e/support/helpers";
-import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;

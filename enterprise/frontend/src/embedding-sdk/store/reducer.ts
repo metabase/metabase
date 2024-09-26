@@ -11,6 +11,7 @@ import type {
   SdkState,
   SdkStoreState,
 } from "embedding-sdk/store/types";
+import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 import { getFetchRefreshTokenFn, getSessionTokenState } from "./selectors";
@@ -85,6 +86,11 @@ export const setEventHandlers = createAction<SdkEventHandlersConfig | null>(
   SET_EVENT_HANDLERS,
 );
 
+const SET_USAGE_PROBLEM = "sdk/SET_USAGE_PROBLEM";
+export const setUsageProblem = createAction<SdkUsageProblem | null>(
+  SET_USAGE_PROBLEM,
+);
+
 const initialState: SdkState = {
   metabaseInstanceUrl: "",
   token: {
@@ -95,6 +101,7 @@ const initialState: SdkState = {
   loginStatus: { status: "uninitialized" },
   plugins: null,
   eventHandlers: null,
+  usageProblem: null,
   loaderComponent: null,
   errorComponent: null,
   fetchRefreshTokenFn: null,
@@ -160,5 +167,10 @@ export const sdk = createReducer(initialState, builder => {
   builder.addCase(setFetchRefreshTokenFn, (state, action) => ({
     ...state,
     fetchRefreshTokenFn: action.payload,
+  }));
+
+  builder.addCase(setUsageProblem, (state, action) => ({
+    ...state,
+    usageProblem: action.payload,
   }));
 });

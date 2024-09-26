@@ -13,6 +13,10 @@ export function notebookButton() {
     .findByTestId("notebook-button");
 }
 
+export function startSort() {
+  getNotebookStep("summarize").findByText("Sort").click();
+}
+
 /**
  * Switch to a notebook editor from a simple query view (aka "chill mode").
  */
@@ -109,11 +113,13 @@ export function addSummaryGroupingField({
   field,
   stage = 0,
   index = 0,
+  bucketSize,
 }: {
   table?: string;
   field: string;
   stage?: number;
   index?: number;
+  bucketSize?: string;
 }) {
   getNotebookStep("summarize", { stage, index })
     .findByTestId("breakout-step")
@@ -125,8 +131,21 @@ export function addSummaryGroupingField({
     if (table) {
       cy.findByText(table).click();
     }
-    cy.findByText(field).click();
+
+    if (bucketSize) {
+      cy.findByText(field)
+        .realHover()
+        .closest("[data-testid=dimension-list-item]")
+        .findByTestId("dimension-list-item-binning")
+        .click();
+    } else {
+      cy.findByText(field).click();
+    }
   });
+
+  if (bucketSize) {
+    popover().last().findByText(bucketSize).click();
+  }
 }
 
 /**
