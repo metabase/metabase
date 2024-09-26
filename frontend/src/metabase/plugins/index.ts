@@ -28,6 +28,8 @@ import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors"
 import type {
   ActualModelFilters,
   AvailableModelFilters,
+  MetricFilterControlsProps,
+  MetricFilterSettings,
   ModelFilterControlsProps,
 } from "metabase/browse/utils";
 import { getIconBase } from "metabase/lib/icon";
@@ -380,7 +382,7 @@ export const PLUGIN_MODERATION = {
     _usersById: Record<string, UserListResult>,
     _currentUser: User | null,
   ) => [] as RevisionOrModerationEvent[],
-  getMenuItems: (
+  useMenuItems: (
     _question?: Question,
     _isModerator?: boolean,
     _reload?: () => void,
@@ -526,6 +528,12 @@ export const PLUGIN_CONTENT_VERIFICATION = {
       ActualModelFilters,
       Dispatch<SetStateAction<ActualModelFilters>>,
     ],
+
+  contentVerificationEnabled: false,
+  getDefaultMetricFilters: (_state: State): MetricFilterSettings => ({
+    verified: false,
+  }),
+  MetricFilterControls: (_props: MetricFilterControlsProps) => null,
 };
 
 export const PLUGIN_DASHBOARD_HEADER = {

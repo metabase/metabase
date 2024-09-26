@@ -259,5 +259,6 @@ export const createMockSettings = (
   "setup-license-active-at-setup": false,
   "notebook-native-preview-shown": false,
   "notebook-native-preview-sidebar-width": null,
+  "query-analysis-enabled": false,
   ...opts,
 });

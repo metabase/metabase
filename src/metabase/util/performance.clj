@@ -1,6 +1,6 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing."
-  (:refer-clojure :exclude [reduce mapv])
+  (:refer-clojure :exclude [reduce mapv some])
   (:import (clojure.lang LazilyPersistentVector RT)))
 
 (set! *warn-on-reflection* true)
@@ -126,3 +126,8 @@
       ([x y] (mapv #(% x y) fns))
       ([x y z] (mapv #(% x y z) fns))
       ([x y z & args] (mapv #(apply % x y z args) fns)))))
+
+(defn some
+  "Like `clojure.core/some` but uses our custom `reduce` which in turn uses iterators."
+  [f coll]
+  (unreduced (reduce #(when-let [match (f %2)] (reduced match)) nil coll)))

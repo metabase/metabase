@@ -1,9 +1,0 @@
-.icon {
-  --mb-color-logo-primary: var(--mb-base-color-brand-40);
-  --mb-color-logo-secondary: var(--mb-base-color-brand-20);
-}
-
-.disabled {
-  --mb-color-logo-primary: var(--mb-base-color-gray-30);
-  --mb-color-logo-secondary: var(--mb-base-color-gray-10);
-}

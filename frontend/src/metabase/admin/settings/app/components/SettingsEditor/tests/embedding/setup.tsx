@@ -14,12 +14,14 @@ import { setup } from "../setup";
 
 export type SetupOpts = {
   settingValues?: Partial<Settings>;
+  isHosted?: boolean;
   hasEmbeddingFeature?: boolean;
   hasEnterprisePlugins?: boolean;
 };
 
 export const setupEmbedding = async ({
   settingValues,
+  isHosted = false,
   hasEmbeddingFeature = false,
   hasEnterprisePlugins = false,
 }: SetupOpts) => {
@@ -32,6 +34,7 @@ export const setupEmbedding = async ({
     }),
     settingValues: createMockSettings(settingValues),
     tokenFeatures: createMockTokenFeatures({
+      hosting: isHosted,
       embedding: hasEmbeddingFeature,
       embedding_sdk: hasEmbeddingFeature,
     }),

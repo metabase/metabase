@@ -34,7 +34,8 @@
 
 (defsetting test-settings-manager-visibility
   (deferred-tru "Setting to test the `:settings-manager` visibility level. This only shows up in dev.")
-  :visibility :settings-manager)
+  :visibility :settings-manager
+  :encryption :when-encryption-key-set)
 
 ;; ## Helper Fns
 (defn- fetch-test-settings

@@ -305,6 +305,13 @@
         (cached-logger (premium-embedding-token) e)
         #{}))))
 
+(mu/defn plan-alias :- [:maybe :string]
+  "Returns a string representing the instance's current plan, if included in the last token status request."
+  []
+  (some-> (premium-embedding-token)
+          fetch-token-status
+          :plan-alias))
+
 (defn has-any-features?
   "True if we have a valid premium features token with ANY features."
   []
