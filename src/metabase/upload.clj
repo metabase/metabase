@@ -431,13 +431,7 @@
                :set    {:display_name case-statement}
                :where  [:and
                         [:= :table_id table-id]
-                        [:in [:lower :name] (keys field->display-name)]
-                        ;; Only replace display names that have not been overridden already.
-                        [:<
-                         ;; In theory, these timestamps should be identical, and when I run the application they are.
-                         ;; In our tests, however, there is a small sub-second delay, so we add some buffer.
-                         [:- :updated_at :created_at]
-                         [:interval "5 seconds"]]]})))
+                        [:in [:lower :name] (keys field->display-name)]]})))
 
 (defn- uploads-enabled? []
   (some? (:db_id (public-settings/uploads-settings))))
