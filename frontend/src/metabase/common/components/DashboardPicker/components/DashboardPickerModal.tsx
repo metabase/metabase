@@ -162,9 +162,7 @@ export const DashboardPickerModal = ({
   >[] = [
     {
       id: "dashboards-tab",
-      displayName: canSelectCollection
-        ? t`Collections and Dashboards`
-        : t`Dashboards`,
+      displayName: canSelectCollection ? t`Browse` : t`Dashboards`,
       model: "dashboard" as const,
       additionalModels: canSelectCollection ? ["collection"] : undefined,
       folderModels: ["collection" as const],

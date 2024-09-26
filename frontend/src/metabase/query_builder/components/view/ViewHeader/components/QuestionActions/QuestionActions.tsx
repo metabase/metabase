@@ -11,8 +11,8 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import {
-  PLUGIN_MODERATION,
   PLUGIN_QUERY_BUILDER_HEADER,
+  PLUGIN_MODERATION,
 } from "metabase/plugins";
 import {
   onOpenQuestionSettings,
@@ -216,12 +216,15 @@ export const QuestionActions = ({
       separator: true,
       key: "trash-separator",
     });
-    extraButtons.push({
-      title: t`Move to trash`,
-      icon: "trash",
-      action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
-      testId: ARCHIVE_TESTID,
-    });
+
+    if (isStandaloneQuestion) {
+      extraButtons.push({
+        title: t`Move to trash`,
+        icon: "trash",
+        action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
+        testId: ARCHIVE_TESTID,
+      });
+    }
   }
 
   const fileInputRef = useRef<HTMLInputElement>(null);
