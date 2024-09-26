@@ -28,7 +28,16 @@
                                   :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
                                   :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Embed Settings ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defsetting embedding-app-origins-sdk
+  (deferred-tru "Allow this origin to embed Metabase SDK")
+  :feature    :embedding-sdk
+  :export?    false
+  :visibility :public
+  :encryption :no
+  :audit      :getter)
 
 (defsetting enable-embedding
   (deferred-tru "Allow admins to securely embed questions and dashboards within other applications?")
