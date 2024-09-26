@@ -789,24 +789,24 @@
    (->honeysql driver power)])
 
 (def ^:private granularity
-  {:minute 0
-   :minute-of-hour 0
-   :hour 1
-   :hour-of-day 1
-   :time-default 1
-   :day 2
-   :day-of-week 2
-   :day-of-month 2
-   :day-of-year 2
-   :date-default 2
-   :week 3
-   :week-of-year 3
-   :month 4
-   :month-of-year 4
-   :quarter 5
-   :quarter-of-year 5
-   :year 6
-   :year-of-era 6})
+  {:time-unbucketed 0
+   :minute 1
+   :minute-of-hour 2
+   :hour 3
+   :hour-of-day 4
+   :day 5
+   :date-unbucketed 5
+   :day-of-week 6
+   :day-of-month 7
+   :day-of-year 8
+   :week 9
+   :week-of-year 10
+   :month 11
+   :month-of-year 12
+   :quarter 13
+   :quarter-of-year 14
+   :year 15
+   :year-of-era 16})
 
 (defn- original-temporal-unit
   [temporal-attributes]
@@ -821,11 +821,11 @@
   (let [effective-type ((some-fn :effective-type :base-type) temporal-attributes)
         temporal-unit (original-temporal-unit temporal-attributes)]
     (when temporal-unit
-      (-> (if (= temporal-unit :default)
+      (-> (if (or (nil? temporal-unit) (= temporal-unit :default))
             (cond
-              (isa? effective-type :type/DateTime) :date-default
-              (isa? effective-type :type/Date)     :date-default
-              (isa? effective-type :type/Time)     :time-default
+              (isa? effective-type :type/DateTime) :time-unbucketed
+              (isa? effective-type :type/Date)     :date-unbucketed
+              (isa? effective-type :type/Time)     :time-unbucketed
               :else                                nil)
             temporal-unit)
           granularity))))
