@@ -169,3 +169,36 @@
 .AdminTable tbody tr:first-child td {
   padding-top: var(--margin-1);
 }
+
+@keyframes animation-name {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.SwagButton {
+  padding: 10px 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(270deg, #4169e6, #f56d10);
+  background-size: 400% 400%;
+  animation: animation-name 6s ease infinite;
+  border-radius: 0.5rem;
+  margin-left: 1rem;
+  margin-right: 1rem;
+  color: white;
+  cursor: pointer;
+}
+
+.LameSwag {
+  background: grey;
+}
