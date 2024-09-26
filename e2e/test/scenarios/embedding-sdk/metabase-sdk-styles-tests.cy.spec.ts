@@ -14,12 +14,12 @@ import {
   setupJwt,
 } from "e2e/support/helpers/e2e-jwt-helpers";
 
-const DEFAULT_CHROME_FONT_FAMILY = "Times";
-
 const STORIES = {
   NO_STYLES_SUCCESS: "embeddingsdk-styles-tests--no-styles-success",
   NO_STYLES_ERROR: "embeddingsdk-styles-tests--no-styles-error",
   FONT_FROM_CONFIG: "embeddingsdk-styles-tests--font-from-config",
+  GET_BROWSER_DEFAUL_FONT:
+    "embeddingsdk-styles-tests--get-browser-default-font",
 } as const;
 
 describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
@@ -31,8 +31,25 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
     cy.signOut();
   });
 
+  const wrapBrowserDefaultFont = () => {
+    visitFullAppEmbeddingUrl({
+      url: EMBEDDING_SDK_STORY_HOST,
+      qs: {
+        id: STORIES.GET_BROWSER_DEFAUL_FONT,
+        viewMode: "story",
+      },
+    });
+
+    cy.findByText("paragraph with default browser font").then($element => {
+      const fontFamily = $element.css("font-family");
+      cy.wrap(fontFamily).as("defaultBrowserFonteFamily");
+    });
+  };
+
   describe("style leaking", () => {
     it("[success scenario] should use the default fonts outside of our components, and Lato on our components", () => {
+      wrapBrowserDefaultFont();
+
       visitFullAppEmbeddingUrl({
         url: EMBEDDING_SDK_STORY_HOST,
         qs: {
@@ -46,26 +63,28 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
         },
       });
 
-      cy.findByText("This is outside of the provider").should(
-        "have.css",
-        "font-family",
-        DEFAULT_CHROME_FONT_FAMILY,
-      );
-
-      cy.findByText("This is inside of the provider").should(
-        "have.css",
-        "font-family",
-        DEFAULT_CHROME_FONT_FAMILY,
-      );
-
-      cy.findByText("Product ID").should(
-        "have.css",
-        "font-family",
-        "Lato, sans-serif",
-      );
+      cy.get("@defaultBrowserFonteFamily").then(defaultBrowserFonteFamily => {
+        cy.findByText("This is outside of the provider").should(
+          "have.css",
+          "font-family",
+          defaultBrowserFonteFamily,
+        );
+        cy.findByText("This is inside of the provider").should(
+          "have.css",
+          "font-family",
+          defaultBrowserFonteFamily,
+        );
+        cy.findByText("Product ID").should(
+          "have.css",
+          "font-family",
+          "Lato, sans-serif",
+        );
+      });
     });
 
     it("[error scenario] should use the default fonts outside of our components, and Lato on our components", () => {
+      wrapBrowserDefaultFont();
+
       visitFullAppEmbeddingUrl({
         url: EMBEDDING_SDK_STORY_HOST,
         qs: {
@@ -79,21 +98,23 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
         },
       });
 
-      cy.findByText("This is outside of the provider").should(
-        "have.css",
-        "font-family",
-        DEFAULT_CHROME_FONT_FAMILY,
-      );
+      cy.get("@defaultBrowserFonteFamily").then(defaultBrowserFonteFamily => {
+        cy.findByText("This is outside of the provider").should(
+          "have.css",
+          "font-family",
+          defaultBrowserFonteFamily,
+        );
 
-      cy.findByText("This is inside of the provider").should(
-        "have.css",
-        "font-family",
-        DEFAULT_CHROME_FONT_FAMILY,
-      );
+        cy.findByText("This is inside of the provider").should(
+          "have.css",
+          "font-family",
+          defaultBrowserFonteFamily,
+        );
 
-      cy.findByText(
-        "Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token",
-      ).should("have.css", "font-family", "Lato, sans-serif");
+        cy.findByText(
+          "Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token",
+        ).should("have.css", "font-family", "Lato, sans-serif");
+      });
     });
   });
 

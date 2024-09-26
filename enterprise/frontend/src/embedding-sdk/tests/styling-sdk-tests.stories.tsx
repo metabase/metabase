@@ -62,3 +62,10 @@ export const FontFromConfig = () => (
     </MetabaseProvider>
   </div>
 );
+
+/**
+ * This story is only needed to get the default font of the browser
+ */
+export const GetBrowserDefaultFont = () => (
+  <p>paragraph with default browser font</p>
+);
