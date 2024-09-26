@@ -453,6 +453,61 @@ describe("scenarios > organization > entity picker", () => {
       });
     });
 
+    it("should search for collections when there is no access to the root collection", () => {
+      createTestCollections();
+      cy.log("grant `nocollection` user access to `First collection`");
+      cy.log("personal collections are always available");
+      cy.updateCollectionGraph({
+        [ALL_USERS_GROUP]: { [FIRST_COLLECTION_ID]: "write" },
+      });
+      cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+        collection_id: FIRST_COLLECTION_ID,
+      });
+
+      cy.signIn("nocollection");
+      visitQuestion(ORDERS_QUESTION_ID);
+      openQuestionActions();
+      popover().findByText("Move").click();
+
+      cy.log("root collection");
+      entityPickerModal().within(() => {
+        cy.findByText("Collections").click();
+        enterSearchText({
+          text: "collection",
+          placeholder: "Search this collection or everywhere…",
+        });
+        localSearchTab("Collections").should("be.checked");
+        assertSearchResults({
+          foundItems: ["First collection"],
+          notFoundItems: ["No Collection Tableton's Personal Collection"],
+        });
+        globalSearchTab().click({ force: true });
+        assertSearchResults({
+          foundItems: [
+            "First collection",
+            "No Collection Tableton's Personal Collection",
+          ],
+        });
+      });
+
+      cy.log("personal collection");
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Collections").click();
+        cy.findByText(/Personal Collection/).click();
+        enterSearchText({
+          text: "personal",
+          placeholder: "Search this collection or everywhere…",
+        });
+        localSearchTab("No Collection Tableton's Personal Collection").should(
+          "be.checked",
+        );
+        assertSearchResults({
+          foundItems: ["No collection personal"],
+          notFoundItems: ["Admin personal", "Normal personal"],
+        });
+      });
+    });
+
     it("should not allow local search for `all personal collections`", () => {
       createTestCollections();
       visitQuestion(ORDERS_QUESTION_ID);
@@ -513,6 +568,10 @@ function createTestCollections() {
     {
       name: "Normal personal",
       parent_id: NORMAL_PERSONAL_COLLECTION_ID,
+    },
+    {
+      name: "No collection personal",
+      parent_id: NO_COLLECTION_PERSONAL_COLLECTION_ID,
     },
   ];
 
