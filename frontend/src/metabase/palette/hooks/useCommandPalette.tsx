@@ -102,7 +102,6 @@ export const useCommandPalette = ({
         icon: "document",
         extra: {
           href: link,
-          openInNewTab: true,
         },
       },
     ];

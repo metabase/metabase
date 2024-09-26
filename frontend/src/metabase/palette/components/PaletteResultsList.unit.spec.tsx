@@ -70,11 +70,9 @@ describe("PaletteResultsList interactions should work", () => {
       icon: "document",
       extra: {
         href: "https://www.metabase.com/search?query=hedgehogs",
-        openInNewTab: true,
       },
     };
 
-    // NOTE: This test will correctly fail if openInNewTab is set to false
     it("should NOT navigate via React router on click", async () => {
       const { history, link } = setup({ item: searchDocs });
       fireEvent.click(link);

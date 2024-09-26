@@ -1,10 +1,15 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
+import ExternalLink from "metabase/core/components/ExternalLink";
+import Link from "metabase/core/components/Link";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 
 import type { PaletteActionImpl } from "../types";
-import { getCommandPaletteIcon } from "../utils";
+import {
+  getCommandPaletteIcon,
+  isAbsoluteURL,
+  locationDescriptorToURL,
+} from "../utils";
 
 interface PaletteResultItemProps {
   item: PaletteActionImpl;
@@ -118,18 +123,27 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
     </Flex>
   );
   if (item.extra?.href) {
-    return (
-      <Box
-        component={Link}
-        to={item.extra.href}
-        target={item.extra.openInNewTab ? "_blank" : undefined}
-        role="link"
-        w="100%"
-        lh={1}
-      >
-        {content}
-      </Box>
-    );
+    const url = locationDescriptorToURL(item.extra.href);
+    if (isAbsoluteURL(url)) {
+      return (
+        <Box
+          component={ExternalLink}
+          href={url}
+          target="_blank"
+          role="link"
+          w="100%"
+          lh={1}
+        >
+          {content}
+        </Box>
+      );
+    } else {
+      return (
+        <Box component={Link} to={item.extra.href} role="link" w="100%" lh={1}>
+          {content}
+        </Box>
+      );
+    }
   } else {
     return content;
   }
