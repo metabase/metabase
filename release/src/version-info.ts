@@ -1,17 +1,18 @@
 import fetch from "node-fetch";
-import { getMilestoneIssues } from "./github";
-import {
-  getVersionType,
-  isEnterpriseVersion,
-  isLatestVersion,
-} from "./version-helpers";
+import _ from "underscore";
 
+import { getMilestoneIssues } from "./github";
 import type {
   Issue,
   ReleaseProps,
-  VersionInfoFile,
   VersionInfo,
+  VersionInfoFile,
 } from "./types";
+import {
+  getVersionType,
+  isEnterpriseVersion,
+  isPatchVersion,
+} from "./version-helpers";
 
 const generateVersionInfo = ({
   version,
@@ -37,15 +38,6 @@ export const generateVersionInfoJson = ({
   milestoneIssues: Issue[];
   existingVersionInfo: VersionInfoFile;
 }) => {
-  const isLatest = isLatestVersion(version, [
-    existingVersionInfo.latest.version,
-  ]);
-
-  if (!isLatest) {
-    console.warn(`Version ${version} is not the latest`);
-    return existingVersionInfo;
-  }
-
   const isAlreadyReleased =
     existingVersionInfo?.latest?.version === version ||
     existingVersionInfo?.older?.some(
@@ -56,13 +48,63 @@ export const generateVersionInfoJson = ({
     console.warn(`Version ${version} already released`);
     return existingVersionInfo;
   }
+
   const newVersionInfo = generateVersionInfo({ version, milestoneIssues });
 
   return {
-    latest: isLatest ? newVersionInfo : existingVersionInfo.latest,
-    older: isLatest
-      ? [existingVersionInfo.latest, ...existingVersionInfo.older]
-      : [newVersionInfo, ...existingVersionInfo.older],
+    latest: existingVersionInfo.latest,
+    older: [newVersionInfo, ...existingVersionInfo.older],
+  };
+};
+
+export const updateVersionInfoLatestJson = ({
+  newLatestVersion,
+  existingVersionInfo,
+  rollout,
+}: {
+  newLatestVersion: string;
+  existingVersionInfo: VersionInfoFile;
+  rollout?: number;
+}) => {
+  if (isPatchVersion(newLatestVersion)) {
+    // currently we don't support patch versions as latest, or store them
+    // in the version-info.json
+    console.warn(`Version ${newLatestVersion} is a patch version, skipping`);
+    return existingVersionInfo;
+  }
+
+  if (existingVersionInfo.latest.version === newLatestVersion) {
+    console.warn(`Version ${newLatestVersion} already latest, updating rollout % only`);
+    return {
+      ...existingVersionInfo,
+      latest: {
+        ...existingVersionInfo.latest,
+        rollout,
+      },
+    };
+  }
+
+  const newLatestVersionInfo = existingVersionInfo.older
+    .find((info: VersionInfo) => info.version === newLatestVersion);
+
+  if (!newLatestVersionInfo) {
+    throw new Error(`${newLatestVersion} not found version-info.json`);
+  }
+
+  // remove the new latest version from the older versions
+  const oldLatestVersionInfo = existingVersionInfo.latest;
+  const newOldVersionInfo = existingVersionInfo.older.filter(
+    (info: VersionInfo) => info.version !== newLatestVersion,
+  );
+
+  oldLatestVersionInfo.rollout = undefined;
+
+  return {
+    latest: {
+      ...newLatestVersionInfo,
+      rollout,
+    },
+    older: [oldLatestVersionInfo, ...newOldVersionInfo],
   };
 };
 
@@ -72,6 +114,7 @@ export const getVersionInfoUrl = (version: string) => {
     : `http://${process.env.AWS_S3_STATIC_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/version-info.json`;
 };
 
+// for adding a new release to version info
 export async function getVersionInfo({
   version,
   github,
@@ -98,3 +141,25 @@ export async function getVersionInfo({
 
   return newVersionJson;
 }
+
+// for updating the latest version in version info
+export const updateVersionInfoLatest = async ({
+  newLatestVersion,
+  rollout = 100,
+}: {
+  newLatestVersion: string;
+  rollout?: number;
+}) => {
+  const url = getVersionInfoUrl(newLatestVersion);
+  const existingFile = (await fetch(url).then(r =>
+    r.json(),
+  )) as VersionInfoFile;
+
+  const newVersionJson = updateVersionInfoLatestJson({
+    newLatestVersion,
+    existingVersionInfo: existingFile,
+    rollout,
+  });
+
+  return newVersionJson;
+};

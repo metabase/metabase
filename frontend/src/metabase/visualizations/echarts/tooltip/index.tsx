@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";
 
 import type { BaseCartesianChartModel } from "../cartesian/model/types";
@@ -130,14 +131,20 @@ export const useClickedStateTooltipSync = (
 
 export const useCartesianChartSeriesColorsClasses = (
   chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
 ) => {
-  const hexColors = useMemo(
-    () =>
-      chartModel.seriesModels
-        .map(seriesModel => seriesModel.color)
-        .filter(isNotNull),
-    [chartModel],
-  );
+  const hexColors = useMemo(() => {
+    const seriesColors = chartModel.seriesModels
+      .map(seriesModel => seriesModel.color)
+      .filter(isNotNull);
+
+    const settingColors = [
+      settings["waterfall.increase_color"],
+      settings["waterfall.decrease_color"],
+    ].filter(isNotNull);
+
+    return [...seriesColors, ...settingColors];
+  }, [chartModel, settings]);
 
   return useInjectSeriesColorsClasses(hexColors);
 };
