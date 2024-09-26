@@ -385,6 +385,8 @@ import view_archive_component from "./view_archive.svg?component";
 import view_archive_source from "./view_archive.svg?source";
 import warning_component from "./warning.svg?component";
 import warning_source from "./warning.svg?source";
+import warning_round_filled_component from "./warning_round_filled.svg?component";
+import warning_round_filled_source from "./warning_round_filled.svg?source";
 import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
 import webhook_component from "./webhook.svg?component";
@@ -1160,6 +1162,10 @@ export const Icons = {
   warning: {
     component: warning_component,
     source: warning_source,
+  },
+  warning_round_filled: {
+    component: warning_round_filled_component,
+    source: warning_round_filled_source,
   },
   waterfall: {
     component: waterfall_component,

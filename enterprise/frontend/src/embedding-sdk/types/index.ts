@@ -13,6 +13,9 @@ type BaseSDKConfig = {
    * The refresh token should be in the format of { id: string, exp: number }
    */
   fetchRequestToken?: FetchRequestTokenFn;
+
+  /** Whether to allow logging to the DevTools console. Defaults to true. */
+  allowConsoleLog?: boolean;
 };
 
 export type SDKConfigWithJWT = BaseSDKConfig & {

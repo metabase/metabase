@@ -18,6 +18,7 @@ import { Group, Icon, Tooltip, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
+import { useNotebookContext } from "../Notebook/context";
 import { NotebookCell } from "../NotebookCell";
 
 import { getUrl } from "./utils";
@@ -44,10 +45,15 @@ export function NotebookDataPicker({
   table,
   databaseId,
   placeholder = title,
-  hasMetrics,
+  hasMetrics = false,
   isDisabled,
   onChange,
 }: NotebookDataPickerProps) {
+  const { modelsFilterList } = useNotebookContext();
+  const filterList = hasMetrics
+    ? modelsFilterList
+    : modelsFilterList.filter(model => model !== "metric");
+
   const [isOpen, setIsOpen] = useState(!table);
   const store = useStore();
   const dispatch = useDispatch();
@@ -133,12 +139,7 @@ export function NotebookDataPicker({
           title={title}
           value={tableValue}
           databaseId={databaseId}
-          models={[
-            "table",
-            "card",
-            "dataset",
-            ...(hasMetrics ? ["metric" as const] : []),
-          ]}
+          models={filterList}
           onChange={handleChange}
           onClose={() => setIsOpen(false)}
         />

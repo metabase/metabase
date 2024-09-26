@@ -13,7 +13,6 @@ import {
   useCreateDashboardApi,
 } from "./use-create-dashboard-api";
 
-// eslint-disable-next-line import/no-default-export
 export default {
   title: "EmbeddingSDK/CreateDashboardModal",
   component: CreateDashboardModal,

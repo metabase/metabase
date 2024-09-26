@@ -68,7 +68,7 @@
    search_engine       [:maybe string?]
    search_native_query [:maybe true?]
    verified            [:maybe true?]}
-  (search/query-model-set
+  (search/model-set
    (search/search-context {:archived                            archived
                            :created-at                          created_at
                            :created-by                          (set (u/one-or-many created_by))
