@@ -24,16 +24,23 @@ function getTotalGraphicOption(
   outerRadius: number,
   innerRadius: number,
 ) {
+  // The font size is technically incorrect for the label text since it uses a
+  // smaller font than the value, however using the value font size for
+  // measurements makes up for the inaccuracy of our heuristic and provided a
+  // good end result.
+  const fontStyle = {
+    size: DIMENSIONS.total.valueFontSize,
+    weight: DIMENSIONS.total.fontWeight,
+    family: renderingContext.fontFamily,
+  };
+
   let valueText = "";
   let labelText = "";
 
-  // Don't display any text if there isn't enough width
-  const hasSufficientWidth =
-    chartModel.numRings < 3
-      ? outerRadius * 2 >= DIMENSIONS.total.minWidth
-      : innerRadius * 2 >= DIMENSIONS.total.minWidthThreeRing;
+  const defaultLabelWillOverflow =
+    renderingContext.measureText(TOTAL_TEXT, fontStyle) >= innerRadius * 2;
 
-  if (hasSufficientWidth && settings["pie.show_total"]) {
+  if (settings["pie.show_total"] && !defaultLabelWillOverflow) {
     let sliceValueOrTotal = 0;
 
     // chart hovered
@@ -58,30 +65,33 @@ function getTotalGraphicOption(
     }
 
     const valueWillOverflow =
-      renderingContext.measureText(formatters.formatMetric(sliceValueOrTotal), {
-        size: DIMENSIONS.total.valueFontSize,
-        family: renderingContext.fontFamily,
-        weight: DIMENSIONS.total.fontWeight,
-      }) > outerRadius; // innerRadius technically makes more sense, but looks too narrow in practice
-
-    const fontStyle = {
-      size: DIMENSIONS.total.valueFontSize,
-      weight: DIMENSIONS.total.fontWeight,
-      family: renderingContext.fontFamily,
-    };
+      renderingContext.measureText(
+        formatters.formatMetric(sliceValueOrTotal),
+        fontStyle,
+      ) > outerRadius; // innerRadius technically makes more sense, but looks too narrow in practice      ;
 
     valueText = truncateText(
       formatters.formatMetric(sliceValueOrTotal, valueWillOverflow),
-      outerRadius,
+      innerRadius * 2,
       renderingContext.measureText,
       fontStyle,
     );
     labelText = truncateText(
       labelText,
-      outerRadius,
+      innerRadius * 2,
       renderingContext.measureText,
       fontStyle,
     );
+  }
+
+  const valueTextWidth = renderingContext.measureText(valueText, fontStyle);
+  const labelTextWidth = renderingContext.measureText(labelText, fontStyle);
+  const totalWidth = Math.max(valueTextWidth, labelTextWidth);
+
+  const hasSufficientWidth = innerRadius * 2 >= totalWidth;
+  if (!hasSufficientWidth) {
+    valueText = "";
+    labelText = "";
   }
 
   return {

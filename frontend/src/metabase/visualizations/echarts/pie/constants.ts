@@ -24,8 +24,6 @@ export const DIMENSIONS = {
     },
   },
   total: {
-    minWidth: 120,
-    minWidthThreeRing: 50,
     valueFontSize: 22,
     labelFontSize: 14,
     fontWeight: 700,
