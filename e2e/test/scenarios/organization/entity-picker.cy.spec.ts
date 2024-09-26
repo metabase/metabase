@@ -20,6 +20,7 @@ import {
   resyncDatabase,
   startNewQuestion,
   visitQuestion,
+  createCollection,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -390,6 +391,8 @@ describe("scenarios > organization > entity picker", () => {
 
   describe("collection picker", () => {
     it("should search for collections for a normal user", () => {
+      createTestCollections();
+
       cy.signInAsNormalUser();
       visitQuestion(ORDERS_QUESTION_ID);
       openQuestionActions();
@@ -431,6 +434,23 @@ describe("scenarios > organization > entity picker", () => {
           notFoundItems: ["First collection", "Third collection"],
         });
       });
+
+      cy.log("personal collection");
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Collections").click();
+        cy.findByText(/Personal Collection/).click();
+        enterSearchText({
+          text: "personal",
+          placeholder: "Search this collection or everywhere…",
+        });
+        localSearchTab("Robert Tableton's Personal Collection").should(
+          "be.checked",
+        );
+        assertSearchResults({
+          foundItems: ["Normal personal"],
+          notFoundItems: ["Admin personal"],
+        });
+      });
     });
   });
 });
@@ -461,6 +481,21 @@ function createTestCards() {
       });
     });
   });
+}
+
+function createTestCollections() {
+  const collections = [
+    {
+      name: "Admin personal",
+      parent_id: ADMIN_PERSONAL_COLLECTION_ID,
+    },
+    {
+      name: "Normal personal",
+      parent_id: NORMAL_PERSONAL_COLLECTION_ID,
+    },
+  ];
+
+  collections.forEach(createCollection);
 }
 
 function enterSearchText({
