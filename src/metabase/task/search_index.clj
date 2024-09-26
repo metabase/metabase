@@ -11,6 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; This is problematic multi-instance deployments, see below.
 (def ^:private recreated? (atom false))
 
 (def job-key
@@ -23,7 +24,10 @@
   (when (search/supports-index?)
     (if (not @recreated?)
       (do (log/info "Recreating search index from the latest schema")
-          ;; We need each instance to initialize on start-up currently, this will need to be refined.
+          ;; Each instance in a multi-instance deployment will recreate the table the first time it is selected to run
+          ;; the job, resulting in a momentary lack of search results.
+          ;; One solution to this would be to store metadata about the index in another table, which we can use to
+          ;; determine whether it was built by another version of Metabase and should be rebuilt.
           (search/init-index! {:force-reset? (not @recreated?)})
           (reset! recreated? true))
       (do (log/info "Reindexing searchable entities")
