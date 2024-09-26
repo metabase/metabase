@@ -353,16 +353,16 @@
     ;; the pagination of search is for UI improvement, not for performance.
     ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
     (cond->
-      {:data             (cond->> total-results
-                                  (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-                                  (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
-                                  true (map add-perms-for-col))
-       :limit            (:limit-int search-ctx)
-       :models           (:models search-ctx)
-       :offset           (:offset-int search-ctx)
-       :table_db_id      (:table-db-id search-ctx)
-       :engine           (:search-engine search-ctx)
-       :total            (count total-results)}
+     {:data             (cond->> total-results
+                          (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+                          (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
+                          true (map add-perms-for-col))
+      :limit            (:limit-int search-ctx)
+      :models           (:models search-ctx)
+      :offset           (:offset-int search-ctx)
+      :table_db_id      (:table-db-id search-ctx)
+      :engine           (:search-engine search-ctx)
+      :total            (count total-results)}
 
       (:calculate-available-models? search-ctx)
       (assoc :available_models (model-set-fn search-ctx)))))
