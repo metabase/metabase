@@ -28,10 +28,11 @@ import type {
 } from "../../types";
 import {
   computeInitialTabId,
-  getFolderModels,
+  getSearchFolderModels,
   getSearchInputPlaceholder,
   getSearchModels,
   getSearchTabText,
+  isSearchFolder,
 } from "../../utils";
 import { RecentsTab } from "../RecentsTab";
 import { SearchTab } from "../SearchTab";
@@ -126,7 +127,10 @@ export function EntityPickerModal<
       },
     );
   const searchModels = useMemo(() => getSearchModels(passedTabs), [passedTabs]);
-  const folderModels = useMemo(() => getFolderModels(passedTabs), [passedTabs]);
+  const folderModels = useMemo(
+    () => getSearchFolderModels(passedTabs),
+    [passedTabs],
+  );
   const [selectedTabId, setSelectedTabId] = useState<EntityPickerTabId>("");
   const previousTabId = usePreviousDistinct(selectedTabId);
   const [tabFolderState, setTabFolderState] = useState<
@@ -259,14 +263,21 @@ export function EntityPickerModal<
 
   const handleSelectItem = useCallback(
     (item: Item, tabId: EntityPickerTabId) => {
-      const isFolder = folderModels.includes(item.model);
-
-      if (isFolder && ![SEARCH_TAB_ID, RECENTS_TAB_ID].includes(tabId)) {
+      if (
+        isSearchFolder(item, folderModels) &&
+        ![SEARCH_TAB_ID, RECENTS_TAB_ID].includes(tabId)
+      ) {
         setTabFolderState(state => ({
           ...state,
           [tabId]: item,
         }));
         setSearchScope("folder");
+      } else {
+        setTabFolderState(state => ({
+          ...state,
+          [tabId]: undefined,
+        }));
+        setSearchScope("everywhere");
       }
 
       onItemSelect(item);
