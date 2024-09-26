@@ -825,9 +825,7 @@
                                         "$123,12.3, 100"]))]
           (testing "Table and Fields exist after sync"
             (testing "Check the data was uploaded into the table correctly"
-              (is (= #_[@#'upload/auto-pk-column-name "Cost $" "Cost %" "Cost #"]
-                   ;; Blame it on humanization/name->human-readable-name
-                   (header-with-auto-pk ["Cost" "Cost 2" "Cost 3"])
+              (is (= (header-with-auto-pk ["Cost $" "Cost %" "Cost #"])
                      (column-display-names-for-table table)))
               (is (= [@#'upload/auto-pk-column-name "cost__" "cost___2" "cost___3"]
                      (column-names-for-table table))))))))))
