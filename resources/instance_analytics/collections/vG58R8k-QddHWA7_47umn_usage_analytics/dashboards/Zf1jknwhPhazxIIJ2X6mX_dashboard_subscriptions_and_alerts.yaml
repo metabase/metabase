@@ -15,7 +15,12 @@ public_uuid: null
 show_in_getting_started: false
 caveats: null
 points_of_interest: null
-parameters: []
+parameters:
+- id: 1f56492a
+  name: Creator
+  sectionId: string
+  slug: creator
+  type: string/=
 serdes/meta:
 - id: Zf1jknwhPhazxIIJ2X6mX
   label: dashboard_subscriptions_and_alerts
@@ -31,7 +36,18 @@ dashcards:
   size_y: 13
   action_id: null
   dashboard_tab_id: null
-  parameter_mappings: []
+  parameter_mappings:
+  - card_id: g-99yx3A8bwFtrfuWdIgb
+    parameter_id: 1f56492a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - base-type: type/Text
+        join-alias: People - Creator
   series: []
   visualization_settings:
     column_settings:
@@ -71,7 +87,18 @@ dashcards:
   size_y: 13
   action_id: null
   dashboard_tab_id: null
-  parameter_mappings: []
+  parameter_mappings:
+  - card_id: fwkC3nWB_uouifA5kkaBp
+    parameter_id: 1f56492a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - base-type: type/Text
+        join-alias: People - Creator
   series: []
   visualization_settings:
     column_settings:
