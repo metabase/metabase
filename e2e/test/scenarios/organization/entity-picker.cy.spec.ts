@@ -452,6 +452,27 @@ describe("scenarios > organization > entity picker", () => {
         });
       });
     });
+
+    it("should not allow local search for `all personal collections`", () => {
+      createTestCollections();
+      visitQuestion(ORDERS_QUESTION_ID);
+      openQuestionActions();
+      popover().findByText("Move").click();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Collections").click();
+        cy.findByText("All personal collections").click();
+        enterSearchText({
+          text: "personal",
+          placeholder: "Search…",
+        });
+        globalSearchTab().should("not.exist");
+        localSearchTab("All personal collections").should("not.exist");
+        assertSearchResults({
+          foundItems: ["Admin personal", "Normal personal"],
+        });
+      });
+    });
   });
 });
 
