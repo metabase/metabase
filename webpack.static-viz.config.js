@@ -12,44 +12,10 @@ const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 
-const BABEL_CONFIG = {
-  cacheDirectory: process.env.BABEL_DISABLE_CACHE ? null : ".babel_cache",
-};
-
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const devMode = WEBPACK_BUNDLE !== "production";
 
-const SWC_LOADER = {
-  loader: "swc-loader",
-  options: {
-    jsc: {
-      loose: true,
-      transform: {
-        react: {
-          runtime: "automatic",
-          refresh: false,
-        },
-      },
-      parser: {
-        syntax: "typescript",
-        tsx: true,
-      },
-      experimental: {
-        plugins: [["@swc/plugin-emotion", { sourceMap: devMode }]],
-      },
-    },
-
-    sourceMaps: true,
-    minify: false, // produces same bundle size, but cuts 1s locally
-    env: {
-      targets: ["defaults"],
-    },
-  },
-};
-
 module.exports = env => {
-  const shouldDisableMinimization = env.WEBPACK_WATCH === true;
-
   return {
     mode: "production",
     context: SRC_PATH,
@@ -81,16 +47,39 @@ module.exports = env => {
           test: /\.css$/i,
           use: "null-loader",
         },
-              {
-        test: /\.(tsx?|jsx?)$/,
-        exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
-        use: [SWC_LOADER],
-      },
-        // {
-        //   test: /\.(tsx?|jsx?)$/,
-        //   exclude: /node_modules|cljs/,
-        //   use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
-        // },
+        {
+          test: /\.(tsx?|jsx?)$/,
+          exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
+          use: [
+            {
+              loader: "swc-loader",
+              options: {
+                jsc: {
+                  loose: true,
+                  transform: {
+                    react: {
+                      runtime: "automatic",
+                      refresh: false,
+                    },
+                  },
+                  parser: {
+                    syntax: "typescript",
+                    tsx: true,
+                  },
+                  experimental: {
+                    plugins: [["@swc/plugin-emotion", { sourceMap: devMode }]],
+                  },
+                },
+
+                sourceMaps: true,
+                minify: false, // produces same bundle size, but cuts 1s locally
+                env: {
+                  targets: ["defaults"],
+                },
+              },
+            },
+          ],
+        },
         {
           test: /\.svg/,
           type: "asset/source",
@@ -128,10 +117,10 @@ module.exports = env => {
         "process/browser": require.resolve("process/browser"),
       },
       fallback: {
-        crypto: require.resolve('crypto-browserify'),
-        stream: require.resolve('stream-browserify'),
-        buffer: require.resolve('buffer/'),
-        process: require.resolve('process/browser'),
+        crypto: require.resolve("crypto-browserify"),
+        stream: require.resolve("stream-browserify"),
+        buffer: require.resolve("buffer/"),
+        process: require.resolve("process/browser"),
       },
     },
     optimization: {
@@ -143,42 +132,42 @@ module.exports = env => {
       ],
     },
     plugins: [
-      new webpack.DefinePlugin({
-        'process.env': JSON.stringify({}),
+      new webpack.EnvironmentPlugin({
+        EMBEDDING_SDK_VERSION: null,
+        IS_EMBEDDING_SDK_BUILD: false,
       }),
-
       new webpack.NormalModuleReplacementPlugin(
         /node_modules\/@reduxjs\/toolkit\/.*\/process$/,
-        'process/browser'
+        "process/browser",
       ),
-
       new webpack.ProvidePlugin({
-        process: 'process/browser',
-        Buffer: ['buffer', 'Buffer'],
+        process: "process/browser",
+        Buffer: ["buffer", "Buffer"],
       }),
-
-      // new StatsWriterPlugin({
-      //   stats: {
-      //     modules: true,
-      //     assets: false,
-      //     nestedModules: false,
-      //     reasons: false,
-      //     excludeModules: [/node_modules/],
-      //   },
-      //   filename: "../../../../.github/static-viz-sources.yaml",
-      //   transform: stats =>
-      //     YAML.stringify({
-      //       static_viz: stats.modules
-      //         .filter(
-      //           module =>
-      //             module.type !== "hidden modules" &&
-      //             module.moduleType !== "runtime",
-      //         )
-      //         .map(module =>
-      //           module.nameForCondition.replace(`${__dirname}/`, ""),
-      //         ),
-      //     }),
-      // }),
+      new StatsWriterPlugin({
+        stats: {
+          modules: true,
+          assets: false,
+          nestedModules: false,
+          reasons: false,
+          excludeModules: [/node_modules/],
+        },
+        filename: "../../../../.github/static-viz-sources.yaml",
+        transform: stats =>
+          YAML.stringify({
+            static_viz: stats.modules
+              .filter(
+                module =>
+                  module.type !== "hidden modules" &&
+                  module.moduleType !== "runtime",
+              )
+              .map(
+                module =>
+                  module?.nameForCondition?.replace(`${__dirname}/`, "") ??
+                  null,
+              ),
+          }),
+      }),
     ],
   };
 };
