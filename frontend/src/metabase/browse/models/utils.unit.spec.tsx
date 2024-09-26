@@ -3,8 +3,7 @@ import type { SearchResult } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 import { SortDirection } from "metabase-types/api/sorting";
 
-import { createMockModelResult } from "../test-utils";
-
+import { createMockModelResult } from "./test-utils";
 import type { ModelResult } from "./types";
 import type { ActualModelFilters, AvailableModelFilters } from "./utils";
 import { filterModels, getMaxRecentModelCount, sortModels } from "./utils";

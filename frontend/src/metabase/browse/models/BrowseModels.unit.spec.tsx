@@ -10,9 +10,8 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockSetupState } from "metabase-types/store/mocks";
 
-import { createMockModelResult, createMockRecentModel } from "../test-utils";
-
 import { BrowseModels } from "./BrowseModels";
+import { createMockModelResult, createMockRecentModel } from "./test-utils";
 
 const defaultRootCollection = createMockCollection({
   id: "root",

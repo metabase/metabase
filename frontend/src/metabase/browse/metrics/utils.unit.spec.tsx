@@ -6,8 +6,7 @@ import {
 } from "metabase-types/api/mocks";
 import { SortDirection } from "metabase-types/api/sorting";
 
-import { createMockMetricResult } from "../test-utils";
-
+import { createMockMetricResult } from "./test-utils";
 import type { MetricResult } from "./types";
 import {
   getDatasetValueForMetric,

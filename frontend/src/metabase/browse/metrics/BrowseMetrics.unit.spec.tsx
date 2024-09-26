@@ -14,10 +14,9 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockSetupState } from "metabase-types/store/mocks";
 
-import { createMockMetricResult, createMockRecentMetric } from "../test-utils";
-import type { MetricResult, RecentMetric } from "../types";
-
 import { BrowseMetrics } from "./BrowseMetrics";
+import { createMockMetricResult, createMockRecentMetric } from "./test-utils";
+import type { MetricResult, RecentMetric } from "./types";
 
 type SetupOpts = {
   metricCount?: number;
