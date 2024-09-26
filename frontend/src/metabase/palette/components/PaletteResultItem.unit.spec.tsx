@@ -71,7 +71,8 @@ describe("PaletteResultItem", () => {
   });
 });
 
-const setupList = ({ item = {} }: { item?: Partial<PaletteActionImpl> }) => {
+/** For some tests we need to render the PaletteResultsList so that the Enter key works */
+const setupInList = ({ item }: { item: Partial<PaletteActionImpl> }) => {
   const items = [item];
   const utils = renderWithProviders(
     <>
@@ -100,8 +101,8 @@ const setupList = ({ item = {} }: { item?: Partial<PaletteActionImpl> }) => {
     </>,
     { withRouter: true, withKBar: true },
   );
-  const link = items[0].name ? screen.getByRole("link") : null;
-  return { ...utils, link: link as HTMLAnchorElement };
+  const link = screen.getByRole("link");
+  return { ...utils, link };
 };
 
 describe("Mouse/keyboard interactions", () => {
@@ -121,7 +122,7 @@ describe("Mouse/keyboard interactions", () => {
     };
 
     it("should NOT navigate via React router on click (metabase#47829)", async () => {
-      const { history, link } = setupList({ item: searchDocs });
+      const { history, link } = setupInList({ item: searchDocs });
       fireEvent.click(link);
       expect(history?.getCurrentLocation()).toMatchObject(initialLocation);
       expect(link).toHaveAttribute("target", "_blank");
@@ -149,7 +150,7 @@ describe("Mouse/keyboard interactions", () => {
     };
 
     it("should navigate via React router when the Enter key is pressed", async () => {
-      const { history, link } = setupList({ item: viewResults });
+      const { history, link } = setupInList({ item: viewResults });
       fireEvent(window, new KeyboardEvent("keydown", { key: "Enter" }));
       await waitFor(() => {
         expect(history?.getCurrentLocation()).toMatchObject(searchLocation);
@@ -158,7 +159,7 @@ describe("Mouse/keyboard interactions", () => {
     });
 
     it("should navigate via React router on left click", async () => {
-      const { history, link } = setupList({ item: viewResults });
+      const { history, link } = setupInList({ item: viewResults });
       // A normal, left click
       fireEvent.click(link);
       expect(history?.getCurrentLocation()).toMatchObject(searchLocation);
@@ -166,7 +167,7 @@ describe("Mouse/keyboard interactions", () => {
     });
 
     it("should NOT navigate via React router on middle click", async () => {
-      const { history, link } = setupList({ item: viewResults });
+      const { history, link } = setupInList({ item: viewResults });
       // A middle click
       fireEvent.click(link, { button: 1 });
       expect(history?.getCurrentLocation()).toMatchObject(initialLocation);
