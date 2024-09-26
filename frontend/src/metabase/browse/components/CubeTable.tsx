@@ -190,7 +190,7 @@ export const CubeTable = ({
             })
             .filter(Boolean) // Remove any null entries
         : typesWithSql;
-
+        if(cubeRequests && cubeRequests.length > 0){
     // If a cubeRequest was not matched in `typesWithSql`, add it to the final list as "pending"
     cubeRequests.forEach((cubeRequest: any) => {
       const existingEntry = updatedData.find(
@@ -218,7 +218,7 @@ export const CubeTable = ({
         });
       }
     });
-
+  }
     // Only update state if the data has changed
     if (JSON.stringify(updatedTypesWithSql) !== JSON.stringify(updatedData)) {
       setUpdatedTypesWithSql(updatedData);
@@ -752,9 +752,25 @@ const cleanAndParseInputString = (inputString: string): Cube | null => {
 
   // Step 16: Log the final cleaned string before parsing for debugging
 
+  const fixPostgresCasting = (str:string) => {
+    // Replace "NULL"::character varying with 'NULL'::character varying
+    return str
+      .replace(/"NULL"::character varying/g, "'NULL'::character varying")
+      // Replace "0"::bigint with '0'::bigint
+      .replace(/"0"::bigint/g, "'0'::bigint")
+      // Replace double-quoted "local_created_at" with 'local_created_at'::DATE where part of a casting
+      .replace(/"(\w+)"::DATE/g, "'$1'::DATE")
+      .replace(/\bpublic\b/g, '"public"')
+      .replace(/"London""}},/g, '$1"}}')
+      // Replace any other casting patterns where double quotes are used inappropriately
+      .replace(/"([^"]*?)"::(bigint|character varying|numeric|timestamp)/g, "'$1'::$2")
+      .replace(/\)$/, '');
+  };
+
   // Step 17: Parse the cleaned string into a JSON object
   try {
-    const parsedObject = JSON.parse(cleanedString) as Cube;
+    const cleaned = fixPostgresCasting(cleanedString);
+    const parsedObject = JSON.parse(cleaned) as Cube;
     return parsedObject;
   } catch (error) {
     console.error("Failed to parse JSON:", error);
