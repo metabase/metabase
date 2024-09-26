@@ -42,8 +42,6 @@ import {
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
-import type { MetricResult } from "../types";
-
 import {
   Cell,
   CollectionLink,
@@ -53,11 +51,13 @@ import {
   Value,
   ValueTableCell,
   ValueWrapper,
-} from "./BrowseTable.styled";
+} from "../components/BrowseTable.styled";
+
+import type { MetricResult } from "./types";
 import {
   getDatasetValueForMetric,
   getMetricDescription,
-  sortModelOrMetric,
+  sortMetrics,
 } from "./utils";
 
 type MetricsTableProps = {
@@ -109,7 +109,7 @@ export function MetricsTable({
   );
 
   const locale = useLocale();
-  const sortedMetrics = sortModelOrMetric(metrics, sortingOptions, locale);
+  const sortedMetrics = sortMetrics(metrics, sortingOptions, locale);
 
   const handleSortingOptionsChange = skeleton ? undefined : setSortingOptions;
 

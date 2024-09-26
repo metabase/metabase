@@ -35,7 +35,7 @@ import {
   NameColumn,
   TableRow,
 } from "./BrowseTable.styled";
-import { getModelDescription, sortModelOrMetric } from "./utils";
+import { getModelDescription, sortModels } from "./utils";
 
 export interface ModelsTableProps {
   models?: ModelResult[];
@@ -69,7 +69,7 @@ export const ModelsTable = ({
   );
 
   const locale = useLocale();
-  const sortedModels = sortModelOrMetric(models, sortingOptions, locale);
+  const sortedModels = sortModels(models, sortingOptions, locale);
 
   /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
   const collectionWidth = 38.5;

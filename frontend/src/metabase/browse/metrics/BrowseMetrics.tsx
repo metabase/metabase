@@ -10,16 +10,15 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
-import type { MetricResult } from "../types";
-import type { MetricFilterSettings } from "../utils";
-
 import {
   BrowseContainer,
   BrowseHeader,
   BrowseMain,
   BrowseSection,
-} from "./BrowseContainer.styled";
+} from "../components/BrowseContainer.styled";
+
 import { MetricsTable } from "./MetricsTable";
+import type { MetricFilterSettings, MetricResult } from "./types";
 
 const {
   contentVerificationEnabled,

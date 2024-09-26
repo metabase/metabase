@@ -1,4 +1,4 @@
-export { BrowseMetrics } from "./components/BrowseMetrics";
+export { BrowseMetrics } from "./metrics";
 export { BrowseModels } from "./components/BrowseModels";
 export { BrowseDatabases } from "./components/BrowseDatabases";
 export { BrowseTables } from "./components/BrowseTables";
