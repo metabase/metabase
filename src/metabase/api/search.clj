@@ -49,7 +49,9 @@
 
     (search/supports-index?)
     (do
-      (task/trigger-now! (task.search-index/job-key))
+      (if (task/job-exists? task.search-index/job-key)
+        (task/trigger-now! task.search-index/job-key)
+        (search/reindex!))
       {:status-code 200})
 
     :else
