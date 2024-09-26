@@ -163,7 +163,7 @@ export const CollectionPickerInner = (
 
   useDeepCompareEffect(
     function setInitialPath() {
-      if (currentCollection?.id) {
+      if (!pathProp && currentCollection?.id) {
         const newPath = getStateFromIdPath({
           idPath: getCollectionIdPath(
             {
@@ -187,6 +187,7 @@ export const CollectionPickerInner = (
       }
     },
     [
+      path,
       currentCollection,
       options.namespace,
       userPersonalCollectionId,

@@ -419,6 +419,7 @@ describe("scenarios > organization > entity picker", () => {
 
       cy.log("regular collection");
       entityPickerModal().within(() => {
+        entityPickerModalTab("Collections").click();
         cy.findByText("First collection").click();
         enterSearchText({
           text: "collection",
