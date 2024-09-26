@@ -28,7 +28,6 @@
                                   :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
                                   :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Embed Settings ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defsetting enable-embedding
