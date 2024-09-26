@@ -8,6 +8,7 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.config :as config]
+   [metabase.search :as search]
    [metabase.search.config :as search.config]
    [metabase.search.impl :as search.impl]
    [metabase.search.legacy :as search.legacy]
@@ -23,10 +24,12 @@
             (#'search.impl/parse-engine "vespa"))))
   (testing "Registered engines"
     (is (= :search.engine/in-place (#'search.impl/parse-engine "in-place")))
-    (is (= :search.engine/fulltext (#'search.impl/parse-engine "fulltext"))))
-  (testing "Subclasses"
-    (is (= :search.engine/hybrid (#'search.impl/parse-engine "hybrid")))
-    (is (= :search.engine/minimal (#'search.impl/parse-engine "minimal")))))
+    (when (search/supports-index?)
+      (is (= :search.engine/fulltext (#'search.impl/parse-engine "fulltext")))))
+  (when (search/supports-index?)
+    (testing "Subclasses"
+      (is (= :search.engine/hybrid (#'search.impl/parse-engine "hybrid")))
+      (is (= :search.engine/minimal (#'search.impl/parse-engine "minimal"))))))
 
 (deftest ^:parallel order-clause-test
   (testing "it includes all columns and normalizes the query"
