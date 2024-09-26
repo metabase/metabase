@@ -13,8 +13,9 @@ import {
   BrowseMain,
   BrowseSection,
   CenteredEmptyState,
-} from "./BrowseContainer.styled";
-import { BrowseDataHeader } from "./BrowseDataHeader";
+} from "../components/BrowseContainer.styled";
+import { BrowseDataHeader } from "../components/BrowseDataHeader";
+
 import {
   DatabaseCard,
   DatabaseCardLink,

@@ -3,7 +3,7 @@ import { Link } from "react-router";
 
 import Card from "metabase/components/Card";
 
-import { BrowseGrid } from "./BrowseContainer.styled";
+import { BrowseGrid } from "../components/BrowseContainer.styled";
 
 export const DatabaseGrid = styled(BrowseGrid)``;
 
