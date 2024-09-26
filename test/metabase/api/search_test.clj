@@ -300,6 +300,13 @@
       (is (= 2 (:limit (search-request :crowberto :q "test" :limit "2" :offset "3"))))
       (is (= 3 (:offset (search-request :crowberto :q "test" :limit "2" :offset "3")))))))
 
+(deftest custom-engine-test
+  (testing "It returns limit and offset params in return result"
+    (with-search-items-in-root-collection "test"
+      (let [resp (search-request :crowberto :q "test" :search_engine "fulltext")]
+        ;; The index is not populated here, so there's not much interesting to assert.
+        (is (= "search.engine/fulltext" (:engine resp)))))))
+
 (deftest archived-models-test
   (testing "It returns some stuff when you get results"
     (with-search-items-in-root-collection "test"

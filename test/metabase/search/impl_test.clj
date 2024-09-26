@@ -15,6 +15,19 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
+(deftest ^:parallel parse-engine-test
+  (testing "Default engine"
+    (is (= :search.engine/in-place (#'search.impl/parse-engine nil))))
+  (testing "Unknown engine resolves to the default"
+    (is (=  (#'search.impl/parse-engine nil)
+            (#'search.impl/parse-engine "vespa"))))
+  (testing "Registered engines"
+    (is (= :search.engine/in-place (#'search.impl/parse-engine "in-place")))
+    (is (= :search.engine/fulltext (#'search.impl/parse-engine "fulltext"))))
+  (testing "Subclasses"
+    (is (= :search.engine/hybrid (#'search.impl/parse-engine "hybrid")))
+    (is (= :search.engine/minimal (#'search.impl/parse-engine "minimal")))))
+
 (deftest ^:parallel order-clause-test
   (testing "it includes all columns and normalizes the query"
     (is (= [[:case
