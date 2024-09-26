@@ -85,6 +85,7 @@
   :visibility :admin
   :type       :string
   :encryption :no
+  :export?    false
   :audit      :getter
   :setter     set-update-channel!
   :default    "latest")
