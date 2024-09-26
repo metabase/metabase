@@ -1,6 +1,4 @@
-import { Route } from "react-router";
-
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 
 import type { PaletteActionImpl } from "../types";
 
@@ -22,23 +20,9 @@ const setup = ({
   active?: boolean;
   item?: Partial<PaletteActionImpl>;
 }) => {
-  const utils = renderWithProviders(
-    <>
-      <Route
-        path="/"
-        component={() => (
-          <PaletteResultItem
-            item={mockPaletteActionImpl(item)}
-            active={active}
-          />
-        )}
-      />
-      <Route path="search" component={() => null} />
-    </>,
-    { withRouter: true },
+  render(
+    <PaletteResultItem item={mockPaletteActionImpl(item)} active={active} />,
   );
-  const link = item.name ? screen.getByRole("link") : null;
-  return { ...utils, link: link as HTMLAnchorElement };
 };
 
 describe("PaletteResultItem", () => {

@@ -73,7 +73,7 @@ describe("PaletteResultsList interactions should work", () => {
       },
     };
 
-    it("should NOT navigate via React router on click", async () => {
+    it("should NOT navigate via React router on click (metabase#47829)", async () => {
       const { history, link } = setup({ item: searchDocs });
       fireEvent.click(link);
       expect(history?.getCurrentLocation()).toMatchObject(initialLocation);
