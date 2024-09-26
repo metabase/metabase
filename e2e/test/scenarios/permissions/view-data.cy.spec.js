@@ -68,7 +68,7 @@ describeEE("scenarios > admin > permissions > view data > blocked", () => {
 
     cy.findByRole("tooltip")
       .findByText(
-        /Users in groups with Blocked on a table can't view native queries on this database/,
+        /Groups with a database, schema, or table set to Blocked can't view native queries on this database/,
       )
       .should("exist");
 
