@@ -405,7 +405,7 @@
 
 (def ^:dynamic ^:private *updating-dashboard* false)
 
-(defmacro with-allowed-changes-to-dashboard-internal-card
+(defmacro with-allowed-changes-to-internal-dashboard-card
   "Allow making changes to dashboard-internal cards that would not normally be allowed."
   [& body]
   `(binding [*updating-dashboard* true]
@@ -436,7 +436,7 @@
 
 (defn- check-dashboard-internal-card-insert [card]
   (let [correct-collection-id (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard_id card))
-        invalid? (or (and (:collection_id card)
+        invalid? (or (and (contains? card :collection_id)
                           (not= correct-collection-id (:collection_id card)))
                      (not (contains? #{:question "question" nil} (:type card)))
                      (some? (:collection_position card)))]
@@ -668,9 +668,9 @@
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
                                              :cache_ttl :type :dashboard_id]
-         ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required
-         ;; by `api/maybe-reconcile-collection-position!`
-         card-data                          (-> (zipmap data-keys (map card-data data-keys))
+         position-info                      {:collection_id (:collection_id card-data)
+                                             :collection_position (:collection_position card-data)}
+         card-data                          (-> (select-keys card-data data-keys)
                                                 (assoc
                                                  :creator_id (:id creator)
                                                  :parameters (or parameters [])
@@ -683,7 +683,7 @@
          card                               (t2/with-transaction [_conn]
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed
-                                              (api/maybe-reconcile-collection-position! card-data)
+                                              (api/maybe-reconcile-collection-position! position-info)
                                               (t2/insert-returning-instance! Card (cond-> card-data
                                                                                     metadata
                                                                                     (assoc :result_metadata metadata))))]
