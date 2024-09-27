@@ -26,11 +26,24 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
   return (
     <>
       <SidesheetCardSection title={t`Creator and last editor`}>
+        <Flex gap="sm" align="top">
+          <Icon name="ai" className={SidebarStyles.IconMargin} />
+          <Text>
+            {c(
+              "Describes when a question was created. {0} is a date/time and {1} is a person's name",
+            ).jt`${(
+              <DateTime unit="day" value={createdAt} key="date" />
+            )} by ${getUserName(createdBy)}`}
+          </Text>
+        </Flex>
+
         {lastEditInfo && (
           <Flex gap="sm" align="top">
-            <Icon name="ai" className={SidebarStyles.IconMargin} />
+            <Icon name="pencil" className={SidebarStyles.IconMargin} />
             <Text>
-              {c("{0} is a date/time and {1} is a person's name").jt`${(
+              {c(
+                "Describes when a question was last edited. {0} is a date/time and {1} is a person's name",
+              ).jt`${(
                 <DateTime
                   unit="day"
                   value={lastEditInfo.timestamp}
@@ -40,15 +53,6 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
             </Text>
           </Flex>
         )}
-
-        <Flex gap="sm" align="top">
-          <Icon name="pencil" className={SidebarStyles.IconMargin} />
-          <Text>
-            {c("{0} is a date/time and {1} is a person's name").jt`${(
-              <DateTime unit="day" value={createdAt} key="date" />
-            )} by ${getUserName(createdBy)}`}
-          </Text>
-        </Flex>
       </SidesheetCardSection>
       <SidesheetCardSection title={t`Saved in`}>
         <Flex gap="sm" align="top" color="var(--mb-color-brand)">

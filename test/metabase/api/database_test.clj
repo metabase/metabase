@@ -408,7 +408,8 @@
 (deftest create-db-succesful-track-snowplow-test
   ;; h2 is no longer supported as a db source
   ;; the rests are disj because it's timeouted when adding it as a DB for some reasons
-  (mt/test-drivers (disj (mt/normal-drivers) :h2 :bigquery-cloud-sdk :athena :snowflake)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+                         :h2 :bigquery-cloud-sdk :snowflake)
     (snowplow-test/with-fake-snowplow-collector
       (let [dataset-def (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'avian-singles))]
         ;; trigger this to make sure the database exists before we add them

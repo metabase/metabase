@@ -58,6 +58,7 @@
 
 (defsetting embedding-secret-key
   (deferred-tru "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.")
+  :encryption :when-encryption-key-set
   :visibility :admin
   :audit :no-value
   :setter (fn [new-value]

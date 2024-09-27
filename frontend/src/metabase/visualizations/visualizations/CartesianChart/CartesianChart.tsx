@@ -121,7 +121,10 @@ function _CartesianChart(props: VisualizationProps) {
   }, []);
 
   const canSelectTitle = !!onChangeCardAndRun;
-  const seriesColorsCss = useCartesianChartSeriesColorsClasses(chartModel);
+  const seriesColorsCss = useCartesianChartSeriesColorsClasses(
+    chartModel,
+    settings,
+  );
 
   useCloseTooltipOnScroll(chartRef);
 
