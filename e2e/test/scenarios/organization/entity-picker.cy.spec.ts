@@ -170,7 +170,7 @@ describe("scenarios > organization > entity picker", () => {
         createTestCards();
         cy.signInAsNormalUser();
         startNewQuestion();
-        testCardSearchForNormalUser(tabs);
+        testCardSearchForNormalUser({ tabs });
       });
 
       it("should search for cards when there is no access to the root collection", () => {
@@ -183,104 +183,16 @@ describe("scenarios > organization > entity picker", () => {
 
         cy.signIn("nocollection");
         startNewQuestion();
-
-        tabs.forEach(tab => {
-          cy.log("inaccessible root collection - automatically selected");
-          entityPickerModal().within(() => {
-            entityPickerModalTab(tab).click();
-            enterSearchText({
-              text: "1",
-              placeholder: "Search this collection or everywhere…",
-            });
-            localSearchTab("Collections").should("be.checked");
-            assertSearchResults({
-              notFoundItems: [
-                "Root metric 1",
-                "Regular metric 1",
-                "Admin personal collection metric 1",
-                "Normal personal collection metric 2",
-              ],
-            });
-            cy.findByText("Didn't find anything").should("be.visible");
-          });
-
-          cy.log("regular collection");
-          entityPickerModal().within(() => {
-            entityPickerModalTab(tab).click();
-            cy.findByText("First collection").click();
-            enterSearchText({
-              text: "1",
-              placeholder: "Search this collection or everywhere…",
-            });
-            localSearchTab("First collection").should("be.checked");
-            assertSearchResults({
-              foundItems: [
-                "Regular question 1",
-                "Regular model 1",
-                "Regular metric 1",
-              ],
-              notFoundItems: [
-                "Root question 1",
-                "Regular question 2",
-                "Admin personal collection question 1",
-                "Normal personal collection question 1",
-                "No collection personal collection question 1",
-              ],
-            });
-          });
-
-          cy.log("inaccessible root collection - manually selected");
-          entityPickerModal().within(() => {
-            entityPickerModalTab(tab).click();
-            cy.findByText("Collections").click();
-            enterSearchText({
-              text: "1",
-              placeholder: "Search this collection or everywhere…",
-            });
-            localSearchTab("Collections").should("be.checked");
-            assertSearchResults({
-              notFoundItems: [
-                "Root metric 1",
-                "Regular metric 1",
-                "Admin personal collection metric 1",
-                "Normal personal collection metric 2",
-              ],
-            });
-            cy.findByText("Didn't find anything").should("be.visible");
-          });
-
-          cy.log("personal collection");
-          entityPickerModal().within(() => {
-            entityPickerModalTab(tab).click();
-            cy.findByText(/Personal Collection/).click();
-            enterSearchText({
-              text: "1",
-              placeholder: "Search this collection or everywhere…",
-            });
-            localSearchTab(
-              "No Collection Tableton's Personal Collection",
-            ).should("be.checked");
-            assertSearchResults({
-              foundItems: [
-                "No collection personal collection question 1",
-                "No collection personal collection model 1",
-                "No collection personal collection metric 1",
-              ],
-              notFoundItems: [
-                "Root metric 1",
-                "Regular metric 1",
-                "Admin personal collection metric 1",
-                "Normal personal collection metric 2",
-              ],
-            });
-          });
+        testCardSearchForInaccessibleRootCollection({
+          tabs,
+          isRootSelected: true,
         });
       });
 
       it("should not allow local search for `all personal collections`", () => {
         createTestCards();
         startNewQuestion();
-        testCardSearchForAllPersonalCollections(tabs);
+        testCardSearchForAllPersonalCollections({ tabs });
       });
     });
   });
@@ -716,7 +628,7 @@ function assertSearchResults({
   });
 }
 
-function testCardSearchForNormalUser(tabs: string[]) {
+function testCardSearchForNormalUser({ tabs }: { tabs: string[] }) {
   tabs.forEach(tab => {
     cy.log("root collection - automatically selected");
     entityPickerModal().within(() => {
@@ -809,7 +721,109 @@ function testCardSearchForNormalUser(tabs: string[]) {
   });
 }
 
-function testCardSearchForAllPersonalCollections(tabs: string[]) {
+function testCardSearchForInaccessibleRootCollection({
+  tabs,
+  isRootSelected,
+}: {
+  tabs: string[];
+  isRootSelected: boolean;
+}) {
+  tabs.forEach(tab => {
+    if (isRootSelected) {
+      cy.log("inaccessible root collection - automatically selected");
+      entityPickerModal().within(() => {
+        entityPickerModalTab(tab).click();
+        enterSearchText({
+          text: "1",
+          placeholder: "Search this collection or everywhere…",
+        });
+        localSearchTab("Collections").should("be.checked");
+        assertSearchResults({
+          notFoundItems: [
+            "Root metric 1",
+            "Regular metric 1",
+            "Admin personal collection metric 1",
+            "Normal personal collection metric 2",
+          ],
+        });
+        cy.findByText("Didn't find anything").should("be.visible");
+      });
+    }
+
+    cy.log("regular collection");
+    entityPickerModal().within(() => {
+      entityPickerModalTab(tab).click();
+      cy.findByText("First collection").click();
+      enterSearchText({
+        text: "1",
+        placeholder: "Search this collection or everywhere…",
+      });
+      localSearchTab("First collection").should("be.checked");
+      assertSearchResults({
+        foundItems: [
+          "Regular question 1",
+          "Regular model 1",
+          "Regular metric 1",
+        ],
+        notFoundItems: [
+          "Root question 1",
+          "Regular question 2",
+          "Admin personal collection question 1",
+          "Normal personal collection question 1",
+          "No collection personal collection question 1",
+        ],
+      });
+    });
+
+    cy.log("inaccessible root collection - manually selected");
+    entityPickerModal().within(() => {
+      entityPickerModalTab(tab).click();
+      cy.findByText("Collections").click();
+      enterSearchText({
+        text: "1",
+        placeholder: "Search this collection or everywhere…",
+      });
+      localSearchTab("Collections").should("be.checked");
+      assertSearchResults({
+        notFoundItems: [
+          "Root metric 1",
+          "Regular metric 1",
+          "Admin personal collection metric 1",
+          "Normal personal collection metric 2",
+        ],
+      });
+      cy.findByText("Didn't find anything").should("be.visible");
+    });
+
+    cy.log("personal collection");
+    entityPickerModal().within(() => {
+      entityPickerModalTab(tab).click();
+      cy.findByText(/Personal Collection/).click();
+      enterSearchText({
+        text: "1",
+        placeholder: "Search this collection or everywhere…",
+      });
+      localSearchTab("No Collection Tableton's Personal Collection").should(
+        "be.checked",
+      );
+      assertSearchResults({
+        foundItems: [
+          "No collection personal collection question 1",
+          "No collection personal collection model 1",
+          "No collection personal collection metric 1",
+        ],
+        notFoundItems: [
+          "Root metric 1",
+          "Regular metric 1",
+          "Admin personal collection metric 1",
+          "Normal personal collection metric 2",
+        ],
+      });
+    });
+  });
+}
+
+function testCardSearchForAllPersonalCollections({ tabs }: { tabs: string[] }) {
   tabs.forEach(tab => {
     entityPickerModal().within(() => {
       entityPickerModalTab(tab).click();
