@@ -16,7 +16,7 @@ export const getSkeletonOverrides = (): MantineThemeOverride["components"] => {
         return {
           // We replace Mantine's pulsing animation with a shimmer animation
           root: {
-            backgroundColor: "var(--mb-color-bg-light)",
+            backgroundColor: "rgba(245,248,250,1.0)",
             "&::before": {
               background:
                 "linear-gradient(100deg, transparent, var(--mb-color-bg-medium), transparent) ! important",
