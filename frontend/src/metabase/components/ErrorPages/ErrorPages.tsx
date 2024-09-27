@@ -147,3 +147,26 @@ export const SmallGenericError = ({
     </ErrorPageRoot>
   );
 };
+
+export const NoDatabaseError = ({
+  title = t`We couldn't find any data.`,
+  message = t`Please connect your database to proceed.`,
+}: {
+  title?: string;
+  message?: string;
+}) => (
+  <ErrorPageRoot>
+    <EmptyState
+      title={title}
+      message={message}
+      illustrationElement={
+        <div
+          className={cx(
+            QueryBuilderS.QueryErrorImage,
+            QueryBuilderS.QueryErrorImageServerError,
+          )}
+        />
+      }
+    />
+  </ErrorPageRoot>
+);
