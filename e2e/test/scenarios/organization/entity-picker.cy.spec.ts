@@ -170,97 +170,7 @@ describe("scenarios > organization > entity picker", () => {
         createTestCards();
         cy.signInAsNormalUser();
         startNewQuestion();
-
-        tabs.forEach(tab => {
-          cy.log("root collection - automatically selected");
-          entityPickerModal().within(() => {
-            entityPickerModalTab(tab).click();
-            enterSearchText({
-              text: "2",
-              placeholder: "Search this collection or everywhere…",
-            });
-            localSearchTab("Our analytics").should("be.checked");
-            assertSearchResults({
-              foundItems: ["Root question 2", "Root model 2", "Root metric 2"],
-              notFoundItems: [
-                "Root question 1",
-                "Regular question 2",
-                "Admin personal collection question 2",
-                "Normal personal collection question 2",
-              ],
-            });
-          });
-
-          cy.log("regular collection");
-          entityPickerModal().within(() => {
-            entityPickerModalTab(tab).click();
-            cy.findByText("First collection").click();
-            enterSearchText({
-              text: "1",
-              placeholder: "Search this collection or everywhere…",
-            });
-            localSearchTab("First collection").should("be.checked");
-            assertSearchResults({
-              foundItems: [
-                "Regular question 1",
-                "Regular model 1",
-                "Regular metric 1",
-              ],
-              notFoundItems: [
-                "Root question 1",
-                "Regular question 2",
-                "Admin personal collection question 1",
-                "Normal personal collection question 1",
-              ],
-            });
-          });
-
-          cy.log("root collection - manually selected");
-          entityPickerModal().within(() => {
-            entityPickerModalTab(tab).click();
-            cy.findByText("Our analytics").click();
-            enterSearchText({
-              text: "2",
-              placeholder: "Search this collection or everywhere…",
-            });
-            localSearchTab("Our analytics").should("be.checked");
-            assertSearchResults({
-              foundItems: ["Root question 2", "Root model 2", "Root metric 2"],
-              notFoundItems: [
-                "Root model 1",
-                "Regular model 2",
-                "Admin personal collection model 2",
-                "Normal personal collection model 2",
-              ],
-            });
-          });
-
-          cy.log("personal collection");
-          entityPickerModal().within(() => {
-            entityPickerModalTab(tab).click();
-            cy.findByText(/Personal Collection/).click();
-            enterSearchText({
-              text: "1",
-              placeholder: "Search this collection or everywhere…",
-            });
-            localSearchTab("Robert Tableton's Personal Collection").should(
-              "be.checked",
-            );
-            assertSearchResults({
-              foundItems: [
-                "Normal personal collection question 1",
-                "Normal personal collection model 1",
-                "Normal personal collection metric 1",
-              ],
-              notFoundItems: [
-                "Root metric 1",
-                "Regular metric 1",
-                "Admin personal collection metric 1",
-                "Normal personal collection metric 2",
-              ],
-            });
-          });
-        });
+        testCardSearchForNormalUser(tabs);
       });
 
       it("should search for cards when there is no access to the root collection", () => {
@@ -818,5 +728,98 @@ function assertSearchResults({
   });
   notFoundItems.forEach(item => {
     cy.findByText(item).should("not.exist");
+  });
+}
+
+function testCardSearchForNormalUser(tabs: string[]) {
+  tabs.forEach(tab => {
+    cy.log("root collection - automatically selected");
+    entityPickerModal().within(() => {
+      entityPickerModalTab(tab).click();
+      enterSearchText({
+        text: "2",
+        placeholder: "Search this collection or everywhere…",
+      });
+      localSearchTab("Our analytics").should("be.checked");
+      assertSearchResults({
+        foundItems: ["Root question 2", "Root model 2", "Root metric 2"],
+        notFoundItems: [
+          "Root question 1",
+          "Regular question 2",
+          "Admin personal collection question 2",
+          "Normal personal collection question 2",
+        ],
+      });
+    });
+
+    cy.log("regular collection");
+    entityPickerModal().within(() => {
+      entityPickerModalTab(tab).click();
+      cy.findByText("First collection").click();
+      enterSearchText({
+        text: "1",
+        placeholder: "Search this collection or everywhere…",
+      });
+      localSearchTab("First collection").should("be.checked");
+      assertSearchResults({
+        foundItems: [
+          "Regular question 1",
+          "Regular model 1",
+          "Regular metric 1",
+        ],
+        notFoundItems: [
+          "Root question 1",
+          "Regular question 2",
+          "Admin personal collection question 1",
+          "Normal personal collection question 1",
+        ],
+      });
+    });
+
+    cy.log("root collection - manually selected");
+    entityPickerModal().within(() => {
+      entityPickerModalTab(tab).click();
+      cy.findByText("Our analytics").click();
+      enterSearchText({
+        text: "2",
+        placeholder: "Search this collection or everywhere…",
+      });
+      localSearchTab("Our analytics").should("be.checked");
+      assertSearchResults({
+        foundItems: ["Root question 2", "Root model 2", "Root metric 2"],
+        notFoundItems: [
+          "Root model 1",
+          "Regular model 2",
+          "Admin personal collection model 2",
+          "Normal personal collection model 2",
+        ],
+      });
+    });
+
+    cy.log("personal collection");
+    entityPickerModal().within(() => {
+      entityPickerModalTab(tab).click();
+      cy.findByText(/Personal Collection/).click();
+      enterSearchText({
+        text: "1",
+        placeholder: "Search this collection or everywhere…",
+      });
+      localSearchTab("Robert Tableton's Personal Collection").should(
+        "be.checked",
+      );
+      assertSearchResults({
+        foundItems: [
+          "Normal personal collection question 1",
+          "Normal personal collection model 1",
+          "Normal personal collection metric 1",
+        ],
+        notFoundItems: [
+          "Root metric 1",
+          "Regular metric 1",
+          "Admin personal collection metric 1",
+          "Normal personal collection metric 2",
+        ],
+      });
+    });
   });
 }
