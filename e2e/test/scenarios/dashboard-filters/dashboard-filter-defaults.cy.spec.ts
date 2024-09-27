@@ -76,14 +76,16 @@ describe("scenarios > dashboard > filters > reset", () => {
   });
 
   it("should reset a filters value when editing the default", () => {
-    // Default dashboard filter
+    cy.log("Default dashboard filter");
     cy.location("search").should("eq", "?filter_one=&filter_two=Bar");
 
     clearFilterWidget(1);
 
     cy.location("search").should("eq", "?filter_one=&filter_two=");
 
-    // Finally, when we remove dashboard filter's default value, the url should reflect that by removing the placeholder
+    cy.log(
+      "Finally, when we remove dashboard filter's default value, the url should reflect that by removing the placeholder",
+    );
     editDashboard();
 
     openFilterOptions("Filter Two");
