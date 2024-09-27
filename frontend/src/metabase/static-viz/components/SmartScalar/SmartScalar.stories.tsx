@@ -64,6 +64,7 @@ function createSmartScalarSeries({
 }: SmartScalarSeriesOpts) {
   return createMockSingleSeries(
     {
+      display: "smartscalar",
       visualization_settings: vizSettings,
     },
     {
