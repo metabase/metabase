@@ -16,6 +16,7 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -221,7 +222,12 @@
                    (mt/db)
                    nil
                    (fn [^java.sql.Connection conn]
-                     (.setAutoCommit conn auto-commit)
+                     ;; Databricks does not support setting auto commit to false. Catching the setAutoCommit
+                     ;; exception results in testing the true value only.
+                     (try
+                       (.setAutoCommit conn auto-commit)
+                       (catch Exception _
+                         (log/trace "Failed to set auto commit.")))
                      (is (false? (sql-jdbc.sync.interface/have-select-privilege?
                                   driver/*driver* conn schema (str table-name "_should_not_exist"))))
                      (is (true? (sql-jdbc.sync.interface/have-select-privilege?

@@ -637,7 +637,7 @@
                                                                          :id
                                                                          {:include-archived-items :all}))
 
-        descendant-collection-ids (map u/the-id descendant-collections)
+        descendant-collection-ids (mapv u/the-id descendant-collections)
 
         child-type->coll-id-set
         (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
