@@ -337,23 +337,23 @@
   permissions)."
   [deep-copy? :- ms/MaybeBooleanValue
    dashcards :- [:sequential :any]]
-  (letfn [(card->cards [{:keys [card series]}] (into [card] series))
-          (readable? [card] (and (mi/model card) (mi/can-read? card)))
-          (card->decision [parent-card card]
-            (cond
-              (or
-               (not (readable? parent-card))
-               (not (readable? card)))
-              :discard
+  (let [card->cards (fn [{:keys [card series]}] (into [card] series))
+        readable? (fn [card] (and (mi/model card) (mi/can-read? card)))
+        card->decision (fn [parent-card card]
+                         (cond
+                           (or
+                            (not (readable? parent-card))
+                            (not (readable? card)))
+                           :discard
 
-              (or (:dashboard_id card)
-                  (and deep-copy? (not= :model (:type card))))
-              :copy
+                           (or (:dashboard_id card)
+                               (and deep-copy? (not= :model (:type card))))
+                           :copy
 
-              :else :reference))
-          (split-cards [{:keys [card] :as db-card}]
-            (let [cards (card->cards db-card)]
-              (group-by (partial card->decision card) cards)))]
+                           :else :reference))
+        split-cards (fn [{:keys [card] :as db-card}]
+                      (let [cards (card->cards db-card)]
+                        (group-by (partial card->decision card) cards)))]
     (reduce (fn [acc db-card]
               (let [{:keys [discard copy reference]} (split-cards db-card)]
                 (-> acc
@@ -372,19 +372,18 @@
 
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
-  (let [same-collection? (= (:collection_id old-dashboard) dest-coll-id)
+  (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
         {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
-    {:copied (into {} (for [[id to-copy] copy]
-                        [id (card/create-card!
-                             (cond-> to-copy
-                               true (assoc :collection_id dest-coll-id)
-                               same-collection? (update :name #(str % " - " (tru "Duplicate")))
-                               (:dashboard_id to-copy)
-                               (assoc :dashboard_id (u/the-id new-dashboard)))
-                             @api/*current-user*
+    {:copied     (into {} (for [[id to-copy] copy]
+                            [id (card/create-card!
+                                 (cond-> to-copy
+                                   true                    (assoc :collection_id dest-coll-id)
+                                   same-collection?        (update :name #(str % " - " (tru "Duplicate")))
+                                   (:dashboard_id to-copy) (assoc :dashboard_id (u/the-id new-dashboard)))
+                                 @api/*current-user*
                              ;; creating cards from a transaction. wait until tx complete to signal event
-                             true)]))
-     :discarded discard
+                                 true)]))
+     :discarded  discard
      :referenced reference}))
 
 (defn- duplicate-tabs
@@ -622,7 +621,7 @@
     (dashboard-card/delete-dashboard-cards! dashcard-ids)
     dashboard-cards))
 
-(defn- assert-no-invalid-dashboard-internal-dashcards [dashboard to-create]
+(defn- assert-new-dashcards-are-not-internal-to-other-dashboards [dashboard to-create]
   (when-let [card-ids (seq (keep :card_id to-create))]
     (api/check-400 (not (t2/exists? :model/Card
                                     {:where [:and
@@ -633,7 +632,7 @@
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
-    (assert-no-invalid-dashboard-internal-dashcards dashboard to-create)
+    (assert-new-dashcards-are-not-internal-to-other-dashboards dashboard to-create)
     (when (seq to-update)
       (update-dashcards! dashboard to-update))
     {:deleted-dashcards (when (seq to-delete)
@@ -813,7 +812,7 @@
                                            :embedding_params :archived :auto_apply_filters}))]
              (doseq [k [:archived :collection_id]]
                (when-let [[_ new-val] (find updates k)]
-                 (card/with-allowed-changes-to-dashboard-internal-card
+                 (card/with-allowed-changes-to-internal-dashboard-card
                    (t2/update! :model/Card :dashboard_id id {k new-val}))))
              (t2/update! Dashboard id updates)
              (when (contains? updates :collection_id)
