@@ -199,7 +199,7 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
 
   const toggleVerificationFilter = () => {
     openFilterPopover();
-    toggle().next("label").click();
+    toggle().parent("label").click();
     cy.wait("@updateFilter");
   };
 

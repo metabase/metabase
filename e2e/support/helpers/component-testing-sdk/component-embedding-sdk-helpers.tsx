@@ -8,6 +8,8 @@ import type { JSX } from "react";
 import { USERS } from "e2e/support/cypress_data";
 import { signInAsAdminAndEnableEmbeddingSdkForE2e } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
+import { ThemeProvider } from "metabase/ui";
+
 export const METABASE_INSTANCE_URL = "http://localhost:4000";
 
 export const AUTH_PROVIDER_URL = "http://auth-provider/sso";
@@ -60,15 +62,17 @@ export function mountSdkContent(
   cy.intercept("GET", "/api/user/current").as("getUser");
 
   cy.mount(
-    <MetabaseProvider
-      {...sdkProviderProps}
-      authConfig={{
-        ...DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
-        ...sdkProviderProps?.authConfig,
-      }}
-    >
-      {children}
-    </MetabaseProvider>,
+    <ThemeProvider>
+      <MetabaseProvider
+        {...sdkProviderProps}
+        authConfig={{
+          ...DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+          ...sdkProviderProps?.authConfig,
+        }}
+      >
+        {children}
+      </MetabaseProvider>
+    </ThemeProvider>,
   );
 
   cy.wait("@getUser").then(({ response }) => {

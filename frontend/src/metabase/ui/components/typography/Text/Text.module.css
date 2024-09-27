@@ -1,0 +1,9 @@
+.root[data-variant="monospace"] {
+  font-family: var(--mantine-font-family-monospace);
+  white-space: pre;
+}
+
+.root[data-size="md"],
+.root[data-size="lg"] {
+  line-height: 1.5rem;
+}

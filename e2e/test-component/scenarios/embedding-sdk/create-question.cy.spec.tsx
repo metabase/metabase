@@ -19,7 +19,7 @@ import {
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { Flex } from "metabase/ui";
+import { Flex, ThemeProvider } from "metabase/ui";
 
 describeEE("scenarios > embedding-sdk > create-question", () => {
   beforeEach(() => {

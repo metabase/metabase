@@ -21,7 +21,7 @@ const ResultTitleText = ({
   onReset,
   originalName,
 }: ResultTitleTextProps) => (
-  <Stack spacing="xs">
+  <Stack gap="xs">
     {originalName && withResetButton && isQuestionChanged && (
       <Text fw={600} size="sm">
         Return to
