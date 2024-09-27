@@ -32,9 +32,9 @@ export const HelpLinkSettings = ({
 
   const [error, setError] = useState<string | null>(null);
 
-  const handleRadioChange = (value: HelpLinkSetting) => {
-    setHelpLinkSetting(value);
-    onChangeSetting("help-link", value);
+  const handleRadioChange = (value: string) => {
+    setHelpLinkSetting(value as HelpLinkSetting);
+    onChangeSetting("help-link", value as HelpLinkSetting);
   };
   const customUrl = settingValues["help-link-custom-destination"];
 
@@ -66,7 +66,7 @@ export const HelpLinkSettings = ({
         </Stack>
       </Radio.Group>
       {isTextInputVisible && (
-        <Stack ml={28} spacing={0}>
+        <Stack ml={28} gap={0}>
           {error && (
             <Text size="md" color="error">
               {error}

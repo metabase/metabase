@@ -31,7 +31,7 @@ export const OffsetInput = ({ value, onChange, comparisonType }: Props) => {
     <NumberInput
       classNames={{ input: S.input }}
       min={minimum}
-      precision={0}
+      allowDecimal={false}
       size="md"
       step={1}
       type="number"

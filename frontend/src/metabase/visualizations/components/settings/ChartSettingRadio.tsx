@@ -13,7 +13,7 @@ export const ChartSettingRadio = ({
   className,
 }: ChartSettingRadioProps) => (
   <Radio.Group value={value} className={className} onChange={onChange}>
-    <Stack spacing="xs">
+    <Stack gap="xs">
       {options.map(({ name, value: optionValue }) => (
         <Radio
           key={optionValue}

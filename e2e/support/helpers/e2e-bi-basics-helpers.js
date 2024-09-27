@@ -65,7 +65,7 @@ export function filterFieldPopover(
   { value, placeholder, order } = {},
 ) {
   getFilterField(fieldName, order).within(() => {
-    cy.get("input").last().click();
+    cy.findByRole("combobox").click();
   });
 
   if (value) {
