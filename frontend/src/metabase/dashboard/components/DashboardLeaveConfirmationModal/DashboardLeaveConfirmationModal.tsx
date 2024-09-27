@@ -2,15 +2,15 @@ import type { Route } from "react-router";
 import { t } from "ttag";
 
 import ConfirmContent from "metabase/components/ConfirmContent";
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import {
+  LeaveConfirmationModal,
+  LeaveConfirmationModalContent,
+} from "metabase/components/LeaveConfirmationModal";
 import { updateDashboardAndCards } from "metabase/dashboard/actions/save";
 import { useDispatch } from "metabase/lib/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
 
-import {
-  isNavigatingElsewhereGuard,
-  isNavigatingToCreateADashboardQuestionGuard,
-} from "./utils";
+import { isNavigatingToCreateADashboardQuestion } from "./utils";
 
 interface DashboardLeaveConfirmationModalProps {
   isEditing: boolean;
@@ -32,33 +32,33 @@ export const DashboardLeaveConfirmationModal = ({
   };
 
   return (
-    <>
-      <LeaveConfirmationModal
-        isEnabled={isEditing && isDirty}
-        route={route}
-        isLocationAllowed={isNavigatingElsewhereGuard}
-      />
-      <LeaveConfirmationModal
-        isEnabled={isEditing && isDirty}
-        route={route}
-        isLocationAllowed={isNavigatingToCreateADashboardQuestionGuard}
-      >
-        {({ onAction, onClose }) => (
-          <ConfirmContent
-            cancelButtonText={t`Cancel`}
-            confirmButtonText={t`Save changes and go`}
-            confirmButtonPrimary
-            data-testid="leave-for-new-dashboard-question-confirmation"
-            message={t`That’ll keep things tidy.`}
-            title={t`Let’s save your changes and create your new question`}
-            onAction={async () => {
-              await onSave();
-              onAction?.();
-            }}
+    <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route}>
+      {({ nextLocation, onAction, onClose }) => {
+        if (isNavigatingToCreateADashboardQuestion(nextLocation)) {
+          return (
+            <ConfirmContent
+              cancelButtonText={t`Cancel`}
+              confirmButtonText={t`Save changes and go`}
+              confirmButtonPrimary
+              data-testid="leave-for-new-dashboard-question-confirmation"
+              message={t`That’ll keep things tidy.`}
+              title={t`Let’s save your changes and create your new question`}
+              onAction={async () => {
+                await onSave();
+                onAction?.();
+              }}
+              onClose={onClose}
+            />
+          );
+        }
+
+        return (
+          <LeaveConfirmationModalContent
+            onAction={onAction}
             onClose={onClose}
           />
-        )}
-      </LeaveConfirmationModal>
-    </>
+        );
+      }}
+    </LeaveConfirmationModal>
   );
 };
