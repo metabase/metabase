@@ -20,12 +20,20 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.search :as search]
    [metabase.search.config :as search.config]
+   [metabase.search.fulltext :as search.fulltext]
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(comment
+  ;; We need this to ensure the engine hierarchy is registered
+  search.fulltext/keep-me)
+
+(set! *warn-on-reflection* true)
 
 (def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
 
@@ -299,6 +307,14 @@
     (with-search-items-in-root-collection "test"
       (is (= 2 (:limit (search-request :crowberto :q "test" :limit "2" :offset "3"))))
       (is (= 3 (:offset (search-request :crowberto :q "test" :limit "2" :offset "3")))))))
+
+(deftest custom-engine-test
+  (when (search/supports-index?)
+    (testing "It can use an alternate search engine"
+      (with-search-items-in-root-collection "test"
+        (let [resp (search-request :crowberto :q "test" :search_engine "fulltext")]
+          ;; The index is not populated here, so there's not much interesting to assert.
+          (is (= "search.engine/fulltext" (:engine resp))))))))
 
 (deftest archived-models-test
   (testing "It returns some stuff when you get results"
@@ -1558,3 +1574,19 @@
                                            :name "top level col"
                                            :type "foo"}]}
                    (:collection leaf-card-response)))))))))
+
+(deftest force-reindex-test
+  (when (search/supports-index?)
+    (mt/with-temp [Card {id :id} {:name "It boggles the mind!"}]
+      (let [search-results #(:data (mt/user-http-request :rasta :get 200 "search" :q "boggle" :search_engine "fulltext"))]
+        (try
+          (t2/delete! :search_index)
+          (catch Exception _))
+        (is (empty? (search-results)))
+        (mt/user-http-request :crowberto :post 200 "search/force-reindex")
+        (is (loop [attempts-left 5]
+              (if (some (comp #{id} :id) (search-results))
+                ::success
+                (when (pos? attempts-left)
+                  (Thread/sleep 200)
+                  (recur (dec attempts-left))))))))))

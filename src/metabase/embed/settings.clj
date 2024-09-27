@@ -41,6 +41,61 @@
   :deprecated "0.51.0"
   :setter     (make-embedding-toggle-setter :enable-embedding "embedding"))
 
+(defsetting embedding-app-origin
+  (deferred-tru "Allow this origin to embed the full Metabase application.")
+  ;; This value is usually gated by [[enable-embedding]]
+  :feature    :embedding
+  :type       :string
+  :export?    false
+  :visibility :public
+  :audit      :getter
+  :encryption :no)
+
+(defsetting enable-embedding-sdk
+  (deferred-tru "Allow admins to embed Metabase via the SDK?")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter
+  :setter     (make-embedding-toggle-setter :enable-embedding-sdk "sdk-embedding"))
+
+(mu/defn- ignore-localhost :- :string
+  "Remove localhost:* or localhost:<port> from the list of origins."
+  [s :- [:maybe :string]]
+  (->> (str/split (or s "") #"\s+")
+       (remove #(re-matches #"localhost:(\*|\d+)" %))
+       distinct
+       (str/join " ")
+       str/trim))
+
+(mu/defn- add-localhost :- :string [s :- [:maybe :string]]
+  (->> s ignore-localhost (str "localhost:* ") str/trim))
+
+(defn embedding-app-origins-sdk-setter
+  "The setter for [[embedding-app-origins-sdk]].
+
+  Checks that we have SDK embedding feature and that it's enabled, then sets the value accordingly."
+  [new-value]
+  (add-localhost ;; return the same value that is returned from the getter
+   (when (and (premium-features/has-feature? :embedding-sdk)
+              ;; Cannot set the SDK origins if the SDK embedding is disabled. so it will remain localhost:*.
+              (setting/get-value-of-type :boolean :enable-embedding-sdk))
+     (->> new-value
+          ignore-localhost
+          (setting/set-value-of-type! :string :embedding-app-origins-sdk)))))
+
+(defsetting embedding-app-origins-sdk
+  (deferred-tru "Allow this origin to embed Metabase SDK")
+  :type       :string
+  :export?    false
+  :visibility :public
+  :encryption :no
+  :audit      :getter
+  :getter    (fn embedding-app-origins-sdk-getter []
+               (add-localhost (setting/get-value-of-type :string :embedding-app-origins-sdk)))
+  :setter   embedding-app-origins-sdk-setter)
+
 (defsetting ^:deprecated embedding-app-origin
   ;; To be removed in 0.53.0
   (deferred-tru "Allow this origin to embed the full Metabase application.")
