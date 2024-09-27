@@ -343,7 +343,6 @@
               (or
                (not (readable? parent-card))
                (not (readable? card)))
-
               :discard
 
               (or (:dashboard_id card)
