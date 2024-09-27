@@ -1,8 +1,6 @@
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { CardDisplayType } from "./visualization";
 
-import type { Collection } from ".";
-
 export const ACTIVITY_MODELS = [
   "table",
   "card",
