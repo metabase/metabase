@@ -691,6 +691,7 @@ jobs:
     if: ${{ inputs.auto }}
     needs: [push-tags, verify-docker-pull, verify-s3-download]
     uses: ./.github/workflows/release-tag.yml
+    secrets: inherit
     with:
       version: ${{ inputs.version }}
       tag_name: nightly
