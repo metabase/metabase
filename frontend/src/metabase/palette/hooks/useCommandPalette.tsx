@@ -72,6 +72,7 @@ export const useCommandPalette = ({
     {
       q: debouncedSearchText,
       context: "command-palette",
+      include_dashboard_questions: true,
       limit: 20,
     },
     {
