@@ -7,17 +7,15 @@ import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
-import { Box, Button, Flex, Icon, Switch, Text } from "metabase/ui";
+import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 
 import { EmbeddingOption } from "../EmbeddingOption";
 import { LinkButton } from "../LinkButton";
-import type { EmbeddingOptionCardProps } from "../types";
+import { SwitchWithSetByEnvVar } from "../SwitchWithSetByEnvVar";
 
 import { InteractiveEmbeddingIcon } from "./InteractiveEmbeddingIcon";
 
-export const InteractiveEmbeddingOptionCard = ({
-  onToggle,
-}: EmbeddingOptionCardProps) => {
+export const InteractiveEmbeddingOptionCard = () => {
   const isEE = PLUGIN_EMBEDDING.isEnabled();
   const plan = useSelector(state =>
     getPlan(getSetting(state, "token-features")),
@@ -87,14 +85,9 @@ export const InteractiveEmbeddingOptionCard = ({
             {t`Learn More`}
           </Button>
         )}
-        <Switch
-          size="sm"
-          label={isInteractiveEmbeddingEnabled ? t`Enabled` : t`Disabled`}
-          ml="auto"
-          labelPosition="left"
+        <SwitchWithSetByEnvVar
+          settingKey="enable-embedding-interactive"
           disabled={!isEE}
-          checked={isInteractiveEmbeddingEnabled}
-          onChange={onToggle}
         />
       </Flex>
     </EmbeddingOption>

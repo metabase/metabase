@@ -5,17 +5,15 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { Flex, Switch, Text } from "metabase/ui";
+import { Flex, Text } from "metabase/ui";
 
 import { EmbeddingOption } from "../EmbeddingOption";
 import { LinkButton } from "../LinkButton";
-import type { EmbeddingOptionCardProps } from "../types";
+import { SwitchWithSetByEnvVar } from "../SwitchWithSetByEnvVar";
 
 import { StaticEmbeddingIcon } from "./StaticEmbeddingIcon";
 
-export const StaticEmbeddingOptionCard = ({
-  onToggle,
-}: EmbeddingOptionCardProps) => {
+export const StaticEmbeddingOptionCard = () => {
   const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
   const upgradeUrl = useSelector(state =>
     getUpgradeUrl(state, { utm_content: "embed-settings" }),
@@ -47,14 +45,7 @@ export const StaticEmbeddingOptionCard = ({
         >
           {t`Manage`}
         </LinkButton>
-        <Switch
-          size="sm"
-          label={isStaticEmbeddingEnabled ? t`Enabled` : t`Disabled`}
-          ml="auto"
-          labelPosition="left"
-          checked={isStaticEmbeddingEnabled}
-          onChange={onToggle}
-        />
+        <SwitchWithSetByEnvVar settingKey="enable-embedding-static" />
       </Flex>
     </EmbeddingOption>
   );

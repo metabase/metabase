@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-import type { Settings } from "metabase-types/api";
+import type { SettingKey, Settings } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -28,7 +28,7 @@ export const setupEmbedding = async ({
   const returnedValue = await setup({
     settings: Object.entries(settingValues ?? {}).map(([key, value]) => {
       return createMockSettingDefinition({
-        key,
+        key: key as SettingKey,
         value,
       });
     }),

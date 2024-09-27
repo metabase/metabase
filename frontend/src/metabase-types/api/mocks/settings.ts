@@ -131,7 +131,7 @@ export const createMockTokenFeatures = (
 export const createMockSettingDefinition = (
   opts?: Partial<SettingDefinition>,
 ): SettingDefinition => ({
-  key: "key",
+  key: "active-users-count",
   env_name: "",
   is_env_setting: false,
   value: null,
@@ -169,6 +169,7 @@ export const createMockSettings = (
   "email-smtp-password": null,
   "embedding-app-origin": "",
   "embedding-app-origins-sdk": "",
+  "embedding-app-origins-interactive": "",
   "enable-embedding": false,
   "enable-embedding-static": false,
   "enable-embedding-sdk": false,

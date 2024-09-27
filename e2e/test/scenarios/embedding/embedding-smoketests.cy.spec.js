@@ -77,15 +77,12 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       });
 
       cy.log("Standalone embeds page");
-      // TODO: Remove this when the actual BE is implemented, this flag still controls the static embedding
-      // I've tried to change this but it failed like 500 BE tests.
-      cy.request("PUT", "/api/setting/enable-embedding", {
-        value: true,
-      });
+
       mainPage().within(() => {
         cy.findByLabelText("Enable Static embedding")
           .click({ force: true })
           .should("be.checked");
+
         cy.findByTestId("embedding-secret-key-setting").within(() => {
           cy.findByText("Embedding secret key");
           cy.findByText(
@@ -307,7 +304,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 });
 
 function resetEmbedding() {
-  cy.request("PUT", "/api/setting/enable-embedding", {
+  cy.request("PUT", "/api/setting/enable-embedding-static", {
     value: false,
   });
   cy.request("PUT", "/api/setting/embedding-secret-key", {

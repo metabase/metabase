@@ -1,3 +1,10 @@
+import type { ReactNode } from "react";
+
+import type {
+  EnterpriseSettingKey,
+  EnterpriseSettings,
+} from "metabase-enterprise/settings/types";
+
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
   "type/Number"?: NumberFormattingSettings;
@@ -181,12 +188,17 @@ export type PasswordComplexity = {
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
 
-export interface SettingDefinition {
-  key: string;
+export interface SettingDefinition<
+  Key extends EnterpriseSettingKey = EnterpriseSettingKey,
+> {
+  key: Key;
   env_name?: string;
   is_env_setting: boolean;
-  value?: unknown;
-  default?: unknown;
+  value: EnterpriseSettings[Key] | null;
+  default?: EnterpriseSettings[Key];
+  display_name?: string;
+  description?: string | ReactNode;
+  placeholder?: string;
 }
 
 export interface OpenAiModel {
@@ -293,7 +305,8 @@ interface PublicSettings {
   "ee-ai-features-enabled"?: boolean;
   "email-configured?": boolean;
   "embedding-app-origin": string;
-  "embedding-app-origins-sdk": string;
+  "embedding-app-origins-sdk": string | null;
+  "embedding-app-origins-interactive": string | null;
   "enable-enhancements?": boolean;
   "enable-password-login": boolean;
   engines: Record<string, Engine>;
