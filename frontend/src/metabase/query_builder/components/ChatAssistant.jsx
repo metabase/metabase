@@ -60,6 +60,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [insightsText, setInsightsText] = useState([]);
     const [insightsImg, setInsightsImg] = useState([]);
     const [insightsCode, setInsightsCode] = useState([]);
+    const [insightsCsv, setInsightsCsv] = useState([]);
+    const [insightFile, setInsightFile] = useState([]);
     const [codeIndex, setCodeIndex] = useState(-1);
     const [insightTextIndex, setInsightTextIndex] = useState(-1);
     const [runId, setRunId] = useState('');
@@ -263,6 +265,9 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 case "getCode":
                     await handleGetCode(func);
                     break;
+                case "getCsv":
+                    await handleGetCsv(func);
+                    break;
                 default:
                     console.log(func);
                     break;
@@ -317,7 +322,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 return Array.isArray(prevCard) ? [...prevCard, updatedCard] : [updatedCard];
             });
             setCardHash(prevCardHash => Array.isArray(prevCardHash) ? [...prevCardHash, hash1] : [hash1]);
-            console.log('CARD HASH: ', cardHash)
         } catch (error) {
             console.error("Error fetching card content:", error);
             setShowError(true)
@@ -606,6 +610,16 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         }
     }
 
+    const handleGetCsv = async func => {
+        const { generatedCsv, generatedFiles } = func.arguments;
+        try {
+            setInsightsCsv(prevCsv => [...prevCsv, ...generatedFiles]);
+            setInsightFile(prevFile => [...prevFile, generatedCsv]);
+        } catch (error) {
+            console.error("Error getting csv", error);
+        }
+    }
+
     const handleDefaultMessage = data => {
         if (data.message) {
             addServerMessage(
@@ -731,7 +745,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                 const requestedFields = fieldsString.split(',').map(field => field.trim());
                 const suggestion = SuggestionParts[1].trim();
                 setSuggestionQuestion(suggestion);
-                console.log('Extracted fields:', requestedFields);
 
                 // You can now use or store the `requestedFields` array in your component
                 // For example, set it in the state
@@ -1119,6 +1132,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                 card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} insightsList={insightsList}
                                 showError={showError} insightsPlan={inisghtPlan}
                                 insightsText={insightsText} insightsImg={insightsImg} insightsCode={insightsCode} showCubeEditButton={showCubeEditButton} sendAdminRequest={handleCubeRequestDialogOpen} onSuggestion={handleSuggestion}
+                                insightsCsv={insightsCsv} insightFile={insightFile}
                             />
                             <div
                                 style={{

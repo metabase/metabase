@@ -66,6 +66,7 @@
     "js-cookie": "^2.1.2",
     "jspdf": "^2.5.1",
     "jsrsasign": "^11.0.0",
+    "jszip": "^3.10.1",
     "kbar": "^0.1.0-beta.45",
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.9",
