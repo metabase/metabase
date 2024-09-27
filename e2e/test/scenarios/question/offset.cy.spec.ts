@@ -783,6 +783,7 @@ describe("scenarios > question > offset", () => {
         addCustomColumn({
           formula: 'concat([Product → Category], " from products")',
           name: customColumnName,
+          actionButtonsGroup: "first",
         });
 
         addSummaryGroupingField({
@@ -821,6 +822,7 @@ describe("scenarios > question > offset", () => {
         addCustomColumn({
           formula: "[Product → Category]",
           name: customColumnName,
+          actionButtonsGroup: "first",
         });
 
         addSummaryGroupingField({
@@ -1196,6 +1198,7 @@ describe("scenarios > question > offset", () => {
     addCustomColumn({
       name: customColumnName,
       formula: "[Product → Rating]",
+      actionButtonsGroup: "first",
     });
 
     summarize({ mode: "notebook" });
@@ -1389,8 +1392,20 @@ function addSorting({
   }
 }
 
-function addCustomColumn({ name, formula }: { name: string; formula: string }) {
-  cy.icon("add_data").last().click();
+function addCustomColumn({
+  name,
+  formula,
+  actionButtonsGroup = "last",
+}: {
+  name: string;
+  formula: string;
+  actionButtonsGroup?: "first" | "last";
+}) {
+  if (actionButtonsGroup === "first") {
+    cy.findAllByTestId("action-buttons").first().icon("add_data").click();
+  } else {
+    cy.findAllByTestId("action-buttons").last().icon("add_data").click();
+  }
 
   enterCustomColumnDetails({
     formula,

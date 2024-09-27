@@ -96,7 +96,7 @@ describe("issue 13289", () => {
     cy.button("Done").click();
   });
 
-  it("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289) (metabase#13289)", () => {
+  it("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289)", () => {
     summarize({ mode: "notebook" });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
