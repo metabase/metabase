@@ -64,7 +64,7 @@ export const ChartTypeDropdown = () => {
           icon={selectedElem.iconName}
           isHighlighted={false}
           variant="default"
-          rightIcon={<Icon ml="xs" size={10} name="chevrondown" />}
+          leftSection={<Icon ml="xs" size={10} name="chevrondown" />}
         />
       </Menu.Target>
       <Menu.Dropdown h="30rem">
@@ -72,7 +72,7 @@ export const ChartTypeDropdown = () => {
           <Menu.Item
             key={`${value}/${index}`}
             onClick={() => updateQuestionVisualization(value)}
-            icon={iconName ? <Icon name={iconName} /> : null}
+            leftSection={iconName ? <Icon name={iconName} /> : null}
           >
             {label}
           </Menu.Item>
@@ -83,7 +83,7 @@ export const ChartTypeDropdown = () => {
           <Menu.Item
             key={`${value}/${index}`}
             onClick={() => updateQuestionVisualization(value)}
-            icon={iconName ? <Icon name={iconName} /> : null}
+            leftSection={iconName ? <Icon name={iconName} /> : null}
           >
             {label}
           </Menu.Item>

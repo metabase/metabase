@@ -3,10 +3,12 @@
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
 
-/** The currently visible popover dropdown or menu dropdown.*/
-export const popover = () => cy.get(POPOVER_ELEMENT).should("be.visible");
+export function popover(testid) {
+  const selector = `${POPOVER_ELEMENT}${testid ? `[data-testid=${testid}]` : ""}`;
+  return cy.get(selector).should("be.visible");
+}
 
-const HOVERCARD_ELEMENT = ".emotion-HoverCard-dropdown[role='dialog']:visible";
+const HOVERCARD_ELEMENT = ".mantine-HoverCard-dropdown[role='dialog']:visible";
 
 export function hovercard() {
   cy.get(HOVERCARD_ELEMENT, { timeout: 6000 }).should("be.visible");
@@ -22,13 +24,13 @@ export function menu() {
 }
 
 export function modal() {
-  const MODAL_SELECTOR = ".emotion-Modal-content[role='dialog']";
+  const MODAL_SELECTOR = ".mantine-Modal-content[role='dialog']";
   const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
 export function tooltip() {
-  return cy.get(".emotion-Tooltip-tooltip, [role='tooltip']");
+  return cy.get(".mantine-Tooltip-tooltip, [role='tooltip']");
 }
 
 export function selectDropdown() {
@@ -49,7 +51,7 @@ export function entityPickerModalLevel(level) {
  * @param {string} name
  */
 export function entityPickerModalItem(level, name) {
-  return entityPickerModalLevel(level).findByText(name).parents("button");
+  return entityPickerModalLevel(level).findByText(name).parents("a");
 }
 
 export function entityPickerModalTab(name) {
@@ -343,18 +345,19 @@ export function newButton(menuItem) {
 }
 
 export function multiSelectInput(filter = ":eq(0)") {
-  return cy.findByRole("combobox").filter(filter).get("input").last();
+  return cy.findByRole("combobox").filter(filter).get("input").first();
 }
 
 export function multiAutocompleteInput(filter = ":eq(0)") {
-  return cy.findAllByRole("combobox").filter(filter).get("input").last();
+  return cy.findAllByRole("combobox").filter(filter).get("input").first();
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {
   return cy
     .findAllByRole("combobox")
     .filter(filter)
-    .get(`[value][index=${index}]`);
+    .siblings("[data-with-remove]")
+    .eq(index);
 }
 
 export function removeMultiAutocompleteValue(index, filter) {

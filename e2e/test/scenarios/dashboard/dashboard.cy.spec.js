@@ -1117,7 +1117,7 @@ describe("scenarios > dashboard", () => {
 
     // Verify the card is hidden when the value is correct but produces empty results
     H.filterWidget().click();
-    H.popover().within(() => {
+    H.dashboardParametersPopover().within(() => {
       cy.findByPlaceholderText("Enter an ID").type("-1{enter}");
       cy.button("Add filter").click();
     });
@@ -1133,7 +1133,7 @@ describe("scenarios > dashboard", () => {
 
     // Verify the card is visible when it returned an error
     H.filterWidget().click();
-    H.popover().within(() => {
+    H.dashboardParametersPopover().within(() => {
       cy.findByPlaceholderText("Enter an ID").type("text{enter}");
       cy.button("Add filter").click();
     });
