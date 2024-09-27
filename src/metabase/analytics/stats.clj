@@ -588,12 +588,12 @@
 (defn- csv-upload-available?
   "Is CSV upload currently available to be used on this instance?"
   []
-  (let [major-version (config/current-major-version)
-        minor-version (config/current-minor-version)
-        engines       (t2/select-fn-set :engine :model/Database
-                                        {:where [:in :engine (map name (keys csv-upload-version-availability))]})]
-    (when (and major-version minor-version)
-      (boolean
+  (boolean
+   (let [major-version (config/current-major-version)
+         minor-version (config/current-minor-version)
+         engines       (t2/select-fn-set :engine :model/Database
+                                         {:where [:in :engine (map name (keys csv-upload-version-availability))]})]
+     (when (and major-version minor-version)
        (some
         (fn [engine]
           (when-let [[required-major required-minor] (csv-upload-version-availability engine)]
