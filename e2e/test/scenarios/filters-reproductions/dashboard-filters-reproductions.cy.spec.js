@@ -1884,7 +1884,7 @@ describe("issue 25374", () => {
         .findByLabelText("Default value")
         .type("1,2,3");
       saveDashboard();
-
+      cy.reload();
       cy.button("Clear").click();
       cy.location("search").should("eq", "?equal_to=");
 
