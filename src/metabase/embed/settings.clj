@@ -5,25 +5,30 @@
    [crypto.random :as crypto-random]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(defsetting embedding-app-origin
-  (deferred-tru "Allow this origin to embed the full Metabase application")
-  :feature    :embedding
-  :export?    false
-  :visibility :public
-  :audit      :getter
-  :encryption :no)
+(mu/defn- make-embedding-toggle-setter
+  "Creates a boolean setter for various boolean embedding-enabled flavors, all tracked by snowplow."
+  [setting-key :- :keyword event-name :- :string]
+  (fn [new-value]
+    (u/prog1 new-value
+      (let [old-value (setting/get-value-of-type :boolean setting-key)]
+        (when (not= new-value old-value)
+          (setting/set-value-of-type! :boolean setting-key new-value)
+          (when (and new-value (str/blank? (embed/embedding-secret-key)))
+            (embed/embedding-secret-key! (crypto-random/hex 32)))
+          (snowplow/track-event! ::snowplow/embed_share
+                                 {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
+                                  :embedding-app-origin-set   (boolean (setting/get-value-of-type :string :embedding-app-origin))
+                                  :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
+                                  :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
 
-(defsetting embedding-app-origins-sdk
-  (deferred-tru "Allow this origin to embed Metabase SDK")
-  :feature    :embedding-sdk
-  :export?    false
-  :visibility :public
-  :encryption :no
-  :audit      :getter)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Embed Settings ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defsetting enable-embedding
   (deferred-tru "Allow admins to securely embed questions and dashboards within other applications?")
@@ -32,18 +37,63 @@
   :visibility :authenticated
   :export?    true
   :audit      :getter
-  :setter     (fn [new-value]
-                (when (not= new-value (setting/get-value-of-type :boolean :enable-embedding))
-                  (setting/set-value-of-type! :boolean :enable-embedding new-value)
-                  (when (and new-value (str/blank? (embed/embedding-secret-key)))
-                    (embed/embedding-secret-key! (crypto-random/hex 32)))
-                  (snowplow/track-event! ::snowplow/embed_share
-                                         {:event                      (if new-value
-                                                                        :embedding-enabled
-                                                                        :embedding-disabled)
-                                          :embedding-app-origin-set   (boolean (embedding-app-origin))
-                                          :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
-                                          :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))
+  :deprecated "0.51.0"
+  :setter     (make-embedding-toggle-setter :enable-embedding "embedding"))
+
+(defsetting embedding-app-origin
+  (deferred-tru "Allow this origin to embed the full Metabase application.")
+  ;; This value is usually gated by [[enable-embedding]]
+  :feature    :embedding
+  :type       :string
+  :export?    false
+  :visibility :public
+  :audit      :getter
+  :encryption :no)
+
+(defsetting enable-embedding-sdk
+  (deferred-tru "Allow admins to embed Metabase via the SDK?")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter
+  :setter     (make-embedding-toggle-setter :enable-embedding-sdk "sdk-embedding"))
+
+(mu/defn- ignore-localhost :- :string
+  "Remove localhost:* or localhost:<port> from the list of origins."
+  [s :- [:maybe :string]]
+  (->> (str/split (or s "") #"\s+")
+       (remove #(re-matches #"localhost:(\*|\d+)" %))
+       distinct
+       (str/join " ")
+       str/trim))
+
+(mu/defn- add-localhost :- :string [s :- [:maybe :string]]
+  (->> s ignore-localhost (str "localhost:* ") str/trim))
+
+(defn embedding-app-origins-sdk-setter
+  "The setter for [[embedding-app-origins-sdk]].
+
+  Checks that we have SDK embedding feature and that it's enabled, then sets the value accordingly."
+  [new-value]
+  (add-localhost ;; return the same value that is returned from the getter
+   (when (and (premium-features/has-feature? :embedding-sdk)
+              ;; Cannot set the SDK origins if the SDK embedding is disabled. so it will remain localhost:*.
+              (setting/get-value-of-type :boolean :enable-embedding-sdk))
+     (->> new-value
+          ignore-localhost
+          (setting/set-value-of-type! :string :embedding-app-origins-sdk)))))
+
+(defsetting embedding-app-origins-sdk
+  (deferred-tru "Allow this origin to embed Metabase SDK")
+  :type       :string
+  :export?    false
+  :visibility :public
+  :encryption :no
+  :audit      :getter
+  :getter    (fn embedding-app-origins-sdk-getter []
+               (add-localhost (setting/get-value-of-type :string :embedding-app-origins-sdk)))
+  :setter   embedding-app-origins-sdk-setter)
 
 (defsetting enable-embedding-static
   (deferred-tru "Allow admins to embed Metabase via static embedding?")
@@ -52,19 +102,7 @@
   :visibility :authenticated
   :export?    false
   :audit      :getter
-  :setter     (fn [new-value]
-                (when (not= new-value (setting/get-value-of-type :boolean :enable-embedding-static))
-                  (setting/set-value-of-type! :boolean :enable-embedding-static new-value)
-                  (when (and new-value (str/blank? (embed/embedding-secret-key)))
-                    (embed/embedding-secret-key! (crypto-random/hex 32))))))
-
-(defsetting enable-embedding-sdk
-  (deferred-tru "Allow admins to embed Metabase via the SDK?")
-  :type       :boolean
-  :default    false
-  :visibility :authenticated
-  :export?    false
-  :audit      :getter)
+  :setter     (make-embedding-toggle-setter :enable-embedding-static "static-embedding"))
 
 (defsetting enable-embedding-interactive
   (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
@@ -73,7 +111,8 @@
   :default    false
   :visibility :authenticated
   :export?    false
-  :audit      :getter)
+  :audit      :getter
+  :setter     (make-embedding-toggle-setter :enable-embedding-interactive "interactive-embedding"))
 
 ;; settings for the embedding homepage
 (defsetting embedding-homepage

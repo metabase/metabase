@@ -10,6 +10,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.server.request.util :as req.util]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
   (:import
    (java.security MessageDigest SecureRandom)))
@@ -45,9 +46,8 @@
    "Expires"        "Tue, 03 Jul 2001 06:00:00 GMT"
    "Last-Modified"  (t/format :rfc-1123-date-time (t/zoned-date-time))})
 
-(defn- cache-far-future-headers
+(def cache-far-future-headers
   "Headers that tell browsers to cache a static resource for a long time."
-  []
   {"Cache-Control" "public, max-age=31536000"})
 
 (def ^:private ^:const strict-transport-security-header
@@ -113,21 +113,15 @@
                   :manifest-src ["'self'"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
-(defn- embedding-app-origin
-  []
-  (when (and (embed.settings/enable-embedding) (embed.settings/embedding-app-origin))
-    (embed.settings/embedding-app-origin)))
-
-(defn- embedding-app-origin-sdk
-  []
-  (when (embed.settings/enable-embedding-sdk)
-    (str "localhost:* " (embed.settings/embedding-app-origins-sdk))))
-
 (defn- content-security-policy-header-with-frame-ancestors
   [allow-iframes? nonce]
   (update (content-security-policy-header nonce)
           "Content-Security-Policy"
-          #(format "%s frame-ancestors %s;" % (if allow-iframes? "*" (or (embedding-app-origin) "'none'")))))
+          #(format "%s frame-ancestors %s;" % (if allow-iframes? "*"
+                                                  (if-let [eao (and (embed.settings/enable-embedding)
+                                                                    (embed.settings/embedding-app-origin))]
+                                                    eao
+                                                    "'none'")))))
 
 (defn parse-url
   "Returns an object with protocol, domain and port for the given url"
@@ -170,9 +164,10 @@
   (let [urls (str/split approved-origins-raw #" +")]
     (keep parse-url urls)))
 
-(defn approved-origin?
+(mu/defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
-  [raw-origin approved-origins-raw]
+  [raw-origin :- [:maybe :string]
+   approved-origins-raw :- [:maybe :string]]
   (boolean
    (when (and (seq raw-origin) (seq approved-origins-raw))
      (let [approved-list (parse-approved-origins approved-origins-raw)
@@ -188,37 +183,28 @@
   "Returns headers for CORS requests"
   [origin]
   (merge
-   (when
-    (approved-origin? origin (embedding-app-origin-sdk))
+   (when (approved-origin? origin (embed.settings/embedding-app-origins-sdk))
      {"Access-Control-Allow-Origin" origin
       "Vary"                        "Origin"})
-
-   {"Access-Control-Allow-Headers"   "*"
-    "Access-Control-Allow-Methods"   "*"
-    "Access-Control-Expose-Headers"  "X-Metabase-Anti-CSRF-Token"}))
-
-(defn- first-embedding-app-origin
-  "Return only the first embedding app origin."
-  []
-  (some-> (embedding-app-origin)
-          (str/split #" ")
-          first))
+   {"Access-Control-Allow-Headers"  "*"
+    "Access-Control-Allow-Methods"  "*"
+    "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token"}))
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
   [& {:keys [origin nonce allow-iframes? allow-cache?]
       :or   {allow-iframes? false, allow-cache? false}}]
   (merge
-   (if allow-cache?
-     (cache-far-future-headers)
-     (cache-prevention-headers))
+   (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
-   (when (embedding-app-origin-sdk) (access-control-headers origin))
+   (when (embed.settings/enable-embedding-sdk)
+     (access-control-headers origin))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
-     {"X-Frame-Options"                 (if (embedding-app-origin)
-                                          (format "ALLOW-FROM %s" (first-embedding-app-origin))
+     {"X-Frame-Options"                 (if-let [eao (and (embed.settings/enable-embedding)
+                                                          (embed.settings/embedding-app-origin))]
+                                          (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
                                           "DENY")})
    {;; Tell browser to block suspected XSS attacks
     "X-XSS-Protection"                  "1; mode=block"
