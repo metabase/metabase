@@ -35,6 +35,8 @@ export interface VersionInfo {
 
 export interface VersionInfoFile {
   latest: VersionInfo;
+  beta?: VersionInfo;
+  nightly?: VersionInfo;
   older: VersionInfo[];
 }
 

@@ -1,5 +1,5 @@
 import type { Issue, VersionInfoFile } from "./types";
-import { generateVersionInfoJson, getVersionInfoUrl, updateVersionInfoLatestJson } from "./version-info";
+import { generateVersionInfoJson, getVersionInfoUrl, updateVersionInfoChannelJson, updateVersionInfoLatestJson } from "./version-info";
 
 describe("version-info", () => {
   describe("generateVersionInfoJson", () => {
@@ -261,6 +261,105 @@ describe("version-info", () => {
         patch: true,
         highlights: ["Old Issue 1", "Old Issue 2"],
         // no rollout
+      });
+    });
+  });
+
+  describe("updateVersionInfoChannelJson", () => {
+    const oldJson = {
+      latest: {
+        version: "v0.2.4",
+        released: "2022-01-01",
+        patch: true,
+        highlights: ["Old Issue 1", "Old Issue 2"],
+      },
+      nightly: {
+        version: "v0.2.4.1",
+        released: "2022-01-03",
+        patch: true,
+        highlights: [],
+      },
+      beta: {
+        version: "v0.2.6",
+        released: "2022-01-02",
+        patch: true,
+        highlights: [],
+      },
+      older: [
+        {
+          version: "v0.2.5",
+          released: "2023-01-01",
+          patch: true,
+          highlights: ["New Issue 31", "New Issue 41"],
+        },
+        {
+          version: "v0.2.3",
+          released: "2021-01-01",
+          patch: true,
+          highlights: ["Old Issue 3", "Old Issue 4"],
+        },
+        {
+          version: "v0.2.2",
+          released: "2020-01-01",
+          patch: true,
+          highlights: ["Old Issue 5", "Old Issue 6"],
+        },
+      ],
+    } as VersionInfoFile;
+
+    it("should update nightly version", () => {
+      const updatedJson = updateVersionInfoChannelJson({
+        version: "v0.2.4.2",
+        existingVersionInfo: oldJson,
+        channel: "nightly",
+        rollout: 51,
+      });
+
+      expect(updatedJson.nightly).toEqual({
+        version: "v0.2.4.2",
+        released: expect.any(String),
+        rollout: 51,
+        highlights: [],
+      });
+    });
+
+    it("should update beta version", () => {
+      const updatedJson = updateVersionInfoChannelJson({
+        version: "v0.2.7",
+        existingVersionInfo: oldJson,
+        channel: "beta",
+        rollout: 51,
+      });
+
+      expect(updatedJson.beta).toEqual({
+        version: "v0.2.7",
+        released: expect.any(String),
+        rollout: 51,
+        highlights: [],
+      });
+    });
+
+    it("should update latest version", () => {
+      const updatedJson = updateVersionInfoChannelJson({
+        version: "v0.2.5", // must be in the older array
+        existingVersionInfo: oldJson,
+        channel: "latest",
+        rollout: 51,
+      });
+
+      expect(updatedJson.latest).toEqual({
+        version: "v0.2.5",
+        released: expect.any(String),
+        rollout: 51,
+        patch: true,
+        highlights: ["New Issue 31", "New Issue 41"],
+      });
+
+      expect(updatedJson.older).toContainEqual({
+        version: "v0.2.4",
+        released: "2022-01-01",
+        patch: true,
+        highlights: ["Old Issue 1", "Old Issue 2"],
       });
     });
   });

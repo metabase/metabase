@@ -314,7 +314,6 @@ jobs:
     - name: Generate new version info
       uses: actions/github-script@v7
       id: new_version_info
-      if: ${{ inputs.tag_name }} == "latest"
       with:
         result-encoding: string
         script: | # js
@@ -336,7 +335,6 @@ jobs:
           fs.writeFileSync('version-info.json', JSON.stringify(newVersionInfo));
 
     - name: Upload new version-info.json to S3
-      if: ${{ inputs.tag_name }} == "latest"
       run: |
         if [[ "${{ matrix.edition }}" == "ee" ]]; then
           aws s3 cp version-info.json s3://${{ vars.AWS_S3_STATIC_BUCKET }}/version-info-ee.json
@@ -344,7 +342,6 @@ jobs:
           aws s3 cp version-info.json s3://${{ vars.AWS_S3_STATIC_BUCKET }}/version-info.json
         fi
     - name: Create cloudfront invalidation for version-info.json and version-info-ee.json
-      if: ${{ inputs.tag_name }} == "latest"
       run: |
         aws cloudfront create-invalidation \
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
