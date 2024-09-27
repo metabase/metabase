@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import type { InjectedRouter, Route } from "react-router";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
@@ -15,9 +15,13 @@ interface Props {
   isLocationAllowed?: (location?: Location) => boolean;
   route: Route;
   router: InjectedRouter;
+  children?: (props: {
+    onAction?: () => void;
+    onClose?: () => void;
+  }) => ReactNode;
 }
 
-const IS_LOCATION_ALLOWED = (location?: Location) => {
+export const IS_LOCATION_ALLOWED = (location?: Location) => {
   /**
    * If there is no "location" then it's beforeunload event, which is
    * handled by useBeforeUnload hook - no reason to duplicate its work.
@@ -34,6 +38,7 @@ const LeaveConfirmationModalBase = ({
   isLocationAllowed = IS_LOCATION_ALLOWED,
   route,
   router,
+  children,
 }: Props) => {
   const dispatch = useDispatch();
   const [isConfirmed, setIsConfirmed] = useState(false);
@@ -70,10 +75,14 @@ const LeaveConfirmationModalBase = ({
 
   return (
     <Modal isOpen={isConfirmationVisible} zIndex={5}>
-      <LeaveConfirmationModalContent
-        onAction={handleConfirm}
-        onClose={handleClose}
-      />
+      {children ? (
+        children({ onAction: handleConfirm, onClose: handleClose })
+      ) : (
+        <LeaveConfirmationModalContent
+          onAction={handleConfirm}
+          onClose={handleClose}
+        />
+      )}
     </Modal>
   );
 };
