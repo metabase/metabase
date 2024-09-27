@@ -135,7 +135,7 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
   const filterButton = () =>
     cy
       .findByTestId("browse-models-header")
-      .findByRole("button", { name: /filter icon/i });
+      .findByRole("button", { name: /Filters/i });
 
   const setVerification = (linkSelector: RegExp | string) => {
     cy.findByLabelText("Move, trash, and more...").click();
