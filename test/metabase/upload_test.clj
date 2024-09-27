@@ -712,21 +712,21 @@
       (with-mysql-local-infile-on-and-off
         (with-upload-table!
           [table (create-from-csv-and-sync-with-defaults!
-                  :file (csv-file-with ["ID,名前,年齢,職業,都市"
-                                        "1,佐藤太郎,25,エンジニア,東京"
-                                        "2,鈴木花子,30,デザイナー,大阪"
-                                        "3,田中一郎,28,マーケター,名古屋"
-                                        "4,山田次郎,35,プロジェクトマネージャー,福岡"
-                                        "5,中村美咲,32,データサイエンティスト,札幌"]))]
+                  :file (csv-file-with ["ID,名前,年齢,職業,都市,Дтв ызд"
+                                        "1,佐藤太郎,25,エンジニア,東京,9"
+                                        "2,鈴木花子,30,デザイナー,大阪,8"
+                                        "3,田中一郎,28,マーケター,名古屋,7"
+                                        "4,山田次郎,35,プロジェクトマネージャー,福岡,6"
+                                        "5,中村美咲,32,データサイエンティスト,札幌,5"]))]
           (testing "Check the data was uploaded into the table correctly"
-            (is (= (header-with-auto-pk ["ID" "名前" "年齢" "職業" "都市"])
+            (is (= (header-with-auto-pk ["ID" "名前" "年齢" "職業" "都市" "Дтв Ызд"])
                    (column-display-names-for-table table)))
             (is (= (rows-with-auto-pk
-                    [[1 "佐藤太郎" 25 "エンジニア" "東京"]
-                     [2 "鈴木花子" 30 "デザイナー" "大阪"]
-                     [3 "田中一郎" 28 "マーケター" "名古屋"]
-                     [4 "山田次郎" 35 "プロジェクトマネージャー" "福岡"]
-                     [5 "中村美咲" 32 "データサイエンティスト" "札幌"]])
+                    [[1 "佐藤太郎" 25 "エンジニア" "東京" 9]
+                     [2 "鈴木花子" 30 "デザイナー" "大阪" 8]
+                     [3 "田中一郎" 28 "マーケター" "名古屋" 7]
+                     [4 "山田次郎" 35 "プロジェクトマネージャー" "福岡" 6]
+                     [5 "中村美咲" 32 "データサイエンティスト" "札幌" 5]])
                    (rows-for-table table)))))))))
 
 (deftest create-from-csv-empty-header-test
@@ -767,9 +767,7 @@
                                         "$123,12.3, 100"]))]
           (testing "Table and Fields exist after sync"
             (testing "Check the data was uploaded into the table correctly"
-              (is (= #_[@#'upload/auto-pk-column-name "Cost $" "Cost %" "Cost #"]
-                   ;; Blame it on humanization/name->human-readable-name
-                   (header-with-auto-pk ["Cost" "Cost 2" "Cost 3"])
+              (is (= (header-with-auto-pk ["Cost $" "Cost %" "Cost #"])
                      (column-display-names-for-table table)))
               (is (= [@#'upload/auto-pk-column-name "cost__" "cost___2" "cost___3"]
                      (column-names-for-table table))))))))))
@@ -2219,6 +2217,31 @@
                                     [(csv/read-csv original-row)
                                      (csv/read-csv appended-row)]))
                        (map rest (rows-for-table table)))))
+              (io/delete-file file))))))))
+
+(deftest append-with-preserved-display-name-test
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string\n"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+        (let [data         ["a" 1]
+              bespoke-name "i put a lot of effort into this display name"]
+          (with-upload-table!
+            [table (create-from-csv-and-sync-with-defaults!
+                    :file (csv-file-with data))]
+            (testing "Initially, we get the inferred name"
+              (is (= (header-with-auto-pk ["A"])
+                     (column-display-names-for-table table))))
+            (testing "But we can configure it"
+              (t2/update! :model/Field {:name "a" :table_id (:id table)}
+                          {:display_name bespoke-name})
+              (is (= (header-with-auto-pk [bespoke-name])
+                     (column-display-names-for-table table))))
+            (let [file (csv-file-with data (mt/random-name))]
+              (is (= {:row-count 1}
+                     (update-csv! ::upload/append {:file file, :table-id (:id table)})))
+              (testing "And our configuration is preserved when we append more data"
+                (is (= (header-with-auto-pk [bespoke-name])
+                       (column-display-names-for-table table))))
               (io/delete-file file))))))))
 
 (deftest append-with-really-long-names-that-duplicate-test
