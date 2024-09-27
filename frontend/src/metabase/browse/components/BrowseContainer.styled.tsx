@@ -24,7 +24,7 @@ export const BrowseSection = styled(Flex)`
   max-width: 64rem;
   margin: 0 auto;
   width: 100%;
-`;
+` as unknown as typeof Flex;
 
 export const BrowseHeader = styled.div`
   display: flex;

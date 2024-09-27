@@ -40,7 +40,7 @@ export function EmbeddingSdkOptionCard({ onToggle }: EmbeddingOptionCardProps) {
       }
       description={t`Interactive embedding with full, granular control. Embed and style individual Metabase components in your app, and tailor the experience to each person. Allows for CSS styling, custom user flows, event subscriptions, and more. Only available with SSO via JWT.`}
     >
-      <Group position="apart" align="center" w="100%">
+      <Group justify="space-between" align="center" w="100%">
         <LinkButton to={"/admin/settings/embedding-in-other-applications/sdk"}>
           {!isEE ? t`Try it out` : t`Configure`}
         </LinkButton>
