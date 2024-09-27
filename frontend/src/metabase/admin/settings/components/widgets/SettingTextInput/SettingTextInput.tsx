@@ -10,7 +10,7 @@ export interface SettingInputProps {
   setting: {
     key: string;
     value: string | null;
-    default?: string | null;
+    default?: string;
     placeholder?: string;
   };
   onChange: (value: Value) => void;
