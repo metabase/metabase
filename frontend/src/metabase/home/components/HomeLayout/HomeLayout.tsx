@@ -9,7 +9,7 @@ import {
   getInitialMessage,
   setInitialMessage,
 } from "metabase/redux/initialMessage";
-import { setDBInputValue, setCompanyName, setInsightDBInputValue } from "metabase/redux/initialDb";
+import { setDBInputValue, setCompanyName, setInsightDBInputValue, getDBInputValue } from "metabase/redux/initialDb";
 import { setInitialSchema } from "metabase/redux/initialSchema";
 import ChatAssistant from "metabase/query_builder/components/ChatAssistant";
 import {
@@ -24,6 +24,7 @@ import { generateRandomId } from "metabase/lib/utils";
 import useWebSocket from "metabase/hooks/useWebSocket";
 import { t } from "ttag";
 import { getSuggestions, setSuggestions } from "metabase/redux/suggestionsSlice";
+import { NoDatabaseError, SemanticError } from "metabase/components/ErrorPages";
 
 export const HomeLayout = () => {
   const initialMessage = useSelector(getInitialMessage);
@@ -37,6 +38,7 @@ export const HomeLayout = () => {
     useState("dataAgent");
   const [oldCardId, setOldCardId] = useState(null);
   const [insights, setInsights] = useState([]);
+  const [hasDatabases, setHasDatabases] = useState<boolean>(false)
   const [dbId, setDbId] = useState<number | null>(null)
   const [company, setCompany] = useState<string | null>(null)
   const [schema, setSchema] = useState<any[]>([]);
@@ -55,9 +57,14 @@ export const HomeLayout = () => {
   const databases = data?.data;
   useMemo(() => {
     if (databases) {
+      setHasDatabases(databases.length > 0)
       const cubeDatabase = databases.find(
         database => database.is_cube === true,
       );
+      /*const rawDatabase = databases.find(database => database.is_cube === false);
+      if (rawDatabase) {
+          setDatabaseId(rawDatabase.id)
+      }*/
       if (cubeDatabase) {
         setIsChatHistoryOpen(true);
         setShowButton(true);
@@ -80,6 +87,7 @@ export const HomeLayout = () => {
   );
   const databaseMetadataData = databaseMetadata;
   useEffect(() => {
+    console.log({databaseMetadataData})
     if (databaseMetadataData && Array.isArray(databaseMetadataData.tables)) {
       const schema = databaseMetadata.tables?.map((table: any) => ({
         display_name: table.display_name,
@@ -92,7 +100,7 @@ export const HomeLayout = () => {
           details: field.fingerprint ? JSON.stringify(field.fingerprint) : null
         }))
       }));
-      console.log("schema: ",schema);
+      console.log("schema: ", schema);
       dispatch(setInitialSchema(schema as any))
       setSchema(schema as any)
     }
@@ -109,13 +117,13 @@ export const HomeLayout = () => {
       setSelectedChatHistoryType("getInsights");
       setInsights(insights);
       return;
-    }   
+    }
 
     // "/" ||  "/browse/chat"
     setSelectedChatType("default");
     setSelectedChatHistoryType("dataAgent");
     setInsights([]);
-   
+
   }, [window.location.pathname]);
 
   const { ws, isConnected } = useWebSocket(
@@ -140,28 +148,28 @@ export const HomeLayout = () => {
 
   const handleFunctionalityMessages = async (functions: any[]) => {
     functions.forEach(async func => {
-        switch (func.function_name) {
-            case "getSuggestions":
-                console.log(func.arguments.suggestions);
-                dispatch(setSuggestions(func.arguments.suggestions));
-                break;
-            default:
-                console.log(func);
-                break;
-        }
+      switch (func.function_name) {
+        case "getSuggestions":
+          console.log(func.arguments.suggestions);
+          dispatch(setSuggestions(func.arguments.suggestions));
+          break;
+        default:
+          console.log(func);
+          break;
+      }
     });
-};
+  };
 
   useEffect(() => {
     //TODO: No se hace el envio si no tiene suggestion ni schemas
     if (isConnected && !suggestions.suggestions && schema.length > 0) {
       ws.send(
         JSON.stringify({
-            type: "getSuggestions",
-            appType: selectedChatType, //No hará falta porque cargaremos las dos de golpe
-            schema: schema,
+          type: "getSuggestions",
+          appType: selectedChatType, //No hará falta porque cargaremos las dos de golpe
+          schema: schema,
         }),
-    );
+      );
     }
   }, [isConnected, suggestions, schema, selectedChatType]);
 
@@ -196,45 +204,56 @@ export const HomeLayout = () => {
   return (
     <>
       {!showChatAssistant ? (
-        <LayoutRoot data-testid="home-page">
-          <ContentContainer>
-            <ChatGreeting chatType={selectedChatType}  />
-            {suggestions.suggestions ? (
-              <HomeInitialOptions suggestions={suggestions.suggestions} chatType={selectedChatType} onClick={handleSuggestionClick}/>
-            ) : (
-              // Mientras no haya sugerencias, mostramos un mensaje de carga
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
-                  <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
-                    {t`Loading suggestions...`}
-                  </p>
-                  <LoadingSpinner />
-                </div>
-              </div>
-            )}
-          </ContentContainer>
-          {schema.length > 0 ? (
-            <ChatSection>
-              <ChatPrompt
-                chatType={selectedChatType}
-                inputValue={inputValue}
-                setInputValue={setInputValue}
-                onSendMessage={handleSendMessage}
-              />
-            </ChatSection>
+        <>
+          {!hasDatabases ? (
+            <NoDatabaseError />
           ) : (
-            <ChatSection>
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
-                  <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
-                    Please Wait while we initialize the chat
-                  </p>
-                  <LoadingSpinner />
-                </div>
-              </div>
-            </ChatSection>
+            <>
+              {!dbId && window.location.pathname === "/browse/chat" ? <SemanticError details={undefined} /> :
+                <LayoutRoot data-testid="home-page">
+                  <ContentContainer>
+                    <ChatGreeting chatType={selectedChatType} />
+                    {suggestions.suggestions ? (
+                      <HomeInitialOptions suggestions={suggestions.suggestions} chatType={selectedChatType} onClick={handleSuggestionClick} />
+                    ) : (
+                      // Mientras no haya sugerencias, mostramos un mensaje de carga
+                      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+                          <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
+                            {t`Loading suggestions...`}
+                          </p>
+                          <LoadingSpinner />
+                        </div>
+                      </div>
+                    )}
+                  </ContentContainer>
+                  {schema.length > 0 ? (
+                    <ChatSection>
+                      <ChatPrompt
+                        chatType={selectedChatType}
+                        inputValue={inputValue}
+                        setInputValue={setInputValue}
+                        onSendMessage={handleSendMessage}
+                      />
+                    </ChatSection>
+                  ) : (
+                    <ChatSection>
+                      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+                          <p style={{ fontSize: "16px", color: "#76797D", fontWeight: "500", marginBottom: "1rem" }}>
+                            Please Wait while we initialize the chat
+                          </p>
+                          <LoadingSpinner />
+                        </div>
+                      </div>
+                    </ChatSection>
+                  )}
+                </LayoutRoot>
+              }
+            </>
+
           )}
-        </LayoutRoot>
+        </>
       ) : (
         <BrowseContainer>
           {showButton && (
@@ -319,3 +338,4 @@ export const HomeLayout = () => {
     </>
   );
 };
+
