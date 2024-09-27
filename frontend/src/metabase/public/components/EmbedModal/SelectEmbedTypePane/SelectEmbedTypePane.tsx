@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { getPlan } from "metabase/common/utils/plan";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
+import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { trackPublicLinkRemoved } from "metabase/public/lib/analytics";
@@ -15,7 +16,7 @@ import type {
 } from "metabase/public/lib/types";
 import { getSetting } from "metabase/selectors/settings";
 import type { ExportFormatType } from "metabase/sharing/components/PublicLinkPopover/types";
-import { Box, Group, Icon, List, Stack, Text } from "metabase/ui";
+import { Group, Icon, List, Stack, Text } from "metabase/ui";
 
 import { PublicEmbedCard } from "./PublicEmbedCard";
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
@@ -113,13 +114,14 @@ export function SelectEmbedTypePane({
         >
           <SharingPaneButton
             title={t`Interactive embedding`}
+            badge={<Badge color="brand">{t`Pro / Enterprise`}</Badge>}
             illustration={<InteractiveEmbeddingIllustration />}
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
-              <List.Item>{t`Embed the full Metabase app with iframes.`}</List.Item>
-              <List.Item>{t`Settings to customize appearance.`}</List.Item>
-              <List.Item>{t`Includes query builder with row-level access.`}</List.Item>
+              <List.Item>{t`Embed all of Metabase in an iframe.`}</List.Item>
+              <List.Item>{t`Let people can click on to explore.`}</List.Item>
+              <List.Item>{t`Customize appearance with your logo, font, and colors.`}</List.Item>
             </List>
           </SharingPaneButton>
         </Link>
@@ -133,16 +135,20 @@ export function SelectEmbedTypePane({
         >
           <SharingPaneButton
             title={t`Embedded analytics SDK`}
-            badge={<BetaBadge />}
+            badge={
+              <>
+                <Badge color="gray">{t`Beta`}</Badge>
+                <Badge color="brand">{t`Pro / Enterprise`}</Badge>
+              </>
+            }
             illustration={<SdkIllustration />}
             externalLink
           >
             <List>
-              <List.Item>{t`Full control with React components.`}</List.Item>
               {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
-              <List.Item>{t`Embed individual components of Metabase.`}</List.Item>
-              <List.Item>{t`CSS styling, user flows, usage analytics.`}</List.Item>
-              <List.Item>{t`For Pro and Enterprise plans only.`}</List.Item>
+              <List.Item>{t`Embed individual React components`}</List.Item>
+              <List.Item>{t`Seamlessly blend each component in your app with CSS styling.`}</List.Item>
+              <List.Item>{t`Manage access and interactivity per component and user groups.`}</List.Item>
             </List>
           </SharingPaneButton>
         </a>
@@ -208,20 +214,3 @@ export const useInteractiveEmbeddingCta = () => {
     target: "_blank",
   };
 };
-
-const BetaBadge = () => (
-  <Box
-    display="inline"
-    px="2px"
-    py="2px"
-    bg="var(--mb-base-color-gray-20)"
-    style={{ borderRadius: 4 }}
-    my="auto"
-  >
-    <Text
-      weight={700}
-      style={{ lineHeight: 1 }}
-      display="inline"
-    >{t`BETA`}</Text>
-  </Box>
-);

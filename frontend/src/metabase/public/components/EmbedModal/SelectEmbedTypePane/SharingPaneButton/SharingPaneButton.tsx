@@ -32,6 +32,7 @@ export const SharingPaneButton = ({
     onClick={onClick}
     h="100%"
     pos="relative"
+    w={"22rem"}
   >
     <Stack>
       {externalLink && (
