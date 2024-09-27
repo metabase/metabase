@@ -32,6 +32,10 @@ export function createMockState(opts: any) {
     dashboard: createMockDashboardState(),
     embed: createMockEmbedState(),
     entities: createMockNormalizedEntitiesState(),
+<<<<<<< HEAD
+=======
+    // metabot: createMockMetabotState(),
+>>>>>>> d2ad07abee (Mantine v7-1 squash)
     parameters: createMockParametersState(),
     qb: createMockQueryBuilderState(),
     requests: createMockRequestsState(),

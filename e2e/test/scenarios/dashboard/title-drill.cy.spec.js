@@ -317,8 +317,8 @@ describe("scenarios > dashboard > title drill", () => {
 
         // update the parameter filter to a new value
         H.filterWidget().contains("Doohickey").click();
-        H.popover().within(() => {
-          H.fieldValuesInput().type("{backspace}Gadget,");
+        H.dashboardParametersPopover().within(() => {
+          H.multiAutocompleteInput().type("{backspace}Gadget,");
           cy.findByText("Update filter").click();
         });
 
@@ -337,8 +337,8 @@ describe("scenarios > dashboard > title drill", () => {
 
         // make sure the unset id parameter works
         H.filterWidget().last().click();
-        H.popover().within(() => {
-          H.fieldValuesInput().type("5");
+        H.dashboardParametersPopover().within(() => {
+          H.multiAutocompleteInput().type("5");
           cy.findByText("Add filter").click();
         });
 

@@ -63,13 +63,13 @@ export const SidebarSection = styled(Box)<BoxProps>`
   margin-bottom: ${space(2)};
   padding-inline-start: ${space(2)};
   padding-inline-end: ${space(2)};
-`;
+` as unknown as typeof Box;
 
 export const TrashSidebarSection = styled(SidebarSection)`
   ${ExpandToggleButton} {
     width: 12px;
   }
-`;
+` as unknown as typeof Box;
 
 export const SidebarHeadingWrapper = styled.div`
   display: flex;

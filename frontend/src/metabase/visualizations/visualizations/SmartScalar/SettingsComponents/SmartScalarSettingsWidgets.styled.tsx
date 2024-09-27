@@ -43,11 +43,11 @@ export const ComparisonPickerButton = styled(Button)<ButtonProps>`
       color: var(--mb-color-brand);
     }
   }
-`;
+` as unknown as typeof Button;
 
 export const DoneButton = styled(Button)<ButtonProps>`
   align-self: flex-end;
-`;
+` as unknown as typeof Button;
 
 DoneButton.defaultProps = {
   variant: "filled",

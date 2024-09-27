@@ -1,5 +1,4 @@
-import { render } from "@testing-library/react";
-
+import { render } from "__support__/ui";
 import { withBackground } from "metabase/hoc/Background";
 
 describe("withBackground", () => {

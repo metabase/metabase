@@ -76,7 +76,7 @@ export const BrowseDatabases = () => {
                     className={cx(CS.rounded, CS.bordered, DB.dbCard)}
                   >
                     <Icon name="database" color={color("accent2")} size={32} />
-                    <Title order={2} size="md" lh={1.2} color="inherit">
+                    <Title order={2} size="md" lh={1.2} c="inherit">
                       {database.name}
                     </Title>
                   </DatabaseCard>
@@ -88,13 +88,13 @@ export const BrowseDatabases = () => {
                 <DatabaseCard
                   className={cx(CS.rounded, CS.bordered, DB.addCard)}
                 >
-                  <Group spacing="xs">
+                  <Group gap="xs">
                     <CardImageWrapper database={"postgres"} />
                     <CardImageWrapper database={"mysql"} />
                     <CardImageWrapper database={"snowflake"} />
                   </Group>
                   <div>
-                    <Title order={2} size="md" lh={1.2} color="inherit">
+                    <Title order={2} size="md" lh={1.2} c="inherit">
                       {t`Add a database`}
                     </Title>
                     <Text

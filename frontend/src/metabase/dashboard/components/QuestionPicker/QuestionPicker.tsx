@@ -157,7 +157,7 @@ function QuestionPickerInner({
                       ...icon,
                       color: iconColor,
                     }}
-                    rightIcon="chevronright"
+                    rightSection="chevronright"
                     onSelect={collectionId =>
                       setCurrentCollectionId(collectionId as CollectionId)
                     }

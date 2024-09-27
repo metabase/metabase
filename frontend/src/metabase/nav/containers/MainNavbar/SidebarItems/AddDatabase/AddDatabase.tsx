@@ -13,7 +13,7 @@ export const AddDatabase = () => {
         <Button
           color="brand"
           fullWidth={true}
-          leftIcon={<Icon name="add" />}
+          leftSection={<Icon name="add" />}
           onClick={() => trackAddDatabaseSidebar()}
           radius="xl"
           variant="outline"

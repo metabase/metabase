@@ -58,13 +58,13 @@ export function DataStep({
           variant="subtle"
           p={0}
           c="text-dark"
-          rightIcon={<Icon name="chevrondown" />}
+          rightSection={<Icon name="chevrondown" />}
           onClick={() => setIsOpened(true)}
         >
           {tableInfo ? tableInfo.displayName : t`Select a table`}
         </Button>
       ) : (
-        <Text color="text-dark" weight="bold">
+        <Text c="text-dark" fw="bold">
           {tableInfo?.displayName}
         </Text>
       )}

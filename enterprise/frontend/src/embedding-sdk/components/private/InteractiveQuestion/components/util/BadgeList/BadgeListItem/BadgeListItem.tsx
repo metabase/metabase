@@ -24,7 +24,7 @@ const _BadgeListItem = (
     c="var(--mb-color-text-brand)"
     classNames={{
       root: CS.bgLightHover,
-      inner: CS.cursorPointer,
+      label: CS.cursorPointer,
     }}
     pr={0}
     pl="sm"

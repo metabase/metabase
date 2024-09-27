@@ -1,5 +1,6 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
+import type React from "react";
 import { t } from "ttag";
 
 import {
@@ -29,7 +30,10 @@ type Props = {
   "data-testid"?: string;
 };
 
-const SidebarContentMain = ({ children, ...props }: BoxProps) => {
+const SidebarContentMain = ({
+  children,
+  ...props
+}: BoxProps & { children: React.ReactNode }) => {
   return (
     <Box className={SidebarContentS.SidebarContentMain} {...props}>
       {children}
@@ -91,7 +95,7 @@ function SidebarContent({
   );
 }
 
-export const PaneContent = (props: BoxProps) => {
+const PaneContent = (props: BoxProps & { children: React.ReactNode }) => {
   return <Box px="lg" {...props} />;
 };
 

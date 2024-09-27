@@ -59,7 +59,7 @@ function PinnedItemOverview({
     <Container data-testid="pinned-items">
       <PinDropZone variant="pin" />
 
-      <Stack spacing="1.5rem">
+      <Stack gap="1.5rem">
         {metricItems.length > 0 && (
           <div>
             <SectionTitle title={t`Metrics`} icon="metric" />
@@ -242,8 +242,8 @@ interface SectionTitleProps {
 
 function SectionTitle({ title, description, icon }: SectionTitleProps) {
   return (
-    <Stack spacing="sm" pb="md">
-      <Group spacing="sm">
+    <Stack gap="sm" pb="md">
+      <Group gap="sm">
         {icon && <Icon name={icon} color={color("brand")} />}
         <h3>{title}</h3>
       </Group>

@@ -1,7 +1,5 @@
-import { screen } from "@testing-library/react";
-
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 

@@ -1,6 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  mockScrollIntoView,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 
@@ -16,6 +20,7 @@ interface SetupOpts {
 function setup({ query, stageIndex, column, filter }: SetupOpts) {
   const onChange = jest.fn();
   const onInput = jest.fn();
+  mockScrollIntoView();
 
   renderWithProviders(
     <DateFilterEditor

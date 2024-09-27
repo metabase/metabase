@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Color from "color";
 
+import { render, screen } from "__support__/ui";
 import { color, colors } from "metabase/lib/colors/palette";
 
 import { ColorSettings } from "./ColorSettings";

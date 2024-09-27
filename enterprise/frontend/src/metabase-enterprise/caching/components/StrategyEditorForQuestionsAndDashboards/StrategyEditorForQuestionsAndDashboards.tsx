@@ -264,7 +264,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
       }}
     >
       <Stack
-        spacing="sm"
+        gap="sm"
         lh="1.5rem"
         pt="md"
         pb="md"

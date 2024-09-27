@@ -52,8 +52,8 @@ export const BrowseModels = () => {
             justify="space-between"
             align="center"
           >
-            <Title order={1} color="text-dark" id={titleId}>
-              <Group spacing="sm">
+            <Title order={1} c="text-dark" id={titleId}>
+              <Group gap="sm">
                 <Icon
                   size={24}
                   color="var(--mb-color-icon-primary)"
@@ -73,7 +73,7 @@ export const BrowseModels = () => {
       </BrowseHeader>
       <BrowseMain>
         <BrowseSection>
-          <Stack mb="lg" spacing="md" w="100%">
+          <Stack mb="lg" gap="md" w="100%">
             {isEmpty ? (
               <CenteredEmptyState
                 title={<Box mb=".5rem">{t`No models here yet`}</Box>}

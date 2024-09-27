@@ -25,7 +25,7 @@ export const ChartSettingSelect = ({
 
   const data = options.map(({ name, value }) => ({
     label: name,
-    value,
+    value: value || "",
   }));
 
   const dropdownComponent =

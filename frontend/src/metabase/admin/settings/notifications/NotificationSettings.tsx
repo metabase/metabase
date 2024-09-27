@@ -51,8 +51,8 @@ export const NotificationSettings = () => {
           {hasChannels && (
             <Button
               variant="subtle"
-              compact
-              leftIcon={<Icon name="add" />}
+              size="compact-md"
+              leftSection={<Icon name="add" />}
               onClick={() => setWebhookModal("create")}
             >{c("Short for 'Add another Webhook'").t`Add another`}</Button>
           )}

@@ -17,4 +17,4 @@ export const UserElement = styled(Button)<
     display: flex;
     justify-content: flex-start;
   }
-`;
+` as unknown as typeof Button;

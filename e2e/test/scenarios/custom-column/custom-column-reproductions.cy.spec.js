@@ -199,7 +199,7 @@ describe("issue 14843", () => {
     H.filter({ mode: "notebook" });
     H.popover().findByText(CC_NAME).click();
     H.selectFilterOperator("Not equal to");
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       H.multiAutocompleteInput().type("3");
       cy.button("Add filter").click();
     });
@@ -287,8 +287,8 @@ describe("issue 18747", () => {
 
   function addValueToParameterFilter() {
     H.filterWidget().click();
-    H.popover().within(() => {
-      H.fieldValuesInput().type("14");
+    H.dashboardParametersPopover().within(() => {
+      H.multiAutocompleteInput().type("14");
       cy.button("Add filter").click();
     });
   }
@@ -1137,14 +1137,14 @@ describe("issue 49304", () => {
     H.getNotebookStep("data").button("Filter").click();
     H.popover().findByText("Category").click();
     H.selectFilterOperator("Contains");
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByPlaceholderText("Enter some text").type("gadget,widget");
       cy.button("Add filter").click();
     });
     H.getNotebookStep("filter")
       .findByText("Category contains 2 selections")
       .click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.button("Back").click();
       cy.findByText("Custom Expression").click();
       cy.get(".ace_content").should(

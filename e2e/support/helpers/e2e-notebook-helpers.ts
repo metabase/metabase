@@ -494,3 +494,7 @@ function getSortItems(stageIndex: number) {
     "notebook-cell-item",
   );
 }
+
+export function clauseStepPopover() {
+  return popover("clause-popover");
+}

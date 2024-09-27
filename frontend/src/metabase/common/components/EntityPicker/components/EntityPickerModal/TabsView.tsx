@@ -61,7 +61,7 @@ export const TabsView = <
               <Tabs.Tab
                 key={id}
                 value={id}
-                icon={<Icon name={icon} />}
+                leftSection={<Icon name={icon} />}
                 onClick={() => onTabChange(id)}
               >
                 {displayName}

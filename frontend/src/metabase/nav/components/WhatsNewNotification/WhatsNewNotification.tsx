@@ -53,7 +53,7 @@ export function WhatsNewNotification() {
   }
   return (
     <Paper my="lg" mx="auto" p="md" shadow="md" withBorder w={244}>
-      <Stack spacing="sm">
+      <Stack gap="sm">
         <Flex justify="space-between">
           <Sparkles color={color("brand")} />
           <DismissIconButtonWrapper onClick={dimiss}>
@@ -62,11 +62,11 @@ export function WhatsNewNotification() {
         </Flex>
 
         {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins */}
-        <Text weight="bold" size="sm">{t`Metabase has been updated`}</Text>
+        <Text fw="bold" size="sm">{t`Metabase has been updated`}</Text>
 
         <Anchor
           size="sm"
-          weight="bold"
+          fw="bold"
           component="a"
           href={url}
           target="_blank"

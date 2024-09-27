@@ -89,7 +89,7 @@ export function PermissionsEditorContent({
           onChange={handleFilterChange}
           onResetClick={() => setFilter("")}
           value={filter}
-          leftIcon="search"
+          leftSection="search"
         />
       </EditorFilterContainer>
 

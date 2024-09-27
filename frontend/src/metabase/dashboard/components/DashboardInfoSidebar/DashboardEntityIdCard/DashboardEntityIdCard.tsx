@@ -35,7 +35,7 @@ export const DashboardEntityIdCard = ({
       {tabEntityId && (
         <>
           <Divider w="100%" />
-          <Stack spacing="xs">
+          <Stack gap="xs">
             <SidesheetCardTitle>{t`Specific tab IDs`}</SidesheetCardTitle>
             <Flex gap="md" align="center">
               <Select

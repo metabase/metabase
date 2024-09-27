@@ -76,7 +76,7 @@ export function Sidesheet({
           }}
         >
           <Stack
-            spacing="lg"
+            gap="lg"
             px={removeBodyPadding ? 0 : "xl"}
             pb={removeBodyPadding ? 0 : "xl"}
             mt={title ? "none" : "md"}

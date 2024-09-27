@@ -37,7 +37,7 @@ import type { LinkProps } from "metabase/core/components/Link";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
-import type { GroupProps, IconName, IconProps } from "metabase/ui";
+import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
@@ -407,7 +407,7 @@ export type SidebarCacheFormProps = {
   item: CacheableDashboard | Question;
   model: CacheableModel;
   onClose: () => void;
-} & GroupProps;
+} & StackProps;
 
 export const PLUGIN_CACHING = {
   isGranularCachingEnabled: () => false,

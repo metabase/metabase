@@ -1,8 +1,7 @@
-import { screen, within } from "@testing-library/react";
 import { Route } from "react-router";
 
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";

@@ -76,7 +76,7 @@ export const QueryDownloadPopover = ({
       )}
       <Button
         data-testid="download-results-button"
-        leftIcon={<Icon name="download" />}
+        leftSection={<Icon name="download" />}
         variant="filled"
         onClick={handleDownload}
       >{t`Download`}</Button>

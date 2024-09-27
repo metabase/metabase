@@ -128,7 +128,7 @@ const StrategyEditorForDatabases_Base = ({
 
   return (
     <TabWrapper role="region" aria-label={t`Data caching settings`}>
-      <Stack spacing="xl" lh="1.5rem" maw="32rem" mb="1.5rem">
+      <Stack gap="xl" lh="1.5rem" maw="32rem" mb="1.5rem">
         <aside>
           {t`Speed up queries by caching their results.`}
           <PLUGIN_CACHING.GranularControlsExplanation />

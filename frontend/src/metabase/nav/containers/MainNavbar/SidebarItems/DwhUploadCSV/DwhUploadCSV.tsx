@@ -71,7 +71,7 @@ export const DwhUploadCSV = () => {
       <Button
         color="brand"
         fullWidth={true}
-        leftIcon={<Icon name="upload" />}
+        leftSection={<Icon name="upload" />}
         onClick={triggerUploadInput}
         radius="xl"
         variant="outline"

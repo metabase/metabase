@@ -69,7 +69,7 @@ export function SpecificDatePicker({
   };
 
   return (
-    <Tabs value={value.operator} onTabChange={handleTabChange}>
+    <Tabs value={value.operator} onChange={handleTabChange}>
       <Flex>
         <PopoverBackButton p="sm" onClick={onBack} />
         <Tabs.List className={S.TabList}>

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "__support__/ui";
 
 import UnsubscribeModal from "./UnsubscribeModal";
 

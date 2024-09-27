@@ -49,7 +49,7 @@ export function DefaultFilterEditor({
           />
         </Grid.Col>
         <Grid.Col span={4}>
-          <Group spacing="md">
+          <Group gap="md">
             {availableOptions.map(option => (
               <Checkbox
                 key={option.operator}

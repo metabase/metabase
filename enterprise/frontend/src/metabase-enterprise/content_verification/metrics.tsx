@@ -54,10 +54,7 @@ export const MetricFilterControls = ({
       <Popover.Dropdown p="lg">
         <Switch
           label={
-            <Text
-              align="end"
-              weight="bold"
-            >{t`Show verified metrics only`}</Text>
+            <Text ta="end" fw="bold">{t`Show verified metrics only`}</Text>
           }
           role="switch"
           checked={Boolean(metricFilters.verified)}

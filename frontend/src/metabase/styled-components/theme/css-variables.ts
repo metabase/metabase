@@ -46,9 +46,9 @@ export function getMetabaseCssVariables(theme: MantineTheme) {
       --mb-default-font-family: "${theme.fontFamily}";
 
       /* Semantic colors */
-      --mb-color-brand: ${theme.fn.themeColor("brand")};
-      --mb-color-summarize: ${theme.fn.themeColor("summarize")};
-      --mb-color-filter: ${theme.fn.themeColor("filter")};
+      --mb-color-brand: ${theme.colors.brand[0]};
+      --mb-color-summarize: ${theme.colors.summarize[0]};
+      --mb-color-filter: ${theme.colors.filter[0]};
       ${getThemeSpecificCssVariables(theme)}
     }
   `;
@@ -88,11 +88,7 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
            *
            * @see SDK_TO_MAIN_APP_COLORS_MAPPING
            */
-          const color = theme.fn.themeColor(
-            metabaseColorName,
-            undefined,
-            false,
-          );
+          const color = theme.fn.themeColor(metabaseColorName);
           const colorExist = color !== metabaseColorName;
 
           if (colorExist) {

@@ -23,7 +23,7 @@ export const ResetButton = ({
       variant="outline"
       radius="xl"
       size="xs"
-      leftIcon={<Icon name="revert" />}
+      leftSection={<Icon name="revert" />}
       style={sizeOverrideStyles}
       onClick={onClick}
     />
