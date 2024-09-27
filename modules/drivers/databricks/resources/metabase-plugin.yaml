@@ -3,6 +3,10 @@ info:
   version: 1.0.0
   description: Allows Metabase to connect to Databricks SQL warehouse
 driver:
+  - name: hive-like
+    lazy-load: true
+    abstract: true
+    parent: sql-jdbc
   - name: databricks
     display-name: Databricks
     lazy-load: true
