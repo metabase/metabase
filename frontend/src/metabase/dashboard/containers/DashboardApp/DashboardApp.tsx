@@ -9,9 +9,9 @@ import { useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
+import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
 import {
   useDashboardUrlParams,
   useDashboardUrlQuery,
@@ -215,7 +215,11 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
-      <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
+      <DashboardLeaveConfirmationModal
+        route={route}
+        isDirty={isDirty}
+        isEditing={isEditing}
+      />
       <Dashboard
         dashboardId={dashboardId}
         editingOnLoad={editingOnLoad}
