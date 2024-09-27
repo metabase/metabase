@@ -48,6 +48,7 @@ function setup(opts: SetupOpts = {}, query: Lib.Query = createQuery()) {
     />,
     {
       storeInitialState: state,
+      withNotebook: true,
     },
   );
 }
