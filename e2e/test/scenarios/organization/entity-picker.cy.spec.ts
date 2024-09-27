@@ -280,22 +280,7 @@ describe("scenarios > organization > entity picker", () => {
       it("should not allow local search for `all personal collections`", () => {
         createTestCards();
         startNewQuestion();
-
-        tabs.forEach(tab => {
-          entityPickerModal().within(() => {
-            entityPickerModalTab(tab).click();
-            cy.findByText("All personal collections").click();
-            enterSearchText({
-              text: "root",
-              placeholder: "Search…",
-            });
-            globalSearchTab().should("not.exist");
-            localSearchTab("All personal collections").should("not.exist");
-            assertSearchResults({
-              foundItems: ["Root question 1", "Root model 1", "Root metric 1"],
-            });
-          });
-        });
+        testCardSearchForAllPersonalCollections(tabs);
       });
     });
   });
@@ -819,6 +804,24 @@ function testCardSearchForNormalUser(tabs: string[]) {
           "Admin personal collection metric 1",
           "Normal personal collection metric 2",
         ],
+      });
+    });
+  });
+}
+
+function testCardSearchForAllPersonalCollections(tabs: string[]) {
+  tabs.forEach(tab => {
+    entityPickerModal().within(() => {
+      entityPickerModalTab(tab).click();
+      cy.findByText("All personal collections").click();
+      enterSearchText({
+        text: "root",
+        placeholder: "Search…",
+      });
+      globalSearchTab().should("not.exist");
+      localSearchTab("All personal collections").should("not.exist");
+      assertSearchResults({
+        foundItems: ["Root question 1", "Root model 1", "Root metric 1"],
       });
     });
   });
