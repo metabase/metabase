@@ -27,6 +27,7 @@ export interface EnterpriseSettings extends Settings {
   "ee-openai-api-key"?: string;
   "ee-openai-model"?: string;
   "saml-user-provisioning-enabled?"?: boolean;
+  "saml-identity-provider-uri"?: boolean;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;

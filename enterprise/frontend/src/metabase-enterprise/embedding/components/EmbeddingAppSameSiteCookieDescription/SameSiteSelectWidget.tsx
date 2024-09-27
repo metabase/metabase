@@ -33,7 +33,7 @@ interface SameSiteSelectWidgetProps {
   onChange: (value: SessionCookieSameSite) => void;
   setting: {
     key: "session-cookie-samesite";
-    value?: SessionCookieSameSite;
+    value: SessionCookieSameSite | null;
   };
 }
 

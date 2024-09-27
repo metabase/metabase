@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import Confirm from "metabase/components/Confirm";
@@ -24,14 +25,22 @@ const SecretKeyWidget = ({
   confirmation,
   ...rest
 }: SecretKeyWidgetProps) => {
+  const [loading, setLoading] = useState(false);
   const generateToken = async () => {
+    setLoading(true);
     const result = await UtilApi.random_token();
     onChange(result.token);
+    setLoading(false);
   };
 
   return (
     <SecretKeyWidgetRoot>
-      <SettingInput setting={setting} onChange={onChange} {...(rest as any)} />
+      <SettingInput
+        loading={loading}
+        setting={setting}
+        onChange={onChange}
+        {...(rest as any)}
+      />
       {setting.value ? (
         <Confirm
           triggerClasses={CS.fullHeight}
