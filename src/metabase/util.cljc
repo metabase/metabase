@@ -1,5 +1,6 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
+  (:refer-clojure :exclude [group-by])
   (:require
    #?@(:clj ([clojure.math.numeric-tower :as math]
              [me.flowthing.pp :as pp]
@@ -864,10 +865,10 @@
         known-map        (m/index-by id-fn current-rows)
         {to-update false
          to-skip   true} (when (seq update-ids)
-                           (group-by (fn [x]
-                                       (let [y (get known-map (id-fn x))]
-                                         (= (to-compare x) (to-compare y))))
-                                     (filter #(update-ids (id-fn %)) new-rows)))]
+                           (clojure.core/group-by (fn [x]
+                                                    (let [y (get known-map (id-fn x))]
+                                                      (= (to-compare x) (to-compare y))))
+                                                  (filter #(update-ids (id-fn %)) new-rows)))]
     {:to-create (when (seq create-ids) (filter #(create-ids (id-fn %)) new-rows))
      :to-delete (when (seq delete-ids) (filter #(delete-ids (id-fn %)) current-rows))
      :to-update to-update
@@ -1044,6 +1045,45 @@
      "Return how many milliseconds have elapsed since the given timer was started."
      [timer]
      (/ (- (System/nanoTime) timer) 1e6)))
+
+(defn group-by
+  "(group-by first second     [[1 3] [1 4] [2 5]]) => {1 [3 4], 2 [5]}
+   (group-by first second + 0 [[1 3] [1 4] [2 5]]) => {1 7,     2 5}
+   (group-by first second         [[1 [3]] [1 [4]] [2 [5]]]) => {1 [[3] [4]], 2 [[5]]}
+   (group-by first second concat  [[1 [3]] [1 [4]] [2 [5]]]) => {1 (3 4), 2 (5)}
+   (group-by first second into    [[1 [3]] [1 [4]] [2 [5]]]) => {1 [3 4], 2 [5]}
+   (group-by first second into [] [[1 [3]] [1 [4]] [2 [5]]]) => {1 [3 4], 2 [5]}
+   (group-by first second into () [[1 [3]] [1 [4]] [2 [5]]]) => {1 (4 3), 2 (5)}
+   ;; as filter:
+   (group-by first any? second even? conj () [[1 3] [1 4] [2 5]])      => {1 (4)}
+   ;; as reducer (see index-by below):
+   (group-by first any? second even? max   0 [[1 3] [1 6] [1 4] [2 5]] => {1 6})"
+
+  ([kf coll] (clojure.core/group-by kf coll))
+  ([kf vf coll] (group-by kf vf conj [] coll))
+  ([kf vf rf coll] (group-by kf vf rf [] coll))
+  ([kf vf rf init coll]
+   (->> coll
+        (reduce
+         (fn [m x]
+           (let [k (kf x)]
+             (assoc! m k (rf (get m k init) (vf x)))))
+         (transient {}))
+        (persistent!)))
+  ([kf kpred vf vpred rf init coll]
+   (->> coll
+        (reduce
+         (fn [m x]
+           (let [k (kf x)]
+             (if-not (kpred k)
+               m
+               (let [v (vf x)]
+                 ;; no empty collections as a 'side effect':
+                 (if-not (vpred v)
+                   m
+                   (assoc! m k (rf (get m k init) v)))))))
+         (transient {}))
+        (persistent!))))
 
 (defn index-by
   "(index-by first second [[1 3] [1 4] [2 5]]) => {1 4, 2 5}"
