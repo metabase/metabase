@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
+   [metabase.config :as config]
    [metabase.core :as mbc]
    [metabase.db :as mdb]
    [metabase.email :as email]
@@ -391,6 +392,34 @@
       (is (false? (@#'stats/sufficient-queries? 1)))
       (mt/with-temp [:model/QueryExecution _ query-execution-defaults]
         (is (true? (@#'stats/sufficient-queries? 1)))))))
+
+(deftest csv-upload-available-test
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? true)
+
+    (testing "csv-upload-available? currently detects upload availability based on the current MB version"
+      (mt/with-temp [:model/Database _ {:engine :postgres}]
+        (with-redefs [config/current-major-version (constantly 46)
+                      config/current-minor-version (constantly 0)]
+          (is false? (@#'stats/csv-upload-available?)))
+
+        (with-redefs [config/current-major-version (constantly 47)
+                      config/current-minor-version (constantly 1)]
+          (is true? (@#'stats/csv-upload-available?))))
+
+      (mt/with-temp [:model/Database _ {:engine :redshift}]
+        (with-redefs [config/current-major-version (constantly 49)
+                      config/current-minor-version (constantly 5)]
+          (is false? (@#'stats/csv-upload-available?)))
+
+        (with-redefs [config/current-major-version (constantly 49)
+                      config/current-minor-version (constantly 6)]
+          (is true? (@#'stats/csv-upload-available?))))
+
+      ;; If we can't detect the MB version, return nil
+      (with-redefs [config/current-major-version (constantly nil)
+                    config/current-minor-version (constantly nil)]
+        (is false? (@#'stats/csv-upload-available?))))))
 
 (def ^:private excluded-features
   "Set of features intentionally excluded from the daily stats ping. If you add a new feature, either add it to the stats ping
