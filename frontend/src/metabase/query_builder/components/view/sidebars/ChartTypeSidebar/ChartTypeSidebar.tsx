@@ -35,12 +35,14 @@ export const ChartTypeSidebar = ({
   const dispatch = useDispatch();
 
   const onUpdateQuestion = (newQuestion: Question) => {
-    dispatch(
-      updateQuestion(newQuestion, {
-        shouldUpdateUrl: Lib.queryDisplayInfo(question.query()).isEditable,
-      }),
-    );
-    dispatch(setUIControls({ isShowingRawTable: false }));
+    if (question) {
+      dispatch(
+        updateQuestion(newQuestion, {
+          shouldUpdateUrl: Lib.queryDisplayInfo(question.query()).isEditable,
+        }),
+      );
+      dispatch(setUIControls({ isShowingRawTable: false }));
+    }
   };
 
   const {

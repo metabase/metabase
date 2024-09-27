@@ -14,14 +14,11 @@ export const isNumber = (value: unknown): value is number => {
   return typeof value === "number";
 };
 
-export const checkNotNull = <T>(
-  value: T | null | undefined,
-  message?: string,
-): T => {
+export const checkNotNull = <T>(value: T | null | undefined): T => {
   if (value != null) {
     return value;
   } else {
-    throw new TypeError(message);
+    throw new TypeError();
   }
 };
 
