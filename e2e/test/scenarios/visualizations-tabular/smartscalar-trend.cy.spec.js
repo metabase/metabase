@@ -135,7 +135,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     // another column
     H.menu().findByText("Value from another column…").click();
-    H.popover().findByText("Mega Count").click();
+    H.selectDropdown().findByText("Mega Count").click();
     H.menu().button("Done").click();
 
     cy.findByTestId("scalar-previous-value").within(() => {

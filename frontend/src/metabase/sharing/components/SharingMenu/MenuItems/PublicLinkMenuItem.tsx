@@ -20,7 +20,7 @@ export function PublicLinkMenuItem({
     return (
       <Menu.Item
         data-testid="embed-menu-public-link-item"
-        icon={<Icon name="link" aria-hidden />}
+        leftSection={<Icon name="link" aria-hidden />}
         onClick={onClick}
       >
         {isPublicSharingEnabled ? (
@@ -31,7 +31,7 @@ export function PublicLinkMenuItem({
           )
         ) : (
           <Link to="/admin/settings/public-sharing" target="_blank">
-            <Stack spacing="xs">
+            <Stack gap="xs">
               <Title order={4}>{t`Public links are off`}</Title>
               <Text size="sm">{t`Enable them in settings`}</Text>
             </Stack>
@@ -44,13 +44,15 @@ export function PublicLinkMenuItem({
   return (
     <Menu.Item
       data-testid="embed-menu-public-link-item"
-      icon={<Icon name="link" aria-hidden />}
+      leftSection={<Icon name="link" aria-hidden />}
       onClick={onClick}
       disabled={!hasPublicLink}
     >
-      {hasPublicLink
-        ? t`Public link`
-        : t`Ask your admin to create a public link`}
+      <Title order={4} c="inherit">
+        {hasPublicLink
+          ? t`Public link`
+          : t`Ask your admin to create a public link`}
+      </Title>
     </Menu.Item>
   );
 }

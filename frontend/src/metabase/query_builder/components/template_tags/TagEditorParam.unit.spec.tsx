@@ -6,7 +6,12 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  mockScrollIntoView,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { TemplateTag } from "metabase-types/api";
@@ -34,6 +39,7 @@ interface SetupOpts {
 }
 
 const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
+  mockScrollIntoView();
   const database = createSampleDatabase();
   const state = createMockState({
     qb: createMockQueryBuilderState({

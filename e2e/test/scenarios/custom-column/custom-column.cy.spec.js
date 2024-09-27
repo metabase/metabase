@@ -713,17 +713,15 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("custom columns");
     H.getNotebookStep("data").button("Custom column").click();
-    H.popover()
-      .findByTestId("expression-editor")
-      .within(() => {
-        H.enterCustomColumnDetails({
-          formula: 'if([ID] = 1, "First", [ID] = 2, "Second", "Other")',
-          name: "If",
-        });
-        cy.button("Done").click();
+    H.clauseStepPopover().within(() => {
+      H.enterCustomColumnDetails({
+        formula: 'if([ID] = 1, "First", [ID] = 2, "Second", "Other")',
+        name: "If",
       });
+      cy.button("Done").click();
+    });
     H.getNotebookStep("expression").button("Filter").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("If").click();
       cy.findByPlaceholderText("Enter some text").type("Other");
       cy.button("Add filter").click();
@@ -736,15 +734,13 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("filters");
     H.getNotebookStep("data").button("Filter").click();
-    H.popover()
-      .first()
-      .within(() => {
-        cy.findByText("Custom Expression").click();
-        H.enterCustomColumnDetails({
-          formula: 'if([Category] = "Gadget", 1, [Category] = "Widget", 2) = 2',
-        });
-        cy.button("Done").click();
+    H.clauseStepPopover().within(() => {
+      cy.findByText("Custom Expression").click();
+      H.enterCustomColumnDetails({
+        formula: 'if([Category] = "Gadget", 1, [Category] = "Widget", 2) = 2',
       });
+      cy.button("Done").click();
+    });
     H.visualize();
     H.assertQueryBuilderRowCount(54);
     H.openNotebook();
@@ -755,7 +751,7 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("aggregations");
     H.getNotebookStep("data").button("Summarize").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("Custom Expression").click();
       H.enterCustomColumnDetails({
         formula: 'sum(if([Category] = "Gadget", 1, 2))',
@@ -772,17 +768,15 @@ describe("scenarios > question > custom column", () => {
 
     cy.log("custom columns - in");
     H.getNotebookStep("data").button("Custom column").click();
-    H.popover()
-      .findByTestId("expression-editor")
-      .within(() => {
-        H.enterCustomColumnDetails({
-          formula: 'in("Gadget", [Vendor], [Category])',
-          name: "InColumn",
-        });
-        cy.button("Done").click();
+    H.clauseStepPopover().within(() => {
+      H.enterCustomColumnDetails({
+        formula: 'in("Gadget", [Vendor], [Category])',
+        name: "InColumn",
       });
+      cy.button("Done").click();
+    });
     H.getNotebookStep("expression").button("Filter").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("InColumn").click();
       cy.findByText("Add filter").click();
     });
@@ -792,15 +786,13 @@ describe("scenarios > question > custom column", () => {
     cy.log("custom columns - notIn");
     H.openNotebook();
     H.getNotebookStep("expression").findByText("InColumn").click();
-    H.popover()
-      .first()
-      .within(() => {
-        H.enterCustomColumnDetails({
-          formula: 'notIn("Gadget", [Vendor], [Category])',
-          name: "InColumn",
-        });
-        cy.button("Update").click();
+    H.clauseStepPopover().within(() => {
+      H.enterCustomColumnDetails({
+        formula: 'notIn("Gadget", [Vendor], [Category])',
+        name: "InColumn",
       });
+      cy.button("Update").click();
+    });
     H.visualize();
     H.assertQueryBuilderRowCount(147);
 
@@ -811,7 +803,7 @@ describe("scenarios > question > custom column", () => {
       .icon("close")
       .click();
     H.getNotebookStep("data").button("Filter").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("Custom Expression").click();
       H.enterCustomColumnDetails({ formula: "in([ID], 1, 2, 3)" });
       cy.button("Done").click();
@@ -820,7 +812,7 @@ describe("scenarios > question > custom column", () => {
     H.assertQueryBuilderRowCount(3);
     H.openNotebook();
     H.getNotebookStep("filter").findByText("ID is 3 selections").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("3").next("button").click();
       cy.button("Update filter").click();
     });
@@ -830,7 +822,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("filters - notIn");
     H.openNotebook();
     H.getNotebookStep("filter").findByText("ID is 2 selections").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByLabelText("Back").click();
       cy.findByText("Custom Expression").click();
       H.enterCustomColumnDetails({ formula: "notIn([ID], 1, 2, 3)" });
@@ -846,7 +838,7 @@ describe("scenarios > question > custom column", () => {
       .icon("close")
       .click();
     H.getNotebookStep("data").button("Summarize").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("Custom Expression").click();
       H.enterCustomColumnDetails({
         formula: "countIf(in([ID], 1, 2))",
@@ -860,7 +852,7 @@ describe("scenarios > question > custom column", () => {
     cy.log("aggregations - notIn");
     H.openNotebook();
     H.getNotebookStep("summarize").findByText("CountIfIn").click();
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       H.enterCustomColumnDetails({
         formula: "countIf(notIn([ID], 1, 2))",
         name: "CountIfIn",

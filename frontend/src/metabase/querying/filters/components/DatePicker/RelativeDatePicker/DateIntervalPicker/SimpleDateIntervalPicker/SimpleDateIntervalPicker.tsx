@@ -49,6 +49,11 @@ export function SimpleDateIntervalPicker({
           value={value.unit}
           aria-label={t`Unit`}
           onChange={handleUnitChange}
+          comboboxProps={{
+            withinPortal: false,
+            floatingStrategy: "fixed",
+            position: "top",
+          }}
         />
       </Group>
       <IncludeCurrentSwitch value={value} onChange={onChange} />

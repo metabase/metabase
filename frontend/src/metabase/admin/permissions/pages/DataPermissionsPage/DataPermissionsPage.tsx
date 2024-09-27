@@ -12,10 +12,10 @@ import { getSetting } from "metabase/selectors/settings";
 import { PermissionsApi } from "metabase/services";
 import { Center, Loader } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseId, Group } from "metabase-types/api";
+import type { DatabaseId, Group, PermissionsGraph } from "metabase-types/api";
 
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
-import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
+import { PermissionsPageLayout } from "../../components/PermissionsPageLayout/PermissionsPageLayout";
 import ToolbarUpsell from "../../components/ToolbarUpsell";
 import {
   LOAD_DATA_PERMISSIONS_FOR_GROUP,
@@ -95,7 +95,7 @@ function DataPermissionsPage({
       tab="data"
       onLoad={resetPermissions}
       onSave={savePermissions}
-      diff={diff}
+      diff={diff as PermissionsGraph}
       isDirty={isDirty}
       route={route}
       toolbarRightContent={DATA_PERMISSIONS_TOOLBAR_CONTENT}

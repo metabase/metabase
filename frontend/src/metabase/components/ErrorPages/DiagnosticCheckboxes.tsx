@@ -17,7 +17,7 @@ export const DiagnosticCheckboxes = ({
   errorInfo,
   applicationName,
 }: DiagnosticCheckboxesProps) => (
-  <Stack spacing="md" pt="md">
+  <Stack gap="md" pt="md">
     {canIncludeQueryData && (
       <FormCheckbox name="queryResults" label={t`Query results`} />
     )}

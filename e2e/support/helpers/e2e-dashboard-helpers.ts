@@ -339,6 +339,10 @@ export function dashboardParametersDoneButton() {
   return dashboardParameterSidebar().button("Done");
 }
 
+export function dashboardParametersPopover() {
+  return popover("parameter-value-dropdown");
+}
+
 /**
  * @param {Object} option
  * @param {number=} option.id

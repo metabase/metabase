@@ -1,0 +1,11 @@
+.input {
+  color: var(--mb-color-text-primary);
+  background: var(--mb-color-background);
+  border-color: var(--mb-color-border);
+}
+
+.error {
+  &::first-letter {
+    text-transform: capitalize;
+  }
+}
