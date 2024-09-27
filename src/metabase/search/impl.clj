@@ -199,22 +199,27 @@
 
 (defmulti supported-engine? "Does this instance support the given engine?" keyword)
 
-(defmethod supported-engine? :in-place [_] true)
-(defmethod supported-engine? :fulltext [_] (search.fulltext/supported-db? (mdb/db-type)))
+(defmethod supported-engine? :search.engine/in-place [_] true)
+(defmethod supported-engine? :search.engine/fulltext [_] (search.fulltext/supported-db? (mdb/db-type)))
 
 (def ^:private default-engine :search.engine/in-place)
 
+(defn- known-engine? [engine]
+  (let [registered? #(contains? (methods supported-engine?) %)]
+    (some registered? (cons engine (ancestors engine)))))
+
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
-        (cond
-          (not (contains? (methods supported-engine?) value))
-          (log/warnf "Search-engine is unknown: %s" value)
+        (let [engine (keyword "search.engine" value)]
+          (cond
+            (not (known-engine? engine))
+            (log/warnf "Search-engine is unknown: %s" value)
 
-          (not (supported-engine? value))
-          (log/warnf "Search-engine is not supported: %s" value)
+            (not (supported-engine? engine))
+            (log/warnf "Search-engine is not supported: %s" value)
 
-          :else
-          (keyword "search.engine" value)))
+            :else
+            engine)))
       default-engine))
 
 ;; This forwarding is here for tests, we should clean those up.
