@@ -1,6 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-
 import { createMockMetadata } from "__support__/metadata";
+import { fireEvent, render, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { ORDERS, createSampleDatabase } from "metabase-types/api/mocks/presets";

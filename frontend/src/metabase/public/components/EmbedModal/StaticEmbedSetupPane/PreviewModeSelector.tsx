@@ -11,7 +11,7 @@ const ControlOptionItem = ({
   label: string;
   iconName: IconName;
 }) => (
-  <Group noWrap px="sm" spacing="xs">
+  <Group wrap="nowrap" px="sm" gap="xs">
     <Icon name={iconName} />
     <Box>{label}</Box>
   </Group>
@@ -20,11 +20,11 @@ const ControlOptionItem = ({
 const CODE_PREVIEW_CONTROL_OPTIONS = [
   {
     label: <ControlOptionItem label={t`Code`} iconName="embed" />,
-    value: "code",
+    value: "code" as ActivePreviewPane,
   },
   {
     label: <ControlOptionItem label={t`Preview`} iconName="eye_filled" />,
-    value: "preview",
+    value: "preview" as ActivePreviewPane,
   },
 ];
 

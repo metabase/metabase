@@ -20,7 +20,7 @@ export const SearchResultsContainer = styled(Paper)<PaperProps>`
   ${breakpointMinSmall} {
     max-height: 400px;
   }
-`;
+` as unknown as typeof Paper;
 
 const selectedStyles = css`
   color: var(--mb-color-brand);

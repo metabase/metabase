@@ -54,7 +54,7 @@ export function OwnDatePicker(props: OwnDatePickerProps) {
   // Must be replaced with `rightSectionPointerEvents=none` after upgrade
   const rightSectionProps = value
     ? undefined
-    : { style: { pointerEvents: "none" } };
+    : { style: { pointerEvents: "none" as const } };
 
   // TODO this should be removed as soon as we reconcile all dropdowns
   // and make them use Mantine (metabase#40226)
@@ -123,9 +123,6 @@ function DateComponentRouter(props: {
     case "date/all-options":
       return <DateAllOptionsWidget {...componentProps} />;
   }
-
-  // should never happen
-  return null;
 }
 
 function hasInnerPopovers(type: DateParameterType) {

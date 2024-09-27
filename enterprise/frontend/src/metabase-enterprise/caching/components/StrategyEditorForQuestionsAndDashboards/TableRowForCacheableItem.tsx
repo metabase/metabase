@@ -86,13 +86,7 @@ export const TableRowForCacheableItem = ({
         )}
       </td>
       <td>
-        <Button
-          variant="subtle"
-          onClick={() => launchForm()}
-          p={0}
-          fw="bold"
-          c="var(--mb-color-brand)"
-        >
+        <Button variant="subtle" onClick={() => launchForm()} p={0} fw="bold">
           {getShortStrategyLabel(strategy)}
         </Button>
       </td>

@@ -1,4 +1,3 @@
-import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Link, Route } from "react-router";
 
@@ -10,6 +9,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import type { Database } from "metabase-types/api";
 import {

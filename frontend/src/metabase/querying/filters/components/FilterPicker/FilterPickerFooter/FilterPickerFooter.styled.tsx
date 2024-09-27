@@ -6,4 +6,4 @@ export const FilterFooterRoot = styled(Flex)`
   &:not(:only-child) {
     border-top: 1px solid var(--mb-color-border);
   }
-`;
+` as unknown as typeof Flex;

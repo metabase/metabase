@@ -12,4 +12,4 @@ export const ListBox = styled(Box)<React.PropsWithChildren>`
   &:last-child {
     background-color: var(--mb-color-background);
   }
-`;
+` as unknown as typeof Box;

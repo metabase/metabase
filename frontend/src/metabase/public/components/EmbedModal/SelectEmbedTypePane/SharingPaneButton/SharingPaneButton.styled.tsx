@@ -39,4 +39,4 @@ export const SharingPaneActionButton = styled(Button)<
         color: white;
       }
     `}
-`;
+` as unknown as typeof Button;

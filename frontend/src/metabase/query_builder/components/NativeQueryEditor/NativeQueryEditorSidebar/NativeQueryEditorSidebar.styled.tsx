@@ -20,4 +20,4 @@ export const RunButtonWithTooltipStyled = styled(RunButtonWithTooltip)`
 export const SidebarButton = styled(Button)`
   padding: 0;
   margin-top: 1rem;
-`;
+` as unknown as typeof Button;

@@ -42,13 +42,13 @@ const GridTemplate = (args: PaperProps) => (
     <Grid.Col span={1} />
     {argTypes.radius.options.map(radius => (
       <Grid.Col key={radius} span={1}>
-        <Text weight="bold">Radius {radius}</Text>
+        <Text fw="bold">Radius {radius}</Text>
       </Grid.Col>
     ))}
     {argTypes.p.options.flatMap(padding => (
       <Fragment key={padding}>
         <Grid.Col span={1}>
-          <Text weight="bold">Padding {padding}</Text>
+          <Text fw="bold">Padding {padding}</Text>
         </Grid.Col>
         {argTypes.radius.options.map(radius => (
           <Grid.Col key={radius} span={1}>

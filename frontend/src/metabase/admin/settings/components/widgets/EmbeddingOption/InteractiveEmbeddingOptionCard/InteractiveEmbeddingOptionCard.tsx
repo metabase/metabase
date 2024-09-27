@@ -79,7 +79,7 @@ export const InteractiveEmbeddingOptionCard = ({
           <Icon name="share" aria-hidden />
         </Box>
       </Text>
-      <Group position="apart" align="center" w="100%">
+      <Group justify="space-between" align="center" w="100%">
         {isEE ? (
           <LinkButton
             to={"/admin/settings/embedding-in-other-applications/full-app"}

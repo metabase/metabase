@@ -1,0 +1,7 @@
+.tooltip {
+  background-color: var(--mb-color-bg-black);
+  color: var(--mb-color-text-white);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: bold;
+  padding: 0.6rem 0.75rem;
+}
