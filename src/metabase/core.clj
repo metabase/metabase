@@ -12,6 +12,7 @@
    [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
+   [metabase.embed.settings :as embed.settings]
    [metabase.events :as events]
    [metabase.logger :as logger]
    [metabase.models.cloud-migration :as cloud-migration]
@@ -155,6 +156,9 @@
 
   (ensure-audit-db-installed!)
   (init-status/set-progress! 0.95)
+
+  (embed.settings/check-and-sync-settings-on-startup!)
+  (init-status/set-progress! 0.97)
 
   (settings/migrate-encrypted-settings!)
   ;; start scheduler at end of init!
