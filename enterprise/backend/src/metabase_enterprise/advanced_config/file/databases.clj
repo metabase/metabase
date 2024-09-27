@@ -61,7 +61,7 @@
           (let [db (first (t2/insert-returning-instances! Database database))]
             (if (config-from-file-sync-databases)
               (future
-               ((requiring-resolve 'metabase.sync/sync-database!) db))
+                ((requiring-resolve 'metabase.sync/sync-database!) db))
               (log/info "Sync on database creation when initializing from file is disabled. Skipping sync."))))))))
 
 (defmethod advanced-config.file.i/initialize-section! :databases
