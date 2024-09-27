@@ -7,6 +7,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import type {
+  DisplayTheme,
   EmbedResourceType,
   EmbeddingDisplayOptions,
 } from "metabase/public/lib/types";
@@ -25,8 +26,8 @@ import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
 const THEME_OPTIONS = [
-  { label: t`Light`, value: "light" },
-  { label: t`Dark`, value: "night" },
+  { label: t`Light`, value: "light" as DisplayTheme },
+  { label: t`Dark`, value: "night" as DisplayTheme },
 ] as const;
 type ThemeOptions = (typeof THEME_OPTIONS)[number]["value"];
 
@@ -67,7 +68,7 @@ export const LookAndFeelSettings = ({
       <StaticEmbedSetupPaneSettingsContentSection
         title={t`Customizing look and feel`}
       >
-        <Stack spacing="1rem">
+        <Stack gap="1rem">
           <Text>{jt`These options require changing the server code. You can play around with and preview the options here. Check out the ${(
             <ExternalLink
               key="doc"
@@ -86,8 +87,8 @@ export const LookAndFeelSettings = ({
               data={[
                 {
                   label: t`Use instance font`,
-                  // @ts-expect-error Mantine v6 and v7 both expect value to be a string
-                  value: null,
+                  // TODO: Mantine V7 requires a non-null value or it throws an error
+                  value: "",
                 },
                 ...availableFonts?.map(font => ({
                   label: font,

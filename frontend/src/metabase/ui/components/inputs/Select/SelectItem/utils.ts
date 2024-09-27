@@ -10,10 +10,14 @@ const LINE_HEIGHTS = {
   md: rem(24),
 };
 
-export function getItemFontSize(size: MantineSize | number): string {
+export function getItemFontSize(
+  size: MantineSize | number | string,
+): string | undefined {
   return getSize({ size, sizes: FONT_SIZES });
 }
 
-export function getItemLineHeight(size: MantineSize | number): string {
+export function getItemLineHeight(
+  size: MantineSize | string | number | undefined,
+): string | undefined {
   return getSize({ size, sizes: LINE_HEIGHTS });
 }

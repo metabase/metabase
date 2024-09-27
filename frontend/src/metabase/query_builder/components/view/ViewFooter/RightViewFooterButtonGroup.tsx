@@ -23,7 +23,7 @@ export const RightViewFooterButtonGroup = () => {
   const isObjectDetail = useSelector(getIsObjectDetail);
 
   return (
-    <Group noWrap position="right" className={S.Root}>
+    <Group wrap="nowrap" position="right" className={S.Root}>
       {QuestionRowCount.shouldRender({
         result,
         isObjectDetail,
@@ -31,7 +31,7 @@ export const RightViewFooterButtonGroup = () => {
       {ExecutionTime.shouldRender({ result }) && (
         <ExecutionTime time={result.running_time} />
       )}
-      <Group spacing="sm" noWrap>
+      <Group gap="sm" wrap="nowrap">
         {QuestionLastUpdated.shouldRender({ result }) && (
           <QuestionLastUpdated
             className={cx(CS.hide, CS.smShow)}

@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
+
+import { render, screen, userEvent } from "__support__/ui";
 
 import TippyPopover from "./TippyPopover";
 

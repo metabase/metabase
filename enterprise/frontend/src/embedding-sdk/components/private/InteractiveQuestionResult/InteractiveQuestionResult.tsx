@@ -89,9 +89,9 @@ export const InteractiveQuestionResult = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      <Stack className={InteractiveQuestionS.TopBar} spacing="sm" p="md">
-        <Group position="apart" align="flex-end">
-          <Group spacing="xs">
+      <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+        <Group justify="apart" align="flex-end">
+          <Group gap="xs">
             <Box mr="sm">
               <InteractiveQuestion.BackButton />
             </Box>
@@ -102,13 +102,13 @@ export const InteractiveQuestionResult = ({
           )}
         </Group>
         <Group
-          position="apart"
+          justify="apart"
           p="sm"
           bg="var(--mb-color-bg-sdk-question-toolbar)"
           style={{ borderRadius: "0.5rem" }}
           data-testid="interactive-question-result-toolbar"
         >
-          <Group spacing="xs">
+          <Group gap="xs">
             {isEditorOpen ? (
               <PopoverBackButton
                 onClick={toggleEditor}

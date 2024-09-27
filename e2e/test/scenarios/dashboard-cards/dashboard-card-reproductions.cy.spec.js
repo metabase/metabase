@@ -1149,7 +1149,8 @@ describe("issue 31628", () => {
         const scalarContainer = cy.findByTestId("scalar-container");
 
         scalarContainer.then($element => H.assertIsEllipsified($element[0]));
-        scalarContainer.realHover();
+        //TODO: Need to hover on the actual text, not just the container. This is a weird one
+        scalarContainer.realHover({ position: "bottom" });
 
         cy.findByRole("tooltip").findByText("18,760").should("exist");
 
