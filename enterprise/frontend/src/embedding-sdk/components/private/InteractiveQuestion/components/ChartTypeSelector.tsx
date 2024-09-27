@@ -1,17 +1,17 @@
 import {
   ChartTypeSettings,
-  type UseChartTypeVisualizationsProps,
   useChartTypeVisualizations,
 } from "metabase/query_builder/components/chart-type-selector";
 import { Stack } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../context";
 
-const useChartTypeSelectorsInner = ({
-  question,
-  result,
-  onUpdateQuestion,
-}: UseChartTypeVisualizationsProps) => {
+// Public facing hook so users can create their own selectors for their UI.
+// Will document once this PR is ready to go.
+export const useChartTypeSelectors = () => {
+  const { question, queryResults, updateQuestion } =
+    useInteractiveQuestionContext();
+
   const {
     selectedVisualization,
     updateQuestionVisualization,
@@ -19,8 +19,8 @@ const useChartTypeSelectorsInner = ({
     nonSensibleVisualizations,
   } = useChartTypeVisualizations({
     question,
-    result,
-    onUpdateQuestion,
+    result: queryResults?.[0],
+    onUpdateQuestion: updateQuestion,
   });
 
   return {
@@ -29,19 +29,6 @@ const useChartTypeSelectorsInner = ({
     sensibleVisualizations,
     nonSensibleVisualizations,
   };
-};
-
-// Public facing hook so users can create their own selectors for their UI.
-// Will document once this PR is ready to go.
-export const useChartTypeSelectors = () => {
-  const { question, queryResults, updateQuestion } =
-    useInteractiveQuestionContext();
-
-  return useChartTypeSelectorsInner({
-    question,
-    result: queryResults?.[0],
-    onUpdateQuestion: updateQuestion,
-  });
 };
 
 export const ChartTypeSelector = () => {
