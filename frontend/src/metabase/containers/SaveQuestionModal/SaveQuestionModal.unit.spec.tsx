@@ -254,7 +254,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -278,7 +278,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -302,7 +302,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -325,7 +325,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -399,7 +399,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -424,7 +424,7 @@ describe("SaveQuestionModal", () => {
       });
 
       const call: Question[] = onCreateMock.mock.calls[0];
-      expect(call.length).toBe(1);
+      expect(call.length).toBe(2);
 
       const newQuestion = call[0];
       expect(newQuestion.id()).toBeUndefined();
@@ -720,10 +720,11 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("new collection modal", () => {
-    const collDropdown = () => screen.getByLabelText(/Which collection/);
+    const collDropdown = () =>
+      screen.getByLabelText(/Where do you want to save this/);
     const newCollBtn = () =>
       screen.getByRole("button", {
-        name: /new collection/i,
+        name: /new dashboard/i,
       });
     const questionModalTitle = () =>
       screen.getByRole("heading", { name: /new question/i });
@@ -785,7 +786,9 @@ describe("SaveQuestionModal", () => {
     it("should have a new collection button in the collection picker", async () => {
       await setup(getQuestion());
       await userEvent.click(collDropdown());
-      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+      await waitFor(() => {
+        expect(newCollBtn()).toBeInTheDocument();
+      });
     });
     it("should open new collection modal and return to dashboard modal when clicking close", async () => {
       await setup(getQuestion());
@@ -824,7 +827,7 @@ describe("SaveQuestionModal", () => {
         await waitFor(async () =>
           expect(
             await screen.findByRole("heading", {
-              name: "Create a new collection",
+              name: "Create a new dashboard",
             }),
           ).toBeInTheDocument(),
         );

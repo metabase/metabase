@@ -16,6 +16,7 @@ interface Props {
   route: Route;
   router: InjectedRouter;
   children?: (props: {
+    nextLocation: Location | undefined;
     onAction?: () => void;
     onClose?: () => void;
   }) => ReactNode;
@@ -76,7 +77,11 @@ const LeaveConfirmationModalBase = ({
   return (
     <Modal isOpen={isConfirmationVisible} zIndex={5}>
       {children ? (
-        children({ onAction: handleConfirm, onClose: handleClose })
+        children({
+          nextLocation,
+          onAction: handleConfirm,
+          onClose: handleClose,
+        })
       ) : (
         <LeaveConfirmationModalContent
           onAction={handleConfirm}
