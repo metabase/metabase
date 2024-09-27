@@ -513,8 +513,8 @@
       nested? (extract-reducible-nested model-name (dissoc opts :where)))))
 
 (defmulti descendants
-  "Returns set of `[model-name database-id]` pairs for all entities contained or used by this entity. e.g. the Dashboard
-   implementation should return pairs for all DashboardCard entities it contains, etc.
+  "Returns set of `[model-name database-id {initiating-model id}]` pairs for all entities contained or used by this
+   entity. e.g. the Dashboard implementation should return pairs for all DashboardCard entities it contains, etc.
 
    Dispatched on model-name."
   {:arglists '([model-name db-id])}

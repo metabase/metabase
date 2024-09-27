@@ -897,13 +897,13 @@
      (concat
       (when (and (string? source-table)
                  (str/starts-with? source-table "card__"))
-        [["Card" (parse-long (subs source-table 6))]])
+        [["Card" (parse-long (subs source-table 6)) {"Card" id}]])
       (for [card-id template-tags]
-        ["Card" card-id])
+        ["Card" card-id {"Card" id}])
       (for [card-id parameters-card-id]
-        ["Card" card-id])
+        ["Card" card-id {"Card" id}])
       (for [snippet-id snippets]
-        ["NativeQuerySnippet" snippet-id])))))
+        ["NativeQuerySnippet" snippet-id {"Card" id}])))))
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 
