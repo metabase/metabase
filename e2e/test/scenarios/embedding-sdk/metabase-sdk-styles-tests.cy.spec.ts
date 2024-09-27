@@ -166,5 +166,50 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
         '"Roboto Mono", sans-serif',
       );
     });
+
+    it("should work with 'Custom' fontFamily, using the font files linked in the instance", () => {
+      cy.signInAsAdmin();
+
+      const fontUrl =
+        Cypress.config().baseUrl +
+        "/app/fonts/Open_Sans/OpenSans-Regular.woff2";
+      // setting `application-font-files` will make getFont return "Custom"
+      cy.request("PUT", "/api/setting/application-font-files", {
+        value: [
+          {
+            src: fontUrl,
+            fontWeight: 400,
+            fontFormat: "woff2",
+          },
+        ],
+      });
+
+      cy.signOut();
+
+      cy.intercept("GET", fontUrl).as("fontFile");
+
+      visitFullAppEmbeddingUrl({
+        url: EMBEDDING_SDK_STORY_HOST,
+        qs: {
+          id: STORIES.NO_STYLES_SUCCESS,
+          viewMode: "story",
+        },
+        onBeforeLoad: (window: any) => {
+          window.JWT_SHARED_SECRET = JWT_SHARED_SECRET;
+          window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
+          window.QUESTION_ID = ORDERS_QUESTION_ID;
+        },
+      });
+
+      // this test only tests if the file is loaded, not really if it is rendered
+      // we'll probably need visual regression tests for that
+      cy.wait("@fontFile");
+
+      cy.findByText("Product ID").should(
+        "have.css",
+        "font-family",
+        "Custom, sans-serif",
+      );
+    });
   });
 });
