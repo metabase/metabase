@@ -98,7 +98,6 @@
 (defsetting enable-embedding-static
   (deferred-tru "Allow admins to embed Metabase via static embedding?")
   :type       :boolean
-  :feature    :embedding
   :default    false
   :visibility :authenticated
   :export?    false
