@@ -433,6 +433,30 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Running Queries                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; BigQuery Execution
+;;; 1. `execute-reducible-query`
+;;;     - Is given the `respond` callback which is ultimately what the QP is waiting for.
+;;;     - Sets timezone based on queried DB
+;;;     - Adds remarks to sql.
+;;;     - Execution passes to `*process-native*`
+;;; 2. `*process-native*`
+;;;     - Responsible for retrying queries that BigQuery tells us to retry
+;;;     - Execution passes to `execute-bigquery`
+;;; 3. `execute-bigquery`
+;;;     - Makes the initial query and checks `cancel-chan` in case the browser cancels execution.
+;;;     - Either throws approriate exceptions or takes the initial page `TableResult` to the next step.
+;;;     - Execution passes to `execute-bigquery`
+;;; 4. `bigquery-execute-response`
+;;;     - Builds `cols` metadata response.
+;;;     - Builds an `eduction` around the `TableResult` page using `reducible-bigquery-results`
+;;;     - Calls `respond`
+;;;
+;;; The stack unwinds here, but the `reducible-bigquery-results` passed to `respond` *still* has references to the `TableResult`.
+;;; As the result is reduced within the QP, `(.next it)` `(.getNextPage page)`  will be called to produce the next values for `rf`.
+;;;
+;;; So it is important to think of getting all the results out of BQ in two parts:
+;;; 1. The initial query done by `execute-bigquery` where the `.query` call can be shortcircuited by `cancel-chan`.
+;;; 2. The "lazy" iteration of `TableResult` done by the QP. Any exceptions, or `cancel-chan` checking will be done in the context of the pipeline, solely around the code in `reducible-bigquery-results`.
 
 (def ^:private ^:dynamic ^Long *page-size*
   "Maximum number of rows to return per page in a query. Leave unset (i.e. falling to the library default) by default,
