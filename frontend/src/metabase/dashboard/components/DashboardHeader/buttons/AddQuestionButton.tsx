@@ -80,7 +80,7 @@ export const AddQuestionButton = () => {
       key: "existing",
       title: (
         <Flex align="center" gap="sm">
-          <Icon name="add" />
+          <Icon name="folder" />
           {t`Existing Question`}
         </Flex>
       ),
@@ -103,6 +103,7 @@ export const AddQuestionButton = () => {
         />
       </Menu.Target>
       <Menu.Dropdown miw="auto">
+        <Menu.Label>{t`Add a chart from a`}</Menu.Label>
         {QUESTION_OPTIONS.map(({ key, title, action }) => (
           <Menu.Item key={key} onClick={action}>
             <Text pr="xl" fw="bold" color="currentColor">
