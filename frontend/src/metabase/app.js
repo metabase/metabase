@@ -47,6 +47,7 @@ import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles
 import { ThemeProvider } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 
+import "@mantine/core/styles.css"; // TODO: how to use in embedding?
 import { getStore } from "./store";
 
 // remove trailing slash
