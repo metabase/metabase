@@ -160,7 +160,7 @@
   [env]
   (let [deprecated-origin-env-var-set? (some? (:embedding-app-origin env))
         supported-origins-env-vars-set (select-keys env
-                                                  [:embedding-app-origins-sdk :embedding-app-origins-interactive])]
+                                                    [:embedding-app-origins-sdk :embedding-app-origins-interactive])]
     (when (and deprecated-origin-env-var-set? (seq supported-origins-env-vars-set))
       (throw (ex-info "Both deprecated and new enable-embedding env vars are set, please remove MB_ENABLE_EMBEDDING."
                       {:deprecated-enable-env-vars-set deprecated-origin-env-var-set?
