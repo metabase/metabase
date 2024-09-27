@@ -417,6 +417,7 @@ export const setParameterDefaultValue = createThunkAction(
       ...parameter,
       default: defaultValue,
     }));
+    dispatch(setParameterValue(parameterId, defaultValue));
     return { id: parameterId, defaultValue };
   },
 );
