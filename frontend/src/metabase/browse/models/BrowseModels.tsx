@@ -186,12 +186,10 @@ function useFilteredModels(modelFilters: ModelFilterSettings) {
       models ?? [],
     ),
 
-    // TODO: filter out verified models from recent models
     recentModels: (recentModelsResult.data ?? [])
       .filter(isRecentModel)
       .filter(
-        model =>
-          !modelFilters.verified || model.moderated_status === "verified",
+        model => !filters.verified || model.moderated_status === "verified",
       )
       .slice(0, recentsCap),
   };
