@@ -8,12 +8,15 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  type DashboardDetails,
   type StructuredQuestionDetails,
   createCollection,
   createDashboard,
   createQuestion,
+  editDashboard,
   entityPickerModal,
   entityPickerModalTab,
+  getDashboardCard,
   getNotebookStep,
   openQuestionActions,
   popover,
@@ -21,8 +24,11 @@ import {
   restore,
   resyncDatabase,
   startNewQuestion,
+  updateDashboardCards,
+  visitDashboard,
   visitQuestion,
 } from "e2e/support/helpers";
+import type { DashboardCard } from "metabase-types/api";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
@@ -194,6 +200,17 @@ describe("scenarios > organization > entity picker", () => {
         startNewQuestion();
         testCardSearchForAllPersonalCollections({ tabs });
       });
+    });
+  });
+
+  describe("question picker", () => {
+    const tabs = ["Questions", "Models", "Metrics"];
+
+    it("should search for cards for a normal user", () => {
+      createTestCards();
+      cy.signInAsNormalUser();
+      selectQuestionFromDashboard();
+      testCardSearchForNormalUser({ tabs });
     });
   });
 
@@ -592,6 +609,47 @@ function createTestDashboards() {
     dashboards.forEach(dashboard =>
       createDashboard({ ...dashboard, name: `${dashboard.name} ${suffix}` }),
     );
+  });
+}
+
+function createTestDashboardWithEmptyCard(
+  dashboardDetails: DashboardDetails = {},
+) {
+  const dashcardDetails: Partial<DashboardCard>[] = [
+    {
+      id: -1,
+      card_id: null,
+      dashboard_tab_id: null,
+      row: 5,
+      col: 0,
+      size_x: 24,
+      size_y: 1,
+      visualization_settings: {
+        virtual_card: {
+          name: null,
+          dataset_query: {},
+          display: "placeholder",
+          visualization_settings: {},
+          archived: false,
+        },
+      },
+      parameter_mappings: [],
+    },
+  ];
+
+  return createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+    return updateDashboardCards({
+      dashboard_id: dashboard.id,
+      cards: dashcardDetails,
+    }).then(() => dashboard);
+  });
+}
+
+function selectQuestionFromDashboard() {
+  createTestDashboardWithEmptyCard().then(dashboard => {
+    visitDashboard(dashboard.id);
+    editDashboard();
+    getDashboardCard().button("Select question").click();
   });
 }
 
