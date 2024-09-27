@@ -26,7 +26,7 @@ export default function ListSearchField({
     <TextInput
       data-testid="list-search-field"
       ref={inputRef}
-      icon={<Icon name="search" />}
+      leftSection={<Icon name="search" />}
       rightSection={
         props.onResetClick && props.value ? (
           <ActionIcon onClick={props.onResetClick}>

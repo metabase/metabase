@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useMemo } from "react";
+=======
+import React, { useEffect } from "react";
+>>>>>>> 6115ebd7c5 (Mantine v7-1 squash)
 import { ThemeProvider } from "metabase/ui";
 
 // @ts-expect-error: See metabase/lib/delay
@@ -9,6 +13,9 @@ require("metabase/css/core/index.css");
 require("metabase/css/vendor.css");
 require("metabase/css/index.module.css");
 require("metabase/lib/dayjs");
+
+import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
 
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
@@ -57,6 +64,15 @@ const decorators = [
 
 function CssVariables() {
   const theme = useTheme();
+<<<<<<< HEAD
+=======
+  useEffect(() => {
+    // mantine v7 will not work correctly without this
+    document.body.dir = "ltr";
+  }, []);
+  const styles = css`
+    ${getMetabaseCssVariables(theme)}
+>>>>>>> 6115ebd7c5 (Mantine v7-1 squash)
 
   // This can get expensive so we should memoize it separately
   const cssVariables = useMemo(() => getMetabaseCssVariables(theme), [theme]);

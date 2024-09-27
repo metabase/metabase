@@ -359,17 +359,13 @@ export function EntityPickerModal<
        * Height is specified here to make that assertion pass.
        */
       h="100vh"
+      w="100vw"
       trapFocus={trapFocus}
       closeOnEscape={false} // we're doing this manually in useWindowEvent
       yOffset="10dvh"
     >
       <Modal.Overlay />
-      <ModalContent
-        h="100%"
-        maw="57.5rem"
-        mah="40rem"
-        aria-labelledby={titleId}
-      >
+      <ModalContent aria-labelledby={titleId}>
         <Modal.Header
           px="2.5rem"
           pt="1rem"
@@ -387,7 +383,7 @@ export function EntityPickerModal<
               <TextInput
                 data-autofocus
                 type="search"
-                icon={<Icon name="search" size={16} />}
+                leftSection={<Icon name="search" size={16} />}
                 miw={400}
                 placeholder={getSearchInputPlaceholder(selectedFolder)}
                 value={searchQuery}

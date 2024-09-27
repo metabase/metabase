@@ -234,8 +234,8 @@ export default class EmailAttachmentPicker extends Component {
 
     return (
       <div>
-        <Group className={CS.borderTop} position="apart" pt="1.5rem">
-          <Group position="left" spacing="0">
+        <Group className={CS.borderTop} justify="space-between" pt="1.5rem">
+          <Group position="left" gap="0">
             <Text fw="bold">{t`Attach results as files`}</Text>
             <Icon
               name="info"

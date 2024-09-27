@@ -161,7 +161,7 @@ function NumberValueInput({
           value={values[0]}
           placeholder={t`Min`}
           maw="8rem"
-          onChange={(newValue: number) => onChange([newValue, values[1]])}
+          onChange={(newValue: NumberValue) => onChange([newValue, values[1]])}
           onFocus={onFocus}
           onBlur={onBlur}
         />
@@ -170,7 +170,7 @@ function NumberValueInput({
           value={values[1]}
           placeholder={t`Max`}
           maw="8rem"
-          onChange={(newValue: number) => onChange([values[0], newValue])}
+          onChange={(newValue: NumberValue) => onChange([values[0], newValue])}
           onFocus={onFocus}
           onBlur={onBlur}
         />
@@ -184,7 +184,7 @@ function NumberValueInput({
         <NumberInput
           value={values[2]}
           placeholder={t`Lower latitude`}
-          onChange={(newValue: number) =>
+          onChange={(newValue: NumberValue) =>
             onChange([values[0], values[1], newValue, values[3]])
           }
           onFocus={onFocus}
@@ -193,7 +193,7 @@ function NumberValueInput({
         <NumberInput
           value={values[0]}
           placeholder={t`Upper latitude`}
-          onChange={(newValue: number) =>
+          onChange={(newValue: NumberValue) =>
             onChange([newValue, values[1], values[2], values[3]])
           }
           onFocus={onFocus}
@@ -202,7 +202,7 @@ function NumberValueInput({
         <NumberInput
           value={values[1]}
           placeholder={t`Left longitude`}
-          onChange={(newValue: number) =>
+          onChange={(newValue: NumberValue) =>
             onChange([values[0], newValue, values[2], values[3]])
           }
           onFocus={onFocus}
@@ -211,7 +211,7 @@ function NumberValueInput({
         <NumberInput
           value={values[3]}
           placeholder={t`Right longitude`}
-          onChange={(newValue: number) =>
+          onChange={(newValue: NumberValue) =>
             onChange([values[0], values[1], values[2], newValue])
           }
           onFocus={onFocus}

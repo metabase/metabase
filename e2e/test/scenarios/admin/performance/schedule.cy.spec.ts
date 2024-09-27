@@ -99,7 +99,7 @@ H.describeEE("scenarios > admin > performance > schedule strategy", () => {
           } else {
             getScheduleComponent(componentType).click();
 
-            H.selectDropdown().within(() => {
+            H.popover().within(() => {
               cy.findByText(optionToClick).click();
             });
           }

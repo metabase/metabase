@@ -777,9 +777,17 @@ describe("SaveQuestionModal", () => {
       screen.getByRole("button", {
         name: /new collection/i,
       });
+    const newCollCancelButton = () =>
+      within(screen.getByRole("dialog", { name: /new collection/ })).getByRole(
+        "button",
+        { name: /cancel/i },
+      );
+    const selectCollCancelButton = () =>
+      within(
+        screen.getByRole("dialog", { name: /Select a collection/ }),
+      ).getByRole("button", { name: /cancel/i });
     const questionModalTitle = () =>
       screen.getByRole("heading", { name: /new question/i });
-    const cancelBtn = () => screen.getByRole("button", { name: /cancel/i });
 
     const newDashBtn = () =>
       screen.getByRole("button", {
@@ -854,8 +862,8 @@ describe("SaveQuestionModal", () => {
         await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
         await userEvent.click(newCollBtn());
         await screen.findByText("Give it a name");
-        await userEvent.click(cancelBtn());
-        await userEvent.click(cancelBtn());
+        await userEvent.click(newCollCancelButton());
+        await userEvent.click(selectCollCancelButton());
         await waitFor(() => expect(questionModalTitle()).toBeInTheDocument());
       });
 
@@ -873,7 +881,7 @@ describe("SaveQuestionModal", () => {
           await userEvent.click(saveLocDropdown());
           await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
           await userEvent.click(
-            await screen.findByRole("button", {
+            await screen.findByRole("link", {
               name: new RegExp(BOBBY_TEST_COLLECTION.name),
             }),
           );
@@ -914,7 +922,7 @@ describe("SaveQuestionModal", () => {
         await within(
           await screen.findByTestId("create-dashboard-on-the-go"),
         ).findByRole("button", { name: /cancel/i });
-        await userEvent.click(cancelBtn());
+        await userEvent.click(selectCollCancelButton());
         await waitFor(() => expect(questionModalTitle()).toBeInTheDocument());
       });
 
@@ -932,7 +940,7 @@ describe("SaveQuestionModal", () => {
           await userEvent.click(saveLocDropdown());
           await waitFor(() => expect(newDashBtn()).toBeInTheDocument());
           await userEvent.click(
-            await screen.findByRole("button", {
+            await screen.findByRole("link", {
               name: new RegExp(BOBBY_TEST_COLLECTION.name),
             }),
           );

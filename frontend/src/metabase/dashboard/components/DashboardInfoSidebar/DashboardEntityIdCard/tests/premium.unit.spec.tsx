@@ -1,7 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
 import { viewMantineSelectOptions } from "__support__/components/mantineSelect";
-import { type RenderWithProvidersOptions, screen } from "__support__/ui";
+import {
+  type RenderWithProvidersOptions,
+  mockScrollIntoView,
+  screen,
+} from "__support__/ui";
 import type { BaseEntityId, Dashboard } from "metabase-types/api";
 import {
   createMockDashboard,
@@ -9,6 +13,8 @@ import {
 } from "metabase-types/api/mocks";
 
 import { setup as baseSetup } from "./setup";
+
+mockScrollIntoView();
 
 const setup = ({
   dashboard = createMockDashboard(),
@@ -45,6 +51,9 @@ describe("DashboardEntityIdCard (EE with token)", () => {
       ],
     });
     setup({ dashboard });
+    expect(
+      await screen.findByRole("heading", { name: /Entity ID/ }),
+    ).toBeInTheDocument();
 
     const firstClickOnSelect = await viewMantineSelectOptions();
     expect(firstClickOnSelect.displayedOption.value).toBe("Tab 1");

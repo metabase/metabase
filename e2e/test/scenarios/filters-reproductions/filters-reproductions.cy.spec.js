@@ -362,13 +362,13 @@ describe("issue 22230", () => {
     // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("Max of Name").click();
       cy.findByText("Is").click();
     });
     cy.findByRole("menu").findByText("Starts with").click();
 
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByPlaceholderText("Enter some text").type("Zo").blur();
       cy.button("Add filter").click();
     });
@@ -527,7 +527,7 @@ describe("issue 45410", () => {
   it("should not overflow the last filter value with a chevron icon (metabase#45410)", () => {
     H.openPeopleTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("Email").click();
       cy.findByPlaceholderText("Search by Email")
         .type("abc@example.com,abc2@example.com")
@@ -535,7 +535,7 @@ describe("issue 45410", () => {
       cy.findByText("abc2@example.com")
         .next("button")
         .then(([removeButton]) => {
-          cy.get("[data-chevron]").then(([chevronIcon]) => {
+          cy.get("[data-combobox-chevron]").then(([chevronIcon]) => {
             const removeButtonRect = removeButton.getBoundingClientRect();
             const chevronIconRect = chevronIcon.getBoundingClientRect();
             expect(removeButtonRect.right).to.be.lte(chevronIconRect.left);
@@ -570,14 +570,14 @@ describe("issue 25378", () => {
     // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByText("Created At: Month").click();
       cy.findByText("Relative dates…").click();
       cy.findByDisplayValue("days").click();
     });
     cy.findByRole("listbox").findByText("months").click();
 
-    H.popover().within(() => {
+    H.clauseStepPopover().within(() => {
       cy.findByLabelText("Starting from…").click();
       cy.button("Add filter").click();
     });
@@ -875,7 +875,7 @@ describe("issue 30312", () => {
 
     H.popover().findByText("Filter by this column").click();
     H.selectFilterOperator("Equal to");
-    H.popover().within(() => {
+    H.clickActionsPopover().within(() => {
       cy.findByPlaceholderText("Enter a number").type("10");
       cy.realPress("Tab");
       cy.button("Add filter").should("be.enabled").click();
