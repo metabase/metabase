@@ -1281,6 +1281,7 @@ describe("notifications", { tags: "@external" }, () => {
 });
 
 describe("admin > settings > updates", () => {
+  // we're mocking this so it can be stable for tests
   const versionInfo = {
     latest: {
       version: "v1.86.76",
@@ -1310,24 +1311,17 @@ describe("admin > settings > updates", () => {
     ],
   };
 
+  const currentVersion = "v1.86.70";
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
     cy.visit("/admin/settings/updates");
 
-    cy.intercept("GET", "/api/setting", (req, res) => {
-      req.continue(res => {
-        const versionInfoIndex = res.body.findIndex(
-          setting => setting.key === "version-info",
-        );
-        res.body[versionInfoIndex].value = versionInfo;
-        return res.body;
-      });
-    });
-
     cy.intercept("GET", "/api/session/properties", (req, res) => {
       req.continue(res => {
         res.body["version-info"] = versionInfo;
+        res.body.version.tag = currentVersion;
         return res.body;
       });
     });
@@ -1340,7 +1334,7 @@ describe("admin > settings > updates", () => {
       .should("be.visible");
 
     cy.findByTestId("settings-updates").within(() => {
-      cy.findByText(/Metabase 1\.86\.76 is available/).should("be.visible");
+      cy.findByText("Metabase 1.86.76 is available. You're running 1.86.70");
       cy.findByText("Some old feature").should("be.visible");
     });
 
@@ -1356,10 +1350,9 @@ describe("admin > settings > updates", () => {
 
   it("should change release notes based on the selected update channel", () => {
     cy.findByTestId("settings-updates").within(() => {
-      cy.findByText(/Metabase 1\.86\.75\.309 is available/).should(
-        "be.visible",
-      );
+      cy.findByText(/Metabase 1\.86\.76 is available/).should("be.visible");
       cy.findByText("Some old feature").should("be.visible");
+      cy.findByText("New latest feature").should("be.visible");
       cy.findByText("Stable").click();
     });
 
@@ -1369,7 +1362,7 @@ describe("admin > settings > updates", () => {
       cy.findByText(/Metabase 1\.86\.75\.309 is available/).should(
         "be.visible",
       );
-      cy.findByText("Some beta feature").should("be.visible");
+      cy.findByText("New beta feature").should("be.visible");
       cy.findByText("Beta").click();
     });
 
@@ -1379,7 +1372,7 @@ describe("admin > settings > updates", () => {
       cy.findByText(/Metabase 1\.86\.75\.311 is available/).should(
         "be.visible",
       );
-      cy.findByText("Some nightly feature").should("be.visible");
+      cy.findByText("New nightly feature").should("be.visible");
     });
   });
 });
