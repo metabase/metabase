@@ -118,8 +118,9 @@ const ViewInner = props => {
             isRunning={isRunning}
             onChange={updateQuestion}
             onCreate={async question => {
-              await onCreate(question);
+              const result = await onCreate(question);
               setQueryBuilderMode("view");
+              return result;
             }}
             onSave={async question => {
               await onSave(question);

@@ -1,3 +1,4 @@
+import type { CollectionId } from "./collection";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { CardDisplayType } from "./visualization";
 
@@ -46,7 +47,7 @@ export type RecentCollectionItem = BaseRecentItem & {
   can_write: boolean;
   database_id?: DatabaseId; // for models and questions
   parent_collection: {
-    id: number | null;
+    id: CollectionId | null;
     name: string;
     authority_level?: "official" | null;
   };
