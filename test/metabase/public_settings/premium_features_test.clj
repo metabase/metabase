@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]
+   [diehard.circuit-breaker :as dh.cb]
    [mb.hawk.parallel]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
@@ -15,6 +16,24 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(set! *warn-on-reflection* true)
+
+(defn- open-circuit-breaker! [cb]
+  (.open ^dev.failsafe.CircuitBreaker cb))
+
+(defmacro with-open-circuit-breaker! [& body]
+  `(binding [premium-features/*store-circuit-breaker* (dh.cb/circuit-breaker
+                                                       @#'premium-features/store-circuit-breaker-config)]
+     (open-circuit-breaker! premium-features/*store-circuit-breaker*)
+     (do ~@body)))
+
+(defn reset-circuit-breaker-fixture [f]
+  (binding [premium-features/*store-circuit-breaker* (dh.cb/circuit-breaker
+                                                      @#'premium-features/store-circuit-breaker-config)]
+    (f)))
+
+(use-fixtures :each reset-circuit-breaker-fixture)
 
 (defn- token-status-response
   [token premium-features-response]
@@ -64,7 +83,7 @@
               :error-details "network issues"}
              (premium-features/fetch-token-status (apply str (repeat 64 "b"))))))))
 
-(deftest fetch-token-caches-results
+(deftest fetch-token-caches-successful-responses
   (testing "For successful responses, the result is cached"
     (let [call-count (atom 0)
           token      (random-token)]
@@ -72,7 +91,9 @@
                                (swap! call-count inc)
                                {:status 200 :body "{\"valid\": true, \"status\": \"fake\"}"})]
         (dotimes [_ 10] (premium-features/fetch-token-status token))
-        (is (= 1 @call-count)))))
+        (is (= 1 @call-count))))))
+
+(deftest fetch-token-caches-invalid-responses
   (testing "For 4XX responses, the result is cached"
     (let [call-count (atom 0)
           token      (random-token)]
@@ -80,26 +101,40 @@
                                (swap! call-count inc)
                                {:status 400 :body "{\"valid\": false, \"status\": \"fake\"}"})]
         (dotimes [_ 10] (premium-features/fetch-token-status token))
-        (is (= 1 @call-count)))))
+        (is (= 1 @call-count))))))
+
+(deftest fetch-token-does-not-cache-exceptions
   (testing "For timeouts, 5XX errors, etc. we don't cache the result"
     (let [call-count (atom 0)
           token      (random-token)]
       (binding [http/request (fn [& _]
                                (swap! call-count inc)
                                (throw (ex-info "oh, fiddlesticks" {})))]
-        (dotimes [_ 10] (premium-features/fetch-token-status token))
+        (dotimes [_ 5] (premium-features/fetch-token-status token))
         ;; Note that we have a fallback URL that gets hit in this case (see
-        ;; https://github.com/metabase/metabase/issues/27036) and 2x10=20
-        (is (= 20 @call-count))))
-    (let [call-count (atom 0)
-          token      (random-token)]
-      (binding [http/request (fn [& _]
-                               (swap! call-count inc)
-                               {:status 500})]
-        (dotimes [_ 10] (premium-features/fetch-token-status token))
-        ;; Same as above, we have a fallback URL that gets hit in this case (see
-        ;; https://github.com/metabase/metabase/issues/27036) and 2x10=20
-        (is (= 20 @call-count))))))
+        ;; https://github.com/metabase/metabase/issues/27036) and 2x5=10
+        (is (= 10 @call-count))))))
+
+(deftest fetch-token-does-not-cache-5XX-responses
+  (let [call-count (atom 0)
+        token      (random-token)]
+    (binding [http/request (fn [& _]
+                             (swap! call-count inc)
+                             {:status 500})]
+      (dotimes [_ 10] (premium-features/fetch-token-status token))
+      ;; Same as above, we have a fallback URL that gets hit in this case (see
+      ;; https://github.com/metabase/metabase/issues/27036) and 2x10=20
+      (is (= 10 @call-count)))))
+
+(deftest fetch-token-is-circuit-broken
+  (let [call-count (atom 0)]
+    (with-open-circuit-breaker!
+      (binding [http/request (fn [& _] (swap! call-count inc))]
+        (is (= {:valid false
+                :status "Unable to validate token"
+                :error-details "Token validation is currently unavailable."}
+               (premium-features/fetch-token-status (random-token))))
+        (is (= 0 @call-count))))))
 
 (deftest ^:parallel fetch-token-status-test-4
   (testing "With a valid token"

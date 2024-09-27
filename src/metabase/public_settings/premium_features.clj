@@ -6,6 +6,8 @@
    [clojure.core.memoize :as memoize]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
+   [diehard.circuit-breaker :as dh.cb]
+   [diehard.core :as dh]
    [environ.core :refer [env]]
    [malli.core :as mc]
    [metabase.api.common :as api]
@@ -138,18 +140,46 @@
 
    :ttl/threshold (u/minutes->ms 5)))
 
+(def ^:private store-circuit-breaker-config
+  {;; if 10 requests within 10 seconds fail, open the circuit breaker.
+   ;; (a lower threshold ratio wouldn't make sense here because successful results are cached, so as soon as we get
+   ;; one successful response we're guaranteed to only get successes until cache expiration)
+   :failure-threshold-ratio-in-period [10 10 (u/seconds->ms 10)]
+   ;; after the circuit is opened, wait 30 seconds before making any more requests to the store
+   :delay-ms (u/seconds->ms 30)
+   ;; when the circuit breaker is half-open, one request will be permitted. if it's successful, return to normal.
+   ;; otherwise we'll wait another 30 seconds.
+   :success-threshold 1})
+
+(def ^:dynamic *store-circuit-breaker*
+  "A circuit breaker that short-circuits when requests to the API have repeatedly failed.
+
+  This prevents a pathological scenario where the store has a temporary outage (long enough for the cache to expire)
+  and then all instances everywhere fire off constant requests to get token status. Instead, execution will constantly
+  fail instantly until the circuit breaker is closed."
+  (dh.cb/circuit-breaker store-circuit-breaker-config))
+
 (defn- fetch-token-and-parse-body
   [token base-url site-uuid]
-  (let [active-user-count (cached-active-users-count)
-        fut    (future (fetch-token-and-parse-body* token base-url site-uuid active-user-count))
-        result (deref fut fetch-token-status-timeout-ms ::timed-out)]
-    (if (not= result ::timed-out)
-      result
-      (do
-        (future-cancel fut)
+  (let [active-user-count (cached-active-users-count)]
+    (try
+      (dh/with-circuit-breaker *store-circuit-breaker*
+        (dh/with-timeout {:timeout-ms fetch-token-status-timeout-ms
+                          :interrupt? true}
+          (try (fetch-token-and-parse-body* token base-url site-uuid active-user-count)
+               (catch Exception e
+                 (throw e)))))
+      (catch dev.failsafe.TimeoutExceededException _e
         {:valid         false
          :status        (tru "Unable to validate token")
-         :error-details (tru "Token validation timed out.")}))))
+         :error-details (tru "Token validation timed out.")})
+      (catch dev.failsafe.CircuitBreakerOpenException _e
+        {:valid         false
+         :status        (tru "Unable to validate token")
+         :error-details (tru "Token validation is currently unavailable.")})
+      ;; other exceptions are wrapped by Diehard in a FailsafeException. Unwrap them before rethrowing.
+      (catch dev.failsafe.FailsafeException e
+        (throw (.getCause e))))))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 (declare decode-airgap-token)
@@ -184,22 +214,21 @@
             (try (fetch-token-and-parse-body token token-check-url site-uuid)
                  (catch Exception e1
                    ;; Unwrap exception from inside the future
-                   (let [e1 (ex-cause e1)]
-                     (log/errorf e1 "Error fetching token status from %s:" token-check-url)
-                     ;; Try the fallback URL, which was the default URL prior to 45.2
-                     (try (fetch-token-and-parse-body token store-url site-uuid)
-                          ;; if there was an error fetching the token from both the normal and fallback URLs, log the
-                          ;; first error and return a generic message about the token being invalid. This message
-                          ;; will get displayed in the Settings page in the admin panel so we do not want something
-                          ;; complicated
-                          (catch Exception e2
-                            (log/errorf (ex-cause e2) "Error fetching token status from %s:" store-url)
-                            (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
-                              (or
-                               body
-                               {:valid         false
-                                :status        (tru "Unable to validate token")
-                                :error-details (.getMessage e1)})))))))))
+                   (log/errorf e1 "Error fetching token status from %s:" token-check-url)
+                   ;; Try the fallback URL, which was the default URL prior to 45.2
+                   (try (fetch-token-and-parse-body token store-url site-uuid)
+                        ;; if there was an error fetching the token from both the normal and fallback URLs, log the
+                        ;; first error and return a generic message about the token being invalid. This message
+                        ;; will get displayed in the Settings page in the admin panel so we do not want something
+                        ;; complicated
+                        (catch Exception e2
+                          (log/errorf e2 "Error fetching token status from %s:" store-url)
+                          (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
+                            (or
+                             body
+                             {:valid         false
+                              :status        (tru "Unable to validate token")
+                              :error-details (.getMessage e1)}))))))))
 
         (mc/validate [:re AirgapToken] token)
         (do
