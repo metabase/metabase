@@ -212,6 +212,28 @@ describe("scenarios > organization > entity picker", () => {
       selectQuestionFromDashboard();
       testCardSearchForNormalUser({ tabs });
     });
+
+    it("should search for cards when there is no access to the root collection", () => {
+      createTestCards();
+      cy.log("grant `nocollection` user access to `First collection`");
+      cy.log("personal collections are always available");
+      cy.updateCollectionGraph({
+        [ALL_USERS_GROUP]: { [FIRST_COLLECTION_ID]: "write" },
+      });
+
+      cy.signIn("nocollection");
+      selectQuestionFromDashboard({ collection_id: FIRST_COLLECTION_ID });
+      testCardSearchForInaccessibleRootCollection({
+        tabs,
+        isRootSelected: false,
+      });
+    });
+
+    it("should not allow local search for `all personal collections`", () => {
+      createTestCards();
+      selectQuestionFromDashboard();
+      testCardSearchForAllPersonalCollections({ tabs });
+    });
   });
 
   describe("collection picker", () => {
@@ -645,8 +667,8 @@ function createTestDashboardWithEmptyCard(
   });
 }
 
-function selectQuestionFromDashboard() {
-  createTestDashboardWithEmptyCard().then(dashboard => {
+function selectQuestionFromDashboard(dashboardDetails?: DashboardDetails) {
+  createTestDashboardWithEmptyCard(dashboardDetails).then(dashboard => {
     visitDashboard(dashboard.id);
     editDashboard();
     getDashboardCard().button("Select question").click();
