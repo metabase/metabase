@@ -24,3 +24,4 @@ export { createTimelineWithEvents } from "./createTimelineWithEvents";
 export { getCurrentUser } from "./getCurrentUser";
 export { remapDisplayValueToFK } from "./remapDisplayValueToFK";
 export { updateDashboardCards } from "./updateDashboardCards";
+export { putSetting } from "./putSetting";
