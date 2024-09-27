@@ -3905,12 +3905,10 @@
       (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
                                                                :dashboard_id dash-id
                                                                :collection_id other-coll-id)))
-    (testing "Note the bug: if you provide `collection_id=null`, we'll accept it."
-      (let [{id :id} (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query)
-                                                                              :dashboard_id dash-id
-                                                                              :collection_id nil))]
-        (testing "BUT we'll ignore it in favor of the dashboard's collection_id"
-          (is (= coll-id (t2/select-one-fn :collection_id :model/Card id))))))
+    (testing "... including `null` (the root collection id)"
+      (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
+                                                               :dashboard_id dash-id
+                                                               :collection_id nil)))
     (testing "We can't create a dashboard internal card with a non-question `type`"
       (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
                                                                :dashboard_id dash-id
