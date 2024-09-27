@@ -14,6 +14,7 @@ import {
   openNavigationSidebar,
   pieSlices,
   popover,
+  putSetting,
   queryBuilderHeader,
   resetTestTable,
   restore,
@@ -869,11 +870,9 @@ describe("issues 27020 and 27105: static-viz fails to render for certain date fo
     // This is currently the default setting, anyway.
     // But we want to explicitly set it in case something changes in the future,
     // because it is a crucial step for this reproduction.
-    cy.request("PUT", "/api/setting/custom-formatting", {
-      value: {
-        "type/Temporal": {
-          date_style: "MMMM D, YYYY",
-        },
+    putSetting("custom-formatting", {
+      "type/Temporal": {
+        date_style: "MMMM D, YYYY",
       },
     });
 

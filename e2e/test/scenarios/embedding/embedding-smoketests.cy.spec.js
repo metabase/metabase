@@ -7,6 +7,7 @@ import {
   modal,
   openSharingMenu,
   openStaticEmbeddingModal,
+  putSetting,
   restore,
   sharingMenu,
   sharingMenuButton,
@@ -310,10 +311,8 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 });
 
 function resetEmbedding() {
-  cy.request("PUT", "/api/setting/enable-embedding", { value: false });
-  cy.request("PUT", "/api/setting/embedding-secret-key", {
-    value: null,
-  });
+  putSetting("enable-embedding", false);
+  putSetting("embedding-secret-key", null);
 }
 
 function getTokenValue() {

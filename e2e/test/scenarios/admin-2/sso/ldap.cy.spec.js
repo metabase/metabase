@@ -2,6 +2,7 @@ import {
   describeEE,
   modal,
   popover,
+  putSetting,
   restore,
   setTokenFeatures,
   setupLdap,
@@ -188,7 +189,7 @@ describeEE(
 
     it("should show the login form when ldap is enabled but password login isn't (metabase#25661)", () => {
       setupLdap();
-      cy.request("PUT", "/api/setting/enable-password-login", { value: false });
+      putSetting("enable-password-login", false);
       cy.signOut();
       cy.visit("/auth/login");
 

@@ -1,4 +1,4 @@
-import { isEE } from "e2e/support/helpers";
+import { isEE, putSetting } from "e2e/support/helpers";
 
 const HAS_SNOWPLOW = Cypress.env("HAS_SNOWPLOW_MICRO");
 const SNOWPLOW_URL = Cypress.env("SNOWPLOW_MICRO_URL");
@@ -10,7 +10,7 @@ export const describeWithSnowplowEE =
   HAS_SNOWPLOW && isEE ? describe : describe.skip;
 
 export const enableTracking = () => {
-  cy.request("PUT", "/api/setting/anon-tracking-enabled", { value: true });
+  putSetting("anon-tracking-enabled", true);
 };
 
 export const resetSnowplow = () => {

@@ -38,6 +38,7 @@ import {
   openStaticEmbeddingModal,
   popover,
   publishChanges,
+  putSetting,
   resetSnowplow,
   restore,
   saveDashboard,
@@ -510,7 +511,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Go to public dashboard
-    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    putSetting("enable-public-sharing", true);
     cy.request(
       "POST",
       `/api/dashboard/${ORDERS_DASHBOARD_ID}/public_link`,

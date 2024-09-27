@@ -1,6 +1,7 @@
 /* eslint-disable no-unscoped-text-selectors */
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  putSetting,
   restore,
   setTokenFeatures,
   visitFullAppEmbeddingUrl,
@@ -142,9 +143,7 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
 
     it("should fallback to the font from the instance if no fontFamily is set on the theme", () => {
       cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/application-font", {
-        value: "Roboto Mono",
-      });
+      putSetting("application-font", "Roboto Mono");
       cy.signOut();
 
       visitFullAppEmbeddingUrl({
@@ -174,15 +173,13 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
         Cypress.config().baseUrl +
         "/app/fonts/Open_Sans/OpenSans-Regular.woff2";
       // setting `application-font-files` will make getFont return "Custom"
-      cy.request("PUT", "/api/setting/application-font-files", {
-        value: [
-          {
-            src: fontUrl,
-            fontWeight: 400,
-            fontFormat: "woff2",
-          },
-        ],
-      });
+      putSetting("application-font-files", [
+        {
+          src: fontUrl,
+          fontWeight: 400,
+          fontFormat: "woff2",
+        },
+      ]);
 
       cy.signOut();
 

@@ -10,6 +10,7 @@ import {
   openNativeEditor,
   openNewPublicLinkDropdown,
   openSharingMenu,
+  putSetting,
   restore,
   saveQuestion,
   visitQuestion,
@@ -61,7 +62,7 @@ describe("scenarios > public > question", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    putSetting("enable-public-sharing", true);
   });
 
   it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {

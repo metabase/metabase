@@ -6,6 +6,7 @@ import {
   main,
   modal,
   popover,
+  putSetting,
   restore,
   setTokenFeatures,
   undoToast,
@@ -72,9 +73,10 @@ describeEE("formatting > whitelabel", () => {
         cy.log("Add a logo");
         cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
           logo_data => {
-            cy.request("PUT", "/api/setting/application-logo-url", {
-              value: `data:image/jpeg;base64,${logo_data}`,
-            });
+            putSetting(
+              "application-logo-url",
+              `data:image/jpeg;base64,${logo_data}`,
+            );
           },
         );
       });
@@ -101,9 +103,7 @@ describeEE("formatting > whitelabel", () => {
       it("should work for people that set favicon URL before we change the input to file input", () => {
         const faviconUrl =
           "https://cdn.ecosia.org/assets/images/ico/favicon.ico";
-        cy.request("PUT", "/api/setting/application-favicon-url", {
-          value: faviconUrl,
-        });
+        putSetting("application-favicon-url", faviconUrl);
         checkFavicon(faviconUrl);
         cy.signInAsNormalUser();
         cy.visit("/");
@@ -730,9 +730,7 @@ function changeLoadingMessage(message) {
 }
 
 function setApplicationFontTo(font) {
-  cy.request("PUT", "/api/setting/application-font", {
-    value: font,
-  });
+  putSetting("application-font", font);
 }
 
 const openSettingsMenu = () => appBar().icon("gear").click();

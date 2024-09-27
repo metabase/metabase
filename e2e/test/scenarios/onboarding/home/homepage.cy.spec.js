@@ -20,6 +20,7 @@ import {
   navigationSidebar,
   openNavigationSidebar,
   popover,
+  putSetting,
   resetSnowplow,
   restore,
   setTokenFeatures,
@@ -384,10 +385,8 @@ describe("scenarios > home > custom homepage", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
-      cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
-        value: ORDERS_DASHBOARD_ID,
-      });
+      putSetting("custom-homepage", true);
+      putSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
     });
 
     it("should not flash the homescreen before redirecting (#37089)", () => {

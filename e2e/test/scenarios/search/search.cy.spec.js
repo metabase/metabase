@@ -9,6 +9,7 @@ import {
   getSearchBar,
   isScrollableHorizontally,
   main,
+  putSetting,
   restore,
   visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
@@ -193,10 +194,8 @@ describe("scenarios > search", () => {
     });
 
     it("should not dismiss when the homepage redirects to a dashboard (metabase#34226)", () => {
-      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
-      cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
-        value: ORDERS_DASHBOARD_ID,
-      });
+      putSetting("custom-homepage", true);
+      putSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
       cy.intercept(
         {
           url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,

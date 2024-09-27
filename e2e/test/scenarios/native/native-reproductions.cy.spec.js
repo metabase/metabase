@@ -9,6 +9,7 @@ import {
   modal,
   openNativeEditor,
   popover,
+  putSetting,
   restore,
   runNativeQuery,
   sidebar,
@@ -358,9 +359,7 @@ describe("issue 20625", { tags: "@quarantine" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.request("PUT", "/api/setting/native-query-autocomplete-match-style", {
-      value: "prefix",
-    });
+    putSetting("native-query-autocomplete-match-style", "prefix");
     cy.signInAsNormalUser();
     cy.intercept("GET", "/api/database/*/autocomplete_suggestions**").as(
       "autocomplete",

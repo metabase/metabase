@@ -13,6 +13,7 @@ import {
   getDashboardCard,
   multiAutocompleteInput,
   popover,
+  putSetting,
   resetSnowplow,
   restore,
   saveDashboard,
@@ -342,7 +343,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });
     });
-    cy.request("PUT", "/api/setting/site-locale", { value: "fr" });
+    putSetting("site-locale", "fr");
     cy.reload();
 
     editDashboard();
@@ -382,7 +383,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });
     });
-    cy.request("PUT", "/api/setting/site-locale", { value: "fr" });
+    putSetting("site-locale", "fr");
 
     // Create dashboard with a single date parameter, and a single question
     cy.createQuestionAndDashboard({

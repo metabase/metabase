@@ -16,6 +16,7 @@ import {
   openPulseSubscription,
   openSharingMenu,
   popover,
+  putSetting,
   removeMultiAutocompleteValue,
   restore,
   sendEmailAndAssert,
@@ -759,9 +760,7 @@ function openSlackCreationForm() {
 }
 
 function openRecipientsWithUserVisibilitySetting(setting) {
-  cy.request("PUT", "/api/setting/user-visibility", {
-    value: setting,
-  });
+  putSetting("user-visibility", setting);
   cy.signInAsNormalUser();
   openDashboardSubscriptions();
 

@@ -10,6 +10,7 @@ import {
   openNewPublicLinkDropdown,
   openSharingMenu,
   popover,
+  putSetting,
   restore,
   setTokenFeatures,
   visitDashboard,
@@ -81,7 +82,7 @@ const USERS = {
 };
 
 const prepareDashboard = () => {
-  cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+  putSetting("enable-public-sharing", true);
 
   cy.intercept("/api/dashboard/*/public_link").as("publicLink");
 
@@ -288,9 +289,7 @@ describeEE("scenarios [EE] > public > dashboard", () => {
   });
 
   it("should set the window title to `{dashboard name} · {application name}`", () => {
-    cy.request("PUT", "/api/setting/application-name", {
-      value: "Custom Application Name",
-    });
+    putSetting("application-name", "Custom Application Name");
 
     cy.get("@dashboardId").then(id => {
       visitPublicDashboard(id);

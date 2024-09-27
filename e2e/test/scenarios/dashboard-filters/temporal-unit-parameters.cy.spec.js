@@ -13,6 +13,7 @@ import {
   getDashboardCard,
   modal,
   popover,
+  putSetting,
   queryBuilderHeader,
   queryBuilderMain,
   resetFilterWidgetToDefault,
@@ -998,7 +999,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   describe("embedding", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+      putSetting("enable-public-sharing", true);
     });
 
     it("should be able to use temporal unit parameters in a public dashboard", () => {

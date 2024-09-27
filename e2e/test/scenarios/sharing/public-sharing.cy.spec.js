@@ -9,6 +9,7 @@ import {
   describeEE,
   modal,
   openSharingMenu,
+  putSetting,
   restore,
   setActionsEnabledForDB,
   setTokenFeatures,
@@ -294,9 +295,7 @@ describeEE(
     }
 
     function setAllowedDomains() {
-      cy.request("PUT", "/api/setting/subscription-allowed-domains", {
-        value: allowedDomain,
-      });
+      putSetting("subscription-allowed-domains", allowedDomain);
     }
 
     beforeEach(() => {

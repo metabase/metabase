@@ -8,6 +8,7 @@ import {
   expectNoBadSnowplowEvents,
   openCollectionItemMenu,
   openQuestionActions,
+  putSetting,
   resetSnowplow,
   restore,
   sidebar,
@@ -149,7 +150,7 @@ describeWithSnowplow.skip("scenarios > metabot", () => {
 });
 
 const enableMetabot = () => {
-  cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
+  putSetting("is-metabot-enabled", true);
 };
 
 const verifyTableVisibility = () => {

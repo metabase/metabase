@@ -4,6 +4,7 @@ import {
   addPostgresDatabase,
   openNativeEditor,
   popover,
+  putSetting,
   restore,
   setTokenFeatures,
 } from "e2e/support/helpers";
@@ -107,9 +108,7 @@ describe(
     });
 
     it("should not update the setting when the same database is selected again", () => {
-      cy.request("PUT", "/api/setting/last-used-native-database-id", {
-        value: SAMPLE_DB_ID,
-      });
+      putSetting("last-used-native-database-id", SAMPLE_DB_ID);
 
       startNativeQuestion();
       cy.findByTestId("selected-database")

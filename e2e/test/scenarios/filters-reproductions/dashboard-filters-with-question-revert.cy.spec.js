@@ -8,6 +8,7 @@ import {
   modal,
   openSharingMenu,
   popover,
+  putSetting,
   questionInfoButton,
   restore,
   saveDashboard,
@@ -221,9 +222,7 @@ describe("issue 35954", () => {
         });
 
         // Discard the legalese modal so we don't need to do an extra click in the UI
-        cy.request("PUT", "/api/setting/show-static-embed-terms", {
-          value: false,
-        });
+        putSetting("show-static-embed-terms", false);
 
         visitDashboard(id);
         openSharingMenu("Embed");

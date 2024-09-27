@@ -5,6 +5,7 @@ import {
   openSharingMenu,
   openTable,
   popover,
+  putSetting,
   restore,
   setupSMTP,
   visitQuestion,
@@ -44,9 +45,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   });
 
   it("should respect email alerts toggled off (metabase#12349)", () => {
-    cy.request("PUT", "/api/setting/report-timezone", {
-      value: "America/New_York",
-    });
+    putSetting("report-timezone", "America/New_York");
 
     openAlertForQuestion(ORDERS_QUESTION_ID);
 

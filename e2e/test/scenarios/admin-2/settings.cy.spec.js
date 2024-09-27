@@ -20,6 +20,7 @@ import {
   openNativeEditor,
   openOrdersTable,
   popover,
+  putSetting,
   resetSnowplow,
   restore,
   runNativeQuery,
@@ -794,9 +795,7 @@ describe("scenarios > admin > license and billing", () => {
 
 describe("scenarios > admin > localization", () => {
   function setFirstWeekDayTo(day) {
-    cy.request("PUT", "/api/setting/start-of-week", {
-      value: day.toLowerCase(),
-    });
+    putSetting("start-of-week", day.toLowerCase());
   }
 
   beforeEach(() => {
