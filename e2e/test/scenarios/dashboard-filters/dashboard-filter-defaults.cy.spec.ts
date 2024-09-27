@@ -129,11 +129,11 @@ describe("scenarios > dashboard > filters > reset", () => {
 });
 
 function openFilterOptions(name: string) {
-  cy.findByText(name).parent().find(".Icon-gear").click();
+  cy.findByText(name).parent().icon("gear").click();
 }
 
 function clearDefaultFilterValue() {
-  cy.findByLabelText("No default").parent().find(".Icon-close").click();
+  cy.findByLabelText("No default").parent().icon("close").click();
 }
 
 function setDefaultFilterValue(value: string) {
