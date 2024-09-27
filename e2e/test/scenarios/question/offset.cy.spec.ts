@@ -1198,6 +1198,7 @@ describe("scenarios > question > offset", () => {
     addCustomColumn({
       name: customColumnName,
       formula: "[Product → Rating]",
+      actionButtonsGroup: "first",
     });
 
     summarize({ mode: "notebook" });
