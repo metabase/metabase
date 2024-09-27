@@ -127,6 +127,14 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmacro ^:private with-quoting [driver & body]
+  `(binding [sql/*dialect* (sql/get-dialect (sql.qp/quote-style ~driver))
+             sql/*quoted*  true]
+     ~@body))
+
+(defn- quote-identifier [ref]
+  [:raw (sql/format-entity ref)])
+
 (defmulti alter-columns-sql
   "Generate the query to be used with [[driver/alter-columns!]]."
   {:added "0.49.0", :arglists '([driver db-id table-name column-definitions])}
@@ -135,9 +143,10 @@
 
 (defmethod alter-columns-sql :sql-jdbc
   [driver table-name column-definitions]
-  (first (sql/format {:alter-table  (keyword table-name)
-                      :alter-column (map (fn [[column-name type-and-constraints]]
-                                           (vec (cons column-name type-and-constraints)))
-                                         column-definitions)}
-                     :quoted true
-                     :dialect (sql.qp/quote-style driver))))
+  (with-quoting driver
+    (first (sql/format {:alter-table  (keyword table-name)
+                        :alter-column (map (fn [[column-name type-and-constraints]]
+                                             (vec (cons (quote-identifier column-name) type-and-constraints)))
+                                           column-definitions)}
+                       :quoted true
+                       :dialect (sql.qp/quote-style driver)))))

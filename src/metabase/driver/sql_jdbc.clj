@@ -127,15 +127,24 @@
   [_driver _semantic_type expr]
   (h2x/->timestamp expr))
 
+(defmacro ^:private with-quoting [driver & body]
+  `(binding [sql/*dialect* (sql/get-dialect (sql.qp/quote-style ~driver))
+             sql/*quoted*  true]
+     ~@body))
+
+(defn- quote-identifier [ref]
+  [:raw (sql/format-entity ref)])
+
 (defn- create-table!-sql
   [driver table-name column-definitions & {:keys [primary-key]}]
-  (first (sql/format {:create-table (keyword table-name)
-                      :with-columns (cond-> (mapv (fn [[name type-spec]]
-                                                    (vec (cons name type-spec)))
-                                                  column-definitions)
-                                      primary-key (conj [(into [:primary-key] primary-key)]))}
-                     :quoted true
-                     :dialect (sql.qp/quote-style driver))))
+  (with-quoting driver
+    (first (sql/format {:create-table (keyword table-name)
+                        :with-columns (cond-> (mapv (fn [[col-name type-spec]]
+                                                         (vec (cons (quote-identifier col-name) type-spec)))
+                                                       column-definitions)
+                                           primary-key (conj [(into [:primary-key] primary-key)]))}
+                       :quoted true
+                       :dialect (sql.qp/quote-style driver)))))
 
 (defmethod driver/create-table! :sql-jdbc
   [driver database-id table-name column-definitions & {:keys [primary-key]}]
@@ -183,16 +192,17 @@
 (defmethod driver/add-columns! :sql-jdbc
   [driver db-id table-name column-definitions & {:keys [primary-key]}]
   (mu/validate-throw [:maybe [:cat :keyword]] primary-key) ; we only support adding a single primary key column for now
-  (let [primary-key-column (first primary-key)
-        sql (first (sql/format {:alter-table (keyword table-name)
-                                :add-column (map (fn [[column-name type-and-constraints]]
-                                                   (cond-> (vec (cons column-name type-and-constraints))
-                                                     (= primary-key-column column-name)
-                                                     (conj :primary-key)))
-                                                 column-definitions)}
-                               :quoted true
-                               :dialect (sql.qp/quote-style driver)))]
-    (qp.writeback/execute-write-sql! db-id sql)))
+  (with-quoting driver
+    (let [primary-key-column (first primary-key)
+          sql                (first (sql/format {:alter-table (keyword table-name)
+                                                 :add-column  (map (fn [[column-name type-and-constraints]]
+                                                                     (cond-> (vec (cons (quote-identifier column-name) type-and-constraints))
+                                                                       (= primary-key-column column-name)
+                                                                       (conj :primary-key)))
+                                                                   column-definitions)}
+                                                :quoted true
+                                                :dialect (sql.qp/quote-style driver)))]
+      (qp.writeback/execute-write-sql! db-id sql))))
 
 (defmethod driver/alter-columns! :sql-jdbc
   [driver db-id table-name column-definitions]

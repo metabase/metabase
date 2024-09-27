@@ -1966,7 +1966,8 @@
         (with-uploads-enabled!
           (testing "Append should handle new non-ascii columns being added in the latest CSV"
             (with-upload-table! [table (create-upload-table!)]
-              (column-display-names-for-table table)
+              (is (= ["Name"]
+                     (rest (column-display-names-for-table table))))
              ;; Reorder as well for good measure
               (let [csv-rows ["α,name"
                               "omega,Everything"]
