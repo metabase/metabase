@@ -151,7 +151,7 @@
       (is (query= (:query
                    (lib.tu.macros/mbql-query venues
                      {:fields [$id $name
-                               [:field 1 {:temporal-unit :default}]
+                               [:field 1 nil]
                                $category-id $latitude $longitude $price]}))
                   (add-implicit-fields (:query (lib.tu.macros/mbql-query venues))))))))
 

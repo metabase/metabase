@@ -127,7 +127,7 @@ describe("scenarios > question > custom column", () => {
     popover().last().findByLabelText("Day").click();
 
     getNotebookStep("summarize")
-      .findByText("Product Date: Day")
+      .findByText("Product Date: Month")
       .should("be.visible");
   });
 

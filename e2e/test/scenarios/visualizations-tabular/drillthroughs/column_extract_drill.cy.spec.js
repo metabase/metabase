@@ -203,7 +203,7 @@ describeWithSnowplow("extract action", () => {
     it("should add an expression based on an aggregation column", () => {
       cy.createQuestion(DATE_QUESTION, { visitQuestion: true });
       extractColumnAndCheck({
-        column: "Min of Created At: Default",
+        column: "Min of Created At",
         option: "Year",
         value: "2,022",
         extraction: "Extract day, month…",

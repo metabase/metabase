@@ -70,6 +70,13 @@
          (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
            {:metabase.lib.field/temporal-unit unit})))
 
+(defmethod lib.temporal-bucket/available-temporal-buckets-method :expression
+  [query stage-number [_expression opts _expr-name, :as expr-clause]]
+  (lib.temporal-bucket/available-temporal-buckets-for-type
+   (lib.metadata.calculation/type-of query stage-number expr-clause)
+   :month
+   (:temporal-unit opts)))
+
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/integer
   [_query _stage-number n _style]
   (str n))
