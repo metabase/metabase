@@ -10,7 +10,7 @@
    [toucan2.core :as t2]))
 
 (defsetting config-from-file-sync-databases
-  "Whether to sync newly created Databases during config-from-file initialization. By default, true, but you can disable
+  "Whether to (asynchronously) sync newly created Databases during config-from-file initialization. By default, true, but you can disable
   this behavior if you want to sync it manually or use SerDes to populate its data model."
   :visibility :internal
   :type       :boolean
@@ -60,7 +60,8 @@
           (log/info (u/format-color :green "Creating new %s Database %s" (:engine database) (pr-str (:name database))))
           (let [db (first (t2/insert-returning-instances! Database database))]
             (if (config-from-file-sync-databases)
-              ((requiring-resolve 'metabase.sync/sync-database!) db)
+              (future
+               ((requiring-resolve 'metabase.sync/sync-database!) db))
               (log/info "Sync on database creation when initializing from file is disabled. Skipping sync."))))))))
 
 (defmethod advanced-config.file.i/initialize-section! :databases
