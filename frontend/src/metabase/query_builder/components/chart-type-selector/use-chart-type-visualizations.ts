@@ -18,18 +18,11 @@ export type UseChartTypeVisualizationsProps = {
   onUpdateQuestion: (question: Question) => void;
 } & GetSensibleVisualizationsProps;
 
-export type UserChartVisualizationsReturn = {
-  selectedVisualization: CardDisplayType;
-  updateQuestionVisualization: (display: CardDisplayType) => void;
-  sensibleVisualizations: CardDisplayType[];
-  nonSensibleVisualizations: CardDisplayType[];
-};
-
 export const useChartTypeVisualizations = ({
   question,
   onUpdateQuestion,
   result,
-}: UseChartTypeVisualizationsProps): UserChartVisualizationsReturn => {
+}: UseChartTypeVisualizationsProps) => {
   const selectedVisualization = question?.display() ?? "table";
 
   const updateQuestionVisualization = useCallback(
