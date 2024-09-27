@@ -6,6 +6,8 @@
    [metabase.public-settings :as public-settings]
    [metabase.search :as search]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.task :as task]
+   [metabase.task.search-index :as task.search-index]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
@@ -47,7 +49,9 @@
 
     (search/supports-index?)
     (do
-      (search/reindex!)
+      (if (task/job-exists? task.search-index/job-key)
+        (task/trigger-now! task.search-index/job-key)
+        (search/reindex!))
       {:status-code 200})
 
     :else
