@@ -5,9 +5,7 @@ import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Flex, Modal, type ModalProps, Text } from "metabase/ui";
 
-import { SWAG_51_LOCAL_STORAGE_KEY } from "./constants";
-
-const SWAG_LINK = "https://metaba.se/rc-51-swag";
+import { SWAG_51_LOCAL_STORAGE_KEY, SWAG_LINK } from "./constants";
 
 export const SwagModal = (props: Pick<ModalProps, "opened" | "onClose">) => {
   const user = useSelector(getCurrentUser);

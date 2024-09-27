@@ -15,7 +15,7 @@ export const SwagButton = () => {
 
   // Need to check the value again when modal closes to remove animation
   // So the modal opening / closing is a dependency here
-  const value = useMemo(() => {
+  const isLinkUsed = useMemo(() => {
     const rawValue = localStorage.getItem(SWAG_51_LOCAL_STORAGE_KEY);
     return rawValue === "true";
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -28,8 +28,10 @@ export const SwagButton = () => {
   return (
     <>
       <li
-        className={cx(AdminS.SwagButton, { [AdminS.LameSwag]: value })}
+        className={cx(AdminS.SwagButton, { [AdminS.LameSwag]: isLinkUsed })}
+        aria-disabled={isLinkUsed ? true : false}
         onClick={() => setModalOpen(true)}
+        data-testid="swag-button"
       >
         <span>{t`👕 Claim your swag`}</span>
       </li>
