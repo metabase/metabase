@@ -104,9 +104,9 @@ Metabase provides a custom migration command for migrating to a new application 
 - [1. Confirm that you can connect to your target application database](#1-confirm-that-you-can-connect-to-your-target-application-database-1)
 - [2. Back up your H2 application database](#2-back-up-your-h2-application-database)
 - [3. Stop the existing Metabase container](#3-stop-the-existing-metabase-container)
-- [3. Download the JAR](#3-download-the-jar)
-- [4. Run the migration command](#4-run-the-migration-command)
-- [5. Start a new Docker container that uses the new app db](#5-start-a-new-docker-container-that-uses-the-new-app-db)
+- [4. Download the JAR](#4-download-the-jar)
+- [5. Run the migration command](#5-run-the-migration-command)
+- [6. Start a new Docker container that uses the new app db](#6-start-a-new-docker-container-that-uses-the-new-app-db)
 - [7. Remove the old container that was using the H2 database](#7-remove-the-old-container-that-was-using-the-h2-database)
 
 ### 1. Confirm that you can connect to your target application database
@@ -123,13 +123,13 @@ If you don't back up your H2 database, and you replace or delete your container,
 
 You don't want people creating new stuff in your Metabase while you're migrating.
 
-### 3. Download the JAR
+### 4. Download the JAR
 
 In the directory where you saved your H2 file (that is, outside the container), [download the JAR](https://github.com/metabase/metabase/releases) for your current version.
 
 Make sure you use the same version of Metabase you've been using. If you want to upgrade, perform the upgrade after you've confirmed the migration is successful.
 
-### 4. Run the migration command
+### 5. Run the migration command
 
 Create another copy of your H2 file that you extracted from the container when you backed up your app db (step 2).
 
@@ -145,7 +145,7 @@ Metabase will start up, perform the migration (meaning, it'll take the data from
 
 See [Configuring the application database](configuring-application-database.md).
 
-### 5. Start a new Docker container that uses the new app db
+### 6. Start a new Docker container that uses the new app db
 
 With your new application database populated with your Metabase data, you can start a new container and tell the Metabase in the container to connect to the appdb. The command will looks something like this:
 
