@@ -189,6 +189,17 @@ export const addMarkdownDashCardToDashboard =
     };
     dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides }));
   };
+export const addEmbedDashCardToDashboard =
+  ({ dashId, tabId }: NewDashCardOpts) =>
+  (dispatch: Dispatch) => {
+    trackCardCreated("embed", dashId);
+    const card = createVirtualCard("embed");
+    const dashcardOverrides = {
+      card,
+      visualization_settings: { virtual_card: card },
+    };
+    dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides }));
+  };
 
 export const addLinkDashCardToDashboard =
   ({ dashId, tabId }: NewDashCardOpts) =>

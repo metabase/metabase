@@ -9,6 +9,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  addEmbedWhileEditing,
   addOrUpdateDashboardCard,
   appBar,
   assertDashboardFixedWidth,
@@ -317,6 +318,27 @@ describe("scenarios > dashboard", () => {
             .should("have.length", 2)
             .and("contain", "Orders, Count")
             .and("contain", "18,760");
+        }
+      });
+
+      it("should be possible to add an embed card", () => {
+        editDashboard();
+        addEmbedWhileEditing("https://example.com");
+        cy.button("Done").click();
+        validateIframe();
+        saveDashboard();
+        validateIframe();
+
+        function validateIframe() {
+          getDashboardCards()
+            .eq(0)
+            .within(() => {
+              cy.get("iframe").should(
+                "have.attr",
+                "src",
+                "https://example.com",
+              );
+            });
         }
       });
 
@@ -1053,7 +1075,8 @@ describeWithSnowplow("scenarios > dashboard", () => {
   it("should allow users to add link cards to dashboards", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
-    cy.findByTestId("dashboard-header").icon("link").click();
+    cy.findByLabelText("Add a link or embed").click();
+    popover().findByText("Link").click();
 
     cy.wait("@recentViews");
     cy.findByTestId("custom-edit-text-link").click().type("Orders");

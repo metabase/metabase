@@ -353,6 +353,7 @@ function DashCardInner({
             navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
           }
           onChangeLocation={onChangeLocation}
+          onTogglePreviewing={handlePreviewToggle}
           downloadsEnabled={downloadsEnabled}
         />
       </DashCardRoot>

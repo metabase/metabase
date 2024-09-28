@@ -42,7 +42,7 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
   },
   [DASHBOARD_ACTION.ADD_LINK_CARD]: {
     icon: "link",
-    tooltip: "Add link card",
+    tooltip: "Add a link or embed",
   },
   [DASHBOARD_ACTION.ADD_SECTION]: {
     icon: "section",

@@ -103,6 +103,7 @@ export const DashCardCardParameterMapperContent = ({
         heading: t`You can connect widgets to {{variables}} in heading cards.`,
         text: t`You can connect widgets to {{variables}} in text cards.`,
         link: t`You cannot connect variables to link cards.`,
+        embed: t`You cannot connect variables to embed cards.`,
         action: t`Open this card's action settings to connect variables`,
         placeholder: "",
       }[virtualCardType]) ??

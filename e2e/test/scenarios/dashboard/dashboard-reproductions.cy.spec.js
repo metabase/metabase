@@ -790,7 +790,8 @@ describe("issue 31274", () => {
       editDashboard(dashboard.id);
     });
 
-    cy.icon("link").click();
+    cy.findByLabelText("Add a link or embed").click();
+    popover().findByText("Link").click();
     cy.findByPlaceholderText("https://example.com").realHover();
 
     cy.log(
