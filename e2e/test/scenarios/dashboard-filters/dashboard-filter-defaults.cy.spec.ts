@@ -56,7 +56,7 @@ describe("scenarios > dashboard > filters > reset", () => {
       questionDetails: QUESTION,
       dashboardDetails: DASHBOARD,
     }).then(({ body: dashboardCard }) => {
-      const { id, card_id, dashboard_id } = dashboardCard;
+      const { card_id, dashboard_id } = dashboardCard;
 
       cy.editDashboardCard(dashboardCard, {
         parameter_mappings: [
@@ -73,7 +73,6 @@ describe("scenarios > dashboard > filters > reset", () => {
         ],
       }).then(() => {
         visitDashboard(dashboard_id);
-        cy.wrap(id).as("dashcardId");
       });
     });
 
@@ -108,7 +107,8 @@ describe("scenarios > dashboard > filters > reset", () => {
     filterWidget().contains("Filter One").should("be.visible");
     filterWidget().contains("Foo").should("be.visible");
 
-    cy.get("@dashcardId").then(id => cy.wait(`@dashcardQuery${id}`));
+    // workaround for a flake fix
+    cy.reload();
 
     editDashboard();
 
