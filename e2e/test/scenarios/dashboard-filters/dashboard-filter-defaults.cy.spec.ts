@@ -49,12 +49,14 @@ describe("scenarios > dashboard > filters > reset", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+  });
 
+  it("should reset a filters value when editing the default", () => {
     createQuestionAndDashboard({
       questionDetails: QUESTION,
       dashboardDetails: DASHBOARD,
     }).then(({ body: dashboardCard }) => {
-      const { card_id, dashboard_id } = dashboardCard;
+      const { id, card_id, dashboard_id } = dashboardCard;
 
       cy.editDashboardCard(dashboardCard, {
         parameter_mappings: [
@@ -69,13 +71,12 @@ describe("scenarios > dashboard > filters > reset", () => {
             target: ["dimension", ["field", PRODUCTS.TITLE, null]],
           },
         ],
+      }).then(() => {
+        visitDashboard(dashboard_id);
+        cy.wrap(id).as("dashcardId");
       });
-
-      visitDashboard(dashboard_id);
     });
-  });
 
-  it("should reset a filters value when editing the default", () => {
     cy.log("Default dashboard filter");
     cy.location("search").should("eq", "?filter_one=&filter_two=Bar");
 
@@ -106,6 +107,8 @@ describe("scenarios > dashboard > filters > reset", () => {
 
     filterWidget().contains("Filter One").should("be.visible");
     filterWidget().contains("Foo").should("be.visible");
+
+    cy.get("@dashcardId").then(id => cy.wait(`@dashcardQuery${id}`));
 
     editDashboard();
 
