@@ -188,7 +188,7 @@
 (api/defendpoint GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
   credentials. Public sharing must be enabled."
-  [uuid export-format :as {{:keys [parameters format_rows]} :params}]
+  [uuid export-format :as {{:keys [parameters format_rows pivot_results]} :params}]
   {uuid          ms/UUIDString
    export-format api.dataset/ExportFormat
    format_rows   [:maybe :boolean]
@@ -200,7 +200,8 @@
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
-                :format-rows?          format_rows}))
+                :format-rows?          format_rows
+                :pivot?                pivot_results}))
 
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
@@ -308,11 +309,13 @@
 (api/defendpoint POST ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
                        :export-format api.dataset/export-format-regex]
   "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the export formats. Does not require auth credentials. Public sharing must be enabled."
-  [uuid card-id dashcard-id parameters export-format]
+  [uuid card-id dashcard-id parameters export-format :as {{:keys [format_rows pivot_results]} :params}]
   {uuid          ms/UUIDString
    dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    parameters    [:maybe ms/JSONString]
+   format_rows   [:maybe ms/BooleanValue]
+   pivot_results [:maybe ms/BooleanValue]
    export-format (into [:enum] api.dataset/export-formats)}
   (validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
@@ -322,7 +325,11 @@
               :card-id       card-id
               :dashcard-id   dashcard-id
               :export-format export-format
-              :parameters    parameters))))
+              :parameters    parameters
+              :constraints   nil
+              :middleware    {:process-viz-settings? true
+                              :format-rows?          (or format_rows false)
+                              :pivot?                (or pivot_results false)}))))
 
 (api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."

@@ -56,7 +56,7 @@ describe("DownloadsStatus", () => {
     const dispatch = store.dispatch as Dispatch;
 
     fetchMock.post(
-      "http://localhost/api/card/1/query/csv?format_rows=false",
+      "http://localhost/api/card/1/query/csv",
       {
         headers: { "Content-Disposition": 'filename="test.csv"' },
       },
@@ -94,7 +94,7 @@ describe("DownloadsStatus", () => {
     const dispatch = store.dispatch as Dispatch;
 
     fetchMock.post(
-      "http://localhost/api/card/1/query/csv?format_rows=false",
+      "http://localhost/api/card/1/query/csv",
       {
         throws: new Error("Network error"),
       },
@@ -139,7 +139,7 @@ describe("DownloadsStatus", () => {
     const dispatch = store.dispatch as Dispatch;
 
     fetchMock.post(
-      "http://localhost/api/card/1/query/csv?format_rows=false",
+      "http://localhost/api/card/1/query/csv",
       {
         headers: { "Content-Disposition": 'filename="test.csv"' },
       },

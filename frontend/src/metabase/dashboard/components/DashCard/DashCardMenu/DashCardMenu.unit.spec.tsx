@@ -153,7 +153,9 @@ describe("DashCardMenu", () => {
     await userEvent.click(getIcon("ellipsis"));
     await userEvent.click(await screen.findByText("Download results"));
 
-    expect(screen.getByText("Download full results")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /download/i }),
+    ).toBeInTheDocument();
   });
 
   it("should not display query export options when query is running", async () => {

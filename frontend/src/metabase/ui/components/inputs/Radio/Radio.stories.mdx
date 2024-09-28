@@ -1,5 +1,5 @@
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
-import { Radio, Stack } from "metabase/ui";
+import { Radio, Stack, Group } from "metabase/ui";
 
 export const args = {
   label: "Label",
@@ -73,6 +73,20 @@ export const StateTemplate = args => (
   </Stack>
 );
 
+export const PillsTemplate = args => (
+  <Radio.Group
+    defaultValue={"csv"}
+    label="Export format"
+  >
+    <Group mt="xs" spacing="xs" noWrap>
+      <Radio value="csv" label=".csv" variant="pill" />
+      <Radio value="xlsx" label=".xlsx" variant="pill" />
+      <Radio value="json" label=".json" variant="pill" />
+      <Radio value="yaml" label=".yaml" variant="pill" />
+    </Group>
+  </Radio.Group>
+);
+
 export const Default = DefaultTemplate.bind({});
 
 <Canvas>
@@ -85,6 +99,14 @@ export const RadioGroup = RadioGroupTemplate.bind({});
 
 <Canvas>
   <Story name="Radio group">{RadioGroup}</Story>
+</Canvas>
+
+### Pill variant
+
+export const PillVariant = PillsTemplate.bind();
+
+<Canvas>
+  <Story name="Pill variant">{PillsTemplate}</Story>
 </Canvas>
 
 ### Label

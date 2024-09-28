@@ -11,6 +11,7 @@ import {
   describeEE,
   entityPickerModal,
   entityPickerModalTab,
+  exportFromDashcard,
   getDashboardCard,
   getDashboardCardMenu,
   getNextUnsavedDashboardCardId,
@@ -553,18 +554,17 @@ describeEE("scenarios > embedding > full app", () => {
           res.headers["X-Metabase-Anti-CSRF-Token"] = CSRF_TOKEN;
         });
       });
-      cy.intercept(
-        "POST",
-        "/api/dashboard/*/dashcard/*/card/*/query/csv?format_rows=true",
-      ).as("CsvDownload");
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query/csv").as(
+        "CsvDownload",
+      );
       visitDashboardUrl({
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
       });
 
       getDashboardCard().realHover();
       getDashboardCardMenu().click();
-      popover().findByText("Download results").click();
-      popover().findByText(".csv").click();
+
+      exportFromDashcard(".csv");
 
       cy.wait("@CsvDownload").then(interception => {
         expect(

@@ -166,8 +166,9 @@ describe("QueryBuilder", () => {
       expect(inputArea).toHaveValue("SELECT 1");
 
       await userEvent.click(screen.getByTestId("download-button"));
+      await userEvent.click(await screen.findByLabelText(".csv"));
       await userEvent.click(
-        await screen.findByRole("button", { name: ".csv" }),
+        await screen.findByTestId("download-results-button"),
       );
 
       expect(mockDownloadEndpoint.called()).toBe(true);
@@ -194,8 +195,9 @@ describe("QueryBuilder", () => {
       expect(inputArea).toHaveValue("SELECT 1 union SELECT 2");
 
       await userEvent.click(screen.getByTestId("download-button"));
+      await userEvent.click(await screen.findByLabelText(".csv"));
       await userEvent.click(
-        await screen.findByRole("button", { name: ".csv" }),
+        await screen.findByTestId("download-results-button"),
       );
 
       const [url, options] = mockDownloadEndpoint.lastCall() as MockCall;

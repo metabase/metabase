@@ -79,6 +79,7 @@
                              :include_csv        false
                              :include_xls        false
                              :format_rows        true
+                             :pivot_results      false
                              :dashboard_card_id  nil
                              :dashboard_id       nil
                              :parameter_mappings nil}]
@@ -145,6 +146,7 @@
                              :include_csv        false
                              :include_xls        false
                              :format_rows        true
+                             :pivot_results      false
                              :dashboard_card_id  nil
                              :dashboard_id       nil
                              :parameter_mappings nil}]})
@@ -236,6 +238,7 @@
                                    :include_csv        false
                                    :include_xls        false
                                    :format_rows        true
+                                   :pivot_results      false
                                    :dashboard_card_id  nil
                                    :dashboard_id       nil
                                    :parameter_mappings nil}
@@ -246,6 +249,7 @@
                                    :include_csv        false
                                    :include_xls        false
                                    :format_rows        true
+                                   :pivot_results      false
                                    :dashboard_card_id  nil
                                    :dashboard_id       nil
                                    :parameter_mappings nil}]
@@ -276,7 +280,7 @@
                          :parameters   [],
                          :channel      ["email"],
                          :schedule     ["daily"],
-                         :recipients   [[{:email       "foo@bar.com"}
+                         :recipients   [[{:email "foo@bar.com"}
                                          {:first_name  "Crowberto"
                                           :last_name   "Corv"
                                           :email       "crowberto@metabase.com"

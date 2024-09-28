@@ -129,12 +129,11 @@
 
 (api/defendpoint POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
-  [export-format :as {{:keys [query visualization_settings format_rows]
+  [export-format :as {{:keys [query visualization_settings]
                        :or   {visualization_settings "{}"}} :params}]
   {query                  ms/JSONString
    visualization_settings ms/JSONString
-   format_rows            [:maybe :boolean]
-   export-format          (into [:enum] export-formats)}
+   export-format          ExportFormat}
   (let [{:keys [was-pivot] :as query} (json/parse-string query keyword)
         query                         (dissoc query :was-pivot)
         viz-settings                  (-> (json/parse-string visualization_settings viz-setting-key-fn)
@@ -146,8 +145,7 @@
                                           (update :middleware #(-> %
                                                                    (dissoc :add-default-userland-constraints? :js-int-to-string?)
                                                                    (assoc :process-viz-settings? true
-                                                                          :skip-results-metadata? true
-                                                                          :format-rows? format_rows))))]
+                                                                          :skip-results-metadata? true))))]
     (run-streaming-query
      (qp/userland-query query)
      :export-format export-format

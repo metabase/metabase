@@ -1,9 +1,8 @@
-import { within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import registerVisualizations from "metabase/visualizations/register";
@@ -83,66 +82,75 @@ describe("QueryDownloadPopover", () => {
   it("should trigger download on click", async () => {
     const { onDownload } = setup();
     await act(async () => await userEvent.click(screen.getByText(/csv/)));
+    await userEvent.click(await screen.findByTestId("download-results-button"));
     expect(onDownload).toHaveBeenCalledWith({
       type: "csv",
       enableFormatting: true,
+      enablePivot: false,
     });
   });
 
-  it.each(["csv", "json"])(
+  it.each(["csv", "json", "xlsx"])(
     "should trigger unformatted download for %s format",
     async format => {
       const { onDownload } = setup();
-      const _userEvent = userEvent.setup();
 
-      expect(screen.queryByText(/Unformatted/i)).not.toBeInTheDocument();
-      const downloadButton = () => {
-        return screen.getByRole("button", { name: new RegExp(format) });
-      };
-
-      await fireEvent.keyDown(downloadButton(), {
-        key: "Alt",
-      });
-
-      await act(async () => await _userEvent.hover(downloadButton()));
-
+      await userEvent.click(screen.getByLabelText(`.${format}`));
+      await userEvent.click(screen.getByLabelText(`Unformatted`));
       expect(
-        await within(downloadButton()).findByText(/Unformatted/i),
-      ).toBeVisible();
-
-      await act(async () => {
-        await _userEvent.click(downloadButton());
-      });
+        screen.queryByLabelText("Keep data pivoted"),
+      ).not.toBeInTheDocument();
+      await userEvent.click(
+        await screen.findByTestId("download-results-button"),
+      );
 
       expect(onDownload).toHaveBeenCalledWith({
         type: format,
         enableFormatting: false,
+        enablePivot: false,
       });
     },
   );
 
-  it.each(["xlsx", "png"])(
-    "should not trigger unformatted download for %s format",
+  it("should not trigger unformatted download for png format", async () => {
+    const format = "png";
+    const { onDownload } = setup({ card: { ...TEST_CARD, display: "line" } });
+
+    await userEvent.click(screen.getByLabelText(`.${format}`));
+    expect(screen.queryByLabelText(`Formatted`)).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Keep data pivoted"),
+    ).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByTestId("download-results-button"));
+
+    expect(onDownload).toHaveBeenCalledWith({
+      type: format,
+      enableFormatting: true,
+      enablePivot: false,
+    });
+  });
+
+  it.each(["csv", "xlsx"])(
+    "allows configure pivoting for %s format",
     async format => {
-      const { onDownload } = setup({ card: { ...TEST_CARD, display: "line" } });
-
-      const downloadButton = () => {
-        return screen.getByRole("button", { name: new RegExp(format) });
-      };
-
-      expect(screen.queryByText(/Unformatted/i)).not.toBeInTheDocument();
-      await fireEvent.keyDown(downloadButton(), {
-        key: "Alt",
+      const { onDownload } = setup({
+        card: {
+          ...TEST_CARD,
+          display: "pivot",
+        },
       });
-      expect(
-        within(downloadButton()).queryByText(/Unformatted/i),
-      ).not.toBeInTheDocument();
 
-      await act(async () => await userEvent.click(downloadButton()));
+      await userEvent.click(screen.getByLabelText(`.${format}`));
+      await userEvent.click(screen.getByLabelText(`Unformatted`));
+      await userEvent.click(screen.getByLabelText("Keep data pivoted"));
+      await userEvent.click(
+        await screen.findByTestId("download-results-button"),
+      );
 
       expect(onDownload).toHaveBeenCalledWith({
         type: format,
-        enableFormatting: true,
+        enableFormatting: false,
+        enablePivot: true,
       });
     },
   );

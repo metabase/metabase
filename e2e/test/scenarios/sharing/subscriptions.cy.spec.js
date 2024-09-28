@@ -311,12 +311,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       // This is extremely fragile
       // TODO: update test once changes from `https://github.com/metabase/metabase/pull/14121` are merged into `master`
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Attach results")
-        .parent()
-        .parent()
-        .next()
-        .find("input") // Toggle
-        .click();
+      cy.findByLabelText("Attach results").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Questions to attach").click();
       clickButton("Done");
