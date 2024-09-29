@@ -113,7 +113,6 @@ describe("scenarios > dashboard > filters > reset", () => {
     editDashboard();
 
     openFilterOptions("Filter One");
-
     sidebar().within(() => {
       cy.findByLabelText("Input box").click();
       setDefaultFilterValue("Quu");
@@ -128,6 +127,9 @@ describe("scenarios > dashboard > filters > reset", () => {
     cy.location("search").should("eq", "?filter_one=Quu&filter_two=Foo");
     filterWidget().contains("Quu").should("be.visible");
     filterWidget().contains("Foo").should("be.visible");
+
+    clearFilterWidget(0);
+    clearFilterWidget(1);
   });
 });
 
