@@ -107,8 +107,7 @@ describe("scenarios > dashboard > filters > reset", () => {
     filterWidget().contains("Filter One").should("be.visible");
     filterWidget().contains("Foo").should("be.visible");
 
-    // workaround for a flake fix
-    cy.reload();
+    cy.wait("@dashboardCard65");
 
     editDashboard();
 
