@@ -36,57 +36,29 @@ const replaceSharingLinkWithEmbedLink = (url: string) => {
   return url;
 };
 
-const applyIframeStyles = (
-  iframe: HTMLIFrameElement,
-  width: number,
-  height: number,
-) => {
-  if (!iframe.width) {
-    iframe.width = width.toString();
-  }
-  if (!iframe.height) {
-    iframe.height = height.toString();
-  }
-  iframe.setAttribute("frameborder", "0");
-};
-
-const createIframeElement = (src: string, width: number, height: number) => {
-  const iframe = document.createElement("iframe");
-  iframe.src = src;
-  applyIframeStyles(iframe, width, height);
-  return iframe;
-};
-
-const parseAndAdjustIframe = (
-  iframeHtml: string,
-  width: number,
-  height: number,
-) => {
+const parseUrlFromIframe = (iframeHtml: string) => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(iframeHtml, "text/html");
   const iframeEl = doc.querySelector("iframe");
 
   if (iframeEl) {
-    applyIframeStyles(iframeEl, width, height);
-    return iframeEl.outerHTML;
+    return iframeEl.getAttribute("src");
   }
 
   return "";
 };
 
-export const prepareIFrameOrUrl = (
+export const getIframeUrl = (
   iframeOrUrl: string | undefined,
-  width: number,
-  height: number,
-): string => {
+): string | null => {
   if (!iframeOrUrl) {
-    return "";
+    return null;
   }
 
   const trimmedInput = iframeOrUrl.trim();
 
   if (trimmedInput.startsWith("<iframe")) {
-    return parseAndAdjustIframe(trimmedInput, width, height);
+    return parseUrlFromIframe(trimmedInput);
   }
 
   const isRelativeUrl =
@@ -95,10 +67,8 @@ export const prepareIFrameOrUrl = (
     !trimmedInput.startsWith("//");
 
   if (!isRelativeUrl && isSafeUrl(trimmedInput)) {
-    const embedUrl = replaceSharingLinkWithEmbedLink(trimmedInput);
-    const iframe = createIframeElement(embedUrl, width, height);
-    return iframe.outerHTML;
+    return replaceSharingLinkWithEmbedLink(trimmedInput);
   }
 
-  return "";
+  return null;
 };

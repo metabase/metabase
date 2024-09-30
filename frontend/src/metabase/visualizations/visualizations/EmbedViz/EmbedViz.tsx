@@ -11,7 +11,7 @@ import type {
 
 import { EmbedEditWrapper, EmbedWrapper, StyledInput } from "./EmbedViz.styled";
 import { settings } from "./EmbedVizSettings";
-import { prepareIFrameOrUrl } from "./utils";
+import { getIframeUrl } from "./utils";
 
 export interface EmbedVizProps {
   dashcard: VirtualDashboardCard;
@@ -30,7 +30,7 @@ export interface EmbedVizProps {
   onTogglePreviewing: () => void;
 }
 
-function EmbedVizInner({
+export function EmbedViz({
   dashcard,
   isEditing,
   onUpdateVisualizationSettings,
@@ -44,10 +44,7 @@ function EmbedVizInner({
   const { embed: iframeOrUrl } = settings;
   const isNew = !!dashcard?.justAdded;
 
-  const iframe: string = useMemo(
-    () => prepareIFrameOrUrl(iframeOrUrl, width ?? 0, height ?? 0),
-    [iframeOrUrl, width, height],
-  );
+  const iframeUrl = useMemo(() => getIframeUrl(iframeOrUrl), [iframeOrUrl]);
 
   const handleEmbedChange = useCallback(
     (newEmbed: string) => {
@@ -96,12 +93,12 @@ function EmbedVizInner({
   }
 
   return (
-    <EmbedWrapper
-      data-testid="embed-card"
-      fade={isEditingParameter}
-      dangerouslySetInnerHTML={{ __html: iframe }}
-    ></EmbedWrapper>
+    <EmbedWrapper data-testid="embed-card" fade={isEditingParameter}>
+      {iframeUrl ? (
+        <iframe src={iframeUrl} width={width} height={height} frameBorder={0} />
+      ) : null}
+    </EmbedWrapper>
   );
 }
 
-export const EmbedViz = Object.assign(EmbedVizInner, settings);
+Object.assign(EmbedViz, settings);
