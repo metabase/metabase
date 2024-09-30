@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.api.channel-test :as api.channel-test]
    [metabase.models.notification :as models.notification]
-   [metabase.models.permissions-group :as perms-group]
+   [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -66,10 +66,15 @@
 
 (deftest create-notification!+hydration-keys-test
   (mt/with-model-cleanup [:model/Notification]
-    (mt/with-temp [:model/Channel         chn-1   (assoc api.channel-test/default-test-channel :name "Channel 1")
-                   :model/Channel         chn-2   (assoc api.channel-test/default-test-channel :name "Channel 2")
-                   :model/ChannelTemplate tmpl-1 {:channel_type (:type chn-1)
-                                                  :name         "My Template"}]
+    (mt/with-temp [:model/Channel         chn-1        (assoc api.channel-test/default-test-channel :name "Channel 1")
+                   :model/Channel         chn-2        (assoc api.channel-test/default-test-channel :name "Channel 2")
+                   :model/ChannelTemplate tmpl         {:channel_type (:type chn-1)
+                                                        :name         "My Template"}
+                   :model/PermissionsGroup group       {:name "Rasta and Lucky"}
+                   :model/PermissionsGroupMembership _ {:group_id (:id group)
+                                                        :user_id  (mt/user->id :rasta)}
+                   :model/PermissionsGroupMembership _ {:group_id (:id group)
+                                                        :user_id (mt/user->id :lucky)}]
       (testing "create a notification with 2 subscriptions with 2 handlers that has 2 recipients"
         (let [noti (models.notification/create-notification!
                     default-system-event-notification
@@ -77,46 +82,54 @@
                      default-card-created-subscription]
                     [{:channel_type (:type chn-1)
                       :channel_id   (:id chn-1)
-                      :template_id  (:id tmpl-1)
+                      :template_id  (:id tmpl)
                       :recipients   [{:type     :notification-recipient/user
                                       :user_id  (mt/user->id :rasta)}
                                      {:type                 :notification-recipient/group
-                                      :permissions_group_id (:id (perms-group/all-users))}]}
+                                      :permissions_group_id (:id group)}]}
                      {:channel_type (:type chn-1)
                       :channel_id   (:id chn-2)
                       :recipients   [{:type     :notification-recipient/user
-                                      :user_id  (mt/user->id :crowberto)}
-                                     {:type     :notification-recipient/group
-                                      :permissions_group_id (:id (perms-group/admin))}]}])]
-          (is (=? {:id            (:id noti)
-                   :payload_type  :notification/system-event
-                   :active        true
-                   :subscriptions [default-user-invited-subscription
-                                   default-card-created-subscription]
-                   :handlers      [{:channel_type (:type chn-1)
-                                    :channel_id   (:id chn-1)
-                                    :channel      {:id (:id chn-1)
-                                                   :name "Channel 1"}
-                                    :template_id  (:id tmpl-1)
-                                    :template     {:id (:id tmpl-1)
-                                                   :name "My Template"}
-                                    :recipients   [{:type     :notification-recipient/user
-                                                    :user_id  (mt/user->id :rasta)}
-                                                   {:type                 :notification-recipient/group
-                                                    :permissions_group_id (:id (perms-group/all-users))}]}
-                                   {:channel_type (:type chn-2)
-                                    :channel_id   (:id chn-2)
-                                    :channel      {:id   (:id chn-2)
-                                                   :name "Channel 2"}
-                                    :template_id  nil
-                                    :template     nil
-                                    :recipients   [{:type     :notification-recipient/user
-                                                    :user_id  (mt/user->id :crowberto)}
-                                                   {:type     :notification-recipient/group
-                                                    :permissions_group_id (:id (perms-group/admin))}]}]}
-                  (t2/hydrate (t2/select-one :model/Notification (:id noti))
-                              :subscriptions
-                              [:handlers :recipients :channel :template]))))))))
+                                      :user_id  (mt/user->id :crowberto)}]}])]
+
+          (testing "hydrate subscriptions"
+            (is (=? [default-user-invited-subscription
+                     default-card-created-subscription]
+                    (:subscriptions (t2/hydrate noti :subscriptions)))))
+
+          (testing "hydrate handlers"
+            (is (=? [{:channel_type (:type chn-1)
+                      :channel_id   (:id chn-1)
+                      :template_id  (:id tmpl)}
+                     {:channel_type (:type chn-2)
+                      :channel_id   (:id chn-2)
+                      :template_id  nil}]
+                    (:handlers (t2/hydrate noti :handlers)))))
+
+          (let [noti-handler (t2/select-one :model/NotificationHandler :channel_id (:id chn-1) :template_id (:id tmpl))]
+            (testing "hydrate template + channel"
+              (is (=? {:channel_type (:type chn-1)
+                       :channel_id   (:id chn-1)
+                       :channel      {:id (:id chn-1)
+                                      :name "Channel 1"}
+                       :template_id  (:id tmpl)
+                       :template     {:id (:id tmpl)
+                                      :name "My Template"}}
+                      (t2/hydrate noti-handler :template :channel))))
+
+            (testing "hydrate recipients will also hydrate users and members of groups"
+              (is (=? [{:type     :notification-recipient/user
+                        :user_id  (mt/user->id :rasta)
+                        :user     {:id    (mt/user->id :rasta)
+                                   :email "rasta@metabase.com"}}
+                       {:type                 :notification-recipient/group
+                        :permissions_group_id (:id group)
+                        :permissions_group    {:name "Rasta and Lucky"
+                                               :members [{:id    (mt/user->id :lucky)
+                                                          :email "lucky@metabase.com"}
+                                                         {:id    (mt/user->id :rasta)
+                                                          :email "rasta@metabase.com"}]}}]
+                      (:recipients (t2/hydrate noti-handler :recipients)))))))))))
 
 (deftest delete-template-set-null-on-existing-handlers-test
   (testing "if a channel template is deleted, then set null on existing notification_handler"
@@ -136,14 +149,14 @@
 (deftest cross-check-channel-type-and-template-type-test
   (testing "can't create a handler with a template that has different channel type"
     (mt/with-temp [:model/Channel         chn-1  {:type    :channel/slack}
-                   :model/ChannelTemplate tmpl-1 {:channel_type :channel/email}]
+                   :model/ChannelTemplate tmpl-1 notification.tu/channel-template-email-with-mustatche-body]
       (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
                             (t2/insert! :model/NotificationHandler {:channel_type :channel/slack
                                                                     :channel_id   (:id chn-1)
                                                                     :template_id  (:id tmpl-1)})))))
 
   (testing "can't update a handler with a template that has different channel type"
-    (mt/with-temp [:model/ChannelTemplate     email-tmpl {:channel_type :channel/email}
+    (mt/with-temp [:model/ChannelTemplate     email-tmpl notification.tu/channel-template-email-with-mustatche-body
                    :model/ChannelTemplate     slack-tmpl {:channel_type :channel/slack}
                    :model/Notification        noti       {}
                    :model/NotificationHandler handler    {:channel_type    :channel/slack
@@ -151,3 +164,71 @@
                                                           :template_id     (:id slack-tmpl)}]
       (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
                             (t2/update! :model/NotificationHandler (:id handler) {:template_id (:id email-tmpl)}))))))
+
+(deftest notification-recipient-types-test
+  (mt/with-temp [:model/Notification        {n-id :id}       {}
+                 :model/NotificationHandler {handler-id :id} {:notification_id n-id
+                                                              :channel_type    :channel/email}]
+    (let [insert! (fn [info]
+                    (t2/insert-returning-instance! :model/NotificationRecipient
+                                                   (merge {:notification_handler_id handler-id}
+                                                          info)))]
+      (testing "notifciation-recipient/user"
+        (testing "success with user_id"
+          (is (some? (insert! {:type :notification-recipient/user
+                               :user_id (mt/user->id :rasta)}))))
+
+        (testing "fail without user_id"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type :notification-recipient/user}))))
+        (testing "fail if has group_id"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type                 :notification-recipient/user
+                                          :user_id              (mt/user->id :rasta)
+                                          :permissions_group_id 1}))))
+        (testing "fail if has details"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type    :notification-recipient/user
+                                          :user_id (mt/user->id :rasta)
+                                          :details {:something :new}})))))
+      (testing "notifciation-recipient/group"
+        (testing "success with group_id"
+          (is (some? (insert! {:type                 :notification-recipient/group
+                               :permissions_group_id (t2/select-one-pk :model/PermissionsGroup)}))))
+
+        (testing "fail without group_id"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type :notification-recipient/group}))))
+        (testing "fail if has user_id"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type                 :notification-recipient/group
+                                          :permissions_group_id (t2/select-one-pk :model/PermissionsGroup)
+                                          :user_id              1}))))
+        (testing "fail if has details"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type                 :notification-recipient/group
+                                          :permissions_group_id (t2/select-one-pk :model/PermissionsGroup)
+                                          :details              {:something :new}})))))
+      (testing "notifciation-recipient/external-email"
+        (testing "success with email"
+          (is (some? (insert! {:type    :notification-recipient/external-email
+                               :details {:email "ngoc@metabase.com"}}))))
+
+        (testing "fail if details does not match schema"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type    :notification-recipient/external-email
+                                          :details {:email     "ngoc@metabase.com"
+                                                    :not-email true}}))))
+        (testing "fail without email"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type :notification-recipient/external-email}))))
+        (testing "if has user_id"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type    :notification-recipient/external-email
+                                          :user_id 1
+                                          :details {:email "ngoc@metabase.com"}}))))
+        (testing "if has permissions_group_id"
+          (is (thrown-with-msg? Exception #"Value does not match schema"
+                                (insert! {:type                 :notification-recipient/external-email
+                                          :permissions_group_id 1
+                                          :details              {:email "ngoc@metabase.com"}}))))))))

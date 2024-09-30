@@ -18,16 +18,17 @@
     (models.notification/notifications-for-event topic)))
 
 (defn- enriched-event-info
-  [event-info]
+  [topic event-info]
   ;; DO NOT delete or rename these fields, they are used in the notification templates
-  {:settings {:application-name (public-settings/application-name)
-              :site-name        (public-settings/site-name)}
-   :event-info event-info})
+  {:settings    {:application-name (public-settings/application-name)
+                 :site-name        (public-settings/site-name)}
+   :event-info  event-info
+   :event-topic topic})
 
 (defn- maybe-send-notification-for-topic!
   [topic event-info]
   (when-let [notifications (notifications-for-topic topic)]
-    (let [enriched-event-info (enriched-event-info event-info)]
+    (let [enriched-event-info (enriched-event-info topic event-info)]
       (log/infof "Found %d notifications for event: %s" (count notifications) topic)
       (doseq [notification notifications]
         (notification/send-notification! (assoc notification :payload enriched-event-info))))))

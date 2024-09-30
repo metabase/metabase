@@ -29,14 +29,14 @@
     channel-type))
 
 (defmulti render-notification
-  "Given a notification content, return a sequence of channel-specific messages.
+  "Given a notification info, return a sequence of channel-specific messages.
 
   The message format is channel-specific, one requirement is that it should be the same format that
   the [[send!]] multimethod expects."
   {:added    "0.51.0"
-   :arglists '([channel-type notification-content template recipients])}
-  (fn [channel-type notification-content _template _recipients]
-    [channel-type (:payload_type notification-content)]))
+   :arglists '([channel-type notification-info template recipients])}
+  (fn [channel-type notification-info _template _recipients]
+    [channel-type (:payload_type notification-info)]))
 
 (defmulti send!
   "Send a message to a channel."

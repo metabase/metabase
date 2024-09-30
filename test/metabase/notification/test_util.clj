@@ -2,6 +2,7 @@
   "Define the `metabase-test` channel and notification test utilities."
   (:require
    [metabase.channel.core :as channel]
+   [metabase.events.notification :as events.notification]
    [metabase.util :as u]))
 
 (def test-channel-type
@@ -21,21 +22,12 @@
   [_channel message]
   message)
 
-(def default-can-connect-channel
-  "Default channel that can connects"
-  {:name        "Test channel"
-   :description "Test channel description"
-   :type        test-channel-type
-   :details     {:return-type  "return-value"
-                 :return-value true}
-   :active      true})
-
 (defn do-with-captured-channel-send!
   [thunk]
   (let [channel-messages (atom {})]
     (with-redefs
-      [channel/send! (fn [channel message]
-                       (swap! channel-messages update (:type channel) u/conjv message))]
+     [channel/send! (fn [channel message]
+                      (swap! channel-messages update (:type channel) u/conjv message))]
       (thunk)
       @channel-messages)))
 
@@ -64,3 +56,42 @@
        (finally
          (doseq [topic# topics#]
            (underive topic# :metabase/event))))))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                         Dummy Data                                              ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+;; :model/Channel
+(def default-can-connect-channel
+  "A :model/Channel that can connect."
+  {:name        "Test channel"
+   :description "Test channel description"
+   :type        test-channel-type
+   :details     {:return-type  "return-value"
+                 :return-value true}
+   :active      true})
+
+;; :model/ChannelTemplate
+
+(def channel-template-email-with-mustatche-body
+  "A :model/ChannelTemplate for email channels that has a :event/mustache template."
+  {:channel_type :channel/email
+   :details      {:type    :email/mustache
+                  :subject "Welcome {{event-info.object.first_name}} to {{settings.site-name}}"
+                  :body    "Hello {{event-info.object.first_name}}! Welcome to {{settings.site-name}}!"}})
+
+;; notification info
+(def notification-info-user-joined-event
+  "A notification-info of the user-joined system event notification that can be used
+  to test [[channel/render-notification]]."
+  {:payload_type :notification/system-event
+   :payload      (#'events.notification/enriched-event-info
+                  :event/user-joined
+                  {:object
+                   {:email        "rasta@metabase.com"
+                    :first_name   "Rasta"
+                    :last_login   nil
+                    :is_qbnewb    true
+                    :is_superuser false
+                    :last_name    "Toucan"
+                    :common_name  "Rasta Toucan"}})})

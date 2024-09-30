@@ -32,3 +32,34 @@
         (is (not (t2/exists? :model/PulseChannel pc-id))))
       (testing "will change the name"
         (is (= (format "DEACTIVATED_%d New name" id) (t2/select-one-fn :name :model/Channel id)))))))
+
+(deftest channel-template-email-details-test
+  (mt/with-model-cleanup [:model/ChannelTemplate]
+    (let [insert! (fn [template]
+                    (t2/insert-returning-instance! :model/ChannelTemplate
+                                                   (merge
+                                                    {:channel_type :channel/email
+                                                     :name          "My Template"}
+                                                    template)))]
+      (testing "template is a mustache template"
+        (testing "success"
+          (is (some? (insert! {:details {:type    "email/mustache"
+                                         :subject "Hello {{name}}"
+                                         :body    "Welcome {{name}}"}}))))
+
+        (testing "invalid template"
+          (is (thrown? Exception
+                       (insert! {:details {:type    "email/mustache"
+                                           :subject "Hello {{name}"
+                                           :body    nil}})))))
+
+      (testing "template is a resource path"
+        (testing "success"
+          (is (some? (insert! {:details {:type    "email/resource"
+                                         :subject "Hello {{name}}"
+                                         :path    "/path/to/resource"}}))))
+        (testing "invalid template"
+          (is (thrown? Exception
+                       (insert! {:details {:type    "email/resource"
+                                           :subject "Hello {{name}}"
+                                           :path    nil}}))))))))

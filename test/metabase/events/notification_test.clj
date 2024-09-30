@@ -40,9 +40,9 @@
             (events/publish-event! topic {::hi true})
             (is (=? [[(:id n-1) {:event-info {::hi true}}]
                      [(:id n-2) {:event-info {::hi true}}]]
-                   (->> @sent-notis
-                        (map (juxt :id :payload))
-                        (sort-by first))))))))))
+                    (->> @sent-notis
+                         (map (juxt :id :payload))
+                         (sort-by first))))))))))
 
 (deftest unsupported-events-will-not-send-notification-test
   (mt/with-model-cleanup [:model/Notification]
@@ -70,7 +70,8 @@
         (mt/with-temporary-setting-values
           [application-name "Metabase Test"
            site-name        "Metabase Test"]
-          (is (= {:event-info {:foo :bar}
-                  :settings   {:application-name "Metabase Test"
-                               :site-name        "Metabase Test"}}
-                 (#'events.notification/enriched-event-info event-info))))))))
+          (is (= {:event-info  {:foo :bar}
+                  :event-topic :event/user-joined
+                  :settings    {:application-name "Metabase Test"
+                                :site-name        "Metabase Test"}}
+                 (#'events.notification/enriched-event-info :event/user-joined event-info))))))))

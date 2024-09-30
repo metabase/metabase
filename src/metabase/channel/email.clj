@@ -5,6 +5,9 @@
    [metabase.channel.shared :as channel.shared]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
+   [metabase.models.channel :as models.channel]
+   [metabase.models.notification :as models.notification]
+   [metabase.notification.core :as notification]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]
@@ -111,17 +114,34 @@
 
 (defn- notification-recipients->emails
   [recipients]
-  (for [recipient recipients]
-    (case (:type recipient)
-      :notification-recipient/user
-      (-> recipient :user :email))))
+  (into [] cat (for [recipient recipients
+                     :let [emails (case (:type recipient)
+                                    :notification-recipient/user
+                                    [(-> recipient :user :email)]
+                                    :notification-recipient/group
+                                    (->> recipient :permissions_group :members (map :email))
+                                    :notification-recipient/external-email
+                                    [(-> recipient :details :email)])]
+                     :when (seq emails)]
+                 emails)))
 
-(defmethod channel/render-notification
+(defn- render-body
+  [{:keys [details] :as _template} payload]
+  (case (keyword (:type details))
+    :email/resource
+    (stencil/render-file (:path details) payload)
+    :email/mustache
+    (stencil/render-string (:body details) payload)))
+
+(mu/defmethod channel/render-notification
   [:channel/email :notification/system-event]
-  [_channel-type notification-info template recipients]
+  [_channel-type
+   notification-info :- notification/NotificationInfo
+   template          :- models.channel/ChannelTemplate
+   recipients        :- [:sequential models.notification/NotificationRecipient]]
   (assert (some? template) "Template is required for system event notifications")
   (let [payload (:payload notification-info)]
     [(construct-email (channel.params/substitute-params (-> template :details :subject) payload)
                       (notification-recipients->emails recipients)
                       [{:type    "text/html; charset=utf-8"
-                        :content (stencil/render-string (-> template :details :body) payload)}])]))
+                        :content (render-body template payload)}])]))
