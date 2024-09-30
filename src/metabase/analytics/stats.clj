@@ -731,4 +731,7 @@
       #_{:clj-kondo/ignore [:deprecated-var]}
       (send-stats-deprecated! stats)
       (snowplow/track-event! ::snowplow/instance_stats
-                             (assoc snowplow-stats :metadata [{"stats_export_time_seconds" elapsed-secs}])))))
+                             (assoc snowplow-stats
+                                    :metadata
+                                    [{"key"   "stats_export_time_seconds"
+                                      "value" elapsed-secs}])))))
