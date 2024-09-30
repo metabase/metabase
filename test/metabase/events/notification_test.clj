@@ -84,14 +84,14 @@
   (doseq [[context schema value expected]
           [["single map"
             [:map
-             [:user_id (#'events.schema/with-hydration :user user-hydra-model) :int]]
+             (-> [:user_id :int] (#'events.schema/with-hydrate :user user-hydra-model))]
             {:user_id (mt/user->id :rasta)}
             {:user_id (mt/user->id :rasta)
              :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
            ["seq of maps"
             [:sequential
              [:map
-              [:user_id (#'events.schema/with-hydration :user user-hydra-model) :int]]]
+              (-> [:user_id :int] (#'events.schema/with-hydrate :user user-hydra-model))]]
             [{:user_id (mt/user->id :rasta)}
              {:user_id (mt/user->id :crowberto)}]
             [{:user_id (mt/user->id :rasta)
@@ -100,7 +100,7 @@
               :user    (t2/select-one user-hydra-model (mt/user->id :crowberto))}]]
            ["ignore keys that don't need hydration"
             [:map
-             [:user_id (#'events.schema/with-hydration :user user-hydra-model) :int]
+             (-> [:user_id :int] (#'events.schema/with-hydrate :user user-hydra-model))
              [:topic   [:= :user-joined]]]
             {:user_id (mt/user->id :rasta)
              :topic   :user-joined}
@@ -108,7 +108,7 @@
              :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
            ["respect the options"
             [:map
-             [:user_id (#'events.schema/with-hydration :user user-hydra-model {:optional true}) :int]]
+             (-> [:user_id {:optional true} :int] (#'events.schema/with-hydrate :user user-hydra-model))]
             {}
             {}]]]
     (testing context
