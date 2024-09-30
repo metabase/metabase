@@ -169,6 +169,46 @@ describe("scenarios > organization > entity picker", () => {
         getNotebookStep("data").findByText("Products").should("be.visible");
       });
 
+      it("should search by table display names and not real names", () => {
+        cy.signInAsAdmin();
+        cy.request("PUT", `/api/table/${ORDERS_ID}`, {
+          display_name: "Events",
+        });
+        cy.signInAsNormalUser();
+        startNewQuestion();
+
+        cy.log("real table name should give no results");
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          enterSearchText({
+            text: "Orders",
+            placeholder: "Search this database or everywhere…",
+          });
+          localSearchTab("Sample Database").should("be.checked");
+          assertSearchResults({
+            notFoundItems: ["Orders"],
+            totalFoundItemsCount: 0,
+          });
+          cy.findByText("Didn't find anything").should("be.visible");
+        });
+
+        cy.log("display table name should be used to search for a table");
+        entityPickerModal().within(() => {
+          enterSearchText({
+            text: "Events",
+            placeholder: "Search this database or everywhere…",
+          });
+          localSearchTab("Sample Database").should("be.checked");
+          assertSearchResults({
+            foundItems: ["Events"],
+            notFoundItems: ["Orders"],
+            totalFoundItemsCount: 1,
+          });
+          cy.findByText("Events").click();
+        });
+        getNotebookStep("data").findByText("Events").should("be.visible");
+      });
+
       it(
         "should search for tables when there are multiple databases",
         { tags: "@external" },
