@@ -566,22 +566,35 @@ describe("scenarios > native question > data reference sidebar", () => {
     });
   });
 
-  it("should show metrics defined on tables", () => {
-    createQuestion(ORDERS_SCALAR_METRIC);
+  describe("metrics", () => {
+    it("should not show metrics when they are not defined on the selected table", () => {
+      openNativeEditor();
+      referenceButton().click();
+      sidebarHeaderTitle().should("have.text", "Sample Database");
 
-    openNativeEditor();
-    referenceButton().click();
-    sidebarHeaderTitle().should("have.text", "Sample Database");
+      sidebar().within(() => {
+        cy.findByText("ORDERS").click();
+        cy.findByText(/metric/).should("not.exist");
+      });
+    });
 
-    sidebar().within(() => {
-      cy.findByText("ORDERS").click();
-      cy.findByText("1 metric").should("be.visible");
+    it("should show metrics defined on tables", () => {
+      createQuestion(ORDERS_SCALAR_METRIC);
 
-      cy.findByText("Count of orders").should("be.visible").click();
-      cy.findByText("A metric").should("be.visible");
+      openNativeEditor();
+      referenceButton().click();
+      sidebarHeaderTitle().should("have.text", "Sample Database");
 
-      cy.log("clicking the title should navigate back");
-      cy.findByText("Count of orders").should("be.visible").click();
+      sidebar().within(() => {
+        cy.findByText("ORDERS").click();
+        cy.findByText("1 metric").should("be.visible");
+
+        cy.findByText("Count of orders").should("be.visible").click();
+        cy.findByText("A metric").should("be.visible");
+
+        cy.log("clicking the title should navigate back");
+        cy.findByText("Count of orders").should("be.visible").click();
+      });
     });
   });
 });
