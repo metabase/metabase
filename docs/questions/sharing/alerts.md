@@ -94,7 +94,7 @@ Alerts will continue to work even if the person who set up the alert no longer h
 
 {% include plans-blockquote.html feature="Usage analytics" %}
 
-Admins can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in the **Metabase analytics** collection. See [Usage analytics](../../usage-and-performance-tools/usage-analytics.md#alerts-model).
+Admins can view a list of all alerts and dashboard subscriptions that people have set up in your Metabase in the **Usage analytics** collection. See [Usage analytics](../../usage-and-performance-tools/usage-analytics.md#alerts-model).
 
 ## How permissions work with alerts
 

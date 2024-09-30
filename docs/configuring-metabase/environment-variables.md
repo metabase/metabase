@@ -1947,7 +1947,7 @@ Default page to show people when they log in.
 Type: Boolean<br>
 Default: True
 
-If you want to exclude the [Metabase analytics](../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
+If you want to exclude the [Usage analytics](../usage-and-performance-tools/usage-analytics.md) collection, you can set `MB_LOAD_ANALYTICS_CONTENT=false`. Setting this environment variable to false can also come in handy when migrating environments, as it can simplify the migration process.
 
 ### `MB_NO_SURVEYS`
 

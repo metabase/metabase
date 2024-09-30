@@ -91,7 +91,7 @@ All Metabase editions include global caching controls. Pro and Enterprise plans 
 
 See how people are using your Metabase.
 
-- [Metabase analytics](../usage-and-performance-tools/usage-analytics.md)
+- [Usage analytics](../usage-and-performance-tools/usage-analytics.md)
 
 ## Admin tools
 

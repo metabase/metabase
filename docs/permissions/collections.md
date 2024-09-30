@@ -94,7 +94,7 @@ Note that collections themselves can't be pinned. If you're running on a [Pro or
 
 The "Our analytics" collection and individual personal collections are invincible; they cannot be archived, injured, or slain. They are eternal.
 
-### Metabase analytics
+### Usage analytics
 
 See [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
