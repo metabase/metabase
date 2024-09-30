@@ -83,8 +83,10 @@
   ;; in some circumstances we don't have a `:type` on the collection (e.g. search or collection items lists, where we
   ;; select a subset of columns). Use the type if it's there, but fall back to the ID to be sure.
   ;; We can't *only* use the id because getting that requires selecting a collection :sweat-smile:
-  (or (= (:type collection-or-id) trash-collection-type)
-      (some-> collection-or-id u/id (= (trash-collection-id)))))
+  (let [type (:type collection-or-id ::not-found)]
+    (if (identical? type ::not-found)
+      (some-> collection-or-id u/id (= (trash-collection-id)))
+      (= type trash-collection-type))))
 
 (defn is-trash-or-descendant?
   "Is this the trash collection, or a descendant of it?"
@@ -179,8 +181,9 @@
   'Explode' a `location-path` into a sequence of Collection IDs, and parse them as integers. THIS DOES NOT VALIDATE
   THAT THE PATH OR RESULTS ARE VALID. This unchecked version exists solely to power the other version below."
   [location-path]
-  (for [^String id-str (rest (str/split location-path #"/"))]
-    (Integer/parseInt id-str)))
+  (if (= location-path "/")
+    []
+    (mapv parse-long (rest (str/split location-path #"/")))))
 
 (defn- valid-location-path? [s]
   (boolean
@@ -1552,19 +1555,23 @@
                             m
                             child-type->parent-ids)))
                 (zipmap (keys child-type->parent-ids) (repeat #{}))
-                collections)]
-    (map (fn [{:keys [id] :as collection}]
-           (let [below (apply set/union
-                              (for [[child-type coll-id-set] child-type->ancestor-ids]
-                                (when (contains? coll-id-set id)
-                                  #{child-type})))
-                 here (into #{} (for [[child-type coll-id-set] child-type->parent-ids
-                                      :when (contains? coll-id-set id)]
-                                  child-type))]
-             (cond-> collection
-               (seq below) (assoc :below below)
-               (seq here) (assoc :here here))))
-         collections)))
+                collections)
+
+        collect-present-child-types
+        (fn [child-type-map id]
+          (persistent!
+           (reduce-kv (fn [acc child-type coll-id-set]
+                        (cond-> acc
+                          (contains? coll-id-set id) (conj! child-type)))
+                      (transient #{})
+                      child-type-map)))]
+    (mapv (fn [{:keys [id] :as collection}]
+            (let [below (collect-present-child-types child-type->ancestor-ids id)
+                  here (collect-present-child-types child-type->parent-ids id)]
+              (cond-> collection
+                (seq below) (assoc :below below)
+                (seq here) (assoc :here here))))
+          collections)))
 
 (defn collections->tree
   "Convert a flat sequence of Collections into a tree structure e.g.
@@ -1606,11 +1613,16 @@
        ;; effectively "pulling" a Collection up to a higher level. e.g. if we have A > B > C and we can't see B then
        ;; the tree should come back as A > C.
        ([m collection]
-        (let [path (as-> (location-path->ids (:location collection)) ids
-                     (filter all-visible-ids ids)
-                     (concat ids [(:id collection)])
-                     (interpose :children ids))]
-          (update-in m path merge collection)))
+        (let [ids (location-path->ids (:location collection))
+              path (if (empty? ids)
+                     [(:id collection)]
+                     (as-> ids ids
+                       (filterv all-visible-ids ids)
+                       (conj ids (:id collection))
+                       (interpose :children ids)
+                       (vec ids)))]
+          ;; Using conj instead of merge because the latter is inefficient with its varargs and reduce1.
+          (update-in m path #(if %1 (conj %1 %2) %2) collection)))
        ;; 3. Once we've build the entire tree structure, go in and convert each ID->Collection map into a flat sequence,
        ;; sorted by the lowercased Collection name. Do this recursively for the `:children` of each Collection e.g.
        ;;

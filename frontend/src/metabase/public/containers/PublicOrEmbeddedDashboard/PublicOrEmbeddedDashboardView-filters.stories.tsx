@@ -1,6 +1,6 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
-import type { ComponentStory, Story, StoryContext } from "@storybook/react";
+import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/testing-library";
 import { type ComponentProps, useEffect } from "react";
 import { Provider } from "react-redux";
@@ -33,7 +33,10 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
+import {
+  PublicOrEmbeddedDashboardView,
+  type PublicOrEmbeddedDashboardViewProps,
+} from "./PublicOrEmbeddedDashboardView";
 
 export default {
   title: "embed/PublicOrEmbeddedDashboardView/filters",
@@ -55,7 +58,7 @@ export default {
   },
 };
 
-function ReduxDecorator(Story: Story, context: StoryContext) {
+function ReduxDecorator(Story: StoryFn, context: StoryContext) {
   const parameterType: ParameterType = context.args.parameterType;
   const initialState = createMockState({
     settings: createMockSettingsState({
@@ -106,7 +109,7 @@ function ReduxDecorator(Story: Story, context: StoryContext) {
   );
 }
 
-function FasterExplicitSizeUpdateDecorator(Story: Story) {
+function FasterExplicitSizeUpdateDecorator(Story: StoryFn) {
   return (
     <waitTimeContext.Provider value={0}>
       <Story />
@@ -120,7 +123,7 @@ function FasterExplicitSizeUpdateDecorator(Story: Story) {
  * make sure we finish resizing any ExplicitSize components the fastest.
  */
 const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1500;
-function WaitForResizeToStopDecorator(Story: Story) {
+function WaitForResizeToStopDecorator(Story: StoryFn) {
   const asyncCallback = createAsyncCallback();
   useEffect(() => {
     setTimeout(asyncCallback, TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING);
@@ -134,7 +137,7 @@ declare global {
     overrideIsWithinIframe?: boolean;
   }
 }
-function MockIsEmbeddingDecorator(Story: Story) {
+function MockIsEmbeddingDecorator(Story: StoryFn) {
   window.overrideIsWithinIframe = true;
   return <Story />;
 }
@@ -230,7 +233,7 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
+const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
   // @ts-expect-error -- custom prop to support non JSON-serializable value as args
   const parameterType: ParameterType = args.parameterType;
   const dashboard = args.dashboard;
@@ -442,435 +445,538 @@ function getLastPopoverElement() {
   return lastPopover;
 }
 
-// Light theme
-export const LightThemeText = Template.bind({});
-LightThemeText.args = createDefaultArgs();
-LightThemeText.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", { name: "Category" });
-  await userEvent.click(filter);
-};
+export const LightThemeText = {
+  render: Template,
+  args: createDefaultArgs(),
 
-export const LightThemeTextWithValue = Template.bind({});
-LightThemeTextWithValue.args = createDefaultArgs();
-LightThemeTextWithValue.play = async ({ canvasElement }) => {
-  const asyncCallback = createAsyncCallback();
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", { name: "Category" });
-  await userEvent.click(filter);
-
-  const popover = getLastPopover();
-  await userEvent.type(
-    popover.getByPlaceholderText("Enter some text"),
-    "filter value",
-  );
-  await userEvent.click(getLastPopoverElement());
-  asyncCallback();
-};
-
-export const LightThemeParameterSearch = Template.bind({});
-LightThemeParameterSearch.args = createDefaultArgs({
-  parameterType: "search",
-});
-LightThemeParameterSearch.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", { name: "Category" });
-  await userEvent.click(filter);
-};
-
-export const LightThemeParameterSearchWithValue = Template.bind({});
-LightThemeParameterSearchWithValue.args = createDefaultArgs({
-  parameterType: "search",
-});
-LightThemeParameterSearchWithValue.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", { name: "Category" });
-  await userEvent.click(filter);
-
-  const documentElement = within(document.documentElement);
-  const searchInput = documentElement.getByPlaceholderText("Search the list");
-  await userEvent.click(documentElement.getByText("Widget"));
-  await userEvent.type(searchInput, "g");
-
-  const dropdown = getLastPopover();
-  (dropdown.getByText("Gadget").parentNode as HTMLElement).setAttribute(
-    "data-hovered",
-    "true",
-  );
-};
-
-// Dark theme
-export const DarkThemeText = Template.bind({});
-DarkThemeText.args = createDefaultArgs({ theme: "night" });
-DarkThemeText.play = LightThemeText.play;
-
-export const DarkThemeTextWithValue = Template.bind({});
-DarkThemeTextWithValue.args = createDefaultArgs({ theme: "night" });
-DarkThemeTextWithValue.play = LightThemeTextWithValue.play;
-
-export const DarkThemeParameterSearch = Template.bind({});
-DarkThemeParameterSearch.args = createDefaultArgs({
-  theme: "night",
-  parameterType: "search",
-});
-DarkThemeParameterSearch.play = LightThemeParameterSearch.play;
-
-export const DarkThemeParameterSearchWithValue = Template.bind({});
-DarkThemeParameterSearchWithValue.args = createDefaultArgs({
-  theme: "night",
-  parameterType: "search",
-});
-DarkThemeParameterSearchWithValue.play =
-  LightThemeParameterSearchWithValue.play;
-
-// Parameter list
-
-// Multiple values
-export const LightThemeParameterList = Template.bind({});
-LightThemeParameterList.args = createDefaultArgs({
-  parameterType: "dropdown_multiple",
-});
-LightThemeParameterList.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", { name: "Category" });
-  await userEvent.click(filter);
-};
-
-export const LightThemeParameterListWithValue = Template.bind({});
-LightThemeParameterListWithValue.args = createDefaultArgs({
-  parameterType: "dropdown_multiple",
-});
-LightThemeParameterListWithValue.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", { name: "Category" });
-  await userEvent.click(filter);
-
-  const popover = getLastPopover();
-  await userEvent.type(popover.getByPlaceholderText("Search the list"), "g");
-  await userEvent.click(popover.getByText("Widget"));
-  const gizmo = popover.getByRole("checkbox", {
-    name: "Gizmo",
-  }) as HTMLInputElement;
-  gizmo.disabled = true;
-};
-
-export const DarkThemeParameterList = Template.bind({});
-DarkThemeParameterList.args = createDefaultArgs({
-  theme: "night",
-  parameterType: "dropdown_multiple",
-});
-DarkThemeParameterList.play = LightThemeParameterList.play;
-
-export const DarkThemeParameterListWithValue = Template.bind({});
-DarkThemeParameterListWithValue.args = createDefaultArgs({
-  theme: "night",
-  parameterType: "dropdown_multiple",
-});
-DarkThemeParameterListWithValue.play = LightThemeParameterListWithValue.play;
-
-// Single value
-export const LightThemeParameterListSingleWithValue = Template.bind({});
-LightThemeParameterListSingleWithValue.args = createDefaultArgs({
-  parameterType: "dropdown_single",
-});
-LightThemeParameterListSingleWithValue.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", { name: "Category" });
-  await userEvent.click(filter);
-
-  const documentElement = within(document.documentElement);
-  await userEvent.type(
-    documentElement.getByPlaceholderText("Search the list"),
-    "g",
-  );
-  await userEvent.click(documentElement.getByText("Widget"));
-  const popover = getLastPopover();
-  (popover.getByText("Gadget").parentNode as HTMLElement).classList.add(
-    "pseudo-hover",
-  );
-};
-
-export const DarkThemeParameterListSingleWithValue = Template.bind({});
-DarkThemeParameterListSingleWithValue.args = createDefaultArgs({
-  theme: "night",
-  parameterType: "dropdown_single",
-});
-DarkThemeParameterListSingleWithValue.play =
-  LightThemeParameterListSingleWithValue.play;
-
-// Date filters
-
-// All options
-export const LightThemeDateFilterAllOptions = Template.bind({});
-LightThemeDateFilterAllOptions.args = createDefaultArgs({
-  parameterType: "date_all_options",
-});
-LightThemeDateFilterAllOptions.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", {
-    name: "Date all options",
-  });
-  await userEvent.click(filter);
-
-  const popover = getLastPopover();
-  const today = popover.getByRole("button", { name: "Today" });
-  today.classList.add("pseudo-hover");
-};
-
-export const DarkThemeDateFilterAllOptions = Template.bind({});
-DarkThemeDateFilterAllOptions.args = createDefaultArgs({
-  theme: "night",
-  parameterType: "date_all_options",
-});
-DarkThemeDateFilterAllOptions.play = LightThemeDateFilterAllOptions.play;
-
-// Month and Year
-export const LightThemeDateFilterMonthYear = Template.bind({});
-LightThemeDateFilterMonthYear.args = createDefaultArgs({
-  parameterType: "date_month_year",
-  parameterValues: {
-    [DATE_FILTER_ID]: "2024-01",
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", { name: "Category" });
+    await userEvent.click(filter);
   },
-});
-LightThemeDateFilterMonthYear.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", {
-    name: "Date Month and Year",
-  });
-  await userEvent.click(filter);
-
-  const popover = getLastPopover();
-  const month = popover.getByText("March");
-  month.classList.add("pseudo-hover");
-
-  await userEvent.click(
-    popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
-  );
-  const dropdown = getLastPopover();
-  dropdown
-    .getByRole("option", { name: "2023" })
-    .setAttribute("data-hovered", "true");
 };
 
-export const DarkThemeDateFilterMonthYear = Template.bind({});
-DarkThemeDateFilterMonthYear.args = createDefaultArgs({
-  theme: "night",
-  parameterType: "date_month_year",
-  parameterValues: {
-    [DATE_FILTER_ID]: "2024-01",
-  },
-});
-DarkThemeDateFilterMonthYear.play = LightThemeDateFilterMonthYear.play;
+export const LightThemeTextWithValue = {
+  render: Template,
+  args: createDefaultArgs(),
 
-// Quarter and Year
-export const LightThemeDateFilterQuarterYear = Template.bind({});
-LightThemeDateFilterQuarterYear.args = createDefaultArgs({
-  parameterType: "date_quarter_year",
-  parameterValues: {
-    [DATE_FILTER_ID]: "Q1-2024",
-  },
-});
-LightThemeDateFilterQuarterYear.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", {
-    name: "Date Quarter and Year",
-  });
-  await userEvent.click(filter);
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const asyncCallback = createAsyncCallback();
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", { name: "Category" });
+    await userEvent.click(filter);
 
-  const popover = getLastPopover();
-  const month = popover.getByText("Q2");
-  month.classList.add("pseudo-hover");
+    const popover = getLastPopover();
+    await userEvent.type(
+      popover.getByPlaceholderText("Enter some text"),
+      "filter value",
+    );
+    await userEvent.click(getLastPopoverElement());
+    asyncCallback();
+  },
 };
 
-export const LightThemeDateFilterQuarterYearDropdown = Template.bind({});
-LightThemeDateFilterQuarterYearDropdown.args = createDefaultArgs({
-  parameterType: "date_quarter_year",
-  parameterValues: {
-    [DATE_FILTER_ID]: "Q1-2024",
+export const LightThemeParameterSearch = {
+  render: Template,
+
+  args: createDefaultArgs({
+    parameterType: "search",
+  }),
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", { name: "Category" });
+    await userEvent.click(filter);
   },
-});
-LightThemeDateFilterQuarterYearDropdown.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", {
-    name: "Date Quarter and Year",
-  });
-  await userEvent.click(filter);
-
-  const popover = getLastPopover();
-
-  await userEvent.click(
-    popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
-  );
-  const dropdown = getLastPopover();
-  dropdown
-    .getByRole("option", { name: "2023" })
-    .setAttribute("data-hovered", "true");
 };
 
-export const DarkThemeDateFilterQuarterYear = Template.bind({});
-DarkThemeDateFilterQuarterYear.args = createDefaultArgs({
-  theme: "night",
-  parameterType: "date_quarter_year",
-  parameterValues: {
-    [DATE_FILTER_ID]: "Q1-2024",
-  },
-});
-DarkThemeDateFilterQuarterYear.play = LightThemeDateFilterQuarterYear.play;
+export const LightThemeParameterSearchWithValue = {
+  render: Template,
 
-export const DarkThemeDateFilterQuarterYearDropdown = Template.bind({});
-DarkThemeDateFilterQuarterYearDropdown.args = createDefaultArgs({
-  theme: "night",
-  parameterType: "date_quarter_year",
-  parameterValues: {
-    [DATE_FILTER_ID]: "Q1-2024",
-  },
-});
-DarkThemeDateFilterQuarterYearDropdown.play =
-  LightThemeDateFilterQuarterYearDropdown.play;
+  args: createDefaultArgs({
+    parameterType: "search",
+  }),
 
-// Single date
-export const LightThemeDateFilterSingle = Template.bind({});
-LightThemeDateFilterSingle.args = createDefaultArgs({
-  parameterType: "date_single",
-  parameterValues: {
-    [DATE_FILTER_ID]: "2024-06-01",
-  },
-});
-LightThemeDateFilterSingle.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", {
-    name: "Date single",
-  });
-  await userEvent.click(filter);
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", { name: "Category" });
+    await userEvent.click(filter);
 
-  const popover = getLastPopover();
-  popover.getByText("15").classList.add("pseudo-hover");
+    const documentElement = within(document.documentElement);
+    const searchInput = documentElement.getByPlaceholderText("Search the list");
+    await userEvent.click(documentElement.getByText("Widget"));
+    await userEvent.type(searchInput, "g");
+
+    const dropdown = getLastPopover();
+    (dropdown.getByText("Gadget").parentNode as HTMLElement).setAttribute(
+      "data-hovered",
+      "true",
+    );
+  },
 };
 
-export const DarkThemeDateFilterSingle = Template.bind({});
-DarkThemeDateFilterSingle.args = createDefaultArgs({
-  theme: "night",
-  parameterType: "date_single",
-  parameterValues: {
-    [DATE_FILTER_ID]: "2024-06-01",
-  },
-});
-DarkThemeDateFilterSingle.play = LightThemeDateFilterSingle.play;
-
-// Range
-export const LightThemeDateFilterRange = Template.bind({});
-LightThemeDateFilterRange.args = createDefaultArgs({
-  parameterType: "date_range",
-  parameterValues: {
-    [DATE_FILTER_ID]: "2024-06-01~2024-06-10",
-  },
-});
-LightThemeDateFilterRange.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", {
-    name: "Date range",
-  });
-  await userEvent.click(filter);
-
-  const popover = getLastPopover();
-  popover.getByText("15").classList.add("pseudo-hover");
+export const DarkThemeText = {
+  render: Template,
+  args: createDefaultArgs({ theme: "night" }),
+  play: LightThemeText.play,
 };
 
-export const DarkThemeDateFilterRange = Template.bind({});
-DarkThemeDateFilterRange.args = createDefaultArgs({
-  theme: "night",
-  parameterType: "date_range",
-  parameterValues: {
-    [DATE_FILTER_ID]: "2024-06-01~2024-06-10",
-  },
-});
-DarkThemeDateFilterRange.play = LightThemeDateFilterRange.play;
-
-// Relative
-export const LightThemeDateFilterRelative = Template.bind({});
-LightThemeDateFilterRelative.args = createDefaultArgs({
-  parameterType: "date_relative",
-  parameterValues: {
-    [DATE_FILTER_ID]: "thisday",
-  },
-});
-LightThemeDateFilterRelative.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", {
-    name: "Date relative",
-  });
-  await userEvent.click(filter);
-
-  const popover = getLastPopover();
-  popover
-    .getByRole("button", { name: "Yesterday" })
-    .classList.add("pseudo-hover");
+export const DarkThemeTextWithValue = {
+  render: Template,
+  args: createDefaultArgs({ theme: "night" }),
+  play: LightThemeTextWithValue.play,
 };
 
-export const DarkThemeDateFilterRelative = Template.bind({});
-DarkThemeDateFilterRelative.args = createDefaultArgs({
-  theme: "night",
-  parameterType: "date_relative",
-  parameterValues: {
-    [DATE_FILTER_ID]: "thisday",
-  },
-});
-DarkThemeDateFilterRelative.play = LightThemeDateFilterRelative.play;
+export const DarkThemeParameterSearch = {
+  render: Template,
 
-// Unit of time
-export const LightThemeUnitOfTime = Template.bind({});
-LightThemeUnitOfTime.args = createDefaultArgs({
-  parameterType: "temporal_unit",
-  parameterValues: {
-    [UNIT_OF_TIME_FILTER_ID]: "minute",
-  },
-});
-LightThemeUnitOfTime.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", {
-    name: "Time grouping",
-  });
-  await userEvent.click(filter);
+  args: createDefaultArgs({
+    theme: "night",
+    parameterType: "search",
+  }),
 
-  const popover = getLastPopover();
-  (popover.getByText("Hour").parentNode as HTMLElement).classList.add(
-    "pseudo-hover",
-  );
+  play: LightThemeParameterSearch.play,
 };
 
-export const DarkThemeUnitOfTime = Template.bind({});
-DarkThemeUnitOfTime.args = createDefaultArgs({
-  theme: "night",
-  parameterType: "temporal_unit",
-  parameterValues: {
-    [UNIT_OF_TIME_FILTER_ID]: "minute",
-  },
-});
-DarkThemeUnitOfTime.play = LightThemeUnitOfTime.play;
+export const DarkThemeParameterSearchWithValue = {
+  render: Template,
 
-// Number widget
-export const LightThemeNumber = Template.bind({});
-LightThemeNumber.args = createDefaultArgs({
-  parameterType: "number",
-});
-LightThemeNumber.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  const filter = await canvas.findByRole("button", {
-    name: "Number Equals",
-  });
-  await userEvent.click(filter);
+  args: createDefaultArgs({
+    theme: "night",
+    parameterType: "search",
+  }),
 
-  const popover = getLastPopover();
-  const searchInput = popover.getByPlaceholderText("Enter a number");
-  await userEvent.type(searchInput, "11");
-  await userEvent.click(getLastPopoverElement());
-
-  await userEvent.type(searchInput, "99");
+  play: LightThemeParameterSearchWithValue.play,
 };
 
-export const DarkThemeNumber = Template.bind({});
-DarkThemeNumber.args = createDefaultArgs({
-  theme: "night",
-  parameterType: "number",
-});
-DarkThemeNumber.play = LightThemeNumber.play;
+export const LightThemeParameterList = {
+  render: Template,
+
+  args: createDefaultArgs({
+    parameterType: "dropdown_multiple",
+  }),
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", { name: "Category" });
+    await userEvent.click(filter);
+  },
+};
+
+export const LightThemeParameterListWithValue = {
+  render: Template,
+
+  args: createDefaultArgs({
+    parameterType: "dropdown_multiple",
+  }),
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", { name: "Category" });
+    await userEvent.click(filter);
+
+    const popover = getLastPopover();
+    await userEvent.type(popover.getByPlaceholderText("Search the list"), "g");
+    await userEvent.click(popover.getByText("Widget"));
+    const gizmo = popover.getByRole("checkbox", {
+      name: "Gizmo",
+    }) as HTMLInputElement;
+    gizmo.disabled = true;
+  },
+};
+
+export const DarkThemeParameterList = {
+  render: Template,
+
+  args: createDefaultArgs({
+    theme: "night",
+    parameterType: "dropdown_multiple",
+  }),
+
+  play: LightThemeParameterList.play,
+};
+
+export const DarkThemeParameterListWithValue = {
+  render: Template,
+
+  args: createDefaultArgs({
+    theme: "night",
+    parameterType: "dropdown_multiple",
+  }),
+
+  play: LightThemeParameterListWithValue.play,
+};
+
+export const LightThemeParameterListSingleWithValue = {
+  render: Template,
+
+  args: createDefaultArgs({
+    parameterType: "dropdown_single",
+  }),
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", { name: "Category" });
+    await userEvent.click(filter);
+
+    const documentElement = within(document.documentElement);
+    await userEvent.type(
+      documentElement.getByPlaceholderText("Search the list"),
+      "g",
+    );
+    await userEvent.click(documentElement.getByText("Widget"));
+    const popover = getLastPopover();
+    (popover.getByText("Gadget").parentNode as HTMLElement).classList.add(
+      "pseudo-hover",
+    );
+  },
+};
+
+export const DarkThemeParameterListSingleWithValue = {
+  render: Template,
+
+  args: createDefaultArgs({
+    theme: "night",
+    parameterType: "dropdown_single",
+  }),
+
+  play: LightThemeParameterListSingleWithValue.play,
+};
+
+export const LightThemeDateFilterAllOptions = {
+  render: Template,
+
+  args: createDefaultArgs({
+    parameterType: "date_all_options",
+  }),
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", {
+      name: "Date all options",
+    });
+    await userEvent.click(filter);
+
+    const popover = getLastPopover();
+    const today = popover.getByRole("button", { name: "Today" });
+    today.classList.add("pseudo-hover");
+  },
+};
+
+export const DarkThemeDateFilterAllOptions = {
+  render: Template,
+
+  args: createDefaultArgs({
+    theme: "night",
+    parameterType: "date_all_options",
+  }),
+
+  play: LightThemeDateFilterAllOptions.play,
+};
+
+export const LightThemeDateFilterMonthYear = {
+  render: Template,
+
+  args: createDefaultArgs({
+    parameterType: "date_month_year",
+    parameterValues: {
+      [DATE_FILTER_ID]: "2024-01",
+    },
+  }),
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", {
+      name: "Date Month and Year",
+    });
+    await userEvent.click(filter);
+
+    const popover = getLastPopover();
+    const month = popover.getByText("March");
+    month.classList.add("pseudo-hover");
+
+    await userEvent.click(
+      popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
+    );
+    const dropdown = getLastPopover();
+    dropdown
+      .getByRole("option", { name: "2023" })
+      .setAttribute("data-hovered", "true");
+  },
+};
+
+export const DarkThemeDateFilterMonthYear = {
+  render: Template,
+
+  args: createDefaultArgs({
+    theme: "night",
+    parameterType: "date_month_year",
+    parameterValues: {
+      [DATE_FILTER_ID]: "2024-01",
+    },
+  }),
+
+  play: LightThemeDateFilterMonthYear.play,
+};
+
+export const LightThemeDateFilterQuarterYear = {
+  render: Template,
+
+  args: createDefaultArgs({
+    parameterType: "date_quarter_year",
+    parameterValues: {
+      [DATE_FILTER_ID]: "Q1-2024",
+    },
+  }),
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", {
+      name: "Date Quarter and Year",
+    });
+    await userEvent.click(filter);
+
+    const popover = getLastPopover();
+    const month = popover.getByText("Q2");
+    month.classList.add("pseudo-hover");
+  },
+};
+
+export const LightThemeDateFilterQuarterYearDropdown = {
+  render: Template,
+
+  args: createDefaultArgs({
+    parameterType: "date_quarter_year",
+    parameterValues: {
+      [DATE_FILTER_ID]: "Q1-2024",
+    },
+  }),
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", {
+      name: "Date Quarter and Year",
+    });
+    await userEvent.click(filter);
+
+    const popover = getLastPopover();
+
+    await userEvent.click(
+      popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
+    );
+    const dropdown = getLastPopover();
+    dropdown
+      .getByRole("option", { name: "2023" })
+      .setAttribute("data-hovered", "true");
+  },
+};
+
+export const DarkThemeDateFilterQuarterYear = {
+  render: Template,
+
+  args: createDefaultArgs({
+    theme: "night",
+    parameterType: "date_quarter_year",
+    parameterValues: {
+      [DATE_FILTER_ID]: "Q1-2024",
+    },
+  }),
+
+  play: LightThemeDateFilterQuarterYear.play,
+};
+
+export const DarkThemeDateFilterQuarterYearDropdown = {
+  render: Template,
+
+  args: createDefaultArgs({
+    theme: "night",
+    parameterType: "date_quarter_year",
+    parameterValues: {
+      [DATE_FILTER_ID]: "Q1-2024",
+    },
+  }),
+
+  play: LightThemeDateFilterQuarterYearDropdown.play,
+};
+
+export const LightThemeDateFilterSingle = {
+  render: Template,
+
+  args: createDefaultArgs({
+    parameterType: "date_single",
+    parameterValues: {
+      [DATE_FILTER_ID]: "2024-06-01",
+    },
+  }),
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", {
+      name: "Date single",
+    });
+    await userEvent.click(filter);
+
+    const popover = getLastPopover();
+    popover.getByText("15").classList.add("pseudo-hover");
+  },
+};
+
+export const DarkThemeDateFilterSingle = {
+  render: Template,
+
+  args: createDefaultArgs({
+    theme: "night",
+    parameterType: "date_single",
+    parameterValues: {
+      [DATE_FILTER_ID]: "2024-06-01",
+    },
+  }),
+
+  play: LightThemeDateFilterSingle.play,
+};
+
+export const LightThemeDateFilterRange = {
+  render: Template,
+
+  args: createDefaultArgs({
+    parameterType: "date_range",
+    parameterValues: {
+      [DATE_FILTER_ID]: "2024-06-01~2024-06-10",
+    },
+  }),
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", {
+      name: "Date range",
+    });
+    await userEvent.click(filter);
+
+    const popover = getLastPopover();
+    popover.getByText("15").classList.add("pseudo-hover");
+  },
+};
+
+export const DarkThemeDateFilterRange = {
+  render: Template,
+
+  args: createDefaultArgs({
+    theme: "night",
+    parameterType: "date_range",
+    parameterValues: {
+      [DATE_FILTER_ID]: "2024-06-01~2024-06-10",
+    },
+  }),
+
+  play: LightThemeDateFilterRange.play,
+};
+
+export const LightThemeDateFilterRelative = {
+  render: Template,
+
+  args: createDefaultArgs({
+    parameterType: "date_relative",
+    parameterValues: {
+      [DATE_FILTER_ID]: "thisday",
+    },
+  }),
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", {
+      name: "Date relative",
+    });
+    await userEvent.click(filter);
+
+    const popover = getLastPopover();
+    popover
+      .getByRole("button", { name: "Yesterday" })
+      .classList.add("pseudo-hover");
+  },
+};
+
+export const DarkThemeDateFilterRelative = {
+  render: Template,
+
+  args: createDefaultArgs({
+    theme: "night",
+    parameterType: "date_relative",
+    parameterValues: {
+      [DATE_FILTER_ID]: "thisday",
+    },
+  }),
+
+  play: LightThemeDateFilterRelative.play,
+};
+
+export const LightThemeUnitOfTime = {
+  render: Template,
+
+  args: createDefaultArgs({
+    parameterType: "temporal_unit",
+    parameterValues: {
+      [UNIT_OF_TIME_FILTER_ID]: "minute",
+    },
+  }),
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", {
+      name: "Time grouping",
+    });
+    await userEvent.click(filter);
+
+    const popover = getLastPopover();
+    (popover.getByText("Hour").parentNode as HTMLElement).classList.add(
+      "pseudo-hover",
+    );
+  },
+};
+
+export const DarkThemeUnitOfTime = {
+  render: Template,
+
+  args: createDefaultArgs({
+    theme: "night",
+    parameterType: "temporal_unit",
+    parameterValues: {
+      [UNIT_OF_TIME_FILTER_ID]: "minute",
+    },
+  }),
+
+  play: LightThemeUnitOfTime.play,
+};
+
+export const LightThemeNumber = {
+  render: Template,
+
+  args: createDefaultArgs({
+    parameterType: "number",
+  }),
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const canvas = within(canvasElement);
+    const filter = await canvas.findByRole("button", {
+      name: "Number Equals",
+    });
+    await userEvent.click(filter);
+
+    const popover = getLastPopover();
+    const searchInput = popover.getByPlaceholderText("Enter a number");
+    await userEvent.type(searchInput, "11");
+    await userEvent.click(getLastPopoverElement());
+
+    await userEvent.type(searchInput, "99");
+  },
+};
+
+export const DarkThemeNumber = {
+  render: Template,
+
+  args: createDefaultArgs({
+    theme: "night",
+    parameterType: "number",
+  }),
+
+  play: LightThemeNumber.play,
+};

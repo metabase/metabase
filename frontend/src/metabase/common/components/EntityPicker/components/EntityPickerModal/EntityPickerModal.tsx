@@ -362,7 +362,7 @@ export function EntityPickerModal<
                 onTabChange={setSelectedTabId}
               />
             ) : (
-              <SinglePickerView>
+              <SinglePickerView data-testid="single-picker-view">
                 {tabs[0].render({
                   onItemSelect: item => handleSelectItem(item, tabs[0].id),
                 })}

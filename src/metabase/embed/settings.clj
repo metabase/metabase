@@ -15,7 +15,8 @@
                 (public-settings/application-name-for-setting-descriptions))
   :feature    :embedding
   :visibility :public
-  :audit      :getter)
+  :audit      :getter
+  :encryption :no)
 
 (defsetting enable-embedding
   (deferred-tru "Allow admins to securely embed questions and dashboards within other applications?")

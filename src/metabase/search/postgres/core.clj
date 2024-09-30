@@ -5,7 +5,7 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
    [metabase.search.config :as search.config]
-   [metabase.search.impl :as search.impl]
+   [metabase.search.legacy :as search.legacy]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
    [toucan2.core :as t2])
@@ -31,25 +31,25 @@
      :current-user-perms #{"/"}}))
 
 (defn- in-place-query [{:keys [models search-term archived?] :as search-ctx}]
-  (search.impl/full-search-query
+  (search.legacy/full-search-query
    (merge
     (user-params search-ctx)
-    {:search-string      search-term
-     :models             (or models
-                             (if api/*current-user-id*
-                               search.config/all-models
-                               ;; For REPL convenience, skip these models as
-                               ;; they require the user to be initialized.
-                               (disj search.config/all-models "indexed-entity")))
-     :archived?          archived?
-     :model-ancestors?   true})))
+    {:search-string    search-term
+     :models           (or models
+                           (if api/*current-user-id*
+                             search.config/all-models
+                             ;; For REPL convenience, skip these models as
+                             ;; they require the user to be initialized.
+                             (disj search.config/all-models "indexed-entity")))
+     :archived?        archived?
+     :model-ancestors? true})))
 
 (defn- hybrid
-  "Use the index for appling the search string, but rely on the legacy code path for rendering
+  "Use the index for using the search string, but rely on the legacy code path for rendering
   the display data, applying permissions, additional filtering, etc.
 
   NOTE: this is less efficient than legacy search even. We plan to replace it with something
-  less feature complete, but much faster."
+  less feature complete but much faster."
   [search-term & {:as search-ctx}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
@@ -115,7 +115,7 @@
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
                     {:search-engine :postgres})))
-  (->> (search.impl/add-collection-join-and-where-clauses
+  (->> (search.legacy/add-collection-join-and-where-clauses
         (assoc (search.index/search-query search-term)
                :select [:legacy_input])
         ;; we just need this to not be "collection"
@@ -133,11 +133,11 @@
 
 (defn- search-fn [search-engine]
   (case search-engine
-    :hybrid             hybrid
-    :hubrid-multi       hybrid-multi
-    :minimal            minimal
-    :minimal-with-perms minimal-with-perms
-    :fulltext           default-engine
+    :search.engine/hybrid             hybrid
+    :search.engine/hybrid-multi       hybrid-multi
+    :search.engine/minimal            minimal
+    :search.engine/minimal-with-perms minimal-with-perms
+    :search.engine/fulltext           default-engine
     default-engine))
 
 (defn search
@@ -162,9 +162,9 @@
     (:models search-ctx search.config/all-models))))
 
 (defn no-scoring
-  "Do no scoring, whatsover"
+  "Do no scoring, whatsoever"
   [result _scoring-ctx]
-  {:score 1
+  {:score  1
    :result (assoc result :all-scores [] :relevant-scores [])})
 
 (defn init!

@@ -7,7 +7,12 @@ import {
   USERS,
   USER_GROUPS,
 } from "e2e/support/cypress_data";
-import { restore, snapshot, withSampleDatabase } from "e2e/support/helpers";
+import {
+  restore,
+  snapshot,
+  updateSetting,
+  withSampleDatabase,
+} from "e2e/support/helpers";
 
 const {
   STATIC_ORDERS_ID,
@@ -85,14 +90,10 @@ describe("snapshots", () => {
   }
 
   function updateSettings() {
-    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
-    cy.request("PUT", "/api/setting/enable-embedding", { value: true }).then(
-      () => {
-        cy.request("PUT", "/api/setting/embedding-secret-key", {
-          value: METABASE_SECRET_KEY,
-        });
-      },
-    );
+    updateSetting("enable-public-sharing", true);
+    updateSetting("enable-embedding", true).then(() => {
+      updateSetting("embedding-secret-key", METABASE_SECRET_KEY);
+    });
 
     // update the Sample db connection string so it is valid in both CI and locally
     cy.request("GET", `/api/database/${SAMPLE_DB_ID}`).then(response => {
