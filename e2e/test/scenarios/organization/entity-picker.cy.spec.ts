@@ -24,6 +24,7 @@ import {
   restore,
   resyncDatabase,
   startNewQuestion,
+  undoToast,
   updateDashboardCards,
   visitDashboard,
   visitQuestion,
@@ -74,7 +75,7 @@ describe("scenarios > organization > entity picker", () => {
             text: "prod",
             placeholder: "Search this database or everywhere…",
           });
-          globalSearchTab().click();
+          selectGlobalSearchTab();
           cy.findByText("Products").click();
         });
         getNotebookStep("data").findByText("Products").should("be.visible");
@@ -282,6 +283,25 @@ describe("scenarios > organization > entity picker", () => {
         cy.findByText("First collection").click();
         cy.button("Move").click();
       });
+      undoToast().findByText("First collection").should("be.visible");
+    });
+
+    it("should select a collection from global search results", () => {
+      cy.signInAsNormalUser();
+      visitQuestion(ORDERS_QUESTION_ID);
+      openQuestionActions();
+      popover().findByText("Move").click();
+
+      entityPickerModal().within(() => {
+        enterSearchText({
+          text: "second",
+          placeholder: "Search this collection or everywhere…",
+        });
+        selectGlobalSearchTab();
+        cy.findByText("Second collection").click();
+        cy.button("Move").click();
+      });
+      undoToast().findByText("Second collection").should("be.visible");
     });
 
     it("should search for collections for a normal user", () => {
@@ -436,6 +456,8 @@ describe("scenarios > organization > entity picker", () => {
   });
 
   describe("dashboard picker", () => {
+    it("should select a dashboard from ");
+
     it("should search for dashboards for a normal user", () => {
       createTestDashboards();
       cy.signInAsNormalUser();
