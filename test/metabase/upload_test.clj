@@ -2310,7 +2310,6 @@
               (is (= {:row-count 1}
                      (update-csv! ::upload/append {:file file, :table-id (:id table)})))
               (testing "Check the data was appended into the table"
-                ;; TODO: clickhouse needs to worry about the wrong order
                 (is (= (set
                         (rows-with-auto-pk
                          (concat
