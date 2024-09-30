@@ -124,7 +124,7 @@ describe("scenarios > question > custom column", () => {
         cy.findByLabelText("Temporal bucket").should("exist");
       })
       .click();
-    popover().last().findByLabelText("Day").click();
+    popover().last().findByLabelText("Month").click();
 
     getNotebookStep("summarize")
       .findByText("Product Date: Month")
