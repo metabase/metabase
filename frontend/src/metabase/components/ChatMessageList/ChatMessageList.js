@@ -10,6 +10,7 @@ import { PlanDisplay } from "metabase/components/Insight/InsightPlan";
 import { InsightText } from "metabase/components/Insight/InsightText";
 import { InsightImg } from "metabase/components/Insight/InsightImg";
 import { InsightCode } from "metabase/components/Insight/InsightCode";
+import JSZip from 'jszip';
 
 const ChatMessageList = ({
   messages,
@@ -30,7 +31,9 @@ const ChatMessageList = ({
   insightsImg,
   insightsCode,
   showCubeEditButton,
-  sendAdminRequest
+  sendAdminRequest,
+  insightsCsv,
+  insightFile
 }) => {
   const messageEndRef = useRef(null);
   useEffect(() => {
@@ -38,6 +41,131 @@ const ChatMessageList = ({
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
+
+  function updateInsightsCode(insightsCsv, insightsCode) {
+    // Extract all file IDs from the insightsCode
+    const fileIdMatches = insightsCode.join('\n').match(/file-[a-zA-Z0-9]+/g);
+    if (!fileIdMatches) {
+      console.error("No file IDs found in insightsCode");
+      return insightsCode;
+    }
+  
+    let updatedCode = [...insightsCode]; // Create a copy of the original insightsCode
+    
+    // Iterate through all matched file IDs
+    fileIdMatches.forEach(fileId => {
+      // Find the matching file_id in insightsCsv
+      let matchingInsight;
+      insightsCsv.forEach(insight => {
+        if (insight.file_id === fileId) {
+          matchingInsight = insight;
+        }
+      });
+
+      if (!matchingInsight) {
+        console.error(`No matching file_id '${fileId}' found in insightsCsv`);
+        return; // Skip this fileId if no match is found
+      }
+
+      const tableName = matchingInsight.tableName;
+
+      // Replace the file path in the code for each occurrence of the file ID
+      updatedCode = updatedCode.map(codeLine => {
+        return codeLine.replace(
+          new RegExp(`('/mnt/data/${fileId}')`, 'g'),
+          `'${tableName}.csv'`
+        );
+      });
+    });
+  
+    return updatedCode;
+}
+
+
+  const downloadInsightsCode = () => {
+
+    const updatedInsightsCode = updateInsightsCode(insightsCsv, insightsCode);
+
+    // Structure the insightsCode as a Jupyter notebook
+    const notebook = {
+      nbformat: 4, // Notebook format version
+      nbformat_minor: 5, // Minor version
+      cells: [],
+        metadata: {
+        kernelspec: {
+          display_name: 'Python 3',
+          language: 'python',
+          name: 'python3'
+        },
+        language_info: {
+          codemirror_mode: {
+            name: 'ipython',
+            version: 3
+          },
+          file_extension: '.py',
+          mimetype: 'text/x-python',
+          name: 'python',
+          nbconvert_exporter: 'python',
+          pygments_lexer: 'ipython3',
+          version: '3.8.5' // Adjust based on your Python version
+        }
+      }
+    };
+
+    const maxLength = Math.max(insightsText.length, updatedInsightsCode.length);
+
+  // Loop through the maximum length to create alternating cells
+  for (let i = 0; i < maxLength; i++) {
+    // Add a markdown cell for insightsText if available
+    if (i < insightsText.length) {
+      notebook.cells.push({
+        cell_type: 'markdown',
+        metadata: {},
+        source: insightsText[i] // Current index of insightsText
+      });
+    }
+
+    // Add a code cell for insightsCode if available
+    if (i < updatedInsightsCode.length) {
+      notebook.cells.push({
+        cell_type: 'code',
+        execution_count: null,
+        metadata: {},
+        outputs: [],
+        source: updatedInsightsCode[i] // Current index of insightsCode
+      });
+    }
+  }
+
+    // Create a ZIP file
+    const zip = new JSZip();
+
+    // Add the notebook file to the ZIP
+    const notebookBlob = JSON.stringify(notebook, null, 2);
+    zip.file('insights_code.ipynb', notebookBlob);
+
+    // Loop over the insightFile array and create CSV files
+    insightFile.forEach((file) => {
+      const fileName = Object.keys(file)[0]; // Extract the file name (key)
+      const csvContent = file[fileName]; // Extract the CSV content (value)
+      zip.file(`${fileName}.csv`, csvContent); // Add to the ZIP
+    });
+
+    // Generate the ZIP file and download it
+    zip.generateAsync({ type: 'blob' }).then((content) => {
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'insights_code_and_files.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+  };
+  
+  
 
   return (
     <div
@@ -88,9 +216,21 @@ const ChatMessageList = ({
             message.showType == "insightText" && message.visualizationIdx === index && (
               <div key={`insightText-${index}`} style={{ padding: '10px' }}>
                 <InsightText index={index} insightText={insightText} />
-                {insightsCode[index] && (
+                {insightsCode[index] && message.text.includes("Current Step:") && (
                   <div style={{ marginTop: '10px' }}>
                     <InsightCode index={index} insightCode={insightsCode[index]} />
+                  </div>
+                )}
+                {message.text.includes("Here is your final result:") && (
+                  <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button style={{ padding: '10px 20px',
+                      fontSize: '16px',
+                      backgroundColor: '#8A64DF',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '5px',
+                      cursor: 'pointer'}} 
+                      onClick={downloadInsightsCode}>Download Code</button>
                   </div>
                 )}
               </div>

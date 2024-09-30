@@ -100,7 +100,6 @@ export const HomeLayout = () => {
           details: field.fingerprint ? JSON.stringify(field.fingerprint) : null
         }))
       }));
-      console.log("schema: ", schema);
       dispatch(setInitialSchema(schema as any))
       setSchema(schema as any)
     }
