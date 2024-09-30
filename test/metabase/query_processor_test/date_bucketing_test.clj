@@ -1265,19 +1265,8 @@
         (or (some-> results mt/first-row first int)
             results)))))
 
-;;; whether the driver supports loading dynamic test datasets on each test run. Datasets in tests below with names like
-;;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
-;;; against except for Athena which currently requires test data to be loaded separately.
-(defmethod driver/database-supports? [::driver/driver ::dynamic-dataset-loading]
-  [_driver _feature _database]
-  true)
-
-(defmethod driver/database-supports? [:athena ::dynamic-dataset-loading]
-  [_driver _feature _database]
-  false)
-
 (deftest ^:parallel count-of-grouping-test
-  (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (testing "4 checkins per minute dataset"
       (testing "group by minute"
         (doseq [args [[:current] [-1 :minute] [1 :minute]]]
@@ -1286,7 +1275,7 @@
               (format "filter by minute = %s" (into [:relative-datetime] args))))))))
 
 (deftest ^:parallel count-of-grouping-test-2
-  (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (testing "4 checkins per hour dataset"
       (testing "group by hour"
         (doseq [args [[:current] [-1 :hour] [1 :hour]]]
@@ -1295,7 +1284,7 @@
               (format "filter by hour = %s" (into [:relative-datetime] args))))))))
 
 (deftest ^:parallel count-of-grouping-test-3
-  (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (testing "1 checkin per day dataset"
       (testing "group by day"
         (doseq [args [[:current] [-1 :day] [1 :day]]]
@@ -1304,7 +1293,7 @@
               (format "filter by day = %s" (into [:relative-datetime] args))))))))
 
 (deftest ^:parallel count-of-grouping-test-4
-  (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (testing "1 checkin per day dataset"
       (testing "group by week"
         (is (= 7
@@ -1312,7 +1301,7 @@
             "filter by week = [:relative-datetime :current]")))))
 
 (deftest ^:parallel time-interval-test
-  (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (testing "Syntactic sugar (`:time-interval` clause)"
       (mt/dataset checkins:1-per-day
         (is (= 1
@@ -1324,7 +1313,7 @@
                     :filter      [:time-interval $timestamp :current :day]})))))))))
 
 (deftest ^:parallel time-interval-test-2
-  (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (testing "Syntactic sugar (`:time-interval` clause)"
       (mt/dataset checkins:1-per-day
         (is (= 7
@@ -1336,7 +1325,7 @@
                     :filter      [:time-interval $timestamp :last :week]})))))))))
 
 (deftest ^:parallel time-interval-expression-test
-  (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (mt/dataset checkins:1-per-day
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders (lib.metadata/table metadata-provider (mt/id :checkins))
@@ -1353,7 +1342,7 @@
 
 (deftest ^:parallel relative-time-interval-test
   (mt/test-drivers
-    (mt/normal-drivers-with-feature :date-arithmetics ::dynamic-dataset-loading)
+    (mt/normal-drivers-with-feature :date-arithmetics :test/dynamic-dataset-loading)
    ;; Following verifies #45942 is solved. Changing the offset ensures that intervals do not overlap.
     (testing "Syntactic sugar (`:relative-time-interval` clause) (#45942)"
       (mt/dataset checkins:1-per-day:60
@@ -1388,7 +1377,7 @@
      :unit (-> results :data :cols first :unit)}))
 
 (deftest ^:parallel date-bucketing-when-you-test
-  (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (is (= {:rows 1, :unit :day}
            (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day")))
     (is (= {:rows 7, :unit :day}
@@ -1416,7 +1405,7 @@
 ;; We should get count = 1 for the current day, as opposed to count = 0 if we weren't auto-bucketing
 ;; (e.g. 2018-11-19T00:00 != 2018-11-19T12:37 or whatever time the checkin is at)
 (deftest ^:parallel default-bucketing-test
-  (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (mt/dataset checkins:1-per-day
       (is (= [[1]]
              (mt/formatted-rows
@@ -1460,7 +1449,7 @@
   true)
 
 (deftest ^:parallel default-bucketing-test-4
-  (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (testing "if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches"
       (mt/dataset checkins:1-per-day
         (is (= (if (driver/database-supports? driver/*driver* ::empty-results-wrong-because-of-issue-5419 (mt/db))
@@ -1734,7 +1723,7 @@
 
 (deftest filter-by-expression-time-interval-test
   (testing "Datetime expressions can filter to a date range (#33528)"
-    (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
       (mt/dataset
         checkins:1-per-day
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -1757,7 +1746,7 @@
 (deftest filter-by-expression-relative-time-interval-test
   (testing "Datetime expressions can filter to a date range"
     (mt/test-drivers
-      (mt/normal-drivers-with-feature :date-arithmetics ::dynamic-dataset-loading)
+      (mt/normal-drivers-with-feature :date-arithmetics :test/dynamic-dataset-loading)
       (mt/dataset checkins:1-per-day:60
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
               query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q

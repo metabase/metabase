@@ -30,6 +30,7 @@ export interface VersionInfo {
   released: string;
   patch: boolean;
   highlights: string[];
+  rollout?: number;
 }
 
 export interface VersionInfoFile {

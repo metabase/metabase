@@ -39,6 +39,15 @@ export type ModelFilterControlsProps = {
   setActualModelFilters: Dispatch<SetStateAction<ActualModelFilters>>;
 };
 
+export type MetricFilterSettings = {
+  verified?: boolean;
+};
+
+export type MetricFilterControlsProps = {
+  metricFilters: MetricFilterSettings;
+  setMetricFilters: (settings: MetricFilterSettings) => void;
+};
+
 /** Mapping of filter names to true if the filter is active
  * or false if it is inactive */
 export type ActualModelFilters = Record<string, boolean>;

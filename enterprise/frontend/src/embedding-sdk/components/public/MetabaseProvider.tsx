@@ -10,7 +10,7 @@ import {
 import { useInitData } from "embedding-sdk/hooks";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import { store } from "embedding-sdk/store";
+import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
   setEventHandlers,
@@ -95,9 +95,12 @@ export const MetabaseProviderInternal = ({
   );
 };
 
-export const MetabaseProvider = memo(function MetabaseProvider(
-  props: MetabaseProviderProps,
-) {
+export const MetabaseProvider = memo(function MetabaseProvider({
+  // @ts-expect-error -- we don't want to expose the store prop
+  // eslint-disable-next-line react/prop-types
+  store = getSdkStore(),
+  ...props
+}: MetabaseProviderProps) {
   return (
     <Provider store={store}>
       <MetabaseProviderInternal store={store} {...props} />
