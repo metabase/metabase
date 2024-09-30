@@ -6,6 +6,7 @@ import {
   useListCollectionItemsQuery,
   useListDatabaseSchemaTablesQuery,
 } from "metabase/api";
+import { getName } from "metabase/lib/name";
 import { isNotNull } from "metabase/lib/types";
 import type {
   CollectionId,
@@ -145,7 +146,7 @@ const filterSearchResults = (
   searchModels: string[],
 ) => {
   return results.filter(result => {
-    const matchesQuery = result.name
+    const matchesQuery = getName(result)
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
     const matchesModel = searchModels.includes(result.model);

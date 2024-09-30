@@ -139,6 +139,14 @@ describe("scenarios > organization > entity picker", () => {
           assertSearchResults({
             foundItems: ["People"],
           });
+
+          cy.log("return to the previous tab when the search input is cleared");
+          cy.findByPlaceholderText("Search…").clear();
+          entityPickerModalTab("Recents").should(
+            "have.attr",
+            "aria-selected",
+            "true",
+          );
         });
       });
 
