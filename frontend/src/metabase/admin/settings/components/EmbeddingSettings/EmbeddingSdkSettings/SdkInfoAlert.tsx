@@ -9,10 +9,7 @@ import { Alert, Icon, Text } from "metabase/ui";
 
 import { useEmbeddingSettingsLinks } from "./sdk";
 
-// Using this to make sure I don't get the
-// 'strings that does not contain meaningful information are not allowed.'
-// error from ttag
-const getInfoText = (value: string | ReactNode) => {
+const getInfoText = (value: ReactNode) => {
   return jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${value}`;
 };
 
@@ -30,19 +27,27 @@ export const SdkInfoAlert = () => {
   );
 
   const switchLink = (
-    <ExternalLink
-      href={switchMetabaseBinariesUrl}
-    >{t`switch Metabase binaries`}</ExternalLink>
+    <ExternalLink href={switchMetabaseBinariesUrl}>
+      {t`switch Metabase binaries`}
+    </ExternalLink>
   );
 
   const alertText = match({ isEE, isHosted })
-    .with({ isEE: false, isHosted: false }, () => {
-      return getInfoText(`${switchLink}, ${upgradeLink} and ${jwtLink}.`);
-    })
-    .with({ isEE: false, isHosted: true }, () =>
-      getInfoText(`${upgradeLink} and ${jwtLink}.`),
+    .with({ isEE: false, isHosted: false }, () =>
+      getInfoText(
+        <>
+          {switchLink}, {upgradeLink} {t`and`} {jwtLink}.
+        </>,
+      ),
     )
-    .otherwise(() => getInfoText(`${jwtLink}.`));
+    .with({ isEE: false, isHosted: true }, () =>
+      getInfoText(
+        <>
+          {upgradeLink} {t`and`} {jwtLink}.
+        </>,
+      ),
+    )
+    .otherwise(() => getInfoText(<>{jwtLink}.</>));
 
   return (
     <Alert
