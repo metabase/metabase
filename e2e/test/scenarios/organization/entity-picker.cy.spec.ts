@@ -238,6 +238,53 @@ describe("scenarios > organization > entity picker", () => {
   describe("question picker", () => {
     const tabs = ["Questions", "Models", "Metrics"];
 
+    it("should select a card from local search results", () => {
+      createTestCards();
+      cy.signInAsNormalUser();
+
+      const testCases = [
+        { tab: "Questions", cardName: "Root question 1" },
+        { tab: "Models", cardName: "Root model 2" },
+        { tab: "Metrics", cardName: "Root metric 1" },
+      ];
+      testCases.forEach(({ tab, cardName }) => {
+        selectQuestionFromDashboard();
+        entityPickerModal().within(() => {
+          entityPickerModalTab(tab).click();
+          enterSearchText({
+            text: cardName,
+            placeholder: "Search this collection or everywhere…",
+          });
+          cy.findByText(cardName).click();
+        });
+        getDashboardCard().findByText(cardName).should("be.visible");
+      });
+    });
+
+    it("should select a card from global search results", () => {
+      createTestCards();
+      cy.signInAsNormalUser();
+
+      const testCases = [
+        { tab: "Questions", cardName: "Regular question 1" },
+        { tab: "Models", cardName: "Regular model 2" },
+        { tab: "Metrics", cardName: "Regular metric 1" },
+      ];
+      testCases.forEach(({ tab, cardName }) => {
+        selectQuestionFromDashboard();
+        entityPickerModal().within(() => {
+          entityPickerModalTab(tab).click();
+          enterSearchText({
+            text: cardName,
+            placeholder: "Search this collection or everywhere…",
+          });
+          selectGlobalSearchTab();
+          cy.findByText(cardName).click();
+        });
+        getDashboardCard().findByText(cardName).should("be.visible");
+      });
+    });
+
     it("should search for cards for a normal user", () => {
       createTestCards();
       cy.signInAsNormalUser();
