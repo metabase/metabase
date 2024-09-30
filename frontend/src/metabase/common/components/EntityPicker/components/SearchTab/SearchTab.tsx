@@ -65,7 +65,7 @@ export const SearchTab = <
           </Flex>
 
           {!isLoading && (
-            <div>
+            <div data-testid="entity-picker-search-result-count">
               {ngettext(
                 msgid`${searchResults.length} result`,
                 `${searchResults.length} results`,

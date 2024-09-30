@@ -63,6 +63,10 @@ describe("scenarios > organization > entity picker", () => {
             placeholder: "Search this database or everywhere…",
           });
           localSearchTab("Public").should("be.checked");
+          assertSearchResults({
+            foundItems: ["Products"],
+            totalFoundItemsCount: 1,
+          });
           cy.findByText("Products").click();
         });
         getNotebookStep("data").findByText("Products").should("be.visible");
@@ -78,6 +82,10 @@ describe("scenarios > organization > entity picker", () => {
             placeholder: "Search this database or everywhere…",
           });
           selectGlobalSearchTab();
+          assertSearchResults({
+            foundItems: ["Products"],
+            totalFoundItemsCount: 3,
+          });
           cy.findByText("Products").click();
         });
         getNotebookStep("data").findByText("Products").should("be.visible");
@@ -95,6 +103,7 @@ describe("scenarios > organization > entity picker", () => {
           assertSearchResults({
             foundItems: ["Products"],
             notFoundItems: ["Orders"],
+            totalFoundItemsCount: 1,
           });
           cy.findByText("Products").click();
         });
@@ -123,6 +132,7 @@ describe("scenarios > organization > entity picker", () => {
             assertSearchResults({
               foundItems: ["Products"],
               notFoundItems: ["Orders"],
+              totalFoundItemsCount: 1,
             });
           });
 
@@ -138,6 +148,7 @@ describe("scenarios > organization > entity picker", () => {
             assertSearchResults({
               foundItems: ["Animals"],
               notFoundItems: ["Birds"],
+              totalFoundItemsCount: 1,
             });
           });
 
@@ -154,6 +165,7 @@ describe("scenarios > organization > entity picker", () => {
             assertSearchResults({
               foundItems: ["Products"],
               notFoundItems: ["Orders"],
+              totalFoundItemsCount: 1,
             });
           });
         },
@@ -182,6 +194,7 @@ describe("scenarios > organization > entity picker", () => {
             assertSearchResults({
               foundItems: ["Animals"],
               notFoundItems: ["Birds"],
+              totalFoundItemsCount: 1,
             });
           });
 
@@ -196,6 +209,7 @@ describe("scenarios > organization > entity picker", () => {
             localSearchTab("Wild").should("be.checked");
             assertSearchResults({
               foundItems: ["Animals", "Birds"],
+              totalFoundItemsCount: 2,
             });
           });
         },
@@ -927,18 +941,32 @@ function selectLocalSearchTab(selectedItem: string) {
 }
 
 function assertSearchResults({
+  totalFoundItemsCount,
   foundItems = [],
   notFoundItems = [],
 }: {
   foundItems?: string[];
   notFoundItems?: string[];
+  totalFoundItemsCount?: number;
 }) {
   foundItems.forEach(item => {
     cy.findByText(item).should("be.visible");
   });
+
   notFoundItems.forEach(item => {
     cy.findByText(item).should("not.exist");
   });
+
+  if (totalFoundItemsCount != null) {
+    const foundItemsCountMessage =
+      totalFoundItemsCount === 1
+        ? `${totalFoundItemsCount} result`
+        : `${totalFoundItemsCount} results`;
+    cy.findByTestId("entity-picker-search-result-count").should(
+      "have.text",
+      foundItemsCountMessage,
+    );
+  }
 }
 
 function testCardSearchForNormalUser({ tabs }: { tabs: string[] }) {
