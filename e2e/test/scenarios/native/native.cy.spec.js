@@ -3,8 +3,10 @@ import {
   USER_GROUPS,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  createQuestion,
   entityPickerModal,
   filter,
   filterField,
@@ -17,6 +19,19 @@ import {
   visitCollection,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
+
+const ORDERS_SCALAR_METRIC = {
+  name: "Count of orders",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
@@ -559,7 +574,37 @@ describe("scenarios > native question > data reference sidebar", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No description");
   });
+
+  it("should show metrics defined on tables", () => {
+    createQuestion(ORDERS_SCALAR_METRIC);
+
+    openNativeEditor();
+    referenceButton().click();
+    sidebarHeaderTitle().should("contain", "Sample Database");
+
+    sidebar().within(() => {
+      cy.findByText("ORDERS").click();
+      cy.findByText("1 metric").should("be.visible");
+
+      cy.findByText("Count of orders").should("be.visible").click();
+      cy.findByText("A metric").should("be.visible");
+
+      cy.findByText("Count of orders").should("be.visible").click();
+    });
+  });
 });
+
+function referenceButton() {
+  return cy.icon("reference");
+}
+
+function sidebarHeaderTitle() {
+  return cy.findByTestId("sidebar-header-title");
+}
+
+function sidebar() {
+  return cy.findByTestId("sidebar-right");
+}
 
 const runQuery = () => {
   cy.findByTestId("native-query-editor-container").within(() => {
