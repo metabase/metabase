@@ -50,6 +50,34 @@ describe("scenarios > organization > entity picker", () => {
 
   describe("data picker", () => {
     describe("tables", () => {
+      it("should select a table from local search results", () => {
+        startNewQuestion();
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          enterSearchText({
+            text: "prod",
+            placeholder: "Search this database or everywhere…",
+          });
+          localSearchTab("Public").should("be.checked");
+          cy.findByText("Products").click();
+        });
+        getNotebookStep("data").findByText("Products").should("be.visible");
+      });
+
+      it("should select a table from global search results", () => {
+        startNewQuestion();
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          enterSearchText({
+            text: "prod",
+            placeholder: "Search this database or everywhere…",
+          });
+          globalSearchTab().click();
+          cy.findByText("Products").click();
+        });
+        getNotebookStep("data").findByText("Products").should("be.visible");
+      });
+
       it("should search for tables in the only database", () => {
         startNewQuestion();
         entityPickerModal().within(() => {
@@ -255,11 +283,11 @@ describe("scenarios > organization > entity picker", () => {
           foundItems: ["First collection"],
           notFoundItems: ["Second collection"],
         });
-        globalSearchTab().click({ force: true });
+        selectGlobalSearchTab();
         assertSearchResults({
           foundItems: ["First collection", "Second collection"],
         });
-        localSearchTab("Our analytics").click({ force: true });
+        selectLocalSearchTab("Our analytics");
         assertSearchResults({
           foundItems: ["First collection"],
           notFoundItems: ["Second collection"],
@@ -330,7 +358,7 @@ describe("scenarios > organization > entity picker", () => {
           foundItems: ["First collection"],
           notFoundItems: ["No Collection Tableton's Personal Collection"],
         });
-        globalSearchTab().click({ force: true });
+        selectGlobalSearchTab();
         assertSearchResults({
           foundItems: [
             "First collection",
@@ -407,11 +435,11 @@ describe("scenarios > organization > entity picker", () => {
           foundItems: ["Root dashboard 1"],
           notFoundItems: ["Root dashboard 2", "Regular dashboard 1"],
         });
-        globalSearchTab().click({ force: true });
+        selectGlobalSearchTab();
         assertSearchResults({
           foundItems: ["Root dashboard 1", "Regular dashboard 1"],
         });
-        localSearchTab("Our analytics").click({ force: true });
+        selectLocalSearchTab("Our analytics");
         assertSearchResults({
           foundItems: ["Root dashboard 1"],
           notFoundItems: [
@@ -496,7 +524,7 @@ describe("scenarios > organization > entity picker", () => {
           ],
         });
         cy.findByText("Didn't find anything").should("be.visible");
-        globalSearchTab().click({ force: true });
+        selectGlobalSearchTab();
         assertSearchResults({
           foundItems: [
             "Regular dashboard 1",
@@ -689,8 +717,16 @@ function globalSearchTab() {
   return cy.findByLabelText("Everywhere");
 }
 
+function selectGlobalSearchTab() {
+  cy.findByText("Everywhere").click();
+}
+
 function localSearchTab(selectedItem: string) {
   return cy.findByLabelText(`“${selectedItem}”`);
+}
+
+function selectLocalSearchTab(selectedItem: string) {
+  cy.findByText(`“${selectedItem}”`).click();
 }
 
 function assertSearchResults({
