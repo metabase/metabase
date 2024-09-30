@@ -18,7 +18,7 @@ import {
   visitQuestion,
 } from "e2e/support/helpers";
 
-const ANALYTICS_COLLECTION_NAME = "Usage analytics";
+const ANALYTICS_COLLECTION_NAME = "Metabase analytics";
 const CUSTOM_REPORTS_COLLECTION_NAME = "Custom reports";
 const PEOPLE_MODEL_NAME = "People";
 const METRICS_DASHBOARD_NAME = "Metabase metrics";

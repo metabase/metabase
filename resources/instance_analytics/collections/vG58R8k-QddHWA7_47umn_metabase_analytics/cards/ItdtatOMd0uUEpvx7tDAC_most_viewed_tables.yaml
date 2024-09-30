@@ -264,12 +264,16 @@ visualization_settings:
       show_mini_bar: true
     '["name","name"]':
       column_title: Table name
-      link_url: /question#?db={{entity_id}}&table={{entity_id_2}}
+      link_url: /question#?db={{entity_id_2}}&table={{entity_id}}
       view_as: link
     '["name","name_2"]':
       column_title: Database
-      link_url: /browse/databases/{{entity_id}}
+      link_url: /browse/{{entity_id}}
       view_as: link
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
+    : column_title: Dashboard ID
+    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
+    : column_title: Dashboard name
   graph.dimensions:
   - name
   graph.metrics:
@@ -313,7 +317,15 @@ visualization_settings:
     - 0
     name: count
   - enabled: false
-    name: entity_id_2
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_tables
+      - entity_id
+    - base-type: type/Integer
+      join-alias: Tables - Entity Qualified
+    name: false_2
   table.pivot: false
   table.pivot_column: name_2
 serdes/meta:

@@ -1,7 +1,7 @@
-name: Usage analytics
+name: Metabase analytics
 description: Your instance data. To customize these questions and dashboards, you can duplicate them and save them in the custom reports collection.
 entity_id: vG58R8k-QddHWA7_47umn
-slug: usage_analytics
+slug: metabase_analytics
 created_at: '2023-06-08T14:12:32.4457Z'
 archived: false
 type: instance-analytics
@@ -11,7 +11,7 @@ namespace: analytics
 authority_level: null
 serdes/meta:
 - id: vG58R8k-QddHWA7_47umn
-  label: usage_analytics
+  label: metabase_analytics
   model: Collection
 archive_operation_id: null
 archived_directly: null

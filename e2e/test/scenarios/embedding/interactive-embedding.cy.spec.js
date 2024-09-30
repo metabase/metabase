@@ -532,7 +532,7 @@ describeEE("scenarios > embedding > full app", () => {
       cy.get("@postMessage").invoke("resetHistory");
       cy.findByTestId("app-bar").findByText("Our analytics").click();
 
-      cy.findByRole("heading", { name: "Usage analytics" }).should(
+      cy.findByRole("heading", { name: "Metabase analytics" }).should(
         "be.visible",
       );
       cy.get("@postMessage").should("have.been.calledWith", {

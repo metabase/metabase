@@ -417,9 +417,9 @@ describe("collection permissions", () => {
     );
     cy.findByTestId("permission-table");
 
-    sidebar().findByText("Usage analytics").click();
+    sidebar().findByText("Metabase analytics").click();
     cy.findByTestId("permissions-editor").findByText(
-      "Permissions for Usage analytics",
+      "Permissions for Metabase analytics",
     );
     cy.findByTestId("permission-table");
   });
