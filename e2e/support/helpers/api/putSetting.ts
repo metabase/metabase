@@ -6,6 +6,6 @@ export const putSetting = <
 >(
   setting: TKey,
   value: TValue,
-): Cypress.Chainable => {
-  return cy.request("PUT", `/api/setting/${setting}`, { value });
+): Cypress.Chainable<Cypress.Response<never>> => {
+  return cy.request<never>("PUT", `/api/setting/${setting}`, { value });
 };
