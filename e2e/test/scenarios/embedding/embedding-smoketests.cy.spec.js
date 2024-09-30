@@ -122,6 +122,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       ensureEmbeddingIsDisabled();
     });
 
+    // .only
     it("should not let you embed the dashboard", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
       ensureEmbeddingIsDisabled();

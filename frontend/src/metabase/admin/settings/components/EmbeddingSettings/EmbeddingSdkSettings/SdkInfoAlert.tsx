@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
@@ -8,13 +9,19 @@ import { Alert, Icon, Text } from "metabase/ui";
 
 import { useEmbeddingSettingsLinks } from "./sdk";
 
+// Using this to make sure I don't get the
+// 'strings that does not contain meaningful information are not allowed.'
+// error from ttag
+const getInfoText = (value: string | ReactNode) => {
+  return jt`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, ${value}`;
+};
+
 export const SdkInfoAlert = () => {
   const { implementJwtUrl, switchMetabaseBinariesUrl, upgradeUrl } =
     useEmbeddingSettingsLinks();
   const isHosted = useSetting("is-hosted?");
   const isEE = PLUGIN_EMBEDDING_SDK.isEnabled();
 
-  const baseText = t`You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, `;
   const upgradeLink = (
     <ExternalLink href={upgradeUrl}>{t`upgrade to Metabase Pro`}</ExternalLink>
   );
@@ -22,20 +29,20 @@ export const SdkInfoAlert = () => {
     <ExternalLink href={implementJwtUrl}>{t`implement JWT SSO`}</ExternalLink>
   );
 
+  const switchLink = (
+    <ExternalLink
+      href={switchMetabaseBinariesUrl}
+    >{t`switch Metabase binaries`}</ExternalLink>
+  );
+
   const alertText = match({ isEE, isHosted })
     .with({ isEE: false, isHosted: false }, () => {
-      const switchLink = (
-        <ExternalLink
-          href={switchMetabaseBinariesUrl}
-        >{t`switch Metabase binaries`}</ExternalLink>
-      );
-      return jt`${baseText}${switchLink}, ${upgradeLink} and ${jwtLink}.`;
+      return getInfoText(`${switchLink}, ${upgradeLink} and ${jwtLink}.`);
     })
-    .with(
-      { isEE: false, isHosted: true },
-      () => jt`${baseText}${upgradeLink} and ${jwtLink}.`,
+    .with({ isEE: false, isHosted: true }, () =>
+      getInfoText(`${upgradeLink} and ${jwtLink}.`),
     )
-    .otherwise(() => jt`${baseText}${jwtLink}.`);
+    .otherwise(() => getInfoText(`${jwtLink}.`));
 
   return (
     <Alert

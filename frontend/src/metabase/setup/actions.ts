@@ -13,7 +13,14 @@ import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getSetting } from "metabase/selectors/settings";
 import { SetupApi } from "metabase/services";
-import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";
+import type {
+  DatabaseData,
+  SettingDefinition,
+  SettingKey,
+  Settings,
+  TokenFeatures,
+  UsageReason,
+} from "metabase-types/api";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase-types/store";
 
 import {
@@ -226,11 +233,20 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
   "setup/setEmbeddingHomepageFlags",
   async (_, { getState, dispatch }) => {
     const usageReason = getUsageReason(getState());
-    const tokenFeatures = getSetting(getState(), "token-features");
-    const adminSettings = getSettings(getState());
-    const enableEmbeddingSetByEnv = adminSettings.find(
-      (setting: { key: string }) => setting.key === "enable-embedding",
-    )?.is_env_setting;
+    const tokenFeatures: TokenFeatures = getSetting(
+      getState(),
+      "token-features",
+    );
+    const adminSettings: SettingDefinition[] = getSettings(getState());
+
+    const isStaticEmbeddingSetByEnv = checkIfSetByEnv(
+      adminSettings,
+      "enable-embedding-static",
+    );
+    const isInteractiveSetByEnv = checkIfSetByEnv(
+      adminSettings,
+      "enable-embedding-interactive",
+    );
 
     const interestedInEmbedding =
       usageReason === "embedding" || usageReason === "both";
@@ -242,8 +258,18 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
       settingsToChange["embedding-homepage"] = "visible";
     }
 
-    if (interestedInEmbedding && !enableEmbeddingSetByEnv) {
-      settingsToChange["enable-embedding"] = true;
+    if (!isInteractiveSetByEnv) {
+      settingsToChange["enable-embedding-interactive"] = true;
+    }
+
+    if (!isStaticEmbeddingSetByEnv) {
+      settingsToChange["enable-embedding-static"] = true;
+    }
+
+    if (
+      interestedInEmbedding &&
+      (!isStaticEmbeddingSetByEnv || !isInteractiveSetByEnv)
+    ) {
       settingsToChange["setup-embedding-autoenabled"] = true;
     }
 
@@ -252,3 +278,11 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
     dispatch(updateSettings(settingsToChange));
   },
 );
+
+const checkIfSetByEnv = (
+  adminSettings: SettingDefinition[],
+  key: SettingKey,
+) => {
+  return adminSettings.find((setting: { key: string }) => setting.key === key)
+    ?.is_env_setting;
+};

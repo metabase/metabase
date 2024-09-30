@@ -19,8 +19,7 @@ export function useSdkUsageProblem(config: SDKConfig) {
   // When the setting haven't been loaded or failed to query, we assume that the
   // feature is _enabled_ first. Otherwise, when a user's instance is temporarily down,
   // their customer would see an alarming error message on production.
-  // TODO: replace this with "enable-embedding-sdk" once the settings PR landed.
-  const isEnabled = useSetting("enable-embedding") ?? true;
+  const isEnabled = useSetting("enable-embedding-sdk") ?? true;
 
   const hasTokenFeature = useSelector(state => {
     // We also assume that the feature is enabled if the token-features are missing.
