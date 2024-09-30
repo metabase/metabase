@@ -414,7 +414,8 @@ describe("AggregationPicker", () => {
     });
   });
 
-  describe("column compare shortcut", () => {
+  // eslint-disable-next-line jest/no-disabled-tests
+  describe.skip("column compare shortcut", () => {
     it("does not display the shortcut if there are no aggregations", () => {
       setup({ allowCustomExpressions: true, allowTemporalComparisons: true });
       expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();

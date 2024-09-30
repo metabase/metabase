@@ -1,7 +1,7 @@
-name: Most viewed models
+name: Most viewed dashboards
 description: null
-entity_id: 57V11my5MYVnSlaJYM8cX
-created_at: '2023-11-13T18:53:06.528775Z'
+entity_id: MUXrck2HHcd2TIRuPfK0v
+created_at: '2023-08-18T19:09:18.119167Z'
 creator_id: internal@metabase.com
 display: table
 archived: false
@@ -40,39 +40,15 @@ dataset_query:
         - entity_id
       - base-type: type/Integer
         join-alias: Content - Entity Qualified
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_databases
-        - name
-      - base-type: type/Text
-        join-alias: V Databases - Question Database
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_databases
-        - entity_id
-      - base-type: type/Integer
-        join-alias: V Databases - Question Database
     filter:
-    - and
-    - - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_view_log
-          - entity_type
-        - base-type: type/Text
-      - card
-    - - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_type
-        - base-type: type/Text
-          join-alias: Content - Entity Qualified
-      - model
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - entity_type
+      - base-type: type/Text
+    - dashboard
     joins:
     - alias: Content - Entity Qualified
       condition:
@@ -125,29 +101,6 @@ dataset_query:
           join-alias: Group Members - User
       source-table: lTp-ATFsCUFEr9I0fMEaO
       strategy: left-join
-    - alias: V Databases - Question Database
-      condition:
-      - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - question_database_id
-        - base-type: type/Text
-          join-alias: Content - Entity Qualified
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_databases
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: V Databases - Question Database
-      fields: all
-      source-table:
-      - Internal Metabase Database
-      - public
-      - v_databases
-      strategy: left-join
     limit: 100
     order-by:
     - - desc
@@ -176,17 +129,8 @@ result_metadata:
   - v_content
   - name
   name: name
-  nfc_path: null
-  parent_id: null
-  position: 6
   semantic_type: type/Name
   settings: null
-  source: breakout
-  source_alias: Content - Entity Qualified
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_content
   visibility_type: normal
 - base_type: type/Integer
   coercion_strategy: null
@@ -208,107 +152,28 @@ result_metadata:
   - v_content
   - entity_id
   name: entity_id
-  nfc_path: null
-  parent_id: null
-  position: 0
   semantic_type: type/PK
   settings: null
-  source: breakout
-  source_alias: Content - Entity Qualified
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_content
   visibility_type: normal
-- base_type: type/Text
-  coercion_strategy: null
-  description: null
-  display_name: V Databases - Question Database → Name
-  effective_type: type/Text
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_databases
-    - name
-  - base-type: type/Text
-    join-alias: V Databases - Question Database
-  fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_databases
-  - name
-  name: name_2
-  nfc_path: null
-  parent_id: null
-  position: 4
-  semantic_type: type/Name
-  settings: null
-  source: breakout
-  source_alias: V Databases - Question Database
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_databases
-  visibility_type: normal
-- base_type: type/Integer
-  coercion_strategy: null
-  description: null
-  display_name: V Databases - Question Database → Entity ID
-  effective_type: type/Integer
-  field_ref:
-  - field
-  - - Internal Metabase Database
-    - public
-    - v_databases
-    - entity_id
-  - base-type: type/Integer
-    join-alias: V Databases - Question Database
-  fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_databases
-  - entity_id
-  name: entity_id_2
-  nfc_path: null
-  parent_id: null
-  position: 0
-  semantic_type: type/PK
-  settings: null
-  source: breakout
-  source_alias: V Databases - Question Database
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_databases
-  visibility_type: normal
-- aggregation_index: 0
-  base_type: type/Integer
+- base_type: type/BigInteger
   display_name: Count
+  effective_type: type/BigInteger
   field_ref:
   - aggregation
   - 0
   name: count
   semantic_type: type/Quantity
-  source: aggregation
 visualization_settings:
   column_settings:
     '["name","count"]':
       show_mini_bar: true
     '["name","entity_id"]':
-      column_title: Question ID
-      link_url: question/{{entity_id}}
+      column_title: Dashboard ID
+      link_url: dashboard/{{entity_id}}
       view_as: link
     '["name","name"]':
-      column_title: Question name
-      link_text: ''
-      link_url: question/{{entity_id}}
-      view_as: link
-    '["name","name_2"]':
-      column_title: Database
-      link_url: /browse/{{entity_id_2}}
+      column_title: Dashboard name
+      link_url: dashboard/{{entity_id}}
       view_as: link
   graph.dimensions:
   - name
@@ -339,35 +204,16 @@ visualization_settings:
     name: entity_id
   - enabled: true
     fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_databases
-      - name
-    - base-type: type/Text
-      join-alias: V Databases - Question Database
-    name: name_2
-  - enabled: false
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_databases
-      - entity_id
-    - base-type: type/Integer
-      join-alias: V Databases - Question Database
-    name: entity_id_2
-  - enabled: true
-    fieldRef:
     - aggregation
     - 0
     name: count
-  table.pivot_column: name_2
+  table.pivot: false
+  table.pivot_column: name
 serdes/meta:
-- id: 57V11my5MYVnSlaJYM8cX
-  label: most_viewed_models
+- id: MUXrck2HHcd2TIRuPfK0v
+  label: most_viewed_dashboards
   model: Card
 archived_directly: false
-metabase_version: vUNKNOWN (1308cef)
+metabase_version: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question
