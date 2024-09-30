@@ -214,20 +214,18 @@ export const QuestionActions = ({
     });
   }
 
-  if (hasCollectionPermissions) {
+  if (hasCollectionPermissions && isStandaloneQuestion) {
     extraButtons.push({
       separator: true,
       key: "trash-separator",
     });
 
-    if (isStandaloneQuestion) {
-      extraButtons.push({
-        title: t`Move to trash`,
-        icon: "trash",
-        action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
-        testId: ARCHIVE_TESTID,
-      });
-    }
+    extraButtons.push({
+      title: t`Move to trash`,
+      icon: "trash",
+      action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
+      testId: ARCHIVE_TESTID,
+    });
   }
 
   const fileInputRef = useRef<HTMLInputElement>(null);
