@@ -29,6 +29,7 @@ import {
   updateDashboardCards,
   visitDashboard,
   visitQuestion,
+  visualize,
 } from "e2e/support/helpers";
 import type { DashboardCard } from "metabase-types/api";
 
@@ -203,6 +204,79 @@ describe("scenarios > organization > entity picker", () => {
 
     describe("cards", () => {
       const tabs = ["Saved questions", "Models", "Metrics"];
+
+      it("should select a card from local search results", () => {
+        createTestCards();
+        cy.signInAsNormalUser();
+
+        const testCases = [
+          {
+            tab: "Saved questions",
+            cardName: "Root question 1",
+            sourceName: "Root question 1",
+          },
+          {
+            tab: "Models",
+            cardName: "Root model 2",
+            sourceName: "Root model 2",
+          },
+          {
+            tab: "Metrics",
+            cardName: "Root metric 1",
+            sourceName: "Orders",
+          },
+        ];
+        testCases.forEach(({ tab, cardName, sourceName }) => {
+          startNewQuestion();
+          entityPickerModal().within(() => {
+            entityPickerModalTab(tab).click();
+            enterSearchText({
+              text: cardName,
+              placeholder: "Search this collection or everywhere…",
+            });
+            cy.findByText(cardName).click();
+          });
+          getNotebookStep("data").findByText(sourceName).should("be.visible");
+          visualize();
+        });
+      });
+
+      it("should select a card from global search results", () => {
+        createTestCards();
+        cy.signInAsNormalUser();
+
+        const testCases = [
+          {
+            tab: "Saved questions",
+            cardName: "Regular question 1",
+            sourceName: "Regular question 1",
+          },
+          {
+            tab: "Models",
+            cardName: "Regular model 2",
+            sourceName: "Regular model 2",
+          },
+          {
+            tab: "Metrics",
+            cardName: "Regular metric 1",
+            sourceName: "Orders",
+          },
+        ];
+        testCases.forEach(({ tab, cardName, sourceName }) => {
+          startNewQuestion();
+          entityPickerModal().within(() => {
+            entityPickerModalTab(tab).click();
+            enterSearchText({
+              text: cardName,
+              placeholder: "Search this collection or everywhere…",
+            });
+            selectGlobalSearchTab();
+            cy.findByText(cardName).click();
+          });
+          getNotebookStep("data").findByText(sourceName).should("be.visible");
+          visualize();
+        });
+      });
 
       it("should search for cards for a normal user", () => {
         createTestCards();
