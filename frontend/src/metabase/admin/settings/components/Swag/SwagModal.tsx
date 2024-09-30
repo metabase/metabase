@@ -16,10 +16,14 @@ export const SwagModal = (props: Pick<ModalProps, "opened" | "onClose">) => {
   );
 
   return (
-    <Modal title={t`A little somthing from us to you`} {...props} size="lg">
-      <Text>
-        {t`As a thank-you for trying out our release candidate, here's a one-time
-        link to claim some sweet, sweet Metabase swag`}
+    <Modal
+      title={t`A little somtehing from us to you`}
+      {...props}
+      size={560}
+      padding="2rem"
+    >
+      <Text mt="0.5rem">
+        {t`As a thank-you for trying out our release candidate, we'd love to send you some swag, while supplies last. Click the button to give us your details and we'll send you an email with instructions`}
       </Text>
       <Flex justify="center" pt="1.5rem">
         <Button

@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { useMemo, useState } from "react";
-import { t } from "ttag";
+import { jt } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import AdminS from "metabase/css/admin.module.css";
@@ -33,7 +33,7 @@ export const SwagButton = () => {
         onClick={() => setModalOpen(true)}
         data-testid="swag-button"
       >
-        <span>{t`👕 Claim your swag`}</span>
+        <span>{jt`${isLinkUsed ? "☑️" : "👕"} Claim your swag`}</span>
       </li>
       <SwagModal opened={modalOpen} onClose={() => setModalOpen(false)} />
     </>

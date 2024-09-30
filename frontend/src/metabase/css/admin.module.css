@@ -195,10 +195,11 @@
   border-radius: 0.5rem;
   margin-left: 1rem;
   margin-right: 1rem;
-  color: white;
+  color: var(--mb-color-text-white);
   cursor: pointer;
 }
 
 .LameSwag {
-  background: grey;
+  background: var(--mb-color-bg-medium);
+  color: var(--mb-color-text-light);
 }
