@@ -1,4 +1,4 @@
-import type { Settings } from "../../../../frontend/src/metabase-types/api/settings";
+import type { Settings } from "metabase-types/api";
 
 export const putSetting = <
   TKey extends keyof Settings,
