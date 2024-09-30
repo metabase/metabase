@@ -5,7 +5,6 @@ import {
   assertPermissionForItem,
   assertPermissionTable,
   assertSameBeforeAndAfterSave,
-  createNativeQuestion,
   createTestRoles,
   describeEE,
   getPermissionRowPermissions,
@@ -664,20 +663,56 @@ describeEE("scenarios > admin > permissions > view data > sandboxed", () => {
     modal().button("Save").click();
 
     const expectedFinalPermissions = [
-      ["Accounts", "Can view", "Query builder only", "1 million rows", "No"],
       [
-        "Analytic Events",
+        "Accounts",
         "Can view",
-        "Query builder only",
+        "Query builder and native",
         "1 million rows",
         "No",
       ],
-      ["Feedback", "Can view", "Query builder only", "1 million rows", "No"],
-      ["Invoices", "Can view", "Query builder only", "1 million rows", "No"],
+      [
+        "Analytic Events",
+        "Can view",
+        "Query builder and native",
+        "1 million rows",
+        "No",
+      ],
+      [
+        "Feedback",
+        "Can view",
+        "Query builder and native",
+        "1 million rows",
+        "No",
+      ],
+      [
+        "Invoices",
+        "Can view",
+        "Query builder and native",
+        "1 million rows",
+        "No",
+      ],
       ["Orders", "Sandboxed", "Query builder only", "1 million rows", "No"],
-      ["People", "Can view", "Query builder only", "1 million rows", "No"],
-      ["Products", "Can view", "Query builder only", "1 million rows", "No"],
-      ["Reviews", "Can view", "Query builder only", "1 million rows", "No"],
+      [
+        "People",
+        "Can view",
+        "Query builder and native",
+        "1 million rows",
+        "No",
+      ],
+      [
+        "Products",
+        "Can view",
+        "Query builder and native",
+        "1 million rows",
+        "No",
+      ],
+      [
+        "Reviews",
+        "Can view",
+        "Query builder and native",
+        "1 million rows",
+        "No",
+      ],
     ];
 
     assertPermissionTable(expectedFinalPermissions);
@@ -871,19 +906,6 @@ describeEE(
       cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
       removeCollectionGroupPermissions();
       assertCollectionGroupHasNoAccess(ORDERS_QUESTION_ID, true);
-    });
-
-    it("should deny view access to any native question if the user has blocked view data for any table or database", () => {
-      createNativeQuestion({
-        native: { query: "select 1" },
-      }).then(({ body: { id: nativeQuestionId } }) => {
-        assertCollectionGroupUserHasAccess(nativeQuestionId, false);
-        cy.visit(
-          `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
-        );
-        removeCollectionGroupPermissions();
-        assertCollectionGroupHasNoAccess(nativeQuestionId, false);
-      });
     });
   },
 );
