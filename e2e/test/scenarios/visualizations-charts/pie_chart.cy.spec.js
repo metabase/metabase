@@ -77,6 +77,30 @@ describe("scenarios > visualizations > pie chart", () => {
     ].map(args => checkLegendItemAriaCurrent(args[0], args[1]));
   });
 
+  it("should not truncate legend titles when enabling percentages (metabase#48207)", () => {
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "pie",
+      visualization_settings: {
+        "pie.percent_visibility": "off",
+      },
+    });
+
+    cy.findByTestId("viz-settings-button").click();
+
+    leftSidebar().within(() => {
+      cy.findByText("Display").click();
+      cy.findByText("In legend").click();
+    });
+
+    cy.findByTestId("chart-legend").within(() => {
+      cy.findByText("Widget").then(([element]) => {
+        // When text is truncated, offsetWidth will be less than scrollWidth
+        expect(element.offsetWidth).to.eq(element.scrollWidth);
+      });
+    });
+  });
+
   it("should instantly toggle the total after changing the setting", () => {
     visitQuestionAdhoc({
       dataset_query: testQuery,
