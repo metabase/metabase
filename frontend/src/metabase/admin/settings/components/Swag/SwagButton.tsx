@@ -1,9 +1,10 @@
 import cx from "classnames";
 import { useMemo, useState } from "react";
-import { jt } from "ttag";
+import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import AdminS from "metabase/css/admin.module.css";
+import { Icon } from "metabase/ui";
 
 import { SwagModal } from "./SwagModal";
 import { SWAG_51_LOCAL_STORAGE_KEY } from "./constants";
@@ -33,7 +34,8 @@ export const SwagButton = () => {
         onClick={() => setModalOpen(true)}
         data-testid="swag-button"
       >
-        <span>{jt`${isLinkUsed ? "☑️" : "👕"} Claim your swag`}</span>
+        {isLinkUsed ? <Icon name="check" /> : <Icon name="t-shirt" />}
+        <span>{t`Claim your swag`}</span>
       </li>
       <SwagModal opened={modalOpen} onClose={() => setModalOpen(false)} />
     </>

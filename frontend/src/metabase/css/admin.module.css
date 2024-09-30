@@ -187,9 +187,10 @@
 .SwagButton {
   padding: 10px 14px;
   display: flex;
+  gap: 0.5rem;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(270deg, #4169e6, #f56d10);
+  background: linear-gradient(320deg, #1883e2, #fb5fb0);
   background-size: 400% 400%;
   animation: animation-name 6s ease infinite;
   border-radius: 0.5rem;
