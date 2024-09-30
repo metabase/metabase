@@ -6,10 +6,10 @@ import {
   main,
   modal,
   popover,
-  putSetting,
   restore,
   setTokenFeatures,
   undoToast,
+  updateSetting,
   visitDashboard,
   visitQuestion,
 } from "e2e/support/helpers";
@@ -73,7 +73,7 @@ describeEE("formatting > whitelabel", () => {
         cy.log("Add a logo");
         cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
           logo_data => {
-            putSetting(
+            updateSetting(
               "application-logo-url",
               `data:image/jpeg;base64,${logo_data}`,
             );
@@ -103,7 +103,7 @@ describeEE("formatting > whitelabel", () => {
       it("should work for people that set favicon URL before we change the input to file input", () => {
         const faviconUrl =
           "https://cdn.ecosia.org/assets/images/ico/favicon.ico";
-        putSetting("application-favicon-url", faviconUrl);
+        updateSetting("application-favicon-url", faviconUrl);
         checkFavicon(faviconUrl);
         cy.signInAsNormalUser();
         cy.visit("/");
@@ -730,7 +730,7 @@ function changeLoadingMessage(message) {
 }
 
 function setApplicationFontTo(font) {
-  putSetting("application-font", font);
+  updateSetting("application-font", font);
 }
 
 const openSettingsMenu = () => appBar().icon("gear").click();

@@ -1,6 +1,6 @@
 import type { Settings } from "metabase-types/api";
 
-export const putSetting = <
+export const updateSetting = <
   TKey extends keyof Settings,
   TValue extends Settings[TKey],
 >(

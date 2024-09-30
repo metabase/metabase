@@ -14,7 +14,6 @@ import {
   openNavigationSidebar,
   pieSlices,
   popover,
-  putSetting,
   queryBuilderHeader,
   resetTestTable,
   restore,
@@ -22,6 +21,7 @@ import {
   saveDashboard,
   showDashboardCardActions,
   sidebar,
+  updateSetting,
   visitDashboard,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
@@ -870,7 +870,7 @@ describe("issues 27020 and 27105: static-viz fails to render for certain date fo
     // This is currently the default setting, anyway.
     // But we want to explicitly set it in case something changes in the future,
     // because it is a crucial step for this reproduction.
-    putSetting("custom-formatting", {
+    updateSetting("custom-formatting", {
       "type/Temporal": {
         date_style: "MMMM D, YYYY",
       },

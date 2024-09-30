@@ -13,12 +13,12 @@ import {
   getDashboardCard,
   multiAutocompleteInput,
   popover,
-  putSetting,
   resetSnowplow,
   restore,
   saveDashboard,
   selectDashboardFilter,
   setFilter,
+  updateSetting,
   visitDashboard,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
@@ -343,7 +343,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });
     });
-    putSetting("site-locale", "fr");
+    updateSetting("site-locale", "fr");
     cy.reload();
 
     editDashboard();
@@ -383,7 +383,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     cy.request("GET", "/api/user/current").then(({ body: { id: USER_ID } }) => {
       cy.request("PUT", `/api/user/${USER_ID}`, { locale: "en" });
     });
-    putSetting("site-locale", "fr");
+    updateSetting("site-locale", "fr");
 
     // Create dashboard with a single date parameter, and a single question
     cy.createQuestionAndDashboard({

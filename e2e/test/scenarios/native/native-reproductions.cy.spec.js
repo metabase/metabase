@@ -9,11 +9,11 @@ import {
   modal,
   openNativeEditor,
   popover,
-  putSetting,
   restore,
   runNativeQuery,
   sidebar,
   startNewNativeModel,
+  updateSetting,
   visitQuestion,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
@@ -359,7 +359,7 @@ describe("issue 20625", { tags: "@quarantine" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    putSetting("native-query-autocomplete-match-style", "prefix");
+    updateSetting("native-query-autocomplete-match-style", "prefix");
     cy.signInAsNormalUser();
     cy.intercept("GET", "/api/database/*/autocomplete_suggestions**").as(
       "autocomplete",

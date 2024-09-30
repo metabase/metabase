@@ -7,10 +7,10 @@ import {
   modal,
   openSharingMenu,
   openStaticEmbeddingModal,
-  putSetting,
   restore,
   sharingMenu,
   sharingMenuButton,
+  updateSetting,
   visitDashboard,
   visitIframe,
   visitQuestion,
@@ -311,8 +311,8 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 });
 
 function resetEmbedding() {
-  putSetting("enable-embedding", false);
-  putSetting("embedding-secret-key", null);
+  updateSetting("enable-embedding", false);
+  updateSetting("embedding-secret-key", null);
 }
 
 function getTokenValue() {

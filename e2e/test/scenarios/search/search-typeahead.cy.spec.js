@@ -3,8 +3,8 @@ import {
   commandPalette,
   commandPaletteButton,
   commandPaletteInput,
-  putSetting,
   restore,
+  updateSetting,
   visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
 
@@ -40,7 +40,7 @@ describe("command palette", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    putSetting("search-typeahead-enabled", false);
+    updateSetting("search-typeahead-enabled", false);
     cy.visit("/");
   });
 

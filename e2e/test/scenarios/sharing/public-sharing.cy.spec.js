@@ -9,12 +9,12 @@ import {
   describeEE,
   modal,
   openSharingMenu,
-  putSetting,
   restore,
   setActionsEnabledForDB,
   setTokenFeatures,
   setupSMTP,
   sidebar,
+  updateSetting,
   visitDashboard,
   visitDashboardAndCreateTab,
   visitQuestion,
@@ -295,7 +295,7 @@ describeEE(
     }
 
     function setAllowedDomains() {
-      putSetting("subscription-allowed-domains", allowedDomain);
+      updateSetting("subscription-allowed-domains", allowedDomain);
     }
 
     beforeEach(() => {

@@ -11,10 +11,10 @@ import {
   openNativeEditor,
   openQuestionActions,
   popover,
-  putSetting,
   restore,
   rightSidebar,
   summarize,
+  updateSetting,
   visitCollection,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
@@ -298,7 +298,7 @@ describe("scenarios > question > native", () => {
 
     beforeEach(() => {
       cy.signInAsAdmin();
-      putSetting("is-metabot-enabled", true);
+      updateSetting("is-metabot-enabled", true);
       cy.intercept(
         "POST",
         "/api/metabot/database/**/query",

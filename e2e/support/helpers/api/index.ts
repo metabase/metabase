@@ -22,6 +22,6 @@ export { createTimeline } from "./createTimeline";
 export { createTimelineEvent } from "./createTimelineEvent";
 export { createTimelineWithEvents } from "./createTimelineWithEvents";
 export { getCurrentUser } from "./getCurrentUser";
-export { putSetting } from "./putSetting";
 export { remapDisplayValueToFK } from "./remapDisplayValueToFK";
 export { updateDashboardCards } from "./updateDashboardCards";
+export { updateSetting } from "./updateSetting";

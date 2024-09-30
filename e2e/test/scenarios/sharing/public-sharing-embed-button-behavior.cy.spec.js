@@ -13,12 +13,12 @@ import {
   openSharingMenu,
   openStaticEmbeddingModal,
   popover,
-  putSetting,
   resetSnowplow,
   restore,
   setTokenFeatures,
   sharingMenu,
   startNewQuestion,
+  updateSetting,
   visitDashboard,
   visitQuestion,
   visualize,
@@ -37,7 +37,7 @@ import {
 
     describe("when embedding is disabled", () => {
       beforeEach(() => {
-        putSetting("enable-embedding", false);
+        updateSetting("enable-embedding", false);
       });
 
       describe("when user is admin", () => {
@@ -71,8 +71,8 @@ import {
     describe("when embedding is enabled", () => {
       describe("when public sharing is enabled", () => {
         beforeEach(() => {
-          putSetting("enable-public-sharing", true);
-          putSetting("enable-embedding", true);
+          updateSetting("enable-public-sharing", true);
+          updateSetting("enable-embedding", true);
         });
 
         describe("when user is admin", () => {
@@ -137,8 +137,8 @@ import {
 
       describe("when public sharing is disabled", () => {
         beforeEach(() => {
-          putSetting("enable-public-sharing", false);
-          putSetting("enable-embedding", true);
+          updateSetting("enable-public-sharing", false);
+          updateSetting("enable-embedding", true);
         });
 
         describe("when user is admin", () => {
@@ -247,7 +247,7 @@ describe("#39152 sharing an unsaved question", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    putSetting("enable-public-sharing", true);
+    updateSetting("enable-public-sharing", true);
   });
 
   it("should ask the user to save the question before creating a public link", () => {

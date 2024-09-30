@@ -20,7 +20,6 @@ import {
   openNativeEditor,
   openOrdersTable,
   popover,
-  putSetting,
   resetSnowplow,
   restore,
   runNativeQuery,
@@ -29,6 +28,7 @@ import {
   setupSMTP,
   tableHeaderClick,
   undoToast,
+  updateSetting,
   visitQuestion,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
@@ -795,7 +795,7 @@ describe("scenarios > admin > license and billing", () => {
 
 describe("scenarios > admin > localization", () => {
   function setFirstWeekDayTo(day) {
-    putSetting("start-of-week", day.toLowerCase());
+    updateSetting("start-of-week", day.toLowerCase());
   }
 
   beforeEach(() => {

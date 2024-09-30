@@ -8,9 +8,9 @@ import {
   USER_GROUPS,
 } from "e2e/support/cypress_data";
 import {
-  putSetting,
   restore,
   snapshot,
+  updateSetting,
   withSampleDatabase,
 } from "e2e/support/helpers";
 
@@ -90,9 +90,9 @@ describe("snapshots", () => {
   }
 
   function updateSettings() {
-    putSetting("enable-public-sharing", true);
-    putSetting("enable-embedding", true).then(() => {
-      putSetting("embedding-secret-key", METABASE_SECRET_KEY);
+    updateSetting("enable-public-sharing", true);
+    updateSetting("enable-embedding", true).then(() => {
+      updateSetting("embedding-secret-key", METABASE_SECRET_KEY);
     });
 
     // update the Sample db connection string so it is valid in both CI and locally

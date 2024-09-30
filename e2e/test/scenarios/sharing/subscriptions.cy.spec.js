@@ -16,7 +16,6 @@ import {
   openPulseSubscription,
   openSharingMenu,
   popover,
-  putSetting,
   removeMultiAutocompleteValue,
   restore,
   sendEmailAndAssert,
@@ -27,6 +26,7 @@ import {
   setupSubscriptionWithRecipients,
   sharingMenu,
   sidebar,
+  updateSetting,
   viewEmailPage,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -760,7 +760,7 @@ function openSlackCreationForm() {
 }
 
 function openRecipientsWithUserVisibilitySetting(setting) {
-  putSetting("user-visibility", setting);
+  updateSetting("user-visibility", setting);
   cy.signInAsNormalUser();
   openDashboardSubscriptions();
 

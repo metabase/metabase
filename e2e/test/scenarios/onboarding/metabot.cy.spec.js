@@ -8,10 +8,10 @@ import {
   expectNoBadSnowplowEvents,
   openCollectionItemMenu,
   openQuestionActions,
-  putSetting,
   resetSnowplow,
   restore,
   sidebar,
+  updateSetting,
   visitModel,
 } from "e2e/support/helpers";
 
@@ -150,7 +150,7 @@ describeWithSnowplow.skip("scenarios > metabot", () => {
 });
 
 const enableMetabot = () => {
-  putSetting("is-metabot-enabled", true);
+  updateSetting("is-metabot-enabled", true);
 };
 
 const verifyTableVisibility = () => {

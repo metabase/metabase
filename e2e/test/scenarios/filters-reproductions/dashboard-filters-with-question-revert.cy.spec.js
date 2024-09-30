@@ -8,12 +8,12 @@ import {
   modal,
   openSharingMenu,
   popover,
-  putSetting,
   questionInfoButton,
   restore,
   saveDashboard,
   setFilter,
   snapshot,
+  updateSetting,
   visitDashboard,
   visitEmbeddedPage,
   visitQuestion,
@@ -222,7 +222,7 @@ describe("issue 35954", () => {
         });
 
         // Discard the legalese modal so we don't need to do an extra click in the UI
-        putSetting("show-static-embed-terms", false);
+        updateSetting("show-static-embed-terms", false);
 
         visitDashboard(id);
         openSharingMenu("Embed");
