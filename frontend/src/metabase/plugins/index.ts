@@ -16,7 +16,6 @@ import {
 } from "metabase/admin/performance/constants/complex";
 import type { ModelWithClearableCache } from "metabase/admin/performance/types";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
-import { getWillRevokeNativeAccessWarningModal } from "metabase/admin/permissions/selectors/confirmations";
 import {
   type DataPermission,
   DataPermissionValue,
@@ -24,10 +23,6 @@ import {
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
-import {
-  defaultRestrictNativePermissionsFn,
-  defaultShouldRestrictNativeQueryPermissionsFn,
-} from "metabase/admin/permissions/utils/graph";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
   MetricFilterControlsProps,
@@ -115,26 +110,12 @@ export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS = {
   impersonated: [],
 };
 
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_VIEW_DATA_OPTIONS = [];
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_CREATE_QUERIES_OPTIONS = [];
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS = [];
+
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = [];
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_CONFIRMATIONS = [
-  getWillRevokeNativeAccessWarningModal,
-] as Array<
-  (
-    _permissions: GroupsPermissions,
-    _groupId: number,
-    _entityId: EntityId,
-    _value: DataPermissionValue,
-  ) => any
->;
-
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_VIEW_DATA_OPTIONS = [];
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CREATE_QUERIES_OPTIONS = [];
-export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS = [
-  getWillRevokeNativeAccessWarningModal,
-] as Array<
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS = [];
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS = [] as Array<
   (
     _permissions: GroupsPermissions,
     _groupId: number,
@@ -162,12 +143,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
     value: DataPermissionValue,
     database: Database,
   ) => boolean;
-  restrictNativePermissions: (
-    permissions: GroupsPermissions,
-    groupId: number,
-    entityId: EntityId,
-    database: Database,
-  ) => GroupsPermissions;
+
   upgradeViewPermissionsIfNeeded:
     | ((
         permissions: GroupsPermissions,
@@ -182,9 +158,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
   permissionsPayloadExtraSelectors: [],
   hasChanges: [],
   upgradeViewPermissionsIfNeeded: null,
-  shouldRestrictNativeQueryPermissions:
-    defaultShouldRestrictNativeQueryPermissionsFn,
-  restrictNativePermissions: defaultRestrictNativePermissionsFn,
+  shouldRestrictNativeQueryPermissions: () => false,
 };
 
 // user form fields, e.x. login attributes

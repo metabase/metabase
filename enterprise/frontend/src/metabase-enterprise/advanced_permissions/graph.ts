@@ -83,19 +83,3 @@ export function upgradeViewPermissionsIfNeeded(
 
   return permissions;
 }
-
-export function restrictNativePermissions(
-  permissions: GroupsPermissions,
-  groupId: number,
-  entityId: EntityId,
-  database: Database,
-) {
-  return updateEntityPermission(
-    permissions,
-    groupId,
-    entityId,
-    DataPermissionValue.QUERY_BUILDER,
-    database,
-    DataPermission.CREATE_QUERIES,
-  );
-}
