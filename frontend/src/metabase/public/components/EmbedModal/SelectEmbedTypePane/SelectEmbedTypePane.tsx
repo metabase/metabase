@@ -145,7 +145,6 @@ export function SelectEmbedTypePane({
             externalLink
           >
             <List>
-              {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
               <List.Item>{t`Embed individual React components`}</List.Item>
               <List.Item>{t`Seamlessly blend each component in your app with CSS styling.`}</List.Item>
               <List.Item>{t`Manage access and interactivity per component and user groups.`}</List.Item>
