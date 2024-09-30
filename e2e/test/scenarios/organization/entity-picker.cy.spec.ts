@@ -48,13 +48,12 @@ const cardDetails: StructuredQuestionDetails = {
 describe("scenarios > organization > entity picker", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsAdmin();
+    cy.signInAsNormalUser();
   });
 
   describe("data picker", () => {
     describe("tables", () => {
       it("should select a table from local search results", () => {
-        cy.signInAsNormalUser();
         startNewQuestion();
         entityPickerModal().within(() => {
           entityPickerModalTab("Tables").click();
@@ -73,7 +72,6 @@ describe("scenarios > organization > entity picker", () => {
       });
 
       it("should select a table from global search results", () => {
-        cy.signInAsNormalUser();
         startNewQuestion();
         entityPickerModal().within(() => {
           entityPickerModalTab("Tables").click();
@@ -89,6 +87,59 @@ describe("scenarios > organization > entity picker", () => {
           cy.findByText("Products").click();
         });
         getNotebookStep("data").findByText("Products").should("be.visible");
+      });
+
+      it("should switch between recents and table tabs", () => {
+        cy.signInAsAdmin();
+        startNewQuestion();
+
+        cy.log("create a recent item");
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          cy.findByText("Products").click();
+        });
+
+        cy.log(
+          "should search globally for recents and locally for tables by default",
+        );
+        getNotebookStep("data").findByText("Products").click();
+        entityPickerModal().within(() => {
+          cy.log("local -> global transition without changing search text");
+          entityPickerModalTab("Tables").click();
+          enterSearchText({
+            text: "Orders",
+            placeholder: "Search this database or everywhere…",
+          });
+          localSearchTab("Public").should("be.checked");
+          entityPickerModalTab("Recents").click();
+          existingSearchTab().click();
+          globalSearchTab().should("not.exist");
+          localSearchTab("Public").should("not.exist");
+          assertSearchResults({
+            foundItems: ["Orders, Count", "Orders Model"],
+          });
+
+          cy.log("global -> local transition without changing search text");
+          entityPickerModalTab("Tables").click();
+          existingSearchTab().click();
+          localSearchTab("Public").should("be.checked");
+          assertSearchResults({
+            foundItems: ["Orders"],
+            totalFoundItemsCount: 1,
+          });
+
+          cy.log("local -> global transition with changing search text");
+          entityPickerModalTab("Recents").click();
+          enterSearchText({
+            text: "people",
+            placeholder: "Search…",
+          });
+          globalSearchTab().should("not.exist");
+          localSearchTab("Public").should("not.exist");
+          assertSearchResults({
+            foundItems: ["People"],
+          });
+        });
       });
 
       it("should search for tables in the only database", () => {
@@ -220,6 +271,7 @@ describe("scenarios > organization > entity picker", () => {
       const tabs = ["Saved questions", "Models", "Metrics"];
 
       it("should select a card from local search results", () => {
+        cy.signInAsAdmin();
         createTestCards();
         cy.signInAsNormalUser();
 
@@ -256,6 +308,7 @@ describe("scenarios > organization > entity picker", () => {
       });
 
       it("should select a card from global search results", () => {
+        cy.signInAsAdmin();
         createTestCards();
         cy.signInAsNormalUser();
 
@@ -293,6 +346,7 @@ describe("scenarios > organization > entity picker", () => {
       });
 
       it("should search for cards for a normal user", () => {
+        cy.signInAsAdmin();
         createTestCards();
         cy.signInAsNormalUser();
         startNewQuestion();
@@ -300,6 +354,7 @@ describe("scenarios > organization > entity picker", () => {
       });
 
       it("should search for cards when there is no access to the root collection", () => {
+        cy.signInAsAdmin();
         createTestCards();
         cy.log("grant `nocollection` user access to `First collection`");
         cy.log("personal collections are always available");
@@ -316,6 +371,7 @@ describe("scenarios > organization > entity picker", () => {
       });
 
       it("should not allow local search for `all personal collections`", () => {
+        cy.signInAsAdmin();
         createTestCards();
         startNewQuestion();
         testCardSearchForAllPersonalCollections({ tabs });
@@ -327,6 +383,7 @@ describe("scenarios > organization > entity picker", () => {
     const tabs = ["Questions", "Models", "Metrics"];
 
     it("should select a card from local search results", () => {
+      cy.signInAsAdmin();
       createTestCards();
       cy.signInAsNormalUser();
 
@@ -350,6 +407,7 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     it("should select a card from global search results", () => {
+      cy.signInAsAdmin();
       createTestCards();
       cy.signInAsNormalUser();
 
@@ -374,6 +432,7 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     it("should search for cards for a normal user", () => {
+      cy.signInAsAdmin();
       createTestCards();
       cy.signInAsNormalUser();
       selectQuestionFromDashboard();
@@ -381,6 +440,7 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     it("should search for cards when there is no access to the root collection", () => {
+      cy.signInAsAdmin();
       createTestCards();
       cy.log("grant `nocollection` user access to `First collection`");
       cy.log("personal collections are always available");
@@ -397,6 +457,7 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     it("should not allow local search for `all personal collections`", () => {
+      cy.signInAsAdmin();
       createTestCards();
       selectQuestionFromDashboard();
       testCardSearchForAllPersonalCollections({ tabs });
@@ -405,7 +466,6 @@ describe("scenarios > organization > entity picker", () => {
 
   describe("collection picker", () => {
     it("should select a collection from local search results", () => {
-      cy.signInAsNormalUser();
       visitQuestion(ORDERS_QUESTION_ID);
       openQuestionActions();
       popover().findByText("Move").click();
@@ -423,7 +483,6 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     it("should select a collection from global search results", () => {
-      cy.signInAsNormalUser();
       visitQuestion(ORDERS_QUESTION_ID);
       openQuestionActions();
       popover().findByText("Move").click();
@@ -441,6 +500,7 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     it("should search for collections for a normal user", () => {
+      cy.signInAsAdmin();
       createTestCollections();
       cy.signInAsNormalUser();
       visitQuestion(ORDERS_QUESTION_ID);
@@ -506,6 +566,7 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     it("should search for collections when there is no access to the root collection", () => {
+      cy.signInAsAdmin();
       createTestCollections();
       cy.log("grant `nocollection` user access to `First collection`");
       cy.log("personal collections are always available");
@@ -565,6 +626,7 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     it("should not allow local search for `all personal collections`", () => {
+      cy.signInAsAdmin();
       createTestCollections();
       visitQuestion(ORDERS_QUESTION_ID);
       openQuestionActions();
@@ -593,7 +655,6 @@ describe("scenarios > organization > entity picker", () => {
 
   describe("dashboard picker", () => {
     it("should select a dashboard from local search results", () => {
-      cy.signInAsNormalUser();
       visitQuestion(ORDERS_COUNT_QUESTION_ID);
       openQuestionActions();
       popover().findByText("Add to dashboard").click();
@@ -611,7 +672,6 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     it("should select a dashboard from global search results", () => {
-      cy.signInAsNormalUser();
       visitQuestion(ORDERS_COUNT_QUESTION_ID);
       openQuestionActions();
       popover().findByText("Add to dashboard").click();
@@ -629,6 +689,7 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     it("should search for dashboards for a normal user", () => {
+      cy.signInAsAdmin();
       createTestDashboards();
       cy.signInAsNormalUser();
       visitQuestion(ORDERS_QUESTION_ID);
@@ -703,6 +764,7 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     it("should search for dashboards when there is no access to the root collection", () => {
+      cy.signInAsAdmin();
       createTestDashboards();
       cy.log("grant `nocollection` user access to `First collection`");
       cy.log("personal collections are always available");
@@ -768,6 +830,7 @@ describe("scenarios > organization > entity picker", () => {
     });
 
     it("should not allow local search for `all personal collections`", () => {
+      cy.signInAsAdmin();
       createTestDashboards();
       visitQuestion(ORDERS_QUESTION_ID);
       openQuestionActions();
@@ -922,6 +985,10 @@ function enterSearchText({
   placeholder: string;
 }) {
   cy.findByPlaceholderText(placeholder).clear().type(text);
+}
+
+function existingSearchTab() {
+  return cy.findByText(/results? for/);
 }
 
 function globalSearchTab() {
