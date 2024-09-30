@@ -35,6 +35,7 @@ export const Default: StoryFn = () => (
   </VisualizationWrapper>
 );
 
+// Example of how themes can be applied in the SDK.
 export const EmbeddingTheme: StoryFn = () => {
   const theme: MetabaseTheme = {
     colors: {

@@ -12,7 +12,7 @@ import type {
 } from "metabase-types/store";
 
 import { updateUrl } from "./navigation";
-import { cancelQuery, runDirtyQuestionQuery } from "./querying";
+import { cancelQuery } from "./querying";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
 export const setUIControls = createAction(SET_UI_CONTROLS);
@@ -121,5 +121,4 @@ export const cancelQuestionChanges =
       type: CANCEL_QUESTION_CHANGES,
       payload: { card: cardBeforeChanges },
     });
-    dispatch(runDirtyQuestionQuery());
   };

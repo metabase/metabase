@@ -97,31 +97,6 @@ export const getVersionFromReleaseBranch = (branch: string) => {
   return `v0.${majorVersion}.0`;
 }
 
-export const isLatestVersion = (thisVersion: string, allVersions: string[]) => {
-  if (isRCVersion(thisVersion)) {
-    return false;
-  }
-
-  const normalizedVersions = allVersions
-    .filter(isValidVersionString)
-    .filter(version => !isRCVersion(version))
-    .map(version => String(coerce(version.replace(/(v1|v0)\./, ""))))
-    .sort(compareVersions);
-
-  if (!normalizedVersions.length) {
-    return true;
-  }
-
-  const lastVersion = normalizedVersions[normalizedVersions.length - 1];
-
-  return (
-    compareVersions(
-      String(coerce(thisVersion.replace(/(v1|v0)\./, ""))),
-      lastVersion,
-    ) > -1
-  );
-};
-
 export const versionRequirements: Record<
   number,
   { java: number; node: number }

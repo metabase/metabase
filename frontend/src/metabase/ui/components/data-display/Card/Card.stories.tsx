@@ -58,11 +58,6 @@ const CardSectionBorderTemplate = (
   args: CardProps & { withSectionBorder: boolean },
 ) => <CardSectionTemplate {...args} withSectionBorder />;
 
-const Default = DefaultTemplate.bind({});
-const Border = DefaultTemplate.bind({});
-const CardSection = CardSectionTemplate.bind({});
-const CardSectionBorder = CardSectionBorderTemplate.bind({});
-
 export default {
   title: "Data display/Card",
   component: Card,
@@ -70,25 +65,25 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: DefaultTemplate,
   name: "Default",
 };
 
-export const Border_ = {
-  render: Border,
+export const Border = {
+  render: DefaultTemplate,
   name: "Border",
   args: {
     withBorder: true,
   },
 };
 
-export const CardSection_ = {
-  render: CardSection,
+export const CardSection = {
+  render: CardSectionTemplate,
   name: "Card section",
 };
 
-export const CardSectionBorder_ = {
-  render: CardSectionBorder,
+export const CardSectionBorder = {
+  render: CardSectionBorderTemplate,
   name: "Card section, border",
 };

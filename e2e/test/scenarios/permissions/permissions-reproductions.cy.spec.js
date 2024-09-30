@@ -8,6 +8,7 @@ import {
 import {
   assertDatasetReqIsSandboxed,
   assertQueryBuilderRowCount,
+  blockUserGroupPermissions,
   commandPaletteSearch,
   describeEE,
   entityPickerModal,
@@ -311,7 +312,7 @@ describe("UI elements that make no sense for users without data permissions (met
     cy.findByTestId("display-options-sensible");
     cy.icon("line").click();
     cy.findByTestId("Line-button").realHover();
-    cy.findByTestId("Line-button").within(() => {
+    cy.findByTestId("Line-container").within(() => {
       cy.icon("gear").click();
     });
 
@@ -605,9 +606,10 @@ describeEE("issue 24966", () => {
   const dashboardDetails = { parameters: [dashboardFilter] };
 
   beforeEach(() => {
-    restore("default-ee");
+    restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
+    blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
 
     // Add user attribute to existing user
     cy.request("PUT", `/api/user/${NODATA_USER_ID}`, {
