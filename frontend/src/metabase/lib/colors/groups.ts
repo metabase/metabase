@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { ACCENT_COUNT, color } from "./palette";
+import { ACCENT_CORE_COUNT, ACCENT_TOTAL_COUNT, color } from "./palette";
 import type { AccentColorOptions, ColorPalette } from "./types";
 
 export const getAccentColors = (
@@ -9,27 +9,30 @@ export const getAccentColors = (
     light = true,
     dark = true,
     harmony = false,
+    all = false,
   }: AccentColorOptions = {},
   palette?: ColorPalette,
 ) => {
   const ranges = [];
-  main && ranges.push(getMainAccentColors(palette));
-  light && ranges.push(getLightAccentColors(palette));
-  dark && ranges.push(getDarkAccentColors(palette));
+  const n = all ? ACCENT_TOTAL_COUNT : ACCENT_CORE_COUNT;
+
+  main && ranges.push(getMainAccentColors(n, palette));
+  light && ranges.push(getLightAccentColors(n, palette));
+  dark && ranges.push(getDarkAccentColors(n, palette));
 
   return harmony ? _.unzip(ranges).flat() : ranges.flat();
 };
 
-export const getMainAccentColors = (palette?: ColorPalette) => {
-  return _.times(ACCENT_COUNT, i => color(`accent${i}`, palette));
+const getMainAccentColors = (n: number, palette?: ColorPalette) => {
+  return _.times(n, i => color(`accent${i}`, palette));
 };
 
-export const getLightAccentColors = (palette?: ColorPalette) => {
-  return _.times(ACCENT_COUNT, i => color(`accent${i}-light`, palette));
+const getLightAccentColors = (n: number, palette?: ColorPalette) => {
+  return _.times(n, i => color(`accent${i}-light`, palette));
 };
 
-export const getDarkAccentColors = (palette?: ColorPalette) => {
-  return _.times(ACCENT_COUNT, i => color(`accent${i}-dark`, palette));
+const getDarkAccentColors = (n: number, palette?: ColorPalette) => {
+  return _.times(n, i => color(`accent${i}-dark`, palette));
 };
 
 export const getStatusColorRanges = () => {
