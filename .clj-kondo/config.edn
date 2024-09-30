@@ -146,6 +146,7 @@
               ;; module drivers
               :athena
               :bigquery-cloud-sdk
+              :databricks
               :druid
               :druid-jdbc
               :googleanalytics
@@ -372,7 +373,10 @@
                                      metabase.sync.util}                                            ; TODO -- consolidate these into a real API namespace.
     metabase.task                  #{metabase.task
                                      metabase.task.index-values
-                                     metabase.task.persist-refresh}                                 ; TODO -- consolidate these into a real API namespace.
+                                     metabase.task.persist-refresh
+                                     ;; We need to expose this to the metabase.search module.
+                                     ;; Ideally, it would just live inside that module.
+                                     metabase.task.search-index}                                    ; TODO -- consolidate these into a real API namespace.
     metabase.troubleshooting       #{metabase.troubleshooting}
     metabase.types                 #{metabase.types}
     metabase.upload                #{metabase.upload}

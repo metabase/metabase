@@ -37,6 +37,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { createMockNotebookStep } from "../../test-utils";
 import type { NotebookStep } from "../../types";
+import { NotebookProvider } from "../Notebook/context";
 
 import { JoinStep } from "./JoinStep";
 
@@ -153,16 +154,18 @@ function setup({
     };
 
     return (
-      <JoinStep
-        step={step}
-        stageIndex={step.stageIndex}
-        query={query}
-        color="brand"
-        isLastOpened={false}
-        readOnly={readOnly}
-        reportTimezone="UTC"
-        updateQuery={onChange}
-      />
+      <NotebookProvider>
+        <JoinStep
+          step={step}
+          stageIndex={step.stageIndex}
+          query={query}
+          color="brand"
+          isLastOpened={false}
+          readOnly={readOnly}
+          reportTimezone="UTC"
+          updateQuery={onChange}
+        />
+      </NotebookProvider>
     );
   }
 

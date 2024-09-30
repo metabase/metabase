@@ -4,6 +4,7 @@ import { useSet } from "react-use";
 
 import { isNotNull } from "metabase/lib/types";
 import ChartWithLegend from "metabase/visualizations/components/ChartWithLegend";
+import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
 import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
@@ -15,7 +16,6 @@ import {
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
-import { ChartRenderer } from "./PieChart.styled";
 import { PIE_CHART_DEFINITION } from "./chart-definition";
 import { useChartEvents } from "./use-chart-events";
 
@@ -165,7 +165,7 @@ export function PieChart(props: VisualizationProps) {
       isDashboard={isDashboard}
       onToggleSeriesVisibility={handleToggleSeriesVisibility}
     >
-      <ChartRenderer
+      <ResponsiveEChartsRenderer
         ref={containerRef}
         option={option}
         onInit={handleInit}

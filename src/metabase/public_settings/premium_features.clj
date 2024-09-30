@@ -305,6 +305,13 @@
         (cached-logger (premium-embedding-token) e)
         #{}))))
 
+(mu/defn plan-alias :- [:maybe :string]
+  "Returns a string representing the instance's current plan, if included in the last token status request."
+  []
+  (some-> (premium-embedding-token)
+          fetch-token-status
+          :plan-alias))
+
 (defn has-any-features?
   "True if we have a valid premium features token with ANY features."
   []
@@ -375,6 +382,10 @@
   ;; This specific feature DOES NOT require the EE code to be present in order for it to return truthy, unlike
   ;; everything else.
   :getter #(has-feature? :embedding))
+
+(define-premium-feature enable-embedding-sdk-origins?
+  "Should we allow users embed the SDK in sites other than localhost?"
+  :embedding-sdk)
 
 (define-premium-feature enable-whitelabeling?
   "Should we allow full whitelabel embedding (reskinning the entire interface?)"

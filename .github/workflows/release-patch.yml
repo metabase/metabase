@@ -31,8 +31,9 @@ jobs:
               hasCommitBeenReleased,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            // Don't forget to update this for the next major release 🤞
-            const AUTO_RELEASE_VERSIONS = [49, 50];
+            const currentRelease = Number('${{ vars.CURRENT_VERSION }}');
+            const lastRelease = currentRelease - 1;
+            const AUTO_RELEASE_VERSIONS = [lastRelease, currentRelease];
 
             async function releasePatchFor(majorVersion) {
               const nextPatch = await getNextPatchVersion({
