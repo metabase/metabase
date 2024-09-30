@@ -355,15 +355,19 @@
 
 (defn- execution-metrics-sql []
   (let [thirty-days-ago (case (db/db-type)
-                          :postgres "CURRENT_TIMESTAMP - INTERVAL '30 days'"
-                          :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP)"
-                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")]
+                          :postgres "CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - INTERVAL '30 days'"
+                          :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP AT TIME ZONE 'UTC')"
+                          :mysql    "UTC_TIMESTAMP() - INTERVAL 30 DAY")
+        started-at      (case (db/db-type)
+                          (:postgres :h2) "started_at AT TIME ZONE 'UTC'"
+                          :mysql          "CONVERT_TZ(started_at, @@session.time_zone, '+00.00'")
+        timestamp-where (str started-at " > " thirty-days-ago)]
     (str/join
      "\n"
      ["WITH user_executions AS ("
       "    SELECT executor_id, COUNT(*) AS num_executions"
       "    FROM query_execution"
-      "    WHERE started_at > " thirty-days-ago
+      "    WHERE " timestamp-where
       "    GROUP BY executor_id"
       "),"
       "query_stats_1 AS ("
@@ -380,7 +384,7 @@
       "        COALESCE(SUM(CASE WHEN running_time >= 1000000 AND running_time < 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__1001_10000,"
       "        COALESCE(SUM(CASE WHEN running_time >= 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__10000_plus"
       "    FROM query_execution"
-      "    WHERE started_at > " thirty-days-ago
+      "    WHERE " timestamp-where
       "),"
       "query_stats_2 AS ("
       "    SELECT"
