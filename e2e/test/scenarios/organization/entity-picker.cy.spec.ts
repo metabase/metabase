@@ -273,6 +273,30 @@ describe("scenarios > organization > entity picker", () => {
           });
         },
       );
+
+      it(
+        "should search for tables in a schema-less database",
+        { tags: "@external" },
+        () => {
+          restore("mysql-8");
+          cy.signInAsNormalUser();
+          startNewQuestion();
+          entityPickerModal().within(() => {
+            entityPickerModalTab("Tables").click();
+            cy.findByText("QA MySQL8").click();
+            enterSearchText({
+              text: "orders",
+              placeholder: "Search this database or everywhere…",
+            });
+            localSearchTab("QA MySQL8").should("be.checked");
+            assertSearchResults({
+              foundItems: ["Orders"],
+              notFoundItems: ["Products"],
+              totalFoundItemsCount: 1,
+            });
+          });
+        },
+      );
     });
 
     describe("cards", () => {
