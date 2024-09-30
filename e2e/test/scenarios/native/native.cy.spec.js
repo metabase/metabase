@@ -509,32 +509,27 @@ describe("scenarios > native question > data reference sidebar", () => {
 
   it("should show tables", () => {
     openNativeEditor();
-    cy.icon("reference").click();
-    cy.get("[data-testid='sidebar-header-title']").findByText(
-      "Sample Database",
-    );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("ORDERS").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(
-      "Confirmed Sample Company orders for a product, from a user.",
-    );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("9 columns");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("QUANTITY").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Number of products bought.");
-    // clicking the title should navigate back
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("QUANTITY").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("ORDERS").click();
-    cy.get("[data-testid='sidebar-header-title']")
-      .findByText("Sample Database")
-      .click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Data Reference");
+    referenceButton().click();
+
+    sidebarHeaderTitle().should("have.text", "Sample Database");
+
+    sidebar().within(() => {
+      cy.findByText("ORDERS").click();
+      cy.findByText(
+        "Confirmed Sample Company orders for a product, from a user.",
+      );
+      cy.findByText("9 columns");
+      cy.findByText("QUANTITY").click();
+      cy.findByText("Number of products bought.");
+
+      cy.log("clicking the title should navigate back");
+      cy.findByText("QUANTITY").click();
+      cy.findByText("ORDERS").click();
+      cy.get("[data-testid='sidebar-header-title']")
+        .findByText("Sample Database")
+        .click();
+      cy.findByText("Data Reference");
+    });
   });
 
   it("should show models", () => {
@@ -558,21 +553,17 @@ describe("scenarios > native question > data reference sidebar", () => {
     });
 
     openNativeEditor();
-    cy.icon("reference").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("2 models");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Native Products Model").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("A model of the Products table"); // description
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Bobby Tables's Personal Collection"); // collection
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("1 column");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("RENAMED_ID").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("No description");
+    referenceButton().click();
+
+    sidebar().within(() => {
+      cy.findByText("2 models");
+      cy.findByText("Native Products Model").click();
+      cy.findByText("A model of the Products table"); // description
+      cy.findByText("Bobby Tables's Personal Collection"); // collection
+      cy.findByText("1 column");
+      cy.findByText("RENAMED_ID").click();
+      cy.findByText("No description");
+    });
   });
 
   it("should show metrics defined on tables", () => {
@@ -580,7 +571,7 @@ describe("scenarios > native question > data reference sidebar", () => {
 
     openNativeEditor();
     referenceButton().click();
-    sidebarHeaderTitle().should("contain", "Sample Database");
+    sidebarHeaderTitle().should("have.text", "Sample Database");
 
     sidebar().within(() => {
       cy.findByText("ORDERS").click();
@@ -589,6 +580,7 @@ describe("scenarios > native question > data reference sidebar", () => {
       cy.findByText("Count of orders").should("be.visible").click();
       cy.findByText("A metric").should("be.visible");
 
+      cy.log("clicking the title should navigate back");
       cy.findByText("Count of orders").should("be.visible").click();
     });
   });
