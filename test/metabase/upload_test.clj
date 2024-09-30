@@ -1353,7 +1353,12 @@
                             {:primary-key [upload/auto-pk-column-keyword]}
                             {}))
     (driver/insert-into! driver db-id schema+table-name insert-col-names rows)
-    (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)))
+    (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)]
+      ;; ensure we have the same display name for the auto-pk-column that a real upload would have
+      (t2/update! :model/Field
+                    {:table_id (:id table), :name upload/auto-pk-column-name}
+                    {:display_name upload/auto-pk-column-name})
+      table)))
 
 (defn catch-ex-info* [f]
   (try
@@ -1969,8 +1974,8 @@
                     file     (csv-file-with csv-rows)]
                 (testing "The new row is inserted with the values correctly reordered"
                   (is (= {:row-count 1} (update-csv! action {:file file, :table-id (:id table)})))
-                  (is (= ["name" "α"]
-                         (rest (column-display-names-for-table table))))
+                  (is (= (header-with-auto-pk ["name" "α"])
+                         (column-display-names-for-table table)))
                   (is (= (set (updated-contents action
                                                 [["Obi-Wan Kenobi" nil]]
                                                 [["Everything" "omega"]]))
@@ -2148,6 +2153,15 @@
                              (update!)))))
                     (io/delete-file file)))))))))))
 
+(defn- round-floats
+  "Round all floats to have n digits of precision."
+  [digits-precision rows]
+  (let [factor (Math/pow 10 digits-precision)]
+    (mapv (partial mapv #(if (float? %)
+                           (/ (Math/round (* factor %)) factor)
+                           %))
+          rows)))
+
 (deftest update-promotion-multiple-columns-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift) ; redshift doesn't support promotion
     (doseq [action (actions-to-test driver/*driver*)]
@@ -2173,8 +2187,10 @@
                       (testing "\nAppend should succeed"
                         (is (= {:row-count 1}
                                (update!))))
-                      (is (= [[1 coerced coerced]]
-                             (rows-for-table table))))))))))))))
+                      (is (= (rows-with-auto-pk [[coerced coerced]])
+                             ;; Clickhouse uses 32bit floats, so we must account for that loss in precision.
+                             ;; In this case 2.1 => 2.0999999046325684
+                             (round-floats 6 (rows-for-table table)))))))))))))))
 
 (deftest create-from-csv-int-and-float-test
   (testing "Creation should handle a mix of int and float-or-int values in any order"
@@ -2202,7 +2218,9 @@
           (testing "Check the data was uploaded into the table correctly"
             (is (= (rows-with-auto-pk [[1.0 1.1]
                                        [1.1 1.0]])
-                   (rows-for-table table)))))))))
+                   ;; Clickhouse uses 32 bit floats,
+                   ;; so 1.1 is approximated by 1.10000002384185791015625
+                   (round-floats 7 (rows-for-table table))))))))))
 
 (deftest update-from-csv-int-and-float-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
