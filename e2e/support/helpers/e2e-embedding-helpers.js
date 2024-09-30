@@ -262,6 +262,12 @@ export function createPublicDashboardLink(dashboardId) {
   return cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
 }
 
+/**
+ * @param {Object} options
+ * @param {string} options.url
+ * @param {Object} options.qs
+ * @param {Function} [options.onBeforeLoad]
+ */
 export const visitFullAppEmbeddingUrl = ({ url, qs, onBeforeLoad }) => {
   cy.visit({
     url,

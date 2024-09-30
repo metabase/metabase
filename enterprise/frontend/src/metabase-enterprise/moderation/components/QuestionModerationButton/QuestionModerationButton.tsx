@@ -2,10 +2,7 @@ import * as React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import {
-  removeCardReview,
-  verifyCard,
-} from "metabase-enterprise/moderation/actions";
+import { useEditItemVerificationMutation } from "metabase/api";
 import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 import {
   MODERATION_STATUS,
@@ -32,27 +29,18 @@ const mapStateToProps = (state: State, props: Props) => ({
   isModerator: getIsModerator(state, props),
 });
 
-const mapDispatchToProps = {
-  verifyCard,
-  removeCardReview,
-};
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(QuestionModerationButton);
+export default connect(mapStateToProps)(QuestionModerationButton);
 
 const { name: verifiedIconName } = getStatusIcon(MODERATION_STATUS.verified);
 
 function QuestionModerationButton({
   question,
-  verifyCard,
-  removeCardReview,
   isModerator,
   VerifyButton = DefaultVerifyButton,
   verifyButtonProps = {},
 }: Props) {
+  const [editItemVerification] = useEditItemVerificationMutation();
   const latestModerationReview = getLatestModerationReview(
     question.getModerationReviews(),
   );
@@ -60,12 +48,20 @@ function QuestionModerationButton({
 
   const onVerify = () => {
     const id = question.id();
-    verifyCard(id);
+    editItemVerification({
+      status: "verified",
+      moderated_item_id: id,
+      moderated_item_type: "card",
+    });
   };
 
   const onRemoveModerationReview = () => {
     const id = question.id();
-    removeCardReview(id);
+    editItemVerification({
+      status: null,
+      moderated_item_id: id,
+      moderated_item_type: "card",
+    });
   };
 
   return (
