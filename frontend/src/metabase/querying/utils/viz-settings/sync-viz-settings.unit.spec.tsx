@@ -157,6 +157,35 @@ describe("syncVizSettings", () => {
     });
   });
 
+  describe("column_settings", () => {
+    it("should handle adding new columns with column.name changes", () => {
+      const oldColumns: ColumnInfo[] = [
+        { name: "ID", key: "ID" },
+        { name: "ID_2", key: "PEOPLE__ID" },
+      ];
+      const newColumns: ColumnInfo[] = [
+        { name: "ID", key: "ID" },
+        { name: "ID_2", key: "PRODUCTS__ID" },
+        { name: "ID_3", key: "PEOPLE__ID" },
+      ];
+
+      const oldSettings = createMockVisualizationSettings({
+        column_settings: {
+          '["name","ID"]': { column_title: "@ID" },
+          '["name","ID_2"]': { column_title: "ID@" },
+        },
+      });
+
+      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+      expect(newSettings).toEqual({
+        column_settings: {
+          '["name","ID"]': { column_title: "@ID" },
+          '["name","ID_3"]': { column_title: "ID@" },
+        },
+      });
+    });
+  });
+
   describe("graph.metrics", () => {
     it("should not update the setting if the order of columns has changed", () => {
       const oldColumns: ColumnInfo[] = [

@@ -9,7 +9,7 @@ import _ from "underscore";
 import Label from "metabase/components/type/Label";
 import { DragDropContext } from "metabase/core/components/DragDropContext";
 import CS from "metabase/css/core/index.css";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
 import {
   DroppableContainer,
