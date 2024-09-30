@@ -189,7 +189,7 @@ export const CollectionPickerInner = (
       }
     },
     [
-      path,
+      pathProp,
       currentCollection,
       options.namespace,
       userPersonalCollectionId,
