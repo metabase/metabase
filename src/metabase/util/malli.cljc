@@ -117,10 +117,15 @@
 #?(:clj
    (defn validate-throw
      "Returns the value if it matches the schema, else throw an exception."
-     [schema value]
-     (if-not (mc/validate schema value)
-       (throw (ex-info "Value does not match schema" {:error (explain schema value)}))
-       value)))
+     [schema-or-validator value]
+     (let [is-validator? (fn? schema-or-validator)]
+      (if-not ((if is-validator?
+                   schema-or-validator
+                   (mc/validator schema-or-validator))
+               value)
+        (throw (ex-info "Value does not match schema" (when-not is-validator?
+                                                        {:error (explain schema-or-validator value)})))
+        value))))
 
 (core/defn map-schema-assoc
   "Returns a new schema that is the same as map-schema, but with the key k associated with the value v.

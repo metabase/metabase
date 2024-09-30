@@ -7,6 +7,7 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [malli.core :as mc]
    [malli.error :as me]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -380,7 +381,8 @@
    :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
 
 (def ^{:arglists '([s])} ^:private validate-cron-string
-  (partial mu/validate-throw u.cron/CronScheduleString))
+  (let [validator (mc/validator u.cron/CronScheduleString)]
+   (partial mu/validate-throw validator)))
 
 (def transform-cron-string
   "Transform for encrypted json."
