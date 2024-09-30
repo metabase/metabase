@@ -356,11 +356,12 @@
 (defn- execution-metrics-sql []
   (let [thirty-days-ago (case (db/db-type)
                           :postgres "CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - INTERVAL '30 days'"
-                          :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP AT TIME ZONE 'UTC')"
-                          :mysql    "UTC_TIMESTAMP() - INTERVAL 30 DAY")
+                          :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP)"
+                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")
         started-at      (case (db/db-type)
-                          (:postgres :h2) "started_at AT TIME ZONE 'UTC'"
-                          :mysql          "CONVERT_TZ(started_at, @@session.time_zone, '+00.00'")
+                          :postgres "started_at AT TIME ZONE 'UTC'"
+                          :h2       "started_at"
+                          :mysql    "started_at")
         timestamp-where (str started-at " > " thirty-days-ago)]
     (str/join
      "\n"
