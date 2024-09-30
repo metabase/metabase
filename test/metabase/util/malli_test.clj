@@ -56,4 +56,8 @@
 (deftest validate-throw-test
   (testing "with a schema"
     (is (= {:a 1 :b "b"} (mu/validate-throw [:map [:a :int] [:b :string]] {:a 1 :b "b"})))
-    (is (thrown-with-msg? Exception #"Value does not match schema" (mu/validate-throw [:map [:a :int] [:b :string]] "1")))))
+    (is (thrown-with-msg? Exception #"Value does not match schema" (mu/validate-throw [:map [:a :int] [:b :string]] "1"))))
+  (testing "with a validator"
+    (let [map-validator (mc/validator [:map [:a :int] [:b :string]])]
+      (is (= {:a 1 :b "b"} (mu/validate-throw map-validator {:a 1 :b "b"}))
+          (is (thrown-with-msg? Exception #"Value does not match schema" (mu/validate-throw map-validator "1")))))))
