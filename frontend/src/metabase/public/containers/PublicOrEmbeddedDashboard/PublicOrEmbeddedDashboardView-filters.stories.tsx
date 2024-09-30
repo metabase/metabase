@@ -59,7 +59,6 @@ export default {
 };
 
 function ReduxDecorator(Story: StoryFn, context: StoryContext) {
-  // @ts-expect-error -- custom prop to support non JSON-serializable value as args
   const parameterType: ParameterType = context.args.parameterType;
   const initialState = createMockState({
     settings: createMockSettingsState({
