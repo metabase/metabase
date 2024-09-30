@@ -1,7 +1,6 @@
 import type React from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetDashboardQuery } from "metabase/api";
 import {
   AdHocLeftSideRoot,
   AdHocViewHeading,
@@ -15,7 +14,6 @@ import type Question from "metabase-lib/v1/Question";
 
 import { QuestionDataSource } from "../QuestionDataSource";
 import { QuestionDescription } from "../QuestionDescription";
-import { DashboardSaveLocation } from "../DashboardSaveLocation";
 
 interface AdHocQuestionLeftSideProps {
   question: Question;
@@ -46,11 +44,6 @@ export function AdHocQuestionLeftSide(
     }
   };
 
-  const saveToDashboardId = question.dashboardId();
-  const { data: saveToDashboard } = useGetDashboardQuery(
-    saveToDashboardId ? { id: saveToDashboardId } : skipToken,
-  );
-
   return (
     <AdHocLeftSideRoot>
       <ViewHeaderMainLeftContentContainer>
@@ -76,9 +69,6 @@ export function AdHocQuestionLeftSide(
             isObjectDetail={isObjectDetail}
             subHead
           />
-        )}
-        {saveToDashboard && (
-          <DashboardSaveLocation dashboardName={saveToDashboard.name} />
         )}
       </ViewHeaderLeftSubHeading>
     </AdHocLeftSideRoot>
