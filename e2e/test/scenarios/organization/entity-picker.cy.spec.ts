@@ -51,6 +51,7 @@ describe("scenarios > organization > entity picker", () => {
   describe("data picker", () => {
     describe("tables", () => {
       it("should select a table from local search results", () => {
+        cy.signInAsNormalUser();
         startNewQuestion();
         entityPickerModal().within(() => {
           entityPickerModalTab("Tables").click();
@@ -65,6 +66,7 @@ describe("scenarios > organization > entity picker", () => {
       });
 
       it("should select a table from global search results", () => {
+        cy.signInAsNormalUser();
         startNewQuestion();
         entityPickerModal().within(() => {
           entityPickerModalTab("Tables").click();
@@ -265,6 +267,23 @@ describe("scenarios > organization > entity picker", () => {
   });
 
   describe("collection picker", () => {
+    it("should select a collection from local search results", () => {
+      cy.signInAsNormalUser();
+      visitQuestion(ORDERS_QUESTION_ID);
+      openQuestionActions();
+      popover().findByText("Move").click();
+
+      entityPickerModal().within(() => {
+        enterSearchText({
+          text: "first",
+          placeholder: "Search this collection or everywhere…",
+        });
+        localSearchTab("Our analytics").should("be.checked");
+        cy.findByText("First collection").click();
+        cy.button("Move").click();
+      });
+    });
+
     it("should search for collections for a normal user", () => {
       createTestCollections();
       cy.signInAsNormalUser();
