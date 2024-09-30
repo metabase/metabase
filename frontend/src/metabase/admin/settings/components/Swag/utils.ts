@@ -4,7 +4,7 @@ export const isSwagEnabled = (version?: string) => {
   }
 
   const CUTOFF_DATE = new Date("2024-10-01");
-  const versionRegex = /v\d+\.51\.\d+-RC/;
+  const versionRegex = /rc/i;
 
   if (!version.match(versionRegex)) {
     return false;
