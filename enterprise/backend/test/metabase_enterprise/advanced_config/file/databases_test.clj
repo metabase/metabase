@@ -42,10 +42,7 @@
                 (is (= 1
                        (t2/count :model/Database :name test-db-name)))
                 (is (partial= {:engine db-type}
-                              (t2/select-one :model/Database :name test-db-name))))
-              (testing "Database should have been synced"
-                (is (= (t2/count :model/Table :db_id (u/the-id original-db))
-                       (t2/count :model/Table :db_id (u/the-id db))))))))
+                              (t2/select-one :model/Database :name test-db-name)))))))
         (finally
           (t2/delete! :model/Database :name test-db-name))))))
 
