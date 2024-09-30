@@ -5,7 +5,25 @@
    [metabase.models.view-log :as view-log]
    [toucan2.core :as t2]))
 
-;; collection events
+#_{:clj-kondo/ignore [:unused-private-var]}
+(defn- with-hydrate
+  "Given a malli entry schema of a map, return a new entry schema with an additional option
+  to hydrate information when sending system event notifications.
+
+    (events.notification/hydrate! [:map
+                                    (-> [:user_id :int] (with-hydrate :user [:model/User :email]))]
+                                  {:user_id 1})
+    ;; => {:user_id 1
+           :user    {:email \"ngoc@metabase.com\"}}"
+  [entry-schema k model]
+  (assert (#{2 3} (count entry-schema)) "entry-schema must have 2 or 3 elements")
+  (let [[entry-key option schema] (if (= 2 (count entry-schema))
+                                    [(first entry-schema) {} (second entry-schema)]
+                                    entry-schema)]
+    [entry-key (assoc option :hydrate {:key   k
+                                       :model model})
+     schema]))
+
 (let [default-schema (mc/schema
                       [:map {:closed true}
                        [:user-id  pos-int?]

@@ -3,10 +3,12 @@
    [clojure.test :refer :all]
    [metabase.events :as events]
    [metabase.events.notification :as events.notification]
+   [metabase.events.schema :as events.schema]
    [metabase.models.notification :as models.notification]
    [metabase.notification.core :as notification]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (def supported-topics @#'events.notification/supported-topics)
 
@@ -75,3 +77,39 @@
                   :settings    {:application-name "Metabase Test"
                                 :site-name        "Metabase Test"}}
                  (#'events.notification/enriched-event-info :event/user-joined event-info))))))))
+
+(def user-hydra-model [:model/User :id :first_name])
+
+(deftest hydrate-event-notifcation-test
+  (doseq [[context schema value expected]
+          [["single map"
+            [:map
+             (-> [:user_id :int] (#'events.schema/with-hydrate :user user-hydra-model))]
+            {:user_id (mt/user->id :rasta)}
+            {:user_id (mt/user->id :rasta)
+             :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
+           ["seq of maps"
+            [:sequential
+             [:map
+              (-> [:user_id :int] (#'events.schema/with-hydrate :user user-hydra-model))]]
+            [{:user_id (mt/user->id :rasta)}
+             {:user_id (mt/user->id :crowberto)}]
+            [{:user_id (mt/user->id :rasta)
+              :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}
+             {:user_id (mt/user->id :crowberto)
+              :user    (t2/select-one user-hydra-model (mt/user->id :crowberto))}]]
+           ["ignore keys that don't need hydration"
+            [:map
+             (-> [:user_id :int] (#'events.schema/with-hydrate :user user-hydra-model))
+             [:topic   [:= :user-joined]]]
+            {:user_id (mt/user->id :rasta)
+             :topic   :user-joined}
+            {:user_id (mt/user->id :rasta)
+             :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
+           ["respect the options"
+            [:map
+             (-> [:user_id {:optional true} :int] (#'events.schema/with-hydrate :user user-hydra-model))]
+            {}
+            {}]]]
+    (testing context
+      (= expected (#'events.notification/hydrate! schema value)))))
