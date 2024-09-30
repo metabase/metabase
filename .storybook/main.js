@@ -7,7 +7,7 @@ const path = require("path");
 const isEmbeddingSDK = process.env.IS_EMBEDDING_SDK === "true";
 
 const mainAppStories = [
-  "../frontend/**/*.stories.mdx",
+  "../frontend/**/*.mdx",
   "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
 ];
 
