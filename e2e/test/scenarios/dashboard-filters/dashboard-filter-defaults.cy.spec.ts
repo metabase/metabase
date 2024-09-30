@@ -56,7 +56,7 @@ describe("scenarios > dashboard > filters > reset", () => {
       questionDetails: QUESTION,
       dashboardDetails: DASHBOARD,
     }).then(({ body: dashboardCard }) => {
-      const { card_id, dashboard_id } = dashboardCard;
+      const { id, card_id, dashboard_id } = dashboardCard;
 
       cy.editDashboardCard(dashboardCard, {
         parameter_mappings: [
@@ -72,6 +72,8 @@ describe("scenarios > dashboard > filters > reset", () => {
           },
         ],
       }).then(() => {
+        cy.wrap(id).as("dashCardId");
+        cy.wrap(dashboard_id).as("dashboardId");
         visitDashboard(dashboard_id);
       });
     });
@@ -107,14 +109,13 @@ describe("scenarios > dashboard > filters > reset", () => {
     filterWidget().contains("Filter One").should("be.visible");
     filterWidget().contains("Foo").should("be.visible");
 
-    cy.wait(1000);
-
-    cy.findByLabelText("Edit dashboard").click();
-    cy.wait("@dashcardQuery65");
-
-    cy.findByLabelText("Edit dashboard").click();
-    // eslint-disable-next-line no-unscoped-text-selectors
-    cy.findByText("You're editing this dashboard.");
+    cy.get<number>("@dashCardId").then(dashcardId => {
+      cy.wait(`@dashcardQuery${dashcardId}`);
+    });
+    cy.get<number>("@dashboardId").then(dashboardId => {
+      visitDashboard(dashboardId);
+    });
+    editDashboard();
 
     openFilterOptions("Filter One");
     sidebar().within(() => {
@@ -132,8 +133,14 @@ describe("scenarios > dashboard > filters > reset", () => {
     filterWidget().contains("Quu").should("be.visible");
     filterWidget().contains("Foo").should("be.visible");
 
+    // Workaround for the stresstest because the recently used filter values
+    // are not cleared when calling `restore`
     clearFilterWidget(0);
     clearFilterWidget(1);
+
+    cy.get<number>("@dashCardId").then(dashcardId => {
+      cy.wait(`@dashcardQuery${dashcardId}`);
+    });
   });
 });
 
