@@ -93,12 +93,12 @@ export function diagnose({
     mismatchedParentheses === 1
       ? t`Expecting a closing parenthesis`
       : mismatchedParentheses > 1
-      ? t`Expecting ${mismatchedParentheses} closing parentheses`
-      : mismatchedParentheses === -1
-      ? t`Expecting an opening parenthesis`
-      : mismatchedParentheses < -1
-      ? t`Expecting ${-mismatchedParentheses} opening parentheses`
-      : null;
+        ? t`Expecting ${mismatchedParentheses} closing parentheses`
+        : mismatchedParentheses === -1
+          ? t`Expecting an opening parenthesis`
+          : mismatchedParentheses < -1
+            ? t`Expecting ${-mismatchedParentheses} opening parentheses`
+            : null;
 
   if (message) {
     return { message };

@@ -176,7 +176,7 @@
                    :perms/manage-database :no}}}
                 (data-perms/data-permissions-graph :group-id group-id :db-id db-id)))))))))
 
-(deftest hydrate-users-tests
+(deftest hydrate-members-tests
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}         {}
                  :model/PermissionsGroup           {group-id-2 :id}         {}
                  :model/User                       {user-1-g1 :id}          {:first_name "a"}
@@ -187,7 +187,7 @@
                  :model/PermissionsGroupMembership _                        {:user_id user-2-g1 :group_id group-id-1}
                  :model/PermissionsGroupMembership _                        {:user_id user-3-g1-inacitve :group_id group-id-1}
                  :model/PermissionsGroupMembership _                        {:user_id user-1-g2 :group_id group-id-2}]
-    (testing "hydrate users only return active users for each group"
+    (testing "hydrate members only return active users for each group"
       (is (=? [[{:id user-1-g1}
                 {:id user-2-g1}]
                [{:id user-1-g2}]]

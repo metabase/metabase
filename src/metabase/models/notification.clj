@@ -4,6 +4,7 @@
   - more than one subscriptions
   - more than one handlers where each handler has a channel, optionally a template, and more than one recpients."
   (:require
+   [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -105,17 +106,16 @@
    notification-handlers
    k
    #(group-by :notification_handler_id
-              (let [recipients (t2/select :model/NotificationRecipient :notification_handler_id [:in (map :id notification-handlers)])
+              (let [recipients       (t2/select :model/NotificationRecipient
+                                                :notification_handler_id [:in (map :id notification-handlers)])
                     type->recipients (group-by :type recipients)]
                 (-> type->recipients
-                    (update :notification-recipient/user
-                            (fn [recipients]
-                              (when (seq recipients)
-                                (t2/hydrate recipients :user))))
-                    (update :notification-recipient/group
-                            (fn [recipients]
-                              (when (seq recipients)
-                                (t2/hydrate recipients [:permissions_group :members]))))
+                    (m/update-existing :notification-recipient/user
+                                       (fn [recipients]
+                                         (t2/hydrate recipients :user)))
+                    (m/update-existing :notification-recipient/group
+                                       (fn [recipients]
+                                         (t2/hydrate recipients [:permissions_group :members])))
                     vals
                     flatten)))
    :id

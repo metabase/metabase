@@ -6,10 +6,12 @@
   (:require
    [clojure.string :as str]
    [metabase.search.config :as search.config]
-   [metabase.search.impl :as search.impl]
+   [metabase.search.legacy :as search.legacy]
    [metabase.search.postgres.index :as search.index]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
+
+(def ^:private insert-batch-size 50)
 
 (def ^:private model-rankings
   (zipmap search.config/models-search-order (range)))
@@ -24,6 +26,9 @@
        (map m)
        (str/join " ")))
 
+(defn- display-data [m]
+  (select-keys m [:name :display_name :description]))
+
 (defn- ->entry [m]
   (-> m
       (select-keys
@@ -35,12 +40,14 @@
         :table_id])
       (update :archived boolean)
       (assoc
+       :display_data    (display-data m)
+       :legacy_input    m
        :searchable_text (searchable-text m)
        :model_rank      (model-rank (:model m)))))
 
 (defn- search-items-reducible []
   (-> {:search-string      nil
-       :models             search.config/all-models
+       :models             (disj search.config/all-models "indexed-entity")
        ;; we want to see everything
        :is-superuser?      true
        ;; irrelevant, as we're acting as a super user
@@ -50,7 +57,7 @@
        :archived?          nil
        ;; only need this for display data
        :model-ancestors?   false}
-      search.impl/full-search-query
+      search.legacy/full-search-query
       (dissoc :limit)
       t2/reducible-query))
 
@@ -62,5 +69,6 @@
        (eduction
         (comp
          (map t2.realize/realize)
-         (map ->entry)))
-       (run! search.index/update!)))
+         (map ->entry)
+         (partition-all insert-batch-size)))
+       (run! search.index/batch-update!)))

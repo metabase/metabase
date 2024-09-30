@@ -71,6 +71,7 @@ const propTypes = {
   isResultDirty: PropTypes.bool.isRequired,
   isRunning: PropTypes.bool.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
+  runDirtyQuestionQuery: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
   setMetadataDiff: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
@@ -183,8 +184,8 @@ function getColumnTabIndex(columnIndex, focusedFieldIndex) {
   return columnIndex === focusedFieldIndex
     ? EDITOR_TAB_INDEXES.FOCUSED_FIELD
     : columnIndex > focusedFieldIndex
-    ? EDITOR_TAB_INDEXES.NEXT_FIELDS
-    : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
+      ? EDITOR_TAB_INDEXES.NEXT_FIELDS
+      : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
 }
 
 function DatasetEditor(props) {
@@ -201,6 +202,7 @@ function DatasetEditor(props) {
     isDirty: isModelQueryDirty,
     isResultDirty,
     setQueryBuilderMode,
+    runDirtyQuestionQuery,
     runQuestionQuery,
     setDatasetEditorTab,
     setMetadataDiff,
@@ -327,6 +329,7 @@ function DatasetEditor(props) {
   const handleCancelEdit = () => {
     setShowCancelEditWarning(false);
     cancelQuestionChanges();
+    runDirtyQuestionQuery();
     setQueryBuilderMode("view");
   };
 

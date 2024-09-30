@@ -351,9 +351,8 @@ function restoreParameterMappingsIfNeeded(
     setParamType(parameterToRestore, parameterToRestore.type, sectionId),
   );
 
-  const parameterMappingsBeforeEditing = getParameterMappingsBeforeEditing(
-    getState(),
-  );
+  const parameterMappingsBeforeEditing =
+    getParameterMappingsBeforeEditing(getState());
   const parameterMappings = parameterMappingsBeforeEditing[parameterId];
 
   if (!parameterMappings) {
@@ -472,6 +471,7 @@ export const setParameterDefaultValue = createThunkAction(
       ...parameter,
       default: defaultValue,
     }));
+    dispatch(setParameterValue(parameterId, defaultValue));
     return { id: parameterId, defaultValue };
   },
 );
@@ -538,20 +538,21 @@ export const SET_PARAMETER_IS_MULTI_SELECT =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
 export const setParameterIsMultiSelect = createThunkAction(
   SET_PARAMETER_IS_MULTI_SELECT,
-  (parameterId: ParameterId, isMultiSelect: boolean) => (dispatch, getState) => {
-    updateParameter(dispatch, getState, parameterId, parameter => ({
-      ...parameter,
-      isMultiSelect: isMultiSelect,
-      default:
-        !isMultiSelect &&
-        Array.isArray(parameter.default) &&
-        parameter.default.length > 1
-          ? [parameter.default[0]]
-          : parameter.default,
-    }));
+  (parameterId: ParameterId, isMultiSelect: boolean) =>
+    (dispatch, getState) => {
+      updateParameter(dispatch, getState, parameterId, parameter => ({
+        ...parameter,
+        isMultiSelect: isMultiSelect,
+        default:
+          !isMultiSelect &&
+          Array.isArray(parameter.default) &&
+          parameter.default.length > 1
+            ? [parameter.default[0]]
+            : parameter.default,
+      }));
 
-    return { id: parameterId, isMultiSelect };
-  },
+      return { id: parameterId, isMultiSelect };
+    },
 );
 
 export const SET_PARAMETER_TEMPORAL_UNITS =

@@ -3,8 +3,11 @@
    [compojure.core :refer [GET]]
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.public-settings :as public-settings]
    [metabase.search :as search]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.task :as task]
+   [metabase.task.search-index :as task.search-index]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
@@ -36,6 +39,24 @@
                respond
                raise))))
 
+(api/defendpoint POST "/force-reindex"
+  "If fulltext search is enabled, this will trigger a synchronous reindexing operation."
+  []
+  (api/check-superuser)
+  (cond
+    (not (public-settings/experimental-fulltext-search-enabled))
+    {:status-code 501, :message "Search index is not enabled."}
+
+    (search/supports-index?)
+    (do
+      (if (task/job-exists? task.search-index/job-key)
+        (task/trigger-now! task.search-index/job-key)
+        (search/reindex!))
+      {:status-code 200})
+
+    :else
+    {:status-code 501, :message "Search index is not supported for this installation."}))
+
 ;; TODO maybe deprecate this and make it as a parameter in `GET /api/search/models`
 ;; so we don't have to keep the arguments between 2 API in sync
 (api/defendpoint GET "/models"
@@ -51,7 +72,7 @@
    search_engine       [:maybe string?]
    search_native_query [:maybe true?]
    verified            [:maybe true?]}
-  (search/query-model-set
+  (search/model-set
    (search/search-context {:archived                            archived
                            :created-at                          created_at
                            :created-by                          (set (u/one-or-many created_by))

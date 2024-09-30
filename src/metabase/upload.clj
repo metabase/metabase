@@ -422,18 +422,21 @@
         case-statement      (into [:case]
                                   (mapcat identity)
                                   (for [[n display-name] field->display-name]
-                                    [[:= [:lower :name] n] display-name]))]
+                                    [[:= [:lower :name] n]
+                                     [:case
+                                      ;; Only update the display name if it still matches the automatic humanization.
+                                      [:= :display_name (humanization/name->human-readable-name n)] display-name
+                                      ;; Otherwise, it could have been set manually, so leave it as is.
+                                      true                                                          :display_name]]))]
     ;; Using t2/update! results in an invalid query for certain versions of PostgreSQL
     ;; SELECT * FROM \"metabase_field\" WHERE \"id\" AND (\"table_id\" = ?) AND ...
     ;;                                        ^^^^^
     ;; ERROR: argument of AND must be type boolean, not type integer
     (t2/query {:update (t2/table-name :model/Field)
-               :set {:display_name case-statement}
-               :where [:and
-                       [:= :table_id table-id]
-                       [:in [:lower :name] (keys field->display-name)]
-                       ;; Only replace display names that have not been overridden already.
-                       [:= [:lower :name] [:lower :display_name]]]})))
+               :set    {:display_name case-statement}
+               :where  [:and
+                        [:= :table_id table-id]
+                        [:in [:lower :name] (keys field->display-name)]]})))
 
 (defn- uploads-enabled? []
   (some? (:db_id (public-settings/uploads-settings))))
@@ -633,7 +636,7 @@
                                (assoc stats
                                       :event    :csv-upload-successful
                                       :model-id (:id card)))
-        card)
+        (assoc card :table-id (:id table)))
       (catch Throwable e
         (snowplow/track-event! ::snowplow/csvupload (assoc (fail-stats filename file)
                                                            :event :csv-upload-failed))

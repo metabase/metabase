@@ -1,13 +1,18 @@
 (ns metabase.search.postgres.core
   (:require
+   [cheshire.core :as json]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.api.common :as api]
    [metabase.search.config :as search.config]
-   [metabase.search.impl :as search.impl]
+   [metabase.search.legacy :as search.legacy]
    [metabase.search.postgres.index :as search.index]
    [metabase.search.postgres.ingestion :as search.ingestion]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time OffsetDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (defn- user-params [search-ctx]
   (cond
@@ -26,25 +31,25 @@
      :current-user-perms #{"/"}}))
 
 (defn- in-place-query [{:keys [models search-term archived?] :as search-ctx}]
-  (search.impl/full-search-query
+  (search.legacy/full-search-query
    (merge
     (user-params search-ctx)
-    {:search-string      search-term
-     :models             (or models
-                             (if api/*current-user-id*
-                               search.config/all-models
-                               ;; For REPL convenience, skip these models as
-                               ;; they require the user to be initialized.
-                               (disj search.config/all-models "indexed-entity")))
-     :archived?          archived?
-     :model-ancestors?   true})))
+    {:search-string    search-term
+     :models           (or models
+                           (if api/*current-user-id*
+                             search.config/all-models
+                             ;; For REPL convenience, skip these models as
+                             ;; they require the user to be initialized.
+                             (disj search.config/all-models "indexed-entity")))
+     :archived?        archived?
+     :model-ancestors? true})))
 
-(defn hybrid
-  "Use the index for appling the search string, but rely on the legacy code path for rendering
+(defn- hybrid
+  "Use the index for using the search string, but rely on the legacy code path for rendering
   the display data, applying permissions, additional filtering, etc.
 
   NOTE: this is less efficient than legacy search even. We plan to replace it with something
-  less feature complete, but much faster."
+  less feature complete but much faster."
   [search-term & {:as search-ctx}]
   (when-not @#'search.index/initialized?
     (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
@@ -59,7 +64,7 @@
       (sql/format {:quoted true})
       t2/reducible-query))
 
-(defn hybrid-multi
+(defn- hybrid-multi
   "Perform multiple legacy searches to see if its faster. Perverse!"
   [search-term & {:as search-ctx}]
   (when-not @#'search.index/initialized?
@@ -78,18 +83,104 @@
                      (t2/query <>)
                      (filter (comp (set ids) :id) <>)))))))
 
+(defn- parse-datetime [s]
+  (when s
+    (OffsetDateTime/parse s)))
+
+(defn- minimal
+  "Search via index, and return potentially stale information, without applying filters or
+  restricting to collections we have access to."
+  [search-term & {:as _search-ctx}]
+  (when-not @#'search.index/initialized?
+    (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
+                    {:search-engine :postgres})))
+  (->> (assoc (search.index/search-query search-term) :select [:legacy_input])
+       (t2/query)
+       (map :legacy_input)
+       (map #(json/parse-string % keyword))
+       (map #(-> %
+                 (update :created_at parse-datetime)
+                 (update :updated_at parse-datetime)
+                 (update :last_edited_at parse-datetime)))))
+
+;; filters:
+;; - the obvious ones in the ui
+;; - db-id
+;; - personal collection (include / exclude), including sub
+
+(defn- minimal-with-perms
+  "Search via index, and return potentially stale information, without applying filters,
+  but applying permissions. Does not perform ranking."
+  [search-term & {:as search-ctx}]
+  (when-not @#'search.index/initialized?
+    (throw (ex-info "Search index is not initialized. Use [[init!]] to ensure it exists."
+                    {:search-engine :postgres})))
+  (->> (search.legacy/add-collection-join-and-where-clauses
+        (assoc (search.index/search-query search-term)
+               :select [:legacy_input])
+        ;; we just need this to not be "collection"
+        "__search_index__"
+        search-ctx)
+       (t2/query)
+       (map :legacy_input)
+       (map #(json/parse-string % keyword))
+       (map #(-> %
+                 (update :created_at parse-datetime)
+                 (update :updated_at parse-datetime)
+                 (update :last_edited_at parse-datetime)))))
+
+(def ^:private default-engine hybrid-multi)
+
+(defn- search-fn [search-engine]
+  (case search-engine
+    :search.engine/hybrid             hybrid
+    :search.engine/hybrid-multi       hybrid-multi
+    :search.engine/minimal            minimal
+    :search.engine/minimal-with-perms minimal-with-perms
+    :search.engine/fulltext           default-engine
+    default-engine))
+
 (defn search
   "Return a reducible-query corresponding to searching the entities via a tsvector."
   [search-ctx]
-  (hybrid-multi (:search-string search-ctx)
-                (dissoc search-ctx :search-string)))
+  (let [f (search-fn (:search-engine search-ctx))]
+    (f (:search-string search-ctx)
+       (dissoc search-ctx :search-string))))
+
+(defn model-set
+  "Return a set of the models which have at least one result for the given query.
+  TODO: consider filters and permissions."
+  [search-ctx]
+  (set
+   (filter
+    ;; TODO use a single query
+    (fn [m]
+      (t2/exists? :search_index
+                  (-> (search.index/search-query (:search-string search-ctx))
+                      (sql.helpers/where [:= :model m]))))
+    ;; TODO use only the models that apply to the given filters
+    (:models search-ctx search.config/all-models))))
+
+(defn no-scoring
+  "Do no scoring, whatsoever"
+  [result _scoring-ctx]
+  {:score  1
+   :result (assoc result :all-scores [] :relevant-scores [])})
 
 (defn init!
   "Ensure that the search index exists, and has been populated with all the entities."
   [& [force-reset?]]
-  (when (or force-reset? (not (#'search.index/exists? @#'search.index/active-table)))
-    (search.index/reset-index!))
+  (search.index/ensure-ready! force-reset?)
   (search.ingestion/populate-index!))
 
+(defn reindex!
+  "Populate a new index"
+  []
+  (search.index/ensure-ready! false)
+  (search.index/maybe-create-pending!)
+  (search.ingestion/populate-index!)
+  (search.index/activate-pending!))
+
 (comment
-  (init! true))
+  (init! true)
+  (t2/select-fn-vec :legacy_input :search_index))
