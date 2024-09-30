@@ -176,7 +176,7 @@
         ctype                     (if (:multipart (meta handler-var))
                                     "multipart/form-data"
                                     "application/json")]
-    ;; summary is the string in the sidebar of rapidoc
+    ;; summary is the string in the sidebar of Scalar
     {method (cond-> {:summary     (str (u/upper-case-en (name method)) " " full-path)
                      :description (or (:orig-doc data)
                                       (:doc data))
