@@ -43,7 +43,7 @@ export const ModelFilterControls = ({
           p="sm"
           lh={0}
           variant="subtle"
-          color="text-dark"
+          color="var(--mb-color-text-dark)"
           pos="relative"
           aria-label={t`Filters`}
         >
