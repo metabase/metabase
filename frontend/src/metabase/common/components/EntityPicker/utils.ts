@@ -116,7 +116,7 @@ export const getSearchModels = <
   });
 };
 
-export const getFolderModels = <
+export const getSearchFolderModels = <
   Id extends SearchResultId,
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
@@ -124,6 +124,17 @@ export const getFolderModels = <
   tabs: EntityPickerTab<Id, Model, Item>[],
 ): Model[] => {
   return tabs.flatMap(({ folderModels }) => folderModels);
+};
+
+export const isSearchFolder = <
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>(
+  folder: Item,
+  folderModels: Model[],
+) => {
+  return folder.id !== "personal" && folderModels.includes(folder.model);
 };
 
 const isSearchModel = (model: string): model is SearchModel => {

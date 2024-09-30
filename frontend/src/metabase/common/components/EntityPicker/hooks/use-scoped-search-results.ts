@@ -130,6 +130,7 @@ const tablesToSearchResults = (
   return tables.map(table => ({
     ...table,
     id: Number(table.id),
+    name: table.display_name,
     model: "table",
     database_name: dbName ?? null,
     table_schema: table.schema,

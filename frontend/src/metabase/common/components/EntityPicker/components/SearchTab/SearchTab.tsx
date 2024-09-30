@@ -65,7 +65,7 @@ export const SearchTab = <
           </Flex>
 
           {!isLoading && (
-            <div>
+            <div data-testid="entity-picker-search-result-count">
               {ngettext(
                 msgid`${searchResults.length} result`,
                 `${searchResults.length} results`,
@@ -99,7 +99,7 @@ const getFolderName = <
 >(
   folder: Item,
 ) => {
-  if (isSchemaItem(folder) && !folder.name) {
+  if (isSchemaItem(folder) && (!folder.name || folder.isOnlySchema)) {
     return folder.dbName;
   }
 

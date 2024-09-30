@@ -86,10 +86,6 @@ export const DashboardPickerModal = ({
     onNewDashboard: (item: DashboardPickerItem) => void;
   }>();
 
-  const handleInit = useCallback((item: DashboardPickerItem) => {
-    setSelectedItem(current => current ?? item);
-  }, []);
-
   const handleItemSelect = useCallback(
     (item: DashboardPickerItem) => {
       if (options.hasConfirmButtons) {
@@ -141,7 +137,7 @@ export const DashboardPickerModal = ({
           path={dashboardsPath}
           ref={pickerRef}
           shouldDisableItem={shouldDisableItem}
-          onInit={handleInit}
+          onInit={onItemSelect}
           onItemSelect={onItemSelect}
           onPathChange={setDashboardsPath}
         />

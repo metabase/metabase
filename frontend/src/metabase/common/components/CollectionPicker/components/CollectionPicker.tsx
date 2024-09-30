@@ -163,7 +163,9 @@ export const CollectionPickerInner = (
 
   useDeepCompareEffect(
     function setInitialPath() {
-      if (currentCollection?.id) {
+      // do not overwrite the previously selected item when the user switches
+      // tabs; in this case the component is unmounted and this hook runs again
+      if (!pathProp && currentCollection?.id) {
         const newPath = getStateFromIdPath({
           idPath: getCollectionIdPath(
             {
@@ -187,6 +189,7 @@ export const CollectionPickerInner = (
       }
     },
     [
+      pathProp,
       currentCollection,
       options.namespace,
       userPersonalCollectionId,

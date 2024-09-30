@@ -28,10 +28,11 @@ import type {
 } from "../../types";
 import {
   computeInitialTabId,
-  getFolderModels,
+  getSearchFolderModels,
   getSearchInputPlaceholder,
   getSearchModels,
   getSearchTabText,
+  isSearchFolder,
 } from "../../utils";
 import { RecentsTab } from "../RecentsTab";
 import { SearchTab } from "../SearchTab";
@@ -126,7 +127,10 @@ export function EntityPickerModal<
       },
     );
   const searchModels = useMemo(() => getSearchModels(passedTabs), [passedTabs]);
-  const folderModels = useMemo(() => getFolderModels(passedTabs), [passedTabs]);
+  const folderModels = useMemo(
+    () => getSearchFolderModels(passedTabs),
+    [passedTabs],
+  );
   const [selectedTabId, setSelectedTabId] = useState<EntityPickerTabId>("");
   const previousTabId = usePreviousDistinct(selectedTabId);
   const [tabFolderState, setTabFolderState] = useState<
@@ -259,19 +263,29 @@ export function EntityPickerModal<
 
   const handleSelectItem = useCallback(
     (item: Item, tabId: EntityPickerTabId) => {
-      const isFolder = folderModels.includes(item.model);
-
-      if (isFolder && ![SEARCH_TAB_ID, RECENTS_TAB_ID].includes(tabId)) {
-        setTabFolderState(state => ({
-          ...state,
-          [tabId]: item,
-        }));
-        setSearchScope("folder");
+      if (tabId !== SEARCH_TAB_ID && tabId !== RECENTS_TAB_ID) {
+        if (isSearchFolder(item, folderModels)) {
+          setTabFolderState(state => ({ ...state, [tabId]: item }));
+          setSearchScope("folder");
+        } else {
+          setTabFolderState(state => ({ ...state, [tabId]: undefined }));
+          setSearchScope("everywhere");
+        }
       }
 
       onItemSelect(item);
     },
     [folderModels, onItemSelect],
+  );
+
+  const handleTabChange = useCallback(
+    (tabId: EntityPickerTabId) => {
+      setSelectedTabId(tabId);
+      if (tabId !== SEARCH_TAB_ID) {
+        setSearchScope(tabFolderState[tabId] ? "folder" : "everywhere");
+      }
+    },
+    [tabFolderState],
   );
 
   const handleQueryChange = useCallback(
@@ -280,7 +294,7 @@ export function EntityPickerModal<
 
       // automatically switch to search tab
       if (newSearchQuery) {
-        setSelectedTabId(SEARCH_TAB_ID);
+        handleTabChange(SEARCH_TAB_ID);
 
         if (!searchQuery) {
           setSearchScope(selectedFolder ? "folder" : "everywhere");
@@ -289,10 +303,17 @@ export function EntityPickerModal<
 
       // restore previous tab when clearing search while on search tab
       if (searchQuery && !newSearchQuery && selectedTabId === SEARCH_TAB_ID) {
-        setSelectedTabId(previousTabId ?? initialTabId);
+        handleTabChange(previousTabId ?? initialTabId);
       }
     },
-    [selectedFolder, searchQuery, selectedTabId, previousTabId, initialTabId],
+    [
+      selectedFolder,
+      searchQuery,
+      selectedTabId,
+      previousTabId,
+      initialTabId,
+      handleTabChange,
+    ],
   );
 
   useEffect(() => {
@@ -359,7 +380,7 @@ export function EntityPickerModal<
                 selectedTabId={selectedTabId}
                 tabs={tabs}
                 onItemSelect={handleSelectItem}
-                onTabChange={setSelectedTabId}
+                onTabChange={handleTabChange}
               />
             ) : (
               <SinglePickerView data-testid="single-picker-view">
