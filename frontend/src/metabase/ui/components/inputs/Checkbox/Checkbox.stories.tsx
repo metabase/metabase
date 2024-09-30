@@ -82,9 +82,7 @@ export default {
   argTypes,
 };
 
-export const Default = {
-  name: "Default",
-};
+export const Default = {};
 
 export const CheckboxGroup = {
   render: CheckboxGroupTemplate,
@@ -93,7 +91,6 @@ export const CheckboxGroup = {
 
 export const Label = {
   render: StateTemplate,
-  name: "Label",
 };
 
 export const LabelLeftPosition = {
@@ -106,7 +103,6 @@ export const LabelLeftPosition = {
 
 export const Description = {
   render: StateTemplate,
-  name: "Description",
 };
 
 export const DescriptionLeftPosition = {
@@ -119,7 +115,6 @@ export const DescriptionLeftPosition = {
 
 export const Stacked = {
   render: StateTemplate,
-  name: "Stacked",
   args: {
     variant: "stacked",
   },
