@@ -77,17 +77,14 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
-  name: "Default",
 };
 
 export const Sizes = {
   render: SizeTemplate,
-  name: "Sizes",
 };
 
 export const Underlined = {
   render: SizeTemplate,
-  name: "Underlined",
   args: {
     underline: true,
   },
@@ -95,7 +92,6 @@ export const Underlined = {
 
 export const Truncated = {
   render: TruncatedTemplate,
-  name: "Truncated",
   args: {
     truncate: true,
   },

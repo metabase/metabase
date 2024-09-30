@@ -67,12 +67,10 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
-  name: "Default",
 };
 
 export const Icons = {
   render: IconsTemplate,
-  name: "Icons",
 };
 
 export const VerticalOrientation = {
