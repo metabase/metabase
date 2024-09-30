@@ -677,30 +677,31 @@
 (deftest create-from-csv-offset-datetime-test
   (testing "Upload a CSV file with an offset datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-      (with-mysql-local-infile-on-and-off
-        (with-redefs [driver/db-default-timezone (constantly "Z")
-                      upload/current-database    (constantly (mt/db))]
-          (let [transpose  (fn [m] (apply mapv vector m))
-                [csv-strs expected] (transpose [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
-                                                ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
-                                                ["2022-01-01T12:00:00-07:30" "2022-01-01T19:30:00Z"]
-                                                ["2022-01-01T12:00:00Z"      "2022-01-01T12:00:00Z"]
-                                                ["2022-01-01T12:00:00-00:00" "2022-01-01T12:00:00Z"]
-                                                ["2022-01-01T12:00:00+07"    "2022-01-01T05:00:00Z"]
-                                                ["2022-01-01T12:00:00+07:00" "2022-01-01T05:00:00Z"]
-                                                ["2022-01-01T12:00:00+07:30" "2022-01-01T04:30:00Z"]
-                                                ["2022-01-01T12:00:00+0730"  "2022-01-01T04:30:00Z"]])]
-            (testing "Fields exists after sync"
-              (with-upload-table!
-                [table (create-from-csv-and-sync-with-defaults!
-                        :file (csv-file-with (into ["offset_datetime"] csv-strs)))]
-                (testing "Check the offset datetime column the correct base_type"
-                  (is (=? :type/DateTimeWithLocalTZ
-                          (t2/select-one-fn :base_type Field :%lower.name "offset_datetime" :table_id (:id table)))))
-                (let [position (column-position table "offset_datetime")
-                      values   (map #(nth % position) (rows-for-table table))]
-                  (is (= expected
-                         values)))))))))))
+      (when (driver/upload-type->database-type driver/*driver* :metabase.upload/offset-datetime)
+        (with-mysql-local-infile-on-and-off
+          (with-redefs [driver/db-default-timezone (constantly "Z")
+                        upload/current-database    (constantly (mt/db))]
+            (let [transpose  (fn [m] (apply mapv vector m))
+                  [csv-strs expected] (transpose [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
+                                                  ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
+                                                  ["2022-01-01T12:00:00-07:30" "2022-01-01T19:30:00Z"]
+                                                  ["2022-01-01T12:00:00Z"      "2022-01-01T12:00:00Z"]
+                                                  ["2022-01-01T12:00:00-00:00" "2022-01-01T12:00:00Z"]
+                                                  ["2022-01-01T12:00:00+07"    "2022-01-01T05:00:00Z"]
+                                                  ["2022-01-01T12:00:00+07:00" "2022-01-01T05:00:00Z"]
+                                                  ["2022-01-01T12:00:00+07:30" "2022-01-01T04:30:00Z"]
+                                                  ["2022-01-01T12:00:00+0730"  "2022-01-01T04:30:00Z"]])]
+              (testing "Fields exists after sync"
+                (with-upload-table!
+                  [table (create-from-csv-and-sync-with-defaults!
+                          :file (csv-file-with (into ["offset_datetime"] csv-strs)))]
+                  (testing "Check the offset datetime column the correct base_type"
+                    (is (=? :type/DateTimeWithLocalTZ
+                            (t2/select-one-fn :base_type Field :%lower.name "offset_datetime" :table_id (:id table)))))
+                  (let [position (column-position table "offset_datetime")
+                        values   (map #(nth % position) (rows-for-table table))]
+                    (is (= expected
+                           values))))))))))))
 
 (deftest create-from-csv-boolean-test
   (testing "Upload a CSV file"
@@ -827,7 +828,7 @@
             (testing "Check the data was uploaded into the table correctly"
               (is (= (header-with-auto-pk ["Cost $" "Cost %" "Cost #"])
                      (column-display-names-for-table table)))
-              (is (= [@#'upload/auto-pk-column-name "cost__" "cost___2" "cost___3"]
+              (is (= (header-with-auto-pk ["cost__" "cost___2" "cost___3"])
                      (column-names-for-table table))))))))))
 
 (deftest create-from-csv-bool-and-int-test
@@ -863,13 +864,14 @@
                                           "9000000000,Razor Crest,Din Djarin,Spear"])
                     :auxiliary-sync-steps :synchronous))]
           (testing "Check the data was uploaded into the table correctly"
-            (is (= [@#'upload/auto-pk-column-name "id" "ship" "name" "weapon"]
+            (is (= (header-with-auto-pk ["id" "ship" "name" "weapon"])
                    (column-names-for-table table)))
             (is (=? {:name                       #"(?i)id"
                      :semantic_type              :type/PK
                      :base_type                  :type/BigInteger
                      :database_is_auto_increment false}
-                    (t2/select-one Field :database_position 1 :table_id (:id table))))))))))
+                    (let [pos (if (#'upload/auto-pk-column? driver/*driver* (mt/db)) 1 0)]
+                      (t2/select-one Field :database_position pos :table_id (:id table)))))))))))
 
 (deftest create-from-csv-auto-pk-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :upload-with-auto-pk)
@@ -1175,7 +1177,9 @@
                                 "size_mb"           3.910064697265625E-5
                                 "num_columns"       2
                                 "num_rows"          2
-                                "generated_columns" 1
+                                "generated_columns" (if (#'upload/auto-pk-column? driver/*driver* (mt/db))
+                                                      1
+                                                      0)
                                 "upload_seconds"    pos?}
                       :user-id (str (mt/user->id :rasta))}
                      (last (snowplow-test/pop-event-data-and-user-id!)))))
@@ -1211,7 +1215,9 @@
                                :model-id    pos?
                                :stats       {:num-rows          2
                                              :num-columns       2
-                                             :generated-columns 1
+                                             :generated-columns (if (#'upload/auto-pk-column? driver/*driver* (mt/db))
+                                                                  1
+                                                                  0)
                                              :size-mb           3.910064697265625E-5
                                              :upload-seconds    pos?}}}
                    (last-audit-event :upload-create)))))))))
@@ -1481,6 +1487,8 @@
                      ["_mb_row_id,id,extra 1, extra 2,name"]
                      nil
                      ["extra 1, extra 2"]
+                     ;; TODO note that the order of the fields is reversed
+                     ;; It would be better if they were alphabetical, or matched the order in the database / file.
                      (trim-lines "The CSV file is missing columns that are in the table:
                               - id
                               - name
@@ -1500,8 +1508,8 @@
                                   - name
 
                                   There are new columns in the CSV file that are not in the table:
-                                  - _mb_row_id
-                                  - extra_2"))}]
+                                  - extra_2
+                                  - _mb_row_id"))}]
               (with-upload-table!
                 [table (create-upload-table!
                         {:col->upload-type (ordered-map/ordered-map
@@ -1604,53 +1612,54 @@
 
 (deftest update-mb-row-id-csv-only-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (doseq [action (actions-to-test driver/*driver*)]
-      (testing (action-testing-str action)
-        (testing "If the table doesn't have _mb_row_id but the CSV does, ignore the CSV _mb_row_id but create the column anyway"
-          (with-upload-table!
-            [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                             :name vchar-type)
-                                          :rows             [["Obi-Wan Kenobi"]]})]
-            (let [csv-rows ["_MB-row ID,name" "1000,Luke Skywalker"]
-                  file     (csv-file-with csv-rows)]
-              (is (= {:row-count 1}
-                     (update-csv! action {:file file, :table-id (:id table)})))
-              ;; Only create auto-pk columns for drivers that supported uploads before auto-pk columns
-              ;; were introduced by metabase#36249. Otherwise we can assume that the table was created
-              ;; with an auto-pk column.
-              (if (driver/create-auto-pk-with-append-csv? driver/*driver*)
-                (do
-                  (testing "Check a _mb_row_id column was created"
-                    (is (= ["name" "_mb_row_id"]
-                           (column-names-for-table table))))
-                  (testing "Check a _mb_row_id column was sync'd"
-                    (is (=? {:semantic_type :type/PK
-                             :base_type     :type/BigInteger
-                             :name          "_mb_row_id"
-                             :display_name  "_mb_row_id"}
-                            (t2/select-one :model/Field :table_id (:id table) :name upload/auto-pk-column-name))))
-                  (testing "Check the data was uploaded into the table, but the _mb_row_id column values were ignored"
+    (when (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+      (doseq [action (actions-to-test driver/*driver*)]
+        (testing (action-testing-str action)
+          (testing "If the table doesn't have _mb_row_id but the CSV does, ignore the CSV _mb_row_id but create the column anyway"
+            (with-upload-table!
+              [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
+                                                               :name vchar-type)
+                                            :rows             [["Obi-Wan Kenobi"]]})]
+              (let [csv-rows ["_MB-row ID,name" "1000,Luke Skywalker"]
+                    file     (csv-file-with csv-rows)]
+                (is (= {:row-count 1}
+                       (update-csv! action {:file file, :table-id (:id table)})))
+                ;; Only create auto-pk columns for drivers that supported uploads before auto-pk columns
+                ;; were introduced by metabase#36249. Otherwise we can assume that the table was created
+                ;; with an auto-pk column.
+                (if (driver/create-auto-pk-with-append-csv? driver/*driver*)
+                  (do
+                    (testing "Check a _mb_row_id column was created"
+                      (is (= ["name" "_mb_row_id"]
+                             (column-names-for-table table))))
+                    (testing "Check a _mb_row_id column was sync'd"
+                      (is (=? {:semantic_type :type/PK
+                               :base_type     :type/BigInteger
+                               :name          "_mb_row_id"
+                               :display_name  "_mb_row_id"}
+                              (t2/select-one :model/Field :table_id (:id table) :name upload/auto-pk-column-name))))
+                    (testing "Check the data was uploaded into the table, but the _mb_row_id column values were ignored"
+                      (case action
+                        ::upload/append
+                        (is (= [["Obi-Wan Kenobi" 1]
+                                ["Luke Skywalker" 2]]
+                               (rows-for-table table)))
+                        ::upload/replace
+                        (is (= [["Luke Skywalker" 1]]
+                               (rows-for-table table))))))
+                  (do
+                    (testing "Check a _mb_row_id column wasn't created"
+                      (is (= ["name"]
+                             (column-names-for-table table))))
                     (case action
                       ::upload/append
-                      (is (= [["Obi-Wan Kenobi" 1]
-                              ["Luke Skywalker" 2]]
+                      (is (= [["Obi-Wan Kenobi"]
+                              ["Luke Skywalker"]]
                              (rows-for-table table)))
                       ::upload/replace
-                      (is (= [["Luke Skywalker" 1]]
+                      (is (= [["Luke Skywalker"]]
                              (rows-for-table table))))))
-                (do
-                  (testing "Check a _mb_row_id column wasn't created"
-                    (is (= ["name"]
-                           (column-names-for-table table))))
-                  (case action
-                    ::upload/append
-                    (is (= [["Obi-Wan Kenobi"]
-                            ["Luke Skywalker"]]
-                           (rows-for-table table)))
-                    ::upload/replace
-                    (is (= [["Luke Skywalker"]]
-                           (rows-for-table table))))))
-              (io/delete-file file))))))))
+                (io/delete-file file)))))))))
 
 (deftest update-no-mb-row-id-failure-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -1859,26 +1868,13 @@
 
 (deftest update-mb-row-id-csv-and-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (doseq [action (actions-to-test driver/*driver*)]
-      (testing (action-testing-str action)
-        (testing "Append succeeds if the table has _mb_row_id and the CSV does too"
-          (with-upload-table! [table (create-upload-table!)]
-            (let [csv-rows ["_mb_row_id,name" "1000,Luke Skywalker"]
-                  file     (csv-file-with csv-rows (mt/random-name))]
-              (is (= {:row-count 1}
-                     (update-csv! action {:file file, :table-id (:id table)})))
-              (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
-                (is (= (set (updated-contents action
-                                              [["Obi-Wan Kenobi"]]
-                                              [["Luke Skywalker"]]))
-                       (set (rows-for-table table)))))
-              (io/delete-file file)))
-
-          ;; TODO we can deduplicate a lot of code in this test
-          (testing "with duplicate normalized _mb_row_id columns in the CSV file"
+    (when (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+      (doseq [action (actions-to-test driver/*driver*)]
+        (testing (action-testing-str action)
+          (testing "Append succeeds if the table has _mb_row_id and the CSV does too"
             (with-upload-table! [table (create-upload-table!)]
-              (let [csv-rows ["_mb_row_id,name,-MB-ROW-ID" "1000,Luke Skywalker,1001"]
-                    file     (csv-file-with csv-rows)]
+              (let [csv-rows ["_mb_row_id,name" "1000,Luke Skywalker"]
+                    file     (csv-file-with csv-rows (mt/random-name))]
                 (is (= {:row-count 1}
                        (update-csv! action {:file file, :table-id (:id table)})))
                 (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
@@ -1886,7 +1882,21 @@
                                                 [["Obi-Wan Kenobi"]]
                                                 [["Luke Skywalker"]]))
                          (set (rows-for-table table)))))
-                (io/delete-file file)))))))))
+                (io/delete-file file)))
+
+            ;; TODO we can deduplicate a lot of code in this test
+            (testing "with duplicate normalized _mb_row_id columns in the CSV file"
+              (with-upload-table! [table (create-upload-table!)]
+                (let [csv-rows ["_mb_row_id,name,-MB-ROW-ID" "1000,Luke Skywalker,1001"]
+                      file     (csv-file-with csv-rows)]
+                  (is (= {:row-count 1}
+                         (update-csv! action {:file file, :table-id (:id table)})))
+                  (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
+                    (is (= (set (updated-contents action
+                                                  [["Obi-Wan Kenobi"]]
+                                                  [["Luke Skywalker"]]))
+                           (set (rows-for-table table)))))
+                  (io/delete-file file))))))))))
 
 (deftest update-duplicate-header-csv-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -2176,8 +2186,8 @@
                                         "1,   1.0"
                                         "1.0, 1"]))]
           (testing "Check the data was uploaded into the table correctly"
-            (is (= [[1 1.0 1.0]
-                    [2 1.0 1.0]]
+            (is (= (rows-with-auto-pk [[1.0 1.0]
+                                       [1.0 1.0]])
                    (rows-for-table table)))))))))
 
 (deftest create-from-csv-int-and-non-integral-float-test
@@ -2190,8 +2200,8 @@
                                         "1,   1.1"
                                         "1.1, 1"]))]
           (testing "Check the data was uploaded into the table correctly"
-            (is (= [[1 1.0 1.1]
-                    [2 1.1 1.0]]
+            (is (= (rows-with-auto-pk [[1.0 1.1]
+                                       [1.1 1.0]])
                    (rows-for-table table)))))))))
 
 (deftest update-from-csv-int-and-float-test
@@ -2278,10 +2288,10 @@
                                             (map (partial #'upload/normalize-column-name driver/*driver*)))]
                       (is (every? (set column-names) header-names))))
                   (testing "We preserve prefixes where_possible"
-                    (is (= {"_mb_row_" 1
-                            "a_really" 1
+                    (is (= {"a_really" 1
                             "b_really" 2}
-                           (frequencies (map #(subs % 0 8) column-names))))))))))))))
+                           (dissoc (frequencies (map #(subs % 0 8) column-names))
+                                   "_mb_row_")))))))))))))
 
 (deftest append-with-really-long-names-test
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
@@ -2300,10 +2310,13 @@
               (is (= {:row-count 1}
                      (update-csv! ::upload/append {:file file, :table-id (:id table)})))
               (testing "Check the data was appended into the table"
-                (is (= (map second (rows-with-auto-pk
-                                    [(csv/read-csv original-row)
-                                     (csv/read-csv appended-row)]))
-                       (map rest (rows-for-table table)))))
+                ;; TODO: clickhouse needs to worry about the wrong order
+                (is (= (set
+                        (rows-with-auto-pk
+                         (concat
+                          (csv/read-csv original-row)
+                          (csv/read-csv appended-row))))
+                       (set (rows-for-table table)))))
               (io/delete-file file))))))))
 
 (deftest append-with-preserved-display-name-test
@@ -2351,8 +2364,8 @@
                       :data    {:status-code 422}}
                      (catch-ex-info (update-csv! ::upload/append {:file file, :table-id (:id table)}))))
               (testing "Check the data was not uploaded into the table"
-                (is (= (map second (rows-with-auto-pk [(csv/read-csv original-row)]))
-                       (map rest (rows-for-table table)))))
+                (is (= (rows-with-auto-pk (csv/read-csv original-row))
+                       (rows-for-table table))))
               (io/delete-file file))))))))
 
 (driver/register! ::short-column-test-driver)
