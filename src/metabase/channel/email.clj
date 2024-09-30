@@ -114,16 +114,16 @@
 
 (defn- notification-recipients->emails
   [recipients]
-  (flatten (for [recipient recipients
-                 :let [emails (case (:type recipient)
-                                :notification-recipient/user
-                                [(-> recipient :user :email)]
-                                :notification-recipient/group
-                                (->> recipient :permissions_group :members (map :email))
-                                :notification-recipient/external-email
-                                [(-> recipient :details :email)])]
-                 :when (seq emails)]
-             emails)))
+  (into [] cat (for [recipient recipients
+                     :let [emails (case (:type recipient)
+                                    :notification-recipient/user
+                                    [(-> recipient :user :email)]
+                                    :notification-recipient/group
+                                    (->> recipient :permissions_group :members (map :email))
+                                    :notification-recipient/external-email
+                                    [(-> recipient :details :email)])]
+                     :when (seq emails)]
+                 emails)))
 
 (defn- render-body
   [{:keys [details] :as _template} payload]
