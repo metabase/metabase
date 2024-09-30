@@ -5,6 +5,7 @@ import {
   FIRST_COLLECTION_ID,
   NORMAL_PERSONAL_COLLECTION_ID,
   NO_COLLECTION_PERSONAL_COLLECTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
@@ -456,7 +457,41 @@ describe("scenarios > organization > entity picker", () => {
   });
 
   describe("dashboard picker", () => {
-    it("should select a dashboard from ");
+    it("should select a dashboard from local search results", () => {
+      cy.signInAsNormalUser();
+      visitQuestion(ORDERS_COUNT_QUESTION_ID);
+      openQuestionActions();
+      popover().findByText("Add to dashboard").click();
+
+      entityPickerModal().within(() => {
+        enterSearchText({
+          text: "dashboard",
+          placeholder: "Search this collection or everywhere…",
+        });
+        localSearchTab("Our analytics").should("be.checked");
+        cy.findByText("Orders in a dashboard").click();
+        cy.button("Select").click();
+      });
+      getDashboardCard(1).findByText("Orders, Count").should("be.visible");
+    });
+
+    it("should select a dashboard from global search results", () => {
+      cy.signInAsNormalUser();
+      visitQuestion(ORDERS_COUNT_QUESTION_ID);
+      openQuestionActions();
+      popover().findByText("Add to dashboard").click();
+
+      entityPickerModal().within(() => {
+        enterSearchText({
+          text: "dashboard",
+          placeholder: "Search this collection or everywhere…",
+        });
+        selectGlobalSearchTab();
+        cy.findByText("Orders in a dashboard").click();
+        cy.button("Select").click();
+      });
+      getDashboardCard(1).findByText("Orders, Count").should("be.visible");
+    });
 
     it("should search for dashboards for a normal user", () => {
       createTestDashboards();
