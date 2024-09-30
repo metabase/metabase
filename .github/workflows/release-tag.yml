@@ -28,6 +28,30 @@ on:
         description: Apply to OSS
         type: boolean
         default: true
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+      tag_name:
+        type: string
+        # options:
+        #   - nightly
+        #   - beta
+        #   - latest
+        required: true
+      tag_rollout:
+        description: Rollout % (0-100)
+        type: number
+        default: 100
+      tag_ee:
+        description: Apply to EE
+        type: boolean
+        default: true
+      tag_oss:
+        description: Apply to OSS
+        type: boolean
+        default: true
 
 jobs:
   check-version:
@@ -262,7 +286,7 @@ jobs:
     needs: check-version
     uses: ./.github/workflows/release-log.yml
     with:
-      version: ${{ vars.CURRENT_VERSION }}
+      version: ${{ fromJSON(vars.CURRENT_VERSION) }} # cast string to number
     secrets: inherit
 
   update-version-info:
@@ -287,9 +311,10 @@ jobs:
         sparse-checkout: release
     - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && yarn && yarn build
-    - name: Publish release notes
+    - name: Generate new version info
       uses: actions/github-script@v7
       id: new_version_info
+      if: ${{ inputs.tag_name }} == "latest"
       with:
         result-encoding: string
         script: | # js
@@ -318,6 +343,7 @@ jobs:
           aws s3 cp version-info.json s3://${{ vars.AWS_S3_STATIC_BUCKET }}/version-info.json
         fi
     - name: Create cloudfront invalidation for version-info.json and version-info-ee.json
+      if: ${{ inputs.tag_name }} == "latest"
       run: |
         aws cloudfront create-invalidation \
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \

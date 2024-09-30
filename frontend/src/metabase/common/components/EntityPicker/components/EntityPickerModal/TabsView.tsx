@@ -37,6 +37,7 @@ export const TabsView = <
         display: "flex",
         flexDirection: "column",
       }}
+      data-testid="tabs-view"
     >
       <Tabs.List px="1rem">
         {tabs.map(tab => {

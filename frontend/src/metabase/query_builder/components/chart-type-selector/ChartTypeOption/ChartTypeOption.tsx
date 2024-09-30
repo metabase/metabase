@@ -1,14 +1,11 @@
+import cx from "classnames";
+
 import { checkNotNull } from "metabase/lib/types";
-import { Icon } from "metabase/ui";
+import { ActionIcon, Center, Icon, Stack, Text } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type { CardDisplayType } from "metabase-types/api";
 
-import {
-  OptionIconContainer,
-  OptionRoot,
-  OptionText,
-  SettingsButton,
-} from "./ChartTypeOption.styled";
+import ChartTypeOptionS from "./ChartTypeOption.module.css";
 
 export type ChartTypeOptionProps = {
   onSelectVisualization: (display: CardDisplayType) => void;
@@ -23,30 +20,67 @@ export const ChartTypeOption = ({
 }: ChartTypeOptionProps) => {
   const visualization = checkNotNull(visualizations.get(visualizationType));
   const isSelected = selectedVisualization === visualizationType;
+
   return (
-    <OptionRoot
-      isSelected={isSelected}
-      data-testid={`${visualization.uiName}-container`}
-      role="option"
-      aria-selected={isSelected}
-    >
-      <OptionIconContainer
-        onClick={() => onSelectVisualization(visualizationType)}
-        data-testid={`${visualization.uiName}-button`}
+    <Center pos="relative" data-testid="chart-type-option">
+      <Stack
+        align="center"
+        spacing="xs"
+        role="option"
+        aria-selected={isSelected}
+        data-testid={`${visualization.uiName}-container`}
       >
-        <Icon name={visualization.iconName} size={20} />
-        {isSelected && (
-          <SettingsButton
-            onlyIcon
-            icon="gear"
-            iconSize={16}
-            onClick={() => onSelectVisualization(visualizationType)}
+        <ActionIcon
+          w="3.125rem"
+          h="3.125rem"
+          radius="xl"
+          onClick={() => onSelectVisualization(visualizationType)}
+          color="brand"
+          data-is-selected={isSelected}
+          variant={isSelected ? "filled" : "outline"}
+          className={cx(
+            ChartTypeOptionS.BorderedButton,
+            ChartTypeOptionS.VisualizationButton,
+          )}
+          data-testid={`${visualization.uiName}-button`}
+        >
+          <Icon
+            name={visualization.iconName}
+            color={isSelected ? "white" : "brand"}
+            size={20}
           />
+        </ActionIcon>
+
+        {isSelected && (
+          <ActionIcon
+            pos="absolute"
+            top="-0.5rem"
+            right="-0.6rem"
+            radius="xl"
+            color="text-light"
+            variant="viewHeader"
+            bg="white"
+            className={cx(
+              ChartTypeOptionS.BorderedButton,
+              ChartTypeOptionS.SettingsButton,
+            )}
+            onClick={() => onSelectVisualization(visualizationType)}
+          >
+            <Icon name="gear" size={16} />
+          </ActionIcon>
         )}
-      </OptionIconContainer>
-      <OptionText data-testid="chart-type-option-label">
-        {visualization.uiName}
-      </OptionText>
-    </OptionRoot>
+
+        <Text
+          lh="unset"
+          align="center"
+          fw="bold"
+          fz="sm"
+          color={isSelected ? "brand" : "text-medium"}
+          data-testid="chart-type-option-label"
+        >
+          {visualization.uiName}
+        </Text>
+      </Stack>
+    </Center>
   );
 };

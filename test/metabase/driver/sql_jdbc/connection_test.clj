@@ -118,6 +118,9 @@
               :redshift
               (assoc details :additional-options "defaultRowFetchSize=1000")
 
+              :databricks
+              (assoc details :log-level 0)
+
               (cond-> details
                 ;; swap localhost and 127.0.0.1
                 (and (string? (:host details))

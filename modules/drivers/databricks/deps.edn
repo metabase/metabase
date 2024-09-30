@@ -1,0 +1,5 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ {com.databricks/databricks-jdbc {:mvn/version "2.6.34"}}}

@@ -2,7 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [metabase.search :as search :refer [is-postgres?]]
+   [metabase.db :as mdb]
+   [metabase.search :as search]
    [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index-test :refer [legacy-results]]
    [metabase.test :as mt]
@@ -13,7 +14,7 @@
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-setup [& body]
-  `(when (is-postgres?)
+  `(when (= :postgres (mdb/db-type))
      ;; TODO add more extensive data to search
      (mt/dataset ~'test-data
        (search.postgres/init! true)
