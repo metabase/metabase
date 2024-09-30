@@ -63,6 +63,7 @@ export const EmbeddedQuestion = {
   },
 
   parameters: {
+    // TODO unskip this and the next story once rendering delay is completely gone.
     loki: { skip: true },
   },
 };

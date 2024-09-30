@@ -45,6 +45,7 @@ const MOCK_SERIES = [
   },
 ];
 
+// This story has become flaky on CI, so we're skipping it for now.
 export const Default: StoryObj = {
   render: () => (
     <VisualizationWrapper>
@@ -59,6 +60,7 @@ export const Default: StoryObj = {
   },
 };
 
+// This story has become flaky on CI, so we're skipping it for now.
 export const EmbeddingHugeFont: StoryObj = {
   render: () => {
     const theme: MetabaseTheme = {
