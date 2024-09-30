@@ -99,7 +99,7 @@ const getFolderName = <
 >(
   folder: Item,
 ) => {
-  if (isSchemaItem(folder) && !folder.name) {
+  if (isSchemaItem(folder) && (!folder.name || folder.isOnlySchema)) {
     return folder.dbName;
   }
 

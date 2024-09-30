@@ -61,7 +61,7 @@ describe("scenarios > organization > entity picker", () => {
             text: "prod",
             placeholder: "Search this database or everywhere…",
           });
-          localSearchTab("Public").should("be.checked");
+          localSearchTab("Sample Database").should("be.checked");
           assertSearchResults({
             foundItems: ["Products"],
             totalFoundItemsCount: 1,
@@ -110,11 +110,11 @@ describe("scenarios > organization > entity picker", () => {
             text: "Orders",
             placeholder: "Search this database or everywhere…",
           });
-          localSearchTab("Public").should("be.checked");
+          localSearchTab("Sample Database").should("be.checked");
           entityPickerModalTab("Recents").click();
           existingSearchTab().click();
           globalSearchTab().should("not.exist");
-          localSearchTab("Public").should("not.exist");
+          localSearchTab("Sample Database").should("not.exist");
           assertSearchResults({
             foundItems: ["Orders, Count", "Orders Model"],
           });
@@ -122,7 +122,7 @@ describe("scenarios > organization > entity picker", () => {
           cy.log("global -> local transition without changing search text");
           entityPickerModalTab("Tables").click();
           existingSearchTab().click();
-          localSearchTab("Public").should("be.checked");
+          localSearchTab("Sample Database").should("be.checked");
           assertSearchResults({
             foundItems: ["Orders"],
             totalFoundItemsCount: 1,
@@ -135,7 +135,7 @@ describe("scenarios > organization > entity picker", () => {
             placeholder: "Search…",
           });
           globalSearchTab().should("not.exist");
-          localSearchTab("Public").should("not.exist");
+          localSearchTab("Sample Database").should("not.exist");
           assertSearchResults({
             foundItems: ["People"],
           });
@@ -158,7 +158,7 @@ describe("scenarios > organization > entity picker", () => {
             text: "prod",
             placeholder: "Search this database or everywhere…",
           });
-          localSearchTab("Public").should("be.checked");
+          localSearchTab("Sample Database").should("be.checked");
           assertSearchResults({
             foundItems: ["Products"],
             notFoundItems: ["Orders"],
@@ -187,7 +187,7 @@ describe("scenarios > organization > entity picker", () => {
               text: "prod",
               placeholder: "Search this database or everywhere…",
             });
-            localSearchTab("Public").should("be.checked");
+            localSearchTab("Sample Database").should("be.checked");
             assertSearchResults({
               foundItems: ["Products"],
               notFoundItems: ["Orders"],
@@ -220,7 +220,7 @@ describe("scenarios > organization > entity picker", () => {
               text: "prod",
               placeholder: "Search this database or everywhere…",
             });
-            localSearchTab("Public").should("be.checked");
+            localSearchTab("Sample Database").should("be.checked");
             assertSearchResults({
               foundItems: ["Products"],
               notFoundItems: ["Orders"],
