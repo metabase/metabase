@@ -23,8 +23,6 @@ const argTypes = {
   },
 };
 
-const DefaultTemplate = args => <Radio {...args} />;
-
 const RadioGroupTemplate = args => (
   <Radio.Group
     defaultValue={"react"}
@@ -49,13 +47,6 @@ const StateTemplate = args => (
   </Stack>
 );
 
-const Default = DefaultTemplate.bind({});
-const RadioGroup = RadioGroupTemplate.bind({});
-const Label = StateTemplate.bind({});
-const LabelLeft = StateTemplate.bind({});
-const Description = StateTemplate.bind({});
-const DescriptionLeft = StateTemplate.bind({});
-
 export default {
   title: "Inputs/Radio",
   component: Radio,
@@ -63,31 +54,30 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
   name: "Default",
 };
 
-export const RadioGroup_ = {
-  render: RadioGroup,
+export const RadioGroup = {
+  render: RadioGroupTemplate,
   name: "Radio group",
 };
 
-export const Label_ = {
-  render: Label,
+export const Label = {
+  render: StateTemplate,
   name: "Label",
 };
 
 export const LabelLeftPosition = {
-  render: LabelLeft,
+  render: StateTemplate,
   name: "Label, left position",
   args: {
     labelPosition: "left",
   },
 };
 
-export const Description_ = {
-  render: Description,
+export const Description = {
+  render: StateTemplate,
   name: "Description",
   args: {
     description: "Description",
@@ -95,7 +85,7 @@ export const Description_ = {
 };
 
 export const DescriptionLeftPosition = {
-  render: DescriptionLeft,
+  render: StateTemplate,
   name: "Description, left position",
   args: {
     description: "Description",

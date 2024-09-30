@@ -11,8 +11,6 @@ const argTypes = {
   },
 };
 
-const DefaultTemplate = args => <Divider {...args} />;
-
 const VerticalTemplate = args => (
   <Group>
     <Text>Overview</Text>
@@ -23,9 +21,6 @@ const VerticalTemplate = args => (
   </Group>
 );
 
-const Default = DefaultTemplate.bind({});
-const Vertical = VerticalTemplate.bind({});
-
 export default {
   title: "Utils/Divider",
   component: Divider,
@@ -33,13 +28,12 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
   name: "Default",
 };
 
 export const VerticalOrientation = {
-  render: Vertical,
+  render: VerticalTemplate,
   name: "Vertical orientation",
   args: {
     orientation: "vertical",

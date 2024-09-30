@@ -42,9 +42,6 @@ const DefaultTemplate = args => (
   </ReduxProvider>
 );
 
-const WithImage = DefaultTemplate.bind({});
-const WithoutImage = DefaultTemplate.bind({});
-
 export default {
   title: "Upsells/Card",
   component: _UpsellCard,
@@ -52,13 +49,13 @@ export default {
   argTypes,
 };
 
-export const WithImage_ = {
-  render: WithImage,
+export const WithImage = {
+  render: DefaultTemplate,
   name: "With Image",
 };
 
-export const WithoutImage_ = {
-  render: WithoutImage,
+export const WithoutImage = {
+  render: DefaultTemplate,
   name: "Without Image",
   args: { ...args, illustrationSrc: null },
 };

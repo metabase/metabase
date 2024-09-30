@@ -24,23 +24,17 @@ const args = {
   fullWidth: false,
 };
 
-const DefaultTemplate = args => <SegmentedControl {...args} />;
-const Default = DefaultTemplate.bind({});
-const FullWidth = DefaultTemplate.bind({});
-
 export default {
   title: "Inputs/SegmentedControl",
   component: SegmentedControl,
   args,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
   name: "Default",
 };
 
-export const FullWidth_ = {
-  render: FullWidth,
+export const FullWidth = {
   name: "Full width",
   args: {
     data: [

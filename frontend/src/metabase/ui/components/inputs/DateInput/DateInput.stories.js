@@ -53,8 +53,6 @@ const argTypes = {
   },
 };
 
-const DefaultTemplate = args => <DateInput {...args} />;
-
 const VariantTemplate = args => (
   <Stack>
     <DateInput {...args} variant="default" />
@@ -66,26 +64,6 @@ const IconTemplate = args => (
   <VariantTemplate {...args} icon={<Icon name="calendar" />} />
 );
 
-const Default = DefaultTemplate.bind({});
-const EmptyMd = VariantTemplate.bind({});
-const FilledMd = VariantTemplate.bind({});
-const AsteriskMd = VariantTemplate.bind({});
-const DescriptionMd = VariantTemplate.bind({});
-const DisabledMd = VariantTemplate.bind({});
-const ErrorMd = VariantTemplate.bind({});
-const IconMd = IconTemplate.bind({});
-const ReadOnlyMd = VariantTemplate.bind({});
-const NoPopoverMd = VariantTemplate.bind({});
-const EmptyXs = VariantTemplate.bind({});
-const FilledXs = VariantTemplate.bind({});
-const AsteriskXs = VariantTemplate.bind({});
-const DescriptionXs = VariantTemplate.bind({});
-const DisabledXs = VariantTemplate.bind({});
-const ErrorXs = VariantTemplate.bind({});
-const IconXs = IconTemplate.bind({});
-const ReadOnlyXs = VariantTemplate.bind({});
-const NoPopoverXs = VariantTemplate.bind({});
-
 export default {
   title: "Inputs/DateInput",
   component: DateInput,
@@ -93,18 +71,17 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
   name: "Default",
 };
 
-export const EmptyMd_ = {
-  render: EmptyMd,
+export const EmptyMd = {
+  render: VariantTemplate,
   name: "Empty, md",
 };
 
-export const FilledMd_ = {
-  render: FilledMd,
+export const FilledMd = {
+  render: VariantTemplate,
   name: "Filled, md",
   args: {
     defaultValue: sampleArgs.value,
@@ -113,8 +90,8 @@ export const FilledMd_ = {
   },
 };
 
-export const AsteriskMd_ = {
-  render: AsteriskMd,
+export const AsteriskMd = {
+  render: VariantTemplate,
   name: "Asterisk, md",
   args: {
     label: sampleArgs.label,
@@ -123,8 +100,8 @@ export const AsteriskMd_ = {
   },
 };
 
-export const DescriptionMd_ = {
-  render: DescriptionMd,
+export const DescriptionMd = {
+  render: VariantTemplate,
   name: "Description, md",
   args: {
     label: sampleArgs.label,
@@ -133,8 +110,8 @@ export const DescriptionMd_ = {
   },
 };
 
-export const DisabledMd_ = {
-  render: DisabledMd,
+export const DisabledMd = {
+  render: VariantTemplate,
   name: "Disabled, md",
   args: {
     label: sampleArgs.label,
@@ -145,8 +122,8 @@ export const DisabledMd_ = {
   },
 };
 
-export const ErrorMd_ = {
-  render: ErrorMd,
+export const ErrorMd = {
+  render: VariantTemplate,
   name: "Error, md",
   args: {
     label: sampleArgs.label,
@@ -157,8 +134,8 @@ export const ErrorMd_ = {
   },
 };
 
-export const IconMd_ = {
-  render: IconMd,
+export const IconMd = {
+  render: IconTemplate,
   name: "Icon, md",
   args: {
     label: sampleArgs.label,
@@ -168,8 +145,8 @@ export const IconMd_ = {
   },
 };
 
-export const ReadOnlyMd_ = {
-  render: ReadOnlyMd,
+export const ReadOnlyMd = {
+  render: VariantTemplate,
   name: "Read only, md",
   args: {
     defaultValue: sampleArgs.value,
@@ -180,8 +157,8 @@ export const ReadOnlyMd_ = {
   },
 };
 
-export const NoPopoverMd_ = {
-  render: NoPopoverMd,
+export const NoPopoverMd = {
+  render: VariantTemplate,
   name: "No popover, md",
   args: {
     defaultValue: sampleArgs.value,
@@ -192,8 +169,8 @@ export const NoPopoverMd_ = {
   },
 };
 
-export const EmptyXs_ = {
-  render: EmptyXs,
+export const EmptyXs = {
+  render: VariantTemplate,
   name: "Empty, xs",
   args: {
     ...EmptyMd.args,
@@ -201,8 +178,8 @@ export const EmptyXs_ = {
   },
 };
 
-export const FilledXs_ = {
-  render: FilledXs,
+export const FilledXs = {
+  render: VariantTemplate,
   name: "Filled, xs",
   args: {
     ...FilledMd.args,
@@ -210,8 +187,8 @@ export const FilledXs_ = {
   },
 };
 
-export const AsteriskXs_ = {
-  render: AsteriskXs,
+export const AsteriskXs = {
+  render: VariantTemplate,
   name: "Asterisk, xs",
   args: {
     ...AsteriskMd.args,
@@ -219,8 +196,8 @@ export const AsteriskXs_ = {
   },
 };
 
-export const DescriptionXs_ = {
-  render: DescriptionXs,
+export const DescriptionXs = {
+  render: VariantTemplate,
   name: "Description, xs",
   args: {
     ...DescriptionMd.args,
@@ -228,8 +205,8 @@ export const DescriptionXs_ = {
   },
 };
 
-export const DisabledXs_ = {
-  render: DisabledXs,
+export const DisabledXs = {
+  render: VariantTemplate,
   name: "Disabled, xs",
   args: {
     ...DisabledMd.args,
@@ -237,8 +214,8 @@ export const DisabledXs_ = {
   },
 };
 
-export const ErrorXs_ = {
-  render: ErrorXs,
+export const ErrorXs = {
+  render: VariantTemplate,
   name: "Error, xs",
   args: {
     ...ErrorMd.args,
@@ -246,8 +223,8 @@ export const ErrorXs_ = {
   },
 };
 
-export const IconXs_ = {
-  render: IconXs,
+export const IconXs = {
+  render: IconTemplate,
   name: "Icon, xs",
   args: {
     ...IconMd.args,
@@ -255,8 +232,8 @@ export const IconXs_ = {
   },
 };
 
-export const ReadOnlyXs_ = {
-  render: ReadOnlyXs,
+export const ReadOnlyXs = {
+  render: VariantTemplate,
   name: "Read only, xs",
   args: {
     ...ReadOnlyMd.args,
@@ -264,8 +241,8 @@ export const ReadOnlyXs_ = {
   },
 };
 
-export const NoPopoverXs_ = {
-  render: NoPopoverXs,
+export const NoPopoverXs = {
+  render: VariantTemplate,
   name: "No popover, xs",
   args: {
     ...NoPopoverMd.args,

@@ -39,8 +39,6 @@ const DefaultTemplate = args => (
   </List>
 );
 
-const Default = DefaultTemplate.bind({});
-
 const WithIconsTemplate = args => {
   return (
     <List {...args} icon={<Icon name="check" />}>
@@ -57,8 +55,6 @@ const WithIconsTemplate = args => {
   );
 };
 
-const WithIcons = WithIconsTemplate.bind({});
-
 export default {
   title: "Typography/List",
   component: List,
@@ -66,12 +62,12 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: DefaultTemplate,
   name: "Default",
 };
 
-export const WithIcons_ = {
-  render: WithIcons,
+export const WithIcons = {
+  render: WithIconsTemplate,
   name: "WithIcons",
 };

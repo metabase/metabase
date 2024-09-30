@@ -113,23 +113,6 @@ const LoadingGridTemplate = args => (
   </Stack>
 );
 
-const Default = DefaultTemplate.bind({});
-const ButtonGroup = ButtonGroupTemplate.bind({});
-const DefaultGrid = GridTemplate.bind({});
-const CustomColorGrid = GridTemplate.bind({});
-const DefaultDisabledGrid = GridTemplate.bind({});
-const DefaultLoadingGrid = LoadingGridTemplate.bind({});
-const DefaultFullWidthGrid = GridTemplate.bind({});
-const DefaultDisabledFullWidthGrid = GridTemplate.bind({});
-const DefaultLoadingFullWidthGrid = LoadingGridTemplate.bind({});
-const CompactGrid = GridTemplate.bind({});
-const CompactCustomColorGrid = GridTemplate.bind({});
-const CompactDisabledGrid = GridTemplate.bind({});
-const CompactLoadingGrid = LoadingGridTemplate.bind({});
-const CompactFullWidthGrid = GridTemplate.bind({});
-const CompactDisabledFullWidthGrid = GridTemplate.bind({});
-const CompactLoadingFullWidthGrid = LoadingGridTemplate.bind({});
-
 export default {
   title: "Buttons/Button",
   component: Button,
@@ -137,23 +120,23 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: DefaultTemplate,
   name: "Default",
 };
 
-export const ButtonGroup_ = {
-  render: ButtonGroup,
+export const ButtonGroup = {
+  render: ButtonGroupTemplate,
   name: "Button group",
 };
 
 export const DefaultSize = {
-  render: DefaultGrid,
+  render: GridTemplate,
   name: "Default size",
 };
 
 export const DefaultSizeCustomColor = {
-  render: CustomColorGrid,
+  render: ButtonGroupTemplate,
   name: "Default size, custom color",
   args: {
     color: "error",
@@ -161,7 +144,7 @@ export const DefaultSizeCustomColor = {
 };
 
 export const DefaultSizeDisabled = {
-  render: DefaultDisabledGrid,
+  render: GridTemplate,
   name: "Default size, disabled",
   args: {
     disabled: true,
@@ -169,7 +152,7 @@ export const DefaultSizeDisabled = {
 };
 
 export const DefaultSizeLoading = {
-  render: DefaultLoadingGrid,
+  render: LoadingGridTemplate,
   name: "Default size, loading",
   args: {
     loading: true,
@@ -177,7 +160,7 @@ export const DefaultSizeLoading = {
 };
 
 export const DefaultSizeFullWidth = {
-  render: DefaultFullWidthGrid,
+  render: GridTemplate,
   name: "Default size, full width",
   args: {
     fullWidth: true,
@@ -185,7 +168,7 @@ export const DefaultSizeFullWidth = {
 };
 
 export const DefaultSizeFullWidthDisabled = {
-  render: DefaultDisabledFullWidthGrid,
+  render: GridTemplate,
   name: "Default size, full width, disabled",
   args: {
     disabled: true,
@@ -194,7 +177,7 @@ export const DefaultSizeFullWidthDisabled = {
 };
 
 export const DefaultSizeFullWidthLoading = {
-  render: DefaultLoadingFullWidthGrid,
+  render: LoadingGridTemplate,
   name: "Default size, full width, loading",
   args: {
     loading: true,
@@ -203,7 +186,7 @@ export const DefaultSizeFullWidthLoading = {
 };
 
 export const CompactSize = {
-  render: CompactGrid,
+  render: GridTemplate,
   name: "Compact size",
   args: {
     compact: true,
@@ -211,7 +194,7 @@ export const CompactSize = {
 };
 
 export const CompactSizeCustomColor = {
-  render: CompactCustomColorGrid,
+  render: GridTemplate,
   name: "Compact size, custom color",
   args: {
     color: "error",
@@ -220,7 +203,7 @@ export const CompactSizeCustomColor = {
 };
 
 export const CompactSizeDisabled = {
-  render: CompactDisabledGrid,
+  render: GridTemplate,
   name: "Compact size, disabled",
   args: {
     compact: true,
@@ -229,7 +212,7 @@ export const CompactSizeDisabled = {
 };
 
 export const CompactSizeLoading = {
-  render: CompactLoadingGrid,
+  render: LoadingGridTemplate,
   name: "Compact size, loading",
   args: {
     compact: true,
@@ -238,7 +221,7 @@ export const CompactSizeLoading = {
 };
 
 export const CompactSizeFullWidth = {
-  render: CompactFullWidthGrid,
+  render: GridTemplate,
   name: "Compact size, full width",
   args: {
     compact: true,
@@ -247,7 +230,7 @@ export const CompactSizeFullWidth = {
 };
 
 export const CompactSizeFullWidthDisabled = {
-  render: CompactDisabledFullWidthGrid,
+  render: GridTemplate,
   name: "Compact size, full width, disabled",
   args: {
     compact: true,
@@ -257,7 +240,7 @@ export const CompactSizeFullWidthDisabled = {
 };
 
 export const CompactSizeFullWidthLoading = {
-  render: CompactLoadingFullWidthGrid,
+  render: LoadingGridTemplate,
   name: "Compact size, full width, loading",
   args: {
     compact: true,

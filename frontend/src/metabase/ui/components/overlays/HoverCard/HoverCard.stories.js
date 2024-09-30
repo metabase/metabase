@@ -58,9 +58,6 @@ const DefaultTemplate = ({ children, ...args }) => (
   </Flex>
 );
 
-const Default = DefaultTemplate.bind({});
-const Interactive = DefaultTemplate.bind({});
-
 export default {
   title: "Overlays/HoverCard",
   component: HoverCard,
@@ -68,8 +65,8 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: DefaultTemplate,
   name: "Default",
   args: {
     children: sampleArgs.simple,
@@ -77,7 +74,7 @@ export const Default_ = {
 };
 
 export const InteractiveContent = {
-  render: Interactive,
+  render: DefaultTemplate,
   name: "Interactive content",
   args: {
     children: sampleArgs.interactive,

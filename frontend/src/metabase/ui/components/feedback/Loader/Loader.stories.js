@@ -15,8 +15,6 @@ const argTypes = {
   },
 };
 
-const DefaultTemplate = args => <Loader {...args} />;
-
 const SizeTemplate = args => (
   <Grid w="10rem" columns={2} align="center">
     {argTypes.size.options.map(size => (
@@ -32,9 +30,6 @@ const SizeTemplate = args => (
   </Grid>
 );
 
-const Default = DefaultTemplate.bind({});
-const Sizes = SizeTemplate.bind({});
-
 export default {
   title: "Feedback/Loader",
   component: Loader,
@@ -42,12 +37,11 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
   name: "Default",
 };
 
-export const Sizes_ = {
-  render: Sizes,
+export const Sizes = {
+  render: SizeTemplate,
   name: "Sizes",
 };

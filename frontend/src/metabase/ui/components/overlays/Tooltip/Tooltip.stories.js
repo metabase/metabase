@@ -36,8 +36,6 @@ const DefaultTemplate = args => (
   </Flex>
 );
 
-const Default = DefaultTemplate.bind({});
-
 export default {
   title: "Overlays/Tooltip",
   component: Tooltip,
@@ -45,7 +43,7 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: DefaultTemplate,
   name: "Default",
 };

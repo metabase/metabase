@@ -64,32 +64,12 @@ const argTypes = {
   },
 };
 
-const DefaultTemplate = args => <Textarea {...args} />;
-
 const VariantTemplate = args => (
   <Stack>
     <Textarea {...args} variant="default" />
     <Textarea {...args} variant="unstyled" />
   </Stack>
 );
-
-const Default = DefaultTemplate.bind({});
-const EmptyMd = VariantTemplate.bind({});
-const FilledMd = VariantTemplate.bind({});
-const AsteriskMd = VariantTemplate.bind({});
-const DescriptionMd = VariantTemplate.bind({});
-const DisabledMd = VariantTemplate.bind({});
-const ErrorMd = VariantTemplate.bind({});
-const ReadOnlyMd = VariantTemplate.bind({});
-const AutosizeMd = VariantTemplate.bind({});
-const EmptyXs = VariantTemplate.bind({});
-const FilledXs = VariantTemplate.bind({});
-const AsteriskXs = VariantTemplate.bind({});
-const DescriptionXs = VariantTemplate.bind({});
-const DisabledXs = VariantTemplate.bind({});
-const ErrorXs = VariantTemplate.bind({});
-const ReadOnlyXs = VariantTemplate.bind({});
-const AutosizeXs = VariantTemplate.bind({});
 
 export default {
   title: "Inputs/Textarea",
@@ -98,13 +78,13 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: VariantTemplate,
   name: "Default",
 };
 
-export const EmptyMd_ = {
-  render: EmptyMd,
+export const EmptyMd = {
+  render: VariantTemplate,
   name: "Empty, md",
   args: {
     label: sampleArgs.label,
@@ -112,8 +92,8 @@ export const EmptyMd_ = {
   },
 };
 
-export const FilledMd_ = {
-  render: FilledMd,
+export const FilledMd = {
+  render: VariantTemplate,
   name: "Filled, md",
   args: {
     defaultValue: sampleArgs.value,
@@ -122,8 +102,8 @@ export const FilledMd_ = {
   },
 };
 
-export const AsteriskMd_ = {
-  render: AsteriskMd,
+export const AsteriskMd = {
+  render: VariantTemplate,
   name: "Asterisk, md",
   args: {
     label: sampleArgs.label,
@@ -132,8 +112,8 @@ export const AsteriskMd_ = {
   },
 };
 
-export const DescriptionMd_ = {
-  render: DescriptionMd,
+export const DescriptionMd = {
+  render: VariantTemplate,
   name: "Description, md",
   args: {
     label: sampleArgs.label,
@@ -142,8 +122,8 @@ export const DescriptionMd_ = {
   },
 };
 
-export const DisabledMd_ = {
-  render: DisabledMd,
+export const DisabledMd = {
+  render: VariantTemplate,
   name: "Disabled, md",
   args: {
     label: sampleArgs.label,
@@ -154,8 +134,8 @@ export const DisabledMd_ = {
   },
 };
 
-export const ErrorMd_ = {
-  render: ErrorMd,
+export const ErrorMd = {
+  render: VariantTemplate,
   name: "Error, md",
   args: {
     label: sampleArgs.label,
@@ -166,8 +146,8 @@ export const ErrorMd_ = {
   },
 };
 
-export const ReadOnlyMd_ = {
-  render: ReadOnlyMd,
+export const ReadOnlyMd = {
+  render: VariantTemplate,
   name: "Read only, md",
   args: {
     defaultValue: sampleArgs.value,
@@ -178,8 +158,8 @@ export const ReadOnlyMd_ = {
   },
 };
 
-export const AutosizeMd_ = {
-  render: AutosizeMd,
+export const AutosizeMd = {
+  render: VariantTemplate,
   name: "Autosize, md",
   args: {
     label: sampleArgs.label,
@@ -189,8 +169,8 @@ export const AutosizeMd_ = {
   },
 };
 
-export const EmptyXs_ = {
-  render: EmptyXs,
+export const EmptyXs = {
+  render: VariantTemplate,
   name: "Empty, xs",
   args: {
     ...EmptyMd.args,
@@ -198,8 +178,8 @@ export const EmptyXs_ = {
   },
 };
 
-export const FilledXs_ = {
-  render: FilledXs,
+export const FilledXs = {
+  render: VariantTemplate,
   name: "Filled, xs",
   args: {
     ...FilledMd.args,
@@ -207,8 +187,8 @@ export const FilledXs_ = {
   },
 };
 
-export const AsteriskXs_ = {
-  render: AsteriskXs,
+export const AsteriskXs = {
+  render: VariantTemplate,
   name: "Asterisk, xs",
   args: {
     ...AsteriskMd.args,
@@ -216,8 +196,8 @@ export const AsteriskXs_ = {
   },
 };
 
-export const DescriptionXs_ = {
-  render: DescriptionXs,
+export const DescriptionXs = {
+  render: VariantTemplate,
   name: "Description, xs",
   args: {
     ...DescriptionMd.args,
@@ -225,8 +205,8 @@ export const DescriptionXs_ = {
   },
 };
 
-export const DisabledXs_ = {
-  render: DisabledXs,
+export const DisabledXs = {
+  render: VariantTemplate,
   name: "Disabled, xs",
   args: {
     ...DisabledMd.args,
@@ -234,8 +214,8 @@ export const DisabledXs_ = {
   },
 };
 
-export const ErrorXs_ = {
-  render: ErrorXs,
+export const ErrorXs = {
+  render: VariantTemplate,
   name: "Error, xs",
   args: {
     ...ErrorMd.args,
@@ -243,8 +223,8 @@ export const ErrorXs_ = {
   },
 };
 
-export const ReadOnlyXs_ = {
-  render: ReadOnlyXs,
+export const ReadOnlyXs = {
+  render: VariantTemplate,
   name: "Read only, xs",
   args: {
     ...ReadOnlyMd.args,
@@ -252,8 +232,8 @@ export const ReadOnlyXs_ = {
   },
 };
 
-export const AutosizeXs_ = {
-  render: AutosizeXs,
+export const AutosizeXs = {
+  render: VariantTemplate,
   name: "Autosize, xs",
   args: {
     ...AutosizeXs.args,

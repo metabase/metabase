@@ -34,12 +34,6 @@ const DefaultTemplate = args => {
   return <DatePicker {...args} />;
 };
 
-const Default = DefaultTemplate.bind({});
-const AllowDeselect = DefaultTemplate.bind({});
-const MultipleDates = DefaultTemplate.bind({});
-const DatesRange = DefaultTemplate.bind({});
-const DatesRangeSdk = DefaultTemplate.bind({});
-
 const theme = {
   colors: {
     brand: "#DF75E9",
@@ -53,9 +47,6 @@ const theme = {
   },
 };
 
-const SingleDateInRange = DefaultTemplate.bind({});
-const NumberOfColumns = DefaultTemplate.bind({});
-
 export default {
   title: "Inputs/DatePicker",
   component: DatePicker,
@@ -63,16 +54,16 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: DefaultTemplate,
   name: "Default",
   args: {
     defaultDate: sampleArgs.date1,
   },
 };
 
-export const AllowDeselect_ = {
-  render: AllowDeselect,
+export const AllowDeselect = {
+  render: DefaultTemplate,
   name: "Allow deselect",
   args: {
     allowDeselect: true,
@@ -81,8 +72,8 @@ export const AllowDeselect_ = {
   },
 };
 
-export const MultipleDates_ = {
-  render: MultipleDates,
+export const MultipleDates = {
+  render: DefaultTemplate,
   name: "Multiple dates",
   args: {
     type: "multiple",
@@ -91,8 +82,8 @@ export const MultipleDates_ = {
   },
 };
 
-export const DatesRange_ = {
-  render: DatesRange,
+export const DatesRange = {
+  render: DefaultTemplate,
   name: "Dates range",
   args: {
     type: "range",
@@ -101,11 +92,11 @@ export const DatesRange_ = {
   },
 };
 
-export const DatesRangeSdk_ = {
+export const DatesRangeSdk = {
   render: () => (
     <SdkVisualizationWrapper theme={theme}>
       <Box bg="background">
-        <DatesRangeSdk {...DatesRange_.args} />
+        <DefaultTemplate {...DatesRange.args} />
       </Box>
     </SdkVisualizationWrapper>
   ),
@@ -113,8 +104,8 @@ export const DatesRangeSdk_ = {
   name: "Dates range SDK",
 };
 
-export const SingleDateInRange_ = {
-  render: SingleDateInRange,
+export const SingleDateInRange = {
+  render: DefaultTemplate,
   name: "Single date in range",
   args: {
     type: "range",
@@ -124,8 +115,8 @@ export const SingleDateInRange_ = {
   },
 };
 
-export const NumberOfColumns_ = {
-  render: NumberOfColumns,
+export const NumberOfColumns = {
+  render: DefaultTemplate,
   name: "Number of columns",
   args: {
     type: "range",

@@ -32,8 +32,6 @@ const argTypes = {
   },
 };
 
-const DefaultTemplate = args => <Checkbox {...args} />;
-
 const CheckboxGroupTemplate = args => (
   <Checkbox.Group
     defaultValue={["react"]}
@@ -77,14 +75,6 @@ const StateTemplate = args => (
   </Stack>
 );
 
-const Default = DefaultTemplate.bind({});
-const CheckboxGroup = CheckboxGroupTemplate.bind({});
-const Label = StateTemplate.bind({});
-const LabelLeft = StateTemplate.bind({});
-const Description = StateTemplate.bind({});
-const DescriptionLeft = StateTemplate.bind({});
-const Stacked = StateTemplate.bind({});
-
 export default {
   title: "Inputs/Checkbox",
   component: Checkbox,
@@ -92,44 +82,43 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
   name: "Default",
 };
 
-export const CheckboxGroup_ = {
-  render: CheckboxGroup,
+export const CheckboxGroup = {
+  render: CheckboxGroupTemplate,
   name: "Checkbox group",
 };
 
-export const Label_ = {
-  render: Label,
+export const Label = {
+  render: StateTemplate,
   name: "Label",
 };
 
 export const LabelLeftPosition = {
-  render: LabelLeft,
+  render: StateTemplate,
   name: "Label, left position",
   args: {
     labelPosition: "left",
   },
 };
 
-export const Description_ = {
-  render: Description,
+export const Description = {
+  render: StateTemplate,
   name: "Description",
 };
 
 export const DescriptionLeftPosition = {
-  render: DescriptionLeft,
+  render: StateTemplate,
   name: "Description, left position",
   args: {
     labelPosition: "left",
   },
 };
 
-export const Stacked_ = {
-  render: Stacked,
+export const Stacked = {
+  render: StateTemplate,
   name: "Stacked",
   args: {
     variant: "stacked",

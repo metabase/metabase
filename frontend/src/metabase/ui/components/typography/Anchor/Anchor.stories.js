@@ -50,9 +50,6 @@ const SizeTemplate = args => (
   </Grid>
 );
 
-const Default = DefaultTemplate.bind({});
-const Sizes = SizeTemplate.bind({});
-
 export default {
   title: "Typography/Anchor",
   component: Anchor,
@@ -60,12 +57,12 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: DefaultTemplate,
   name: "Default",
 };
 
-export const Sizes_ = {
-  render: Sizes,
+export const Sizes = {
+  render: SizeTemplate,
   name: "Sizes",
 };

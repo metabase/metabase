@@ -34,9 +34,6 @@ const DefaultTemplate = args => (
   </Box>
 );
 
-const Default = DefaultTemplate.bind({});
-const BackgroundPosition = DefaultTemplate.bind({});
-
 export default {
   title: "Data display/Image",
   component: Image,
@@ -44,13 +41,13 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: DefaultTemplate,
   name: "Default",
 };
 
-export const BackgroundPosition_ = {
-  render: BackgroundPosition,
+export const BackgroundPosition = {
+  render: DefaultTemplate,
   name: "BackgroundPosition",
   args: {
     width: 80,

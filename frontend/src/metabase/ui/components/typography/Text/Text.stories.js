@@ -66,11 +66,6 @@ const SizeTemplate = args => (
   </Grid>
 );
 
-const Default = DefaultTemplate.bind({});
-const Sizes = SizeTemplate.bind({});
-const Multiline = SizeTemplate.bind({});
-const Truncated = SizeTemplate.bind({});
-
 export default {
   title: "Typography/Text",
   component: Text,
@@ -78,29 +73,29 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: DefaultTemplate,
   name: "Default",
 };
 
-export const Sizes_ = {
-  render: Sizes,
+export const Sizes = {
+  render: SizeTemplate,
   name: "Sizes",
   args: {
     children: sampleArgs.shortText,
   },
 };
 
-export const Multiline_ = {
-  render: Multiline,
+export const Multiline = {
+  render: SizeTemplate,
   name: "Multiline",
   args: {
     children: sampleArgs.longText,
   },
 };
 
-export const Truncated_ = {
-  render: Truncated,
+export const Truncated = {
+  render: SizeTemplate,
   name: "Truncated",
   args: {
     children: sampleArgs.longText,

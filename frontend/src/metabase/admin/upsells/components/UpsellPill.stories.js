@@ -33,8 +33,6 @@ const DefaultTemplate = args => (
   </ReduxProvider>
 );
 
-const Default = DefaultTemplate.bind({});
-
 const NarrowTemplate = args => (
   <ReduxProvider>
     <Box style={{ maxWidth: "10rem" }}>
@@ -43,8 +41,6 @@ const NarrowTemplate = args => (
   </ReduxProvider>
 );
 
-const Narrow = NarrowTemplate.bind({});
-
 export default {
   title: "Upsells/Pill",
   component: _UpsellPill,
@@ -52,12 +48,12 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: DefaultTemplate,
   name: "Default",
 };
 
 export const Multiline = {
-  render: Narrow,
+  render: NarrowTemplate,
   name: "Multiline",
 };

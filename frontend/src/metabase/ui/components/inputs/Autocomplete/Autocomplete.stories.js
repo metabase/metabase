@@ -87,34 +87,12 @@ const argTypes = {
   },
 };
 
-const DefaultTemplate = args => <Autocomplete {...args} />;
-
 const VariantTemplate = args => (
   <Stack>
     <Autocomplete {...args} />
     <Autocomplete {...args} variant="unstyled" />
   </Stack>
 );
-
-const Default = DefaultTemplate.bind({});
-const EmptyMd = VariantTemplate.bind({});
-const AsteriskMd = VariantTemplate.bind({});
-const DescriptionMd = VariantTemplate.bind({});
-const DisabledMd = VariantTemplate.bind({});
-const ErrorMd = VariantTemplate.bind({});
-const ReadOnlyMd = VariantTemplate.bind({});
-const IconsMd = VariantTemplate.bind({});
-const GroupsMd = VariantTemplate.bind({});
-const LargeSetsMd = VariantTemplate.bind({});
-const EmptyXs = VariantTemplate.bind({});
-const AsteriskXs = VariantTemplate.bind({});
-const DescriptionXs = VariantTemplate.bind({});
-const DisabledXs = VariantTemplate.bind({});
-const ErrorXs = VariantTemplate.bind({});
-const ReadOnlyXs = VariantTemplate.bind({});
-const IconsXs = VariantTemplate.bind({});
-const GroupsXs = VariantTemplate.bind({});
-const LargeSetsXs = VariantTemplate.bind({});
 
 export default {
   title: "Inputs/Autocomplete",
@@ -123,26 +101,25 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
   name: "Default",
 };
 
-export const EmptyMd_ = {
-  render: EmptyMd,
+export const EmptyMd = {
+  render: VariantTemplate,
   name: "Empty, md",
 };
 
-export const AsteriskMd_ = {
-  render: AsteriskMd,
+export const AsteriskMd = {
+  render: VariantTemplate,
   name: "Asterisk, md",
   args: {
     withAsterisk: true,
   },
 };
 
-export const DescriptionMd_ = {
-  render: DescriptionMd,
+export const DescriptionMd = {
+  render: VariantTemplate,
   name: "Description, md",
   args: {
     description: sampleArgs.description,
@@ -150,8 +127,8 @@ export const DescriptionMd_ = {
   },
 };
 
-export const DisabledMd_ = {
-  render: DisabledMd,
+export const DisabledMd = {
+  render: VariantTemplate,
   name: "Disabled, md",
   args: {
     description: sampleArgs.description,
@@ -160,8 +137,8 @@ export const DisabledMd_ = {
   },
 };
 
-export const ErrorMd_ = {
-  render: ErrorMd,
+export const ErrorMd = {
+  render: VariantTemplate,
   name: "Error, md",
   args: {
     description: sampleArgs.description,
@@ -170,8 +147,8 @@ export const ErrorMd_ = {
   },
 };
 
-export const ReadOnlyMd_ = {
-  render: ReadOnlyMd,
+export const ReadOnlyMd = {
+  render: VariantTemplate,
   name: "Read only, md",
   args: {
     defaultValue: sampleArgs.value,
@@ -181,8 +158,8 @@ export const ReadOnlyMd_ = {
   },
 };
 
-export const IconsMd_ = {
-  render: IconsMd,
+export const IconsMd = {
+  render: VariantTemplate,
   name: "Icons, md",
   args: {
     data: dataWithIcons,
@@ -191,8 +168,8 @@ export const IconsMd_ = {
   },
 };
 
-export const GroupsMd_ = {
-  render: GroupsMd,
+export const GroupsMd = {
+  render: VariantTemplate,
   name: "Groups, md",
   args: {
     data: dataWithGroups,
@@ -201,8 +178,8 @@ export const GroupsMd_ = {
   },
 };
 
-export const LargeSetsMd_ = {
-  render: LargeSetsMd,
+export const LargeSetsMd = {
+  render: VariantTemplate,
   name: "Large sets, md",
   args: {
     data: dataWithGroupsLarge,
@@ -212,8 +189,8 @@ export const LargeSetsMd_ = {
   },
 };
 
-export const EmptyXs_ = {
-  render: EmptyXs,
+export const EmptyXs = {
+  render: VariantTemplate,
   name: "Empty, xs",
   args: {
     ...EmptyMd.args,
@@ -221,8 +198,8 @@ export const EmptyXs_ = {
   },
 };
 
-export const AsteriskXs_ = {
-  render: AsteriskXs,
+export const AsteriskXs = {
+  render: VariantTemplate,
   name: "Asterisk, xs",
   args: {
     ...AsteriskMd.args,
@@ -230,8 +207,8 @@ export const AsteriskXs_ = {
   },
 };
 
-export const DescriptionXs_ = {
-  render: DescriptionXs,
+export const DescriptionXs = {
+  render: VariantTemplate,
   name: "Description, xs",
   args: {
     ...DescriptionMd.args,
@@ -239,8 +216,8 @@ export const DescriptionXs_ = {
   },
 };
 
-export const DisabledXs_ = {
-  render: DisabledXs,
+export const DisabledXs = {
+  render: VariantTemplate,
   name: "Disabled, xs",
   args: {
     ...DisabledMd.args,
@@ -248,8 +225,8 @@ export const DisabledXs_ = {
   },
 };
 
-export const ErrorXs_ = {
-  render: ErrorXs,
+export const ErrorXs = {
+  render: VariantTemplate,
   name: "Error, xs",
   args: {
     ...ErrorMd.args,
@@ -257,8 +234,8 @@ export const ErrorXs_ = {
   },
 };
 
-export const ReadOnlyXs_ = {
-  render: ReadOnlyXs,
+export const ReadOnlyXs = {
+  render: VariantTemplate,
   name: "Read only, xs",
   args: {
     ...ReadOnlyMd.args,
@@ -266,8 +243,8 @@ export const ReadOnlyXs_ = {
   },
 };
 
-export const IconsXs_ = {
-  render: IconsXs,
+export const IconsXs = {
+  render: VariantTemplate,
   name: "Icons, xs",
   args: {
     ...IconsMd.args,
@@ -275,8 +252,8 @@ export const IconsXs_ = {
   },
 };
 
-export const GroupsXs_ = {
-  render: GroupsXs,
+export const GroupsXs = {
+  render: VariantTemplate,
   name: "Groups, xs",
   args: {
     ...GroupsMd.args,
@@ -284,8 +261,8 @@ export const GroupsXs_ = {
   },
 };
 
-export const LargeSetsXs_ = {
-  render: LargeSetsXs,
+export const LargeSetsXs = {
+  render: VariantTemplate,
   name: "Large sets, xs",
   args: {
     ...LargeSetsMd.args,

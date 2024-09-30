@@ -138,11 +138,6 @@ const LabelsAndDividersTemplate = args => (
   </Flex>
 );
 
-const Default = DefaultTemplate.bind({});
-const RightSection = RightSectionTemplate.bind({});
-const Icons = IconsTemplate.bind({});
-const LabelsAndDividers = LabelsAndDividersTemplate.bind({});
-
 export default {
   title: "Overlays/Menu",
   component: Menu,
@@ -150,22 +145,22 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: DefaultTemplate,
   name: "Default",
 };
 
-export const RightSection_ = {
-  render: RightSection,
+export const RightSection = {
+  render: RightSectionTemplate,
   name: "Right section",
 };
 
-export const Icons_ = {
-  render: Icons,
+export const Icons = {
+  render: IconsTemplate,
   name: "Icons",
 };
 
-export const LabelsAndDividers_ = {
-  render: LabelsAndDividers,
+export const LabelsAndDividers = {
+  render: LabelsAndDividersTemplate,
   name: "Labels and dividers",
 };

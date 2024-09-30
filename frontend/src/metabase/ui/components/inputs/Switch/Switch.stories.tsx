@@ -32,8 +32,6 @@ const argTypes = {
   },
 };
 
-const DefaultTemplate = (args: SwitchProps) => <Switch {...args} />;
-
 const StateTemplate = (args: SwitchProps) => (
   <Stack>
     <Switch {...args} label="Unchecked switch" checked={false} />
@@ -43,12 +41,6 @@ const StateTemplate = (args: SwitchProps) => (
   </Stack>
 );
 
-const Default = DefaultTemplate.bind({});
-const Label = StateTemplate.bind({});
-const LabelLeft = StateTemplate.bind({});
-const Description = StateTemplate.bind({});
-const DescriptionLeft = StateTemplate.bind({});
-
 export default {
   title: "Inputs/Switch",
   component: Switch,
@@ -56,24 +48,23 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
   name: "Default",
 };
 
-export const Label_ = {
-  render: Label,
+export const Label = {
+  render: StateTemplate,
   name: "Label",
 };
 
 export const LabelLeftPosition = {
-  render: LabelLeft,
+  render: StateTemplate,
   name: "Label, left position",
   args: { labelPosition: "left" },
 };
 
-export const Description_ = {
-  render: Description,
+export const Description = {
+  render: StateTemplate,
   name: "Description",
   args: {
     description: "Every type of cheese will be consumed, regardless of stink.",
@@ -81,7 +72,7 @@ export const Description_ = {
 };
 
 export const DescriptionLeftPosition = {
-  render: DescriptionLeft,
+  render: StateTemplate,
   name: "Description, left position",
   args: {
     labelPosition: "left",

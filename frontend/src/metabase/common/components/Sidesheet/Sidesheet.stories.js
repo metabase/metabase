@@ -78,13 +78,6 @@ const SidesheetButtonTemplate = () => (
   </Flex>
 );
 
-const Default = DefaultTemplate.bind({});
-const WithCards = WithCardsTemplate.bind({});
-const WithSectionedCards = WithSectionedCardsTemplate.bind({});
-const WithPages = PagedSidesheetTemplate.bind({});
-const WithTabs = TabbedSidesheetTemplate.bind({});
-const SidesheetButtonStory = SidesheetButtonTemplate.bind({});
-
 export default {
   title: "Components/Sidesheet",
   component: Sidesheet,
@@ -92,32 +85,32 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: DefaultTemplate,
   name: "Default",
 };
 
-export const WithCards_ = {
-  render: WithCards,
+export const WithCards = {
+  render: WithCardsTemplate,
   name: "With cards",
 };
 
-export const WithSectionedCards_ = {
-  render: WithSectionedCards,
+export const WithSectionedCards = {
+  render: WithSectionedCardsTemplate,
   name: "With sectioned cards",
 };
 
 export const WithSubPages = {
-  render: WithPages,
+  render: PagedSidesheetTemplate,
   name: "With sub pages",
 };
 
-export const WithTabs_ = {
-  render: WithTabs,
+export const WithTabs = {
+  render: TabbedSidesheetTemplate,
   name: "With tabs",
 };
 
 export const SidesheetButtons = {
-  render: SidesheetButtonStory,
+  render: SidesheetButtonTemplate,
   name: "Sidesheet buttons",
 };

@@ -11,9 +11,6 @@ const argTypes = {
   },
 };
 
-const DefaultTemplate = args => <Progress {...args} />;
-const Default = DefaultTemplate.bind({});
-
 export default {
   title: "Feedback/Progress",
   component: Progress,
@@ -21,7 +18,6 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
   name: "Default",
 };

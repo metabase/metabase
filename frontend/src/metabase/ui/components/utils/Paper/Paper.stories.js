@@ -62,10 +62,6 @@ const GridTemplate = args => (
   </Grid>
 );
 
-const Default = DefaultTemplate.bind({});
-const NoBorder = GridTemplate.bind({});
-const Border = GridTemplate.bind({});
-
 export default {
   title: "Utils/Paper",
   component: Paper,
@@ -73,18 +69,18 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: DefaultTemplate,
   name: "Default",
 };
 
-export const NoBorder_ = {
-  render: NoBorder,
+export const NoBorder = {
+  render: GridTemplate,
   name: "No border",
 };
 
-export const Border_ = {
-  render: Border,
+export const Border = {
+  render: GridTemplate,
   name: "Border",
   args: {
     withBorder: true,

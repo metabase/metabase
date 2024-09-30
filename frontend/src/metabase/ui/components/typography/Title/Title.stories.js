@@ -68,12 +68,6 @@ const TruncatedTemplate = args => (
   </Stack>
 );
 
-const Default = DefaultTemplate.bind({});
-const Sizes = SizeTemplate.bind({});
-const Underlined = SizeTemplate.bind({});
-const Truncated = TruncatedTemplate.bind({});
-const TruncatedAndUnderlined = TruncatedTemplate.bind({});
-
 export default {
   title: "Typography/Title",
   component: Title,
@@ -81,34 +75,34 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: DefaultTemplate,
   name: "Default",
 };
 
-export const Sizes_ = {
-  render: Sizes,
+export const Sizes = {
+  render: SizeTemplate,
   name: "Sizes",
 };
 
-export const Underlined_ = {
-  render: Underlined,
+export const Underlined = {
+  render: SizeTemplate,
   name: "Underlined",
   args: {
     underline: true,
   },
 };
 
-export const Truncated_ = {
-  render: Truncated,
+export const Truncated = {
+  render: TruncatedTemplate,
   name: "Truncated",
   args: {
     truncate: true,
   },
 };
 
-export const TruncatedAndUnderlined_ = {
-  render: TruncatedAndUnderlined,
+export const TruncatedAndUnderlined = {
+  render: TruncatedTemplate,
   name: "Truncated and underlined",
   args: {
     truncate: true,

@@ -58,11 +58,6 @@ const IconsTemplate = (args: TabsProps) => (
   </Tabs>
 );
 
-const Default = DefaultTemplate.bind({});
-const Icons = IconsTemplate.bind({});
-const Vertical = DefaultTemplate.bind({});
-const VerticalIcons = IconsTemplate.bind({});
-
 export default {
   title: "Navigation/Tabs",
   component: Tabs,
@@ -70,18 +65,18 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
+  render: DefaultTemplate,
   name: "Default",
 };
 
-export const Icons_ = {
-  render: Icons,
+export const Icons = {
+  render: IconsTemplate,
   name: "Icons",
 };
 
 export const VerticalOrientation = {
-  render: Vertical,
+  render: DefaultTemplate,
   name: "Vertical orientation",
   args: {
     orientation: "vertical",
@@ -89,7 +84,7 @@ export const VerticalOrientation = {
 };
 
 export const VerticalOrientationIcons = {
-  render: VerticalIcons,
+  render: IconsTemplate,
   name: "Vertical orientation, icons",
   args: {
     orientation: "vertical",

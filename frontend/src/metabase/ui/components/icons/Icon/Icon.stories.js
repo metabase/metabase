@@ -21,10 +21,6 @@ const argTypes = {
   },
 };
 
-const DefaultTemplate = args => {
-  return <Icon {...args} />;
-};
-
 const ListTemplate = () => {
   return (
     <Box>
@@ -38,9 +34,6 @@ const ListTemplate = () => {
   );
 };
 
-const Default = DefaultTemplate.bind({});
-const List = ListTemplate.bind({});
-
 export default {
   title: "Icons/Icon",
   component: Icon,
@@ -48,12 +41,11 @@ export default {
   argTypes,
 };
 
-export const Default_ = {
-  render: Default,
+export const Default = {
   name: "Default",
 };
 
-export const List_ = {
-  render: List,
+export const List = {
+  render: ListTemplate,
   name: "List",
 };
