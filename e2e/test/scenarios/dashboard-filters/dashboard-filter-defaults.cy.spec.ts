@@ -56,7 +56,7 @@ describe("scenarios > dashboard > filters > reset", () => {
       questionDetails: QUESTION,
       dashboardDetails: DASHBOARD,
     }).then(({ body: dashboardCard }) => {
-      const { id, card_id, dashboard_id } = dashboardCard;
+      const { card_id, dashboard_id } = dashboardCard;
 
       cy.editDashboardCard(dashboardCard, {
         parameter_mappings: [
@@ -72,13 +72,20 @@ describe("scenarios > dashboard > filters > reset", () => {
           },
         ],
       }).then(() => {
-        cy.wrap(id).as("dashCardId");
-        cy.wrap(dashboard_id).as("dashboardId");
-        visitDashboard(dashboard_id);
+        visitDashboard(dashboard_id, {
+          params: {
+            filter_one: "",
+            filter_two: "Bar",
+          },
+        });
       });
     });
 
     cy.log("Default dashboard filter");
+
+    filterWidget().contains("Filter One").should("be.visible");
+    filterWidget().contains("Bar").should("be.visible");
+
     cy.location("search").should("eq", "?filter_one=&filter_two=Bar");
 
     clearFilterWidget(1);
@@ -108,39 +115,67 @@ describe("scenarios > dashboard > filters > reset", () => {
 
     filterWidget().contains("Filter One").should("be.visible");
     filterWidget().contains("Foo").should("be.visible");
+  });
 
-    cy.get<number>("@dashCardId").then(dashcardId => {
-      cy.wait(`@dashcardQuery${dashcardId}`);
+  it("should reset a filters value when editing the default, and leave other filters alone", () => {
+    createQuestionAndDashboard({
+      questionDetails: QUESTION,
+      dashboardDetails: DASHBOARD,
+    }).then(({ body: dashboardCard }) => {
+      const { card_id, dashboard_id } = dashboardCard;
+
+      cy.editDashboardCard(dashboardCard, {
+        parameter_mappings: [
+          {
+            parameter_id: FILTER_ONE.id,
+            card_id,
+            target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+          },
+          {
+            parameter_id: FILTER_TWO.id,
+            card_id,
+            target: ["dimension", ["field", PRODUCTS.TITLE, null]],
+          },
+        ],
+      }).then(() => {
+        visitDashboard(dashboard_id, {
+          params: {
+            filter_one: "",
+            filter_two: "Bar",
+          },
+        });
+      });
     });
-    cy.get<number>("@dashboardId").then(dashboardId => {
-      visitDashboard(dashboardId);
-    });
+
+    cy.log("Default dashboard filter");
+
+    filterWidget().contains("Filter One").should("be.visible");
+    filterWidget().contains("Bar").should("be.visible");
+
+    cy.location("search").should("eq", "?filter_one=&filter_two=Bar");
+
+    cy.log(
+      "Finally, when we remove dashboard filter's default value, the url should reflect that by removing the placeholder",
+    );
     editDashboard();
 
     openFilterOptions("Filter One");
+
     sidebar().within(() => {
       cy.findByLabelText("Input box").click();
-      setDefaultFilterValue("Quu");
+      setDefaultFilterValue("Foo");
     });
 
     popover().button("Add filter").click();
 
-    cy.location("search").should("eq", "?filter_one=Quu&filter_two=Foo");
+    cy.location("search").should("eq", "?filter_one=Foo&filter_two=Bar");
 
     saveDashboard();
 
-    cy.location("search").should("eq", "?filter_one=Quu&filter_two=Foo");
-    filterWidget().contains("Quu").should("be.visible");
+    cy.location("search").should("eq", "?filter_one=Foo&filter_two=Bar");
+
+    filterWidget().contains("Filter One").should("be.visible");
     filterWidget().contains("Foo").should("be.visible");
-
-    // Workaround for the stresstest because the recently used filter values
-    // are not cleared when calling `restore`
-    clearFilterWidget(0);
-    clearFilterWidget(1);
-
-    cy.get<number>("@dashCardId").then(dashcardId => {
-      cy.wait(`@dashcardQuery${dashcardId}`);
-    });
   });
 });
 
