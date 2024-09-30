@@ -107,9 +107,12 @@ describe("scenarios > dashboard > filters > reset", () => {
     filterWidget().contains("Filter One").should("be.visible");
     filterWidget().contains("Foo").should("be.visible");
 
+    cy.wait(1000);
+
     cy.findByLabelText("Edit dashboard").click();
     cy.wait("@dashcardQuery65");
 
+    cy.findByLabelText("Edit dashboard").click();
     // eslint-disable-next-line no-unscoped-text-selectors
     cy.findByText("You're editing this dashboard.");
 
