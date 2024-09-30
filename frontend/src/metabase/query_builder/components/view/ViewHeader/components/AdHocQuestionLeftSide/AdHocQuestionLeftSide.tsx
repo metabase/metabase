@@ -18,7 +18,6 @@ import { ViewHeading, ViewSubHeading } from "../../../ViewSection";
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 import { QuestionDataSource } from "../QuestionDataSource";
 import { QuestionDescription } from "../QuestionDescription";
-import { DashboardSaveLocation } from "../DashboardSaveLocation";
 
 import AdHocQuestionLeftSideS from "./AdHocQuestionLeftSide.module.css";
 
@@ -50,11 +49,6 @@ export function AdHocQuestionLeftSide(
       onOpenModal(MODAL_TYPES.SAVE);
     }
   };
-
-  const saveToDashboardId = question.dashboardId();
-  const { data: saveToDashboard } = useGetDashboardQuery(
-    saveToDashboardId ? { id: saveToDashboardId } : skipToken,
-  );
 
   return (
     <Box className={AdHocQuestionLeftSideS.AdHocLeftSideRoot}>
