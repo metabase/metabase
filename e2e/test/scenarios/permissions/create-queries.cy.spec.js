@@ -1,15 +1,23 @@
-import { USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  assertPermissionForItem,
   assertPermissionTable,
+  assertSameBeforeAndAfterSave,
+  focusNativeEditor,
   modal,
   modifyPermission,
   popover,
   restore,
+  runNativeQuery,
   selectPermissionRow,
   selectSidebarItem,
+  setTokenFeatures,
+  startNewNativeQuestion,
 } from "e2e/support/helpers";
 
-const { ALL_USERS_GROUP } = USER_GROUPS;
+const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
@@ -223,7 +231,7 @@ describe("scenarios > admin > permissions > create queries > query builder and n
     );
   });
 
-  it("should allow setting create queries to 'query builder and native' in database view", () => {
+  it("should allow setting 'query builder and native' in database view", () => {
     cy.visit("/admin/permissions/");
     cy.get("label").contains("Databases").click();
 
@@ -278,6 +286,138 @@ describe("scenarios > admin > permissions > create queries > query builder and n
     cy.findByText("Save changes").should("not.exist");
 
     assertPermissionTable(finalPermissions);
+  });
+
+  it("should allow setting 'query builder and native' in table view and it should be enforced correctly", () => {
+    cy.log("should allow setting permissions value at table level");
+
+    cy.visit(`/admin/permissions/data/group/${DATA_GROUP}`);
+
+    const CREATE_QUERIES_PERM_IDX = 0;
+
+    modifyPermission(
+      "Sample Database",
+      CREATE_QUERIES_PERM_IDX,
+      "Query builder only",
+    );
+
+    cy.get("main").findByText("Sample Database").click();
+
+    modifyPermission(
+      "Orders",
+      CREATE_QUERIES_PERM_IDX,
+      "Query builder and native",
+    );
+
+    assertSameBeforeAndAfterSave(() => {
+      assertPermissionForItem(
+        "Accounts",
+        CREATE_QUERIES_PERM_IDX,
+        "Query builder only",
+      );
+      assertPermissionForItem(
+        "Orders",
+        CREATE_QUERIES_PERM_IDX,
+        "Query builder and native",
+      );
+    });
+
+    cy.log("should enforce the new settings");
+    cy.signOut();
+    cy.signInAsNormalUser();
+
+    cy.log("should work for table with native query access");
+    startNewNativeQuestion();
+    focusNativeEditor().type("SELECT * FROM Orders");
+    runNativeQuery();
+    cy.findAllByTestId("cell-data").should("contain", "1");
+
+    cy.log("should not work for table without native query access");
+    startNewNativeQuestion();
+    focusNativeEditor()
+      .type("{selectall}{backspace}", { delay: 50 })
+      .type("SELECT * FROM Accounts");
+    runNativeQuery();
+    cy.findByTestId("query-visualization-root")
+      .findByText(/You do not have permissions to run this query/)
+      .should("exist");
+    cy.findByTestId("qb-save-button").should("be.enabled").click();
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByLabelText("Name").type("Save should fail");
+      cy.intercept("POST", "/api/card").as("saveQuestion");
+      cy.findByText("Save").click();
+      cy.wait("@saveQuestion");
+      cy.findByText(
+        /You cannot save this Question because you do not have permissions to run its query/,
+      ).should("exist");
+    });
+  });
+
+  it("should only allow users to create native queries for tables they have permissions for", () => {
+    cy.visit(`/admin/permissions/data/group/${DATA_GROUP}`);
+
+    const CREATE_QUERIES_PERM_IDX = 0;
+
+    modifyPermission(
+      "Sample Database",
+      CREATE_QUERIES_PERM_IDX,
+      "Query builder only",
+    );
+
+    cy.get("main").findByText("Sample Database").click();
+
+    modifyPermission(
+      "Orders",
+      CREATE_QUERIES_PERM_IDX,
+      "Query builder and native",
+    );
+  });
+
+  it("should prompt users you can not have sandboxed permissions when granting native query access", () => {
+    setTokenFeatures("all");
+
+    cy.sandboxTable({
+      table_id: ORDERS_ID,
+      group_id: DATA_GROUP,
+      attribute_remappings: {
+        "User ID": ["dimension", ["field", ORDERS.USER_ID, null]],
+      },
+    });
+
+    cy.visit(
+      `/admin/permissions/data/group/${DATA_GROUP}/database/${SAMPLE_DB_ID}`,
+    );
+
+    const DATA_ACCESS_PERM_IDX = 0;
+    const CREATE_QUERIES_PERM_IDX = 1;
+
+    assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Sandboxed");
+    assertPermissionForItem(
+      "Orders",
+      CREATE_QUERIES_PERM_IDX,
+      "Query builder only",
+    );
+    modifyPermission(
+      "Orders",
+      CREATE_QUERIES_PERM_IDX,
+      "Query builder and native",
+    );
+
+    modal()
+      .should("exist")
+      .within(() => {
+        cy.findByText(/Remove “Sandboxed” access from this table/).should(
+          "exist",
+        );
+        cy.findByText("Change").click();
+      });
+
+    assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Can view");
+    assertPermissionForItem(
+      "Orders",
+      CREATE_QUERIES_PERM_IDX,
+      "Query builder and native",
+    );
   });
 });
 
