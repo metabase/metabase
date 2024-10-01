@@ -36,7 +36,13 @@ export const ChartTypeOption = ({
           w="3.125rem"
           h="3.125rem"
           radius="xl"
-          onClick={() => onSelectVisualization(visualizationType)}
+          onClick={() => {
+            if (isSelected) {
+              onOpenSettings?.(visualizationType);
+            } else {
+              onSelectVisualization(visualizationType);
+            }
+          }}
           color="brand"
           data-is-selected={isSelected}
           variant={isSelected ? "filled" : "outline"}
