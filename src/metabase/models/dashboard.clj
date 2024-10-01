@@ -213,6 +213,7 @@
                                       [:in :dashcard.dashboard_id (map :id dashboards)]
                                       [:or
                                        [:= :card.archived false]
+                                       [:not= :card.dashboard_id nil]
                                        [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
                           :order-by  [[:dashcard.dashboard_id] [:dashcard.created_at :asc]]}))
    :id
