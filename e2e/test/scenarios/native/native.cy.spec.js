@@ -525,9 +525,7 @@ describe("scenarios > native question > data reference sidebar", () => {
       cy.log("clicking the title should navigate back");
       cy.findByText("QUANTITY").click();
       cy.findByText("ORDERS").click();
-      cy.get("[data-testid='sidebar-header-title']")
-        .findByText("Sample Database")
-        .click();
+      sidebarHeaderTitle().findByText("Sample Database").click();
       cy.findByText("Data Reference");
     });
   });
