@@ -58,7 +58,7 @@ export const WebhookChannelEdit = ({
     })
       .unwrap()
       .then(() => {
-        setLabel(t`Succes`);
+        setLabel(t`Success!`);
       })
       .catch(() => {
         setLabel(t`Something went wrong`);
