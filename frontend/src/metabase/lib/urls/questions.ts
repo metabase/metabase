@@ -77,7 +77,11 @@ export function question(
   }
 
   if (mode === "notebook") {
-    path = `${path}/notebook`;
+    if (card.type === "model" || card.type === "metric") {
+      path = `${path}/query`;
+    } else {
+      path = `${path}/notebook`;
+    }
   } else if (objectId) {
     path = `${path}/${objectId}`;
   }
