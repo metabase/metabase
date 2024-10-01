@@ -503,66 +503,36 @@
       (u/prog1 (first (last-edit/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
-;; liberally copied from metabase.api.collection
-(mu/defn- coalesce-edit-info :- last-edit/MaybeAnnotated
-  "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
-  if `:last_edit_user` is not nil."
-  [row]
-  (letfn [(select-as [original k->k']
-            (reduce (fn [m [k k']] (assoc m k' (get original k)))
-                    {}
-                    k->k'))]
-    (let [mapping {:last_edit_user       :id
-                   :last_edit_last_name  :last_name
-                   :last_edit_first_name :first_name
-                   :last_edit_email      :email
-                   :last_edit_timestamp  :timestamp}]
-      (cond-> (apply dissoc row (keys mapping))
-        ;; don't use contains as they all have the key, we care about a value present
-        (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
-
 (api/defendpoint GET "/:id/items"
   "Get Dashboard with ID."
   [id]
   {id ms/PositiveInt}
   (api/read-check :model/Dashboard id)
-  ;; query copied from metabase.api.collection
-  (let [query {:select    (cond->
-                              [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                               :last_used_at
-                               :c.collection_id
-                               :c.archived_directly
-                               :c.archived
-                               :c.dataset_query
-                               :c.database_id
-                               [(h2x/literal "card")  :model]
-                               [:u.id :last_edit_user]
-                               [:u.email :last_edit_email]
-                               [:u.first_name :last_edit_first_name]
-                               [:u.last_name :last_edit_last_name]
-                               [:r.timestamp :last_edit_timestamp]
-                               [{:select   [:status]
-                                 :from     [:moderation_review]
-                                 :where    [:and
-                                            [:= :moderated_item_type "card"]
-                                            [:= :moderated_item_id :c.id]
-                                            [:= :most_recent true]]
-                                 ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                                 ;; protecting against potential bugs
-                                 :order-by [[:id :desc]]
-                                 :limit    1}
-                                :moderated_status]])
-               :from      [[:report_card :c]]
-               :left-join [[:revision :r] [:and
-                                           [:= :r.model_id :c.id]
-                                           [:= :r.most_recent true]
-                                           [:= :r.model (h2x/literal "Card")]]
-                           [:core_user :u] [:= :u.id :r.user_id]]
-               :where     [:= :c.dashboard_id id]}
-        cards (mdb.query/query query)]
-    {:total (count cards)
-     :data (into [] (comp (map coalesce-edit-info)
-                          (map #(update % :dataset_query (comp mbql.normalize/normalize json/parse-string)))) cards)
+  ;; query copied from metabase.api.collection to match the shape of api/collection/<:id|root>/items
+  (let [query      {:select    (cond->
+                                   [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                                    :last_used_at :c.collection_id :c.archived_directly :c.archived :c.dataset_query :c.database_id
+                                    [(h2x/literal "card")  :model]
+                                    [{:select   [:status]
+                                      :from     [:moderation_review]
+                                      :where    [:and
+                                                 [:= :moderated_item_type "card"]
+                                                 [:= :moderated_item_id :c.id]
+                                                 [:= :most_recent true]]
+                                      ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                                      ;; protecting against potential bugs
+                                      :order-by [[:id :desc]]
+                                      :limit    1}
+                                     :moderated_status]])
+                    :from      [[:report_card :c]]
+                    :where     [:and
+                                [:= :c.dashboard_id id]
+                                [:= :c.archived false]]}
+        cards      (mdb.query/query query)]
+    {:total  (count cards)
+     :data   (into []
+                   (map #(update % :dataset_query (comp mbql.normalize/normalize json/parse-string)))
+                   (last-edit/with-last-edit-info cards :card))
      :models ["card"]}))
 
 (defn- check-allowed-to-change-embedding
