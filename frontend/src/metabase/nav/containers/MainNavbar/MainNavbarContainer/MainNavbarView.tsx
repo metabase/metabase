@@ -9,6 +9,7 @@ import { useHasTokenFeature } from "metabase/common/hooks/use-has-token-feature"
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import {
   PERSONAL_COLLECTIONS,
   getCollectionIcon,
@@ -17,9 +18,19 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { UploadCSV } from "metabase/nav/containers/MainNavbar/SidebarItems/UploadCSV";
-import { getSetting } from "metabase/selectors/settings";
-import type { IconName, IconProps } from "metabase/ui";
+import { getLearnUrl, getSetting } from "metabase/selectors/settings";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import {
+  Box,
+  Button,
+  Group,
+  Icon,
+  type IconName,
+  type IconProps,
+  Text,
+} from "metabase/ui";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
 import {
@@ -219,6 +230,7 @@ function MainNavbarView({
           )}
         </div>
         <WhatsNewNotification />
+        <SidebarOnboardingSection />
       </SidebarContentRoot>
     </ErrorBoundary>
   );
@@ -275,5 +287,41 @@ function CollectionSectionHeading({
     </SidebarHeadingWrapper>
   );
 }
+
+function SidebarOnboardingSection() {
+  const applicationName = useSelector(getApplicationName);
+
+  return (
+    <Box m={0} bottom={0} pos="fixed" w={NAV_SIDEBAR_WIDTH} bg="bg-white">
+      <Box px="xl" py="md">
+        <Group spacing="sm">
+          <Icon name="learn" />
+          {/*eslint-disable-next-line no-unconditional-metabase-links-render -- This link is only temporary. It will be replaced with an internal link to a page. */}
+          <ExternalLink href={getLearnUrl()}>
+            <Text fz="md" weight={600}>{t`How to use ${applicationName}`}</Text>
+          </ExternalLink>
+        </Group>
+      </Box>
+      <Box
+        px="xl"
+        py="md"
+        style={{
+          borderTop: `1px solid var(--mb-color-border)`,
+        }}
+      >
+        <Text
+          fz="sm"
+          mb="md"
+        >{t`Start by adding your data. Connect to a database or upload a CSV file.`}</Text>
+        <Button
+          leftIcon={<Icon name="add_data" />}
+          fullWidth
+          // compact
+        >{t`Add data`}</Button>
+      </Box>
+    </Box>
+  );
+}
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MainNavbarView;
