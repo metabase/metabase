@@ -12,7 +12,7 @@
     (mt/with-test-user :crowberto
       (mt/with-premium-features #{:embedding}
         (mt/with-temporary-setting-values [embedding-app-origin "https://example.com"
-                                           enable-embedding false]
+                                           enable-embedding-interactive false]
           (let [embedded-dash-count (t2/count :model/Dashboard :enable_embedding true)
                 embedded-card-count (t2/count :model/Card :enable_embedding true)
                 expected-payload    {"embedding_app_origin_set"   true
@@ -24,7 +24,7 @@
                        :user-id (str (mt/user->id :crowberto))}]
                      (snowplow-test/pop-event-data-and-user-id!)))
 
-              (mt/with-temporary-setting-values [enable-embedding false]
+              (mt/with-temporary-setting-values [enable-embedding-interactive false]
                 (is (= [{:data
                          (merge expected-payload {"event" "embedding_disabled"})
                          :user-id (str (mt/user->id :crowberto))}]
