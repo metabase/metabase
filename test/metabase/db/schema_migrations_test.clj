@@ -2633,22 +2633,43 @@
     (impl/test-migrations "v51.2024-09-26T03:01:00" [migrate!]
       (t2/delete! :model/Setting :key "enable-embedding")
       (migrate!)
-      (is (= nil (t2/select-one :model/Setting :key "enable-embedding-interactive")))))
+      (is (= nil (t2/select-one :model/Setting :key "enable-embedding-interactive")))
+      (is (= nil (t2/select-one :model/Setting :key "enable-embedding-static")))
+      (is (= nil (t2/select-one :model/Setting :key "enable-embedding-sdk")))))
   (testing "Check that embedding settings are true when enable-embedding is true"
-    (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
+    (impl/test-migrations "v51.2024-09-26T03:01:00" [migrate!]
       (t2/delete! :model/Setting :key "enable-embedding")
       (t2/insert! :model/Setting {:key "enable-embedding" :value "true"})
       (migrate!)
-      (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive")))))
+      (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive")))
+      (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
+      (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk")))))
   (testing "Check that embedding settings are false when enable-embedding is false"
     (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
       (t2/delete! :model/Setting :key "enable-embedding")
       (t2/insert! :model/Setting {:key "enable-embedding" :value "false"})
       (migrate!)
-      (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive"))))))
+      (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive")))
+      (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
+      (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk"))))))
 
-;; string set to a value
-;; string unset
-
-#_(deftest populate-embedding-origins-settings-works
-    )
+(deftest populate-embedding-origin-settings-works
+  ;; embedding-app-origins-sdk
+  ;; embedding-app-origins-interactive
+  (testing "Check that embedding-origins are unset when embedding-app-origin is unset"
+    (impl/test-migrations ["v51.2024-09-26T03:04:00"
+                           "v51.2024-09-26T03:05:00"] [migrate!]
+      (t2/delete! :model/Setting :key "embedding-app-origin")
+      (migrate!)
+      (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-interactive")))
+      (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-sdk")))))
+  (testing "Check that embedding-origins settings are propigated when embedding-app-origin is set to some value"
+    (impl/test-migrations ["v51.2024-09-26T03:04:00"
+                           "v51.2024-09-26T03:05:00"] [migrate!]
+      (t2/delete! :model/Setting :key "embedding-app-origin")
+      (t2/insert! :model/Setting {:key "embedding-app-origin" :value "1.2.3.4:5555"})
+      (is (= "1.2.3.4:5555"
+             (t2/select-one-fn :value :model/Setting :key "embedding-app-origin")))
+      (migrate!)
+      (is (= "1.2.3.4:5555" (t2/select-one-fn :value :model/Setting :key "embedding-app-origins-interactive")))
+      (is (= "1.2.3.4:5555" (t2/select-one-fn :value :model/Setting :key "embedding-app-origins-sdk"))))))
