@@ -1337,13 +1337,22 @@
                               (merge (ordered-map/ordered-map
                                       upload/auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk)))
            rows             [["Obi-Wan Kenobi"]]}}]
-  (let [driver driver/*driver*
-        db-id (mt/id)
-        table-name (ddl.i/format-name driver table-name)
-        schema-name (ddl.i/format-name driver schema-name)
+  (let [driver            driver/*driver*
+        db-id             (mt/id)
+        table-name        (ddl.i/format-name driver table-name)
+        schema-name       (ddl.i/format-name driver schema-name)
         schema+table-name (#'upload/table-identifier {:schema schema-name :name table-name})
-        insert-col-names (remove #{upload/auto-pk-column-keyword} (keys col->upload-type))
-        col-definitions (#'upload/column-definitions driver col->upload-type)]
+        ->normalized-col  (comp keyword (partial #'upload/normalize-column-name driver) name)
+        name->display     (->> (keys col->upload-type)
+                               (map name)
+                               (remove #{upload/auto-pk-column-name})
+                               ((juxt
+                                 (partial map (comp name ->normalized-col))
+                                 (partial #'upload/derive-display-names driver)))
+                               (apply zipmap))
+        col->upload-type  (update-keys col->upload-type ->normalized-col)
+        insert-col-names  (remove #{upload/auto-pk-column-keyword} (keys col->upload-type))
+        col-definitions   (#'upload/column-definitions driver col->upload-type)]
     (driver/create-table! driver/*driver*
                           db-id
                           schema+table-name
@@ -1357,6 +1366,9 @@
       (t2/update! :model/Field
                   {:table_id (:id table), :name upload/auto-pk-column-name}
                   {:display_name upload/auto-pk-column-name})
+      ;; and preserve the other display names from the CSV
+      (doseq [[nm dn] name->display]
+        (t2/update! :model/Field {:table_id (:id table), :name nm} {:display_name dn}))
       table)))
 
 (defn catch-ex-info* [f]
@@ -1981,6 +1993,31 @@
                                                 [["Everything" "omega"]]))
                          (set (rows-for-table table)))))
                 (io/delete-file file)))))))))
+
+(deftest update-new-non-ascii-column-onto-non-ascii-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (doseq [action (actions-to-test driver/*driver*)]
+      (testing (action-testing-str action)
+        (with-uploads-enabled!
+         (testing "Append should handle new non-ascii columns being added in the latest CSV"
+           (with-upload-table! [table (create-upload-table!
+                                       :col->upload-type (columns-with-auto-pk {"α" ::upload-types/varchar-255}))]
+             ;; We can't type a literal uppercase Alpha, as our whitespace linter will complain.
+             (is (= (header-with-auto-pk [(u/upper-case-en "α")])
+                    (column-display-names-for-table table)))
+             ;; Reorder as well for good measure
+             (let [csv-rows ["α,name"
+                             "omega,Everything"]
+                   file     (csv-file-with csv-rows)]
+               (testing "The new row is inserted with the values correctly reordered"
+                 (is (= {:row-count 1} (update-csv! action {:file file, :table-id (:id table)})))
+                 (is (= (header-with-auto-pk [(u/upper-case-en "α") "name"])
+                        (column-display-names-for-table table)))
+                 (is (= (set (updated-contents action
+                                               [["Obi-Wan Kenobi" nil]]
+                                               [["omega" "Everything"]]))
+                        (set (rows-for-table table)))))
+               (io/delete-file file)))))))))
 
 (deftest update-type-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)

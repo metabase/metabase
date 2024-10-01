@@ -756,8 +756,7 @@
               [header & rows]    (cond-> (parse reader)
                                    auto-pk?
                                    without-auto-pk-columns)
-              normed-name->field (m/index-by #(normalize-column-name driver (:name %))
-                                             (t2/select :model/Field :table_id (:id table) :active true))
+              normed-name->field (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
               column-names       (for [h header] (normalize-column-name driver h))
               display-names      (for [h header] (normalize-display-name h))
               create-auto-pk?    (and
