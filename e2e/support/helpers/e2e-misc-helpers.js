@@ -314,10 +314,19 @@ export function saveQuestion(
   cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByTestId("qb-header").button("Save").click();
 
+  let wasSavedToDashboard = false;
+
   cy.findByTestId("save-question-modal").within(modal => {
     if (name) {
       cy.findByLabelText("Name").clear().type(name);
     }
+
+    // detect if was saved to dashboard
+    cy.icon("dashboard").then(el => {
+      console.log(el);
+      wasSavedToDashboard = el.length > 0;
+    });
+
     cy.findByText("Save").click();
   });
 
@@ -327,10 +336,12 @@ export function saveQuestion(
     }
   });
 
-  cy.get("#QuestionSavedModal").within(() => {
-    cy.findByText(/add this to a dashboard/i);
-    cy.findByText("Not now").click();
-  });
+  if (wasSavedToDashboard) {
+    cy.get("#QuestionSavedModal").within(() => {
+      cy.findByText(/add this to a dashboard/i);
+      cy.findByText("Not now").click();
+    });
+  }
 }
 
 export function saveSavedQuestion() {

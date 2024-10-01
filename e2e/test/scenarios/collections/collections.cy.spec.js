@@ -451,7 +451,9 @@ describe("scenarios > collection defaults", () => {
         cy.findByText(revokedUsersPersonalCollectionName).click();
         pickEntity({ path: [revokedUsersPersonalCollectionName] });
         pickEntity({ path: ["Collections", "Child"] });
-        entityPickerModal().button("Select").should("be.enabled");
+        entityPickerModal()
+          .button("Save in this collection")
+          .should("be.enabled");
         cy.log("Reported failing from v0.34.3");
         cy.findByTestId("entity-picker-modal")
           .findByText("Parent")

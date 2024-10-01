@@ -272,7 +272,7 @@ class View extends Component {
           <ArchivedEntityBanner
             name={card.name}
             entityType={card.type}
-            canWrite={card.can_write}
+            canMove={card.can_write}
             canRestore={card.can_restore}
             canDelete={card.can_delete}
             onUnarchive={() => onUnarchive(question)}

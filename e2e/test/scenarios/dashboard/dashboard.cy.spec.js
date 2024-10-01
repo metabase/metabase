@@ -82,7 +82,6 @@ describe("scenarios > dashboard", () => {
       const dashboardName = "Dash A";
       const dashboardDescription = "Fresh new dashboard";
       const newQuestionName = "New dashboard question";
-      const existingQuestionName = "Orders, Count";
 
       cy.visit("/");
       appBar().findByText("New").click();
@@ -138,22 +137,9 @@ describe("scenarios > dashboard", () => {
         cy.findByText("Save").click();
       });
       cy.wait("@createQuestion");
-      modal().within(() => {
-        cy.button("Yes please!").click();
-      });
-
-      entityPickerModal().within(() => {
-        cy.findByRole("tab", { name: /Dashboards/ }).click();
-        cy.findByText(dashboardName)
-          .closest("button")
-          .then($button => {
-            expect($button).to.have.attr("data-active", "true");
-          });
-        cy.button("Select").click();
-      });
 
       openQuestionsSidebar();
-      sidebar().findByText(existingQuestionName).click();
+      sidebar().findByText("Orders, Count").click();
 
       getDashboardCards().should("have.length", 2);
 
@@ -162,10 +148,10 @@ describe("scenarios > dashboard", () => {
       cy.log("Breadcrumbs should show a collection dashboard was saved in");
       appBar().findByText("Our analytics").click();
 
-      cy.log("New dashboard should appear in the collection");
+      cy.log("New dashboard question should not appear in the collection");
       cy.findAllByTestId("collection-entry-name")
         .should("contain", dashboardName)
-        .and("contain", newQuestionName);
+        .and("not.contain", newQuestionName);
     });
 
     it(
@@ -228,7 +214,14 @@ describe("scenarios > dashboard", () => {
       cy.log("Save new question from an ad-hoc query");
       openProductsTable();
       cy.findByTestId("qb-header").findByText("Save").click();
-      cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByTestId("dashboard-and-collection-picker-button").click();
+      });
+      entityPickerModal().within(() => {
+        cy.findByText("First collection").click();
+        cy.findByText("Save in this collection").click();
+      });
+      cy.findByTestId("save-question-modal").within(() => {
         cy.findByText("Save").click();
       });
       cy.wait("@saveQuestion");

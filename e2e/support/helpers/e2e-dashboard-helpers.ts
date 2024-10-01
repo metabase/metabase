@@ -184,8 +184,15 @@ export function addHeadingWhileEditing(
   cy.findByPlaceholderText("Heading").type(string, options);
 }
 
-export function openQuestionsSidebar() {
+export function openAddQuestionMenu() {
   cy.findByTestId("dashboard-header").findByLabelText("Add questions").click();
+}
+
+export function openQuestionsSidebar() {
+  openAddQuestionMenu();
+  menu().within(() => {
+    cy.findByText(/Existing Question/).click();
+  });
 }
 
 export function createNewTab() {
