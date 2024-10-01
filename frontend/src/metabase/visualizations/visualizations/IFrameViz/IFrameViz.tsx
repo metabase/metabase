@@ -66,11 +66,10 @@ export function IFrameViz({
             <Text fw="bold" style={{ overflow: "hidden" }}>
               <Ellipsified>{t`Paste your snippet here`}</Ellipsified>
             </Text>{" "}
-            <Box>
+            <Box ml="auto">
               <Button
                 disabled={!iframeOrUrl}
                 compact
-                ml="auto"
                 variant="filled"
                 style={{ pointerEvents: "all" }}
                 onClick={onTogglePreviewing}
