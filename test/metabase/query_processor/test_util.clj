@@ -105,10 +105,7 @@
      (t2/select-one [:model/Field :id :table_id :semantic_type :base_type :effective_type
                      :coercion_strategy :name :display_name :fingerprint]
                     :id (data/id table-kw field-kw)))
-   {:field_ref [:field (data/id table-kw field-kw) nil]}
-   (when (#{:last_login :date} field-kw)
-     {:unit      :default
-      :field_ref [:field (data/id table-kw field-kw) {:temporal-unit :default}]})))
+   {:field_ref [:field (data/id table-kw field-kw) nil]}))
 
 (defn- expected-column-names
   "Get a sequence of keyword names of Fields belonging to a Table in the order they'd normally appear in QP results."
