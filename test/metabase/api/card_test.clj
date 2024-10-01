@@ -3933,14 +3933,35 @@
     (testing "we can update the name"
       (is (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:name "foo"}))
       (is (= "foo" (t2/select-one-fn :name :model/Card card-id))))
-    (testing "We can't update with `dashboard_id` for a normal card."
-      ;; we get a 200 because the param is ignored
+    (testing "We can update with `dashboard_id` for a normal card."
       (is (mt/user-http-request :crowberto :put 200 (str "card/" other-card-id) {:dashboard_id dash-id}))
-      (is (not (= dash-id (t2/select-one-fn :dashboard_id :model/Card :id other-card-id)))))
-    (testing "We CAN'T update a DQ with a `dashboard_id`"
+      (is (= dash-id (t2/select-one-fn :dashboard_id :model/Card :id other-card-id))))
+    (testing "We can update a DQ with a `dashboard_id`"
       (is (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:dashboard_id other-dash-id}))
-      (is (= coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))
+      (is (nil? (t2/select-one-fn :collection_id :model/Card :id card-id))))
     (testing "We can't update the `collection_id`"
       (is (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:collection_id other-coll-id})))
     (testing "We can't set the `type`"
       (is (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:type "model"})))))
+
+(deftest moving-dashboard-questions
+  (testing "We can move a dashboard question to a collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id card-id}]
+      (is (=? {:collection_id coll-id
+               :dashboard_id nil}
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:collection_id coll-id
+                                                                       :dashboard_id nil})))
+      (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))))
+  (testing "We can move a question from a collection to a dashboard"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:collection_id coll-id}
+                   :model/DashboardCard _ {:dashboard_id dash-id
+                                           :card_id card-id}]
+      (is (=? {:collection_id coll-id
+               :dashboard_id dash-id}
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dash-id}))))))
