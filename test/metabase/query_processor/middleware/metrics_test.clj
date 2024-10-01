@@ -651,12 +651,13 @@
       (testing "inside :joins inside :source-query"
         (is (=? (lib.tu.macros/mbql-query nil
                   {:source-query {:source-table (meta/id :checkins)
-                                  :joins        [{:condition    [:= [:field 1 nil] 2]
+                                  :joins        [{:condition    [:= [:field (meta/id :checkins :venue-id) nil] 2]
                                                   :source-query after}]}})
                 (expand-macros (lib.tu.macros/mbql-query nil
                                  {:source-query {:source-table (meta/id :checkins)
-                                                 :joins        [{:condition    [:= [:field 1 nil] 2]
-                                                                 :source-query before}]}}))))))))
+                                                 :joins
+                                                 [{:condition    [:= [:field (meta/id :checkins :venue-id) nil] 2]
+                                                   :source-query before}]}}))))))))
 
 (deftest ^:parallel model-based-metric-use-test
   (let [model {:lib/type :metadata/card
