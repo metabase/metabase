@@ -58,16 +58,18 @@ const setup = ({
   selectedVisualization = "table",
   onSelectVisualization = jest.fn(),
   visualizationType = "bar",
+  onOpenSettings = jest.fn(),
 }: Partial<ChartTypeOptionProps> = {}) => {
   renderWithProviders(
     <ChartTypeOption
       selectedVisualization={selectedVisualization}
       onSelectVisualization={onSelectVisualization}
       visualizationType={visualizationType}
+      onOpenSettings={onOpenSettings}
     />,
   );
 
-  return { onSelectVisualization };
+  return { onSelectVisualization, onOpenSettings };
 };
 
 describe("ChartTypeOption", () => {
@@ -112,23 +114,38 @@ describe("ChartTypeOption", () => {
     },
   );
 
-  it("should display a gear icon when hovering display type when selected", async () => {
-    const { onSelectVisualization } = setup({
-      visualizationType: "bar",
-      selectedVisualization: "bar",
+  describe("when onOpenSettings is set", () => {
+    it("should display a gear icon when the type is selected and user is hovering over it", async () => {
+      const { onOpenSettings } = setup({
+        visualizationType: "bar",
+        selectedVisualization: "bar",
+      });
+
+      expect(screen.getByTestId("Bar-button")).toBeInTheDocument();
+      await userEvent.hover(screen.getByTestId("Bar-button"));
+
+      await userEvent.click(getIcon("gear"));
+      expect(onOpenSettings).toHaveBeenCalled();
     });
 
-    expect(screen.getByTestId("Bar-button")).toBeInTheDocument();
-    await userEvent.hover(screen.getByTestId("Bar-button"));
+    it("should not display a gear icon when the type is not selected and the user is hovering over it", async () => {
+      setup({
+        visualizationType: "bar",
+        selectedVisualization: "table",
+      });
 
-    await userEvent.click(getIcon("gear"));
-    expect(onSelectVisualization).toHaveBeenCalled();
+      expect(screen.getByTestId("Bar-button")).toBeInTheDocument();
+      await userEvent.hover(screen.getByTestId("Bar-button"));
+
+      expect(queryIcon("gear")).not.toBeInTheDocument();
+    });
   });
 
-  it("should not display a gear icon when hovering display type when not selected", async () => {
+  it("should not display a gear icon when onOpenSettings is not set", async () => {
     setup({
       visualizationType: "bar",
       selectedVisualization: "table",
+      onOpenSettings: undefined,
     });
 
     expect(screen.getByTestId("Bar-button")).toBeInTheDocument();
