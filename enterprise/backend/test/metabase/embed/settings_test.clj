@@ -5,7 +5,6 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.embed.settings :as embed.settings]
    [metabase.test :as mt]
-   [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
 
 (deftest enable-embedding-test
@@ -30,14 +29,6 @@
                          (merge expected-payload {"event" "embedding_disabled"})
                          :user-id (str (mt/user->id :crowberto))}]
                        (snowplow-test/pop-event-data-and-user-id!)))))))))))
-
-(deftest deprecation-warning-for-enable-embedding-test
-  (mt/with-temporary-setting-values [enable-embedding "false"]
-    (log.capture/with-log-messages-for-level [warnings :warn]
-      (embed.settings/enable-embedding! true)
-      (is (re-find
-           #"Setting enable-embedding is deprecated as of Metabase 0.51.0 and may be removed in a future version."
-           (str/join " " (map :message (warnings))))))))
 
 (def ^:private other-ip "1.2.3.4:5555")
 
@@ -173,6 +164,9 @@
                                      enable-embedding-interactive true
                                      embedding-app-origins-interactive ""
                                      embedding-app-origins-sdk (#'embed.settings/add-localhost "")]
+    (t2/delete! :model/Setting :key "embedding-app-origin")
+    (t2/delete! :model/Setting :key "embedding-app-origins-interactive")
+    (t2/delete! :model/Setting :key "embedding-app-origins-sdk")
     (test-origin-sync {} :no-op)
     (test-origin-sync {:embedding-app-origins-sdk true} :no-op)
     (test-origin-sync {:embedding-app-origins-sdk false} :no-op)
