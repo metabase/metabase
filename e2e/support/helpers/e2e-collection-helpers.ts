@@ -109,6 +109,6 @@ export function pickEntity({
   }
 
   if (select) {
-    cy.findByTestId("entity-picker-modal").button("Select").click();
+    cy.findByTestId("entity-picker-select-button").click();
   }
 }
