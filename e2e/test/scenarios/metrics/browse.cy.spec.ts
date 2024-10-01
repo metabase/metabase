@@ -175,7 +175,7 @@ describe("scenarios > browse > metrics", () => {
 
     it("should render truncated markdown in the table", () => {
       const description =
-        "This is a _very_ **long description** that should be truncated";
+        "This is a _very_ **long description** that should be truncated by the metrics table because it is really very long.";
 
       createMetrics([
         {
