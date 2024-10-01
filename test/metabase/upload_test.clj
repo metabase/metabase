@@ -1966,8 +1966,8 @@
         (with-uploads-enabled!
           (testing "Append should handle new non-ascii columns being added in the latest CSV"
             (with-upload-table! [table (create-upload-table!)]
-              (is (= ["Name"]
-                     (rest (column-display-names-for-table table))))
+              (is (= (header-with-auto-pk ["Name"])
+                     (column-display-names-for-table table)))
              ;; Reorder as well for good measure
               (let [csv-rows ["α,name"
                               "omega,Everything"]
@@ -2107,6 +2107,15 @@
                                (rows-for-table table))))
                       (io/delete-file file))))))))))))
 
+(defn- round-floats
+  "Round all floats to have n digits of precision."
+  [digits-precision rows]
+  (let [factor (Math/pow 10 digits-precision)]
+    (mapv (partial mapv #(if (float? %)
+                           (/ (Math/round (* factor %)) factor)
+                           %))
+          rows)))
+
 (deftest update-type-coercion-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
@@ -2144,7 +2153,8 @@
                           (is (= {:row-count 1}
                                  (update!))))
                         (is (= (rows-with-auto-pk [[coerced]])
-                               (rows-for-table table))))
+                               ;; Deal with 32 bit floats for Clickhouse
+                               (round-floats 6 (rows-for-table table)))))
                       (testing (format "\nUploading %s into a column of type %s should fail to coerce"
                                        uncoerced (name upload-type))
                         (is (thrown-with-msg?
@@ -2152,15 +2162,6 @@
                              (re-pattern (str "^" fail-msg "$"))
                              (update!)))))
                     (io/delete-file file)))))))))))
-
-(defn- round-floats
-  "Round all floats to have n digits of precision."
-  [digits-precision rows]
-  (let [factor (Math/pow 10 digits-precision)]
-    (mapv (partial mapv #(if (float? %)
-                           (/ (Math/round (* factor %)) factor)
-                           %))
-          rows)))
 
 (deftest update-promotion-multiple-columns-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift) ; redshift doesn't support promotion
