@@ -7,6 +7,7 @@ import {
   popover,
   restore,
   setupSMTP,
+  updateSetting,
   visitQuestion,
 } from "e2e/support/helpers";
 
@@ -44,9 +45,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   });
 
   it("should respect email alerts toggled off (metabase#12349)", () => {
-    cy.request("PUT", "/api/setting/report-timezone", {
-      value: "America/New_York",
-    });
+    updateSetting("report-timezone", "America/New_York");
 
     openAlertForQuestion(ORDERS_QUESTION_ID);
 

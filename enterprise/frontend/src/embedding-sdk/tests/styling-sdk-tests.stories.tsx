@@ -11,7 +11,7 @@ export default {
 
 const configThatWillError: SDKConfig = {
   apiKey: "TEST",
-  metabaseInstanceUrl: "http://localhost",
+  metabaseInstanceUrl: "http://fake-host:1234",
 };
 
 /**
