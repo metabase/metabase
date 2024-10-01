@@ -13,6 +13,7 @@ import {
   setTokenFeatures,
   setupSMTP,
   sidebar,
+  updateSetting,
   visitDashboard,
   visitDashboardAndCreateTab,
   visitQuestion,
@@ -293,9 +294,7 @@ describeEE(
     }
 
     function setAllowedDomains() {
-      cy.request("PUT", "/api/setting/subscription-allowed-domains", {
-        value: allowedDomain,
-      });
+      updateSetting("subscription-allowed-domains", allowedDomain);
     }
 
     beforeEach(() => {

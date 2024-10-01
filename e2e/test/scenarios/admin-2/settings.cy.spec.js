@@ -26,6 +26,7 @@ import {
   setupMetabaseCloud,
   setupSMTP,
   undoToast,
+  updateSetting,
   visitQuestion,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
@@ -786,9 +787,7 @@ describe("scenarios > admin > license and billing", () => {
 
 describe("scenarios > admin > localization", () => {
   function setFirstWeekDayTo(day) {
-    cy.request("PUT", "/api/setting/start-of-week", {
-      value: day.toLowerCase(),
-    });
+    updateSetting("start-of-week", day.toLowerCase());
   }
 
   beforeEach(() => {

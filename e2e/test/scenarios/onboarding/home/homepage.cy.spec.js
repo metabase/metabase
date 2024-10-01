@@ -24,6 +24,7 @@ import {
   restore,
   setTokenFeatures,
   undoToast,
+  updateSetting,
   visitDashboard,
   visitQuestion,
 } from "e2e/support/helpers";
@@ -386,10 +387,8 @@ describe("scenarios > home > custom homepage", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
-      cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
-        value: ORDERS_DASHBOARD_ID,
-      });
+      updateSetting("custom-homepage", true);
+      updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
     });
 
     it("should not flash the homescreen before redirecting (#37089)", () => {
