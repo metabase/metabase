@@ -558,7 +558,7 @@
                                 ["number" {:base_type :type/Float}]
                                 ["date" {:base_type :type/Date}]
                                 ["datetime" {:base_type :type/DateTime}]]
-                        (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+                        (auto-pk-column?)
                         (cons ["_mb_row_id" {:semantic_type     :type/PK
                                              :base_type         :type/BigInteger}]))
                       (->> (t2/select :model/Field :table_id (:id table))
@@ -1502,7 +1502,7 @@
                               - extra_1")
 
                      ["_mb_row_id,id, extra 2"]
-                     (if (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+                     (if (auto-pk-column?)
                        (trim-lines "The CSV file is missing columns that are in the table:
                                    - name
 
@@ -1616,7 +1616,7 @@
 
 (deftest update-mb-row-id-csv-only-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (when (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (when (auto-pk-column?)
       (doseq [action (actions-to-test driver/*driver*)]
         (testing (action-testing-str action)
           (testing "If the table doesn't have _mb_row_id but the CSV does, ignore the CSV _mb_row_id but create the column anyway"
@@ -1872,7 +1872,7 @@
 
 (deftest update-mb-row-id-csv-and-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (when (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (when (auto-pk-column?)
       (doseq [action (actions-to-test driver/*driver*)]
         (testing (action-testing-str action)
           (testing "Append succeeds if the table has _mb_row_id and the CSV does too"
