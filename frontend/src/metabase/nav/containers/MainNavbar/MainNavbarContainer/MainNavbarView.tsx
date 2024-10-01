@@ -11,6 +11,7 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 import { Tree } from "metabase/components/tree";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import {
   PERSONAL_COLLECTIONS,
   getCollectionIcon,
@@ -26,7 +27,6 @@ import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
   Button,
-  Group,
   Icon,
   type IconName,
   type IconProps,
@@ -234,7 +234,7 @@ export function MainNavbarView({
           )}
         </div>
         <WhatsNewNotification />
-        <SidebarOnboardingSection />
+        <SidebarOnboardingSection initialState={!hasOwnDatabase} />
       </SidebarContentRoot>
     </ErrorBoundary>
   );
@@ -292,31 +292,48 @@ function CollectionSectionHeading({
   );
 }
 
-function SidebarOnboardingSection() {
+function SidebarOnboardingSection({ initialState }: { initialState: boolean }) {
   const applicationName = useSelector(getApplicationName);
 
   return (
-    <Box m={0} bottom={0} pos="fixed" w={NAV_SIDEBAR_WIDTH} bg="bg-white">
-      <Box px="xl" py="md">
-        <Group spacing="sm">
-          <Icon name="learn" />
-          {/*eslint-disable-next-line no-unconditional-metabase-links-render -- This link is only temporary. It will be replaced with an internal link to a page. */}
-          <ExternalLink href={getLearnUrl()}>
-            <Text fz="md" weight={600}>{t`How to use ${applicationName}`}</Text>
-          </ExternalLink>
-        </Group>
+    <Box
+      m={0}
+      bottom={0}
+      pos="fixed"
+      w={NAV_SIDEBAR_WIDTH}
+      bg="bg-white"
+      style={{
+        boxShadow: !initialState
+          ? "0px -1px 0px 0px var(--mb-color-border)"
+          : undefined,
+      }}
+    >
+      <Box px="md" py="md">
+        {/*eslint-disable-next-line no-unconditional-metabase-links-render -- This link is only temporary. It will be replaced with an internal link to a page. */}
+        <ExternalLink href={getLearnUrl()} className={CS.noDecoration}>
+          {/* TODO: We currently don't have a `selected` state. Will be added in MS2 when we add the onboarding page. */}
+          <PaddedSidebarLink icon="learn">
+            {t`How to use ${applicationName}`}
+          </PaddedSidebarLink>
+        </ExternalLink>
       </Box>
       <Box
         px="xl"
-        py="md"
+        pb="md"
         style={{
-          borderTop: `1px solid var(--mb-color-border)`,
+          borderTop: initialState
+            ? `1px solid var(--mb-color-border)`
+            : undefined,
         }}
       >
-        <Text
-          fz="sm"
-          mb="md"
-        >{t`Start by adding your data. Connect to a database or upload a CSV file.`}</Text>
+        {initialState && (
+          <Text
+            fz="sm"
+            my="md"
+            style={{ lineHeight: "1.333" }}
+          >{t`Start by adding your data. Connect to a database or upload a CSV file.`}</Text>
+        )}
+
         <Menu position="right-end" shadow="md">
           <Menu.Target>
             <Button
