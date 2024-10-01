@@ -18,5 +18,6 @@ export const PortalContainer = () => (
 const FixedPosition = styled.div`
   // needed otherwise it will rendered "in place" and push the content below
   position: fixed;
-  z-index: 10;
+  left: 0;
+  top: 0;
 `;

@@ -87,9 +87,9 @@ export const MetabaseProviderInternal = ({
       <SdkThemeProvider theme={theme}>
         <SdkFontsGlobalStyles baseUrl={config.metabaseInstanceUrl} />
         <div className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
-          <PortalContainer />
           {children}
           <SdkUsageProblemDisplay config={config} />
+          <PortalContainer />
         </div>
       </SdkThemeProvider>
     </EmotionCacheProvider>
