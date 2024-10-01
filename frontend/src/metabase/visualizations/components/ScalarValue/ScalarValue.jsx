@@ -3,6 +3,7 @@
  */
 /* eslint-disable react/prop-types */
 import cx from "classnames";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
@@ -34,13 +35,17 @@ const ScalarValue = ({ value }) => {
     other: { number: numberTheme },
   } = useMantineTheme();
 
+  const fontSize = useMemo(
+    () => numberTheme?.value?.fontSize,
+    [numberTheme?.value?.fontSize],
+  );
+
   return (
     <ScalarValueWrapper
-      className={cx(
-        DashboardS.ScalarValue,
-        DashboardS.ScalarValueElement,
-        QueryBuilderS.ScalarValue,
-      )}
+      className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue, {
+        [DashboardS.ScalarValueElement]: !fontSize,
+      })}
+      fontSize={fontSize}
       lineHeight={numberTheme?.value?.lineHeight}
       data-testid="scalar-value"
     >
