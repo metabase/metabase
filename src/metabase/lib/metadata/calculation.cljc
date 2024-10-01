@@ -221,6 +221,7 @@
   [query stage-number x]
   (try
     {:lib/type     :metadata/column
+     :ident        (lib.options/ident x)
      ;; TODO -- effective-type
      :base-type    (type-of query stage-number x)
      :name         (column-name query stage-number x)
