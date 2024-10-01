@@ -11,6 +11,7 @@ import {
   resetSnowplow,
   restore,
   sidebar,
+  updateSetting,
   visitModel,
 } from "e2e/support/helpers";
 
@@ -149,7 +150,7 @@ describeWithSnowplow.skip("scenarios > metabot", () => {
 });
 
 const enableMetabot = () => {
-  cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
+  updateSetting("is-metabot-enabled", true);
 };
 
 const verifyTableVisibility = () => {

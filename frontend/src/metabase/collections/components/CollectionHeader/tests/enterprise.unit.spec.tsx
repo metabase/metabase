@@ -8,7 +8,7 @@ import { setup } from "./setup";
 describe("Instance Analytics Collection Header", () => {
   const defaultOptions = {
     collection: {
-      name: "Metabase Analytics",
+      name: "Usage Analytics",
       type: "instance-analytics" as CollectionType,
       can_write: false,
     },

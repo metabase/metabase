@@ -10,6 +10,7 @@ import {
   restore,
   sharingMenu,
   sharingMenuButton,
+  updateSetting,
   visitDashboard,
   visitIframe,
   visitQuestion,
@@ -307,12 +308,9 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 });
 
 function resetEmbedding() {
-  cy.request("PUT", "/api/setting/enable-embedding", {
-    value: false,
-  });
-  cy.request("PUT", "/api/setting/embedding-secret-key", {
-    value: null,
-  });
+  updateSetting("enable-embedding-interactive", false);
+  updateSetting("enable-embedding-static", false);
+  updateSetting("embedding-secret-key", null);
 }
 
 function getTokenValue() {
