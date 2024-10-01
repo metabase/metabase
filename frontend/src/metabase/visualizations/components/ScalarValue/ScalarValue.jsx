@@ -25,9 +25,7 @@ import {
 } from "./ScalarValue.styled";
 
 export const ScalarWrapper = ({ children }) => (
-  <ScalarRoot className={DashboardS.ScalarValueContainer}>
-    {children}
-  </ScalarRoot>
+  <ScalarRoot>{children}</ScalarRoot>
 );
 
 const ScalarValue = ({ value }) => {
@@ -42,9 +40,7 @@ const ScalarValue = ({ value }) => {
 
   return (
     <ScalarValueWrapper
-      className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue, {
-        [DashboardS.ScalarValueElement]: !fontSize,
-      })}
+      className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue)}
       fontSize={fontSize}
       lineHeight={numberTheme?.value?.lineHeight}
       data-testid="scalar-value"
