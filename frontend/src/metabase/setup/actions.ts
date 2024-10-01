@@ -256,21 +256,18 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
 
     if (interestedInEmbedding) {
       settingsToChange["embedding-homepage"] = "visible";
-    }
 
-    if (!isInteractiveSetByEnv) {
-      settingsToChange["enable-embedding-interactive"] = true;
-    }
+      if (!isInteractiveSetByEnv) {
+        settingsToChange["enable-embedding-interactive"] = true;
+      }
 
-    if (!isStaticEmbeddingSetByEnv) {
-      settingsToChange["enable-embedding-static"] = true;
-    }
+      if (!isStaticEmbeddingSetByEnv) {
+        settingsToChange["enable-embedding-static"] = true;
+      }
 
-    if (
-      interestedInEmbedding &&
-      (!isStaticEmbeddingSetByEnv || !isInteractiveSetByEnv)
-    ) {
-      settingsToChange["setup-embedding-autoenabled"] = true;
+      if (!isStaticEmbeddingSetByEnv || !isInteractiveSetByEnv) {
+        settingsToChange["setup-embedding-autoenabled"] = true;
+      }
     }
 
     settingsToChange["setup-license-active-at-setup"] = isLicenseActive;
@@ -279,10 +276,6 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
   },
 );
 
-const checkIfSetByEnv = (
-  adminSettings: SettingDefinition[],
-  key: SettingKey,
-) => {
-  return adminSettings.find((setting: { key: string }) => setting.key === key)
+const checkIfSetByEnv = (adminSettings: SettingDefinition[], key: SettingKey) =>
+  adminSettings.find((setting: { key: string }) => setting.key === key)
     ?.is_env_setting;
-};
