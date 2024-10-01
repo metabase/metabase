@@ -76,7 +76,6 @@
       (log/error "Could not invite user because email is not configured.")
       (u/prog1 (user/create-and-invite-user! user invitor true)
         (user/set-permissions-groups! <> [(perms-group/all-users) (perms-group/admin)])
-        (events/publish-event! :event/user-invited {:object (assoc <> :invite_method "email")})
         (snowplow/track-event! ::snowplow/invite
                                {:event           :invite-sent
                                 :invited-user-id (u/the-id <>)

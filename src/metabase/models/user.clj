@@ -376,15 +376,10 @@
     (events/publish-event! :event/user-invited
                            {:object
                             (assoc <>
+                                   :invitor       invitor
+                                   :is_from_setup setup?
                                    :invite_method "email"
-                                   :sso_source (:sso_source new-user))})
-    (send-welcome-email! <> invitor setup?)))
-
-#_(events/publish-event! :event/user-invited
-                         {:object
-                          (assoc (t2/select-one :model/User)
-                                 :invite_method "email"
-                                 :sso_source nil)})
+                                   :sso_source (:sso_source new-user))})))
 
 (mu/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active

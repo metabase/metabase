@@ -1,5 +1,6 @@
 (ns metabase.events.notification
   (:require
+   [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.api.common :as api]
@@ -9,6 +10,7 @@
    [metabase.models.user :as user]
    [metabase.notification.core :as notification]
    [metabase.public-settings :as public-settings]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -74,7 +76,8 @@
                  :current-user     @api/*current-user*
                  ;; extra are set of contexts that are specific to a cerntain emails
                  ;; currently we need it to support i18n purposes, but ideally it should not exists
-                 :extra            {:user-invited-email-subject (trs "You''re invited to join {0}''s {1}" (site-name) (app-name-trs))
+                 :extra            {:user-invited-today         (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
+                                    :user-invited-email-subject (trs "You''re invited to join {0}''s {1}" (site-name) (app-name-trs))
                                     ;; TODO test that this link works for real
                                     :user-invited-join-url      (some-> event-info (get-in [:object :id]) user/set-password-reset-token! user/form-password-reset-url (str "#new"))}}
    :event-info  (cond->> event-info
@@ -82,18 +85,12 @@
                   (hydrate! (events.schema/topic->schema topic)))
    :event-topic topic})
 
-#_(ngoc/with-tc
-    (metabase.test/with-current-user 3
-      (events/publish-event! :event/user-invited
-                             {:object
-                              (assoc (t2/select-one :model/User)
-                                     :invite_method "email")})))
-
 (defn- maybe-send-notification-for-topic!
   [topic event-info]
   (when-let [notifications (notifications-for-topic topic)]
     (let [event-info (enriched-event-info topic event-info)]
-      (log/infof "Found %d notifications for event: %s" (count notifications) topic)
+      (log/infof "Found %d %s for event: %s"
+                 (count notifications) (u/format-plural (count notifications) "notification" "notifications") topic)
       (doseq [notification notifications]
         (notification/send-notification! (assoc notification :payload event-info))))))
 

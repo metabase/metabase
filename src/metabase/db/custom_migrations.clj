@@ -1565,3 +1565,35 @@
 (define-reversible-migration MigrateLegacyColumnKeysInDashboardCardVizSettings
   (update-legacy-column-keys-in-dashboard-card-viz-settings "ref" migrate-legacy-column-keys-in-viz-settings)
   (update-legacy-column-keys-in-dashboard-card-viz-settings "name" rollback-legacy-column-keys-in-viz-settings))
+
+(define-migration CreateSystemNotificationUserJoined
+  (let [template-id (t2/insert-returning-pk! :channel_template
+                                             {:name         "User joined Email template"
+                                              :channel_type "channel/email"
+                                              :details      (json/generate-string {:type    "email/resource"
+                                                                                   :subject "{{context.extra.user-invited-email-subject}}"
+                                                                                   :path    "metabase/email/new_user_invite"})
+                                              :created_at   :%now
+                                              :updated_at   :%now})
+        noti-id (t2/insert-returning-pk! :notification
+                                         {:payload_type      "notification/system-event"
+                                          :active            true
+                                          :created_at        :%now
+                                          :updated_at        :%now})
+        handler-id (t2/insert-returning-pk! :notification_handler
+                                            {:notification_id noti-id
+                                             :channel_type    "channel/email"
+                                             :channel_id      nil
+                                             :template_id     template-id
+                                             :active          true
+                                             :created_at      :%now
+                                             :updated_at      :%now})]
+    (t2/insert! :notification_recipient {:notification_handler_id handler-id
+                                         :type                    "notification-recipient/params"
+                                         :details                 (json/generate-string {:pattern "{{event-info.object.email}}"})
+                                         :created_at              :%now
+                                         :updated_at              :%now})
+    (t2/insert! :notification_subscription {:notification_id noti-id
+                                            :type            "notification-subscription/system-event"
+                                            :event_name      "event/user-invited"
+                                            :created_at      :%now})))
