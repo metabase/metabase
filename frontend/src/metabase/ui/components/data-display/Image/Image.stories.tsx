@@ -43,7 +43,6 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
-  name: "Default",
 };
 
 export const BackgroundPosition = {
