@@ -4,9 +4,9 @@ title: Webhooks
 
 # Webhooks
 
-Admins can set up webhooks so that people can send [alerts](./alerts.md) to a particular URL. Which means you can set up an alert to send the results of a question to an endpoint of your choice: to your app, a third-party service, or wherever.
+Admins can set up webhooks so that people can send [alerts](../questions/sharing/alerts.md) to a particular URL. Which means you can set up an alert to send the results of a question to an endpoint of your choice: to your app, a third-party service, or wherever.
 
-For now, webhooks are only available for [alerts](./alerts.md); you can't select a webhook as the recipient of a [dashboard subscription](../../dashboards/subscriptions.md).
+For now, webhooks are only available for [alerts](../questions/sharing/alerts.md); you can't select a webhook as the recipient of a [dashboard subscription](../dashboards/subscriptions.md).
 
 ## Creating a webhook
 
@@ -34,11 +34,11 @@ Metabase will send the results of an alert in JSON. The JSON will include some m
 
 Metabase will send the "attached" visualization as a base64-encoded PNG in the `data` key, under `visualization`.
 
-![The encoded PNG chart](../images/payload-chart.png)
+![The encoded PNG chart](./images/payload-chart.png)
 
 And the data as seen in the table view, which Metabase will send as a `raw_data`.
 
-![Results as table view](../images/table-view.png)
+![Results as table view](./images/table-view.png)
 
 Here's an example payload for an alert (we truncated the PNG encoding because it's long and extremely boring):
 
@@ -117,4 +117,4 @@ Here's an example payload for an alert (we truncated the PNG encoding because it
 
 ## Further reading
 
-- [Alerts](./alerts.md)
+- [Alerts](../questions/sharing/alerts.md)

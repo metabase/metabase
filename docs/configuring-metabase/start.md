@@ -20,7 +20,7 @@ Set up email for [Alerts](../questions/sharing/alerts.md) and [Dashboard subscri
 
 Set up Slack for Alerts and Dashboard subscriptions.
 
-### [Webhooks](./sharing/webhooks.md)
+### [Webhooks](./webhooks.md)
 
 Set up webhooks as notification channels for alerts.
 
