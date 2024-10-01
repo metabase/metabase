@@ -82,7 +82,7 @@ type Props = {
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
 const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
-function MainNavbarView({
+export function MainNavbarView({
   isAdmin,
   currentUser,
   bookmarks,
@@ -346,6 +346,3 @@ function SidebarOnboardingSection() {
     </Box>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default MainNavbarView;
