@@ -17,7 +17,7 @@
    :scalar      {:min {:width 2 :height 2} :default {:width 6 :height 3}}
    :line        {:min {:width 4 :height 3} :default {:width 12 :height 6}}
    :link        {:min {:width 1 :height 1} :default {:width 8 :height 1}}
-   :iframe      {:min {:width 1 :height 1} :default {:width 8 :height 6}}
+   :iframe      {:min {:width 4 :height 3} :default {:width 12 :height 8}}
    :action      {:min {:width 1 :height 1} :default {:width 4 :height 1}}
    :area        {:min {:width 4 :height 3} :default {:width 12 :height 6}}
    :pivot       {:min {:width 4 :height 3} :default {:width 12 :height 9}}

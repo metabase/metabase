@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Box, Button, Group, Stack, Text } from "metabase/ui";
 import type {
   Dashboard,
@@ -61,17 +62,21 @@ export function IFrameViz({
     return (
       <IFrameEditWrapper>
         <Stack h="100%" spacing="sm">
-          <Group align="center">
-            <Text fw="bold">{t`Paste your snippet here`}</Text>{" "}
-            <Button
-              disabled={!iframeOrUrl}
-              compact
-              ml="auto"
-              variant="filled"
-              style={{ pointerEvents: "all" }}
-              onClick={onTogglePreviewing}
-              onMouseDown={e => e.stopPropagation()}
-            >{t`Done`}</Button>
+          <Group align="center" noWrap>
+            <Text fw="bold" style={{ overflow: "hidden" }}>
+              <Ellipsified>{t`Paste your snippet here`}</Ellipsified>
+            </Text>{" "}
+            <Box>
+              <Button
+                disabled={!iframeOrUrl}
+                compact
+                ml="auto"
+                variant="filled"
+                style={{ pointerEvents: "all" }}
+                onClick={onTogglePreviewing}
+                onMouseDown={e => e.stopPropagation()}
+              >{t`Done`}</Button>
+            </Box>
           </Group>
           <Box h="100%">
             <StyledInput
