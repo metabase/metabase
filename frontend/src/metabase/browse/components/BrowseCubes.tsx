@@ -389,7 +389,7 @@ export const BrowseCubes = () => {
                                 : t`Validations`}
                             </Button>
                           )}
-                          {!showValidations && (
+                          {/*!showValidations && (
                             <Button
                               style={{
                                 width: "150px",
@@ -402,7 +402,7 @@ export const BrowseCubes = () => {
                             >
                               {t`Edit Cube`}
                             </Button>
-                          )}
+                          )*/}
                         </div>
                         <div style={{ display: "flex", flexDirection: "row" }}>
                           {activeTab === "Definition" &&

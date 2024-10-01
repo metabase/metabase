@@ -3,6 +3,7 @@ import {
   useEffect,
   useState,
   type CSSProperties,
+  useMemo,
 } from "react";
 import { t } from "ttag";
 import EntityItem from "metabase/components/EntityItem";
@@ -39,7 +40,7 @@ import {
 import { CubeDataItem } from "metabase-types/api";
 import { CubeDialog } from "metabase/components/Cube/CubeDialog";
 import { sortDefinitionData } from "./utils";
-
+import  {parse} from "acorn";
 export interface CubeTableProps {
   cubeData: CubeDataItem;
   skeleton?: boolean;
@@ -139,86 +140,196 @@ export const CubeTable = ({
   const [sortingOptions, setSortingOptions] = useState<SortingOptions>(
     DEFAULT_SORTING_OPTIONS,
   );
+  const [typesWithSql , setTypesWithSql] = useState<CubeResult[]>([]);
+  const [updatedTypesWithSql, setUpdatedTypesWithSql] = useState<CubeResult[]>([]); // Initialize with typesWithSql
 
-  const typesWithParts = extractParts(cubeData.content as string);
-  const parsedData = cleanAndParseInputString(cubeData.content as string);
-  const typesWithSql = extractPartsWithSql(parsedData);
-  const [updatedTypesWithSql, setUpdatedTypesWithSql] = useState(typesWithSql); // Initialize with typesWithSql
 
+  function parseCubeFile(code: string) {
+    try {
+      // Use acorn to parse the code
+      const ast = parse(code, { ecmaVersion: 2020, sourceType: 'module' });
+
+      // Find the cube definition (should only be 1 this may not be needed)
+      ast.body.forEach((node: any) => {
+        if (
+          node.type === 'ExpressionStatement' &&
+          node.expression.type === 'CallExpression' &&
+          node.expression.callee.name === 'cube'
+        ) {
+          const cubeDefinition = node.expression.arguments[1];
+
+          const cubeContent = astToJson(cubeDefinition);
+          const result = extractPartsWithSql(cubeContent);
+          setTypesWithSql(result)
+          setUpdatedTypesWithSql(result);
+
+          return result
+        }
+      });
+    } catch (err) {
+      console.error(`Error parsing code ${code}:`, err);
+    }
+  }
+
+  // Helper function to convert AST nodes to JSON
+  function astToJson(node: any): any {
+    switch (node.type) {
+      case 'ObjectExpression':
+        const obj: any = {};
+        node.properties.forEach((prop: any) => {
+          const key: any = prop.key.name || prop.key.value;
+          obj[key] = astToJson(prop.value);
+        });
+        return obj;
+      case 'ArrayExpression':
+        return node.elements.map(astToJson);
+      case 'Literal':
+        return node.value;
+      case 'TemplateLiteral':
+        if (node.expressions.length === 0) {
+          // No expressions, return the cooked value as a normal string
+          return node.quasis[0].value.cooked;
+        } else {
+          // Template literal with expressions
+          return astToCode(node);
+        }
+      case 'Identifier':
+        return node.name;
+      case 'BinaryExpression':
+        return astToCode(node);
+      case 'CallExpression':
+        return astToCode(node);
+      case 'MemberExpression':
+        return astToCode(node);
+      case 'UnaryExpression':
+        return astToCode(node);
+      default:
+        return null;
+    }
+  }
+
+  // Helper function to convert AST expressions back to code
+  function astToCode(node: any): any {
+    switch (node.type) {
+      case 'Identifier':
+        return node.name;
+      case 'Literal':
+        return JSON.stringify(node.value);
+      case 'TemplateLiteral':
+        let str = '';
+        for (let i = 0; i < node.quasis.length; i++) {
+          str += node.quasis[i].value.cooked;
+          if (i < node.expressions.length) {
+            str += '${' + astToCode(node.expressions[i]) + '}';
+          }
+        }
+        return '`' + str + '`';
+      case 'MemberExpression':
+        const object: any = astToCode(node.object);
+        const property: any = node.computed
+          ? `[${astToCode(node.property)}]`
+          : `.${astToCode(node.property)}`;
+        return `${object}${property}`;
+      case 'BinaryExpression':
+        return `(${astToCode(node.left)} ${node.operator} ${astToCode(node.right)})`;
+      case 'CallExpression':
+        return `${astToCode(node.callee)}(${node.arguments.map(astToCode).join(', ')})`;
+      case 'UnaryExpression':
+        return `${node.operator}${astToCode(node.argument)}`;
+      case 'ArrayExpression':
+        return `[${node.elements.map(astToCode).join(', ')}]`;
+      case 'ObjectExpression':
+        const props = node.properties.map(
+          (prop: any) => `${astToCode(prop.key)}: ${astToCode(prop.value)}`
+        );
+        return `{${props.join(', ')}}`;
+      default:
+        return '';
+    }
+  }
+
+
+  useMemo(() => {
+    if (cubeData.content) {
+      parseCubeFile(cubeData.content);
+    }
+  }, [cubeData.content]);
+
+  
   useEffect(() => {
     let foundNoMatch = false;
 
     // Create a new list combining cubeRequests and typesWithSql
     const updatedData: any =
       cubeRequests && cubeRequests.length > 0
-        ? typesWithSql
-            .map(typeWithSql => {
-              const matchingCubeRequest = cubeRequests.find(
-                (cubeRequest: any) =>
-                  cubeRequest.description === typeWithSql.description,
-              );
+        && typesWithSql !== undefined ? 
+        typesWithSql.map(typeWithSql => {
+            const matchingCubeRequest = cubeRequests.find(
+              (cubeRequest: any) =>
+                cubeRequest.description === typeWithSql.description,
+            );
 
-              if (matchingCubeRequest) {
-                // If we're not in validation mode and the verified status is false, skip this item
-                if (
-                  !isValidation &&
-                  matchingCubeRequest.verified_status === false
-                ) {
-                  return null;
-                }
-
-                return {
-                  ...typeWithSql,
-                  user: matchingCubeRequest.user || "", // Ensure default empty values
-                  admin_user: matchingCubeRequest.admin_user || "",
-                  updated_at: matchingCubeRequest.updated_at || "",
-                  verified_status: matchingCubeRequest.verified_status ?? false,
-                  in_semantic_layer:
-                    matchingCubeRequest.in_semantic_layer ?? false,
-                };
+            if (matchingCubeRequest) {
+              // If we're not in validation mode and the verified status is false, skip this item
+              if (
+                !isValidation &&
+                matchingCubeRequest.verified_status === false
+              ) {
+                return null;
               }
 
-              foundNoMatch = true; // No match found, but we return the original `typeWithSql`
               return {
-                ...typeWithSql, // Return the original, but with the extra fields
-                user: "",
-                admin_user: "",
-                updated_at: "",
-                verified_status: false,
-                in_semantic_layer: false,
+                ...typeWithSql,
+                user: matchingCubeRequest.user || "", // Ensure default empty values
+                admin_user: matchingCubeRequest.admin_user || "",
+                updated_at: matchingCubeRequest.updated_at || "",
+                verified_status: matchingCubeRequest.verified_status ?? false,
+                in_semantic_layer:
+                  matchingCubeRequest.in_semantic_layer ?? false,
               };
-            })
-            .filter(Boolean) // Remove any null entries
-        : typesWithSql;
-        if(cubeRequests && cubeRequests.length > 0){
-    // If a cubeRequest was not matched in `typesWithSql`, add it to the final list as "pending"
-    cubeRequests.forEach((cubeRequest: any) => {
-      const existingEntry = updatedData.find(
-        (dataItem: any) =>
-          dataItem && dataItem.description === cubeRequest.description,
-      );
+            }
 
-      // If there's no match in `typesWithSql`, and we're in validation mode or verified_status is true, add the cubeRequest to the list
-      if (
-        !existingEntry &&
-        (isValidation || cubeRequest.verified_status === true)
-      ) {
-        updatedData.push({
-          category: "Pending", // Optionally set this to a placeholder category
-          name: cubeRequest.description,
-          type: "Pending", // You can replace this based on the structure of `CubeResult`
-          title: cubeRequest.description,
-          description: cubeRequest.description,
-          user: cubeRequest.user || "",
-          admin_user: cubeRequest.admin_user || "",
-          updated_at: cubeRequest.updated_at || "",
-          verified_status: cubeRequest.verified_status ?? false,
-          in_semantic_layer: cubeRequest.in_semantic_layer ?? false,
-          primaryKey: false, // Ensure a valid structure for CubeResult
-        });
-      }
-    });
-  }
+            foundNoMatch = true; // No match found, but we return the original `typeWithSql`
+            return {
+              ...typeWithSql, // Return the original, but with the extra fields
+              user: "",
+              admin_user: "",
+              updated_at: "",
+              verified_status: false,
+              in_semantic_layer: false,
+            };
+          })
+          .filter(Boolean) // Remove any null entries
+        : typesWithSql;
+    if (cubeRequests && cubeRequests.length > 0) {
+      // If a cubeRequest was not matched in `typesWithSql`, add it to the final list as "pending"
+      cubeRequests.forEach((cubeRequest: any) => {
+        const existingEntry = updatedData.find(
+          (dataItem: any) =>
+            dataItem && dataItem.description === cubeRequest.description,
+        );
+
+        // If there's no match in `typesWithSql`, and we're in validation mode or verified_status is true, add the cubeRequest to the list
+        if (
+          !existingEntry &&
+          (isValidation || cubeRequest.verified_status === true)
+        ) {
+          updatedData.push({
+            category: "Pending", // Optionally set this to a placeholder category
+            name: cubeRequest.description,
+            type: "Pending", // You can replace this based on the structure of `CubeResult`
+            title: cubeRequest.description,
+            description: cubeRequest.description,
+            user: cubeRequest.user || "",
+            admin_user: cubeRequest.admin_user || "",
+            updated_at: cubeRequest.updated_at || "",
+            verified_status: cubeRequest.verified_status ?? false,
+            in_semantic_layer: cubeRequest.in_semantic_layer ?? false,
+            primaryKey: false, // Ensure a valid structure for CubeResult
+          });
+        }
+      });
+    }
     // Only update state if the data has changed
     if (JSON.stringify(updatedTypesWithSql) !== JSON.stringify(updatedData)) {
       setUpdatedTypesWithSql(updatedData);
@@ -235,14 +346,14 @@ export const CubeTable = ({
 
     const matchesQuestion = questionFilter
       ? definition.description
-          .toLowerCase()
-          .includes(questionFilter.toLowerCase())
+        .toLowerCase()
+        .includes(questionFilter.toLowerCase())
       : true;
 
     const matchesIsValidate = isValidateFilter
       ? String(definition.verified_status) // Convert boolean to string
-          .toLowerCase()
-          .includes(isValidateFilter.toLowerCase()) // Use includes for partial matching
+        .toLowerCase()
+        .includes(isValidateFilter.toLowerCase()) // Use includes for partial matching
       : true;
 
     const matchesUser = userFilter
@@ -266,7 +377,6 @@ export const CubeTable = ({
     sortingOptions,
     localeCode,
   );
-
   const collectionWidth = 20;
   const descriptionWidth = 100 - collectionWidth - (isValidation ? 40 : 0); // Adjust width when validation columns are present
 
@@ -281,11 +391,11 @@ export const CubeTable = ({
   const handleUpdateSortOptions = skeleton
     ? undefined
     : (newSortingOptions: SortingOptions) => {
-        if (isLargeDataset) {
-          setShowLoadingManyRows(true);
-        }
-        setSortingOptions(newSortingOptions);
-      };
+      if (isLargeDataset) {
+        setShowLoadingManyRows(true);
+      }
+      setSortingOptions(newSortingOptions);
+    };
 
   useEffect(() => {
     if (isLargeDataset && showLoadingManyRows) {
@@ -678,106 +788,6 @@ export const extractParts = (inputString: string) => {
   return results;
 };
 
-const cleanAndParseInputString = (inputString: string): Cube | null => {
-  let cleanedString = inputString;
-
-  // Step 1: Remove single-line comments starting with //
-  const commentRegex = /\/\/.*$/gm;
-  cleanedString = cleanedString.replace(commentRegex, "");
-
-  // Step 2: Remove all redundant cube(...) wrappers using a comprehensive regex
-  const redundantCubeRegex =
-    /cube\(["'`][^"'`]+["'`],\s*cube\(["'`][^"'`]+["'`],\s*{/g;
-  cleanedString = cleanedString.replace(redundantCubeRegex, "");
-
-  // Step 3: Remove the outermost "cube(`...`, {" at the beginning and the ")" at the end
-  cleanedString = cleanedString
-    .replace(/^cube\(["'`][^"'`]+["'`],\s*{/, "{")
-    .replace(/\);\s*$/, "}");
-
-  // Step 4: Remove any "cube(...)" that appears within the first part of the cleaned string
-  cleanedString = cleanedString.replace(/{\s*cube\(["'`][^"'`]+["'`],/g, "{");
-
-  // Step 5: Preserve multi-line SQL statements by matching content between `sql: and `} for multi-line support
-  const multiLineSqlRegex = /sql:\s*`([^`]+)`/g;
-  cleanedString = cleanedString.replace(
-    multiLineSqlRegex,
-    (match, sqlContent) => {
-      // Convert multi-line SQL back into a single line while preserving indentation for readability
-      const singleLineSql = sqlContent.replace(/\s+/g, " ").trim();
-      return `sql: \`${singleLineSql}\``;
-    },
-  );
-
-  // Step 6: Replace backticks with double quotes for JSON compatibility
-  cleanedString = cleanedString.replace(/`/g, '"');
-
-  // Step 7: Ensure all property names are in double quotes (including those that might not have been handled correctly)
-  cleanedString = cleanedString.replace(/(\w+):/g, '"$1":');
-
-  // Step 8: Ensure boolean values are correctly formatted (not wrapped in quotes)
-  cleanedString = cleanedString.replace(/:\s*(true|false)\s*(,?)/g, ": $1$2");
-
-  // Step 9: Correct improperly quoted DATE_TRUNC expressions and remove stray commas
-  cleanedString = cleanedString.replace(
-    /"DATE_TRUNC\('(\w+)',\s*\${CUBE}\.(\w+)'\)"/g,
-    "DATE_TRUNC('$1', ${CUBE}.$2)",
-  );
-
-  // Step 10: Remove stray commas inside SQL expressions
-  cleanedString = cleanedString.replace(/,\s*\.(\w+)/g, ".$1");
-
-  // Step 11: Remove trailing commas within property values and after property values
-  cleanedString = cleanedString.replace(/,\s*([}\]])/g, "$1");
-
-  // Step 12: Ensure primaryKey is treated as a boolean and correctly formatted
-  cleanedString = cleanedString.replace(
-    /(?<=\s|,|{)"?primaryKey"?\s*:\s*"?(\w+)"?\s*(,?)/g,
-    '"primaryKey": $1$2',
-  );
-
-  // Step 13: Remove any remaining trailing commas from the end of objects
-  cleanedString = cleanedString.replace(/,\s*([}\]])/g, "$1");
-
-  // Step 14: Ensure only one closing brace at the end of the JSON
-  cleanedString = cleanedString.trim();
-  if (cleanedString.endsWith("}}")) {
-    cleanedString = cleanedString.slice(0, -1);
-  }
-
-  // Step 15: Ensure the cleaned string starts with a '{' to form a valid JSON object
-  if (!cleanedString.trim().startsWith("{")) {
-    cleanedString = `{${cleanedString}`;
-  }
-
-  // Step 16: Log the final cleaned string before parsing for debugging
-
-  const fixPostgresCasting = (str:string) => {
-    // Replace "NULL"::character varying with 'NULL'::character varying
-    return str
-      .replace(/"NULL"::character varying/g, "'NULL'::character varying")
-      // Replace "0"::bigint with '0'::bigint
-      .replace(/"0"::bigint/g, "'0'::bigint")
-      // Replace double-quoted "local_created_at" with 'local_created_at'::DATE where part of a casting
-      .replace(/"(\w+)"::DATE/g, "'$1'::DATE")
-      .replace(/\bpublic\b/g, '"public"')
-      .replace(/"London""}},/g, '$1"}}')
-      // Replace any other casting patterns where double quotes are used inappropriately
-      .replace(/"([^"]*?)"::(bigint|character varying|numeric|timestamp)/g, "'$1'::$2")
-      .replace(/\)$/, '');
-  };
-
-  // Step 17: Parse the cleaned string into a JSON object
-  try {
-    const cleaned = fixPostgresCasting(cleanedString);
-    const parsedObject = JSON.parse(cleaned) as Cube;
-    return parsedObject;
-  } catch (error) {
-    console.error("Failed to parse JSON:", error);
-    return null;
-  }
-};
-
 const extractPartsWithSql = (parsedData: Cube | null): CubeResult[] => {
   const results: CubeResult[] = []; // Ensure the result array is correctly typed
 
@@ -837,12 +847,6 @@ const extractPartsWithSql = (parsedData: Cube | null): CubeResult[] => {
 
   return results;
 };
-
-function extractSQL(matchString: string) {
-  const sqlRegex = /sql:\s*`([^`]*)`/;
-  const match = matchString.match(sqlRegex);
-  return match ? match[1] : "";
-}
 
 function extractPrimaryKey(matchString: string): boolean {
   const primaryKeyRegex = /primaryKey:\s*(true|false)/;
