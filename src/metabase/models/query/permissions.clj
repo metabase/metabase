@@ -67,14 +67,16 @@
   (set
    (flatten
     (lib.util.match/match query
-      ;; if we come across a native query, try to parse its tables using the Native Query Analyzer. If it throws
-      ;; an exception, we insert a ::native placeholder so that full native query access will be required for the DB.
+      ;; if we come across a native query, try to parse its tables using the Native Query Analyzer. If it errors or
+      ;; otherwise can't parse the query, we insert a ::native placeholder so that full native query access will be
+      ;; required for the DB.
       (m :guard (every-pred map? :native))
-      ;; TODO: `references-for-native` shouldn't rely on the presence of a :database key
       (try
-        (->> (nqa/references-for-native (assoc m :database (:database query)))
-             :tables
-             (map :table-id))
+        (if-let [refs (nqa/references-for-native (assoc m :database (:database query)))]
+          (->> refs
+               :tables
+               (map :table-id))
+          [::native])
         (catch Throwable e
           (log/error e)
           [::native]))
