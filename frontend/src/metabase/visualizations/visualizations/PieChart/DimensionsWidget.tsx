@@ -60,7 +60,16 @@ function DimensionPicker({
   );
 }
 
-const DIMENSION_SETTING_TITLES = [t`Inner Ring`, t`Middle Ring`, t`Outer Ring`];
+const INNER_RING_TITLE = t`Inner Ring`;
+const MIDDLE_RING_TITLE = t`Middle Ring`;
+const OUTER_RING_TITLE = t`Outer Ring`;
+
+const TWO_RING_SETTING_TITLES = [INNER_RING_TITLE, OUTER_RING_TITLE];
+const THREE_RING_SETTING_TITLES = [
+  INNER_RING_TITLE,
+  MIDDLE_RING_TITLE,
+  OUTER_RING_TITLE,
+];
 
 export function DimensionsWidget({
   rawSeries,
@@ -77,6 +86,9 @@ export function DimensionsWidget({
   const [dimensions, setDimensions] = useState<(string | undefined)[]>(() => [
     ...getPieDimensions(settings),
   ]);
+
+  const dimensionTitles =
+    dimensions.length < 3 ? TWO_RING_SETTING_TITLES : THREE_RING_SETTING_TITLES;
 
   const updateDimensions = (newDimensions: (string | undefined)[]) => {
     setDimensions(newDimensions);
@@ -154,7 +166,7 @@ export function DimensionsWidget({
           {dimensions.map((dimension, index) => (
             <>
               <Text weight="bold" mb="sm">
-                {DIMENSION_SETTING_TITLES[index]}
+                {dimensionTitles[index]}
               </Text>
               <Sortable
                 key={String(dimension)}
