@@ -76,7 +76,7 @@
                  ;; currently we need it to support i18n purposes, but ideally it should not exists
                  :extra            {:user-invited-email-subject (trs "You''re invited to join {0}''s {1}" (site-name) (app-name-trs))
                                     ;; TODO test that this link works for real
-                                    :user-invited-join-url      (-> event-info (get-in [:object :id]) user/set-password-reset-token! user/form-password-reset-url (str "#new"))}}
+                                    :user-invited-join-url      (some-> event-info (get-in [:object :id]) user/set-password-reset-token! user/form-password-reset-url (str "#new"))}}
    :event-info  (cond->> event-info
                   (some? (events.schema/topic->schema topic))
                   (hydrate! (events.schema/topic->schema topic)))
