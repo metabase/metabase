@@ -50,7 +50,7 @@
 
 (defn- app-name-trs
   "Return the user configured application name, or Metabase translated
-  via tru if a name isn't configured."
+  via trs if a name isn't configured."
   []
   (or (public-settings/application-name)
       (trs "Metabase")))

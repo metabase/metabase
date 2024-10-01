@@ -360,7 +360,7 @@
 (mu/defn insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
-  (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (random-uuid)))))))
+  (t2/insert-returning-instance! :model/User (update new-user :password #(or % (str (random-uuid))))))
 
 (defn serdes-synthesize-user!
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
@@ -379,6 +379,12 @@
                                    :invite_method "email"
                                    :sso_source (:sso_source new-user))})
     (send-welcome-email! <> invitor setup?)))
+
+#_(events/publish-event! :event/user-invited
+                         {:object
+                          (assoc (t2/select-one :model/User)
+                                 :invite_method "email"
+                                 :sso_source nil)})
 
 (mu/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active

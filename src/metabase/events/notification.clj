@@ -2,11 +2,14 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.events.schema :as events.schema]
    [metabase.models.notification :as models.notification]
+   [metabase.models.user :as user]
    [metabase.notification.core :as notification]
    [metabase.public-settings :as public-settings]
+   [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -52,23 +55,47 @@
   (when (supported-topics topic)
     (models.notification/notifications-for-event topic)))
 
+(defn- app-name-trs
+  "Return the user configured application name, or Metabase translated
+  via trs if a name isn't configured."
+  []
+  (or (public-settings/application-name)
+      (trs "Metabase")))
+
+(defn- site-name
+  []
+  (or (public-settings/site-name) (trs "Unknown")))
+
 (defn- enriched-event-info
   [topic event-info]
   ;; DO NOT delete or rename these fields, they are used in the notification templates
-  {:settings    {:application-name (public-settings/application-name)
-                 :site-name        (public-settings/site-name)}
+  {:context     {:application-name (public-settings/application-name)
+                 :site-name        (site-name)
+                 :current-user     @api/*current-user*
+                 ;; extra are set of contexts that are specific to a cerntain emails
+                 ;; currently we need it to support i18n purposes, but ideally it should not exists
+                 :extra            {:user-invited-email-subject (trs "You''re invited to join {0}''s {1}" (site-name) (app-name-trs))
+                                    ;; TODO test that this link works for real
+                                    :user-invited-join-url      (-> event-info (get-in [:object :id]) user/set-password-reset-token! user/form-password-reset-url (str "#new"))}}
    :event-info  (cond->> event-info
                   (some? (events.schema/topic->schema topic))
                   (hydrate! (events.schema/topic->schema topic)))
    :event-topic topic})
 
+#_(ngoc/with-tc
+    (metabase.test/with-current-user 3
+      (events/publish-event! :event/user-invited
+                             {:object
+                              (assoc (t2/select-one :model/User)
+                                     :invite_method "email")})))
+
 (defn- maybe-send-notification-for-topic!
   [topic event-info]
   (when-let [notifications (notifications-for-topic topic)]
-    (let [enriched-event-info (enriched-event-info topic event-info)]
+    (let [event-info (enriched-event-info topic event-info)]
       (log/infof "Found %d notifications for event: %s" (count notifications) topic)
       (doseq [notification notifications]
-        (notification/send-notification! (assoc notification :payload enriched-event-info))))))
+        (notification/send-notification! (assoc notification :payload event-info))))))
 
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]

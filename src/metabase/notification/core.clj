@@ -2,6 +2,7 @@
   (:require
    [metabase.channel.core :as channel]
    [metabase.models.notification :as models.notification]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -27,8 +28,8 @@
                                   [:map {:closed true}
                                    ;; TODO: event-info schema for each event type
                                    [:event-topic [:fn #(= "event" (-> % keyword namespace))]]
-                                   [:event-info [:maybe :map]]
-                                   [:settings   :map]]]]]]])
+                                   [:event-info  [:maybe :map]]
+                                   [:context     :map]]]]]]])
 
 (defn- hydrate-notification-handler
   [notification-handlers]
@@ -41,7 +42,8 @@
   "Send the notification to all handlers synchronously."
   [notification-info :- NotificationInfo]
   (let [noti-handlers (hydrate-notification-handler (t2/select :model/NotificationHandler :notification_id (:id notification-info)))]
-    (log/infof "[Notification %d] Found %d handlers" (:id notification-info) (count noti-handlers))
+    (log/infof "[Notification %d] Found %d %s"
+               (:id notification-info) (count noti-handlers) (u/format-plural (count noti-handlers) "handler" "handlers"))
     (doseq [handler noti-handlers]
       (let [channel-type (:channel_type handler)
             messages     (channel/render-notification
@@ -49,7 +51,8 @@
                           notification-info
                           (:template handler)
                           (:recipients handler))]
-        (log/infof "[Notification %d] Got %d messages for channel %s" (:id notification-info) (count messages) (:channel_type handler))
+        (log/infof "[Notification %d] Got %d %s for channel %s"
+                   (:id notification-info) (count messages) (u/format-plural (count messages) "message" "messages") (:channel_type handler))
         (doseq [message messages]
           (channel/send! (or (:channel handler)
                              {:type channel-type}) message))))))

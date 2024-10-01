@@ -161,6 +161,9 @@
                                         [:user-id [:maybe pos-int?]]
                                         [:model [:or :keyword :string]]])}))
 
+(def user-schemas
+  #_{:event/user-invited (mc/schema)})
+
 (def topic->schema
   "Returns the schema for an event topic."
   (merge alert-schema

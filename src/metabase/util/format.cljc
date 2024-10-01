@@ -82,3 +82,12 @@
 
   (^String [color format-str & args]
    (colorize color (apply #?(:clj format :cljs gstring/format) format-str args))))
+
+(defn format-plural
+  "Format a string with a pluralized suffix. If `n` is 1, the suffix will be singular, otherwise plural.
+
+    (format-plural 1 \"handler\" \"handlers\") ; -> \"handler\""
+  ^String [n singular plural]
+  (if (< (abs n) 2)
+    singular
+    plural))
