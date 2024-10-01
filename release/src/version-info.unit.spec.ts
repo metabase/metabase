@@ -147,6 +147,8 @@ describe("version-info", () => {
       });
 
       expect(updatedJson.latest.version).toEqual("v0.2.5");
+      expect(updatedJson.beta).toEqual(oldJson.beta);
+      expect(updatedJson.nightly).toEqual(oldJson.nightly);
     });
 
     it("should ignore if version is already latest", () => {
@@ -321,6 +323,9 @@ describe("version-info", () => {
         rollout: 51,
         highlights: [],
       });
+
+      expect(updatedJson.beta).toEqual(oldJson.beta);
+      expect(updatedJson.latest).toEqual(oldJson.latest);
     });
 
     it("should update beta version", () => {
@@ -337,6 +342,9 @@ describe("version-info", () => {
         rollout: 51,
         highlights: [],
       });
+
+      expect(updatedJson.latest).toEqual(oldJson.latest);
+      expect(updatedJson.nightly).toEqual(oldJson.nightly);
     });
 
     it("should update latest version", () => {
@@ -361,6 +369,9 @@ describe("version-info", () => {
         patch: true,
         highlights: ["Old Issue 1", "Old Issue 2"],
       });
+
+      expect(updatedJson.beta).toEqual(oldJson.beta);
+      expect(updatedJson.nightly).toEqual(oldJson.nightly);
     });
   });
 

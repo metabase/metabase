@@ -102,6 +102,7 @@ export const updateVersionInfoLatestJson = ({
   oldLatestVersionInfo.rollout = undefined;
 
   return {
+    ...existingVersionInfo,
     latest: {
       ...newLatestVersionInfo,
       rollout,
