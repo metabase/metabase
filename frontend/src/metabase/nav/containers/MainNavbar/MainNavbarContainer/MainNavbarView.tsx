@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { MouseEvent } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
@@ -304,11 +305,7 @@ function SidebarOnboardingSection({ initialState }: { initialState: boolean }) {
       pos="fixed"
       w={NAV_SIDEBAR_WIDTH}
       bg="bg-white"
-      style={{
-        boxShadow: !initialState
-          ? "0px -1px 0px 0px var(--mb-color-border)"
-          : undefined,
-      }}
+      className={cx({ [CS.borderTop]: initialState })}
     >
       <Box px="md" py="md">
         {/*eslint-disable-next-line no-unconditional-metabase-links-render -- This link is only temporary. It will be replaced with an internal link to a page. */}
@@ -319,15 +316,7 @@ function SidebarOnboardingSection({ initialState }: { initialState: boolean }) {
           </PaddedSidebarLink>
         </ExternalLink>
       </Box>
-      <Box
-        px="xl"
-        pb="md"
-        style={{
-          borderTop: initialState
-            ? `1px solid var(--mb-color-border)`
-            : undefined,
-        }}
-      >
+      <Box px="xl" pb="md" className={cx({ [CS.borderTop]: initialState })}>
         {initialState && (
           <Text
             fz="sm"
