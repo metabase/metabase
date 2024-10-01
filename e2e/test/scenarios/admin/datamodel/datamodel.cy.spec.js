@@ -810,7 +810,9 @@ describe("scenarios > admin > datamodel > segments", () => {
       summarize();
       cy.findAllByTestId("sidebar-right").button("Done").click();
       cy.findByTestId("scalar-value").should("have.text", "13,005");
+      cy.wait(2000);
       saveQuestion("Foo");
+      cy.wait(2000);
 
       // Check list
       cy.visit("/reference/segments/1/questions");

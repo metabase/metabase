@@ -84,7 +84,7 @@ export const QuestionActions = ({
   const isQuestion = question.type() === "question";
   const isDashboardQuestion = isQuestion && _.isNumber(question.dashboardId());
   const isStandaloneQuestion =
-    isQuestion && question.dashboardId() === undefined;
+    isQuestion && !_.isNumber(question.dashboardId());
   const isModel = question.type() === "model";
   const isMetric = question.type() === "metric";
   const isModelOrMetric = isModel || isMetric;
