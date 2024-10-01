@@ -501,7 +501,7 @@
                                 ["number" {:base_type :type/Float}]
                                 ["date" {:base_type :type/Date}]
                                 ["datetime" {:base_type :type/DateTime}]]
-                        (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+                        (auto-pk-column?)
                         (cons ["_mb_row_id" {:semantic_type     :type/PK
                                              :base_type         :type/BigInteger}]))
                       (->> (t2/select :model/Field :table_id (:id table))
@@ -1415,7 +1415,7 @@
                               - extra_1")
 
                      ["_mb_row_id,id, extra 2"]
-                     (if (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+                     (if (auto-pk-column?)
                        (trim-lines "The CSV file is missing columns that are in the table:
                                    - name
 
@@ -1529,7 +1529,7 @@
 
 (deftest update-mb-row-id-csv-only-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (when (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (when (auto-pk-column?)
       (doseq [action (actions-to-test driver/*driver*)]
         (testing (action-testing-str action)
           (testing "If the table doesn't have _mb_row_id but the CSV does, ignore the CSV _mb_row_id but create the column anyway"
@@ -1785,7 +1785,7 @@
 
 (deftest update-mb-row-id-csv-and-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (when (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (when (auto-pk-column?)
       (doseq [action (actions-to-test driver/*driver*)]
         (testing (action-testing-str action)
           (testing "Append succeeds if the table has _mb_row_id and the CSV does too"
@@ -1879,7 +1879,8 @@
         (with-uploads-enabled
           (testing "Append should handle new non-ascii columns being added in the latest CSV"
             (with-upload-table! [table (create-upload-table!)]
-              (column-display-names-for-table table)
+              (is (= (header-with-auto-pk ["Name"])
+                     (column-display-names-for-table table)))
              ;; Reorder as well for good measure
               (let [csv-rows ["α,name"
                               "omega,Everything"]
@@ -2019,6 +2020,15 @@
                                (rows-for-table table))))
                       (io/delete-file file))))))))))))
 
+(defn- round-floats
+  "Round all floats to have n digits of precision."
+  [digits-precision rows]
+  (let [factor (Math/pow 10 digits-precision)]
+    (mapv (partial mapv #(if (float? %)
+                           (/ (Math/round (* factor %)) factor)
+                           %))
+          rows)))
+
 (deftest update-type-coercion-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
@@ -2056,7 +2066,8 @@
                           (is (= {:row-count 1}
                                  (update!))))
                         (is (= (rows-with-auto-pk [[coerced]])
-                               (rows-for-table table))))
+                               ;; Deal with 32 bit floats for Clickhouse
+                               (round-floats 6 (rows-for-table table)))))
                       (testing (format "\nUploading %s into a column of type %s should fail to coerce"
                                        uncoerced (name upload-type))
                         (is (thrown-with-msg?
@@ -2064,15 +2075,6 @@
                              (re-pattern (str "^" fail-msg "$"))
                              (update!)))))
                     (io/delete-file file)))))))))))
-
-(defn- round-floats
-  "Round all floats to have n digits of precision."
-  [digits-precision rows]
-  (let [factor (Math/pow 10 digits-precision)]
-    (mapv (partial mapv #(if (float? %)
-                           (/ (Math/round (* factor %)) factor)
-                           %))
-          rows)))
 
 (deftest update-promotion-multiple-columns-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift) ; redshift doesn't support promotion
