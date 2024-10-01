@@ -519,19 +519,22 @@
                 "2\t   ||          a |true |1.1\t        |2022-01-01|2022-01-01T00:00:00"
                 "\" 3\"||           b|false|\"$ 1,000.1\"|2022-02-01|2022-02-01T00:00:00"]})
 
+(defn- auto-pk-column? []
+  (#'upload/auto-pk-column? driver/*driver* (mt/db)))
+
 (defn- columns-with-auto-pk [columns]
   (cond-> columns
-    (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (auto-pk-column?)
     (#'upload/columns-with-auto-pk)))
 
 (defn- header-with-auto-pk [header]
   (cond->> header
-    (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (auto-pk-column?)
     (cons @#'upload/auto-pk-column-name)))
 
 (defn- rows-with-auto-pk [rows]
   (cond->> rows
-    (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+    (auto-pk-column?)
     (map-indexed (fn [i row] (cons (inc i) row)))))
 
 (defn- column-position [table column-name]
@@ -870,7 +873,7 @@
                      :semantic_type              :type/PK
                      :base_type                  :type/BigInteger
                      :database_is_auto_increment false}
-                    (let [pos (if (#'upload/auto-pk-column? driver/*driver* (mt/db)) 1 0)]
+                    (let [pos (if (auto-pk-column?) 1 0)]
                       (t2/select-one Field :database_position pos :table_id (:id table)))))))))))
 
 (deftest create-from-csv-auto-pk-column-test
@@ -1177,9 +1180,7 @@
                                 "size_mb"           3.910064697265625E-5
                                 "num_columns"       2
                                 "num_rows"          2
-                                "generated_columns" (if (#'upload/auto-pk-column? driver/*driver* (mt/db))
-                                                      1
-                                                      0)
+                                "generated_columns" (if (auto-pk-column?) 1 0)
                                 "upload_seconds"    pos?}
                       :user-id (str (mt/user->id :rasta))}
                      (last (snowplow-test/pop-event-data-and-user-id!)))))
@@ -1215,9 +1216,7 @@
                                :model-id    pos?
                                :stats       {:num-rows          2
                                              :num-columns       2
-                                             :generated-columns (if (#'upload/auto-pk-column? driver/*driver* (mt/db))
-                                                                  1
-                                                                  0)
+                                             :generated-columns (if (auto-pk-column?) 1 0)
                                              :size-mb           3.910064697265625E-5
                                              :upload-seconds    pos?}}}
                    (last-audit-event :upload-create)))))))))
@@ -1334,7 +1333,7 @@
       :or {table-name       (mt/random-name)
            schema-name      (sql.tx/session-schema driver/*driver*)
            col->upload-type (cond->> (ordered-map/ordered-map :name ::upload-types/varchar-255)
-                              (#'upload/auto-pk-column? driver/*driver* (mt/db))
+                              (auto-pk-column?)
                               (merge (ordered-map/ordered-map
                                       upload/auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk)))
            rows             [["Obi-Wan Kenobi"]]}}]
@@ -1991,7 +1990,7 @@
             ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
             ;; inserted rows are rolled back
             (binding [driver/*insert-chunk-rows* 1]
-              (doseq [auto-pk-column? (if (driver.u/supports? driver/*driver* :upload-with-auto-pk (mt/db))
+              (doseq [auto-pk-column? (if (auto-pk-column?)
                                         [true false]
                                         [false])]
                 (testing (str "\nFor a table that has " (if auto-pk-column? "an" " no") " automatically generated PK already")
