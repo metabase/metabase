@@ -326,23 +326,42 @@ function SidebarOnboardingSection() {
             >{t`Add data`}</Button>
           </Menu.Target>
           <Menu.Dropdown>
-            <Menu.Item icon={<Icon name="database" />}>
-              <Link to="/admin/databases/create">
-                <Stack spacing="xs">
-                  <Title order={4}>{t`Add a database`}</Title>
-                  <Text size="sm">{t`PostgreSQL, MySQL, Snowflake, ...`}</Text>
-                </Stack>
-              </Link>
-            </Menu.Item>
-            <Menu.Item icon={<Icon name="table2" />}>
-              <Stack spacing="xs">
-                <Title order={4}>{t`Upload a spreadsheet`}</Title>
-                <Text size="sm">{t`.csv, .tsv (50 MB max)`}</Text>
-              </Stack>
-            </Menu.Item>
+            <Link to="/admin/databases/create">
+              <SidebarOnboardingMenuItem
+                icon="database"
+                title="Add a database"
+                subtitle="PostgreSQL, MySQL, Snowflake, ..."
+              />
+            </Link>
+            <Link to="/admin/settings/uploads">
+              <SidebarOnboardingMenuItem
+                icon="table2"
+                title="Upload a spreadsheet"
+                subtitle=".csv, .tsv (50 MB max)"
+              />
+            </Link>
           </Menu.Dropdown>
         </Menu>
       </Box>
     </Box>
+  );
+}
+
+function SidebarOnboardingMenuItem({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: IconName;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <Menu.Item icon={<Icon name={icon} />} style={{ alignItems: "flex-start" }}>
+      <Stack spacing="xs">
+        <Title c="inherit" order={4}>{t`${title}`}</Title>
+        <Text c="inherit" size="sm">{t`${subtitle}`}</Text>
+      </Stack>
+    </Menu.Item>
   );
 }
