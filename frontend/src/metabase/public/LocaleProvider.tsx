@@ -13,13 +13,12 @@ export const LocaleProvider = ({
     if (locale) {
       setIsLoadingLocale(true);
       setLocaleHeader(locale);
-      loadLocalization(locale).then(() => {
-        setIsLoadingLocale(false);
-      });
+      loadLocalization(locale).then(() => setIsLoadingLocale(false));
     }
   }, [locale]);
 
-  // note: we may show a loader here while loading, this would prevent race conditions and things being rendered for some time with the wrong locale
+  // note: we may show a loader here while loading, this would prevent race
+  // conditions and things being rendered for some time with the wrong locale
   // downside is that it would make the initial load slower
   return <>{children}</>;
 };
