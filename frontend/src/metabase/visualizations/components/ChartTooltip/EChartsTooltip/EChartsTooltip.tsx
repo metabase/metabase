@@ -67,11 +67,11 @@ export const EChartsTooltip = ({
         })}
       >
         <tbody>
-          {paddedRows.map((row, index) => {
+          {paddedRows.map(row => {
             return !row.isSecondary ? (
-              <TooltipRow key={String(index)} {...row} />
+              <TooltipRow {...row} />
             ) : (
-              <SecondaryRow key={String(index)} {...row} />
+              <SecondaryRow {...row} />
             );
           })}
         </tbody>

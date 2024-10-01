@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import { findWithIndex } from "metabase/lib/arrays";
 import { checkNotNull } from "metabase/lib/types";
+import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import {
   pieNegativesWarning,
@@ -17,7 +18,7 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { RawSeries } from "metabase-types/api";
+import type { RawSeries, RowValue } from "metabase-types/api";
 
 import type { ShowWarning } from "../../types";
 import {
@@ -103,6 +104,52 @@ export function getPieColumns(
   }
 
   return colDescs;
+}
+
+function createOrUpdateNode(
+  metricValue: number,
+  dimensionValue: RowValue,
+  colDesc: ColumnDescriptor,
+  formatter: (rowValue: RowValue) => string,
+  parentNode: SliceTreeNode,
+  color: string,
+  rowIndex: number,
+  total: number,
+  showWarning?: ShowWarning,
+) {
+  const dimensionKey = getKeyFromDimensionValue(dimensionValue);
+  let dimensionNode = parentNode.children.get(String(dimensionKey));
+
+  if (dimensionNode == null) {
+    // If there is no node for this middle dimension value in the tree
+    // create it.
+    dimensionNode = {
+      key: dimensionKey,
+      name: formatter(dimensionValue),
+      value: metricValue,
+      displayValue: metricValue,
+      normalizedPercentage: metricValue / total,
+      color,
+      visible: true,
+      column: colDesc.column,
+      rowIndex,
+      isOther: false,
+      children: new Map(),
+      startAngle: 0,
+      endAngle: 0,
+    };
+    parentNode.children.set(dimensionKey, dimensionNode);
+  } else {
+    // If the node already exists, add the metric value from the current row
+    // to it.
+    dimensionNode.value += metricValue;
+    dimensionNode.displayValue += metricValue;
+    dimensionNode.normalizedPercentage = dimensionNode.value / total;
+
+    showWarning?.(unaggregatedDataWarningPie(colDesc.column).text);
+  }
+
+  return dimensionNode;
 }
 
 function markOtherNodes(
@@ -339,10 +386,9 @@ export function getPieChartModel(
         throw new Error(`Missing middleDimensionDesc`);
       }
 
-      const dimensionKey = getKeyFromDimensionValue(
-        row[colDescs.dimensionDesc.index],
+      const dimensionNode = sliceTree.get(
+        getKeyFromDimensionValue(row[colDescs.dimensionDesc.index]),
       );
-      const dimensionNode = sliceTree.get(String(dimensionKey));
       const dimensionIsOther = dimensionNode == null;
       if (dimensionIsOther) {
         return;
@@ -353,108 +399,37 @@ export function getPieChartModel(
       }
 
       // Create or update node for middle dimension
-      const middleDimensionKey = getKeyFromDimensionValue(
+      const middleDimensionNode = createOrUpdateNode(
+        metricValue,
         row[colDescs.middleDimensionDesc.index],
+        colDescs.middleDimensionDesc,
+        formatMiddleDimensionValue,
+        dimensionNode,
+        getColorForRing(dimensionNode.color, "middle", true, renderingContext),
+        index,
+        total,
+        colDescs.outerDimensionDesc == null ? showWarning : undefined,
       );
-      let middleDimensionNode = dimensionNode.children.get(
-        String(middleDimensionKey),
-      );
 
-      if (middleDimensionNode == null) {
-        // If there is no node for this middle dimension value in the tree
-        // create it.
-        middleDimensionNode = {
-          key: middleDimensionKey,
-          name: formatMiddleDimensionValue(
-            row[colDescs.middleDimensionDesc.index],
-          ),
-          value: metricValue,
-          displayValue: metricValue,
-          normalizedPercentage: metricValue / total,
-          color: getColorForRing(
-            dimensionNode.color,
-            "middle",
-            true,
-            renderingContext,
-          ),
-          visible: true,
-          column: colDescs.middleDimensionDesc.column,
-          rowIndex: index,
-          isOther: false,
-          children: new Map(),
-          startAngle: 0,
-          endAngle: 0,
-        };
-        dimensionNode.children.set(
-          String(middleDimensionKey),
-          middleDimensionNode,
-        );
-      } else {
-        // If the node already exists, add the metric value from the current row
-        // to it.
-        middleDimensionNode.value += metricValue;
-        middleDimensionNode.displayValue += metricValue;
-        middleDimensionNode.normalizedPercentage =
-          middleDimensionNode.value / total;
-
-        if (colDescs.outerDimensionDesc == null) {
-          showWarning?.(
-            unaggregatedDataWarningPie(colDescs.middleDimensionDesc.column)
-              .text,
-          );
-        }
-      }
-
-      if (colDescs.outerDimensionDesc == null) {
+      if (
+        colDescs.outerDimensionDesc == null ||
+        formatOuterDimensionValue == null
+      ) {
         return;
       }
+
       // Create or update node for outer dimension
-      const outerDimensionKey = getKeyFromDimensionValue(
+      createOrUpdateNode(
+        metricValue,
         row[colDescs.outerDimensionDesc.index],
+        colDescs.outerDimensionDesc,
+        formatOuterDimensionValue,
+        middleDimensionNode,
+        getColorForRing(dimensionNode.color, "outer", true, renderingContext),
+        index,
+        total,
+        showWarning,
       );
-
-      let outerDimensionNode = middleDimensionNode.children.get(
-        String(outerDimensionKey),
-      );
-
-      if (outerDimensionNode == null) {
-        outerDimensionNode = {
-          key: outerDimensionKey,
-          name:
-            formatOuterDimensionValue?.(
-              row[colDescs.outerDimensionDesc.index],
-            ) ?? "",
-          value: metricValue,
-          displayValue: metricValue,
-          normalizedPercentage: metricValue / total,
-          color: getColorForRing(
-            dimensionNode.color,
-            "outer",
-            true,
-            renderingContext,
-          ),
-          visible: true,
-          column: colDescs.outerDimensionDesc.column,
-          rowIndex: index,
-          isOther: false,
-          children: new Map(),
-          startAngle: 0,
-          endAngle: 0,
-        };
-        middleDimensionNode.children.set(
-          String(outerDimensionKey),
-          outerDimensionNode,
-        );
-      } else {
-        outerDimensionNode.value += metricValue;
-        outerDimensionNode.displayValue += metricValue;
-        outerDimensionNode.normalizedPercentage =
-          outerDimensionNode.value / total;
-
-        showWarning?.(
-          unaggregatedDataWarningPie(colDescs.outerDimensionDesc.column).text,
-        );
-      }
     });
   }
 
