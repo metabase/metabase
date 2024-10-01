@@ -7,13 +7,17 @@ import { ChartTypeList, type ChartTypeListProps } from "../ChartTypeList";
 export type ChartTypeSettingsProps = {
   sensibleVisualizations: ChartTypeListProps["visualizationList"];
   nonSensibleVisualizations: ChartTypeListProps["visualizationList"];
-} & Pick<ChartTypeListProps, "selectedVisualization" | "onSelectVisualization">;
+} & Pick<
+  ChartTypeListProps,
+  "selectedVisualization" | "onSelectVisualization" | "onOpenSettings"
+>;
 
 export const ChartTypeSettings = ({
   selectedVisualization,
   onSelectVisualization,
   sensibleVisualizations,
   nonSensibleVisualizations,
+  onOpenSettings,
 }: ChartTypeSettingsProps) => (
   <Box display="contents" data-testid="chart-type-settings">
     <ChartTypeList
@@ -21,6 +25,7 @@ export const ChartTypeSettings = ({
       visualizationList={sensibleVisualizations}
       onSelectVisualization={onSelectVisualization}
       selectedVisualization={selectedVisualization}
+      onOpenSettings={onOpenSettings}
     />
 
     <Space h="xl" />
@@ -39,6 +44,7 @@ export const ChartTypeSettings = ({
       visualizationList={nonSensibleVisualizations}
       onSelectVisualization={onSelectVisualization}
       selectedVisualization={selectedVisualization}
+      onOpenSettings={onOpenSettings}
     />
   </Box>
 );

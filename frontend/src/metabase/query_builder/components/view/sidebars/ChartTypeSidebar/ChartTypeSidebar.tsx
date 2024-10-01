@@ -57,16 +57,16 @@ export const ChartTypeSidebar = ({
   });
 
   const handleSelectVisualization = (display: CardDisplayType) => {
-    if (display === selectedVisualization) {
-      dispatch(
-        onOpenChartSettings({
-          initialChartSettings: { section: t`Data` },
-          showSidebarTitle: true,
-        }),
-      );
-    } else {
-      updateQuestionVisualization(display);
-    }
+    updateQuestionVisualization(display);
+  };
+
+  const onOpenVizSettings = () => {
+    dispatch(
+      onOpenChartSettings({
+        initialChartSettings: { section: t`Data` },
+        showSidebarTitle: true,
+      }),
+    );
   };
 
   return (
@@ -81,6 +81,7 @@ export const ChartTypeSidebar = ({
           onSelectVisualization={handleSelectVisualization}
           sensibleVisualizations={sensibleVisualizations}
           nonSensibleVisualizations={nonSensibleVisualizations}
+          onOpenSettings={onOpenVizSettings}
         />
       </Stack>
     </SidebarContent>
