@@ -418,8 +418,7 @@
            (not (:dashboard_id changes)))))
 
 (defn- is-valid-dashboard-internal-card-for-update [card changes]
-  (or (and (not (was-dashboard-question? card changes))
-           (not (contains? changes :dashboard_id)))
+  (or (not (was-dashboard-question? card changes))
       (and
        (was-dashboard-question? card changes)
        (or *updating-dashboard* (not (contains? changes :collection_id)))
@@ -863,7 +862,7 @@
                 (u/select-keys-when card-updates
                                     ;; `collection_id` and `description` can be `nil` (in order to unset them).
                                     ;; Other values should only be modified if they're passed in as non-nil
-                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly}
+                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id}
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                :result_metadata :collection_preview :verified-result-metadata?})))
