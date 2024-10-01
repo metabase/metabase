@@ -83,7 +83,7 @@ Note that you have to have Curate permission for the collection that you're movi
 
 {% include plans-blockquote.html feature="Collection cleanup" %}
 
-You can clean up collections by trashing items that people haven't even looked at for a period of time. Cleaning up old questions and dashboards can keep your Metabase from getting too cluttered, and you can always resurrect items from the trash if you need to.
+It's possible to ask too many questions. Fortunately, you can clean up collections by trashing items that people haven't even looked at for a period of time. Cleaning up old questions and dashboards can keep your Metabase from getting too cluttered, and you can always resurrect items from the trash if you need to.
 
 On a collection page, click on the three-dot menu (**...**) and select **Clean things up**. Metabase will pull up a modal where you can select unused items to move to the trash. You can set how long items need to go unnoticed before they're culled by setting **Not used in over**, which you can set to trash items from one month ago to over two years ago. There's also a toggle to include/exclude items in sub-collections.
 
