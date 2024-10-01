@@ -8,6 +8,7 @@ import { SwagButton } from "./SwagButton";
 import { SWAG_LINK } from "./constants";
 
 const USER_EMAIL = "toucan@metabase.com";
+const DEFAULT_DATE = new Date("2024-09-27");
 
 const user = userEvent.setup({ delay: null });
 
@@ -28,7 +29,7 @@ const setup = ({ versionTag = "v0.51.0-RC" } = {}) => {
 
 it("should render a button when date is below threshold and version includes RC", () => {
   jest.useFakeTimers({
-    now: new Date("2024-09-27"),
+    now: DEFAULT_DATE,
   });
   setup();
   expect(screen.getByText(/Claim your swag/i)).toBeInTheDocument();
@@ -36,7 +37,7 @@ it("should render a button when date is below threshold and version includes RC"
 
 it("should not render a button when date is above threshold", () => {
   jest.useFakeTimers({
-    now: new Date("2024-10-27"),
+    now: new Date("2024-11-27"),
   });
   setup();
   expect(screen.queryByText(/Claim your swag/i)).not.toBeInTheDocument();
@@ -44,7 +45,7 @@ it("should not render a button when date is above threshold", () => {
 
 it("should not render a button when version is not an RC", () => {
   jest.useFakeTimers({
-    now: new Date("2024-09-27"),
+    now: DEFAULT_DATE,
   });
   setup({ versionTag: "v0.51.3" });
   expect(screen.queryByText(/Claim your swag/i)).not.toBeInTheDocument();
@@ -52,7 +53,7 @@ it("should not render a button when version is not an RC", () => {
 
 it("Clicking the swag button should open a modal", async () => {
   jest.useFakeTimers({
-    now: new Date("2024-09-27"),
+    now: DEFAULT_DATE,
   });
   setup();
 
@@ -61,7 +62,7 @@ it("Clicking the swag button should open a modal", async () => {
   });
 
   expect(
-    screen.getByRole("heading", { name: "A little somthing from us to you" }),
+    screen.getByRole("heading", { name: "A little something from us to you" }),
   ).toBeInTheDocument();
 
   expect(screen.getByRole("link", { name: "Get my swag" })).toHaveAttribute(
@@ -72,7 +73,7 @@ it("Clicking the swag button should open a modal", async () => {
 
 it("Clicking the swag link should change the class on the button", async () => {
   jest.useFakeTimers({
-    now: new Date("2024-09-27"),
+    now: DEFAULT_DATE,
   });
   setup();
 

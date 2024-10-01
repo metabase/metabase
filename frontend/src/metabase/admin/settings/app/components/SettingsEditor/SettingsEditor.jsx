@@ -255,7 +255,7 @@ class SettingsEditor extends Component {
       <aside className={cx(AdminS.AdminList, CS.flexNoShrink)}>
         <ul className={CS.pt1} data-testid="admin-list-settings-items">
           <ErrorBoundary>{renderedSections}</ErrorBoundary>
-          <SwagButton onClick={this.handleSwagClick} />
+          <SwagButton />
         </ul>
       </aside>
     );
