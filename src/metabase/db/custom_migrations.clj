@@ -1589,7 +1589,7 @@
                                              :created_at      :%now
                                              :updated_at      :%now})]
     (t2/insert! :notification_recipient {:notification_handler_id handler-id
-                                         :type                    "notification-recipient/params"
+                                         :type                    "notification-recipient/template"
                                          :details                 (json/generate-string {:pattern "{{event-info.object.email}}"})
                                          :created_at              :%now
                                          :updated_at              :%now})

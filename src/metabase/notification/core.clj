@@ -43,7 +43,7 @@
   [notification-info :- NotificationInfo]
   (let [noti-handlers (hydrate-notification-handler (t2/select :model/NotificationHandler :notification_id (:id notification-info)))]
     (log/infof "[Notification %d] Found %d %s"
-               (:id notification-info) (count noti-handlers) (u/format-plural (count noti-handlers) "handler" "handlers"))
+               (:id notification-info) (count noti-handlers) (u/format-plural (count noti-handlers) "handler"))
     (doseq [handler noti-handlers]
       (let [channel-type (:channel_type handler)
             messages     (channel/render-notification
@@ -52,7 +52,7 @@
                           (:template handler)
                           (:recipients handler))]
         (log/infof "[Notification %d] Got %d %s for channel %s"
-                   (:id notification-info) (count messages) (u/format-plural (count messages) "message" "messages") (:channel_type handler))
+                   (:id notification-info) (count messages) (u/format-plural (count messages) "message") (:channel_type handler))
         (doseq [message messages]
           (channel/send! (or (:channel handler)
                              {:type channel-type}) message))))))

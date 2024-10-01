@@ -371,7 +371,7 @@
                                    :is_from_setup setup?
                                    :invite_method "email"
                                    :sso_source    (:sso_source new-user))
-                            :invitor (select-keys invitor [:email :first_name])})))
+                            :details {:invitor (select-keys invitor [:email :first_name])}})))
 
 (mu/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active

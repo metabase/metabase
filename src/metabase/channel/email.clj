@@ -122,7 +122,7 @@
                                     (->> recipient :permissions_group :members (map :email))
                                     :notification-recipient/external-email
                                     [(-> recipient :details :email)]
-                                    :notification-recipient/params
+                                    :notification-recipient/template
                                     [(-> recipient :details :pattern (channel.params/substitute-params payload))])]
                      :when (seq emails)]
                  emails)))
@@ -143,8 +143,6 @@
    recipients        :- [:sequential models.notification/NotificationRecipient]]
   (assert (some? template) "Template is required for system event notifications")
   (let [payload (:payload notification-info)]
-    (def payload payload)
-    (def template template)
     [(construct-email (channel.params/substitute-params (-> template :details :subject) payload)
                       (notification-recipients->emails recipients payload)
                       [{:type    "text/html; charset=utf-8"

@@ -85,10 +85,10 @@
                           [:map {:closed true}
                            [:object [:map
                                      [:email ms/Email]
-                                     [:is_from_setup                  :boolean]
-                                     [:first_name {:optional true}    [:maybe :string]]
+                                     [:is_from_setup {:optional true} :boolean]
+                                     [:first_name    {:optional true} [:maybe :string]]
                                      [:invite_method {:optional true} :string]
-                                     [:sso_source    {:optional true} :string]]]
+                                     [:sso_source    {:optional true} [:maybe :string]]]]
                            [:details [:map {:closed true}
                                       [:invitor [:map {:closed true}
                                                  [:email                       ms/Email]

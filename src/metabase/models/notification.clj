@@ -152,7 +152,7 @@
   #{:notification-recipient/user
     :notification-recipient/group
     :notification-recipient/external-email
-    :notification-recipient/params})
+    :notification-recipient/template})
 
 (t2/deftransforms :model/NotificationRecipient
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-recipient-types))
@@ -180,7 +180,7 @@
                                                [:email ms/Email]]]
       [:user_id              {:optional true} [:fn nil?]]
       [:permissions_group_id {:optional true} [:fn nil?]]]]
-    [:notification-recipient/params
+    [:notification-recipient/template
      [:map
       [:details                               [:map {:closed true}
                                                [:pattern :string]]]
