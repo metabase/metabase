@@ -56,4 +56,4 @@
   (if-let [name->tag (seq (get-in query [:native :template-tags]))]
     ((requiring-resolve 'qp.compile/compile)
      (assoc-in query [:native :template-tags] (update-vals name->tag tag-default)))
-    (:native query)))
+    {:query (:native query)}))
