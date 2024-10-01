@@ -146,7 +146,10 @@
   (with-quoting driver
     (first (sql/format {:alter-table  (keyword table-name)
                         :alter-column (map (fn [[column-name type-and-constraints]]
-                                             (vec (cons (quote-identifier column-name) type-and-constraints)))
+                                             (vec (cons (quote-identifier column-name)
+                                                        (if (string? type-and-constraints)
+                                                          [[:raw type-and-constraints]]
+                                                          type-and-constraints))))
                                            column-definitions)}
                        :quoted true
                        :dialect (sql.qp/quote-style driver)))))

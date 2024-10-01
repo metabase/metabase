@@ -140,7 +140,10 @@
   (with-quoting driver
     (first (sql/format {:create-table (keyword table-name)
                         :with-columns (cond-> (mapv (fn [[col-name type-spec]]
-                                                         (vec (cons (quote-identifier col-name) type-spec)))
+                                                         (vec (cons (quote-identifier col-name)
+                                                                    (if (string? type-spec)
+                                                                      [[:raw type-spec]]
+                                                                      type-spec))))
                                                        column-definitions)
                                            primary-key (conj [(into [:primary-key] primary-key)]))}
                        :quoted true
@@ -196,7 +199,10 @@
     (let [primary-key-column (first primary-key)
           sql                (first (sql/format {:alter-table (keyword table-name)
                                                  :add-column  (map (fn [[column-name type-and-constraints]]
-                                                                     (cond-> (vec (cons (quote-identifier column-name) type-and-constraints))
+                                                                     (cond-> (vec (cons (quote-identifier column-name)
+                                                                                        (if (string? type-and-constraints)
+                                                                                          [[:raw type-and-constraints]]
+                                                                                          type-and-constraints)))
                                                                        (= primary-key-column column-name)
                                                                        (conj :primary-key)))
                                                                    column-definitions)}
