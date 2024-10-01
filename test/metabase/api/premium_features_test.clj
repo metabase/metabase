@@ -14,7 +14,7 @@
                                                          :status   "fake"
                                                          :features ["test" "fixture"]
                                                          :trial    false})]
-      (mt/with-temporary-setting-values [:premium-embedding-token premium-features-test/random-fake-token]
+      (mt/with-temporary-setting-values [:premium-embedding-token (premium-features-test/random-token)]
         (testing "returns correctly"
           (is (= {:valid    true
                   :status   "fake"

@@ -1,0 +1,60 @@
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Box, Flex } from "metabase/ui";
+import * as SidesheetStories from "./Sidesheet.stories";
+
+import { Sidesheet } from "./Sidesheet";
+import { SidesheetCard } from "./SidesheetCard";
+import { SidesheetCardSection } from "./SidesheetCardSection";
+import { SidesheetButton, SidesheetButtonWithChevron } from "./SidesheetButton";
+
+import { TestTabbedSidesheet, TestPagedSidesheet } from "./Sidesheet.samples";
+
+<Meta of={SidesheetStories} />
+
+# Sidesheet
+
+## When to use a Sidesheet
+
+## Docs
+
+## Caveats
+
+## Usage guidelines
+
+## Examples
+
+// TODO: figure out how to get CSS modules working with storybook 🔥
+
+<Canvas>
+  <Story of={SidesheetStories.Default} />
+</Canvas>
+
+### With cards
+
+<Canvas>
+  <Story of={SidesheetStories.WithCards} />
+</Canvas>
+
+### With sectioned cards
+
+<Canvas>
+  <Story of={SidesheetStories.WithSectionedCards} />
+</Canvas>
+
+### With pages
+
+<Canvas>
+  <Story of={SidesheetStories.WithSubPages} />
+</Canvas>
+
+### With tabs
+
+<Canvas>
+  <Story of={SidesheetStories.WithTabs} />
+</Canvas>
+
+### Sidesheet Buttons
+
+<Canvas>
+  <Story of={SidesheetStories.SidesheetButtons} />
+</Canvas>

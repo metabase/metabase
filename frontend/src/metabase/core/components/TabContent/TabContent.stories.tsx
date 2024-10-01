@@ -1,5 +1,5 @@
-import { useArgs } from "@storybook/addons";
-import type { ComponentStory } from "@storybook/react";
+import { useArgs } from "@storybook/preview-api";
+import type { StoryFn } from "@storybook/react";
 
 import Tab from "../Tab";
 import TabList from "../TabList";
@@ -11,7 +11,7 @@ export default {
   title: "Core/TabContent",
   component: TabContent,
 };
-const Template: ComponentStory<typeof TabContent> = args => {
+const Template: StoryFn<typeof TabContent> = args => {
   const [{ value }, updateArgs] = useArgs();
   const handleChange = (value: unknown) => updateArgs({ value });
 
@@ -27,7 +27,10 @@ const Template: ComponentStory<typeof TabContent> = args => {
   );
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  value: 1,
+export const Default = {
+  render: Template,
+
+  args: {
+    value: 1,
+  },
 };

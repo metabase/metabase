@@ -16,6 +16,7 @@ import {
   restore,
   rightSidebar,
   summarize,
+  updateSetting,
   visitCollection,
   visitQuestionAdhoc,
 } from "e2e/support/helpers";
@@ -312,7 +313,7 @@ describe("scenarios > question > native", () => {
 
     beforeEach(() => {
       cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/is-metabot-enabled", { value: true });
+      updateSetting("is-metabot-enabled", true);
       cy.intercept(
         "POST",
         "/api/metabot/database/**/query",
