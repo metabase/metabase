@@ -197,6 +197,8 @@ describe("scenarios > visualizations > pie chart", () => {
 
     changeRowLimit(2, 4);
     ensurePieChartRendered(["Doohickey", "Katget", "Gizmo", "Woooget"]);
+
+    cy.findByTestId("chart-legend").findByText("Woooget").realHover();
     chartPathWithFillColor("#509EE3").should("be.visible");
 
     cy.findByTestId("chart-legend").within(() => {
