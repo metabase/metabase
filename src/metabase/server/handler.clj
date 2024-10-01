@@ -15,7 +15,6 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.middleware.ssl :as mw.ssl]
    [metabase.server.routes :as routes]
-   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [ring.core.protocols :as ring.protocols]
    [ring.middleware.cookies :refer [wrap-cookies]]
@@ -43,22 +42,11 @@
        (name kkey))
      response output-stream)))
 
-
-(defn wrap-locale-binding
-  "Sets *header-locale* with the value from X-Metabase-Locale"
-  [handler]
-  (fn [{ {:strs [x-metabase-locale ]} :headers, :as request} respond raise]
-     (binding [i18n/*header-locale*(or x-metabase-locale nil)]
-       (handler request respond raise))))
-
-
-
 (def ^:private middleware
   ;; ▼▼▼ POST-PROCESSING ▼▼▼ happens from TOP-TO-BOTTOM
   [#'mw.exceptions/catch-uncaught-exceptions    ; catch any Exceptions that weren't passed to `raise`
    #'mw.exceptions/catch-api-exceptions         ; catch exceptions and return them in our expected format
    #'mw.log/log-api-call
-   #'wrap-locale-binding
    #'mw.browser-cookie/ensure-browser-id-cookie ; add cookie to identify browser; add `:browser-id` to the request
    #'mw.security/add-security-headers           ; Add HTTP headers to API responses to prevent them from being cached
    #(ring.json/wrap-json-body % {:keywords? true}) ; extracts json POST body and makes it available on request
