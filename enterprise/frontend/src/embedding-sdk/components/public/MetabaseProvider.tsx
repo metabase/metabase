@@ -1,3 +1,4 @@
+import { Global } from "@emotion/react";
 import type { Action, Store } from "@reduxjs/toolkit";
 import { type JSX, type ReactNode, memo, useEffect } from "react";
 import { Provider } from "react-redux";
@@ -10,7 +11,7 @@ import {
 import { useInitData } from "embedding-sdk/hooks";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import { store } from "embedding-sdk/store";
+import { getSdkStore } from "embedding-sdk/store";
 import {
   setErrorComponent,
   setEventHandlers,
@@ -24,10 +25,14 @@ import type { MetabaseTheme } from "embedding-sdk/types/theme";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 
-import { PublicComponentStylesWrapper } from "../private/PublicComponentStylesWrapper";
+import {
+  PublicComponentStylesWrapper,
+  SCOPED_CSS_RESET,
+} from "../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
 import "metabase/css/index.module.css";
 import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
+
 import "metabase/css/vendor.css";
 
 export interface MetabaseProviderProps {
@@ -83,6 +88,7 @@ export const MetabaseProviderInternal = ({
 
   return (
     <EmotionCacheProvider>
+      <Global styles={SCOPED_CSS_RESET} />
       <SdkThemeProvider theme={theme}>
         <SdkFontsGlobalStyles baseUrl={config.metabaseInstanceUrl} />
         <div className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
@@ -95,9 +101,12 @@ export const MetabaseProviderInternal = ({
   );
 };
 
-export const MetabaseProvider = memo(function MetabaseProvider(
-  props: MetabaseProviderProps,
-) {
+export const MetabaseProvider = memo(function MetabaseProvider({
+  // @ts-expect-error -- we don't want to expose the store prop
+  // eslint-disable-next-line react/prop-types
+  store = getSdkStore(),
+  ...props
+}: MetabaseProviderProps) {
   return (
     <Provider store={store}>
       <MetabaseProviderInternal store={store} {...props} />

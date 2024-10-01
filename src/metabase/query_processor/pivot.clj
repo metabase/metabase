@@ -359,7 +359,12 @@
                                      mlv2-query        (lib/query metadata-provider query)
                                      breakouts         (into []
                                                              (map-indexed (fn [i col]
-                                                                            (assoc col ::i i)))
+                                                                            (cond-> col
+                                                                              true                         (assoc ::i i)
+                                                                              ;; if the col has a card-id, we swap the :lib/source to say source/card
+                                                                              ;; this allows `lib/find-matching-column` to properly match a column that has a join-alias
+                                                                              ;; but whose source is a model
+                                                                              (contains? col :lib/card-id) (assoc :lib/source :source/card))))
                                                              (lib/breakouts-metadata mlv2-query))]
                                  (fn [legacy-ref]
                                    (try

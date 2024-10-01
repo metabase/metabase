@@ -14,6 +14,7 @@ import type {
   NotebookStep as INotebookStep,
   NotebookStepType,
 } from "../../types";
+import { NotebookProvider } from "../Notebook/context";
 
 import { NotebookStep } from "./NotebookStep";
 
@@ -31,14 +32,16 @@ function setup({ step = createMockNotebookStep() }: SetupOpts = {}) {
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
 
   renderWithProviders(
-    <NotebookStep
-      step={step}
-      isLastStep={false}
-      isLastOpened={false}
-      reportTimezone="Europe/London"
-      openStep={openStep}
-      updateQuery={updateQuery}
-    />,
+    <NotebookProvider>
+      <NotebookStep
+        step={step}
+        isLastStep={false}
+        isLastOpened={false}
+        reportTimezone="Europe/London"
+        openStep={openStep}
+        updateQuery={updateQuery}
+      />
+    </NotebookProvider>,
   );
 
   return {

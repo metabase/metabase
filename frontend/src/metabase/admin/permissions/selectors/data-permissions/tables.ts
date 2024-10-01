@@ -23,9 +23,9 @@ import {
   DataPermissionValue,
 } from "../../types";
 import {
+  getBlockWarning,
   getPermissionWarning,
   getPermissionWarningModal,
-  getTableBlockWarning,
   getViewDataPermissionsTooRestrictiveWarningModal,
   getWillRevokeNativeAccessWarningModal,
 } from "../confirmations";
@@ -60,7 +60,7 @@ const buildAccessPermission = (
   );
 
   const dbValue = getSchemasPermission(
-    originalPermissions,
+    permissions,
     groupId,
     entityId,
     DataPermission.VIEW_DATA,
@@ -74,8 +74,9 @@ const buildAccessPermission = (
     groupId,
   );
 
-  const blockWarning = getTableBlockWarning(dbValue, value);
+  const blockWarning = getBlockWarning(dbValue, value);
 
+  // permissionWarning should always trump a blockWarning
   const warning = permissionWarning || blockWarning;
 
   const confirmations = (newValue: DataPermissionValue) => [
