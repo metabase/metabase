@@ -2,7 +2,6 @@ import fs from "fs";
 
 import { graphql } from "@octokit/graphql";
 import _ from "underscore";
-import { $ } from "zx";
 
 import { hiddenLabels, nonUserFacingLabels } from "./constants";
 import {
@@ -50,18 +49,6 @@ function getExcludedLabels(issue: Issue) {
 
 function shouldExcludeIssueFromMilestone(issue: Issue) {
   return !!getExcludedLabels(issue).length;
-}
-
-export async function getReleaseBranchCommits(
-  { versionNumber }: { versionNumber: number }
-) {
-  const lastMajorVersion = versionNumber - 1;
-
-  // find where the last branch split off of master
-  const { stdout: branchCommit } = await $`git merge-base origin/release-x.${lastMajorVersion}.x master`;
-  const { stdout: commitMessages } = await $`git log ${branchCommit.trim()}..origin/release-x.${versionNumber}.x --pretty='format:%s'`;
-
-  return commitMessages.split('\n')
 }
 
 async function getIssuesWithExcludedTags({
