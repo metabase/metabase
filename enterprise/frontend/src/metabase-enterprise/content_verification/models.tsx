@@ -2,38 +2,38 @@ import { type ChangeEvent, useCallback } from "react";
 import { t } from "ttag";
 
 import type {
-  MetricFilterControlsProps,
-  MetricFilterSettings,
-} from "metabase/browse/metrics";
+  ModelFilterControlsProps,
+  ModelFilterSettings,
+} from "metabase/browse/models";
 import { useUserSetting } from "metabase/common/hooks";
 import { getSetting } from "metabase/selectors/settings";
 import { Button, Icon, Paper, Popover, Switch, Text } from "metabase/ui";
 import type { State } from "metabase-types/store";
 
-const USER_SETTING_KEY = "browse-filter-only-verified-metrics";
+const USER_SETTING_KEY = "browse-filter-only-verified-models";
 
-export function getDefaultMetricFilters(state: State): MetricFilterSettings {
+export function getDefaultModelFilters(state: State): ModelFilterSettings {
   return {
     verified: getSetting(state, USER_SETTING_KEY) ?? false,
   };
 }
 
-// This component is similar to the ModelFilterControls component from ./ModelFilterControls.tsx
+// This component is similar to the MetricFilterControls component from ./MetricFilterControls.tsx
 // merging them might be a good idea in the future.
-export const MetricFilterControls = ({
-  metricFilters,
-  setMetricFilters,
-}: MetricFilterControlsProps) => {
-  const areAnyFiltersActive = Object.values(metricFilters).some(Boolean);
+export const ModelFilterControls = ({
+  modelFilters,
+  setModelFilters,
+}: ModelFilterControlsProps) => {
+  const areAnyFiltersActive = Object.values(modelFilters).some(Boolean);
 
   const [_, setUserSetting] = useUserSetting(USER_SETTING_KEY);
 
   const handleVerifiedFilterChange = useCallback(
     function (evt: ChangeEvent<HTMLInputElement>) {
-      setMetricFilters({ ...metricFilters, verified: evt.target.checked });
+      setModelFilters({ ...modelFilters, verified: evt.target.checked });
       setUserSetting(evt.target.checked);
     },
-    [metricFilters, setMetricFilters, setUserSetting],
+    [modelFilters, setModelFilters, setUserSetting],
   );
 
   return (
@@ -43,7 +43,7 @@ export const MetricFilterControls = ({
           p="sm"
           lh={0}
           variant="subtle"
-          color="text-dark"
+          color="var(--mb-color-text-dark)"
           pos="relative"
           aria-label={t`Filters`}
         >
@@ -57,10 +57,10 @@ export const MetricFilterControls = ({
             <Text
               align="end"
               weight="bold"
-            >{t`Show verified metrics only`}</Text>
+            >{t`Show verified models only`}</Text>
           }
           role="switch"
-          checked={Boolean(metricFilters.verified)}
+          checked={Boolean(modelFilters.verified)}
           onChange={handleVerifiedFilterChange}
           labelPosition="left"
         />
