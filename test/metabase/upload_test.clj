@@ -1356,8 +1356,8 @@
     (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)]
       ;; ensure we have the same display name for the auto-pk-column that a real upload would have
       (t2/update! :model/Field
-                    {:table_id (:id table), :name upload/auto-pk-column-name}
-                    {:display_name upload/auto-pk-column-name})
+                  {:table_id (:id table), :name upload/auto-pk-column-name}
+                  {:display_name upload/auto-pk-column-name})
       table)))
 
 (defn catch-ex-info* [f]
