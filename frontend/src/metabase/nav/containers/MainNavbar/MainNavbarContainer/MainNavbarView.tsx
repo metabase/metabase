@@ -305,7 +305,7 @@ function SidebarOnboardingSection({ initialState }: { initialState: boolean }) {
       pos="fixed"
       w={NAV_SIDEBAR_WIDTH}
       bg="bg-white"
-      className={cx({ [CS.borderTop]: initialState })}
+      className={cx({ [CS.borderTop]: !initialState })}
     >
       <Box px="md" py="md">
         {/*eslint-disable-next-line no-unconditional-metabase-links-render -- This link is only temporary. It will be replaced with an internal link to a page. */}
