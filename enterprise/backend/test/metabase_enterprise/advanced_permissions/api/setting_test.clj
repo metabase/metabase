@@ -241,7 +241,7 @@
 (deftest card-api-test
   (testing "/api/card"
     (mt/with-temporary-setting-values [enable-public-sharing true
-                                       enable-embedding      true]
+                                       enable-embedding-interactive true]
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]

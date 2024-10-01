@@ -105,7 +105,6 @@
 
 (defsetting enable-embedding-interactive
   (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
-  :feature    :embedding
   :type       :boolean
   :default    false
   :visibility :authenticated
@@ -124,7 +123,6 @@
 (defsetting enable-embedding-static
   (deferred-tru "Allow admins to embed Metabase via static embedding?")
   :type       :boolean
-  :feature    :embedding
   :default    false
   :visibility :authenticated
   :export?    false
