@@ -36,7 +36,7 @@ To move an item (question, dashboard, model, or collection) to Trash:
 2. Click on the three dots menu;
 3. Select "Move to trash".
 
-> When a collection is deleted, all items in the collection are deleted as well.
+When a collection is deleted, all items in the collection are deleted as well.
 
 You'll still be able to see the contents of the items in Trash, but you won't be able to modify them or use them as a source for other questions.
 
@@ -56,6 +56,10 @@ To restore an item:
 > Restoring a collection will also restore all the items from that collection.
 
 If the item's original parent collection has been deleted as well, you won't see an option to **Restore**. You'll still be able to move the it from Trash to a different collection.
+
+### Cleaning up collections
+
+To move older, unused items in bulk to the trash, check out [cleaning up collections](./collections.md#cleaning-up-collections).
 
 ## How deleting an item affects related items
 
