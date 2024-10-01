@@ -59,7 +59,7 @@ You can send additional user attributes to Metabase by adding the attributes as 
 You can use your JWT to assign Metabase users to custom groups.
 
 1. Add groups to your JWT: `groups: ["group_name"]`.
-1. . In Metabase, go to the Admin panel and switch to **Setting > Authentication** tab.
+1. In Metabase, go to the Admin panel and switch to **Setting > Authentication** tab.
 1. Click the **Configure** button under JWT.
 1. Under **Group Schema**, turn on the toggle **Synchronize Group Memberships**
 1. Click **New mapping** and add the name of a JWT group.
