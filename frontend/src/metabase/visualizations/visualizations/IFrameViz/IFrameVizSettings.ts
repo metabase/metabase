@@ -6,30 +6,29 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 
 export const settings = {
-  uiName: "Embed",
+  uiName: "iframe",
   canSavePng: false,
-  identifier: "embed",
+  identifier: "iframe",
   iconName: "link",
   disableSettingsConfig: true,
   noHeader: true,
   supportsSeries: false,
   hidden: true,
   supportPreviewing: true,
-  minSize: getMinSize("embed"),
-  defaultSize: getDefaultSize("embed"),
+  minSize: getMinSize("iframe"),
+  defaultSize: getDefaultSize("iframe"),
   checkRenderable: () => {},
   settings: {
     "card.title": {
       dashboard: false,
-      default: t`Embed card`,
+      default: t`iFrame card`,
     },
     "card.description": {
       dashboard: false,
     },
-    embed: {
+    iframe: {
       value: "",
       default: "",
     },
   },
-  preventDragging: (e: React.SyntheticEvent) => e.stopPropagation(),
 };

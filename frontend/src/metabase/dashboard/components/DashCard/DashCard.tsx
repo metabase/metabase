@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { LocationDescriptor } from "history";
 import { getIn } from "icepick";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
-import { useMount } from "react-use";
+import { useMount, useUpdateEffect } from "react-use";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
@@ -125,7 +125,7 @@ function DashCardInner({
     () => getDashcardHref(store.getState(), dashcard.id),
     [store, dashcard.id],
   );
-  const [isPreviewingCard, setIsPreviewingCard] = useState(false);
+  const [isPreviewingCard, setIsPreviewingCard] = useState(!dashcard.justAdded);
   const cardRootRef = useRef<HTMLDivElement>(null);
 
   const handlePreviewToggle = useCallback(() => {
@@ -140,6 +140,12 @@ function DashCardInner({
       markNewCardSeen(dashcard.id);
     }
   });
+
+  useUpdateEffect(() => {
+    if (!isEditing) {
+      setIsPreviewingCard(true);
+    }
+  }, [isEditing]);
 
   const mainCard: Card | VirtualCard = useMemo(
     () =>

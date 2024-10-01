@@ -9,11 +9,15 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { EmbedEditWrapper, EmbedWrapper, StyledInput } from "./EmbedViz.styled";
-import { settings } from "./EmbedVizSettings";
+import {
+  IFrameEditWrapper,
+  IFrameWrapper,
+  StyledInput,
+} from "./IFrameViz.styled";
+import { settings } from "./IFrameVizSettings";
 import { getIframeUrl } from "./utils";
 
-export interface EmbedVizProps {
+export interface IFrameVizProps {
   dashcard: VirtualDashboardCard;
   dashboard: Dashboard;
   isEditing: boolean;
@@ -30,7 +34,7 @@ export interface EmbedVizProps {
   onTogglePreviewing: () => void;
 }
 
-export function EmbedViz({
+export function IFrameViz({
   dashcard,
   isEditing,
   onUpdateVisualizationSettings,
@@ -40,22 +44,22 @@ export function EmbedViz({
   height,
   isPreviewing,
   onTogglePreviewing,
-}: EmbedVizProps) {
-  const { embed: iframeOrUrl } = settings;
+}: IFrameVizProps) {
+  const { iframe: iframeOrUrl } = settings;
   const isNew = !!dashcard?.justAdded;
 
   const iframeUrl = useMemo(() => getIframeUrl(iframeOrUrl), [iframeOrUrl]);
 
-  const handleEmbedChange = useCallback(
-    (newEmbed: string) => {
-      onUpdateVisualizationSettings({ embed: newEmbed });
+  const handleIFrameChange = useCallback(
+    (newIFrame: string) => {
+      onUpdateVisualizationSettings({ iframe: newIFrame });
     },
     [onUpdateVisualizationSettings],
   );
 
   if (isEditing && !isEditingParameter && !isPreviewing) {
     return (
-      <EmbedEditWrapper>
+      <IFrameEditWrapper>
         <Stack h="100%" spacing="sm">
           <Group align="center">
             <Text fw="bold">{t`Paste your snippet here`}</Text>{" "}
@@ -71,7 +75,7 @@ export function EmbedViz({
           </Group>
           <Box h="100%">
             <StyledInput
-              data-testid="embed-card-input"
+              data-testid="iframe-card-input"
               autoFocus={isNew}
               size="100%"
               styles={{
@@ -82,23 +86,30 @@ export function EmbedViz({
               h="100%"
               value={iframeOrUrl ?? ""}
               placeholder={`<iframe src="https://example.com" />`}
-              onChange={e => handleEmbedChange(e.target.value)}
+              onChange={e => handleIFrameChange(e.target.value)}
               onMouseDown={e => e.stopPropagation()}
               style={{ pointerEvents: "all" }}
             />
           </Box>
         </Stack>
-      </EmbedEditWrapper>
+      </IFrameEditWrapper>
     );
   }
 
   return (
-    <EmbedWrapper data-testid="embed-card" fade={isEditingParameter}>
+    <IFrameWrapper data-testid="iframe-card" fade={isEditingParameter}>
       {iframeUrl ? (
-        <iframe src={iframeUrl} width={width} height={height} frameBorder={0} />
+        <iframe
+          data-testid="iframe-visualization"
+          src={iframeUrl}
+          width={width}
+          height={height}
+          frameBorder={0}
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        />
       ) : null}
-    </EmbedWrapper>
+    </IFrameWrapper>
   );
 }
 
-Object.assign(EmbedViz, settings);
+Object.assign(IFrameViz, settings);

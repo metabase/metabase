@@ -192,8 +192,8 @@ export const addMarkdownDashCardToDashboard =
 export const addEmbedDashCardToDashboard =
   ({ dashId, tabId }: NewDashCardOpts) =>
   (dispatch: Dispatch) => {
-    trackCardCreated("embed", dashId);
-    const card = createVirtualCard("embed");
+    trackCardCreated("iframe", dashId);
+    const card = createVirtualCard("iframe");
     const dashcardOverrides = {
       card,
       visualization_settings: { virtual_card: card },

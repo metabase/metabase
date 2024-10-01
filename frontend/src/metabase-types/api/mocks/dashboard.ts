@@ -180,17 +180,17 @@ export const createMockLinkDashboardCard = ({
     },
   });
 
-export const createMockEmbedDashboardCard = ({
+export const createMockIFrameDashboardCard = ({
   visualization_settings,
   ...opts
-}: VirtualDashboardCardOpts & { embed?: string } = {}): VirtualDashboardCard =>
+}: VirtualDashboardCardOpts & { iframe?: string } = {}): VirtualDashboardCard =>
   createMockVirtualDashCard({
     ...opts,
-    card: createMockVirtualCard({ display: "embed" }),
+    card: createMockVirtualCard({ display: "iframe" }),
     visualization_settings: {
-      embed:
-        opts?.embed ??
-        visualization_settings?.embed ??
+      iframe:
+        opts?.iframe ??
+        visualization_settings?.iframe ??
         "<iframe src='https://example.com'></iframe>",
     },
   });

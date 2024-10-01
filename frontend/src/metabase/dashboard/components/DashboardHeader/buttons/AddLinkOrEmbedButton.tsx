@@ -36,25 +36,14 @@ export const AddLinkOrEmbedButton = () => {
     }
   };
 
-  const TEXT_OPTIONS = [
-    {
-      title: t`Link`,
-      action: onAddLinkCard,
-    },
-    {
-      title: t`Embed`,
-      action: onAddEmbedCard,
-    },
-  ];
-
   return (
     <Menu position="bottom-end">
       <Menu.Target>
         <ToolbarButton
-          tooltipLabel={t`Add a link or embed`}
+          tooltipLabel={t`Add a link or iFrame`}
           w="3rem"
-          data-element-id={t`Add a link or embed`}
-          aria-label={t`Add a link or embed`}
+          data-element-id={t`Add a link or iFrame`}
+          aria-label={t`Add a link or iFrame`}
         >
           <Group spacing="xs" noWrap>
             <Icon name="link" size={18} />
@@ -63,13 +52,16 @@ export const AddLinkOrEmbedButton = () => {
         </ToolbarButton>
       </Menu.Target>
       <Menu.Dropdown miw="auto">
-        {TEXT_OPTIONS.map(({ title, action }) => (
-          <Menu.Item key={title} onClick={action}>
-            <Text pr="xl" fw="bold">
-              {title}
-            </Text>
-          </Menu.Item>
-        ))}
+        <Menu.Item onClick={onAddLinkCard}>
+          <Text pr="xl" fw="bold">
+            {t`Link`}
+          </Text>
+        </Menu.Item>
+        <Menu.Item onClick={onAddEmbedCard}>
+          <Text pr="xl" fw="bold">
+            {t`iFrame`}
+          </Text>
+        </Menu.Item>
       </Menu.Dropdown>
     </Menu>
   );

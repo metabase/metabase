@@ -146,18 +146,18 @@ export function addLinkWhileEditing(
   url: string,
   options: Partial<Cypress.TypeOptions> = {},
 ) {
-  cy.findByLabelText("Add a link or embed").click();
+  cy.findByLabelText("Add a link or iFrame").click();
   popover().findByText("Link").click();
   cy.findByPlaceholderText("https://example.com").type(url, options);
 }
 
-export function addEmbedWhileEditing(
+export function addIFrameWhileEditing(
   embed: string,
   options: Partial<Cypress.TypeOptions> = {},
 ) {
-  cy.findByLabelText("Add a link or embed").click();
-  popover().findByText("Embed").click();
-  cy.findByTestId("embed-card-input").type(embed, options);
+  cy.findByLabelText("Add a link or iFrame").click();
+  popover().findByText("iFrame").click();
+  cy.findByTestId("iframe-card-input").type(embed, options);
 }
 
 export function addTextBoxWhileEditing(

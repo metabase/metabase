@@ -333,7 +333,7 @@ describe("issue 31701", () => {
     editDashboard();
 
     cy.log("Add first link card (connected to an entity");
-    cy.findByLabelText("Add a link or embed").click();
+    cy.findByLabelText("Add a link or iFrame").click();
     popover().findByText("Link").click();
     getDashboardCard(0).as("entityCard").click().type(TEST_QUESTION_NAME);
     popover()
@@ -342,7 +342,7 @@ describe("issue 31701", () => {
       .trigger("click");
 
     cy.log("Add second link card (text only)");
-    cy.findByLabelText("Add a link or embed").click();
+    cy.findByLabelText("Add a link or iFrame").click();
     popover().findByText("Link").click();
     getDashboardCard(1)
       .as("customCard")

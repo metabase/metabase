@@ -9,7 +9,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  addEmbedWhileEditing,
+  addIFrameWhileEditing,
   addOrUpdateDashboardCard,
   appBar,
   assertDashboardFixedWidth,
@@ -321,25 +321,62 @@ describe("scenarios > dashboard", () => {
         }
       });
 
-      it("should be possible to add an embed card", () => {
-        editDashboard();
-        addEmbedWhileEditing("https://example.com");
-        cy.button("Done").click();
-        validateIframe();
-        saveDashboard();
-        validateIframe();
+      describe("iframe cards", () => {
+        beforeEach(() => {
+          restore();
+          cy.signInAsAdmin();
+        });
 
-        function validateIframe() {
-          getDashboardCards()
-            .eq(0)
-            .within(() => {
-              cy.get("iframe").should(
-                "have.attr",
-                "src",
-                "https://example.com",
-              );
-            });
-        }
+        it("should be possible to add an iframe card", () => {
+          editDashboard();
+          addIFrameWhileEditing("https://example.com");
+          cy.button("Done").click();
+          validateIframe("https://example.com");
+          saveDashboard();
+          validateIframe("https://example.com");
+        });
+
+        it("should handle various iframe and URL inputs", () => {
+          const testCases = [
+            {
+              input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+              expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            },
+            {
+              input: "https://youtu.be/dQw4w9WgXcQ",
+              expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            },
+            {
+              input: "https://www.loom.com/share/1234567890abcdef",
+              expected: "https://www.loom.com/embed/1234567890abcdef",
+            },
+            {
+              input: "https://vimeo.com/123456789",
+              expected: "https://player.vimeo.com/video/123456789",
+            },
+            {
+              input: "example.com",
+              expected: "https://example.com",
+            },
+            {
+              input: "https://example.com",
+              expected: "https://example.com",
+            },
+            {
+              input:
+                '<iframe src="https://example.com" onload="alert(\'XSS\')"></iframe>',
+              expected: "https://example.com",
+            },
+          ];
+
+          editDashboard();
+
+          testCases.forEach(({ input, expected }, index) => {
+            addIFrameWhileEditing(input);
+            cy.button("Done").click();
+            validateIframe(expected, index);
+          });
+        });
       });
 
       it("should hide personal collections when adding questions to a dashboard in public collection", () => {
@@ -1075,7 +1112,7 @@ describeWithSnowplow("scenarios > dashboard", () => {
   it("should allow users to add link cards to dashboards", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
-    cy.findByLabelText("Add a link or embed").click();
+    cy.findByLabelText("Add a link or iFrame").click();
     popover().findByText("Link").click();
 
     cy.wait("@recentViews");
@@ -1445,3 +1482,16 @@ describe("scenarios > dashboard > permissions", () => {
     cy.findByText("Sorry, you don’t have permission to see that.");
   });
 });
+
+function validateIframe(src, index = 0) {
+  getDashboardCards()
+    .get("iframe")
+    .eq(index)
+    .should("have.attr", "src", src)
+    .and(
+      "have.attr",
+      "sandbox",
+      "allow-scripts allow-same-origin allow-forms allow-popups",
+    )
+    .and("not.have.attr", "onload");
+}

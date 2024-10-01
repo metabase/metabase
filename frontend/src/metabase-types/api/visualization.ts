@@ -4,7 +4,7 @@ export const virtualCardDisplayTypes = [
   "link",
   "placeholder",
   "text",
-  "embed",
+  "iframe",
 ] as const;
 
 export type VirtualCardDisplay = (typeof virtualCardDisplayTypes)[number];

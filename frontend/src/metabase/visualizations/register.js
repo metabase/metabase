@@ -8,10 +8,10 @@ import { AreaChart } from "./visualizations/AreaChart";
 import { BarChart } from "./visualizations/BarChart";
 import { ComboChart } from "./visualizations/ComboChart";
 import { DashCardPlaceholder } from "./visualizations/DashCardPlaceholder";
-import { EmbedViz } from "./visualizations/EmbedViz";
 import { Funnel } from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
 import { Heading } from "./visualizations/Heading";
+import { IFrameViz } from "./visualizations/IFrameViz";
 import { LineChart } from "./visualizations/LineChart";
 import { LinkViz } from "./visualizations/LinkViz";
 import { Map } from "./visualizations/Map";
@@ -51,7 +51,7 @@ export default function () {
   registerVisualization(Heading);
   registerVisualization(LinkViz);
   registerVisualization(Text);
-  registerVisualization(EmbedViz);
+  registerVisualization(IFrameViz);
 
   setDefaultVisualization(Table);
 }
