@@ -13,11 +13,11 @@
     </div>
     {{#event-info.object.is_from_setup}}
       <div style="max-width: 500px; margin-left: auto; margin-right: auto">
-        <h2 style="font-weight: bold; color: #4C5773; line-height: 2rem;">{{event-info.object.invitor.first_name}} could use your help setting up {{context.application-name}}</h2>
+        <h2 style="font-weight: bold; color: #4C5773; line-height: 2rem;">{{event-info.details.invitor.first_name}} could use your help setting up {{context.application-name}}</h2>
       </div>
       <div style="max-width: 500px; margin-left: auto; margin-right: auto; line-height: 1.5rem; color: #4C5773;">
         <p>{{context.application-name}} is a simple and powerful analytics tool that lets you easily <strong>ask questions</strong> and <strong>get answers</strong> about your company’s data.
-        <p>Your {{context.application-name}} is up and running, but {{event-info.object.invitor.first_name}} needs you to connect your data. You'll probably need:
+        <p>Your {{context.application-name}} is up and running, but {{event-info.details.invitor.first_name}} needs you to connect your data. You'll probably need:
         <ul>
           <li>Database type (Redshift, Snowflake, etc...)</li>
           <li>Host and port</li>
@@ -27,7 +27,7 @@
     {{/event-info.object.is_from_setup}}
     {{^event-info.object.is_from_setup}}
       <div style="text-align: center">
-        <h2 style="font-weight: bold; color: #4C5773; line-height: 2rem;">{{event-info.object.invitor.first_name}} wants you to join them on {{context.application-name}}</h2>
+        <h2 style="font-weight: bold; color: #4C5773; line-height: 2rem;">{{event-info.details.invitor.first_name}} wants you to join them on {{context.application-name}}</h2>
       </div>
       <div style="max-width: 500px; margin-left: auto; margin-right: auto; line-height: 1.5rem; color: #4C5773; text-align: center">
         <p>{{context.application-name}} is a simple and powerful analytics tool that lets you easily <strong>ask questions</strong> and <strong>get answers</strong> about your company’s data.

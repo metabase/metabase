@@ -85,9 +85,17 @@
 
 (defn format-plural
   "Format a string with a pluralized suffix. If `n` is 1, the suffix will be singular, otherwise plural.
+  If `plural` is omitted, by default plural is singular + \"s\"
 
-    (format-plural 1 \"handler\" \"handlers\") ; -> \"handler\""
-  ^String [n singular plural]
-  (if (< (abs n) 2)
-    singular
-    plural))
+    (format-plural 2 \"handler\")
+    ;; -> \"handlers\"
+    (format-plural 1 \"handler\" \"handlers\")
+    ;; -> \"handler\""
+  (^String [n singular]
+   (format-plural n singular nil))
+  (^String [n singular plural]
+   (if (= (abs n) 1)
+     singular
+     (if plural
+       plural
+       (str singular \s)))))

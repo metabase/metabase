@@ -3,7 +3,6 @@
    [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.events.schema :as events.schema]
    [metabase.models.notification :as models.notification]
@@ -68,18 +67,37 @@
   []
   (or (public-settings/site-name) (trs "Unknown")))
 
+(defn- join-url
+  [new-user]
+  (let [reset-token               (user/set-password-reset-token! (:id new-user))
+        should-link-to-login-page (and (public-settings/sso-enabled?)
+                                       (not (public-settings/enable-password-login)))]
+    (if should-link-to-login-page
+      (str (public-settings/site-url) "/auth/login")
+      ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
+      (str (user/form-password-reset-url reset-token) "#new"))))
+
+(defn- extra-context
+  "Returns a map of extra context for a given topic and event-info.
+  Extra are set of contexts that are specific to a certain emails.
+  Currently we need it to support usecases that our template engines doesn't support such as i18n,
+  but ideally this should be part of the template."
+  [topic event-info]
+  (case topic
+    :event/user-invited
+    {:user-invited-today         (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
+     :user-invited-email-subject (trs "You''re invited to join {0}''s {1}" (site-name) (app-name-trs))
+     ;; TODO test that this link works for real
+     ;; TODO this should link to login page if sso is eanbled
+     :user-invited-join-url      (join-url (:object event-info))}
+    {}))
+
 (defn- enriched-event-info
   [topic event-info]
   ;; DO NOT delete or rename these fields, they are used in the notification templates
   {:context     {:application-name (public-settings/application-name)
                  :site-name        (site-name)
-                 :current-user     @api/*current-user*
-                 ;; extra are set of contexts that are specific to a cerntain emails
-                 ;; currently we need it to support i18n purposes, but ideally it should not exists
-                 :extra            {:user-invited-today         (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
-                                    :user-invited-email-subject (trs "You''re invited to join {0}''s {1}" (site-name) (app-name-trs))
-                                    ;; TODO test that this link works for real
-                                    :user-invited-join-url      (some-> event-info (get-in [:object :id]) user/set-password-reset-token! user/form-password-reset-url (str "#new"))}}
+                 :extra            (extra-context topic event-info)}
    :event-info  (cond->> event-info
                   (some? (events.schema/topic->schema topic))
                   (hydrate! (events.schema/topic->schema topic)))

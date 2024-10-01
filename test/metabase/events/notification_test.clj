@@ -75,7 +75,8 @@
           (is (= {:event-info  {:foo :bar}
                   :event-topic :event/user-joined
                   :context     {:application-name "Metabase Test"
-                                :site-name        "Metabase Test"}}
+                                :site-name        "Metabase Test"
+                                :extra            {}}}
                  (#'events.notification/enriched-event-info :event/user-joined event-info))))))))
 
 (def user-hydra-model [:model/User :id :first_name])
