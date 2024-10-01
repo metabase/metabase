@@ -2,6 +2,7 @@
   (:require
    [honey.sql :as sql]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.quoting :refer [quote-identifier with-quoting]]
    [metabase.driver.sql.query-processor :as sql.qp]))
 
 (defmulti active-tables
@@ -126,14 +127,6 @@
   {:added "0.49.0" :arglists '([driver conn-spec & args])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
-
-(defmacro ^:private with-quoting [driver & body]
-  `(binding [sql/*dialect* (sql/get-dialect (sql.qp/quote-style ~driver))
-             sql/*quoted*  true]
-     ~@body))
-
-(defn- quote-identifier [ref]
-  [:raw (sql/format-entity ref)])
 
 (defmulti alter-columns-sql
   "Generate the query to be used with [[driver/alter-columns!]]."

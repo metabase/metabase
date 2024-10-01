@@ -6,10 +6,10 @@
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
-   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.metadata :as sql-jdbc.metadata]
+   [metabase.driver.sql-jdbc.quoting :refer [with-quoting quote-columns quote-identifier]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
@@ -127,14 +127,6 @@
   [_driver _semantic_type expr]
   (h2x/->timestamp expr))
 
-(defmacro ^:private with-quoting [driver & body]
-  `(binding [sql/*dialect* (sql/get-dialect (sql.qp/quote-style ~driver))
-             sql/*quoted*  true]
-     ~@body))
-
-(defn- quote-identifier [ref]
-  [:raw (sql/format-entity ref)])
-
 (defn- create-table!-sql
   [driver table-name column-definitions & {:keys [primary-key]}]
   (with-quoting driver
@@ -183,7 +175,7 @@
         chunks     (partition-all (or driver/*insert-chunk-rows* 100) values)
         dialect    (sql.qp/quote-style driver)
         sqls       (map #(sql/format {:insert-into (keyword table-name)
-                                      :columns     (sql-jdbc.common/quote-columns dialect column-names)
+                                      :columns     (quote-columns driver column-names)
                                       :values      %}
                                      :quoted true
                                      :dialect dialect)
