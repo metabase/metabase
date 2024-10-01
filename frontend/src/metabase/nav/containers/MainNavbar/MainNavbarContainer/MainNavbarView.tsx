@@ -10,6 +10,7 @@ import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepa
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import Link from "metabase/core/components/Link";
 import {
   PERSONAL_COLLECTIONS,
   getCollectionIcon,
@@ -29,7 +30,10 @@ import {
   Icon,
   type IconName,
   type IconProps,
+  Menu,
+  Stack,
   Text,
+  Title,
 } from "metabase/ui";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
@@ -313,11 +317,31 @@ function SidebarOnboardingSection() {
           fz="sm"
           mb="md"
         >{t`Start by adding your data. Connect to a database or upload a CSV file.`}</Text>
-        <Button
-          leftIcon={<Icon name="add_data" />}
-          fullWidth
-          // compact
-        >{t`Add data`}</Button>
+        <Menu position="right-end" shadow="md">
+          <Menu.Target>
+            <Button
+              leftIcon={<Icon name="add_data" />}
+              fullWidth
+              // compact
+            >{t`Add data`}</Button>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item icon={<Icon name="database" />}>
+              <Link to="/admin/databases/create">
+                <Stack spacing="xs">
+                  <Title order={4}>{t`Add a database`}</Title>
+                  <Text size="sm">{t`PostgreSQL, MySQL, Snowflake, ...`}</Text>
+                </Stack>
+              </Link>
+            </Menu.Item>
+            <Menu.Item icon={<Icon name="table2" />}>
+              <Stack spacing="xs">
+                <Title order={4}>{t`Upload a spreadsheet`}</Title>
+                <Text size="sm">{t`.csv, .tsv (50 MB max)`}</Text>
+              </Stack>
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
       </Box>
     </Box>
   );
