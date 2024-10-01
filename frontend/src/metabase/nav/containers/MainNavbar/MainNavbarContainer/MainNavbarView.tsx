@@ -156,6 +156,7 @@ export function MainNavbarView({
               {t`Home`}
             </PaddedSidebarLink>
 
+            {/* TODO: Remove by the end of MS1 */}
             {hasAttachedDWHFeature && uploadDbId && rootCollection && (
               <UploadCSV collection={rootCollection} />
             )}
@@ -200,6 +201,7 @@ export function MainNavbarView({
                 onItemSelect={onItemSelect}
                 hasDataAccess={hasDataAccess}
               />
+              {/* TODO: Remove by the end of MS1 */}
               {hasDataAccess && (
                 <>
                   {!hasOwnDatabase && isAdmin && (
