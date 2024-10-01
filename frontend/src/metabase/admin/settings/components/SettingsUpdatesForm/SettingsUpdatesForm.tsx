@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { c } from "ttag";
 
 import { UpsellHostingUpdates } from "metabase/admin/upsells";
 import { useSetting } from "metabase/common/hooks";
@@ -18,9 +19,9 @@ const updateChannelSetting = {
     "Select an update channel to customize which Metabase releases you receive notifications for.",
   defaultValue: "latest",
   options: [
-    { name: "Stable", value: "latest" },
-    { name: "Beta", value: "beta" },
-    { name: "Nightly", value: "nightly" },
+    { name: c("describes a software version").t`Stable`, value: "latest" },
+    { name: c("describes a software version").t`Beta`, value: "beta" },
+    { name: c("describes a software version").t`Nightly`, value: "nightly" },
   ],
 };
 
