@@ -4,7 +4,6 @@ import {
   ChartTypeSettings,
   useChartTypeVisualizations,
 } from "metabase/query_builder/components/chart-type-selector";
-import { Stack } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../context";
 
@@ -42,13 +41,13 @@ export const ChartTypeSelector = () => {
   } = useChartTypeSelectors();
 
   return (
-    <Stack w="30rem" p="xl">
-      <ChartTypeSettings
-        sensibleVisualizations={sensibleVisualizations}
-        nonSensibleVisualizations={nonSensibleVisualizations}
-        selectedVisualization={selectedVisualization}
-        onSelectVisualization={updateQuestionVisualization}
-      />
-    </Stack>
+    <ChartTypeSettings
+      w="30rem"
+      p="xl"
+      sensibleVisualizations={sensibleVisualizations}
+      nonSensibleVisualizations={nonSensibleVisualizations}
+      selectedVisualization={selectedVisualization}
+      onSelectVisualization={updateQuestionVisualization}
+    />
   );
 };

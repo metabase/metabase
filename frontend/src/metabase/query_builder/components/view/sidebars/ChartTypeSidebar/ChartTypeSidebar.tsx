@@ -17,7 +17,6 @@ import {
   type UseChartTypeVisualizationsProps,
   useChartTypeVisualizations,
 } from "metabase/query_builder/components/chart-type-selector";
-import { Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType } from "metabase-types/api";
@@ -75,15 +74,16 @@ export const ChartTypeSidebar = ({
       onDone={() => dispatch(onCloseChartType())}
       data-testid="chart-type-sidebar"
     >
-      <Stack spacing={0} m="lg">
-        <ChartTypeSettings
-          selectedVisualization={selectedVisualization}
-          onSelectVisualization={handleSelectVisualization}
-          sensibleVisualizations={sensibleVisualizations}
-          nonSensibleVisualizations={nonSensibleVisualizations}
-          onOpenSettings={onOpenVizSettings}
-        />
-      </Stack>
+      <ChartTypeSettings
+        selectedVisualization={selectedVisualization}
+        onSelectVisualization={handleSelectVisualization}
+        sensibleVisualizations={sensibleVisualizations}
+        nonSensibleVisualizations={nonSensibleVisualizations}
+        onOpenSettings={onOpenVizSettings}
+        spacing={0}
+        w="100%"
+        p="lg"
+      />
     </SidebarContent>
   );
 };
