@@ -85,6 +85,7 @@ const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
 export function MainNavbarView({
   isAdmin,
+  isOpen,
   currentUser,
   bookmarks,
   collections,
@@ -237,7 +238,10 @@ export function MainNavbarView({
           )}
         </div>
         <WhatsNewNotification />
-        <SidebarOnboardingSection initialState={!hasOwnDatabase} />
+        <SidebarOnboardingSection
+          initialState={!hasOwnDatabase}
+          isSidebarOpen={isOpen}
+        />
       </SidebarContentRoot>
     </ErrorBoundary>
   );
@@ -295,7 +299,13 @@ function CollectionSectionHeading({
   );
 }
 
-function SidebarOnboardingSection({ initialState }: { initialState: boolean }) {
+function SidebarOnboardingSection({
+  initialState,
+  isSidebarOpen,
+}: {
+  initialState: boolean;
+  isSidebarOpen: boolean;
+}) {
   const applicationName = useSelector(getApplicationName);
 
   return (
@@ -303,7 +313,7 @@ function SidebarOnboardingSection({ initialState }: { initialState: boolean }) {
       m={0}
       bottom={0}
       pos="fixed"
-      w={NAV_SIDEBAR_WIDTH}
+      w={isSidebarOpen ? NAV_SIDEBAR_WIDTH : 0}
       bg="bg-white"
       className={cx({ [CS.borderTop]: !initialState })}
     >
