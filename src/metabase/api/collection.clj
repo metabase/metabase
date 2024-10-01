@@ -580,8 +580,11 @@
   [_ collection options]
   (dashboard-query collection options))
 
-(defn- post-process-dashboard [dashboard]
+(defn- post-process-dashboard [parent-collection dashboard]
   (-> (t2/instance :model/Dashboard dashboard)
+      (assoc :location (or (when parent-collection
+                             (collection/children-location parent-collection))
+                           "/"))
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore :can_delete)
@@ -589,8 +592,8 @@
               :dataset_query :table_id :query_type :is_upload)))
 
 (defmethod post-process-collection-children :dashboard
-  [_ _options _ rows]
-  (map post-process-dashboard rows))
+  [_ _options parent-collection rows]
+  (map (partial post-process-dashboard parent-collection) rows))
 
 (defenterprise snippets-collection-filter-clause
   "Clause to filter out snippet collections from the collection query on OSS instances, and instances without the
