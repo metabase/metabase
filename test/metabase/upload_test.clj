@@ -1999,25 +1999,25 @@
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
         (with-uploads-enabled!
-         (testing "Append should handle new non-ascii columns being added in the latest CSV"
-           (with-upload-table! [table (create-upload-table!
-                                       :col->upload-type (columns-with-auto-pk {"α" ::upload-types/varchar-255}))]
+          (testing "Append should handle new non-ascii columns being added in the latest CSV"
+            (with-upload-table! [table (create-upload-table!
+                                        :col->upload-type (columns-with-auto-pk {"α" ::upload-types/varchar-255}))]
              ;; We can't type a literal uppercase Alpha, as our whitespace linter will complain.
-             (is (= (header-with-auto-pk [(u/upper-case-en "α")])
-                    (column-display-names-for-table table)))
+              (is (= (header-with-auto-pk [(u/upper-case-en "α")])
+                     (column-display-names-for-table table)))
              ;; Reorder as well for good measure
-             (let [csv-rows ["α,name"
-                             "omega,Everything"]
-                   file     (csv-file-with csv-rows)]
-               (testing "The new row is inserted with the values correctly reordered"
-                 (is (= {:row-count 1} (update-csv! action {:file file, :table-id (:id table)})))
-                 (is (= (header-with-auto-pk [(u/upper-case-en "α") "name"])
-                        (column-display-names-for-table table)))
-                 (is (= (set (updated-contents action
-                                               [["Obi-Wan Kenobi" nil]]
-                                               [["omega" "Everything"]]))
-                        (set (rows-for-table table)))))
-               (io/delete-file file)))))))))
+              (let [csv-rows ["α,name"
+                              "omega,Everything"]
+                    file     (csv-file-with csv-rows)]
+                (testing "The new row is inserted with the values correctly reordered"
+                  (is (= {:row-count 1} (update-csv! action {:file file, :table-id (:id table)})))
+                  (is (= (header-with-auto-pk [(u/upper-case-en "α") "name"])
+                         (column-display-names-for-table table)))
+                  (is (= (set (updated-contents action
+                                                [["Obi-Wan Kenobi" nil]]
+                                                [["omega" "Everything"]]))
+                         (set (rows-for-table table)))))
+                (io/delete-file file)))))))))
 
 (deftest update-type-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
