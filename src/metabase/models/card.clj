@@ -827,12 +827,16 @@
         {:keys [dashcards tabs]} dashboard
         already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))
         first-tab (or (first tabs)
-                      (sort dashboard-card/dashcard-comparator dashcards))]
+                      (sort dashboard-card/dashcard-comparator dashcards)
+                      ;; if we don't have any existing cards, fake it to make the math work out
+                      [{:col 0 :row 0}])]
     (when-not already-on-dashboard?
-      (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id
+      (t2/insert! :model/DashboardCard #p {:dashboard_id dashboard-id
                                         :card_id (:id card)
                                         :size_x 10 :size_y 10
-                                        :row 0 :col (+ 10 (:col (last first-tab) 0))}))))
+                                        :row (+ 10 (:row (last first-tab)))
+                                        :col 0}))))
+
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously."
