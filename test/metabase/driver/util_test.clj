@@ -15,7 +15,8 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.http :as u.http])
   (:import
    (java.nio.charset StandardCharsets)
    (java.util Base64)
@@ -380,9 +381,9 @@
                             :azure-managed-identity-client-id client-id
                             :password "xyz"}
           response-body {:access_token "foobar"}]
-      (binding [auth-provider/*fetch-as-json* (fn [url _headers]
-                                                (is (str/includes? url client-id))
-                                                response-body)]
+      (binding [u.http/*fetch-as-json* (fn [url _headers]
+                                         (is (str/includes? url client-id))
+                                         response-body)]
         (is (= response-body (auth-provider/fetch-auth :azure-managed-identity nil provider-details)))
         (is (= (merge provider-details {:password "foobar"})
                (driver.u/fetch-and-incorporate-auth-provider-details
@@ -394,8 +395,8 @@
                             :auth-provider :azure-managed-identity
                             :azure-managed-identity-client-id client-id
                             :password "xyz"}]
-      (binding [auth-provider/*fetch-as-json* (fn [_url _headers]
-                                                (is false "should not get called"))]
+      (binding [u.http/*fetch-as-json* (fn [_url _headers]
+                                         (is false "should not get called"))]
         (is (= provider-details
                (driver.u/fetch-and-incorporate-auth-provider-details
                 (tx/driver)

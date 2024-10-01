@@ -362,6 +362,15 @@
           (assoc :placeholder content)
           (dissoc :getter)))))
 
+(defn- resolve-checked-section-conn-prop
+  "Invokes the check function on a checked-section connection property and if truthy adds it to the connection property map."
+  [{:keys [check] :as conn-prop}]
+  (if (try (check)
+           (catch Throwable e
+             (log/errorf e "Error invoking getter for connection property %s" (:name conn-prop))))
+    [(dissoc conn-prop :check)]
+    []))
+
 (defn- expand-schema-filters-prop [prop]
   (let [prop-name (:name prop)
         disp-name (or (:display-name prop) "")
@@ -406,7 +415,8 @@
   display/editing. For example, a :secret-kind :keystore turns into a bunch of different properties, to encapsulate
   all the different options that might be available on the client side for populating the value.
 
-  This also resolves the :getter function on :type :info properties, if one was provided."
+  This also resolves the :getter function on :type :info properties and the :check function on :type :checked-sectiona,
+   if one was provided."
   {:added "0.42.0"}
   [driver conn-props]
   (let [res (reduce (fn [acc conn-prop]
@@ -419,6 +429,9 @@
                                              (if-let [conn-prop' (resolve-info-conn-prop conn-prop)]
                                                [conn-prop']
                                                [])
+
+                                             :checked-section
+                                             (resolve-checked-section-conn-prop conn-prop)
 
                                              :schema-filters
                                              (expand-schema-filters-prop conn-prop)
