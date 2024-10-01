@@ -9291,42 +9291,101 @@ databaseChangeLog:
   - changeSet:
       id: v51.2024-09-26T03:01:00
       author: escherize
-      comment: Clone enbable-embedding setting -> enable-embedding-interactive
+      comment: iff enable-embedding is set, copy enable-embedding -> enable-embedding-interactive
+      preConditions:
+        - onFail: MARK_RAN
+        - or:
+            - and:
+                - dbms:
+                    type: postgresql
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE key = 'enable-embedding';
+            - and:
+                - dbms:
+                    type: mysql,mariadb
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE `key` = 'enable-embedding';
+            - and:
+                - dbms:
+                    type: h2
+                - sqlCheck:
+                    expectedResult: 1
+                    sql: SELECT count(*) FROM setting WHERE "KEY" = 'enable-embedding';
       changes:
         - sql:
-            dbms: mysql,mariadb,h2,postgresql
+            dbms: postgresql
             sql: >-
-              insert into setting (key,value) VALUES
-              ('enable-embedding-interactive',
-                coalesce((select value from setting where key = 'enable-embedding'), 'false'));
-      rollback: # not necessary, the setting will be ignored. (and restored on up migration)
+              INSERT INTO setting (key, value)
+              SELECT 'enable-embedding-interactive', value
+              FROM setting
+              WHERE key = 'enable-embedding';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO setting (`key`, `value`)
+              SELECT 'enable-embedding-interactive', value
+              FROM setting
+              WHERE `key` = 'enable-embedding';
+        - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO setting ("KEY", "VALUE")
+              SELECT 'enable-embedding-interactive', "VALUE"
+              FROM setting
+              WHERE "KEY" = 'enable-embedding';
+      rollback: # not needed
 
-  - changeSet:
-      id: v51.2024-09-26T03:02:00
-      author: escherize
-      comment: Clone enbable-embedding setting -> enable-embedding-static
-      changes:
-        - sql:
-            dbms: mysql,mariadb,h2,postgresql
-            sql: >-
-              insert into setting (key,value) VALUES
-              ('enable-embedding-static',
-                coalesce((select value from setting where key = 'enable-embedding'), 'false'));
-      rollback: # not necessary, the setting will be ignored. (and restored on up migration)
+  # - changeset:
+  #     id: v51.2024-09-26T03:01:00
+  #     author: escherize
+  #     comment: Copy enable-embedding -> enable-embedding-interactive
+  #     changes:
+  #       - sql:
+  #           dbms: postgresql
+  #           sql: >-
+  #             insert into setting (key, value) VALUES ('enable-embedding-interactive',
+  #             coalesce((select value from setting where key = 'enable-embedding'), 'false'));
+  #       - sql:
+  #           dbms: mysql,mariadb
+  #           sql: >-
+  #             INSERT INTO setting (`key`, value) VALUES ('enable-embedding-interactive',
+  #             coalesce((select value from setting where key = 'enable-embedding'), 'false'));
+  #       - sql:
+  #           dbms: h2
+  #           sql: >-
+  #             INSERT INTO setting ("KEY", "VALUE") VALUES ('enable-embedding-interactive',
+  #             coalesce((select value from setting where key = 'enable-embedding'), 'false'));
+  #     rollback: # not necessary, the setting will be ignored. (and restored on up migration)
 
-  - changeSet:
-      id: v51.2024-09-26T03:03:00
-      author: escherize
-      comment: Clone enbable-embedding-origin setting -> embedding-app-origins-interactive
-      changes:
-        - sql:
-            dbms: mysql,mariadb,h2,postgresql
-            sql: >-
-              insert into setting (key,value)
-              VALUES
-              ('embedding-app-origins-interactive',
-              coalesce((select value from setting where key = 'embedding-app-origin'), ''));
-      rollback: # not necessary, the setting will be ignored. (and restored on up migration)
+
+  # - changeSet:
+  #     id: v51.2024-09-26T03:02:00
+  #     author: escherize
+  #     comment: Copy enable-embedding -> enable-embedding-static
+  #     changes:
+  #       - sql:
+  #           dbms: mysql,mariadb,h2,postgresql
+  #           sql: >-
+  #             insert into setting (key,value) VALUES
+  #             ('enable-embedding-static',
+  #               coalesce((select value from setting where key = 'enable-embedding'), 'false'));
+  #     rollback: # not necessary, the setting will be ignored. (and restored on up migration)
+
+  # - changeSet:
+  #     id: v51.2024-09-26T03:03:00
+  #     author: escherize
+  #     comment: Copy embedding-app-origin -> embedding-app-origins-interactive
+  #     changes:
+  #       - sql:
+  #           dbms: mysql,mariadb,h2,postgresql
+  #           sql: >-
+  #             insert into setting (key,value)
+  #             VALUES
+  #             ('embedding-app-origins-interactive',
+  #             coalesce((select value from setting where key = 'embedding-app-origin'), ''));
+  #     rollback: # not necessary, the setting will be ignored. (and restored on up migration)
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
