@@ -10,7 +10,7 @@ Sometimes your questions, dashboards, models, or collections outlive their usefu
 
 Items in **Trash** won't show up in search (unless you use [advanced search filters](./exploration.md)), and you won't be able to use them to create new questions and dashboards.
 
-Moving items to Trash is not permanent: you'll be able to restore them to their original parent collection, or move them to another non-deleted collection. But if you'd' like to delete items permanently, [you can do that too](#permanently-deleting-items).
+Moving items to Trash isn't permanent; you'll be able to restore them to their original parent collection, or move them to another collection. But if you'd like to delete items permanently, [you can do that too](#permanently-deleting-items).
 
 Deleting an item will affect any [dashboards](../dashboards/introduction.md), [subscriptions](../dashboards/subscriptions.md), or [SQL questions](../questions/native-editor/referencing-saved-questions-in-queries.md) that depend on that item, so be careful!
 
