@@ -1,3 +1,4 @@
+import { Global } from "@emotion/react";
 import type { Action, Store } from "@reduxjs/toolkit";
 import { type JSX, type ReactNode, memo, useEffect } from "react";
 import { Provider } from "react-redux";
@@ -24,10 +25,14 @@ import type { MetabaseTheme } from "embedding-sdk/types/theme";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 
-import { PublicComponentStylesWrapper } from "../private/PublicComponentStylesWrapper";
+import {
+  PublicComponentStylesWrapper,
+  SCOPED_CSS_RESET,
+} from "../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
 import "metabase/css/index.module.css";
 import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
+
 import "metabase/css/vendor.css";
 
 export interface MetabaseProviderProps {
@@ -83,6 +88,7 @@ export const MetabaseProviderInternal = ({
 
   return (
     <EmotionCacheProvider>
+      <Global styles={SCOPED_CSS_RESET} />
       <SdkThemeProvider theme={theme}>
         <SdkFontsGlobalStyles baseUrl={config.metabaseInstanceUrl} />
         <div className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
