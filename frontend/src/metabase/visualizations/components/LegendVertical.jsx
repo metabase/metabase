@@ -17,6 +17,7 @@ export default class LegendVertical extends Component {
 
   state = {
     overflowCount: 0,
+    size: null,
     listWidth: null,
   };
 
