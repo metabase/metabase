@@ -121,7 +121,7 @@ function createOrUpdateNode(
   let dimensionNode = parentNode.children.get(String(dimensionKey));
 
   if (dimensionNode == null) {
-    // If there is no node for this middle dimension value in the tree
+    // If there is no node for this dimension value in the tree
     // create it.
     dimensionNode = {
       key: dimensionKey,
