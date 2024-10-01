@@ -2,9 +2,7 @@ import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { useMount } from "react-use";
 
-import { parseHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
 import { addFields, addParamValues } from "metabase/redux/metadata";
@@ -170,30 +168,24 @@ export const PublicOrEmbeddedQuestion = ({
     );
   };
 
-  const locale = parseHashOptions(location.hash)?.["locale"] as
-    | string
-    | undefined;
-
   return (
-    <LocaleProvider locale={locale}>
-      <PublicOrEmbeddedQuestionView
-        initialized={initialized}
-        card={card}
-        metadata={metadata}
-        result={result}
-        uuid={uuid}
-        token={token}
-        getParameters={getParameters}
-        parameterValues={parameterValues}
-        setParameterValue={setParameterValue}
-        setParameterValueToDefault={setParameterValueToDefault}
-        bordered={bordered}
-        hide_parameters={hide_parameters}
-        theme={theme}
-        titled={titled}
-        setCard={setCard}
-        downloadsEnabled={downloadsEnabled}
-      />
-    </LocaleProvider>
+    <PublicOrEmbeddedQuestionView
+      initialized={initialized}
+      card={card}
+      metadata={metadata}
+      result={result}
+      uuid={uuid}
+      token={token}
+      getParameters={getParameters}
+      parameterValues={parameterValues}
+      setParameterValue={setParameterValue}
+      setParameterValueToDefault={setParameterValueToDefault}
+      bordered={bordered}
+      hide_parameters={hide_parameters}
+      theme={theme}
+      titled={titled}
+      setCard={setCard}
+      downloadsEnabled={downloadsEnabled}
+    />
   );
 };
