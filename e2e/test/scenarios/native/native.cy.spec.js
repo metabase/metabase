@@ -34,7 +34,7 @@ describe("scenarios > question > native", () => {
     cy.contains("18,760");
   });
 
-  it("should suggest the currently viewed collection when saving question", () => {
+  it("should suggest the currently viewed collection when saving question if the user has not recently visited a dashboard", () => {
     visitCollection(THIRD_COLLECTION_ID);
 
     openNativeEditor({ fromCurrentPage: true }).type(
@@ -45,7 +45,7 @@ describe("scenarios > question > native", () => {
       cy.findByText("Save").click();
     });
     cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText(/Which collection should this go in/).should(
+      cy.findByLabelText(/Where do you want to save this/).should(
         "have.text",
         "Third collection",
       );

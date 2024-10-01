@@ -402,7 +402,14 @@ describe("issue 20963", () => {
 
     cy.get("@editor").type("{moveToStart}select ");
 
-    saveQuestion(questionName, { wrapId: true });
+    saveQuestion(
+      questionName,
+      { wrapId: true },
+      {
+        tab: "Browse",
+        path: ["Our analytics"],
+      },
+    );
 
     // Convert into to a model
     openQuestionActions();
@@ -881,15 +888,9 @@ describe("issue 26091", () => {
       entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText("Name").clear().type("New model");
-      cy.findByText("Save").click();
-      cy.wait("@saveQuestion");
-    });
-    cy.get("#QuestionSavedModal").within(() => {
-      cy.button("Not now").click();
+    saveQuestion("New model", undefined, {
+      tab: "Browse",
+      path: ["Our analytics"],
     });
     turnIntoModel();
 

@@ -5,7 +5,6 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   createNewTab,
-  dashboardHeader,
   dashboardParametersContainer,
   editDashboard,
   entityPickerModal,
@@ -15,6 +14,7 @@ import {
   modal,
   multiAutocompleteInput,
   openQuestionActions,
+  openQuestionsSidebar,
   popover,
   removeDashboardCard,
   restore,
@@ -757,7 +757,7 @@ describe("dashboard filters auto-wiring", () => {
 
     cy.log("add a card to the dashboard and auto-wire");
     editDashboard();
-    dashboardHeader().icon("add").click();
+    openQuestionsSidebar();
     cy.findByTestId("add-card-sidebar")
       .findByText(questionDetails.name)
       .click();
@@ -794,7 +794,7 @@ function createDashboardWithCards({
 function addCardToDashboard(dashcardNames = "Orders Model") {
   const dashcardsToSelect =
     typeof dashcardNames === "string" ? [dashcardNames] : dashcardNames;
-  cy.findByTestId("dashboard-header").icon("add").click();
+  openQuestionsSidebar();
   for (const dashcardName of dashcardsToSelect) {
     cy.findByTestId("add-card-sidebar").findByText(dashcardName).click();
   }

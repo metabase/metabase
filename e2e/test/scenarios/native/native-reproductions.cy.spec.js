@@ -11,6 +11,7 @@ import {
   popover,
   restore,
   runNativeQuery,
+  saveQuestion,
   sidebar,
   startNewNativeModel,
   visitQuestion,
@@ -268,14 +269,10 @@ describe("issue 18418", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Explore results").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-
-    cy.findByTestId("save-question-modal").within(modal => {
-      cy.findByText("Save").click();
+    saveQuestion(undefined, undefined, {
+      tab: "Browse",
+      path: ["Our analytics"],
     });
-
-    cy.button("Not now").click();
 
     openNativeEditor({ fromCurrentPage: true });
 

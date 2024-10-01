@@ -69,7 +69,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       SQLFilter.chooseType("Field Filter");
       FieldFilter.mapTo({ table: "Products", field: "Category" });
       setFilterQuestionSource({ question: "MBQL source", field: "Category" });
-      saveQuestion("SQL filter");
+      saveQuestion("SQL filter", undefined, {
+        tab: "Browse",
+        path: ["Our analytics"],
+      });
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("Doohickey");
@@ -92,7 +95,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       );
       setDropdownFilterType();
       setFilterQuestionSource({ question: "MBQL source", field: "Category" });
-      saveQuestion("SQL filter");
+      saveQuestion("SQL filter", undefined, {
+        tab: "Browse",
+        path: ["Our analytics"],
+      });
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("Doohickey");
@@ -146,7 +152,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       cy.wait("@parameterValues");
       checkFilterValueInList("A");
 
-      saveQuestion("SQL filter");
+      saveQuestion("SQL filter", undefined, {
+        tab: "Browse",
+        path: ["Our analytics"],
+      });
       FieldFilter.openEntryForm();
       cy.wait("@cardParameterValues");
       checkFilterValueInList("A");
@@ -237,7 +246,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.mapTo({ table: "Products", field: "Ean" });
       FieldFilter.setWidgetType("String");
       setFilterQuestionSource({ question: "SQL source", field: "EAN" });
-      saveQuestion("SQL filter");
+      saveQuestion("SQL filter", undefined, {
+        tab: "Browse",
+        path: ["Our analytics"],
+      });
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("0001664425970");
@@ -319,7 +331,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.mapTo({ table: "Products", field: "Ean" });
       FieldFilter.setWidgetType("String");
       setFilterListSource({ values: ["1018947080336", "7663515285824"] });
-      saveQuestion("SQL filter");
+      saveQuestion("SQL filter", undefined, {
+        tab: "Browse",
+        path: ["Our analytics"],
+      });
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("0001664425970");
@@ -370,7 +385,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       setFilterListSource({
         values: [["1018947080336", "Custom Label"], "7663515285824"],
       });
-      saveQuestion("SQL filter");
+      saveQuestion("SQL filter", undefined, {
+        tab: "Browse",
+        path: ["Our analytics"],
+      });
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("0001664425970");
@@ -426,7 +444,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       setFilterListSource({
         values: ["1018947080336", "7663515285824"],
       });
-      saveQuestion("SQL filter");
+      saveQuestion("SQL filter", undefined, {
+        tab: "Browse",
+        path: ["Our analytics"],
+      });
 
       FieldFilter.openEntryForm();
 
@@ -499,7 +520,10 @@ describe("scenarios > filters > sql filters > values source", () => {
       setFilterListSource({
         values: [["1018947080336", "Custom Label"], "7663515285824"],
       });
-      saveQuestion("SQL filter");
+      saveQuestion("SQL filter", undefined, {
+        tab: "Browse",
+        path: ["Our analytics"],
+      });
 
       FieldFilter.openEntryForm();
 
@@ -638,7 +662,10 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       setFilterListSource({
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
       });
-      saveQuestion("SQL filter");
+      saveQuestion("SQL filter", undefined, {
+        tab: "Browse",
+        path: ["Our analytics"],
+      });
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("10");
@@ -700,7 +727,10 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       setFilterListSource({
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
       });
-      saveQuestion("SQL filter");
+      saveQuestion("SQL filter", undefined, {
+        tab: "Browse",
+        path: ["Our analytics"],
+      });
 
       FieldFilter.openEntryForm();
       multiAutocompleteInput().type("Tw");
@@ -777,7 +807,10 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       setFilterListSource({
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
       });
-      saveQuestion("SQL filter");
+      saveQuestion("SQL filter", undefined, {
+        tab: "Browse",
+        path: ["Our analytics"],
+      });
 
       FieldFilter.openEntryForm();
 
@@ -837,7 +870,10 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
     popover().findByText("Twenty").click();
 
-    saveQuestion("SQL filter");
+    saveQuestion("SQL filter", undefined, {
+      tab: "Browse",
+      path: ["Our analytics"],
+    });
 
     cy.findByLabelText("X").should("contain.text", "Twenty");
     SQLFilter.runQuery("cardQuery");
@@ -852,7 +888,10 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     setFilterListSource({
       values: ["Foo", "Bar"],
     });
-    saveQuestion("SQL filter");
+    saveQuestion("SQL filter", undefined, {
+      tab: "Browse",
+      path: ["Our analytics"],
+    });
 
     SQLFilter.openTypePickerFromSelectedFilterType("Text");
     SQLFilter.chooseType("Number");
