@@ -90,14 +90,28 @@ describe("ChartTypeOption", () => {
         );
       });
 
-      it("should call 'onClick' when the button is clicked", async () => {
+      it("should call 'onSelectVisualization' when the button is clicked and the visualization hasn't been selected", async () => {
         const { onSelectVisualization } = setup({
           visualizationType,
+          selectedVisualization: EXPECTED_VISUALIZATION_VALUES.find(
+            elem => elem.visualizationType !== visualizationType,
+          )?.visualizationType,
         });
 
         await userEvent.click(screen.getByTestId(`${displayName}-button`));
 
         expect(onSelectVisualization).toHaveBeenCalledWith(visualizationType);
+      });
+
+      it("should call 'onOpenSettings' when the button is clicked and the visualization has been selected", async () => {
+        const { onOpenSettings } = setup({
+          visualizationType,
+          selectedVisualization: visualizationType,
+        });
+
+        await userEvent.click(screen.getByTestId(`${displayName}-button`));
+
+        expect(onOpenSettings).toHaveBeenCalled();
       });
 
       it("should have aria-selected attribute if selectedVisualization=visualizationType", () => {
