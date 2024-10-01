@@ -46,13 +46,34 @@ export const DashCardMenuItems = ({
       key: string;
     })[] = [];
 
+    // console.log("HERE", question.card().type === "model");
+
     if (withEditLink && canEditQuestion(question)) {
-      items.push({
-        key: "MB_EDIT_QUESTION",
-        iconName: "pencil",
-        label: t`Edit question`,
-        onClick: () => onEditQuestion(question),
-      });
+      const type = question.type();
+      if (type === "question") {
+        items.push({
+          key: "MB_EDIT_QUESTION",
+          iconName: "pencil",
+          label: t`Edit question`,
+          onClick: () => onEditQuestion(question),
+        });
+      }
+      if (type === "model") {
+        items.push({
+          key: "MB_EDIT_MODEL",
+          iconName: "pencil",
+          label: t`Edit model`,
+          onClick: () => onEditQuestion(question),
+        });
+      }
+      if (type === "metric") {
+        items.push({
+          key: "MB_EDIT_METRIC",
+          iconName: "pencil",
+          label: t`Edit metric`,
+          onClick: () => onEditQuestion(question),
+        });
+      }
     }
 
     if (withDownloads && canDownloadResults(result)) {
