@@ -140,12 +140,12 @@
   (with-quoting driver
     (first (sql/format {:create-table (keyword table-name)
                         :with-columns (cond-> (mapv (fn [[col-name type-spec]]
-                                                         (vec (cons (quote-identifier col-name)
-                                                                    (if (string? type-spec)
-                                                                      [[:raw type-spec]]
-                                                                      type-spec))))
-                                                       column-definitions)
-                                           primary-key (conj [(into [:primary-key] primary-key)]))}
+                                                      (vec (cons (quote-identifier col-name)
+                                                                 (if (string? type-spec)
+                                                                   [[:raw type-spec]]
+                                                                   type-spec))))
+                                                    column-definitions)
+                                        primary-key (conj [(into [:primary-key] primary-key)]))}
                        :quoted true
                        :dialect (sql.qp/quote-style driver)))))
 
