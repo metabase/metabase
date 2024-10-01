@@ -22,7 +22,11 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
+<<<<<<< HEAD
    [metabase.models.data-permissions :as data-perms]
+=======
+   [metabase.models.dashboard-card :as dashboard-card]
+>>>>>>> 1d302cbc10 (WIP: autoplace dashcards for dashboard cards)
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
@@ -907,6 +911,17 @@
             (doseq [[id update] updates]
               (t2/update! :model/DashboardCard :id id update))))))))
 
+(defn- autoplace-dashcard-for-card! [dashboard-id card]
+  (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :dashcards [:tabs :tab-cards])
+        {:keys [dashcards tabs]} dashboard
+        already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))
+        first-tab (or (first tabs)
+                      (sort dashboard-card/dashcard-comparator dashcards))]
+    (when-not already-on-dashboard?
+      (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id
+                                        :card_id (:id card)
+                                        :size_x 10 :size_y 10
+                                        :row 0 :col (+ 10 (:col (last first-tab) 0))}))))
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously."
@@ -914,6 +929,10 @@
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
     (api/maybe-reconcile-collection-position! card-before-update card-updates)
+
+    (when (:dashboard_id card-updates)
+      (autoplace-dashcard-for-card! (:dashboard_id card-updates)
+                                    card-before-update))
 
     (when (and (card-is-verified? card-before-update)
                (changed? card-compare-keys card-before-update card-updates))
