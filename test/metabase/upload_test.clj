@@ -2147,11 +2147,8 @@
 (defn- round-floats
   "Round all floats to have n digits of precision."
   [digits-precision rows]
-  (let [factor (Math/pow 10 digits-precision)]
-    (mapv (partial mapv #(if (float? %)
-                           (/ (Math/round (* factor %)) factor)
-                           %))
-          rows)))
+  (let [round-if-float #(if (float? %) (u/round-to-decimals digits-precision %) %)]
+    (mapv (partial mapv round-if-float) rows)))
 
 (deftest update-type-coercion-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -2190,7 +2187,8 @@
                           (is (= {:row-count 1}
                                  (update!))))
                         (is (= (rows-with-auto-pk [[coerced]])
-                               ;; Deal with 32 bit floats for Clickhouse
+                               ;; Clickhouse uses 32-bit floats, so we must account for that loss in precision.
+                               ;; In this case, 2.1 ⇒ 2.0999999046325684
                                (round-floats 6 (rows-for-table table)))))
                       (testing (format "\nUploading %s into a column of type %s should fail to coerce"
                                        uncoerced (name upload-type))
@@ -2226,8 +2224,8 @@
                         (is (= {:row-count 1}
                                (update!))))
                       (is (= (rows-with-auto-pk [[coerced coerced]])
-                             ;; Clickhouse uses 32bit floats, so we must account for that loss in precision.
-                             ;; In this case 2.1 => 2.0999999046325684
+                             ;; Clickhouse uses 32-bit floats, so we must account for that loss in precision.
+                             ;; In this case, 2.1 ⇒ 2.0999999046325684
                              (round-floats 6 (rows-for-table table)))))))))))))))
 
 (deftest create-from-csv-int-and-float-test
@@ -2256,8 +2254,8 @@
           (testing "Check the data was uploaded into the table correctly"
             (is (= (rows-with-auto-pk [[1.0 1.1]
                                        [1.1 1.0]])
-                   ;; Clickhouse uses 32 bit floats,
-                   ;; so 1.1 is approximated by 1.10000002384185791015625
+                   ;; Clickhouse uses 32-bit floats, so we must account for that loss in precision.
+                   ;; In this case, 1.1 ⇒ 1.10000002384185791015625
                    (round-floats 7 (rows-for-table table))))))))))
 
 (deftest update-from-csv-int-and-float-test
