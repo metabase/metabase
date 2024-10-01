@@ -4,10 +4,7 @@ import { type JSX, type ReactNode, memo, useEffect } from "react";
 import { Provider } from "react-redux";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
-import {
-  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
-  EMBEDDING_SDK_ROOT_ELEMENT_ID,
-} from "embedding-sdk/config";
+import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import { useInitData } from "embedding-sdk/hooks";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
@@ -25,14 +22,12 @@ import type { MetabaseTheme } from "embedding-sdk/types/theme";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 
-import {
-  PublicComponentStylesWrapper,
-  SCOPED_CSS_RESET,
-} from "../private/PublicComponentStylesWrapper";
+import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
-import "metabase/css/index.module.css";
+import { PortalContainer } from "../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
 
+import "metabase/css/index.module.css";
 import "metabase/css/vendor.css";
 
 export interface MetabaseProviderProps {
@@ -113,14 +108,3 @@ export const MetabaseProvider = memo(function MetabaseProvider({
     </Provider>
   );
 });
-
-/**
- * This is the portal container used by popovers modals etc, it is wrapped with PublicComponentStylesWrapper
- * so that it has our styles applied.
- * Mantine components needs to have the defaultProps set to use `EMBEDDING_SDK_PORTAL_CONTAINER_ELEMENT_ID` as target for the portal
- */
-const PortalContainer = () => (
-  <PublicComponentStylesWrapper>
-    <div id={EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}></div>
-  </PublicComponentStylesWrapper>
-);
