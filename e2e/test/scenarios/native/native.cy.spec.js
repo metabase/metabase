@@ -513,7 +513,7 @@ describe("scenarios > native question > data reference sidebar", () => {
 
     sidebarHeaderTitle().should("have.text", "Sample Database");
 
-    sidebar().within(() => {
+    dataReferenceSidebar().within(() => {
       cy.findByText("ORDERS").click();
       cy.findByText(
         "Confirmed Sample Company orders for a product, from a user.",
@@ -553,7 +553,7 @@ describe("scenarios > native question > data reference sidebar", () => {
     openNativeEditor();
     referenceButton().click();
 
-    sidebar().within(() => {
+    dataReferenceSidebar().within(() => {
       cy.findByText("2 models");
       cy.findByText("Native Products Model").click();
       cy.findByText("A model of the Products table"); // description
@@ -570,7 +570,7 @@ describe("scenarios > native question > data reference sidebar", () => {
       referenceButton().click();
       sidebarHeaderTitle().should("have.text", "Sample Database");
 
-      sidebar().within(() => {
+      dataReferenceSidebar().within(() => {
         cy.findByText("ORDERS").click();
         cy.findByText(/metric/).should("not.exist");
       });
@@ -583,7 +583,7 @@ describe("scenarios > native question > data reference sidebar", () => {
       referenceButton().click();
       sidebarHeaderTitle().should("have.text", "Sample Database");
 
-      sidebar().within(() => {
+      dataReferenceSidebar().within(() => {
         cy.findByText("ORDERS").click();
         cy.findByText("1 metric").should("be.visible");
 
@@ -605,7 +605,7 @@ function sidebarHeaderTitle() {
   return cy.findByTestId("sidebar-header-title");
 }
 
-function sidebar() {
+function dataReferenceSidebar() {
   return cy.findByTestId("sidebar-right");
 }
 
