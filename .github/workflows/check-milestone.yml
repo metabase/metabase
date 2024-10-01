@@ -5,6 +5,12 @@ on:
   push:
     branches:
       - release-x.**
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Major version number  (e.g. 52, 78, 109)'
+        type: number
+        required: true
 
 jobs:
   set-milestone:
@@ -19,10 +25,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: release
+          fetch-depth: ${{ github.event_name == 'workflow_dispatch' && 0 || 3 }} # we need the full history to get the commit messages
           ref: master # we want the logic from master, even though we're triggering on a release branch
       - name: Prepare build scripts
         run: cd ${{ github.workspace }}/release && yarn && yarn build
       - uses: actions/github-script@v7
+        if: ${{ github.event_name == 'push' }}
+        name: set milestone for single commit
         with:
           script: | # js
             const { setMilestoneForCommits } = require('${{ github.workspace }}/release/dist/index.cjs');
@@ -38,4 +47,35 @@ jobs:
               repo,
               branchName,
               commitMessages: [commitMessage],
+            });
+      - uses: actions/github-script@v7
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        name: set milestone for new release branch
+        env:
+          # this token has a higher rate limit than the default token, and
+          # we will need it for this workflow to work
+          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        with:
+          script: | # js
+            const { getReleaseBranchCommits } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const versionNumber = context.payload.inputs.version;
+            const branchName = `release-x.${versionNumber}.x`;
+
+
+            const commitMessages = await getReleaseBranchCommits({
+              versionNumber: Number(versionNumber),
+            });
+
+            console.log(`Found ${commitMessages.length} new commits for ${branchName}`);
+
+            await setMilestoneForCommits({
+              github,
+              owner,
+              repo,
+              branchName,
+              commitMessages: commitMessages,
+              ignoreExistingMilestones: true,
             });
