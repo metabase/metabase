@@ -26,6 +26,7 @@ import {
   saveDashboard,
   setTokenFeatures,
   updateDashboardCards,
+  updateSetting,
   visitDashboard,
   visitEmbeddedPage,
   visitIframe,
@@ -1806,9 +1807,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("allows opening custom URL destination that is not a Metabase instance URL using link (metabase#33379)", () => {
-      cy.request("PUT", "/api/setting/site-url", {
-        value: "https://localhost:4000/subpath",
-      });
+      updateSetting("site-url", "https://localhost:4000/subpath");
       const dashboardDetails = {
         enable_embedding: true,
       };
