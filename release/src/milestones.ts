@@ -159,6 +159,7 @@ async function setMilestone({ github, owner, repo, issueNumber, milestone, ignor
   });
 
   if (!issue?.milestone) {
+    console.log(`Setting milestone ${milestone.title} for issue # ${issueNumber}`);
     return github.rest.issues.update({
       owner,
       repo,
