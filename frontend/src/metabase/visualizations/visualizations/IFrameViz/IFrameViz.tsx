@@ -2,7 +2,6 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { Box, Button, Group, Stack, Text } from "metabase/ui";
 import type {
   Dashboard,
@@ -63,8 +62,8 @@ export function IFrameViz({
       <IFrameEditWrapper>
         <Stack h="100%" spacing="sm">
           <Group align="center" noWrap>
-            <Text fw="bold" style={{ overflow: "hidden" }}>
-              <Ellipsified>{t`Paste your snippet here`}</Ellipsified>
+            <Text fw="bold" truncate>
+              {t`Paste your snippet here`}
             </Text>{" "}
             <Box ml="auto">
               <Button
