@@ -67,14 +67,17 @@
   (set
    (flatten
     (lib.util.match/match query
-      ;; if we come across a native query just put a placeholder (`::native`) there so we know we need to
-      ;; add native permissions to the complete set below.
+      ;; if we come across a native query, try to parse its tables using the Native Query Analyzer. If it throws
+      ;; an exception, we insert a ::native placeholder so that full native query access will be required for the DB.
       (m :guard (every-pred map? :native))
       ;; TODO: `references-for-native` shouldn't rely on the presence of a :database key
-      (->> (nqa/references-for-native
-            (assoc m :database (:database query)))
-           :tables
-           (map :table-id))
+      (try
+        (->> (nqa/references-for-native (assoc m :database (:database query)))
+             :tables
+             (map :table-id))
+        (catch Throwable e
+          (log/error e)
+          [::native]))
 
       (m :guard (every-pred map? #(pos-int? (:source-table %))))
       (cons
@@ -123,13 +126,21 @@
      query)
     (not-empty @all-ids)))
 
+(defn- full-native-query-perms
+  []
+  {:perms/create-queries :query-builder-and-native
+   :perms/view-data      :unrestricted})
+
 (defn- native-query-perms
   [query]
   (merge
-   (let [table-ids (vec (query->source-table-ids query))]
-     (when (seq table-ids)
-       {:perms/create-queries (zipmap table-ids (repeat :query-builder-and-native))
-        :perms/view-data      (zipmap table-ids (repeat :unrestricted))}))
+   (let [table-ids                  (vec (query->source-table-ids query))
+         require-full-native-perms? (.contains ^clojure.lang.PersistentVector table-ids ::native)]
+     (if require-full-native-perms?
+       (full-native-query-perms)
+       (when (seq table-ids)
+         {:perms/create-queries (zipmap table-ids (repeat :query-builder-and-native))
+          :perms/view-data      (zipmap table-ids (repeat :unrestricted))})))
    (when-let [card-ids (referenced-card-ids query)]
      {:paths (into #{}
                    (mapcat (fn [card-id]
@@ -144,12 +155,15 @@
       (if-let [source-card-id (qp.util/query->source-card-id query)]
         {:paths (source-card-read-perms source-card-id)}
         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
-        (let [query     (cond-> query
-                          (not already-preprocessed?) preprocess-query)
-              table-ids (vec (query->source-table-ids query))]
-          (when (seq table-ids)
-            {:perms/create-queries (zipmap table-ids (repeat :query-builder))
-             :perms/view-data      (zipmap table-ids (repeat :unrestricted))}))))
+        (let [query                      (cond-> query
+                                           (not already-preprocessed?) preprocess-query)
+              table-ids                  (vec (query->source-table-ids query))
+              require-full-native-perms? (.contains ^clojure.lang.PersistentVector table-ids ::native)]
+          (if require-full-native-perms?
+            (full-native-query-perms)
+            (when (seq table-ids)
+              {:perms/create-queries (zipmap table-ids (repeat :query-builder))
+               :perms/view-data      (zipmap table-ids (repeat :unrestricted))})))))
     ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
     ;; that means no one will ever get to see it
     (catch Throwable e
