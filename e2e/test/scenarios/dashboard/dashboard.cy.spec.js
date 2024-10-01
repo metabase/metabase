@@ -322,11 +322,6 @@ describe("scenarios > dashboard", () => {
       });
 
       describe("iframe cards", () => {
-        beforeEach(() => {
-          restore();
-          cy.signInAsAdmin();
-        });
-
         it("should be possible to add an iframe card", () => {
           editDashboard();
           addIFrameWhileEditing("https://example.com");
