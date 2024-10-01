@@ -1,5 +1,6 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 import cx from "classnames";
+import type { ComponentProps } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
@@ -17,7 +18,7 @@ const Wrapper = ({ children }: { children: JSX.Element | JSX.Element[] }) => (
   </div>
 );
 
-const Template: ComponentStory<typeof TokenFieldItem> = args => {
+const Template: StoryFn<ComponentProps<typeof TokenFieldItem>> = args => {
   return (
     <Wrapper>
       <TokenFieldItem {...args} />
@@ -25,7 +26,7 @@ const Template: ComponentStory<typeof TokenFieldItem> = args => {
   );
 };
 
-const ManyTemplate: ComponentStory<typeof TokenFieldItem> = args => {
+const ManyTemplate: StoryFn<ComponentProps<typeof TokenFieldItem>> = args => {
   return (
     <Wrapper>
       <TokenFieldItem {...args}> {`${args.children} 1`} </TokenFieldItem>
@@ -37,7 +38,7 @@ const ManyTemplate: ComponentStory<typeof TokenFieldItem> = args => {
   );
 };
 
-const AddonTemplate: ComponentStory<typeof TokenFieldItem> = args => {
+const AddonTemplate: StoryFn<ComponentProps<typeof TokenFieldItem>> = args => {
   return (
     <Wrapper>
       <TokenFieldItem isValid={args.isValid}>
@@ -54,21 +55,29 @@ const AddonTemplate: ComponentStory<typeof TokenFieldItem> = args => {
   );
 };
 
-export const Default = Template.bind({});
-export const Many = ManyTemplate.bind({});
-export const WithAddon = AddonTemplate.bind({});
+export const Default = {
+  render: Template,
 
-Default.args = {
-  isValid: true,
-  children: "Token Item Value",
+  args: {
+    isValid: true,
+    children: "Token Item Value",
+  },
 };
 
-Many.args = {
-  isValid: true,
-  children: "Token Item Value",
+export const Many = {
+  render: ManyTemplate,
+
+  args: {
+    isValid: true,
+    children: "Token Item Value",
+  },
 };
 
-WithAddon.args = {
-  isValid: true,
-  children: "Token Item Value",
+export const WithAddon = {
+  render: AddonTemplate,
+
+  args: {
+    isValid: true,
+    children: "Token Item Value",
+  },
 };
