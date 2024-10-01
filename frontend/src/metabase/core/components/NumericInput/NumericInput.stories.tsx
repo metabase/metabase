@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 import { useState } from "react";
 
 import NumericInput from "./NumericInput";
@@ -8,9 +8,11 @@ export default {
   component: NumericInput,
 };
 
-const Template: ComponentStory<typeof NumericInput> = args => {
+const Template: StoryFn<typeof NumericInput> = args => {
   const [value, setValue] = useState<number>();
   return <NumericInput {...args} value={value} onChange={setValue} />;
 };
 
-export const Default = Template.bind({});
+export const Default = {
+  render: Template,
+};

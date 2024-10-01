@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import EntityMenu from "./EntityMenu";
 
@@ -7,7 +7,7 @@ export default {
   component: EntityMenu,
 };
 
-const Template: ComponentStory<typeof EntityMenu> = args => {
+const Template: StoryFn<typeof EntityMenu> = args => {
   return <EntityMenu {...args} />;
 };
 
@@ -30,8 +30,11 @@ const items = [
   },
 ];
 
-export const Default = Template.bind({});
-Default.args = {
-  items,
-  trigger: <span>Click Me</span>,
+export const Default = {
+  render: Template,
+
+  args: {
+    items,
+    trigger: <span>Click Me</span>,
+  },
 };
