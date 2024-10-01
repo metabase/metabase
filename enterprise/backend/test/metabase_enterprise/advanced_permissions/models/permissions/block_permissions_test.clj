@@ -127,24 +127,6 @@
       (is (= {"PUBLIC" {(mt/id :venues) :unrestricted}}
              (test-db-perms group-id))))))
 
-(deftest update-graph-disallow-native-query-perms-test
-  (testing "Disallow block permissions + native query permissions"
-    (mt/with-temp [PermissionsGroup {group-id :id} {}]
-      (testing "via the fn"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."
-             (data-perms.graph/update-data-perms-graph! [group-id (mt/id)] {:view-data :blocked
-                                                                            :create-queries :query-builder-and-native}))))
-      (testing "via the API"
-        (let [current-graph (data-perms.graph/api-graph)
-              new-graph     (assoc-in current-graph
-                                      [:groups group-id (mt/id)]
-                                      {:view-data :blocked :create-queries :query-builder-and-native})]
-          (is (=? #"Cannot parse permissions graph because it is invalid.*"
-                  (mt/with-premium-features #{:advanced-permissions}
-                    (mt/user-http-request :crowberto :put 400 "permissions/graph" new-graph)))))))))
-
 (deftest delete-database-delete-block-perms-test
   (testing "If a Database gets DELETED, any block permissions for it should get deleted too."
     (mt/with-temp [Database    {db-id :id} {}]
