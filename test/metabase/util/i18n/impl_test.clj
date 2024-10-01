@@ -5,10 +5,9 @@
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
-   [metabase.util.encryption :as encryption]
-   [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n]
-   [metabase.util.i18n.impl :as i18n.impl])
+   [metabase.util.i18n.impl :as i18n.impl]
+   [metabase.util.log :as log])
   (:import
    (java.util Locale)))
 
@@ -126,29 +125,17 @@
 
 (deftest avoid-infinite-i18n-loops-test
   (testing "recursive calls to site-locale should not result in infinite loops (#32376)"
-    (mt/discard-setting-changes [site-locale]
-      (encryption-test/with-secret-key "secret_key__1"
-        ;; set `site-locale` to something encrypted with the first encryption key.
-        (mt/with-temporary-setting-values [site-locale "en"]
-          (binding [config/*disable-setting-cache* true]
-            (is (= "en"
-                   (i18n.impl/site-locale-from-setting)))
-            ;; rotate the encryption key, which will trigger an error being logged
-            ;; in [[metabase.util.encryption/maybe-decrypt]]... this will cause a Stack Overflow if `log/error` tries to
-            ;; access `:site-locale` recursively to log the message.
-            (encryption-test/with-secret-key "secret_key__2"
-              (testing "low-level functions should return the encrypted String since we can't successfully decrypt it"
-                ;; not 100% sure this general behavior makes sense for values that we cannot decrypt, but invalid
-                ;; locales are handled by the high-level functions below.
-                (is (encryption/possibly-encrypted-string? (#'setting/db-or-cache-value :site-locale))
-                    `setting/db-or-cache-value)
-                (is (encryption/possibly-encrypted-string? (i18n.impl/site-locale-from-setting))
-                    `i18n.impl/site-locale-from-setting))
-              (testing "since the encrypted string is an invalid value for a Locale, high-level functions should return nil"
-                (is (nil? (i18n/site-locale))
-                    `i18n/site-locale)
-                (is (nil? (public-settings/site-locale))
-                    `public-settings/site-locale))
-              (testing "we should still be able to (no-op) i18n stuff"
-                (is (= "Testing"
-                       (i18n/trs "Testing")))))))))))
+    ;; set `site-locale`
+    (mt/with-temporary-setting-values [site-locale "en"]
+      (binding [config/*disable-setting-cache* true]
+        (is (= "en" (i18n.impl/site-locale-from-setting)))
+        ;; force an infinite loop: `log/error` will access `:site-locale` recursively to log the message
+        (with-redefs [setting/get-raw-value (fn [& _] (log/error "a message to log") "foo")]
+          (testing "since the encrypted string is an invalid value for a Locale, high-level functions should return nil"
+            (is (nil? (i18n/site-locale))
+                `i18n/site-locale)
+            (is (nil? (public-settings/site-locale))
+                `public-settings/site-locale))
+          (testing "we should still be able to (no-op) i18n stuff"
+            (is (= "Testing"
+                   (i18n/trs "Testing")))))))))
