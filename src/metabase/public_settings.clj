@@ -72,9 +72,8 @@
   :default true)
 
 (defn- set-update-channel! [new-channel]
-  (let [valid-channels ["latest" "beta" "nightly"]]
-    ;; check to make sure `update-channel` is a valid channel, or throw an Exception it is it not.
-    (when-not (some #{new-channel} valid-channels)
+  (let [valid-channels #{"latest" "beta" "nightly"}]
+    (when-not (valid-channels new-channel)
       (throw (IllegalArgumentException.
               (tru "Invalid update channel ''{0}''. Valid channels are: {1}"
                    new-channel valid-channels))))
