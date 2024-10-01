@@ -25,14 +25,14 @@ There are three permission levels for collections:
 | View items                         | ✅            | ✅          | ❌        |
 | Edit items' title and descriptions | ✅            | ❌          | ❌        |
 | Move items                         | ✅            | ❌          | ❌        |
-| Archive items                      | ✅            | ❌          | ❌        |
+| Delete items                       | ✅            | ❌          | ❌        |
 | Pin items                          | ✅            | ❌          | ❌        |
 | View events and timelines          | ✅            | ✅          | ❌        |
 | Edit events and timelines          | ✅            | ❌          | ❌        |
 
 ### Curate access
 
-The group can view, edit, move, archive, and pin items saved in this collection, and can save or move new items into it. The group can also create new sub-collections within this collection. The group can also create and edit [events and timelines](../exploration-and-organization/events-and-timelines.md).
+The group can view, edit, move, delete, and pin items saved in this collection, and can save or move new items into it. The group can also create new sub-collections within this collection. The group can also create and edit [events and timelines](../exploration-and-organization/events-and-timelines.md).
 
 ### View access
 
@@ -72,11 +72,9 @@ Just like with data access permissions, collection permissions are _additive_, m
 
 A group can be given access to a collection located somewhere within one or more sub-collections _without_ having to have access to every collection "above" it. For example, if a group had access to the "Super Secret Collection" that's saved several layers deep within a "Marketing" collection that the group lacks access to, the "Super Secret Collection" would show up at the top-most level that the group _does_ have access to.
 
-## Archiving collections
+## Deleting collections
 
-Users with curate permission for a collection can archive collections. Click the edit icon in the top-right of the collection screen and select **Archive this collection** to archive it. This will also archive all questions, dashboards, models, and all other sub-collections and their contents. Importantly, this will also remove any archived questions from all dashboards that use them.
-
-You can _unarchive_ items. In the Collections list sidebar, at the bottom, click on **View archive**. Search for the item you'd like to unarchive (you'll either need to scroll down the page, or use the browser's find in page functionality, as archived items won't appear in Metabase's search results). Select the open box with an up arrow icon to "Unarchive this".
+Users with curate permission for a collection can move collections to Trash, see [Delete and Restore](../exploration-and-organization/delete-and-restore.md).
 
 ## Pinning items in collections
 
