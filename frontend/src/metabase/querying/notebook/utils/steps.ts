@@ -88,15 +88,8 @@ const STEPS: NotebookStepDef[] = [
     type: "filter",
     clauseType: "filters",
     valid: (query, stageIndex) => {
-      // do not suggest filtering if there is aggregation without breakout on the last stage
-      if (stageIndex >= 1) {
-        const hasAggregations =
-          Lib.aggregations(query, stageIndex - 1).length > 0;
-        const hasBreakouts = Lib.breakouts(query, stageIndex - 1).length > 0;
-
-        if (hasAggregations && !hasBreakouts) {
-          return false;
-        }
+      if (hasAggregationWithoutBreakoutOnPrevStage(query, stageIndex)) {
+        return false;
       }
 
       return hasData(query);
@@ -116,15 +109,8 @@ const STEPS: NotebookStepDef[] = [
     type: "summarize",
     clauseType: "aggregation",
     valid: (query, stageIndex) => {
-      // do not suggest summarizing if there is aggregation without breakout on the last stage
-      if (stageIndex >= 1) {
-        const hasAggregations =
-          Lib.aggregations(query, stageIndex - 1).length > 0;
-        const hasBreakouts = Lib.breakouts(query, stageIndex - 1).length > 0;
-
-        if (hasAggregations && !hasBreakouts) {
-          return false;
-        }
+      if (hasAggregationWithoutBreakoutOnPrevStage(query, stageIndex)) {
+        return false;
       }
 
       return hasData(query);
@@ -350,4 +336,20 @@ function getStageSteps(
   }
 
   return { steps, actions };
+}
+
+function hasAggregationWithoutBreakoutOnPrevStage(
+  query: Lib.Query,
+  stageIndex: number,
+) {
+  if (stageIndex >= 1) {
+    const hasAggregations = Lib.aggregations(query, stageIndex - 1).length > 0;
+    const hasBreakouts = Lib.breakouts(query, stageIndex - 1).length > 0;
+
+    if (hasAggregations && !hasBreakouts) {
+      return true;
+    }
+  }
+
+  return false;
 }
