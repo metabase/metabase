@@ -202,7 +202,7 @@
                       {:query (qp.persistence/persisted-info-native-query
                                (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                                persisted-info)})
-                    ((requiring-resolve 'qp.compile/compile)
+                    ((requiring-resolve 'metabase.query-processor.compile/compile)
                      (limit/disable-max-results query))))))
       (catch ExceptionInfo e
         (throw (ex-info
