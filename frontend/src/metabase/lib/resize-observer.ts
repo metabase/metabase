@@ -1,3 +1,5 @@
+import { ResizeObserver } from "@juggle/resize-observer";
+
 type ResizeObserverCallback = (
   entry: ResizeObserverEntry,
   observer: ResizeObserver,
