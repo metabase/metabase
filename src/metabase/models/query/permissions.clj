@@ -70,7 +70,7 @@
       ;; if we come across a native query just put a placeholder (`::native`) there so we know we need to
       ;; add native permissions to the complete set below.
       (m :guard (every-pred map? :native))
-      (->> (nqa/references-for-native query)
+      (->> (nqa/references-for-native m)
            :tables
            (map :table-id))
 
