@@ -51,11 +51,9 @@ export default {
 
 export const WithImage = {
   render: DefaultTemplate,
-  name: "With Image",
 };
 
 export const WithoutImage = {
   render: DefaultTemplate,
-  name: "Without Image",
   args: { ...args, illustrationSrc: null },
 };

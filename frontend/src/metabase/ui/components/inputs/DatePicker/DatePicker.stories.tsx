@@ -51,7 +51,6 @@ export default {
 };
 
 export const Default = {
-  name: "Default",
   args: {
     defaultDate: sampleArgs.date1,
   },
