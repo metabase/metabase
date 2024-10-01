@@ -61,14 +61,14 @@ describe("scenarios > models > create", () => {
       cy.contains("button", "Save").click();
     });
     cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText(/Which collection should this go in/).should(
+      cy.findByLabelText(/Where do you want to save this/).should(
         "have.text",
         "Third collection",
       );
     });
   });
 
-  it("suggest the currently viewed collection when saving a new structured query", () => {
+  it("suggest the last viewed dashboard when saving a new structured query", () => {
     visitCollection(THIRD_COLLECTION_ID);
 
     navigateToNewModelPage("structured");
@@ -83,9 +83,9 @@ describe("scenarios > models > create", () => {
     });
 
     cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText(/Which collection should this go in/).should(
+      cy.findByLabelText(/Where do you want to save this/).should(
         "have.text",
-        "Third collection",
+        "Orders in a dashboard",
       );
     });
   });

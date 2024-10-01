@@ -195,7 +195,7 @@ export function addHeadingWhileEditing(
 }
 
 export function openAddQuestionMenu() {
-  cy.findByTestId("dashboard-header").findByLabelText("Add questions").click();
+  dashboardHeader().findByLabelText("Add questions").click();
 }
 
 export function openQuestionsSidebar() {

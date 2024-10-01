@@ -19,6 +19,7 @@ import {
   openNotebook,
   openOrdersTable,
   openProductsTable,
+  pickEntity,
   popover,
   queryBuilderHeader,
   queryBuilderMain,
@@ -815,9 +816,15 @@ describe("issue 23293", () => {
     cy.wait("@dataset");
 
     queryBuilderHeader().button("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
-      cy.findByText("Save").click();
+    cy.findByTestId("save-question-modal")
+      .findByLabelText(/Where do you want to save this/)
+      .click();
+    pickEntity({
+      tab: "Browse",
+      path: ["Our analytics"],
     });
+    entityPickerModal().findByText("Save in this collection").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
 
     cy.wait("@saveQuestion").then(({ response }) => {
       cy.button("Not now").click();
