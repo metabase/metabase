@@ -99,9 +99,10 @@
   [driver raw-name]
   (if (str/blank? raw-name)
     "unnamed_column"
-    (u/slugify (str/trim raw-name)
-               ;; since slugified names contain only ASCII characters, we can conflate bytes and length here.
-               {:max-length (max-column-bytes driver)})))
+    (u/lower-case-en
+     (u/slugify (str/trim raw-name)
+                ;; since slugified names contain only ASCII characters, we can conflate bytes and length here.
+                {:max-length (max-column-bytes driver)}))))
 
 (def auto-pk-column-name
   "The lower-case name of the auto-incrementing PK column. The actual name in the database could be in upper-case."
