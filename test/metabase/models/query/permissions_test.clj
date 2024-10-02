@@ -202,12 +202,23 @@
 (deftest ^:parallel nested-native-query-test-2
   (testing (str "However if you just pass in the same query directly as a `:source-query` you will still require "
                 "READWRITE permissions to save the query since we can't verify that it belongs to a Card that you can view.")
-    (is (= {:perms/view-data :unrestricted
-            :perms/create-queries :query-builder-and-native}
+    (is (= {:perms/view-data      {(mt/id :checkins) :unrestricted}
+            :perms/create-queries {(mt/id :checkins) :query-builder-and-native}}
            (query-perms/required-perms-for-query
             {:database (mt/id)
              :type     :query
              :query    {:source-query {:native "SELECT * FROM CHECKINS"}}}
+            :throw-exceptions? true)))))
+
+(deftest ^:parallel invalid-nested-native-query-test
+  (testing (str "If you pass in a native query as the `:source-query`, but we can't detect the correct table IDs "
+                "by parsing the SQL, then default to requiring full native access.")
+    (is (= {:perms/view-data      :unrestricted
+            :perms/create-queries :query-builder-and-native}
+           (query-perms/required-perms-for-query
+            {:database (mt/id)
+             :type     :query
+             :query    {:source-query {:native "SELECT * FROM non_existant_table"}}}
             :throw-exceptions? true)))))
 
 (deftest ^:parallel invalid-queries-test
