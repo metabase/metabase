@@ -279,7 +279,7 @@ describe("parameters/utils/targets", () => {
           const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual(
-            withColumnsStage(-1, [
+            withColumnsStage(0, [
               ...ordersColumns,
               ...productsColumns,
               ...peopleColumns,
@@ -293,13 +293,13 @@ describe("parameters/utils/targets", () => {
           const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual([
-            ...withColumnsStage(-2, ordersColumns),
-            withColumnStage(-2, [undefined, "User's 18th birthday"]),
-            ...withColumnsStage(-2, reviewsJoinProductsColumns),
-            ...withColumnsStage(-2, productsColumns),
-            ...withColumnsStage(-2, peopleColumns),
-            ...withColumnsStage(-2, productsColumns),
-            ...withColumnsStage(-1, [
+            ...withColumnsStage(0, ordersColumns),
+            withColumnStage(0, [undefined, "User's 18th birthday"]),
+            ...withColumnsStage(0, reviewsJoinProductsColumns),
+            ...withColumnsStage(0, productsColumns),
+            ...withColumnsStage(0, peopleColumns),
+            ...withColumnsStage(0, productsColumns),
+            ...withColumnsStage(1, [
               ["Orders", "Created At: Month"],
               ["Products", "Created At: Year"],
               ["Reviews", "Created At: Quarter"],
@@ -316,7 +316,13 @@ describe("parameters/utils/targets", () => {
           const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual([
-            ...withColumnsStage(-2, [
+            ...withColumnsStage(0, ordersColumns),
+            withColumnStage(0, [undefined, "User's 18th birthday"]),
+            ...withColumnsStage(0, reviewsJoinProductsColumns),
+            ...withColumnsStage(0, productsColumns),
+            ...withColumnsStage(0, peopleColumns),
+            ...withColumnsStage(0, productsColumns),
+            ...withColumnsStage(1, [
               ["Orders", "Created At: Month"],
               ["Products", "Created At: Year"],
               ["Reviews", "Created At: Quarter"],
@@ -324,8 +330,8 @@ describe("parameters/utils/targets", () => {
               [undefined, "Count"],
               [undefined, "Sum of Total"],
             ]),
-            withColumnStage(-2, [undefined, "Count + 1"]),
-            ...withColumnsStage(-2, [
+            withColumnStage(1, [undefined, "Count + 1"]),
+            ...withColumnsStage(1, [
               ["Reviews", "Reviews - Created At: Quarter → Body"],
               ["Reviews", "Reviews - Created At: Quarter → Created At"],
               ["Reviews", "Reviews - Created At: Quarter → ID"],
@@ -333,8 +339,8 @@ describe("parameters/utils/targets", () => {
               ["Reviews", "Reviews - Created At: Quarter → Rating"],
               ["Reviews", "Reviews - Created At: Quarter → Reviewer"],
             ]),
-            withColumnStage(-1, [undefined, "User's 18th birthday"]),
-            withColumnStage(-1, [undefined, "Count"]),
+            withColumnStage(2, [undefined, "User's 18th birthday"]),
+            withColumnStage(2, [undefined, "Count"]),
           ]);
         });
       });
@@ -349,7 +355,7 @@ describe("parameters/utils/targets", () => {
           const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual(
-            withColumnsStage(-1, [
+            withColumnsStage(0, [
               ["Question", "ID"],
               ["Question", "User ID"],
               ["Question", "Product ID"],
@@ -378,7 +384,7 @@ describe("parameters/utils/targets", () => {
           const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual([
-            ...withColumnsStage(-1, [
+            ...withColumnsStage(0, [
               ["Question", "Created At"],
               ["Question", "User's 18th birthday"],
               ["Question", "Reviews - Product → Created At"],
@@ -398,8 +404,8 @@ describe("parameters/utils/targets", () => {
           const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual([
-            withColumnStage(-1, ["Question", "User's 18th birthday"]),
-            withColumnStage(-1, ["Question", "Count"]),
+            withColumnStage(0, ["Question", "User's 18th birthday"]),
+            withColumnStage(0, ["Question", "Count"]),
           ]);
         });
       });
@@ -521,7 +527,7 @@ describe("parameters/utils/targets", () => {
           const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual(
-            withColumnsStage(-1, [
+            withColumnsStage(0, [
               ["Orders", "Created At"],
               ["Products", "Product → Created At"],
               ["People", "User → Birth Date"],
@@ -541,7 +547,7 @@ describe("parameters/utils/targets", () => {
           const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual(
-            withColumnsStage(-1, [
+            withColumnsStage(0, [
               ["Question", "Created At"],
               ["Products", "Product → Created At"],
               ["People", "User → Birth Date"],
