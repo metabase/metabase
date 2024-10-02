@@ -896,9 +896,9 @@
                                                  (log/debugf "*page-callback counting down: %d to go" pages)))]
             (mt/dataset test-data
               (is (thrown-with-msg?
-                    clojure.lang.ExceptionInfo
-                    #"Cannot get next page from BigQuery"
-                    (mt/process-query (mt/query orders)))))))))))
+                   clojure.lang.ExceptionInfo
+                   #"Cannot get next page from BigQuery"
+                   (mt/process-query (mt/query orders)))))))))))
 
 (deftest later-page-fetch-throws-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -942,10 +942,10 @@
                     bigquery/*page-callback* (fn [] (a/put! canceled-chan true))]
             (mt/dataset test-data
               (is (thrown-with-msg?
-                    Exception
-                    #"Query cancelled"
-                    (-> (mt/query orders {:query {:limit max-rows}})
-                        mt/process-query))))))))))
+                   Exception
+                   #"Query cancelled"
+                   (-> (mt/query orders {:query {:limit max-rows}})
+                       mt/process-query))))))))))
 
 (defn- synced-tables [db-attributes]
   (t2.with-temp/with-temp [Database db db-attributes]
