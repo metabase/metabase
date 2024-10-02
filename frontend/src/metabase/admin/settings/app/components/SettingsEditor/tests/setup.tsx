@@ -23,7 +23,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import SettingsEditor from "../SettingsEditor";
+import {SettingsEditor} from "../SettingsEditor";
 
 export const FULL_APP_EMBEDDING_URL =
   "/admin/settings/embedding-in-other-applications/full-app";

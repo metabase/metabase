@@ -1,7 +1,7 @@
 import { updateIn } from "icepick";
 import { t } from "ttag";
 
-import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
+import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors/selectors";
 import type { SettingElement } from "metabase/admin/settings/types";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";

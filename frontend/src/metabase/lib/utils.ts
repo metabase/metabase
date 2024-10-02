@@ -142,8 +142,8 @@ export function newVersionAvailable({
   currentVersion,
   latestVersion,
 }: {
-  currentVersion: string;
-  latestVersion: string;
+  currentVersion?: string;
+  latestVersion?: string;
 }) {
   const result = compareVersions(currentVersion, latestVersion);
   return result != null && result < 0;

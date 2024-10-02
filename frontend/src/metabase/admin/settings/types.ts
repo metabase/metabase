@@ -44,5 +44,10 @@ export type SettingElement = {
     settingsValues: Settings,
     handleChangeSetting: (key: string, value: string) => void,
   ) => void;
-  onBeforeChanged?: (oldValue: string, newValue: string) => void;
+  onBeforeChanged?: (
+    oldValue: string,
+    newValue: string,
+    settingsValues?: Settings,
+    handleChangeSetting?: (key: string, value: string) => void,
+  ) => void;
 };

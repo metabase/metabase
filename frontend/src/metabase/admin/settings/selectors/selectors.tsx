@@ -19,35 +19,44 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   trackCustomHomepageDashboardEnabled,
   trackTrackingPermissionChanged,
-} from "./analytics";
-import { CloudPanel } from "./components/CloudPanel";
-import { BccToggleWidget } from "./components/Email/BccToggleWidget";
-import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
-import SettingsLicense from "./components/SettingsLicense";
-import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
-import { UploadSettings } from "./components/UploadSettings";
-import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
+} from "../analytics";
+import { CloudPanel } from "../components/CloudPanel";
+import { BccToggleWidget } from "../components/Email/BccToggleWidget";
+import { SettingsEmailForm } from "../components/Email/SettingsEmailForm";
+import SettingsLicense from "../components/SettingsLicense";
+import SettingsUpdatesForm from "../components/SettingsUpdatesForm/SettingsUpdatesForm";
+import { UploadSettings } from "../components/UploadSettings";
+import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
 import {
   InteractiveEmbeddingOptionCard,
   StaticEmbeddingOptionCard,
-} from "./components/widgets/EmbeddingOption";
-import { EmbeddingSwitchWidget } from "./components/widgets/EmbeddingSwitchWidget";
-import FormattingWidget from "./components/widgets/FormattingWidget";
-import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
+} from "../components/widgets/EmbeddingOption";
+import { EmbeddingSwitchWidget } from "../components/widgets/EmbeddingSwitchWidget";
+import FormattingWidget from "../components/widgets/FormattingWidget";
+import HttpsOnlyWidget from "../components/widgets/HttpsOnlyWidget";
 import {
   EmbeddedResources,
   PublicLinksActionListing,
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
-} from "./components/widgets/PublicLinksListing";
-import RedirectWidget from "./components/widgets/RedirectWidget";
-import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
-import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
-import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
-import { NotificationSettings } from "./notifications/NotificationSettings";
-import { updateSetting } from "./settings";
-import SetupCheckList from "./setup/components/SetupCheckList";
-import SlackSettings from "./slack/containers/SlackSettings";
+} from "../components/widgets/PublicLinksListing";
+import RedirectWidget from "../components/widgets/RedirectWidget";
+import SecretKeyWidget from "../components/widgets/SecretKeyWidget";
+import SettingCommaDelimitedInput from "../components/widgets/SettingCommaDelimitedInput";
+import SiteUrlWidget from "../components/widgets/SiteUrlWidget";
+import { NotificationSettings } from "../notifications/NotificationSettings";
+import { updateSetting } from "../settings";
+import SetupCheckList from "../setup/components/SetupCheckList";
+import SlackSettings from "../slack/containers/SlackSettings";
+
+import { AdminSettingSectionKey, AdminSettingSection } from "./types";
+import { State } from "metabase-types/store";
+import {
+  SettingDefinition,
+  SettingKey,
+  Settings,
+  SettingValue,
+} from "metabase-types/api";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
@@ -71,7 +80,10 @@ function updateSectionsWithPlugins(sections) {
   }
 }
 
-export const ADMIN_SETTINGS_SECTIONS = {
+export const ADMIN_SETTINGS_SECTIONS: Record<
+  AdminSettingSectionKey,
+  AdminSettingSection
+> = {
   setup: {
     name: t`Setup`,
     order: 10,
@@ -334,7 +346,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         type: "select",
         options: _.sortBy(
           MetabaseSettings.get("available-locales") || [],
-          ([code, name]) => name,
+          ([_, name]) => name,
         ).map(([code, name]) => ({ name, value: code })),
         defaultValue: "en",
         onChanged: (oldLocale, newLocale) => {
@@ -600,7 +612,10 @@ export const getSectionsWithPlugins = _.once(() =>
 export const getSettings = createSelector(
   state => state.admin.settings.settings,
   state => state.admin.settings.warnings,
-  (settings, warnings) =>
+  (
+    settings: State["admin"]["settings"]["settings"],
+    warnings: State["admin"]["settings"]["warnings"],
+  ) =>
     settings.map(setting =>
       warnings[setting.key]
         ? { ...setting, warning: warnings[setting.key] }
@@ -611,46 +626,45 @@ export const getSettings = createSelector(
 // getSettings selector returns settings for admin setting page and values specified by
 // environment variables set to "null". Actual applied setting values are coming from
 // /api/session/properties API handler and getDerivedSettingValues returns them.
-export const getDerivedSettingValues = state => state.settings?.values ?? {};
+export const getDerivedSettingValues = (state: State) =>
+  state.settings?.values ?? {};
 
-export const getSettingValues = createSelector(getSettings, settings => {
-  const settingValues = {};
-  for (const setting of settings) {
-    settingValues[setting.key] = setting.value;
-  }
-  return settingValues;
-});
+export const getSettingValues = createSelector(
+  getSettings,
+  (settings: SettingDefinition[]) => {
+    const settingValues = {};
+    for (const setting of settings) {
+      settingValues[setting.key] = setting.value;
+    }
+    return settingValues;
+  },
+);
 
 export const getCurrentVersion = createSelector(
   getDerivedSettingValues,
-  settings => {
-    return settings.version?.tag;
-  },
+  settings => settings.version?.tag,
 );
 
 export const getLatestVersion = createSelector(
   getDerivedSettingValues,
-  settings => {
-    return settings["version-info"]?.latest?.version;
-  },
+  settings => settings["version-info"]?.latest?.version,
 );
 
 export const getNewVersionAvailable = createSelector(
   getCurrentVersion,
   getLatestVersion,
-  (currentVersion, latestVersion) => {
-    return newVersionAvailable({
+  (currentVersion, latestVersion) =>
+    newVersionAvailable({
       currentVersion,
       latestVersion,
-    });
-  },
+    }),
 );
 
 export const getSections = createSelector(
   getSettings,
   getDerivedSettingValues,
   getUserIsAdmin,
-  (settings, derivedSettingValues, isAdmin) => {
+  (settings: Settings, derivedSettingValues: Settings, isAdmin: boolean) => {
     if (!settings || _.isEmpty(settings)) {
       return {};
     }
@@ -686,19 +700,5 @@ export const getSections = createSelector(
       sectionsWithAPISettings[slug] = { ...section, settings };
     }
     return sectionsWithAPISettings;
-  },
-);
-
-export const getActiveSectionName = (state, props) => props.params.splat;
-
-export const getActiveSection = createSelector(
-  getActiveSectionName,
-  getSections,
-  (section = "setup", sections) => {
-    if (sections) {
-      return sections[section];
-    } else {
-      return null;
-    }
   },
 );

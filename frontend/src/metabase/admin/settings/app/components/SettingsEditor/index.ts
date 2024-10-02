@@ -1,1 +1,1 @@
-export { default as SettingsEditor } from "./SettingsEditor";
+export { SettingsEditor } from "./SettingsEditor";

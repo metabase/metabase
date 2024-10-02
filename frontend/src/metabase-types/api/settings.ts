@@ -283,6 +283,7 @@ interface PublicSettings {
   "application-name": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "available-timezones": string[];
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-homepage": boolean;
