@@ -145,9 +145,10 @@ export function SelectEmbedTypePane({
             externalLink
           >
             <List>
-              <List.Item>{t`Embed individual React components`}</List.Item>
-              <List.Item>{t`Seamlessly blend each component in your app with CSS styling.`}</List.Item>
-              <List.Item>{t`Manage access and interactivity per component and user groups.`}</List.Item>
+              {/* eslint-disable-next-line no-literal-metabase-strings -- visible only to admin */}
+              <List.Item>{t`Embed Metabase components with React (like standalone charts, dashboards, the Query Builder, and more)`}</List.Item>
+              <List.Item>{t`Manage access and interactivity per component`}</List.Item>
+              <List.Item>{t`Advanced customization options for seamless styling`}</List.Item>
             </List>
           </SharingPaneButton>
         </a>
