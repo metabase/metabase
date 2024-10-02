@@ -3983,7 +3983,8 @@
                    :model/DashboardCard _ {:dashboard_id source-dash-id :card_id card-id}]
       (is (=? {:collection_id dest-coll-id
                :dashboard_id dest-dash-id}
-              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dest-dash-id})))
+              (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dest-dash-id
+                                                                           :delete_old_dashcards true})))
       (testing "old dashcards are deleted, a new one is created"
         (is (=? #{dest-dash-id}
                 (set (map :dashboard_id (t2/select :model/DashboardCard :card_id card-id))))))))
