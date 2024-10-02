@@ -200,9 +200,11 @@
 (mu/defn some-embedding-enabled? :- :boolean
   "Is any kind of embedding setup?"
   []
-  (or (enable-embedding-static)
-      (enable-embedding-interactive)
-      (enable-embedding-sdk)))
+  (or
+   #_:clj-kondo/ignore (enable-embedding)
+   (enable-embedding-static)
+   (enable-embedding-interactive)
+   (enable-embedding-sdk)))
 
 ;; settings for the embedding homepage
 (defsetting embedding-homepage

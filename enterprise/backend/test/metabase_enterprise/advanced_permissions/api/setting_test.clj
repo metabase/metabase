@@ -162,7 +162,7 @@
 (deftest dashboard-api-test
   (testing "/api/dashboard"
     (mt/with-temporary-setting-values [enable-public-sharing true
-                                       enable-embedding      true]
+                                       enable-embedding-static true]
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]
@@ -207,7 +207,7 @@
 (deftest action-api-test
   (testing "/api/action"
     (mt/with-temporary-setting-values [enable-public-sharing true
-                                       enable-embedding      true]
+                                       enable-embedding true]
       (mt/with-actions-enabled
         (mt/with-user-in-groups
           [group {:name "New Group"}
@@ -241,7 +241,7 @@
 (deftest card-api-test
   (testing "/api/card"
     (mt/with-temporary-setting-values [enable-public-sharing true
-                                       enable-embedding-interactive true]
+                                       enable-embedding-static true]
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]
@@ -250,7 +250,7 @@
                     (mt/user-http-request user :get status "card/public")))
 
                 (get-embeddable-cards [user status]
-                  (testing (format "get embeddable dashboards with %s user" (mt/user-descriptor user))
+                  (testing (format "get embeddable cards with %s user" (mt/user-descriptor user))
                     (t2.with-temp/with-temp [Card _ {:enable_embedding true}]
                       (mt/user-http-request user :get status "card/embeddable"))))
 
