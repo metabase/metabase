@@ -20,6 +20,14 @@ To create a progress bar you'll need:
 
 - A query that returns a single number, like "Sum of order quantity". Progress bar doesn't work with breakouts.
 
+  You can also use a query that returns several metrics in a single row:
+
+  | Sum of Quantity | Average Quantity | Max Quantity |
+  | --------------- | ---------------- | ------------ |
+  | 4910            | 17.32            | 173          |
+
+  In this case only the metric in the first column will be used for the progress bar chart. To change which number is used for the bar, rearrange the metrics (for example, by dragging them in the Summarize block in the query builder).
+
 - A goal value. The goal value should be a positive number. Currently, Metabase only supports setting a static goal (you can't set a goal based on another query).
 
   The goal is set in the [chart options](#progress-bar-options).
