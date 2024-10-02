@@ -591,9 +591,33 @@
       (dissoc :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
+(defn- annotate-dashboards
+  "Populates 'here' and 'below' on dashboard"
+  [dashboards]
+  (let [dashboard-ids (into #{} (map :id dashboards))
+        dashboards-containing-cards (->> (when (seq dashboard-ids)
+                                           (t2/query {:select-distinct [:dashboard_id]
+                                                      :from :report_card
+                                                      :where [:and
+                                                              [:= :archived false]
+                                                              [:in :dashboard_id dashboard-ids]
+                                                              [:exists {:select 1
+                                                                        :from :report_dashboardcard
+                                                                        :where [:and
+                                                                                [:= :report_dashboardcard.card_id :report_card.id]
+                                                                                [:= :report_dashboardcard.dashboard_id :report_card.dashboard_id]]}]]}))
+                                         (map :dashboard_id)
+                                         (into #{}))]
+    (for [dashboard dashboards]
+      (cond-> dashboard
+        (contains? dashboards-containing-cards (:id dashboard))
+        (assoc :here #{:card})))))
+
 (defmethod post-process-collection-children :dashboard
   [_ _options parent-collection rows]
-  (map (partial post-process-dashboard parent-collection) rows))
+  (->> rows
+       (annotate-dashboards)
+       (map (partial post-process-dashboard parent-collection))))
 
 (defenterprise snippets-collection-filter-clause
   "Clause to filter out snippet collections from the collection query on OSS instances, and instances without the
