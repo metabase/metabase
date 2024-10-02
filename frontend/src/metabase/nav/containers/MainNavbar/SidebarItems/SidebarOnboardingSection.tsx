@@ -1,18 +1,20 @@
 import cx from "classnames";
-import { useState } from "react";
+import { type ChangeEvent, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { UploadInfoModal } from "metabase/collections/components/CollectionHeader/CollectionUploadInfoModal";
+import { UploadInput } from "metabase/components/upload";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import type { CollectionTreeItem } from "metabase/entities/collections/utils";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import {
   MAX_UPLOAD_STRING,
   UPLOAD_DATA_FILE_TYPES,
+  uploadFile,
 } from "metabase/redux/uploads";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -26,6 +28,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { UploadMode } from "metabase-types/store/upload";
 
 import { PaddedSidebarLink } from "../MainNavbar.styled";
 
@@ -45,11 +48,37 @@ export function SidebarOnboardingSection({
   const [showInfoModal, setShowInfoModal] = useState(false);
   const applicationName = useSelector(getApplicationName);
 
-  const isUploadEnabled = useSelector(
+  const uploadDbId = useSelector(
     state => getSetting(state, "uploads-settings")?.db_id,
   );
+  const isUploadEnabled = !!uploadDbId;
+
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const rootCollection = collections.find(
     ({ id, can_write }) => (id === null || id === "root") && can_write,
+  );
+
+  const dispatch = useDispatch();
+  const handleFileUpload = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+
+      if (file !== undefined) {
+        dispatch(
+          uploadFile({
+            file,
+            collectionId: "root",
+            uploadMode: UploadMode.create,
+          }),
+        );
+
+        // reset the input so that the same file can be uploaded again
+        if (uploadInputRef.current) {
+          uploadInputRef.current.value = "";
+        }
+      }
+    },
+    [dispatch],
   );
 
   return (
@@ -98,16 +127,26 @@ export function SidebarOnboardingSection({
                 />
               </Link>
             )}
-            {rootCollection && !isUploadEnabled && (
-              <SidebarOnboardingMenuItem
-                icon="table2"
-                title={t`Upload a spreadsheet`}
-                subtitle={t`${UPLOAD_DATA_FILE_TYPES.join(
-                  ", ",
-                )} (${MAX_UPLOAD_STRING} MB max)`}
-                onClick={() => setShowInfoModal(true)}
-              />
-            )}
+            {rootCollection &&
+              (!isUploadEnabled ? (
+                <SidebarOnboardingMenuItem
+                  icon="table2"
+                  title={t`Upload a spreadsheet`}
+                  subtitle={t`${UPLOAD_DATA_FILE_TYPES.join(
+                    ", ",
+                  )} (${MAX_UPLOAD_STRING} MB max)`}
+                  onClick={() => setShowInfoModal(true)}
+                />
+              ) : (
+                <SidebarOnboardingMenuItem
+                  icon="table2"
+                  title={t`Upload a spreadsheet`}
+                  subtitle={t`${UPLOAD_DATA_FILE_TYPES.join(
+                    ", ",
+                  )} (${MAX_UPLOAD_STRING} MB max)`}
+                  onClick={() => uploadInputRef.current?.click()}
+                />
+              ))}
           </Menu.Dropdown>
         </Menu>
       </Box>
@@ -117,6 +156,11 @@ export function SidebarOnboardingSection({
           onClose={() => setShowInfoModal(false)}
         />
       )}
+      <UploadInput
+        id="onboarding-upload-input"
+        ref={uploadInputRef}
+        onChange={handleFileUpload}
+      />
     </Box>
   );
 }
