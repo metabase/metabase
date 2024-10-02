@@ -19,6 +19,7 @@ import {
   commandPalette,
   commandPaletteButton,
   createDashboardWithTabs,
+  createQuestionAndDashboard,
   dashboardHeader,
   describeEE,
   describeWithSnowplow,
@@ -401,6 +402,51 @@ describe("scenarios > dashboard", () => {
         getDashboardCardMenu().click();
         popover().findByText("Edit question").should("be.visible").click();
         cy.findByRole("button", { name: "Visualize" }).should("be.visible");
+      });
+
+      it("should allow navigating to the model editor directly from a dashboard card", () => {
+        createQuestionAndDashboard({
+          questionDetails: {
+            name: "Orders model",
+            type: "model",
+            query: {
+              "source-table": ORDERS_ID,
+            },
+          },
+          dashboardDetails: {
+            name: "Dashboard",
+          },
+        }).then(({ body: { dashboard_id, ...rest } }) => {
+          visitDashboard(dashboard_id);
+        });
+
+        showDashboardCardActions();
+        getDashboardCardMenu().click();
+        popover().findByText("Edit model").should("be.visible").click();
+        cy.location("pathname").should("match", /\/model\/.*\/query/);
+      });
+
+      it("should allow navigating to the metric editor directly from a dashboard card", () => {
+        createQuestionAndDashboard({
+          questionDetails: {
+            name: "Count of orders metric",
+            type: "metric",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+            },
+          },
+          dashboardDetails: {
+            name: "Dashboard",
+          },
+        }).then(({ body: { dashboard_id } }) => {
+          visitDashboard(dashboard_id);
+        });
+
+        showDashboardCardActions();
+        getDashboardCardMenu().click();
+        popover().findByText("Edit metric").should("be.visible").click();
+        cy.location("pathname").should("match", /\/metric\/.*\/query/);
       });
     });
 
