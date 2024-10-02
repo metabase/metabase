@@ -16,16 +16,21 @@
 
 (def ^:private EmailMessage
   [:map
-   [:subject      :string]
-   [:recipients   [:sequential ms/Email]]
-   [:message-type [:enum :attachments :html :text]]
-   [:message      :any]])
+   [:subject                         :string]
+   [:recipients                      [:sequential ms/Email]]
+   [:message-type                    [:enum :attachments :html :text]]
+   [:message                         :any]
+   [:recipient-type {:optional true} [:maybe (ms/enum-keywords-and-strings :cc :bcc)]]])
 
-(defn- construct-email [subject recipients message]
-  {:subject      subject
-   :recipients   recipients
-   :message-type :attachments
-   :message      message})
+(defn- construct-email
+  ([subject recipients message]
+   (construct-email subject recipients message nil))
+  ([subject recipients message recipient-type]
+   {:subject        subject
+    :recipients     recipients
+    :message-type   :attachments
+    :message        message
+    :recipient-type recipient-type}))
 
 (defn- recipients->emails
   [recipients]
@@ -52,12 +57,14 @@
     nil))
 
 (mu/defmethod channel/send! :channel/email
-  [_channel {:keys [subject recipients message-type message]} :- EmailMessage]
+  [_channel {:keys [subject recipients message-type message recipient-type]} :- EmailMessage]
   (email/send-message-or-throw! {:subject      subject
                                  :recipients   recipients
                                  :message-type message-type
                                  :message      message
-                                 :bcc?         (email/bcc-enabled?)}))
+                                 :bcc?         (if recipient-type
+                                                 (= :bcc recipient-type)
+                                                 (email/bcc-enabled?))}))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
   [_channel-type {:keys [card pulse payload pulse-channel]} _template recipients]
@@ -148,4 +155,5 @@
     [(construct-email (channel.params/substitute-params (-> template :details :subject) payload)
                       (notification-recipients->emails recipients payload)
                       [{:type    "text/html; charset=utf-8"
-                        :content (render-body template payload)}])]))
+                        :content (render-body template payload)}]
+                      (-> template :details :recipient-type keyword))]))

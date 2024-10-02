@@ -7,6 +7,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -77,8 +78,9 @@
 (def ^:private ChannelTemplateEmailDetails
   [:merge
    [:map
-    [:type    (into [:enum] (concat channel-template-details-type (map u/qualified-name channel-template-details-type)))]
-    [:subject string?]]
+    [:type                            (apply ms/enum-keywords-and-strings channel-template-details-type)]
+    [:subject                         string?]
+    [:recipient-type {:optional true} (ms/enum-keywords-and-strings :cc :bcc)]]
    [:multi {:dispatch (comp keyword :type)}
     [:email/resource
      [:map

@@ -1570,9 +1570,10 @@
   (let [template-id (t2/insert-returning-pk! :channel_template
                                              {:name         "User joined Email template"
                                               :channel_type "channel/email"
-                                              :details      (json/generate-string {:type    "email/resource"
-                                                                                   :subject "{{context.extra.user-invited-email-subject}}"
-                                                                                   :path    "metabase/email/new_user_invite"})
+                                              :details      (json/generate-string {:type           "email/resource"
+                                                                                   :subject        "{{context.extra.user-invited-email-subject}}"
+                                                                                   :path           "metabase/email/new_user_invite"
+                                                                                   :recipient-type :cc})
                                               :created_at   :%now
                                               :updated_at   :%now})
         noti-id (t2/insert-returning-pk! :notification
