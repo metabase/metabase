@@ -59,7 +59,6 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
-  name: "Default",
   args: {
     children: "Back",
   },
