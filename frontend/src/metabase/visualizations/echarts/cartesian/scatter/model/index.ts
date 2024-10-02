@@ -104,6 +104,7 @@ export function getScatterPlotModel(
     [],
     xAxisModel,
     seriesModels,
+    [],
     yAxisScaleTransforms,
     settings,
     showWarning,

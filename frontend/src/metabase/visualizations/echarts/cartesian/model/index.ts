@@ -1,3 +1,6 @@
+import { t } from "ttag";
+
+import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   getXAxisModel,
   getYAxesModels,
@@ -28,6 +31,7 @@ import type { RawSeries, SingleSeries } from "metabase-types/api";
 
 import type { ShowWarning } from "../../types";
 
+import { groupSeriesIntoOther } from "./other-series";
 import { getStackModels } from "./stack";
 import { getAxisTransforms } from "./transforms";
 import { getTrendLines } from "./trend-line";
@@ -111,6 +115,28 @@ export const getCartesianChartModel = (
   );
   const scaledDataset = scaleDataset(dataset, seriesModels, settings);
 
+  const { ungroupedSeriesModels, groupedSeriesModels } = groupSeriesIntoOther(
+    dataset,
+    seriesModels,
+    settings,
+  );
+
+  const [sampleGroupedModel] = groupedSeriesModels;
+  const otherSeriesModel = sampleGroupedModel
+    ? {
+        name: t`Other`,
+        dataKey: OTHER_DATA_KEY,
+        color: renderingContext.getColor("text-light"),
+        visible: !hiddenSeries.includes(OTHER_DATA_KEY),
+        column: sampleGroupedModel.column,
+        columnIndex: sampleGroupedModel.columnIndex,
+      }
+    : undefined;
+
+  const groupedSeriesKeys = groupedSeriesModels.map(
+    seriesModel => seriesModel.dataKey,
+  );
+
   const xAxisModel = getXAxisModel(
     dimensionModel,
     rawSeries,
@@ -129,7 +155,8 @@ export const getCartesianChartModel = (
     scaledDataset,
     stackModels,
     xAxisModel,
-    seriesModels,
+    ungroupedSeriesModels,
+    groupedSeriesKeys,
     yAxisScaleTransforms,
     settings,
     showWarning,
@@ -158,7 +185,7 @@ export const getCartesianChartModel = (
   );
 
   const { leftAxisModel, rightAxisModel } = getYAxesModels(
-    seriesModels,
+    ungroupedSeriesModels,
     dataset,
     transformedDataset,
     settings,
@@ -173,7 +200,7 @@ export const getCartesianChartModel = (
     rawSeries,
     [leftAxisModel, rightAxisModel],
     yAxisScaleTransforms,
-    seriesModels,
+    ungroupedSeriesModels,
     transformedDataset,
     settings,
     stackModels,
@@ -184,7 +211,7 @@ export const getCartesianChartModel = (
     stackModels,
     dataset: scaledDataset,
     transformedDataset,
-    seriesModels,
+    seriesModels: ungroupedSeriesModels,
     yAxisScaleTransforms,
     columnByDataKey,
     dimensionModel,
@@ -195,5 +222,7 @@ export const getCartesianChartModel = (
     seriesLabelsFormatters,
     stackedLabelsFormatters,
     dataDensity,
+    otherSeriesModel,
+    groupedSeriesModels,
   };
 };
