@@ -222,7 +222,10 @@ export function MainNavbarView({
           )}
         </div>
         <WhatsNewNotification />
-        <SidebarOnboardingSection hasOwnDatabase={hasOwnDatabase} />
+        <SidebarOnboardingSection
+          hasOwnDatabase={hasOwnDatabase}
+          isAdmin={isAdmin}
+        />
       </SidebarContentRoot>
     </ErrorBoundary>
   );

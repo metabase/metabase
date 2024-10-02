@@ -23,10 +23,12 @@ import { PaddedSidebarLink } from "../MainNavbar.styled";
 
 type SidebarOnboardingProps = {
   hasOwnDatabase: boolean;
+  isAdmin: boolean;
 };
 
 export function SidebarOnboardingSection({
   hasOwnDatabase,
+  isAdmin,
 }: SidebarOnboardingProps) {
   const initialState = !hasOwnDatabase;
   const applicationName = useSelector(getApplicationName);
@@ -48,41 +50,42 @@ export function SidebarOnboardingSection({
           </PaddedSidebarLink>
         </ExternalLink>
       </Box>
-      <Box px="xl" pb="md" className={cx({ [CS.borderTop]: initialState })}>
-        {initialState && (
-          <Text
-            fz="sm"
-            my="md"
-            lh="1.333"
-          >{t`Start by adding your data. Connect to a database or upload a CSV file.`}</Text>
-        )}
+      {isAdmin && (
+        <Box px="xl" pb="md" className={cx({ [CS.borderTop]: initialState })}>
+          {initialState && (
+            <Text
+              fz="sm"
+              my="md"
+              lh="1.333"
+            >{t`Start by adding your data. Connect to a database or upload a CSV file.`}</Text>
+          )}
 
-        <Menu position="right-end" shadow="md">
-          <Menu.Target>
-            <Button
-              leftIcon={<Icon name="add_data" />}
-              fullWidth
-              // compact
-            >{t`Add data`}</Button>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Link to="/admin/databases/create">
-              <SidebarOnboardingMenuItem
-                icon="database"
-                title={t`Add a database`}
-                subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
-              />
-            </Link>
-            <Link to="/admin/settings/uploads">
-              <SidebarOnboardingMenuItem
-                icon="table2"
-                title={t`Upload a spreadsheet`}
-                subtitle={t`.csv, .tsv (50 MB max)`}
-              />
-            </Link>
-          </Menu.Dropdown>
-        </Menu>
-      </Box>
+          <Menu position="right-end" shadow="md">
+            <Menu.Target>
+              <Button
+                leftIcon={<Icon name="add_data" />}
+                fullWidth
+              >{t`Add data`}</Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Link to="/admin/databases/create">
+                <SidebarOnboardingMenuItem
+                  icon="database"
+                  title={t`Add a database`}
+                  subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
+                />
+              </Link>
+              <Link to="/admin/settings/uploads">
+                <SidebarOnboardingMenuItem
+                  icon="table2"
+                  title={t`Upload a spreadsheet`}
+                  subtitle={t`.csv, .tsv (50 MB max)`}
+                />
+              </Link>
+            </Menu.Dropdown>
+          </Menu>
+        </Box>
+      )}
     </Box>
   );
 }
