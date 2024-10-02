@@ -10,6 +10,11 @@
              sql/*quoted*  true]
      ~@body))
 
+(defn quote-table
+  "Protect against a table being interpreted as a function call."
+  [table-name]
+  (keyword (str "'" (sql/format-entity table-name))))
+
 (defn quote-identifier
   "Quote an identifier, in case it looks like a function call."
   [ref]

@@ -9,7 +9,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.metadata :as sql-jdbc.metadata]
-   [metabase.driver.sql-jdbc.quoting :refer [with-quoting quote-columns quote-identifier]]
+   [metabase.driver.sql-jdbc.quoting :refer [with-quoting quote-columns quote-identifier quote-table]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
@@ -130,7 +130,7 @@
 (defn- create-table!-sql
   [driver table-name column-definitions & {:keys [primary-key]}]
   (with-quoting driver
-    (first (sql/format {:create-table (keyword table-name)
+    (first (sql/format {:create-table (quote-table table-name)
                         :with-columns (cond-> (mapv (fn [[col-name type-spec]]
                                                       (vec (cons (quote-identifier col-name)
                                                                  (if (string? type-spec)
@@ -189,7 +189,7 @@
   (mu/validate-throw [:maybe [:cat :keyword]] primary-key) ; we only support adding a single primary key column for now
   (with-quoting driver
     (let [primary-key-column (first primary-key)
-          sql                (first (sql/format {:alter-table (keyword table-name)
+          sql                (first (sql/format {:alter-table (quote-table table-name)
                                                  :add-column  (map (fn [[column-name type-and-constraints]]
                                                                      (cond-> (vec (cons (quote-identifier column-name)
                                                                                         (if (string? type-and-constraints)
