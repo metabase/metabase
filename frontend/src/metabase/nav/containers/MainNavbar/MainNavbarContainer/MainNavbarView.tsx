@@ -314,6 +314,7 @@ function SidebarOnboardingSection({
       bottom={0}
       pos="fixed"
       w={isSidebarOpen ? NAV_SIDEBAR_WIDTH : 0}
+      h={isSidebarOpen ? "auto" : 0}
       bg="bg-white"
       className={cx({ [CS.borderTop]: !initialState })}
     >
