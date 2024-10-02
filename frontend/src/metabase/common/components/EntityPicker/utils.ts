@@ -79,7 +79,7 @@ export const computeInitialTabId = <
     return initialValueTab.id;
   }
 
-  return tabs[0].id;
+  return tabs[0]?.id;
 };
 
 const emptySearchResultTranslationContext = c(

@@ -384,9 +384,9 @@ export function EntityPickerModal<
               />
             ) : (
               <SinglePickerView data-testid="single-picker-view">
-                {tabs[0].render({
+                {tabs[0]?.render({
                   onItemSelect: item => handleSelectItem(item, tabs[0].id),
-                })}
+                }) ?? null}
               </SinglePickerView>
             )}
             {!!hydratedOptions.hasConfirmButtons && onConfirm && (
