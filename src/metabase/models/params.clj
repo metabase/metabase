@@ -220,8 +220,8 @@
           dataset-query (:dataset_query card)]
       (if-not (and (not-empty dataset-query) (pos-int? database-id))
         ctx
-        (update ctx :card-id->filterable-columns assoc (:id card)
-                (filterable-columns-for-query database-id dataset-query))))))
+        (assoc-in ctx [:card-id->filterable-columns (:id card)]
+                  (filterable-columns-for-query database-id dataset-query))))))
 
 (defn- field-id-from-dashcards-filterable-columns
   "Update the `ctx` with `field-id`. This function is supposed to be used on params where target is a name field, in
