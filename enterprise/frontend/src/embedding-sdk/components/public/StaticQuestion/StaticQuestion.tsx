@@ -7,6 +7,7 @@ import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { SdkAttribution } from "embedding-sdk/components/private/SdkAttribution";
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import { loadStaticQuestion } from "embedding-sdk/lib/load-static-question";
 import CS from "metabase/css/core/index.css";
@@ -189,6 +190,8 @@ const StaticQuestionInner = ({
           mode={PublicMode}
         />
       </Group>
+
+      <SdkAttribution />
     </Box>
   );
 };

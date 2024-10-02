@@ -5,6 +5,7 @@ import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { SdkAttribution } from "embedding-sdk/components/private/SdkAttribution";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -75,6 +76,8 @@ export const StaticDashboardInner = ({
         onNightModeChange={_.noop}
         hasNightModeToggle={false}
       />
+
+      <SdkAttribution />
     </Box>
   );
 };

@@ -7,6 +7,7 @@ import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { SdkAttribution } from "embedding-sdk/components/private/SdkAttribution";
 import { useCommonDashboardParams } from "embedding-sdk/components/public/InteractiveDashboard/use-common-dashboard-params";
 import {
   type SdkDashboardDisplayProps,
@@ -111,6 +112,8 @@ const InteractiveDashboardInner = ({
           />
         </InteractiveDashboardProvider>
       )}
+
+      <SdkAttribution />
     </Box>
   );
 };

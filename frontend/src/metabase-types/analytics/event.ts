@@ -23,4 +23,13 @@ export type NewsletterToggleClickedEvent = ValidateEvent<{
   event_detail: "opted-in" | "opted-out";
 }>;
 
-export type SimpleEvent = CsvUploadClickedEvent | NewsletterToggleClickedEvent;
+export type EmbeddingSdkElementLoaded = ValidateEvent<{
+  event: "embedding-sdk-element-loaded";
+  triggered_from: "embedding-sdk";
+  event_detail: string;
+}>;
+
+export type SimpleEvent =
+  | CsvUploadClickedEvent
+  | NewsletterToggleClickedEvent
+  | EmbeddingSdkElementLoaded;
