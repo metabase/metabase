@@ -33,7 +33,7 @@ To build a gauge chart, you'll need:
 
 - One or more ranges for the metric, for example "Low", "Medium", "High". Currently, Metabase only supports defining static ranges (you can't set range boundaries based on another query).
 
-You can set the ranges, their colors, and optional labels in [chart settings](#gauge-chart-options).
+You can set the ranges, their colors, and optional labels in [chart settings](#gauge-chart-settings).
 
 ![Gauge chart](../../images/gauge-labeled.png)
 
