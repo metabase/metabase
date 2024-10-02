@@ -32,6 +32,7 @@ import {
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
+import * as Lib from "metabase-lib";
 import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass } from "metabase-lib/utils";
@@ -689,16 +690,22 @@ class TableInteractive extends Component {
       getColumnTitle,
       getColumnSortDirection,
       renderTableHeaderWrapper,
+      question,
+      mode,
     } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { cols } = data;
     const column = cols[columnIndex];
 
+    const query = question?.query();
+
     const columnTitle = getColumnTitle(columnIndex);
     const clicked = this.getHeaderClickedObject(data, columnIndex, isPivoted);
     const isDraggable = !isPivoted;
     const isDragging = dragColIndex === columnIndex;
-    const isClickable = this.visualizationIsClickable(clicked);
+    const isClickable = Boolean(
+      mode?.hasDrills && query && Lib.queryDisplayInfo(query).isEditable,
+    );
     const isSortable = isClickable && column.source && !isPivoted;
     const isRightAligned = isColumnRightAligned(column);
 

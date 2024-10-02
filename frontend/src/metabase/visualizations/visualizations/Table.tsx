@@ -434,6 +434,7 @@ class Table extends Component<TableProps, TableState> {
       <TableComponent
         {...this.props}
         data={data}
+        question={this.state.question}
         isPivoted={isPivoted}
         getColumnTitle={this.getColumnTitle}
         getColumnSortDirection={this.getColumnSortDirection}
