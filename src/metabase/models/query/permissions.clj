@@ -60,8 +60,7 @@
 ;;           {:perms/view-data {table-id :unrestricted}}  source-card-read-perms
 ;;
 
-(mu/defn query->native-table-ids :- [:set [:or [:= ::native]
-                                           ::lib.schema.id/table]]
+(mu/defn query->native-table-ids :- [:set [:or [:= ::native] ::lib.schema.id/table]]
   "Returns a sequence of all Table IDs referenced by any native query strings in `query`, based on the output of the
   Native Query Analyzer. Returns the placeholder value ::native if the query can't be parsed, or the parser doesn't
   detect any tables, to indicate that full native access to the database should be required."
@@ -98,7 +97,7 @@
        (:source-table m)
        (query->mbql-table-ids (dissoc m :source-table)))))))
 
-(mu/defn query->source-table-ids :- [:set [:or ::native ::lib.schema.id/table]]
+(mu/defn query->source-table-ids :- [:set [:or [:= ::native] ::lib.schema.id/table]]
   "Returns a sequence of all Table IDs referenced by `query`, including both MBQL and native references. Returns the
    placeholder value ::native if a native query can't be parsed, or the parser doesn't detect any tables, to indicate
    that full native access to the database should be required."
