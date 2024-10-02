@@ -13,6 +13,7 @@
    [metabase.events :as events]
    [metabase.http-client :as client]
    [metabase.models :refer [Database User]]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
    [metabase.public-settings :as public-settings]
@@ -126,9 +127,11 @@
                             :details  {:invite_method          "email"
                                        :first_name             first-name
                                        :last_name              last-name
-                                       :email                  email
-                                       :user_group_memberships [{:id 1} {:id 2}]}}
-                           logged-event)))))))))))))
+                                       :email                  email}}
+                           logged-event))))
+                  (testing "created user is admin"
+                    (is (= (set (map :id [(perms-group/all-users) (perms-group/admin)]))
+                           (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id invited-user))))))))))))))
 
 (deftest invite-user-test-2
   (testing "POST /api/setup"
@@ -427,34 +430,34 @@
           (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
             (is (= ["Get connected" "Curate your data"]
                    (map :name checklist)))))))
-    (testing "setup-embedding"
-      (testing "should be done when a dashboard as been published"
-        (with-redefs [api.setup/state-for-checklist
-                      (constantly
-                       (update default-checklist-state
-                               :exists #(merge %  {:embedded-resource true})))]
-          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
-            (is (partial= {:completed true} (get-embedding-step checklist))))))
-      (testing "should be done when sso and embed-app-origin has been configured"
-        (with-redefs [api.setup/state-for-checklist
-                      (constantly
-                       (-> default-checklist-state
-                           (assoc-in [:configured :sso] true)
-                           (assoc-in [:embedding :app-origin] true)))]
-          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
-            (is (partial= {:completed true}
-                          (get-embedding-step checklist))))))
-      (testing "should be done when dismissed-done"
-        (with-redefs [api.setup/state-for-checklist
-                      (constantly
-                       (-> default-checklist-state
-                           (assoc-in [:embedding :done?] true)))]
-          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
-            (is (partial= {:completed true} (get-embedding-step checklist)))))))
+   (testing "setup-embedding"
+     (testing "should be done when a dashboard as been published"
+       (with-redefs [api.setup/state-for-checklist
+                     (constantly
+                      (update default-checklist-state
+                              :exists #(merge %  {:embedded-resource true})))]
+         (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+           (is (partial= {:completed true} (get-embedding-step checklist))))))
+     (testing "should be done when sso and embed-app-origin has been configured"
+       (with-redefs [api.setup/state-for-checklist
+                     (constantly
+                      (-> default-checklist-state
+                          (assoc-in [:configured :sso] true)
+                          (assoc-in [:embedding :app-origin] true)))]
+         (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+           (is (partial= {:completed true}
+                         (get-embedding-step checklist))))))
+     (testing "should be done when dismissed-done"
+       (with-redefs [api.setup/state-for-checklist
+                     (constantly
+                      (-> default-checklist-state
+                          (assoc-in [:embedding :done?] true)))]
+         (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+           (is (partial= {:completed true} (get-embedding-step checklist)))))))
 
-    (testing "require superusers"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "setup/admin_checklist"))))))
+   (testing "require superusers"
+     (is (= "You don't have permissions to do that."
+            (mt/user-http-request :rasta :get 403 "setup/admin_checklist"))))))
 
 (deftest internal-content-setup-test
   (testing "Internally created state like Metabase Analytics shouldn't affect the checklist"

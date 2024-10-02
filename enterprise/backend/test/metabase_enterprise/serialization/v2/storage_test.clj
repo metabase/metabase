@@ -17,12 +17,25 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- exclude-existing-files
+  "Exclude files that already exist in the dump directory, as they are not part of the testing context."
+  [files]
+  (let [matchers     [(fn [file]
+                        ;; added in the v52.2024-10-01T08:00:01 migration
+                        (and (= "channeltemplates" (first file))
+                             (str/ends-with? (last file) "user_joined_email_template.yaml")))]
+        exclude-pred (fn [file]
+                       (some #(% file) matchers))]
+    (remove exclude-pred files)))
+
 (defn- file-set [^java.io.File dir]
   (let [base (.toPath dir)]
-    (set (for [^java.io.File file (file-seq dir)
-               :when              (.isFile file)
-               :let               [rel (.relativize base (.toPath file))]]
-           (mapv str rel)))))
+    (-> (for [^java.io.File file (file-seq dir)
+              :when              (.isFile file)
+              :let               [rel (.relativize base (.toPath file))]]
+          (mapv str rel))
+        exclude-existing-files
+        set)))
 
 (deftest basic-dump-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -175,10 +188,10 @@
                                  (is (= (not-empty (sort ks))
                                         (not-empty ks)))
                                  (do
-                                   ;; check every present key is sorted in a monotone increasing order
-                                   (is (< idx (get order k)))
-                                   (recur (rest ks)
-                                          (long new-idx)))))))
+                                  ;; check every present key is sorted in a monotone increasing order
+                                  (is (< idx (get order k)))
+                                  (recur (rest ks)
+                                         (long new-idx)))))))
               descend    (fn descend
                            ([coll]
                             (let [model (-> (:serdes/meta coll) last :model)]
@@ -192,9 +205,9 @@
                                 (check-sort coll order))
                               (doseq [[k v] coll]
                                 (cond
-                                  (map? v)               (descend v (conj path k))
-                                  (and (sequential? v)
-                                       (map? (first v))) (run! #(descend % (conj path k)) v))))))]
+                                 (map? v)               (descend v (conj path k))
+                                 (and (sequential? v)
+                                      (map? (first v))) (run! #(descend % (conj path k)) v))))))]
           (with-redefs [spit (fn [fname yaml-data]
                                (testing (format "File %s\n" fname)
                                  (let [coll (yaml/parse-string yaml-data)]
