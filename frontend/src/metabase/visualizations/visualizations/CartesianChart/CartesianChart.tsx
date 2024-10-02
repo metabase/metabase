@@ -9,9 +9,11 @@ import {
 } from "react";
 import { useSet } from "react-use";
 
+import { checkNotNull, isNotNull } from "metabase/lib/types";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
+import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 import {
   useCartesianChartSeriesColorsClasses,
@@ -81,10 +83,13 @@ function _CartesianChart(props: VisualizationProps) {
   const title = settings["card.title"] || card.name;
   const description = settings["card.description"];
 
-  const legendItems = useMemo(
-    () => getLegendItems(chartModel.seriesModels, showAllLegendItems),
-    [chartModel, showAllLegendItems],
-  );
+  const legendItems = useMemo(() => {
+    const seriesModels = [
+      ...chartModel.seriesModels,
+      chartModel.otherSeriesModel,
+    ].filter(isNotNull);
+    return getLegendItems(seriesModels, showAllLegendItems);
+  }, [chartModel, showAllLegendItems]);
   const hasLegend = legendItems.length > 0;
 
   useEffect(() => {
@@ -97,15 +102,25 @@ function _CartesianChart(props: VisualizationProps) {
 
   const handleToggleSeriesVisibility = useCallback(
     (event: MouseEvent, seriesIndex: number) => {
-      const seriesModel = chartModel.seriesModels[seriesIndex];
+      const isOtherSeries = legendItems[seriesIndex].key === OTHER_DATA_KEY;
+      const seriesModel = checkNotNull(
+        isOtherSeries
+          ? chartModel.otherSeriesModel
+          : chartModel.seriesModels[seriesIndex],
+      );
       const willShowSeries = hiddenSeries.has(seriesModel.dataKey);
-      const hasMoreVisibleSeries =
-        chartModel.seriesModels.length - hiddenSeries.size > 1;
+
+      let seriesCount = chartModel.seriesModels.length;
+      if (chartModel.otherSeriesModel) {
+        seriesCount += 1;
+      }
+
+      const hasMoreVisibleSeries = seriesCount - hiddenSeries.size > 1;
       if (hasMoreVisibleSeries || willShowSeries) {
         toggleSeriesVisibility(seriesModel.dataKey);
       }
     },
-    [chartModel, hiddenSeries, toggleSeriesVisibility],
+    [chartModel, hiddenSeries, legendItems, toggleSeriesVisibility],
   );
 
   const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
