@@ -28,7 +28,7 @@ export const DashCardMenuItems = ({
 
   const {
     plugins,
-    onEditQuestion = question => dispatch(editQuestion(question)),
+    onEditQuestion = question => dispatch(editQuestion(question, "editor")),
   } = useInteractiveDashboardContext();
 
   const dashcardMenuItems = plugins?.dashboard?.dashcardMenu as
