@@ -9,6 +9,10 @@ import CS from "metabase/css/core/index.css";
 import type { CollectionTreeItem } from "metabase/entities/collections/utils";
 import { useSelector } from "metabase/lib/redux";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
+import {
+  MAX_UPLOAD_STRING,
+  UPLOAD_DATA_FILE_TYPES,
+} from "metabase/redux/uploads";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
@@ -101,7 +105,9 @@ export function SidebarOnboardingSection({
                 <SidebarOnboardingMenuItem
                   icon="table2"
                   title={t`Upload a spreadsheet`}
-                  subtitle={t`.csv, .tsv (50 MB max)`}
+                  subtitle={t`${UPLOAD_DATA_FILE_TYPES.join(
+                    ", ",
+                  )} (${MAX_UPLOAD_STRING} MB max)`}
                 />
               </Link>
             )}
