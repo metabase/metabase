@@ -5,7 +5,7 @@
     "vendor": "com.metabase",
     "name": "instance_stats",
     "format": "jsonschema",
-    "version": "1-0-0"
+    "version": "1-0-1"
   },
   "type": "object",
   "properties": {
