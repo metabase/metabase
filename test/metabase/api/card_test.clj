@@ -3985,7 +3985,7 @@
       (is (=? {:collection_id dest-coll-id
                :dashboard_id dest-dash-id}
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dest-dash-id})))
-      (testing "old dashcards are deleting, a new one is created"
+      (testing "old dashcards are deleted, a new one is created"
         (is (=? #{dest-dash-id}
                 (set (map :dashboard_id (t2/select :model/DashboardCard :card_id card-id))))))))
   (testing "We can't move a question from a collection to a dashboard if it's in another dashboard"
