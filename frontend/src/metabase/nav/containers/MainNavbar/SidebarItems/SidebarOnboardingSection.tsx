@@ -24,11 +24,13 @@ import { PaddedSidebarLink } from "../MainNavbar.styled";
 
 type SidebarOnboardingProps = {
   initialState: boolean;
+  isAdmin: boolean;
   isSidebarOpen: boolean;
 };
 
 export function SidebarOnboardingSection({
   initialState,
+  isAdmin,
   isSidebarOpen,
 }: SidebarOnboardingProps) {
   const applicationName = useSelector(getApplicationName);
@@ -70,13 +72,15 @@ export function SidebarOnboardingSection({
             >{t`Add data`}</Button>
           </Menu.Target>
           <Menu.Dropdown>
-            <Link to="/admin/databases/create">
-              <SidebarOnboardingMenuItem
-                icon="database"
-                title={t`Add a database`}
-                subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
-              />
-            </Link>
+            {isAdmin && (
+              <Link to="/admin/databases/create">
+                <SidebarOnboardingMenuItem
+                  icon="database"
+                  title={t`Add a database`}
+                  subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
+                />
+              </Link>
+            )}
             <Link to="/admin/settings/uploads">
               <SidebarOnboardingMenuItem
                 icon="table2"
