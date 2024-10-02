@@ -189,10 +189,9 @@ export const addMarkdownDashCardToDashboard =
     };
     dispatch(addDashCardToDashboard({ dashId, tabId, dashcardOverrides }));
   };
-export const addEmbedDashCardToDashboard =
+export const addIFrameDashCardToDashboard =
   ({ dashId, tabId }: NewDashCardOpts) =>
   (dispatch: Dispatch) => {
-    trackCardCreated("iframe", dashId);
     const card = createVirtualCard("iframe");
     const dashcardOverrides = {
       card,

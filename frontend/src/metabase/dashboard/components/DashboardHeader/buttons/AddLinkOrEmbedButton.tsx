@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
 import {
-  addEmbedDashCardToDashboard,
+  addIFrameDashCardToDashboard,
   addLinkDashCardToDashboard,
 } from "metabase/dashboard/actions";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
@@ -25,10 +25,10 @@ export const AddLinkOrEmbedButton = () => {
     }
   };
 
-  const onAddEmbedCard = () => {
+  const onAddIFrameCard = () => {
     if (dashboard) {
       dispatch(
-        addEmbedDashCardToDashboard({
+        addIFrameDashCardToDashboard({
           dashId: dashboard.id,
           tabId: selectedTabId,
         }),
@@ -57,7 +57,7 @@ export const AddLinkOrEmbedButton = () => {
             {t`Link`}
           </Text>
         </Menu.Item>
-        <Menu.Item onClick={onAddEmbedCard}>
+        <Menu.Item onClick={onAddIFrameCard}>
           <Text pr="xl" fw="bold">
             {t`iFrame`}
           </Text>
