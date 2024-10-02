@@ -5,7 +5,7 @@
 The Metabase Embedding SDK for React offers a way to integrate Metabase into your application more seamlessly and with
 greater flexibility than using the current interactive embedding offering based on iframes.
 
-Live demo: https://embedded-analytics-sdk-demo.metabase.com/
+Live demo: https://metaba.se/sdk-demo
 
 ## Features currently supported
 
