@@ -331,7 +331,7 @@ function SidebarOnboardingSection({
           <Text
             fz="sm"
             my="md"
-            style={{ lineHeight: "1.333" }}
+            lh="1.333"
           >{t`Start by adding your data. Connect to a database or upload a CSV file.`}</Text>
         )}
 
