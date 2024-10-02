@@ -1,7 +1,9 @@
 import cx from "classnames";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { UploadInfoModal } from "metabase/collections/components/CollectionHeader/CollectionUploadInfoModal";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
@@ -40,6 +42,7 @@ export function SidebarOnboardingSection({
   isAdmin,
   isSidebarOpen,
 }: SidebarOnboardingProps) {
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const applicationName = useSelector(getApplicationName);
 
   const isUploadEnabled = useSelector(
@@ -96,19 +99,24 @@ export function SidebarOnboardingSection({
               </Link>
             )}
             {rootCollection && !isUploadEnabled && (
-              <Link to="/admin/settings/uploads">
-                <SidebarOnboardingMenuItem
-                  icon="table2"
-                  title={t`Upload a spreadsheet`}
-                  subtitle={t`${UPLOAD_DATA_FILE_TYPES.join(
-                    ", ",
-                  )} (${MAX_UPLOAD_STRING} MB max)`}
-                />
-              </Link>
+              <SidebarOnboardingMenuItem
+                icon="table2"
+                title={t`Upload a spreadsheet`}
+                subtitle={t`${UPLOAD_DATA_FILE_TYPES.join(
+                  ", ",
+                )} (${MAX_UPLOAD_STRING} MB max)`}
+                onClick={() => setShowInfoModal(true)}
+              />
             )}
           </Menu.Dropdown>
         </Menu>
       </Box>
+      {showInfoModal && (
+        <UploadInfoModal
+          isAdmin={isAdmin}
+          onClose={() => setShowInfoModal(false)}
+        />
+      )}
     </Box>
   );
 }
@@ -117,15 +125,21 @@ type OnboaringMenuItemProps = {
   icon: IconName;
   title: string;
   subtitle: string;
+  onClick?: () => void;
 };
 
 function SidebarOnboardingMenuItem({
   icon,
   title,
   subtitle,
+  onClick,
 }: OnboaringMenuItemProps) {
   return (
-    <Menu.Item icon={<Icon name={icon} />} style={{ alignItems: "flex-start" }}>
+    <Menu.Item
+      icon={<Icon name={icon} />}
+      style={{ alignItems: "flex-start" }}
+      onClick={onClick}
+    >
       <Stack spacing="xs">
         <Title c="inherit" order={4}>
           {title}
