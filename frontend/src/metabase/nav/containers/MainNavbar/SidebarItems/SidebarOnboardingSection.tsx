@@ -6,6 +6,10 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
+import {
+  MAX_UPLOAD_STRING,
+  UPLOAD_DATA_FILE_TYPES,
+} from "metabase/redux/uploads";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
@@ -79,7 +83,9 @@ export function SidebarOnboardingSection({
                 icon="table2"
                 title={t`Upload a spreadsheet`}
                 to="/admin/settings/uploads"
-                subtitle={t`.csv, .tsv (50 MB max)`}
+                subtitle={t`${UPLOAD_DATA_FILE_TYPES.join(
+                  ", ",
+                )} (${MAX_UPLOAD_STRING} MB max)`}
               />
             </Menu.Dropdown>
           </Menu>
