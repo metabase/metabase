@@ -54,6 +54,40 @@ describe("QuestionInfoSidebar", () => {
     });
   });
 
+  describe("tabs", () => {
+    describe("for non-admins", () => {
+      it("should show tabs for Overview and History", async () => {
+        setup({});
+        const tabs = await screen.findAllByRole("tab");
+        expect(tabs).toHaveLength(2);
+        expect(tabs.map(tab => tab.textContent)).toEqual([
+          "Overview",
+          "History",
+        ]);
+      });
+    });
+
+    describe("for admins", () => {
+      it("should show tabs for Overview, History, and Insights", async () => {
+        setup({ user: { is_superuser: true } });
+        const tabs = await screen.findAllByRole("tab");
+        expect(tabs).toHaveLength(3);
+        expect(tabs.map(tab => tab.textContent)).toEqual([
+          "Overview",
+          "History",
+          "Insights",
+        ]);
+        const insightsTab = await screen.findByRole("tab", {
+          name: "Insights",
+        });
+        userEvent.click(insightsTab);
+        expect(
+          await screen.findByText(/See who.s doing what, when/),
+        ).toBeInTheDocument();
+      });
+    });
+  });
+
   describe("question details", () => {
     it("should show last edited", () => {
       const card = createMockCard({
@@ -183,18 +217,6 @@ describe("QuestionInfoSidebar", () => {
       expect(
         screen.queryByText("See more about this model"),
       ).not.toBeInTheDocument();
-    });
-  });
-
-  describe("cache ttl", () => {
-    it("should not allow to configure caching", async () => {
-      const card = createMockCard({
-        cache_ttl: 10,
-        description: DESCRIPTION,
-      });
-      await setup({ card });
-      expect(screen.getByText(DESCRIPTION)).toBeInTheDocument();
-      expect(screen.queryByText("Cache Configuration")).not.toBeInTheDocument();
     });
   });
 
