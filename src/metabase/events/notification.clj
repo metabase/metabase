@@ -3,6 +3,7 @@
    [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.events.schema :as events.schema]
    [metabase.models.notification :as models.notification]
@@ -56,17 +57,6 @@
   (when (supported-topics topic)
     (models.notification/notifications-for-event topic)))
 
-(defn- app-name-trs
-  "Return the user configured application name, or Metabase translated
-  via trs if a name isn't configured."
-  []
-  (or (public-settings/application-name)
-      (trs "Metabase")))
-
-(defn- site-name
-  []
-  (or (public-settings/site-name) (trs "Unknown")))
-
 (defn- join-url
   [new-user]
   (let [reset-token               (user/set-password-reset-token! (:id new-user))
@@ -86,18 +76,17 @@
   (case topic
     :event/user-invited
     {:user-invited-today         (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
-     :user-invited-email-subject (trs "You''re invited to join {0}''s {1}" (site-name) (app-name-trs))
-     ;; TODO test that this link works for real
-     ;; TODO this should link to login page if sso is eanbled
+     :user-invited-email-subject (trs "You''re invited to join {0}''s {1}" (messages/site-name) (messages/app-name-trs))
      :user-invited-join-url      (join-url (:object event-info))}
     {}))
 
 (defn- enriched-event-info
   [topic event-info]
   ;; DO NOT delete or rename these fields, they are used in the notification templates
-  {:context     {:application-name (public-settings/application-name)
-                 :site-name        (site-name)
-                 :extra            (extra-context topic event-info)}
+  {:context     {:application-name     (public-settings/application-name)
+                 :application-logo-url (messages/logo-url)
+                 :site-name            (public-settings/site-name)
+                 :extra                (extra-context topic event-info)}
    :event-info  (cond->> event-info
                   (some? (events.schema/topic->schema topic))
                   (hydrate! (events.schema/topic->schema topic)))
