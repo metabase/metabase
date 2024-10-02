@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -65,6 +65,13 @@ export const DashboardPickerModal = ({
 
   const [selectedItem, setSelectedItem] = useState<DashboardPickerItem | null>(
     canSelectItem(value) ? value : null,
+  );
+
+  useEffect(
+    function () {
+      setSelectedItem(canSelectItem(value) ? value : null);
+    },
+    [value],
   );
 
   const { tryLogRecentItem } = useLogRecentItem();
