@@ -45,8 +45,7 @@
         (embed.settings/embedding-app-origins-interactive! "https://metabase.com")
         (is (= "https://metabase.com"
                (embed.settings/embedding-app-origins-interactive)))
-
-    #_    (testing "it works with env too"
+        (testing "it works with env too"
           (mt/with-temp-env-var-value! [mb-embedding-app-origins-interactive "ssh://metabase.com"]
             (is (= "ssh://metabase.com"
                    (embed.settings/embedding-app-origins-interactive)))))))))

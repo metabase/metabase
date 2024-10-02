@@ -110,7 +110,6 @@
 (defsetting enable-embedding-interactive
   (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
   :type       :boolean
-  :feature    :embedding
   :default    false
   :visibility :authenticated
   :export?    false
@@ -120,6 +119,7 @@
 (defsetting embedding-app-origins-interactive
   (deferred-tru "Allow these space delimited origins to embed Metabase interactive.")
   :type       :string
+  :feature    :embedding
   :export?    false
   :visibility :public
   :encryption :no
