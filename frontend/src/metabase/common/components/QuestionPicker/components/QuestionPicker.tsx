@@ -5,6 +5,7 @@ import {
   skipToken,
   useGetCardQuery,
   useGetCollectionQuery,
+  useGetDashboardQuery,
 } from "metabase/api";
 import { isValidCollectionId } from "metabase/collections/utils";
 import { useSelector } from "metabase/lib/redux";
@@ -71,13 +72,24 @@ const useGetInitialCollection = (
       : skipToken,
   );
 
+  const {
+    data: currentQuestionDashboard,
+    isLoading: isCurrentQuestionDashboardLoading,
+  } = useGetDashboardQuery(
+    currentQuestion?.dashboard_id
+      ? { id: currentQuestion.dashboard_id }
+      : skipToken,
+  );
+
   return {
     currentQuestion: currentQuestion,
     currentCollection: currentQuestionCollection ?? currentCollection,
+    currentDashboard: currentQuestionDashboard,
     isLoading:
       isCollectionLoading ||
       isQuestionLoading ||
-      isCurrentQuestionCollectionLoading,
+      isCurrentQuestionCollectionLoading ||
+      isCurrentQuestionDashboardLoading,
   };
 };
 
@@ -97,7 +109,7 @@ export const QuestionPicker = ({
     }),
   );
 
-  const { currentCollection, currentQuestion, isLoading } =
+  const { currentDashboard, currentCollection, currentQuestion, isLoading } =
     useGetInitialCollection(initialValue);
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
@@ -133,10 +145,39 @@ export const QuestionPicker = ({
 
   useDeepCompareEffect(
     function setInitialPath() {
-      if (currentCollection?.id) {
+      if (currentDashboard?.id) {
+        const idPath = getCollectionIdPath(
+          {
+            ...currentDashboard,
+            model: "dashboard",
+            location: `${currentDashboard.collection?.location}${currentDashboard.collection_id}/`,
+          },
+          userPersonalCollectionId,
+        );
+
+        const newPath = getStateFromIdPath({
+          idPath,
+          models,
+        });
+
+        // start with the current item selected if we can
+        newPath[newPath.length - 1].selectedItem = currentQuestion
+          ? {
+              id: currentQuestion.id,
+              name: currentQuestion.name,
+              model: getQuestionPickerValueModel(currentQuestion.type),
+            }
+          : {
+              id: currentDashboard.id,
+              name: currentDashboard.name,
+              model: "dashboard",
+            };
+
+        setPath(newPath);
+      } else if (currentCollection?.id) {
         const newPath = getStateFromIdPath({
           idPath: getCollectionIdPath(
-            currentCollection,
+            { ...currentCollection, model: "collection" },
             userPersonalCollectionId,
           ),
           models,
@@ -158,7 +199,7 @@ export const QuestionPicker = ({
         setPath(newPath);
       }
     },
-    [currentCollection, userPersonalCollectionId],
+    [currentDashboard, currentCollection, userPersonalCollectionId],
   );
 
   if (isLoading) {

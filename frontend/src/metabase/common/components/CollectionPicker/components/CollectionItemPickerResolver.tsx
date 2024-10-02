@@ -3,6 +3,7 @@ import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import type { CollectionItemListProps } from "../types";
 
 import { CollectionItemList } from "./CollectionItemList";
+import { DashboardItemList } from "./DashboardItemList";
 import { PersonalCollectionsItemList } from "./PersonalCollectionItemList";
 import { RootItemList } from "./RootItemList";
 
@@ -15,6 +16,7 @@ export const CollectionItemPickerResolver = ({
   isCurrentLevel,
   shouldDisableItem,
   shouldShowItem,
+  entity = "collection",
 }: CollectionItemListProps) => {
   if (!query) {
     return (
@@ -33,6 +35,21 @@ export const CollectionItemPickerResolver = ({
   if (query.id === PERSONAL_COLLECTIONS.id) {
     return (
       <PersonalCollectionsItemList
+        onClick={onClick}
+        selectedItem={selectedItem}
+        isFolder={isFolder}
+        isCurrentLevel={isCurrentLevel}
+        shouldDisableItem={shouldDisableItem}
+        shouldShowItem={shouldShowItem}
+        options={options}
+      />
+    );
+  }
+
+  if (entity === "dashboard") {
+    return (
+      <DashboardItemList
+        query={query}
         onClick={onClick}
         selectedItem={selectedItem}
         isFolder={isFolder}

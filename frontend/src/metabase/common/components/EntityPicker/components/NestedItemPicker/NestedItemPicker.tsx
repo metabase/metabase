@@ -66,7 +66,7 @@ export function NestedItemPicker<
     >
       <Flex h="100%" w="fit-content">
         {path.map((level, index) => {
-          const { query, selectedItem } = level;
+          const { query, selectedItem, entity } = level;
           const isCurrentLevel = Boolean(
             selectedItem &&
               lastSelectedItem &&
@@ -80,6 +80,7 @@ export function NestedItemPicker<
             >
               <ErrorBoundary>
                 <ListResolver
+                  entity={entity}
                   query={query}
                   selectedItem={selectedItem}
                   options={options}

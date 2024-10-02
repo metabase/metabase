@@ -20,6 +20,7 @@ export type PickerState<Item, Query> = PickerStateItem<Item, Query>[];
 export type PickerStateItem<Item, Query> = {
   query?: Query;
   selectedItem: Item | null;
+  entity?: "collection" | "dashboard";
 };
 
 export type EntityPickerOptions = EntityPickerModalOptions;
@@ -47,6 +48,7 @@ export type ListProps<
   options: Options;
   shouldDisableItem?: (item: Item) => boolean;
   shouldShowItem?: (item: Item) => boolean;
+  entity?: "collection" | "dashboard";
 };
 
 export type FilterItemsInPersonalCollection = "only" | "exclude";

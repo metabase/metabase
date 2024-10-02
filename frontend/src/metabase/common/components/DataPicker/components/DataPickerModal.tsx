@@ -44,7 +44,7 @@ interface Props {
   onClose: () => void;
 }
 
-const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["card"];
+const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["card", "dashboard"];
 
 const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
 
