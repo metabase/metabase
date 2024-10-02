@@ -105,7 +105,7 @@
       ~@body)))
 
 (defmacro with-embedding-enabled-and-new-secret-key! {:style/indent 0} [& body]
-  `(mt/with-temporary-setting-values [~'enable-embedding true]
+  `(mt/with-temporary-setting-values [~'enable-embedding-static true]
      (with-new-secret-key!
        ~@body)))
 
