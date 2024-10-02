@@ -39,13 +39,13 @@ export const useSummarizeQuery = ({
   const handleQueryChange = useCallback(
     (nextQuery: Lib.Query) => {
       const newAggregations = Lib.aggregations(nextQuery, STAGE_INDEX);
-      if (newAggregations.length === 0) {
+      if (hasDefaultAggregation && newAggregations.length === 0) {
         setHasDefaultAggregation(false);
       } else {
         handleChange(nextQuery);
       }
     },
-    [handleChange],
+    [handleChange, hasDefaultAggregation],
   );
 
   const handleAddBreakout = useCallback(
