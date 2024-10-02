@@ -46,8 +46,6 @@ export const DashCardMenuItems = ({
       key: string;
     })[] = [];
 
-    // console.log("HERE", question.card().type === "model");
-
     if (withEditLink && canEditQuestion(question)) {
       const type = question.type();
       if (type === "question") {
