@@ -72,11 +72,14 @@
       ;; required for the DB.
       (m :guard (every-pred map? :native))
       (try
-        (if-let [refs (nqa/references-for-native (assoc m :database (:database query)))]
-          (->> refs
-               :tables
-               (map :table-id))
-          [::native])
+        (let [refs      (nqa/references-for-native (assoc m :database (:database query)))
+              table-ids (->> refs
+                             :tables
+                             (map :table-id)
+                             (filter some?))]
+          (if (seq table-ids)
+            table-ids
+            [::native]))
         (catch Throwable e
           (log/error e)
           [::native]))
