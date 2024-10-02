@@ -3,7 +3,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.auth-provider :as auth-provider]
    [metabase.config :as config]
    [metabase.core :as mbc]
    [metabase.db :as mdb]
@@ -23,6 +22,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.ssh :as ssh]
    [metabase.util.ssh-test :as ssh-test]
    [next.jdbc :as next.jdbc]
@@ -261,11 +261,11 @@
             ;; (the first time it is used without checking for expiry)
             expires-in (atom "0")
             connection-creations (atom 0)]
-        (binding [auth-provider/*fetch-as-json* (fn [url _headers]
-                                                  (is (str/includes? url "client ID"))
-                                                  (swap! connection-creations inc)
-                                                  {:access_token (:password db-details)
-                                                   :expires_in @expires-in})]
+        (binding [u.http/*fetch-as-json* (fn [url _headers]
+                                           (is (str/includes? url "client ID"))
+                                           (swap! connection-creations inc)
+                                           {:access_token (:password db-details)
+                                            :expires_in @expires-in})]
           (t2.with-temp/with-temp [Database oauth-db {:engine (tx/driver), :details oauth-db-details}]
             (mt/with-db oauth-db
               (try
