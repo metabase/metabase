@@ -20,4 +20,7 @@ const FixedPosition = styled.div`
   position: fixed;
   left: 0;
   top: 0;
+
+  // TODO: allow users to change this and document the behaviour
+  z-index: 1000;
 `;
