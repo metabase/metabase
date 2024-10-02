@@ -427,6 +427,19 @@
            (contains? #{:question "question" nil} (:type changes))))))
 
 (defn- assert-is-valid-dashboard-internal-update [changes card]
+  (let [dashboard-id->name (dissoc
+                            (t2/select-fn->fn :id :name :model/Dashboard
+                                              {:select [[:dashboard_id :id]
+                                                        [:dashboard.name :name]]
+                                               :from [[:report_dashboard :dashboard]]
+                                               :join [[:report_dashboardcard :dc] [:= :dc.dashboard_id :dashboard.id]]
+                                               :where [:= :dc.card_id (:id card)]
+                                               :group-by [:dashboard_id :dashboard.name]})
+                            (:dashboard_id changes))]
+    (when (and (:dashboard_id changes) (seq dashboard-id->name))
+      (throw (ex-info (tru "Cannot convert to dashboard question: appears in other dashboards ({0})" (str/join "," (vals dashboard-id->name)))
+                      {:status-code 400
+                       :other-dashboards dashboard-id->name}))))
   (when-not (is-valid-dashboard-internal-card-for-update card changes)
     (throw (ex-info (tru "Invalid dashboard-internal card")
                     {:status-code 400
