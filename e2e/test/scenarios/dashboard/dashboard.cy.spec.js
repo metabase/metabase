@@ -326,9 +326,9 @@ describe("scenarios > dashboard", () => {
           editDashboard();
           addIFrameWhileEditing("https://example.com");
           cy.button("Done").click();
-          validateIframe("https://example.com");
+          validateIFrame("https://example.com");
           saveDashboard();
-          validateIframe("https://example.com");
+          validateIFrame("https://example.com");
         });
 
         it("should handle various iframe and URL inputs", () => {
@@ -369,7 +369,7 @@ describe("scenarios > dashboard", () => {
           testCases.forEach(({ input, expected }, index) => {
             addIFrameWhileEditing(input);
             cy.button("Done").click();
-            validateIframe(expected, index);
+            validateIFrame(expected, index);
           });
         });
       });
@@ -1478,7 +1478,7 @@ describe("scenarios > dashboard > permissions", () => {
   });
 });
 
-function validateIframe(src, index = 0) {
+function validateIFrame(src, index = 0) {
   getDashboardCards()
     .get("iframe")
     .eq(index)
