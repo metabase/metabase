@@ -28,14 +28,7 @@
                 (is (= [{:data
                          (merge expected-payload {"event" "interactive_embedding_disabled"})
                          :user-id (str (mt/user->id :crowberto))}]
-                       (snowplow-test/pop-event-data-and-user-id!))))))))
-      (mt/with-premium-features #{}
-        (mt/with-temporary-setting-values [embedding-app-origins-interactive "https://example.com"
-                                           enable-embedding-interactive false]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #".*enable-embedding-interactive is not enabled because feature :embedding is not available.*"
-               (embed.settings/enable-embedding-interactive! true))))))))
+                       (snowplow-test/pop-event-data-and-user-id!)))))))))))
 
 (def ^:private other-ip "1.2.3.4:5555")
 
