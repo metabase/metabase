@@ -1259,7 +1259,7 @@
                                      :value "33 T"))))
 
              (testing "Endpoint should fail if embedding is disabled"
-               (mt/with-temporary-setting-values [enable-embedding false]
+               (mt/with-temporary-setting-values [enable-embedding-static false]
                  (is (= "Embedding is not enabled."
                         (client/client :get 400 (field-search-url object (mt/id :venues :id) (mt/id :venues :name))
                                        :value "33 T")))))
