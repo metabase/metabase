@@ -1,6 +1,5 @@
 (ns metabase.auth-provider
   (:require
-   [metabase-enterprise.auth-provider]
    [metabase.public-settings.premium-features :refer [defenterprise]]))
 
 (def azure-auth-token-renew-slack-seconds
