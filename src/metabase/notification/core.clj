@@ -54,5 +54,7 @@
         (log/infof "[Notification %d] Got %d %s for channel %s"
                    (:id notification-info) (count messages) (u/format-plural (count messages) "message") (:channel_type handler))
         (doseq [message messages]
+          (log/infof "[Notification %d] Sending message to channel %s"
+                     (:id notification-info) (:channel_type handler))
           (channel/send! (or (:channel handler)
                              {:type channel-type}) message))))))

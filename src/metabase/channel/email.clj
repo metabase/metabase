@@ -123,7 +123,8 @@
                                     :notification-recipient/external-email
                                     [(-> recipient :details :email)]
                                     :notification-recipient/template
-                                    [(-> recipient :details :pattern (channel.params/substitute-params payload))])]
+                                    [(-> recipient :details :pattern (channel.params/substitute-params payload))]
+                                    nil)]
                      :when (seq emails)]
                  emails)))
 
@@ -133,7 +134,8 @@
     :email/resource
     (stencil/render-file (:path details) payload)
     :email/mustache
-    (stencil/render-string (:body details) payload)))
+    (stencil/render-string (:body details) payload)
+    nil))
 
 (mu/defmethod channel/render-notification
   [:channel/email :notification/system-event]
