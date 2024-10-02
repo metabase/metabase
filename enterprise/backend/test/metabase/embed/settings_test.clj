@@ -11,7 +11,7 @@
   (testing "A snowplow event is sent whenever embedding is toggled"
     (mt/with-test-user :crowberto
       (mt/with-premium-features #{:embedding}
-        (mt/with-temporary-setting-values [embedding-app-origin "https://example.com"
+        (mt/with-temporary-setting-values [embedding-app-origins-interactive "https://example.com"
                                            enable-embedding-interactive false]
           (let [embedded-dash-count (t2/count :model/Dashboard :enable_embedding true)
                 embedded-card-count (t2/count :model/Card :enable_embedding true)
@@ -19,16 +19,23 @@
                                      "number_embedded_questions"  embedded-card-count
                                      "number_embedded_dashboards" embedded-dash-count}]
             (snowplow-test/with-fake-snowplow-collector
-              (embed.settings/enable-embedding! true)
-              (is (= [{:data (merge expected-payload {"event" "embedding_enabled"})
+              (embed.settings/enable-embedding-interactive! true)
+              (is (= [{:data (merge expected-payload {"event" "interactive_embedding_enabled"})
                        :user-id (str (mt/user->id :crowberto))}]
                      (snowplow-test/pop-event-data-and-user-id!)))
 
               (mt/with-temporary-setting-values [enable-embedding-interactive false]
                 (is (= [{:data
-                         (merge expected-payload {"event" "embedding_disabled"})
+                         (merge expected-payload {"event" "interactive_embedding_disabled"})
                          :user-id (str (mt/user->id :crowberto))}]
-                       (snowplow-test/pop-event-data-and-user-id!)))))))))))
+                       (snowplow-test/pop-event-data-and-user-id!))))))))
+      (mt/with-premium-features #{}
+        (mt/with-temporary-setting-values [embedding-app-origins-interactive "https://example.com"
+                                           enable-embedding-interactive false]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #".*enable-embedding-interactive is not enabled because feature :embedding is not available.*"
+               (embed.settings/enable-embedding-interactive! true))))))))
 
 (def ^:private other-ip "1.2.3.4:5555")
 

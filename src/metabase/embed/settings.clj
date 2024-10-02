@@ -26,7 +26,10 @@
             (embed/embedding-secret-key! (crypto-random/hex 32)))
           (snowplow/track-event! ::snowplow/embed_share
                                  {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
-                                  :embedding-app-origin-set   (boolean (setting/get-value-of-type :string :embedding-app-origin))
+                                  :embedding-app-origin-set   (boolean
+                                                               (or (setting/get-value-of-type :string :embedding-app-origin)
+                                                                   (setting/get-value-of-type :string :embedding-app-origins-interactive)
+                                                                   (setting/get-value-of-type :string :embedding-app-origins-sdk)))
                                   :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
                                   :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
 
@@ -93,8 +96,9 @@
           (setting/set-value-of-type! :string :embedding-app-origins-sdk)))))
 
 (defsetting embedding-app-origins-sdk
-  (deferred-tru "Allow this origin to embed Metabase SDK")
+  (deferred-tru "Allow Metabase SDK access to these space delimited origins.")
   :type       :string
+  :feature    :embedding
   :export?    false
   :visibility :public
   :encryption :no
@@ -106,6 +110,7 @@
 (defsetting enable-embedding-interactive
   (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
   :type       :boolean
+  :feature    :embedding
   :default    false
   :visibility :authenticated
   :export?    false
@@ -113,7 +118,7 @@
   :setter     (make-embedding-toggle-setter :enable-embedding-interactive "interactive-embedding"))
 
 (defsetting embedding-app-origins-interactive
-  (deferred-tru "Allow this origin to embed Metabase interactive.")
+  (deferred-tru "Allow these space delimited origins to embed Metabase interactive.")
   :type       :string
   :export?    false
   :visibility :public

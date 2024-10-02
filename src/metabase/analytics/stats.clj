@@ -135,9 +135,10 @@
    :enable_embedding                     #_:clj-kondo/ignore (embed.settings/enable-embedding)
    :enable_embedding_sdk                 (embed.settings/enable-embedding-sdk)
    :enable_embedding_interactive         (embed.settings/enable-embedding-interactive)
-   :embedding_app_origin_set             (boolean #_:clj-kondo/ignore (embed.settings/embedding-app-origin))
-   :embedding_app_origin_interactive_set (boolean (embed.settings/embedding-app-origins-interactive))
-   :embedding_app_origin_sdk_set         (boolean (embed.settings/embedding-app-origins-sdk))
+   :embedding_app_origin_set             (boolean  (or
+                                                    #_:clj-kondo/ignore (embed.settings/embedding-app-origin)
+                                                    (embed.settings/embedding-app-origins-interactive)
+                                                    (embed.settings/embedding-app-origins-sdk)))
    :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
    :appearance_help_link                 (public-settings/help-link)
    :appearance_logo                      (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
