@@ -901,13 +901,15 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category", "Reviewer", "Category"]],
+          ["Summaries", ["Category"]],
+          ["Summaries (2)", ["Reviewer", "Category"]],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category", "Reviewer", "Category"]],
+          ["Summaries", ["Category"]],
+          ["Summaries (2)", ["Reviewer", "Category"]],
         ]);
         verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
           [
@@ -935,20 +937,16 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_NUMBER_COLUMNS],
-          [
-            "Summaries",
-            ["Count", "Sum of Total", "5 * Count", "Count", "Sum of Rating"],
-          ],
+          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+          ["Summaries (2)", ["Count", "Sum of Rating"]],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
           ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_NUMBER_COLUMNS],
-          [
-            "Summaries",
-            ["Count", "Sum of Total", "5 * Count", "Count", "Sum of Rating"],
-          ],
+          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+          ["Summaries (2)", ["Count", "Sum of Rating"]],
         ]);
         verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
           [
@@ -1012,13 +1010,15 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category", "Reviewer", "Category"]],
+          ["Summaries", ["Category"]],
+          ["Summaries (2)", ["Reviewer", "Category"]],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category", "Reviewer", "Category"]],
+          ["Summaries", ["Category"]],
+          ["Summaries (2)", ["Reviewer", "Category"]],
         ]);
         verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
           [
@@ -1046,20 +1046,16 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_NUMBER_COLUMNS],
-          [
-            "Summaries",
-            ["Count", "Sum of Total", "5 * Count", "Count"], // https://github.com/metabase/metabase/issues/46845 - 2nd Count should be in "Summaries (2)" group
-          ],
+          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+          ["Summaries (2)", ["Count"]],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
           ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_NUMBER_COLUMNS],
-          [
-            "Summaries",
-            ["Count", "Sum of Total", "5 * Count", "Count"], // https://github.com/metabase/metabase/issues/46845 - 2nd Count should be in "Summaries (2)" group
-          ],
+          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+          ["Summaries (2)", ["Count"]],
         ]);
         verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
           [NAMELESS_SECTION, ["Count"]],

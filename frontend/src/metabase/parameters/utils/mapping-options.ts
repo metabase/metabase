@@ -5,6 +5,7 @@ import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 import { isActionDashCard } from "metabase/actions/utils";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
+import { getGroupName } from "metabase/querying/filters/utils";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type { DimensionOptionsSection } from "metabase-lib/v1/DimensionOptions/types";
@@ -53,7 +54,7 @@ function buildStructuredQuerySectionOptions(
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
 
     return {
-      sectionName: groupInfo.displayName ?? t`Summaries`,
+      sectionName: getGroupName(groupInfo, stageIndex) ?? t`Summaries`,
       name: columnInfo.displayName,
       icon: getColumnIcon(column),
       target: buildColumnTarget(query, stageIndex, column, parameter),

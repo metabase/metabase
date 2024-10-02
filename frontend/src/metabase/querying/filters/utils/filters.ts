@@ -3,7 +3,7 @@ import * as Lib from "metabase-lib";
 
 import type { GroupItem } from "../types";
 
-function getGroupName(
+export function getGroupName(
   groupInfo: Lib.ColumnGroupDisplayInfo,
   stageIndex: number,
 ) {
@@ -28,6 +28,7 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
         key: `${stageIndex}-${groupIndex}`,
         displayName: getGroupName(groupInfo, stageIndex),
         icon: getColumnGroupIcon(groupInfo),
+        group,
         columnItems: availableColumns.map(column => {
           const columnInfo = Lib.displayInfo(query, stageIndex, column);
           return {
