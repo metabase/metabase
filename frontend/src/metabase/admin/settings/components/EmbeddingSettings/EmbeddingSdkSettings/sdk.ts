@@ -11,7 +11,6 @@ export const useEmbeddingSettingsLinks = () => {
   const plan = useSelector(state =>
     getPlan(getSetting(state, "token-features")),
   );
-
   const addUtmToLink = (url: string) =>
     `${url}?${new URLSearchParams({
       utm_source: "product",
@@ -22,18 +21,15 @@ export const useEmbeddingSettingsLinks = () => {
     })}`;
 
   const quickStartUrl = addUtmToLink("https://metaba.se/sdk-quick-start");
-
-  const { url: activationUrl } = useDocsUrl(
-    "paid-features/activating-the-enterprise-edition",
-  );
-
-  const switchMetabaseBinariesUrl = addUtmToLink(activationUrl);
-
+  const documentationUrl = addUtmToLink("https://metaba.se/sdk-docs");
   const implementJwtUrl = addUtmToLink(
     getLearnUrl("metabase-basics/embedding/securing-embeds"),
   );
 
-  const documentationUrl = addUtmToLink("https://metaba.se/sdk-docs");
+  const { url: activationUrl } = useDocsUrl(
+    "paid-features/activating-the-enterprise-edition",
+  );
+  const switchMetabaseBinariesUrl = addUtmToLink(activationUrl);
 
   const upgradeUrl = useSelector(state =>
     getUpgradeUrl(state, {

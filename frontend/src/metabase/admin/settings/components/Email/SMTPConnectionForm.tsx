@@ -5,7 +5,6 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
-import type { SettingElement } from "metabase/admin/settings/types";
 import { UpsellHosting } from "metabase/admin/upsells";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
@@ -22,6 +21,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
 import { Box, Button, Flex, Group, Radio, Stack, Text } from "metabase/ui";
 import type { Settings } from "metabase-types/api";
+import type { SettingElement } from "metabase-types/api/settings";
 
 import {
   clearEmailSettings,

@@ -1,10 +1,10 @@
 import { push } from "react-router-redux";
 
 import { SettingsSetting } from "metabase/admin/settings/components/SettingsSetting";
-import type { SettingElement } from "metabase/admin/settings/types";
 import { useDispatch } from "metabase/lib/redux";
 import { Tabs } from "metabase/ui";
 import type { SettingKey, SettingValue, Settings } from "metabase-types/api";
+import type { SettingElement } from "metabase-types/api/settings";
 
 interface Tab {
   name: string;

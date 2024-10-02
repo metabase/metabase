@@ -5,8 +5,7 @@ import { t } from "ttag";
 import Toggle from "metabase/core/components/Toggle";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
-
-import type { SettingElement } from "../../types";
+import type { SettingElement } from "metabase-types/api/settings";
 
 type SettingToggleProps = {
   disabled: boolean;

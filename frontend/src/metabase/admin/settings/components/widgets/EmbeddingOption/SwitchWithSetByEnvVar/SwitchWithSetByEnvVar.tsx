@@ -1,9 +1,8 @@
 import type { ComponentProps } from "react";
 import { t } from "ttag";
 
+import { useGetSetSetting } from "metabase/common/hooks";
 import { Switch, Text } from "metabase/ui";
-
-import { useEmbeddingSetting } from "../../../EmbeddingSettings/hooks";
 
 interface SwitchWithSetByEnvVarProps extends ComponentProps<typeof Switch> {
   settingKey:
@@ -16,7 +15,7 @@ export function SwitchWithSetByEnvVar({
   settingKey,
   ...switchProps
 }: SwitchWithSetByEnvVarProps) {
-  const [setting, handleChange] = useEmbeddingSetting({ key: settingKey });
+  const [setting, handleChange] = useGetSetSetting({ key: settingKey });
 
   if (setting.is_env_setting) {
     return (
@@ -26,18 +25,16 @@ export function SwitchWithSetByEnvVar({
       >{t`Set via environment variable`}</Text>
     );
   }
-
   const isEnabled = Boolean(setting.value);
   return (
     <Switch
-      {...switchProps}
       label={isEnabled ? t`Enabled` : t`Disabled`}
       size="sm"
       ml="auto"
       labelPosition="left"
       checked={isEnabled}
-      disabled={setting.is_env_setting ? true : switchProps.disabled}
       onChange={event => handleChange(event.currentTarget.checked)}
+      {...switchProps}
     />
   );
 }

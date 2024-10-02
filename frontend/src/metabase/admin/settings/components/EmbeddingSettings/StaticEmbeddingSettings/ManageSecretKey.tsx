@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import { useGetSetSetting } from "metabase/common/hooks";
 import { Box } from "metabase/ui";
 
 import SettingHeader from "../../SettingHeader";
 import { SetByEnvVarWrapper } from "../../SettingsSetting";
 import SecretKeyWidget from "../../widgets/SecretKeyWidget";
-import { useEmbeddingSetting } from "../hooks";
 
 const EMBEDDING_SECRET_KEY_SETTING = {
   key: "embedding-secret-key",
@@ -15,7 +15,7 @@ const EMBEDDING_SECRET_KEY_SETTING = {
 
 export const ManageSecretKey = () => {
   const [embeddingSecretKeySetting, handleChangeEmbeddingSecretKey] =
-    useEmbeddingSetting(EMBEDDING_SECRET_KEY_SETTING);
+    useGetSetSetting(EMBEDDING_SECRET_KEY_SETTING);
 
   return (
     <Box data-testid="embedding-secret-key-setting">

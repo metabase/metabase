@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { useEmbeddingSetting } from "metabase/admin/settings/components/EmbeddingSettings/hooks";
 import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 import { SetByEnvVarWrapper } from "metabase/admin/settings/components/SettingsSetting";
+import { useGetSetSetting } from "metabase/common/hooks";
 import { Box } from "metabase/ui";
 
 import {
@@ -19,7 +19,7 @@ const SAME_SITE_SETTING = {
 
 export const SameSiteCookieSetting = () => {
   const [sameSiteSetting, handleChangeSameSite] =
-    useEmbeddingSetting(SAME_SITE_SETTING);
+    useGetSetSetting(SAME_SITE_SETTING);
 
   return (
     <Box>

@@ -1,12 +1,12 @@
 import { useEffect } from "react";
 import { push } from "react-router-redux";
 
-import type { SettingElement } from "metabase/admin/settings/types";
 import { UpsellHosting } from "metabase/admin/upsells";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
 import { Box, Flex } from "metabase/ui";
 import type { SettingValue, Settings } from "metabase-types/api";
+import type { SettingElement } from "metabase-types/api/settings";
 
 import { SettingsSection } from "../../app/components/SettingsEditor/SettingsSection";
 

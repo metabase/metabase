@@ -129,9 +129,9 @@ export const createMockTokenFeatures = (
 });
 
 export const createMockSettingDefinition = (
-  opts?: Partial<SettingDefinition>,
+  opts: Pick<SettingDefinition, "key"> &
+    Partial<Omit<SettingDefinition, "key">>,
 ): SettingDefinition => ({
-  key: "active-users-count",
   env_name: "",
   is_env_setting: false,
   value: null,

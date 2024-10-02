@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { SwitchWithSetByEnvVar } from "../../widgets/EmbeddingOption/SwitchWithSetByEnvVar";
 import { EmbeddingSettingsPageView } from "../EmbeddingSettingsPageView";
-import { EmbeddingSettingsSwitch } from "../EmbeddingSettingsSwitch";
 
 import { ManageEmbeds } from "./ManageEmbeds";
 import { ManageSecretKey } from "./ManageSecretKey";
@@ -14,9 +14,9 @@ export function StaticEmbeddingSettings() {
         [t`Static embedding`],
       ]}
     >
-      <EmbeddingSettingsSwitch
+      <SwitchWithSetByEnvVar
         settingKey="enable-embedding-static"
-        switchLabel={t`Enable Static embedding`}
+        label={t`Enable Static embedding`}
       />
       <ManageSecretKey />
       <ManageEmbeds />

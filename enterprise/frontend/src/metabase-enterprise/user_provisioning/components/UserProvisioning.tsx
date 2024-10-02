@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import { AuthTabs } from "metabase/admin/settings/components/AuthTabs";
 import { SettingToggle } from "metabase/admin/settings/components/widgets/SettingToggle";
-import type { SettingElement } from "metabase/admin/settings/types";
 import { useSetting } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useModal } from "metabase/hooks/use-modal";
@@ -25,6 +24,7 @@ import {
 import { hasAnySsoPremiumFeature } from "metabase-enterprise/settings";
 import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 import type { SettingValue, Settings } from "metabase-types/api";
+import type { SettingElement } from "metabase-types/api/settings";
 
 import { CopyScimInput, getTextInputStyles } from "./ScimInputs";
 import { ScimTextWarning } from "./ScimTextWarning";

@@ -7,7 +7,6 @@ import * as Yup from "yup";
 
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { updateLdapSettings } from "metabase/admin/settings/settings";
-import type { SettingElement } from "metabase/admin/settings/types";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
 import {
@@ -23,6 +22,7 @@ import {
 import { PLUGIN_LDAP_FORM_FIELDS } from "metabase/plugins";
 import { Group, Radio, Stack } from "metabase/ui";
 import type { SettingKey, Settings } from "metabase-types/api";
+import type { SettingElement } from "metabase-types/api/settings";
 
 const testParentheses: TestConfig<string | null | undefined> = {
   name: "test-parentheses",

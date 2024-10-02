@@ -1,7 +1,6 @@
 import { checkNotNull } from "metabase/lib/types";
 import { Select } from "metabase/ui";
-
-import type { SettingElement } from "../../types";
+import type { SettingElement } from "metabase-types/api/settings";
 
 interface SettingSelectProps {
   id?: string;

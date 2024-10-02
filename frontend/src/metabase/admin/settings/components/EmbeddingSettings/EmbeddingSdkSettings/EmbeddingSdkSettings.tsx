@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 
+import { SwitchWithSetByEnvVar } from "../../widgets/EmbeddingOption/SwitchWithSetByEnvVar";
 import { EmbeddingSettingsPageView } from "../EmbeddingSettingsPageView";
-import { EmbeddingSettingsSwitch } from "../EmbeddingSettingsSwitch";
 
 import { CorsOriginInput } from "./CorsOriginInput";
 import { DocumentationCta } from "./DocumentationCta";
@@ -23,9 +23,9 @@ export const EmbeddingSdkSettings = () => {
         [t`Embedding SDK for React`],
       ]}
     >
-      <EmbeddingSettingsSwitch
-        settingKey={"enable-embedding-sdk"}
-        switchLabel={t`Enable Embedded analytics SDK`}
+      <SwitchWithSetByEnvVar
+        settingKey="enable-embedding-sdk"
+        label={t`Enable Embedded analytics SDK`}
       />
       <SdkInfoAlert />
       <GetStarted />

@@ -1,5 +1,6 @@
 import { jt, t } from "ttag";
 
+import { useGetSetSetting, useMergeSetting } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
@@ -7,7 +8,6 @@ import { Box } from "metabase/ui";
 import SettingHeader from "../../SettingHeader";
 import { SetByEnvVarWrapper } from "../../SettingsSetting";
 import { SettingTextInput } from "../../widgets/SettingTextInput";
-import { useEmbeddingSetting, useMergeSetting } from "../hooks";
 
 import { useEmbeddingSettingsLinks } from "./sdk";
 
@@ -21,7 +21,7 @@ export const CorsOriginInput = () => {
 
   const { upgradeUrl } = useEmbeddingSettingsLinks();
 
-  const [sdkOriginsSetting, handleChangeSdkOrigins] = useEmbeddingSetting(
+  const [sdkOriginsSetting, handleChangeSdkOrigins] = useGetSetSetting(
     !isEE
       ? {
           key: "embedding-app-origins-sdk",

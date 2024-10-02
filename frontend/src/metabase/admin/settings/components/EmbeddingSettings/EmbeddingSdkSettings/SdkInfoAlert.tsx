@@ -16,8 +16,6 @@ const getInfoText = (value: ReactNode) => {
 export const SdkInfoAlert = () => {
   const { implementJwtUrl, switchMetabaseBinariesUrl, upgradeUrl } =
     useEmbeddingSettingsLinks();
-  const isHosted = useSetting("is-hosted?");
-  const isEE = PLUGIN_EMBEDDING_SDK.isEnabled();
 
   const upgradeLink = (
     <ExternalLink href={upgradeUrl}>{t`upgrade to Metabase Pro`}</ExternalLink>
@@ -26,20 +24,25 @@ export const SdkInfoAlert = () => {
     <ExternalLink href={implementJwtUrl}>{t`implement JWT SSO`}</ExternalLink>
   );
 
-  const switchLink = (
+  const switchBinariesLink = (
     <ExternalLink href={switchMetabaseBinariesUrl}>
       {t`switch Metabase binaries`}
     </ExternalLink>
   );
 
-  const alertText = match({ isEE, isHosted })
+  const alertText = match({
+    isEE: PLUGIN_EMBEDDING_SDK.isEnabled(),
+    isHosted: useSetting("is-hosted?"),
+  })
+    // Self-hosted + OSS
     .with({ isEE: false, isHosted: false }, () =>
       getInfoText(
         <>
-          {switchLink}, {upgradeLink} {t`and`} {jwtLink}.
+          {switchBinariesLink}, {upgradeLink} {t`and`} {jwtLink}.
         </>,
       ),
     )
+    // Cloud Starter
     .with({ isEE: false, isHosted: true }, () =>
       getInfoText(
         <>
@@ -47,6 +50,7 @@ export const SdkInfoAlert = () => {
         </>,
       ),
     )
+    // Pro/Enterprise on cloud and self-hosted
     .otherwise(() => getInfoText(<>{jwtLink}.</>));
 
   return (

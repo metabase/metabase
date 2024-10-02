@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { useEmbeddingSetting } from "metabase/admin/settings/components/EmbeddingSettings/hooks";
 import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 import { SetByEnvVarWrapper } from "metabase/admin/settings/components/SettingsSetting";
 import { SettingTextInput } from "metabase/admin/settings/components/widgets/SettingTextInput";
+import { useGetSetSetting } from "metabase/common/hooks";
 import { Box } from "metabase/ui";
 
 import { EmbeddingAppOriginDescription } from "../EmbeddingAppOriginDescription";
@@ -16,7 +16,7 @@ const INTERACTIVE_EMBEDDING_ORIGINS_SETTING = {
 } as const;
 
 export const AuthorizedOrigins = () => {
-  const [originsSetting, handleOriginsChange] = useEmbeddingSetting(
+  const [originsSetting, handleOriginsChange] = useGetSetSetting(
     INTERACTIVE_EMBEDDING_ORIGINS_SETTING,
   );
 

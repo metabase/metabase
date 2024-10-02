@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import type {
   EnterpriseSettingKey,
@@ -196,9 +196,6 @@ export interface SettingDefinition<
   is_env_setting: boolean;
   value: EnterpriseSettings[Key] | null;
   default?: EnterpriseSettings[Key];
-  display_name?: string;
-  description?: string | ReactNode;
-  placeholder?: string;
 }
 
 export interface OpenAiModel {
@@ -304,7 +301,7 @@ interface PublicSettings {
   "custom-homepage-dashboard": number | null;
   "ee-ai-features-enabled"?: boolean;
   "email-configured?": boolean;
-  "embedding-app-origin": string;
+  "embedding-app-origin": string | null;
   "embedding-app-origins-sdk": string | null;
   "embedding-app-origins-interactive": string | null;
   "enable-enhancements?": boolean;
@@ -366,3 +363,48 @@ export type Settings = InstanceSettings &
 export type SettingKey = keyof Settings;
 
 export type SettingValue = Settings[SettingKey];
+
+// TODO: Keep enterprise settings types away from other settings types
+export type SettingElementKey = EnterpriseSettingKey;
+
+// The type for settings within the Admin sections.
+// Used for displaying forms, submitting changes, etc.
+export type SettingElement<Key extends SettingElementKey> =
+  SettingDefinition<Key> & {
+    tab?: string;
+    display_name?: string;
+    type?: string;
+    description?: string | ReactNode;
+    note?: string;
+    searchProp?: string;
+    placeholder?: string;
+    options?: { value: EnterpriseSettings[Key]; name: string }[];
+    originalValue?: EnterpriseSettings[Key];
+    defaultValue?: EnterpriseSettings[Key];
+    required?: boolean;
+    autoFocus?: boolean;
+    showActualValue?: boolean;
+    allowValueCollection?: boolean;
+    noHeader?: boolean;
+    disableDefaultUpdate?: boolean;
+    validations?: [string, string][];
+    widget?: ComponentType<any>;
+    warningMessage?: string;
+    postUpdateActions?: VoidFunction[];
+    getProps?: (setting: SettingDefinition<Key>) => Record<string, any>;
+    getHidden?: (
+      settingValues: EnterpriseSettings,
+      derivedSettingValues: EnterpriseSettings,
+    ) => boolean;
+    onChanged?: (
+      oldValue: string,
+      newValue: string,
+      settingsValues: EnterpriseSettings,
+      handleChangeSetting: (key: string, value: string) => void,
+    ) => void;
+    onBeforeChanged?: (oldValue: string, newValue: string) => void;
+  };
+
+export type UpdateSettingValue = (
+  value: EnterpriseSettings[EnterpriseSettingKey],
+) => void;

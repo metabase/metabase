@@ -8,12 +8,11 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { SettingDefinition, Settings } from "metabase-types/api";
+import type { SettingElement } from "metabase-types/api/settings";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-
-import type { SettingElement } from "../../types";
 
 import type { SMTPConnectionFormProps } from "./SMTPConnectionForm";
 import { SMTPConnectionForm } from "./SMTPConnectionForm";
