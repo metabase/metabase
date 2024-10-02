@@ -3,6 +3,7 @@ import { assocIn } from "icepick";
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   createAction,
+  createDashboard,
   createImplicitAction,
   createModelFromTableName,
   createPublicDashboardLink,
@@ -28,6 +29,7 @@ import {
   setFilter,
   sidebar,
   updateDashboardCards,
+  updateSetting,
   visitDashboard,
   visitIframe,
 } from "e2e/support/helpers";
@@ -339,6 +341,8 @@ const MODEL_NAME = "Test Action Model";
         });
 
         it("hide actions in static embed dashboards (metabase#34395)", () => {
+          updateSetting("enable-embedding-static", true);
+
           const dashboardDetails = {
             name: "Public Dashboard",
             enable_embedding: true,
@@ -351,21 +355,19 @@ const MODEL_NAME = "Test Action Model";
               });
             })
             .then(({ body: action }) => {
-              cy.createDashboard(dashboardDetails).then(
-                ({ body: dashboard }) => {
-                  updateDashboardCards({
-                    dashboard_id: dashboard.id,
-                    cards: [
-                      getActionCardDetails({
-                        action_id: action.id,
-                        label: "Create",
-                      }),
-                    ],
-                  });
-                  cy.visit(`/dashboard/${dashboard.id}`);
-                  cy.wrap(dashboard.id).as("dashboardId");
-                },
-              );
+              createDashboard(dashboardDetails).then(({ body: dashboard }) => {
+                updateDashboardCards({
+                  dashboard_id: dashboard.id,
+                  cards: [
+                    getActionCardDetails({
+                      action_id: action.id,
+                      label: "Create",
+                    }),
+                  ],
+                });
+                cy.visit(`/dashboard/${dashboard.id}`);
+                cy.wrap(dashboard.id).as("dashboardId");
+              });
             });
 
           cy.log("The action should be visible in the dashboard");

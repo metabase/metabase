@@ -575,6 +575,8 @@ describe("scenarios > dashboard > tabs", () => {
     cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
+    updateSetting("enable-embedding-static", true);
+
     visitDashboardAndCreateTab({
       dashboardId: ORDERS_DASHBOARD_ID,
       save: false,

@@ -7,5 +7,6 @@ export const updateSetting = <
   setting: TKey,
   value: TValue,
 ): Cypress.Chainable<Cypress.Response<never>> => {
+  cy.log(`Updating ${setting} with value: ${value}`);
   return cy.request<never>("PUT", `/api/setting/${setting}`, { value });
 };

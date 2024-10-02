@@ -51,6 +51,7 @@ import {
   sidebar,
   sidesheet,
   updateDashboardCards,
+  updateSetting,
   visitDashboard,
 } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
@@ -929,6 +930,8 @@ describe("scenarios > dashboard", () => {
         },
       ],
     });
+
+    updateSetting("enable-embedding-static", true);
 
     visitDashboard(ORDERS_DASHBOARD_ID);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

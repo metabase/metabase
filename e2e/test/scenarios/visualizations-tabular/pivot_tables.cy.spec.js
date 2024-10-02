@@ -16,6 +16,7 @@ import {
   queryBuilderMain,
   restore,
   sidebar,
+  updateSetting,
   visitDashboard,
   visitIframe,
   visitQuestion,
@@ -667,6 +668,8 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           enable_embedding: true,
         });
 
+        updateSetting("enable-embedding-static", true);
+
         visitQuestion(card_id);
       });
     });
@@ -722,7 +725,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
             confirmSave: test.confirmSave,
           });
 
-          // visit the iframe src directly to ensure it's not sing preview endpoints
+          // visit the iframe src directly to ensure it's not using preview endpoints
           visitIframe();
 
           cy.findByTestId("embed-frame-header").contains(test.subject);

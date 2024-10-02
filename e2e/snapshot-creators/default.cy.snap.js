@@ -91,7 +91,7 @@ describe("snapshots", () => {
 
   function updateSettings() {
     updateSetting("enable-public-sharing", true);
-    updateSetting("enable-embedding", true).then(() => {
+    updateSetting("enable-embedding-static", true).then(() => {
       updateSetting("embedding-secret-key", METABASE_SECRET_KEY);
     });
 
