@@ -60,9 +60,11 @@
 ;;           {:perms/view-data {table-id :unrestricted}}  source-card-read-perms
 ;;
 
-(mu/defn query->source-table-ids :- [:set [:or [:= ::native] ::lib.schema.id/table]]
-  "Return a sequence of all Table IDs referenced by `query`. If it is a native query, we use the SQL parser
-  to determine the referenced tables."
+(mu/defn query->native-table-ids :- [:set [:or [:= ::native]
+                                           ::lib.schema.id/table]]
+  "Returns a sequence of all Table IDs referenced by any native query strings in `query`, based on the output of the
+  Native Query Analyzer. Returns the placeholder value ::native if the query can't be parsed, or the parser doesn't
+  detect any tables, to indicate that full native access to the database should be required."
   [query :- :map]
   (set
    (flatten
@@ -82,12 +84,27 @@
             [::native]))
         (catch Throwable e
           (log/error e)
-          [::native]))
+          [::native]))))))
 
+(mu/defn query->mbql-table-ids :- [:set ::lib.schema.id/table]
+  "Return a sequence of all Table IDs referenced by `query`, excluding tables referenced in native query strings.
+  (Use `query->native-table-ids` for native query parsing.)"
+  [query :- :map]
+  (set
+   (flatten
+    (lib.util.match/match query
       (m :guard (every-pred map? #(pos-int? (:source-table %))))
       (cons
        (:source-table m)
-       (query->source-table-ids (dissoc m :source-table)))))))
+       (query->mbql-table-ids (dissoc m :source-table)))))))
+
+(mu/defn query->source-table-ids :- [:set [:or ::native ::lib.schema.id/table]]
+   "Returns a sequence of all Table IDs referenced by `query`, including both MBQL and native references. Returns the
+   placeholder value ::native if a native query can't be parsed, or the parser doesn't detect any tables, to indicate
+   that full native access to the database should be required."
+   [query :- :map]
+   (set/join (query->mbql-table-ids query)
+             (query->native-table-ids query)))
 
 (def ^:dynamic *card-instances*
   "A map from card IDs to card instances with the collection_id (possibly nil).
@@ -132,17 +149,23 @@
     (not-empty @all-ids)))
 
 (defn- full-native-query-perms
-  []
-  {:perms/create-queries :query-builder-and-native
-   :perms/view-data      :unrestricted})
+  [query]
+  (merge
+   {:perms/create-queries :query-builder-and-native
+    :perms/view-data      :unrestricted}
+   (when-let [card-ids (referenced-card-ids query)]
+     {:paths (into #{}
+                   (mapcat (fn [card-id]
+                             (mi/perms-objects-set (card-instance card-id) :read)))
+                   card-ids)})))
 
 (defn- native-query-perms
   [query]
   (merge
-   (let [table-ids                  (vec (query->source-table-ids query))
+   (let [table-ids                  (vec (query->native-table-ids query))
          require-full-native-perms? (.contains ^clojure.lang.PersistentVector table-ids ::native)]
      (if require-full-native-perms?
-       (full-native-query-perms)
+       (full-native-query-perms query)
        (when (seq table-ids)
          {:perms/create-queries (zipmap table-ids (repeat :query-builder-and-native))
           :perms/view-data      (zipmap table-ids (repeat :unrestricted))})))
@@ -162,13 +185,18 @@
         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
         (let [query                      (cond-> query
                                            (not already-preprocessed?) preprocess-query)
-              table-ids                  (vec (query->source-table-ids query))
-              require-full-native-perms? (.contains ^clojure.lang.PersistentVector table-ids ::native)]
+              mbql-table-ids             (vec (query->mbql-table-ids query))
+              native-table-ids           (vec (query->native-table-ids query))
+              require-full-native-perms? (.contains ^clojure.lang.PersistentVector native-table-ids ::native)]
           (if require-full-native-perms?
-            (full-native-query-perms)
-            (when (seq table-ids)
-              {:perms/create-queries (zipmap table-ids (repeat :query-builder))
-               :perms/view-data      (zipmap table-ids (repeat :unrestricted))})))))
+            (full-native-query-perms query)
+            (merge
+             (when (seq mbql-table-ids)
+               {:perms/create-queries (zipmap mbql-table-ids (repeat :query-builder))
+                :perms/view-data      (zipmap mbql-table-ids (repeat :unrestricted))})
+             (when (seq native-table-ids)
+               {:perms/create-queries (zipmap native-table-ids (repeat :query-builder-and-native))
+                :perms/view-data      (zipmap native-table-ids (repeat :unrestricted))}))))))
     ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
     ;; that means no one will ever get to see it
     (catch Throwable e

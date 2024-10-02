@@ -261,7 +261,8 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::query-perms/perms                        {:gtaps {:perms/create-queries :query-builder-and-native}}})
+                   ::query-perms/perms                        {:gtaps {:perms/create-queries {(mt/id :venues) :query-builder-and-native}
+                                                                       :perms/view-data      {(mt/id :venues) :unrestricted}}}})
                 (apply-row-level-permissions
                  (mt/mbql-query venues
                    {:aggregation [[:count]]}))))))))
