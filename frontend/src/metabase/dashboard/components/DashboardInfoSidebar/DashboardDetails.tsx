@@ -68,7 +68,7 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
           <div>
             <Text>
               <Link
-                to={`/collection/${dashboard.collection_id}`}
+                to={`/collection/${dashboard.collection_id ?? "root"}`}
                 variant="brand"
               >
                 {dashboard.collection?.name}
