@@ -153,6 +153,9 @@ describe("IFrameViz", () => {
     expect(
       screen.queryByTestId("iframe-visualization"),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByText("There was a problem loading your iFrame"),
+    ).toBeInTheDocument();
   });
 
   it("should sanitize iframe with onload attribute", () => {
@@ -173,5 +176,20 @@ describe("IFrameViz", () => {
       "sandbox",
       "allow-scripts allow-same-origin allow-forms allow-popups",
     );
+  });
+
+  it("should display error message when iframe URL is empty", () => {
+    setup({
+      isEditing: false,
+      isPreviewing: true,
+      settings: { iframe: "" },
+    });
+
+    expect(
+      screen.queryByTestId("iframe-visualization"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText("There was a problem loading your iFrame"),
+    ).toBeInTheDocument();
   });
 });

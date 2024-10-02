@@ -110,7 +110,14 @@ export function IFrameViz({
           frameBorder={0}
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         />
-      ) : null}
+      ) : (
+        <Box p={12} w="100%">
+          <Text
+            color="text-medium"
+            align={"center"}
+          >{t`There was a problem loading your iFrame`}</Text>
+        </Box>
+      )}
     </IFrameWrapper>
   );
 }
