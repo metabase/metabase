@@ -549,7 +549,7 @@
                 (do
                   (log/trace "BigQuery: New page returned")
                   (recur new-page new-iter acc (inc n)))
-                (throw (ex-info "Cannot get next-page iterator." {:page n}))))
+                (throw (ex-info "Cannot get next page from BigQuery" {:page n}))))
 
             ;; All pages exhausted, so just return.
             :else
