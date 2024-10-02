@@ -611,9 +611,14 @@
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
     (query-analysis/analyze! card)))
 
+(defn- apply-dashboard-question-updates [changes card]
+  (assert-is-valid-dashboard-internal-update changes card)
+  (if (:dashboard_id changes)
+    (assoc changes :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id (:dashboard_id changes)))
+    changes))
+
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-  (assert-is-valid-dashboard-internal-update (t2/changes card) card)
   ;; remove all the unchanged keys from the map, except for `:id`, so the functions below can do the right thing since
   ;; they were written pre-Toucan 2 and don't know about [[t2/changes]]...
   ;;
@@ -621,6 +626,7 @@
   ;; https://github.com/camsaul/toucan2/issues/145 .
   ;; TODO: ^ that's been fixed, this could be refactored
   (-> (into {:id (:id card)} (t2/changes (dissoc card :verified-result-metadata?)))
+      (apply-dashboard-question-updates card)
 
       maybe-normalize-query
       ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
@@ -825,15 +831,15 @@
   (let [dashboard (t2/hydrate (t2/select-one :model/Dashboard dashboard-id) :dashcards [:tabs :tab-cards])
         {:keys [dashcards tabs]} dashboard
         already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))
-        first-tab (or (first tabs)
-                      (sort dashboard-card/dashcard-comparator dashcards)
-                      ;; if we don't have any existing cards, fake it to make the math work out
-                      [{:col 0 :row 0}])]
+        last-card-on-first-tab (or (last (first tabs))
+                                   (last (sort dashboard-card/dashcard-comparator dashcards))
+                                   ;; if we don't have any existing cards, fake it to make the math work out
+                                   {:col 0 :row 0})]
     (when-not already-on-dashboard?
-      (t2/insert! :model/DashboardCard #p {:dashboard_id dashboard-id
+      (t2/insert! :model/DashboardCard {:dashboard_id dashboard-id
                                         :card_id (:id card)
                                         :size_x 10 :size_y 10
-                                        :row (+ 10 (:row (last first-tab)))
+                                        :row (+ 10 (:row last-card-on-first-tab))
                                         :col 0}))))
 
 (defn update-card!
