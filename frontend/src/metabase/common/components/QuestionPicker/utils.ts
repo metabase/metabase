@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
+import { isNullOrUndefined } from "metabase/lib/types";
 import type {
   Card,
   CardType,
@@ -18,7 +19,7 @@ import type {
 export const getCollectionIdPath = (
   collection: Pick<
     QuestionPickerItem,
-    "id" | "location" | "is_personal" | "effective_location"
+    "id" | "location" | "is_personal" | "effective_location" | "model"
   >,
   userPersonalCollectionId?: CollectionId,
 ): CollectionId[] => {
@@ -44,12 +45,14 @@ export const getCollectionIdPath = (
     (collection.id === userPersonalCollectionId ||
       pathFromRoot.includes(userPersonalCollectionId));
 
+  const id = collection.model === "collection" ? collection.id : -collection.id;
+
   if (isInUserPersonalCollection) {
-    return [...pathFromRoot, collection.id];
+    return [...pathFromRoot, id];
   } else if (collection.is_personal) {
-    return ["personal", ...pathFromRoot, collection.id];
+    return ["personal", ...pathFromRoot, id];
   } else {
-    return ["root", ...pathFromRoot, collection.id];
+    return ["root", ...pathFromRoot, id];
   }
 };
 
@@ -73,18 +76,23 @@ export const getStateFromIdPath = ({
   ];
 
   idPath.forEach((id, index) => {
-    const nextLevelId = idPath[index + 1] ?? null;
+    const { entityId: nextLevelId, model: nextLevelModel } = resolveEntityId(
+      idPath[index + 1],
+    );
+
+    const { entityId, model: entityModel } = resolveEntityId(id);
 
     statePath.push({
       query: {
-        id,
+        id: entityId,
         models: ["collection", ...models],
         namespace,
       },
+      entity: entityModel,
       selectedItem: nextLevelId
         ? {
             name: "",
-            model: "collection",
+            model: nextLevelModel,
             id: nextLevelId,
           }
         : null,
@@ -92,6 +100,27 @@ export const getStateFromIdPath = ({
   });
 
   return statePath;
+};
+
+const resolveEntityId = (
+  id: CollectionId,
+): {
+  model: "collection" | "dashboard";
+  entityId: CollectionId;
+} => {
+  if (typeof id === "string" || isNullOrUndefined(id)) {
+    return {
+      entityId: id,
+      model: "collection",
+    };
+  } else {
+    const isDashboard = id < 0;
+
+    return {
+      entityId: Math.abs(id),
+      model: isDashboard ? "dashboard" : "collection",
+    };
+  }
 };
 
 export const isFolder = (
@@ -103,7 +132,8 @@ export const isFolder = (
     item.is_personal ||
     (item?.model === "collection" &&
       _.intersection([...(item?.below ?? []), ...(item?.here ?? [])], models)
-        .length > 0)
+        .length > 0) ||
+    item?.model === "dashboard"
   );
 };
 
