@@ -76,7 +76,7 @@
   (case topic
     :event/user-invited
     {:user-invited-today         (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
-     :user-invited-email-subject (trs "You''re invited to join {0}''s {1}" (messages/site-name) (messages/app-name-trs))
+     :user-invited-email-subject (trs "You''re invited to join {0}''s {1}" (public-settings/site-name) (messages/app-name-trs))
      :user-invited-join-url      (join-url (:object event-info))}
     {}))
 
