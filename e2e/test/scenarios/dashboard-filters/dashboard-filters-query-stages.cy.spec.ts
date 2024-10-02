@@ -148,12 +148,12 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
     function verifyDateMappingOptions() {
       verifyDashcardMappingOptions(ORDERS_QUESTION_INDEX, [
-        ["Order", ORDERS_DATE_COLUMNS],
+        ["Orders", ORDERS_DATE_COLUMNS],
         ["Product", PRODUCTS_DATE_COLUMNS],
         ["User", PEOPLE_DATE_COLUMNS],
       ]);
       verifyDashcardMappingOptions(BASE_QUESTION_INDEX, [
-        ["Q0 Order", ORDERS_DATE_COLUMNS],
+        ["Q0 Orders", ORDERS_DATE_COLUMNS],
         ["Product", PRODUCTS_DATE_COLUMNS],
         ["User", PEOPLE_DATE_COLUMNS],
       ]);
@@ -181,12 +181,12 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
     function verifyNumberMappingOptions() {
       verifyDashcardMappingOptions(ORDERS_QUESTION_INDEX, [
-        ["Order", ORDERS_NUMBER_COLUMNS],
+        ["Orders", ORDERS_NUMBER_COLUMNS],
         ["Product", PRODUCTS_NUMBER_COLUMNS],
         ["User", PEOPLE_NUMBER_COLUMNS],
       ]);
       verifyDashcardMappingOptions(BASE_QUESTION_INDEX, [
-        ["Q0 Order", ORDERS_NUMBER_COLUMNS],
+        ["Q0 Orders", ORDERS_NUMBER_COLUMNS],
         ["Product", PRODUCTS_NUMBER_COLUMNS],
         ["User", PEOPLE_NUMBER_COLUMNS],
       ]);
@@ -223,13 +223,13 @@ describe("scenarios > dashboard > filters > query stages", () => {
       function verifyDateMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
           ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Reviews", REVIEWS_DATE_COLUMNS],
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Reviews", REVIEWS_DATE_COLUMNS],
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
         ]);
@@ -255,12 +255,12 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyTextMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Reviews", REVIEWS_TEXT_COLUMNS],
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Reviews", REVIEWS_TEXT_COLUMNS],
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
         ]);
@@ -287,7 +287,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       function verifyNumberMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
           ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Reviews", REVIEWS_NUMBER_COLUMNS],
           [
             "Product",
             [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
@@ -296,7 +296,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Reviews", REVIEWS_NUMBER_COLUMNS],
           [
             "Product",
             [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
@@ -306,7 +306,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
           [
             "Question-based Model",
-            [...ORDERS_NUMBER_COLUMNS, "Reviews - Product → Rating"],
+            [...ORDERS_NUMBER_COLUMNS, "Net", "Reviews - Product → Rating"],
           ],
           ["Product", PRODUCTS_NUMBER_COLUMNS],
           ["Reviews - Product → Product", PRODUCTS_NUMBER_COLUMNS],
@@ -315,7 +315,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
           [
             "Model-based Model",
-            [...ORDERS_NUMBER_COLUMNS, "Reviews - Product → Rating"],
+            [...ORDERS_NUMBER_COLUMNS, "Net", "Reviews - Product → Rating"],
           ],
           ["Product", PRODUCTS_NUMBER_COLUMNS],
           ["Reviews - Product → Product", PRODUCTS_NUMBER_COLUMNS],
@@ -348,13 +348,13 @@ describe("scenarios > dashboard > filters > query stages", () => {
       function verifyDateMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
           ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Reviews", REVIEWS_DATE_COLUMNS],
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Reviews", REVIEWS_DATE_COLUMNS],
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
         ]);
@@ -364,12 +364,12 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyTextMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Reviews", REVIEWS_TEXT_COLUMNS],
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Reviews", REVIEWS_TEXT_COLUMNS],
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
         ]);
@@ -380,26 +380,22 @@ describe("scenarios > dashboard > filters > query stages", () => {
       function verifyNumberMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
           ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Reviews", REVIEWS_NUMBER_COLUMNS],
           ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_NUMBER_COLUMNS],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Reviews", REVIEWS_NUMBER_COLUMNS],
           ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_NUMBER_COLUMNS],
         ]);
-        /**
-         * TODO: https://github.com/metabase/metabase/issues/47184
-         * TODO: uncomment next two verifyDashcardMappingOptions calls once the issue is fixed
-         */
-        // verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-        //   ["Summaries", ["Count", "Sum of Total"]],
-        // ]);
-        // verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-        //   ["Summaries", ["Count", "Sum of Total"]],
-        // ]);
+        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+          [NAMELESS_SECTION, ["Count", "Sum of Total"]],
+        ]);
+        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+          [NAMELESS_SECTION, ["Count", "Sum of Total"]],
+        ]);
       }
     });
 
@@ -427,13 +423,13 @@ describe("scenarios > dashboard > filters > query stages", () => {
       function verifyDateMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
           ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Reviews", REVIEWS_DATE_COLUMNS],
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Reviews", REVIEWS_DATE_COLUMNS],
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
         ]);
@@ -447,12 +443,12 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyTextMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Reviews", REVIEWS_TEXT_COLUMNS],
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Reviews", REVIEWS_TEXT_COLUMNS],
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
         ]);
@@ -467,13 +463,13 @@ describe("scenarios > dashboard > filters > query stages", () => {
       function verifyNumberMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
           ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Reviews", REVIEWS_NUMBER_COLUMNS],
           ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_NUMBER_COLUMNS],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Reviews", REVIEWS_NUMBER_COLUMNS],
           ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_NUMBER_COLUMNS],
         ]);
@@ -506,14 +502,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
       function verifyDateMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
           ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Reviews", REVIEWS_DATE_COLUMNS],
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
           ["Summaries", ["Created At: Month", "Created At: Year"]],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Reviews", REVIEWS_DATE_COLUMNS],
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
           ["Summaries", ["Created At: Month", "Created At: Year"]],
@@ -528,13 +524,13 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyTextMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Reviews", REVIEWS_TEXT_COLUMNS],
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
           ["Summaries", ["Category"]],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Reviews", REVIEWS_TEXT_COLUMNS],
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
           ["Summaries", ["Category"]],
@@ -550,28 +546,24 @@ describe("scenarios > dashboard > filters > query stages", () => {
       function verifyNumberMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
           ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Reviews", REVIEWS_NUMBER_COLUMNS],
           ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_NUMBER_COLUMNS],
           ["Summaries", ["Count", "Sum of Total"]],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Reviews", REVIEWS_NUMBER_COLUMNS],
           ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_NUMBER_COLUMNS],
           ["Summaries", ["Count", "Sum of Total"]],
         ]);
-        /**
-         * TODO: https://github.com/metabase/metabase/issues/47184
-         * TODO: uncomment next two verifyDashcardMappingOptions calls once the issue is fixed
-         */
-        // verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-        //   [NAMELESS_SECTION, ["Count", "Sum of Total"]],
-        // ]);
-        // verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-        //   [NAMELESS_SECTION, ["Count", "Sum of Total"]],
-        // ]);
+        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+          [NAMELESS_SECTION, ["Count", "Sum of Total"]],
+        ]);
+        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+          [NAMELESS_SECTION, ["Count", "Sum of Total"]],
+        ]);
       }
     });
   });
@@ -601,14 +593,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
       function verifyDateMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
           ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Review", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
           ["Summaries", ["Created At: Month", "Created At: Year"]],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Review", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
           ["Summaries", ["Created At: Month", "Created At: Year"]],
@@ -623,13 +615,13 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyTextMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Review", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
+          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
           ["Summaries", ["Category"]],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Review", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
+          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
           ["Summaries", ["Category"]],
@@ -645,7 +637,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       function verifyNumberMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
           ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Review", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
+          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
           [
             "Product",
             [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
@@ -655,7 +647,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Review", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
+          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
           [
             "Product",
             [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
@@ -663,16 +655,12 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["User", PEOPLE_NUMBER_COLUMNS],
           ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
         ]);
-        /**
-         * TODO: https://github.com/metabase/metabase/issues/47184
-         * TODO: uncomment next two verifyDashcardMappingOptions calls once the issue is fixed
-         */
-        // verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-        //   [NAMELESS_SECTION, ["Count", "Sum of Total", "5 * Count"]],
-        // ]);
-        // verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-        //   [NAMELESS_SECTION, ["Count", "Sum of Total", "5 * Count"]],
-        // ]);
+        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+          [NAMELESS_SECTION, ["Count", "Sum of Total", "5 * Count"]],
+        ]);
+        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+          [NAMELESS_SECTION, ["Count", "Sum of Total", "5 * Count"]],
+        ]);
       }
     });
 
@@ -700,14 +688,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
       function verifyDateMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
           ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Review", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
           ["Summaries", ["Created At: Month", "Created At: Year"]],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Review", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
           ["Summaries", ["Created At: Month", "Created At: Year"]],
@@ -718,13 +706,13 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyTextMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Review", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
+          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
           ["Summaries", ["Category"]],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Review", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
+          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
           ["Summaries", ["Category"]],
@@ -736,7 +724,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       function verifyNumberMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
           ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Review", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
+          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
           [
             "Product",
             [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
@@ -746,7 +734,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Review", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
+          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
           [
             "Product",
             [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
@@ -754,16 +742,18 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["User", PEOPLE_NUMBER_COLUMNS],
           ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
         ]);
-        /**
-         * TODO: https://github.com/metabase/metabase/issues/47184
-         * TODO: uncomment next two verifyDashcardMappingOptions calls once the issue is fixed
-         */
-        // verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-        //   [NAMELESS_SECTION, ["Count", "Sum of Total", "5 * Count"]],
-        // ]);
-        // verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-        //   [NAMELESS_SECTION, ["Count", "Sum of Total", "5 * Count"]],
-        // ]);
+        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+          [
+            NAMELESS_SECTION,
+            ["Count", "Sum of Reviews - Created At: Month → Rating"],
+          ],
+        ]);
+        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+          [
+            NAMELESS_SECTION,
+            ["Count", "Sum of Reviews - Created At: Month → Rating"],
+          ],
+        ]);
       }
     });
 
@@ -791,14 +781,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
       function verifyDateMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
           ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Review", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
           ["Summaries", ["Created At: Month", "Created At: Year"]],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Review", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
           ["Summaries", ["Created At: Month", "Created At: Year"]],
@@ -809,13 +799,13 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyTextMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Review", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
+          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
           ["Summaries", ["Category"]],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Review", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
+          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]],
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
           ["Summaries", ["Category"]],
@@ -843,7 +833,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       function verifyNumberMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
           ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Review", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
+          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
           [
             "Product",
             [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
@@ -853,7 +843,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
           ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Review", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
+          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]],
           [
             "Product",
             [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
@@ -889,12 +879,18 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyDateMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+          ["Base Orders Question", ORDERS_DATE_COLUMNS],
+          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_DATE_COLUMNS],
           ["Summaries", ["Created At: Month", "Created At: Year"]],
-          ["Review", REVIEWS_DATE_COLUMNS],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+          ["Base Orders Model", ORDERS_DATE_COLUMNS],
+          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_DATE_COLUMNS],
           ["Summaries", ["Created At: Month", "Created At: Year"]],
-          ["Review", REVIEWS_DATE_COLUMNS],
         ]);
         verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
         verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
@@ -902,12 +898,16 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyTextMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_TEXT_COLUMNS],
           ["Summaries", ["Category", "Reviewer", "Category"]],
-          ["Review", REVIEWS_TEXT_COLUMNS],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_TEXT_COLUMNS],
           ["Summaries", ["Category", "Reviewer", "Category"]],
-          ["Review", REVIEWS_TEXT_COLUMNS],
         ]);
         verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
           [
@@ -931,21 +931,37 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyNumberMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_NUMBER_COLUMNS],
           [
             "Summaries",
             ["Count", "Sum of Total", "5 * Count", "Count", "Sum of Rating"],
           ],
-          ["Review", REVIEWS_NUMBER_COLUMNS],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+          ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_NUMBER_COLUMNS],
           [
             "Summaries",
             ["Count", "Sum of Total", "5 * Count", "Count", "Sum of Rating"],
           ],
-          ["Review", REVIEWS_NUMBER_COLUMNS],
         ]);
-        verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
-        verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
+        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+          [
+            NAMELESS_SECTION,
+            ["Count", "Sum of Reviews - Created At: Month → Rating"],
+          ],
+        ]);
+        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+          [
+            NAMELESS_SECTION,
+            ["Count", "Sum of Reviews - Created At: Month → Rating"],
+          ],
+        ]);
       }
     });
   });
@@ -974,12 +990,18 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyDateMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+          ["Base Orders Question", ORDERS_DATE_COLUMNS],
+          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_DATE_COLUMNS],
           ["Summaries", ["Created At: Month", "Created At: Year"]],
-          ["Review", REVIEWS_DATE_COLUMNS],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+          ["Base Orders Model", ORDERS_DATE_COLUMNS],
+          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_DATE_COLUMNS],
           ["Summaries", ["Created At: Month", "Created At: Year"]],
-          ["Review", REVIEWS_DATE_COLUMNS],
         ]);
         verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
         verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
@@ -987,12 +1009,16 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyTextMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_TEXT_COLUMNS],
           ["Summaries", ["Category", "Reviewer", "Category"]],
-          ["Review", REVIEWS_TEXT_COLUMNS],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_TEXT_COLUMNS],
           ["Summaries", ["Category", "Reviewer", "Category"]],
-          ["Review", REVIEWS_TEXT_COLUMNS],
         ]);
         verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
           [
@@ -1016,15 +1042,31 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyNumberMappingOptions() {
         verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Summaries", ["Count", "Sum of Total", "5 * Count", "Count"]],
-          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_NUMBER_COLUMNS],
+          [
+            "Summaries",
+            ["Count", "Sum of Total", "5 * Count", "Count"], // https://github.com/metabase/metabase/issues/46845 - 2nd Count should be in "Summaries (2)" group
+          ],
         ]);
         verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Summaries", ["Count", "Sum of Total", "5 * Count", "Count"]],
-          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_NUMBER_COLUMNS],
+          [
+            "Summaries",
+            ["Count", "Sum of Total", "5 * Count", "Count"], // https://github.com/metabase/metabase/issues/46845 - 2nd Count should be in "Summaries (2)" group
+          ],
         ]);
-        verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
-        verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
+        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+          [NAMELESS_SECTION, ["Count"]],
+        ]);
+        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+          [NAMELESS_SECTION, ["Count"]],
+        ]);
       }
     });
   });
@@ -1368,10 +1410,12 @@ function verifyPopoverMappingOptions(sections: MappingSection[]) {
       let index = 0;
 
       for (const [sectionName, columnNames] of sections) {
+        // if (sectionName !== NAMELESS_SECTION) {
         const item = cy.wrap($items[index]);
         item.scrollIntoView();
         item.should("have.text", sectionName);
         ++index;
+        // }
 
         for (const columnName of columnNames) {
           const item = cy.wrap($items[index]);
