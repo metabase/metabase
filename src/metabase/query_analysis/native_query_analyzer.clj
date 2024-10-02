@@ -183,16 +183,15 @@
 
 (defn- table-refs-for-query
   "Given the results of query analysis, return references to the corresponding tables and cards."
-  [{table-maps :tables} db-id]
-  (let [tables (map :component table-maps)]
-    (consolidate-tables
-     tables
-     (t2/select :model/QueryTable
-                {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
-                 :from   [[(t2/table-name :model/Table) :t]]
-                 :where  [:and
-                          [:= :t.db_id db-id]
-                          (into [:or] (map table-query tables))]}))))
+  [tables db-id]
+  (consolidate-tables
+   tables
+   (t2/select :model/QueryTable
+              {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
+               :from   [[(t2/table-name :model/Table) :t]]
+               :where  [:and
+                        [:= :t.db_id db-id]
+                        (into [:or] (map table-query tables))]})))
 
 (defn- fill-missing-table-ids-hack
   "See if we can qualify the schema and table-id for any explicit field refs which couldn't resolve their field"
@@ -276,7 +275,8 @@
         macaw-opts    (nqa.impl/macaw-options driver)
         sql-string    (:query (nqa.sub/replace-tags query))
         parsed-query  (macaw/query->components (macaw/parsed-query sql-string macaw-opts) macaw-opts)
-        table-refs    (table-refs-for-query parsed-query db-id)
+        tables        (map :component (:tables parsed-query))
+        table-refs    (table-refs-for-query tables db-id)
         explicit-refs (explicit-field-refs-for-query parsed-query db-id table-refs)
         implicit-refs (-> (implicit-references-for-query parsed-query db-id)
                           (set/difference explicit-refs))
@@ -284,6 +284,29 @@
                               (mark-reference implicit-refs false))]
     {:tables (strip-model-refs table-refs)
      :fields (strip-model-refs field-refs)}))
+
+;; tmp - waiting for macaw version bump
+(defn- raw-components [xs]
+  (into (empty xs) (keep :component) xs))
+
+;; tmp - waiting for macaw version bump
+(defn- query->tables
+  [sql & {:as opts}]
+  (-> (macaw/parsed-query sql)
+      (macaw/query->components opts)
+      :tables
+      raw-components))
+
+(defn- tables-for-sql
+  "Returns a set of table identifiers that (may) be referenced in the given card's query.
+  Errs on the side of optimism: i.e., it may return talbes that are *not* in the query, and is unlikely to fail
+  to return tables that are in the query."
+  [driver query]
+  (let [db-id         (:database query)
+        macaw-opts    (nqa.impl/macaw-options driver)
+        sql-string    (:query (nqa.sub/replace-tags query))
+        parsed-query  (#_macaw/query->tables query->tables sql-string macaw-opts)]
+    (table-refs-for-query parsed-query db-id)))
 
 (defn references-for-native
   "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's
@@ -294,3 +317,12 @@
     ;; See https://github.com/metabase/metabase/issues/43516 for long term solution.
     (when (isa? driver/hierarchy driver :sql)
       (references-for-sql driver query))))
+
+(defn tables-for-native
+  "TODO"
+  [query]
+  (let [driver (driver.u/database->driver (:database query))]
+    ;; TODO this approach is not extensible, we need to move to multimethods.
+    ;; See https://github.com/metabase/metabase/issues/43516 for long term solution.
+    (when (isa? driver/hierarchy driver :sql)
+      (tables-for-sql driver query))))

@@ -50,6 +50,11 @@
 (defn- table-refs [sql]
   (:tables (refs sql)))
 
+(defn- basic-table-refs [sql]
+  (->> (mt/native-query {:query sql})
+       (#'nqa/tables-for-native)
+       (sort-by (juxt :schema :table))))
+
 (defn- table-reference [table]
   (let [reference (nqa/table-reference (mt/id) table)]
     ;; sanity-check that this is the right reference
@@ -85,17 +90,20 @@
   (testing "simple query matches"
     (let [sql "select id from venues"]
       (is (= [(field-reference :venues :id)] (field-refs sql)))
-      (is (= [(table-reference :venues)] (table-refs sql))))))
+      (is (= [(table-reference :venues)] (table-refs sql)))
+      (is (= [(table-reference :venues)] (basic-table-refs sql))))))
 
 (deftest ^:parallel field-matching-schema-test
   (testing "real existent schema"
     (let [sql "select id from public.venues"]
       (is (= [(field-reference :venues :id)] (field-refs sql)))
-      (is (= [(table-reference :venues)] (table-refs sql)))))
+      (is (= [(table-reference :venues)] (table-refs sql)))
+      (is (= [(table-reference :venues)] (basic-table-refs sql)))))
   (testing "non-existent schema"
     (let [sql "select id from blah.venues"]
       (is (= [(missing-field-reference :blah :venues :id)] (field-refs sql)))
-      (is (= [{:schema "blah", :table "venues"}] (table-refs sql))))))
+      (is (= [{:schema "blah", :table "venues"}] (table-refs sql)))
+      (is (= [{:schema "blah", :table "venues"}] (basic-table-refs sql))))))
 
 (deftest ^:parallel field-matching-case-test
   (testing "quotes stop case matching"
@@ -105,14 +113,21 @@
   (testing "unresolved references use case verbatim"
     (let [sql "select \"id\" from unKnown"]
       (is (= [{:table "unKnown", :column "id", :explicit-reference true}] (field-refs sql)))
-      (is (= [{:table "unKnown"}] (table-refs sql))))
+      (is (= [{:table "unKnown"}] (table-refs sql)))
+      (is (= [{:table "unKnown"}] (basic-table-refs sql))))
     (let [sql "select ID from unknowN"]
       (is (= [{:table "unknowN", :column "ID", :explicit-reference true}] (field-refs sql)))
-      (is (= [{:table "unknowN"}] (table-refs sql)))))
+      (is (= [{:table "unknowN"}] (table-refs sql)))
+      (is (= [{:table "unknowN"}] (basic-table-refs sql)))))
 
   (testing "resolved references normalize the case"
     (let [sql        "select id from veNUES"]
       (doseq [ref (concat (field-refs sql) (table-refs sql))
+              :let [table-name (:table ref)]]
+        (is (not= "veNUES" table-name))
+        (is (= "venues" (u/lower-case-en table-name))))
+
+      (doseq [ref (concat (field-refs sql) (basic-table-refs sql))
               :let [table-name (:table ref)]]
         (is (not= "veNUES" table-name))
         (is (= "venues" (u/lower-case-en table-name))))))
