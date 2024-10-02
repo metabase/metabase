@@ -130,7 +130,7 @@
                                :filters [[:= {}
                                           [:field {} (meta/id :people :id)]
                                           1]]}]}
-                    (lib/drill-thru query -1 fk-details-drill)))))))))
+                    (lib/drill-thru query -1 nil fk-details-drill)))))))))
 
 (deftest ^:parallel do-not-return-fk-details-for-nil-test
   (testing "do not return fk-details drills for nil cell values (#36133)"

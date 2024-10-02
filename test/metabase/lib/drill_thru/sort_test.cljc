@@ -43,10 +43,10 @@
                                  :order-by [[:asc {} [:field {} (meta/id :orders :id)]]]}]}
                       actual)
       (lib/drill-thru query drill)
-      (lib/drill-thru query -1 drill)
-      (lib/drill-thru query -1 drill :asc)
+      (lib/drill-thru query -1 nil drill)
+      (lib/drill-thru query -1 nil drill :asc)
       (mu/disable-enforcement
-        (lib/drill-thru query -1 drill "asc")))
+        (lib/drill-thru query -1 nil drill "asc")))
     (testing "Handle JS input correctly (#34342)"
       (mu/disable-enforcement
         (is (=? {:query {:source-table (meta/id :orders)
@@ -54,10 +54,10 @@
                                          [:field
                                           (meta/id :orders :id)
                                           {:base-type :type/BigInteger}]]]}}
-                (lib.convert/->legacy-MBQL (lib/drill-thru query -1 drill "asc"))))))
+                (lib.convert/->legacy-MBQL (lib/drill-thru query -1 nil drill "asc"))))))
     (is (=? {:stages [{:lib/type :mbql.stage/mbql
                        :order-by [[:desc {} [:field {} (meta/id :orders :id)]]]}]}
-            (lib/drill-thru query -1 drill :desc)))))
+            (lib/drill-thru query -1 nil drill :desc)))))
 
 (deftest ^:parallel aggregate-column-e2e-test
   (testing "Sort drills should be suggested/work for aggregate columns like count (#34185)"
@@ -83,7 +83,7 @@
                              :order-by    [[:desc
                                             {}
                                             [:aggregation {} string?]]]}]}
-                  (lib/drill-thru query -1 drill :desc))))))))
+                  (lib/drill-thru query -1 nil drill :desc))))))))
 
 (deftest ^:parallel remove-existing-sort-test
   (testing "Applying sort to already sorted column should REPLACE original sort (#34497, #37633)"
@@ -109,7 +109,7 @@
       (testing "We should REPLACE the original sort, as opposed to removing it and appending a new one"
         (is (=? {:stages
                  [{:order-by [[:desc {} [:field {} (meta/id :orders :user-id)]]]}]}
-                (lib/drill-thru query -1 drill :desc)))))))
+                (lib/drill-thru query -1 nil drill :desc)))))))
 
 (deftest ^:parallel returns-sort-test-1
   (lib.drill-thru.tu/test-returns-drill

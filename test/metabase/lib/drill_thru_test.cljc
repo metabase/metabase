@@ -116,13 +116,13 @@
            (is (thrown-with-msg?
                 #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
                 #"Do not call drill-thru for "
-                (apply lib/drill-thru query -1 drill args))))
+                (apply lib/drill-thru query -1 nil drill args))))
 
          (testing (str "\nquery =\n" (u/pprint-to-str query)
                        "\ndrill =\n" (u/pprint-to-str drill)
                        "\nargs =\n" (u/pprint-to-str args))
            (try
-             (let [query' (apply lib/drill-thru query -1 drill args)]
+             (let [query' (apply lib/drill-thru query -1 nil drill args)]
                (is (not (me/humanize (mc/validate ::lib.schema/query query'))))
                (when (< (inc depth) test-drill-applications-max-depth)
                  (testing (str "\n\nDEPTH = " (inc depth) "\n\nquery =\n" (u/pprint-to-str query'))

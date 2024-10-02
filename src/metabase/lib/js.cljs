@@ -249,7 +249,7 @@
 
   > **Code health:** Healthy"
   [a-query stage-number card-id]
-  (let [a-query (lib.drill-thru.common/prepare-query a-query stage-number card-id)]
+  (let [{a-query :query, :keys [stage-number]} (lib.core/wrap-native-query-with-mbql a-query stage-number card-id)]
     (if (and
        (empty? (lib.core/aggregations a-query stage-number))
        (empty? (lib.core/breakouts a-query stage-number)))
@@ -2224,8 +2224,8 @@
   (let [bounds           (js->clj bounds :keywordize-keys true)
         latitude-column  (legacy-column->metadata a-query stage-number latitude-column)
         longitude-column (legacy-column->metadata a-query stage-number longitude-column)]
-    (lib.core/update-lat-lon-filter (lib.drill-thru.common/prepare-query a-query stage-number card-id)
-                                    stage-number latitude-column longitude-column bounds)))
+    (lib.core/with-wrapped-native-query a-query stage-number card-id
+      lib.core/update-lat-lon-filter latitude-column longitude-column bounds)))
 
 (defn ^:export update-numeric-filter
   "Add or update a filter against `numeric-column`, based on the provided start and end values. **Removes** any existing
@@ -2236,8 +2236,8 @@
   ideally refactored away."
   [a-query stage-number numeric-column card-id start end]
   (let [numeric-column (legacy-column->metadata a-query stage-number numeric-column)]
-    (lib.core/update-numeric-filter (lib.drill-thru.common/prepare-query a-query stage-number card-id)
-                                    stage-number numeric-column start end)))
+    (lib.core/with-wrapped-native-query a-query stage-number card-id
+      lib.core/update-numeric-filter numeric-column start end)))
 
 (defn ^:export update-temporal-filter
   "Add or update a filter against `temporal-column`, based on the provided start and end values.
@@ -2250,12 +2250,9 @@
   However, it should be adjusted to accept only MLv2 columns. Any legacy conversion should be done by the caller, and
   ideally refactored away."
   [a-query stage-number temporal-column card-id start end]
-  #_(do (.log js/console "update-temporal-filter")
-      (.log js/console (with-out-str (cljs.pprint/pprint a-query))))
   (let [temporal-column (legacy-column->metadata a-query stage-number temporal-column)]
-    ;; (lib.drill-thru.common/prepare-query query stage-number card-id)
-    (lib.core/update-temporal-filter (lib.drill-thru.common/prepare-query a-query stage-number card-id)
-                                     stage-number temporal-column start end)))
+    (lib.core/with-wrapped-native-query a-query stage-number card-id
+      lib.core/update-temporal-filter temporal-column start end)))
 
 (defn ^:export valid-filter-for?
   "Given two columns, returns true if `src-column` is a valid source to use for filtering `dst-column`.

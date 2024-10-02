@@ -129,7 +129,7 @@
                          :fields      (symbol "nil #_\"key is not present.\"")}]}
               (->> (lib.drill-thru/available-drill-thrus query context)
                    (m/find-first #(= (:type %) :drill-thru/underlying-records))
-                   (lib.drill-thru/drill-thru query -1)))))))
+                   (lib.drill-thru/drill-thru query -1 nil)))))))
 
 (deftest ^:parallel underlying-records-apply-test
   (testing "sum(subtotal) over time"
@@ -308,7 +308,7 @@
                          :aggregation (symbol "nil #_\"key is not present.\"")
                          :breakout    (symbol "nil #_\"key is not present.\"")
                          :fields      (symbol "nil #_\"key is not present.\"")}]}
-              (lib.drill-thru/drill-thru query -1 drill))))))
+              (lib.drill-thru/drill-thru query drill))))))
 
 (deftest ^:parallel preserve-temporal-bucket-test
   (testing "preserve the temporal bucket on a breakout column in the previous stage (#13504 #36582)"

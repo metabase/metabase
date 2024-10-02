@@ -238,7 +238,7 @@
       (testing "apply drills"
         (testing :contains
           (is (=? {:stages [{:filters [[:contains {} [:field {} (meta/id :reviews :body)] "text"]]}]}
-                  (lib/drill-thru query -1 drill "contains"))))
+                  (lib/drill-thru query -1 nil drill "contains"))))
         (testing :does-not-contain
           (is (=? {:stages [{:filters [[:does-not-contain {} [:field {} (meta/id :reviews :body)] "text"]]}]}
-                  (lib/drill-thru query -1 drill "does-not-contain"))))))))
+                  (lib/drill-thru query -1 nil drill "does-not-contain"))))))))

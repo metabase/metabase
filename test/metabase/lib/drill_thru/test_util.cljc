@@ -221,6 +221,6 @@
       (testing (str "Should return expected query when applying the drill"
                     "\nQuery = \n" (u/pprint-to-str query)
                     "\nDrill = \n" (u/pprint-to-str drill))
-        (let [query' (apply lib/drill-thru query -1 drill drill-args)]
+        (let [query' (apply lib/drill-thru query -1 nil drill drill-args)]
           (is (=? (drop-uuids expected-query)
                   query')))))))
