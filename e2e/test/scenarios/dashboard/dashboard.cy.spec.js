@@ -407,7 +407,7 @@ describe("scenarios > dashboard", () => {
       it("should allow navigating to the model editor directly from a dashboard card", () => {
         createQuestionAndDashboard({
           questionDetails: {
-            name: "Orders model",
+            name: "orders",
             type: "model",
             query: {
               "source-table": ORDERS_ID,
@@ -416,20 +416,23 @@ describe("scenarios > dashboard", () => {
           dashboardDetails: {
             name: "Dashboard",
           },
-        }).then(({ body: { dashboard_id, ...rest } }) => {
+        }).then(({ body: { dashboard_id, card } }) => {
+          cy.wrap(`${card.id}-${card.name}`).as("slug");
           visitDashboard(dashboard_id);
         });
 
         showDashboardCardActions();
         getDashboardCardMenu().click();
         popover().findByText("Edit model").should("be.visible").click();
-        cy.location("pathname").should("match", /\/model\/.*\/query/);
+        cy.get("@slug").then(slug => {
+          cy.location("pathname").should("eq", `/model/${slug}/query`);
+        });
       });
 
       it("should allow navigating to the metric editor directly from a dashboard card", () => {
         createQuestionAndDashboard({
           questionDetails: {
-            name: "Count of orders metric",
+            name: "orders",
             type: "metric",
             query: {
               "source-table": ORDERS_ID,
@@ -439,14 +442,17 @@ describe("scenarios > dashboard", () => {
           dashboardDetails: {
             name: "Dashboard",
           },
-        }).then(({ body: { dashboard_id } }) => {
+        }).then(({ body: { dashboard_id, card } }) => {
+          cy.wrap(`${card.id}-${card.name}`).as("slug");
           visitDashboard(dashboard_id);
         });
 
         showDashboardCardActions();
         getDashboardCardMenu().click();
         popover().findByText("Edit metric").should("be.visible").click();
-        cy.location("pathname").should("match", /\/metric\/.*\/query/);
+        cy.get("@slug").then(slug => {
+          cy.location("pathname").should("eq", `/metric/${slug}/query`);
+        });
       });
     });
 
