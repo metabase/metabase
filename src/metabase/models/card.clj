@@ -854,6 +854,10 @@
       (autoplace-dashcard-for-card! (:dashboard_id card-updates)
                                     card-before-update))
 
+    (when (and (:dashboard_id card-updates)
+               (:dashboard_id card-before-update))
+      (t2/delete! :model/DashboardCard :card_id (:id card-before-update) :dashboard_id (:dashboard_id card-before-update)))
+
     (when (and (card-is-verified? card-before-update)
                (changed? card-compare-keys card-before-update card-updates))
       ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
