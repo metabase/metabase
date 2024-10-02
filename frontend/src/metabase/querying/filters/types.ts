@@ -18,7 +18,6 @@ export interface GroupItem {
   key: string;
   displayName: string;
   icon: IconName;
-  group: Lib.ColumnGroup;
   columnItems: ColumnItem[];
   segmentItems: SegmentItem[];
 }

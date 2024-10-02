@@ -28,7 +28,6 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
         key: `${stageIndex}-${groupIndex}`,
         displayName: getGroupName(groupInfo, stageIndex),
         icon: getColumnGroupIcon(groupInfo),
-        group,
         columnItems: availableColumns.map(column => {
           const columnInfo = Lib.displayInfo(query, stageIndex, column);
           return {
