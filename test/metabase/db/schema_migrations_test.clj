@@ -2630,14 +2630,14 @@
 
 (deftest populate-enabled-embedding-settings-works
   (testing "Check that embedding settings are nil when enable-embedding is nil"
-    (impl/test-migrations "v51.2024-09-26T03:01:00" [migrate!]
+    (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
       (t2/delete! :model/Setting :key "enable-embedding")
       (migrate!)
       (is (= nil (t2/select-one :model/Setting :key "enable-embedding-interactive")))
       (is (= nil (t2/select-one :model/Setting :key "enable-embedding-static")))
       (is (= nil (t2/select-one :model/Setting :key "enable-embedding-sdk")))))
   (testing "Check that embedding settings are true when enable-embedding is true"
-    (impl/test-migrations "v51.2024-09-26T03:01:00" [migrate!]
+    (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
       (t2/delete! :model/Setting :key "enable-embedding")
       (t2/insert! :model/Setting {:key "enable-embedding" :value "true"})
       (migrate!)
