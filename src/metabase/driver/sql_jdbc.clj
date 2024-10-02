@@ -189,7 +189,7 @@
   (mu/validate-throw [:maybe [:cat :keyword]] primary-key) ; we only support adding a single primary key column for now
   (with-quoting driver
     (let [primary-key-column (first primary-key)
-          sql                (first (sql/format {:alter-table (quote-table table-name)
+          sql                (first (sql/format {:alter-table (keyword table-name)
                                                  :add-column  (map (fn [[column-name type-and-constraints]]
                                                                      (cond-> (vec (cons (quote-identifier column-name)
                                                                                         (if (string? type-and-constraints)

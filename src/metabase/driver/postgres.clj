@@ -19,7 +19,7 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [with-quoting quote-columns quote-identifier quote-table]]
+   [metabase.driver.sql-jdbc.quoting :refer [with-quoting quote-columns quote-identifier]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -862,7 +862,7 @@
 (defmethod sql-jdbc.sync/alter-columns-sql :postgres
   [driver table-name column-definitions]
   (with-quoting driver
-    (first (sql/format {:alter-table  (quote-table table-name)
+    (first (sql/format {:alter-table  (keyword table-name)
                         :alter-column (map (fn [[column-name type-and-constraints]]
                                              (vec (list* (quote-identifier column-name)
                                                          :type
