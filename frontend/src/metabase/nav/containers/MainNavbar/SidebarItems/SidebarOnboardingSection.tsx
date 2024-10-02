@@ -2,12 +2,14 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useHasTokenFeature } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
+import type { CollectionTreeItem } from "metabase/entities/collections/utils";
 import { useSelector } from "metabase/lib/redux";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
-import { getLearnUrl } from "metabase/selectors/settings";
+import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
@@ -23,17 +25,30 @@ import {
 import { PaddedSidebarLink } from "../MainNavbar.styled";
 
 type SidebarOnboardingProps = {
+  collections: CollectionTreeItem[];
   initialState: boolean;
   isAdmin: boolean;
   isSidebarOpen: boolean;
 };
 
 export function SidebarOnboardingSection({
+  collections,
   initialState,
   isAdmin,
   isSidebarOpen,
 }: SidebarOnboardingProps) {
   const applicationName = useSelector(getApplicationName);
+
+  const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
+  const isUploadEnabled = useSelector(
+    state => getSetting(state, "uploads-settings")?.db_id,
+  );
+  const rootCollection = collections.find(
+    ({ id, can_write }) => (id === null || id === "root") && can_write,
+  );
+
+  const shouldShowCSVUploadButton =
+    rootCollection && (hasAttachedDWHFeature || isUploadEnabled);
 
   return (
     <Box
@@ -81,13 +96,15 @@ export function SidebarOnboardingSection({
                 />
               </Link>
             )}
-            <Link to="/admin/settings/uploads">
-              <SidebarOnboardingMenuItem
-                icon="table2"
-                title={t`Upload a spreadsheet`}
-                subtitle={t`.csv, .tsv (50 MB max)`}
-              />
-            </Link>
+            {shouldShowCSVUploadButton && (
+              <Link to="/admin/settings/uploads">
+                <SidebarOnboardingMenuItem
+                  icon="table2"
+                  title={t`Upload a spreadsheet`}
+                  subtitle={t`.csv, .tsv (50 MB max)`}
+                />
+              </Link>
+            )}
           </Menu.Dropdown>
         </Menu>
       </Box>

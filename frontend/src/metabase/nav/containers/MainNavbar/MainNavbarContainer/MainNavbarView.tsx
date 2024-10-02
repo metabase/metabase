@@ -205,6 +205,7 @@ export function MainNavbarView({
         </div>
         <WhatsNewNotification />
         <SidebarOnboardingSection
+          collections={collections}
           initialState={!hasOwnDatabase}
           isAdmin={isAdmin}
           isSidebarOpen={isOpen}
