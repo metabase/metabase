@@ -41,6 +41,17 @@ describe("scenarios > visualizations > pie chart", () => {
 
     ensurePieChartRendered(["Doohickey", "Gadget", "Gizmo", "Widget"], 200);
 
+    // chart should be centered (#48123)
+    cy.findByTestId("chart-legend").then(([legend]) => {
+      const legendWidth = legend.getBoundingClientRect().width;
+
+      cy.findByTestId("chart-legend-spacer").then(([spacer]) => {
+        const spacerWidth = spacer.getBoundingClientRect().width;
+
+        expect(legendWidth).to.be.equal(spacerWidth);
+      });
+    });
+
     cy.log("#35244");
     cy.findByLabelText("Switch to data").click();
     tableHeaderClick("Count");
@@ -186,6 +197,8 @@ describe("scenarios > visualizations > pie chart", () => {
 
     changeRowLimit(2, 4);
     ensurePieChartRendered(["Doohickey", "Katget", "Gizmo", "Woooget"]);
+
+    cy.findByTestId("chart-legend").findByText("Woooget").realHover();
     chartPathWithFillColor("#509EE3").should("be.visible");
 
     cy.findByTestId("chart-legend").within(() => {

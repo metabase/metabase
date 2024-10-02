@@ -54,10 +54,8 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
-  name: "Default",
 };
 
 export const Multiline = {
   render: NarrowTemplate,
-  name: "Multiline",
 };
