@@ -136,13 +136,17 @@
       (clojure.core/= (column-join-alias column) join-alias)))
 
 (mu/defn ^:private plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
-  [[_ref-kind _opts ref-name :as a-ref] :- ::lib.schema.ref/ref
+  [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref
    columns                              :- [:sequential ::lib.schema.metadata/column]]
   (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
                                (matching-join? a-ref %))
                          columns))
       (filter #(and (clojure.core/= (:name %) ref-name)
-                    (matching-join? a-ref %))
+                    ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join alias
+                    ;; on the column can be ignored. QP can set it when it shouldn't. See #33972.
+                    (or (and (not (:join-alias opts))
+                             (#{:source/fields :source/card} (:lib/source %)))
+                        (matching-join? a-ref %)))
               columns)))
 
 (mu/defn ^:private plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]

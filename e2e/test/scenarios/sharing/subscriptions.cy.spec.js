@@ -24,6 +24,7 @@ import {
   setupSMTP,
   setupSubscriptionWithRecipients,
   sidebar,
+  updateSetting,
   viewEmailPage,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -765,9 +766,7 @@ function openSlackCreationForm() {
 }
 
 function openRecipientsWithUserVisibilitySetting(setting) {
-  cy.request("PUT", "/api/setting/user-visibility", {
-    value: setting,
-  });
+  updateSetting("user-visibility", setting);
   cy.signInAsNormalUser();
   openDashboardSubscriptions();
 

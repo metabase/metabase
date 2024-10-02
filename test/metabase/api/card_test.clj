@@ -3717,3 +3717,49 @@
                                        false
                                        (apply original-can-read? args)))]
           (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" (:id card))))))))))
+
+(deftest pivot-tables-with-model-sources-show-row-totals
+  (testing "Pivot Tables with a model source will return row totals (#46575)"
+    (mt/with-temp [:model/Card {model-id :id} {:type :model
+                                               :dataset_query
+                                               {:database (mt/id)
+                                                :type     :query
+                                                :query
+                                                {:source-table (mt/id :orders)
+                                                 :joins
+                                                 [{:fields       :all
+                                                   :strategy     :left-join
+                                                   :alias        "People - User"
+                                                   :condition
+                                                   [:=
+                                                    [:field (mt/id :orders :user_id) {:base-type :type/Integer}]
+                                                    [:field (mt/id :people :id) {:base-type :type/BigInteger :join-alias "People - User"}]]
+                                                   :source-table (mt/id :people)}]}}}
+                   :model/Card {pivot-id :id} {:display :pivot
+                                               :dataset_query
+                                               {:database (mt/id)
+                                                :type     :query
+                                                :query
+                                                {:aggregation  [[:sum [:field "TOTAL" {:base-type :type/Float}]]]
+                                                 :breakout
+                                                 [[:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]
+                                                  [:field "NAME" {:base-type :type/Text}]
+                                                  [:field (mt/id :products :category) {:base-type    :type/Text
+                                                                                       :source-field (mt/id :orders :product_id)}]]
+                                                 :source-table (format "card__%s" model-id)}}
+                                               :visualization_settings
+                                               {:pivot_table.column_split
+                                                {:rows
+                                                 [[:field "NAME" {:base-type :type/Text}]
+                                                  [:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]]
+                                                 :columns [[:field (mt/id :products :category) {:base-type    :type/Text
+                                                                                                :source-field (mt/id :orders :product_id)}]]
+                                                 :values  [[:aggregation 0]]}}}]
+      ;; pivot row totals have a pivot-grouping of 1 (the second-last column in these results)
+      ;; before fixing issue #46575, these rows would not be returned given the model + card setup
+      (is (= [nil "Abbey Satterfield" "Doohickey" 1 347.91]
+             (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" pivot-id))
+                   totals (filter (fn [row]
+                                    (< 0 (second (reverse row))))
+                                  (get-in result [:data :rows]))]
+               (first totals)))))))

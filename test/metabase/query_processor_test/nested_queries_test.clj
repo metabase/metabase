@@ -622,7 +622,7 @@
             ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
             ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
             ;; display values of the column.
-            (is (=? [(assoc date-col  :field_ref [:field (mt/id :checkins :date) {:temporal-unit :default}], :unit :year)
+            (is (=? [(assoc date-col  :field_ref [:field (mt/id :checkins :date) nil], :unit :year)
                      (assoc count-col :field_ref [:field "count" {:base-type :type/Integer}])]
                     (mt/cols
                      (qp/process-query (query-with-source-card 1)))))))))))
@@ -1185,7 +1185,7 @@
                     $tax
                     $total
                     $discount
-                    !default.created_at
+                    $created_at
                     $quantity
                     &ℙ.products.id
                     &ℙ.products.ean
@@ -1194,7 +1194,7 @@
                     &ℙ.products.vendor
                     &ℙ.products.price
                     &ℙ.products.rating
-                    !default.&ℙ.products.created_at])
+                    &ℙ.products.created_at])
                  (map :field_ref metadata))))
         (testing "\nShould be able to use the query as a source query"
           (letfn [(test-query [query]

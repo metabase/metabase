@@ -1,14 +1,12 @@
-import type {
-  DatasetColumn,
-  DatasetData,
-  TableColumnOrderSetting,
-} from "metabase-types/api";
+import type { DatasetData, TableColumnOrderSetting } from "metabase-types/api";
+
+import type { DatasetColumnReference } from "./column-key";
 
 export const datasetContainsNoResults = (data: DatasetData) =>
   data.rows == null || data.rows.length === 0;
 
 export function findColumnIndexesForColumnSettings(
-  columns: Pick<DatasetColumn, "name" | "field_ref">[],
+  columns: DatasetColumnReference[],
   columnSettings: TableColumnOrderSetting[],
 ) {
   const columnIndexByKey = new Map(
@@ -20,7 +18,7 @@ export function findColumnIndexesForColumnSettings(
 }
 
 export function findColumnSettingIndexesForColumns(
-  columns: Pick<DatasetColumn, "name" | "field_ref">[],
+  columns: DatasetColumnReference[],
   columnSettings: TableColumnOrderSetting[],
 ) {
   const columnSettingIndexByKey = new Map(

@@ -366,13 +366,7 @@
           ;; the actual metadata this middleware should return. Doesn't have all the columns that come back from
           ;; `qp.preprocess/query->expected-cols`
           expected-metadata (for [col metadata]
-                              (cond-> (merge (results-col col) (select-keys col [:source_alias]))
-                                ;; for some reason this middleware returns temporal fields with a `:default` unit,
-                                ;; whereas `query->expected-cols` does not return the unit. It ulimately makes zero
-                                ;; difference, so I haven't looked into why this is the case yet.
-                                (isa? (:base_type col) :type/Temporal)
-                                (update :field_ref (fn [[_ id-or-name opts]]
-                                                     [:field id-or-name (assoc opts :temporal-unit :default)]))))]
+                              (merge (results-col col) (select-keys col [:source_alias])))]
       (letfn [(added-metadata [query]
                 (get-in (add-source-metadata query) [:query :source-metadata]))]
         (testing "\nShould add source metadata if there's none already"
