@@ -859,7 +859,6 @@
   [driver]
   (= driver :postgres))
 
-
 (defmethod sql-jdbc.sync/alter-columns-sql :postgres
   [driver table-name column-definitions]
   (with-quoting driver
