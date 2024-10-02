@@ -338,8 +338,8 @@
       (is (= original-details (auth-provider/fetch-auth :http nil provider-details)))
       (is (= (merge provider-details original-details)
              (driver.u/fetch-and-incorporate-auth-provider-details
-               (tx/driver)
-               provider-details))))))
+              (tx/driver)
+              provider-details))))))
 
 (deftest oauth-provider-tests
   (mt/with-premium-features #{:database-auth-providers}
@@ -354,8 +354,8 @@
                      {:password "foobar"
                       :password-expiry-timestamp #(and (int? %) (> % (System/currentTimeMillis)))})
               (driver.u/fetch-and-incorporate-auth-provider-details
-                (tx/driver)
-                provider-details))))))
+               (tx/driver)
+               provider-details))))))
 
 (deftest ^:parallel azure-managed-identity-provider-tests
   (mt/with-premium-features #{:database-auth-providers}
@@ -372,8 +372,8 @@
           (is (= response-body (auth-provider/fetch-auth :azure-managed-identity nil provider-details)))
           (is (= (merge provider-details {:password "foobar"})
                  (driver.u/fetch-and-incorporate-auth-provider-details
-                   (tx/driver)
-                   provider-details))))))
+                  (tx/driver)
+                  provider-details))))))
     (testing "existing password doesn't get overwritten if not using an auth provider"
       (let [client-id "client ID"
             provider-details {:use-auth-provider false
@@ -384,5 +384,5 @@
                                            (is false "should not get called"))]
           (is (= provider-details
                  (driver.u/fetch-and-incorporate-auth-provider-details
-                   (tx/driver)
-                   provider-details))))))))
+                  (tx/driver)
+                  provider-details))))))))
