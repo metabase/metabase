@@ -274,7 +274,8 @@
   [driver query]
   (let [db-id         (:database query)
         macaw-opts    (nqa.impl/macaw-options driver)
-        sql-string    (:query (nqa.sub/replace-tags query))
+        sql-string    (or (:query (nqa.sub/replace-tags query))
+                          (:native query))
         parsed-query  (macaw/query->components (macaw/parsed-query sql-string macaw-opts) macaw-opts)
         tables        (map :component (:tables parsed-query))
         table-refs    (table-refs-for-query tables db-id)

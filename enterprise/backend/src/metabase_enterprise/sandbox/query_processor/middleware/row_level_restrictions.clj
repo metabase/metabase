@@ -275,6 +275,7 @@
       {:perms/view-data (zipmap unblocked-table-ids (repeat :unrestricted))
        :perms/create-queries (zipmap table-ids (repeat :query-builder))})))
 
+;; TODO (noahmoss): update this logic?
 (defn- merge-perms
   "The shape of permissions maps is a little odd, and using `m/deep-merge` doesn't give us exactly what we want.
   In particular, if we need query-builder-and-native at the *database* level, but :query-builder at the *table* level,
