@@ -3954,7 +3954,7 @@
       (is (=? {:collection_id coll-id
                :dashboard_id nil}
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:collection_id coll-id
-                                                                       :dashboard_id nil})))
+                                                                           :dashboard_id nil})))
       (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))))
   (testing "We can move a question from a collection to a dashboard it is already in"
     (mt/with-temp [:model/Collection {coll-id :id} {}
