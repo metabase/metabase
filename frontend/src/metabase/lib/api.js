@@ -339,6 +339,10 @@ export default instance;
 export const { GET, POST, PUT, DELETE } = instance;
 
 export const setLocaleHeader = locale => {
+  /**`X-Metabase-Locale` is a header that the BE stores as *user* locale for the scope of the request.
+   * We need it to localize downloads. It *currently* only work if there is a user, so it won't work
+   * for public/static embedding.
+   */
   // eslint-disable-next-line no-literal-metabase-strings -- Header name, not a user facing string
   DEFAULT_OPTIONS.headers["X-Metabase-Locale"] = locale ?? undefined;
 };

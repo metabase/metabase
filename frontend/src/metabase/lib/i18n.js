@@ -13,8 +13,10 @@ export async function loadLocalization(locale) {
   // load and parse the locale
   const translationsObject =
     locale !== "en"
-      ? // ? await I18NApi.locale({ locale })
-        // the function above uses GET, which adds custom headers -> we run into CORS
+      ? // We don't use I18NApi.locale/the GET helper because those helpers adds custom headers,
+        // which will make the browser do the pre-flight request on the SDK.
+        // The backend doesn't seem to support pre-flight request on the static assets, but even
+        // if it supported them it's more performant to skip the pre-flight request
         await fetch(`${api.basename}/app/locales/${locale}.json`).then(
           response => response.json(),
         )
