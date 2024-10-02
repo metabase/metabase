@@ -524,7 +524,7 @@
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
                    collection_position enable_embedding embedding_params result_metadata parameters
-                   cache_ttl collection_preview type dashboard_id]
+                   cache_ttl collection_preview type dashboard_id delete_old_dashcards]
             :as   card-updates} :body}]
   {id                     ms/PositiveInt
    name                   [:maybe ms/NonBlankString]
@@ -542,11 +542,13 @@
    result_metadata        [:maybe analyze/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]
    collection_preview     [:maybe :boolean]
-   dashboard_id           [:maybe ms/PositiveInt]}
+   dashboard_id           [:maybe ms/PositiveInt]
+   delete_old_dashcards   [:maybe :boolean]}
   (check-if-card-can-be-saved dataset_query type)
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
-        card-updates           (api/updates-with-archived-directly card-before-update card-updates)
+        card-updates           (dissoc (api/updates-with-archived-directly card-before-update card-updates)
+                                       :delete_old_dashcards)
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]
@@ -569,9 +571,10 @@
                                                metadata
                                                (assoc :result_metadata           metadata
                                                       :verified-result-metadata? true))
-          card                               (-> (card/update-card! {:card-before-update card-before-update
-                                                                     :card-updates       card-updates
-                                                                     :actor              @api/*current-user*})
+          card                               (-> (card/update-card! {:card-before-update    card-before-update
+                                                                     :card-updates          card-updates
+                                                                     :actor                 @api/*current-user*
+                                                                     :delete-old-dashcards? delete_old_dashcards})
                                                  hydrate-card-details
                                                  (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))]
       (when metadata-future
