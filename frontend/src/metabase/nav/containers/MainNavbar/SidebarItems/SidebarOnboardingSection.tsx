@@ -1,7 +1,9 @@
 import cx from "classnames";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { UploadInfoModal } from "metabase/collections/components/CollectionHeader/CollectionUploadInfoModal";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
@@ -35,6 +37,7 @@ export function SidebarOnboardingSection({
   isAdmin,
 }: SidebarOnboardingProps) {
   const initialState = !hasOwnDatabase;
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const applicationName = useSelector(getApplicationName);
 
   return (
@@ -72,24 +75,31 @@ export function SidebarOnboardingSection({
               >{t`Add data`}</Button>
             </Menu.Target>
             <Menu.Dropdown>
-              <SidebarOnboardingMenuItem
-                icon="database"
-                title={t`Add a database`}
-                to="/admin/databases/create"
-                subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
-              />
+              <Link to="/admin/databases/create">
+                <SidebarOnboardingMenuItem
+                  icon="database"
+                  title={t`Add a database`}
+                  subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
+                />
+              </Link>
 
               <SidebarOnboardingMenuItem
                 icon="table2"
                 title={t`Upload a spreadsheet`}
-                to="/admin/settings/uploads"
                 subtitle={t`${UPLOAD_DATA_FILE_TYPES.join(
                   ", ",
                 )} (${MAX_UPLOAD_STRING} MB max)`}
+                onClick={() => setShowInfoModal(true)}
               />
             </Menu.Dropdown>
           </Menu>
         </Box>
+      )}
+      {showInfoModal && (
+        <UploadInfoModal
+          isAdmin={isAdmin}
+          onClose={() => setShowInfoModal(false)}
+        />
       )}
     </Box>
   );
@@ -98,28 +108,32 @@ export function SidebarOnboardingSection({
 type OnboaringMenuItemProps = {
   icon: IconName;
   title: string;
-  to: string;
+
   subtitle: string;
+  onClick?: () => void;
 };
 
 function SidebarOnboardingMenuItem({
   icon,
   title,
-  to,
+
   subtitle,
+  onClick,
 }: OnboaringMenuItemProps) {
   return (
-    <Menu.Item icon={<Icon name={icon} />} style={{ alignItems: "flex-start" }}>
-      <Link to={to}>
-        <Stack spacing="xs">
-          <Title c="inherit" order={4}>
-            {title}
-          </Title>
-          <Text c="inherit" size="sm">
-            {subtitle}
-          </Text>
-        </Stack>
-      </Link>
+    <Menu.Item
+      icon={<Icon name={icon} />}
+      style={{ alignItems: "flex-start" }}
+      onClick={onClick}
+    >
+      <Stack spacing="xs">
+        <Title c="inherit" order={4}>
+          {title}
+        </Title>
+        <Text c="inherit" size="sm">
+          {subtitle}
+        </Text>
+      </Stack>
     </Menu.Item>
   );
 }

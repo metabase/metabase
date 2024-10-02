@@ -491,38 +491,92 @@ describe("nav > containers > MainNavbar", () => {
       expect(addDataButton).toBeInTheDocument();
       await userEvent.click(addDataButton);
 
+      const menu = screen.getByRole("menu");
       const menuItems = screen.getAllByRole("menuitem");
-      expect(screen.getAllByRole("menuitem")).toHaveLength(2);
 
-      const [addDatabase, uploadCSV] = menuItems;
+      expect(menuItems).toHaveLength(2);
+      expect(within(menu).getAllByRole("link")).toHaveLength(1);
+    });
 
-      expect(within(addDatabase).getByRole("link")).toHaveAttribute(
-        "href",
-        "/admin/databases/create",
-      );
-      expect(
-        within(addDatabase).getByText("Add a database"),
-      ).toBeInTheDocument();
-      expect(
-        within(addDatabase).getByText("PostgreSQL, MySQL, Snowflake, ..."),
-      ).toBeInTheDocument();
-      expect(
-        within(addDatabase).getByLabelText("database icon"),
-      ).toBeInTheDocument();
+    describe("'Add a database' menu option", () => {
+      it("should be wrapped in a link", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: true }),
+        });
 
-      expect(within(uploadCSV).getByRole("link")).toHaveAttribute(
-        "href",
-        "/admin/settings/uploads",
-      );
-      expect(
-        within(uploadCSV).getByText("Upload a spreadsheet"),
-      ).toBeInTheDocument();
-      expect(
-        within(uploadCSV).getByText(".csv, .tsv (50 MB max)"),
-      ).toBeInTheDocument();
-      expect(
-        within(uploadCSV).getByLabelText("table2 icon"),
-      ).toBeInTheDocument();
+        const addDataButton = screen.getByRole("button", { name: /Add data/i });
+        await userEvent.click(addDataButton);
+
+        const menu = screen.getByRole("menu");
+        const [addDatabaseMenuItem] = screen.getAllByRole("menuitem");
+        const linkWrapper = within(menu).getByRole("link");
+
+        expect(linkWrapper).toHaveAttribute("href", "/admin/databases/create");
+        expect(within(linkWrapper).getByRole("menuitem")).toStrictEqual(
+          addDatabaseMenuItem,
+        );
+      });
+
+      it("should render", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: true }),
+        });
+
+        const addDataButton = screen.getByRole("button", { name: /Add data/i });
+        await userEvent.click(addDataButton);
+
+        const [addDatabaseMenuItem] = screen.getAllByRole("menuitem");
+
+        expect(
+          within(addDatabaseMenuItem).getByText("Add a database"),
+        ).toBeInTheDocument();
+        expect(
+          within(addDatabaseMenuItem).getByText(
+            "PostgreSQL, MySQL, Snowflake, ...",
+          ),
+        ).toBeInTheDocument();
+        expect(
+          within(addDatabaseMenuItem).getByLabelText("database icon"),
+        ).toBeInTheDocument();
+      });
+    });
+
+    describe("'Upload a spreadsheet' menu option", () => {
+      it("should render", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: true }),
+        });
+
+        const addDataButton = screen.getByRole("button", { name: /Add data/i });
+        await userEvent.click(addDataButton);
+        const [_, uploadCSVMenuItem] = screen.getAllByRole("menuitem");
+
+        expect(
+          within(uploadCSVMenuItem).getByText("Upload a spreadsheet"),
+        ).toBeInTheDocument();
+        expect(
+          within(uploadCSVMenuItem).getByText(".csv, .tsv (50 MB max)"),
+        ).toBeInTheDocument();
+        expect(
+          within(uploadCSVMenuItem).getByLabelText("table2 icon"),
+        ).toBeInTheDocument();
+      });
+
+      it("clicking on it should open a CSV info modal", async () => {
+        await setup({
+          user: createMockUser({ is_superuser: true }),
+        });
+
+        const addDataButton = screen.getByRole("button", { name: /Add data/i });
+        await userEvent.click(addDataButton);
+
+        const menu = screen.getByRole("menu");
+        const [_, uploadCSVMenuItem] = screen.getAllByRole("menuitem");
+
+        await userEvent.click(uploadCSVMenuItem);
+        expect(menu).not.toBeInTheDocument();
+        expect(screen.getByText("Upload CSVs to Metabase")).toBeInTheDocument();
+      });
     });
   });
 });
