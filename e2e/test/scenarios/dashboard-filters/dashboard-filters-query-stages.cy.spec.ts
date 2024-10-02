@@ -1410,12 +1410,10 @@ function verifyPopoverMappingOptions(sections: MappingSection[]) {
       let index = 0;
 
       for (const [sectionName, columnNames] of sections) {
-        // if (sectionName !== NAMELESS_SECTION) {
         const item = cy.wrap($items[index]);
         item.scrollIntoView();
         item.should("have.text", sectionName);
         ++index;
-        // }
 
         for (const columnName of columnNames) {
           const item = cy.wrap($items[index]);
