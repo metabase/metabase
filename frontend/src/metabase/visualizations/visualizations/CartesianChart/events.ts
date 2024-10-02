@@ -315,30 +315,6 @@ export const getSeriesHovered = (
   };
 };
 
-export const getSeriesHoverData = (
-  chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
-  echartsDataIndex: number,
-  seriesId: DataKey,
-) => {
-  const dataIndex = getDataIndex(
-    chartModel.transformedDataset,
-    echartsDataIndex,
-  );
-  const seriesIndex = findSeriesModelIndexById(chartModel, seriesId);
-
-  if (seriesIndex < 0 || dataIndex == null) {
-    return;
-  }
-
-  return {
-    settings,
-    isAlreadyScaled: true,
-    index: seriesIndex,
-    datumIndex: dataIndex,
-  };
-};
-
 const getAdditionalTooltipRowsData = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
