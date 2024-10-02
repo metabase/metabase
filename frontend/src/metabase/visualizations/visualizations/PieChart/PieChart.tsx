@@ -106,17 +106,19 @@ export function PieChart(props: VisualizationProps) {
       const label = s.data.name;
 
       // Hidden slices don't have a percentage
-      if (s.data.normalizedPercentage === 0) {
-        return label;
+      const sliceHidden = s.data.normalizedPercentage === 0;
+      const percentDisabled =
+        settings["pie.percent_visibility"] !== "legend" &&
+        settings["pie.percent_visibility"] !== "both";
+
+      if (sliceHidden || percentDisabled) {
+        return [label];
       }
 
-      const percent =
-        settings["pie.percent_visibility"] === "legend" ||
-        settings["pie.percent_visibility"] === "both"
-          ? formatters.formatPercent(s.data.normalizedPercentage, "legend")
-          : undefined;
-
-      return [label, percent];
+      return [
+        label,
+        formatters.formatPercent(s.data.normalizedPercentage, "legend"),
+      ];
     });
 
   const hiddenSlicesLegendIndices = chartModel.slices
