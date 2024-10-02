@@ -22,6 +22,7 @@ import {
 import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip/utils";
 import {
   ORIGINAL_INDEX_DATA_KEY,
+  OTHER_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
@@ -31,6 +32,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model/guards";
 import type {
   BaseCartesianChartModel,
+  BaseSeriesModel,
   ChartDataset,
   DataKey,
   Datum,
@@ -204,7 +206,7 @@ const getEventColumnsData = (
 
 const computeDiffWithPreviousPeriod = (
   chartModel: BaseCartesianChartModel,
-  seriesIndex: number,
+  seriesModel: BaseSeriesModel,
   dataIndex: number,
 ): string | null => {
   if (!isTimeSeriesAxis(chartModel.xAxisModel)) {
@@ -212,7 +214,6 @@ const computeDiffWithPreviousPeriod = (
   }
 
   const datum = chartModel.dataset[dataIndex];
-  const seriesModel = chartModel.seriesModels[seriesIndex];
 
   const currentValue = datum[seriesModel.dataKey];
   const currentDate = parseTimestamp(datum[X_AXIS_DATA_KEY]);
@@ -383,11 +384,21 @@ export const getTooltipModel = (
   if (dataIndex == null) {
     return null;
   }
+
   const datum = chartModel.dataset[dataIndex];
-  const seriesIndex = chartModel.seriesModels.findIndex(
-    seriesModel => seriesModel.dataKey === seriesDataKey,
+
+  if (seriesDataKey === OTHER_DATA_KEY) {
+    return getOtherSeriesTooltipModel(chartModel, settings, dataIndex, datum);
+  }
+
+  const hoveredSeries = chartModel.seriesModels.find(
+    s => s.dataKey === seriesDataKey,
   );
-  const hoveredSeries = chartModel.seriesModels[seriesIndex];
+
+  if (!hoveredSeries) {
+    return null;
+  }
+
   const seriesStack = chartModel.stackModels.find(stackModel =>
     stackModel.seriesKeys.includes(hoveredSeries.dataKey),
   );
@@ -415,7 +426,6 @@ export const getTooltipModel = (
       hoveredSeries,
     );
   }
-
   return getSeriesOnlyTooltipModel(
     chartModel,
     settings,
@@ -489,13 +499,13 @@ export const getSeriesOnlyTooltipModel = (
 
   const seriesRows: EChartsTooltipRow[] = chartModel.seriesModels
     .filter(seriesModel => seriesModel.visible)
-    .map((seriesModel, seriesIndex) => {
+    .map(seriesModel => {
       const isHoveredSeries = seriesModel.dataKey === hoveredSeries.dataKey;
       const isFocused = isHoveredSeries && chartModel.seriesModels.length > 1;
 
       const prevValue = computeDiffWithPreviousPeriod(
         chartModel,
-        seriesIndex,
+        seriesModel,
         dataIndex,
       );
 
@@ -516,6 +526,30 @@ export const getSeriesOnlyTooltipModel = (
         ],
       };
     });
+
+  if (chartModel.otherSeriesModel?.visible) {
+    const groupedSeriesTotal = (chartModel.groupedSeriesModels ?? []).reduce(
+      (sum, seriesModel) => {
+        const rowValue = datum[seriesModel.dataKey];
+        const value = typeof rowValue === "number" ? rowValue : 0;
+        return sum + value;
+      },
+      0,
+    );
+
+    seriesRows.push({
+      isFocused: false,
+      name: chartModel.otherSeriesModel.name,
+      markerColorClass: getMarkerColorClass(chartModel.otherSeriesModel.color),
+      values: [
+        formatValueForTooltip({
+          value: groupedSeriesTotal,
+          settings,
+          isAlreadyScaled: true,
+        }),
+      ],
+    });
+  }
 
   const additionalColumnsRows = getAdditionalTooltipRowsData(
     chartModel,
@@ -643,6 +677,68 @@ export const getStackedTooltipModel = (
           ],
         }
       : undefined,
+  };
+};
+
+export const getOtherSeriesTooltipModel = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  dataIndex: number,
+  datum: Datum,
+) => {
+  const { groupedSeriesModels = [] } = chartModel;
+
+  const rows = groupedSeriesModels.map(seriesModel => {
+    const prevValue = computeDiffWithPreviousPeriod(
+      chartModel,
+      seriesModel,
+      dataIndex,
+    );
+    return {
+      name: seriesModel.name,
+      markerColorClass: getMarkerColorClass(seriesModel.color),
+      values: [
+        formatValueForTooltip({
+          value: datum[seriesModel.dataKey],
+          column: seriesModel.column,
+          settings,
+          isAlreadyScaled: true,
+        }),
+        prevValue,
+      ],
+    };
+  });
+
+  const rowsTotal = groupedSeriesModels.reduce((sum, seriesModel) => {
+    const rowValue = datum[seriesModel.dataKey];
+    const value = typeof rowValue === "number" ? rowValue : 0;
+    return sum + value;
+  }, 0);
+
+  return {
+    header: String(
+      formatValueForTooltip({
+        value: datum[X_AXIS_DATA_KEY],
+        column: chartModel.dimensionModel.column,
+        settings,
+      }),
+    ),
+    rows,
+    footer: {
+      name: t`Total`,
+      values: [
+        String(
+          formatValueForTooltip({
+            isAlreadyScaled: true,
+            value: rowsTotal,
+            settings,
+            column:
+              chartModel.leftAxisModel?.column ??
+              chartModel.rightAxisModel?.column,
+          }),
+        ),
+      ],
+    },
   };
 };
 
