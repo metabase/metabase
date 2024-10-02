@@ -94,6 +94,7 @@
     (if (and (some? temporal-unit) (not= temporal-unit :default))
       temporal-unit
       (or (:original-temporal-unit temporal-attributes)
+          (:metabase.lib.field/original-temporal-unit temporal-attributes)
           temporal-unit))))
 
 (defn- column-granularity
