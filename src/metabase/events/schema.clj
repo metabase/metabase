@@ -88,7 +88,7 @@
                                      [:is_from_setup {:optional true} :boolean]
                                      [:first_name    {:optional true} [:maybe :string]]
                                      [:invite_method {:optional true} :string]
-                                     [:sso_source    {:optional true} [:maybe :string]]]]
+                                     [:sso_source    {:optional true} [:maybe [:or :keyword :string]]]]]
                            [:details [:map {:closed true}
                                       [:invitor [:map {:closed true}
                                                  [:email                       ms/Email]
