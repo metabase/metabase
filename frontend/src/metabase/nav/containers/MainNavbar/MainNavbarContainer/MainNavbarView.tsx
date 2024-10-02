@@ -23,7 +23,6 @@ import type { IconName, IconProps } from "metabase/ui";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
 import {
-  AddYourOwnDataLink,
   CollectionMenuList,
   CollectionsMoreIcon,
   CollectionsMoreIconContainer,
@@ -66,7 +65,6 @@ type Props = {
   }) => Promise<any>;
 };
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
-const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
 export function MainNavbarView({
   isAdmin,
@@ -188,23 +186,6 @@ export function MainNavbarView({
                 onItemSelect={onItemSelect}
                 hasDataAccess={hasDataAccess}
               />
-              {/* TODO: Remove by the end of MS1 */}
-              {hasDataAccess && (
-                <>
-                  {!hasOwnDatabase && isAdmin && (
-                    <AddYourOwnDataLink
-                      icon="add"
-                      url={ADD_YOUR_OWN_DATA_URL}
-                      isSelected={nonEntityItem?.url?.startsWith(
-                        ADD_YOUR_OWN_DATA_URL,
-                      )}
-                      onClick={onItemSelect}
-                    >
-                      {t`Add your own data`}
-                    </AddYourOwnDataLink>
-                  )}
-                </>
-              )}
             </ErrorBoundary>
           </SidebarSection>
 
