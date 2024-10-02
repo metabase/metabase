@@ -91,7 +91,6 @@ export const MetabaseProviderInternal = ({
         <SdkFontsGlobalStyles baseUrl={config.metabaseInstanceUrl} />
         <div className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
           <LocaleProvider locale={locale}>{children}</LocaleProvider>
-          {children}
           <SdkUsageProblemDisplay config={config} />
           <PortalContainer />
         </div>
