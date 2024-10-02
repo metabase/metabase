@@ -127,7 +127,8 @@
                             :details  {:invite_method          "email"
                                        :first_name             first-name
                                        :last_name              last-name
-                                       :email                  email}}
+                                       :email                  email
+                                       :user_group_memberships [{:id (:id (perms-group/all-users))}]}}
                            logged-event))))
                   (testing "created user is admin"
                     (is (= (set (map :id [(perms-group/all-users) (perms-group/admin)]))
