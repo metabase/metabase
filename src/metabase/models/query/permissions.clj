@@ -99,12 +99,12 @@
        (query->mbql-table-ids (dissoc m :source-table)))))))
 
 (mu/defn query->source-table-ids :- [:set [:or ::native ::lib.schema.id/table]]
-   "Returns a sequence of all Table IDs referenced by `query`, including both MBQL and native references. Returns the
+  "Returns a sequence of all Table IDs referenced by `query`, including both MBQL and native references. Returns the
    placeholder value ::native if a native query can't be parsed, or the parser doesn't detect any tables, to indicate
    that full native access to the database should be required."
-   [query :- :map]
-   (set/join (query->mbql-table-ids query)
-             (query->native-table-ids query)))
+  [query :- :map]
+  (set/join (query->mbql-table-ids query)
+            (query->native-table-ids query)))
 
 (def ^:dynamic *card-instances*
   "A map from card IDs to card instances with the collection_id (possibly nil).
