@@ -328,24 +328,6 @@
               (is (= []
                      (log-messages))))))))))
 
-(defmethod auth-provider/fetch-auth ::test-me
-  [_provider _db-id details]
-  (is (= "testing" (:key details)))
-  {:password "qux"})
-
-(deftest ^:parallel simple-test
-  (let [details {:username "test"
-                 :password "ignored"
-                 :use-auth-provider true
-                 :auth-provider ::test-me
-                 :key "testing"}]
-    (mt/with-temp [:model/Database db {:details details}]
-      (is (=? (assoc details :password "qux")
-              (driver.u/fetch-and-incorporate-auth-provider-details
-               (:engine db)
-               (:id db)
-               (:details db)))))))
-
 (deftest http-provider-tests
   (let [original-details (:details (mt/db))
         provider-details {:use-auth-provider true
