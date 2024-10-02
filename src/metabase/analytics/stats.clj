@@ -678,6 +678,9 @@
    {:name      :attached-dwh
     :available (premium-features/has-attached-dwh?)
     :enabled   (premium-features/has-attached-dwh?)}
+   {:name      :database-auth-providers
+    :available (premium-features/enable-database-auth-providers?)
+    :enabled   (premium-features/enable-database-auth-providers?)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}
