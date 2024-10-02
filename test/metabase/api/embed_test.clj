@@ -1091,7 +1091,7 @@
 (deftest endpoint-should-fail-if-embedding-is-disabled
   (is (= "Embedding is not enabled."
          (with-embedding-enabled-and-temp-card-referencing! :venues :name [card]
-           (mt/with-temporary-setting-values [enable-embedding false]
+           (mt/with-temporary-setting-values [enable-embedding-static false]
              (client/client :get 400 (field-values-url card (mt/id :venues :name))))))))
 
 (deftest embedding-not-enabled-message
@@ -1107,7 +1107,7 @@
           (dropdown [card param-key  & [entity-id]]
             (client/client :get 200 (format "embed/card/%s/params/%s/values"
                                             (card-token card nil entity-id) param-key)))]
-    (mt/with-temporary-setting-values [enable-embedding true]
+    (mt/with-temporary-setting-values [enable-embedding-static true]
       (with-new-secret-key!
         (api.card-test/with-card-param-values-fixtures [{:keys [card field-filter-card param-keys]}]
           (t2/update! :model/Card (:id field-filter-card)
@@ -1224,7 +1224,7 @@
 (deftest field-values-endpoint-should-fail-if-embedding-is-disabled
   (is (= "Embedding is not enabled."
          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]
-           (mt/with-temporary-setting-values [enable-embedding false]
+           (mt/with-temporary-setting-values [enable-embedding-static false]
              (client/client :get 400 (field-values-url dashboard (mt/id :venues :name))))))))
 
 ;; Endpoint should fail if embedding is disabled for the Dashboard
@@ -1305,7 +1305,7 @@
                                     :value "10"))))
 
             (testing " ...or if embedding is disabled"
-              (mt/with-temporary-setting-values [enable-embedding false]
+              (mt/with-temporary-setting-values [enable-embedding-static false]
                 (is (= "Embedding is not enabled."
                        (client/client :get 400 (field-remapping-url
                                                 object (mt/id :venues :id) (mt/id :venues :name) entity-id)
@@ -1565,7 +1565,7 @@
     (mt/dataset test-data
       (testing "GET /api/embed/pivot/card/:token/query"
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding false]
+          (mt/with-temporary-setting-values [enable-embedding-static false]
             (with-new-secret-key!
               (with-temp-card [card (api.pivots/pivot-card)]
                 (is (= "Embedding is not enabled."
@@ -1630,7 +1630,7 @@
 
 (deftest pivot-dashcard-embedding-disabled-test
   (mt/dataset test-data
-    (mt/with-temporary-setting-values [enable-embedding false]
+    (mt/with-temporary-setting-values [enable-embedding-static false]
       (with-new-secret-key!
         (with-temp-dashcard [dashcard {:dash     {:parameters []}
                                        :card     (api.pivots/pivot-card)

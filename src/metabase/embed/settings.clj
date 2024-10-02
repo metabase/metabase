@@ -98,7 +98,7 @@
 (defsetting embedding-app-origins-sdk
   (deferred-tru "Allow Metabase SDK access to these space delimited origins.")
   :type       :string
-  :feature    :embedding
+  :feature    :embedding-sdk
   :export?    false
   :visibility :public
   :encryption :no

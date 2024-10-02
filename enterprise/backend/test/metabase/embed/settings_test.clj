@@ -164,9 +164,6 @@
                                      enable-embedding-interactive true
                                      embedding-app-origins-interactive ""
                                      embedding-app-origins-sdk (#'embed.settings/add-localhost "")]
-    (t2/delete! :model/Setting :key "embedding-app-origin")
-    (t2/delete! :model/Setting :key "embedding-app-origins-interactive")
-    (t2/delete! :model/Setting :key "embedding-app-origins-sdk")
     (test-origin-sync {} :no-op)
     (test-origin-sync {:embedding-app-origins-sdk true} :no-op)
     (test-origin-sync {:embedding-app-origins-sdk false} :no-op)
