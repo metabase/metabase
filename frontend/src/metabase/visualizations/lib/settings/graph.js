@@ -1,11 +1,16 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { color } from "metabase/lib/colors";
+import { formatValue } from "metabase/lib/formatting/value";
+import { measureTextHeight, measureTextWidth } from "metabase/lib/measure-text";
+import { computeStaticComboChartSettings } from "metabase/static-viz/components/ComboChart/settings";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
 } from "metabase/visualizations";
 import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
+import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
@@ -136,9 +141,45 @@ export const GRAPH_DATA_SETTINGS = {
     widget: ChartSettingSeriesOrder,
     marginBottom: "1rem",
 
-    getValue: (series, settings) => {
-      const seriesKeys = series.map(s => keyForSingleSeries(s));
-      return getSeriesOrderVisibilitySettings(settings, seriesKeys);
+    getValue: series => {
+      const rawSeries = series?._raw ?? series;
+      const renderingContext = {
+        getColor: name => color(name),
+        formatValue: (value, options) => String(formatValue(value, options)),
+        measureText: measureTextWidth,
+        measureTextHeight: measureTextHeight,
+        fontFamily: "",
+        theme: {},
+      };
+      const computedSettings = computeStaticComboChartSettings(
+        rawSeries,
+        renderingContext,
+      );
+      const chartModel = getCartesianChartModel(
+        rawSeries,
+        computedSettings,
+        [],
+        renderingContext,
+      );
+      const seriesKeys = chartModel.seriesModels.map(
+        s => s.legacySeriesSettingsObjectKey.card._seriesKey,
+      );
+      if (chartModel.otherSeriesModel) {
+        seriesKeys.push(chartModel.otherSeriesModel.dataKey);
+      }
+      // eslint-disable-next-line no-unused-vars
+      const value = getSeriesOrderVisibilitySettings(
+        computedSettings,
+        seriesKeys,
+      );
+
+      const oldValue = getSeriesOrderVisibilitySettings(
+        computedSettings,
+        series.map(s => keyForSingleSeries(s)),
+      );
+
+      // return value;
+      return oldValue;
     },
     getHidden: (series, settings) => {
       return (
