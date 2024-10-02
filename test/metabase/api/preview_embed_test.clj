@@ -87,7 +87,7 @@
                  (mt/user-http-request :rasta :get 403 (card-query-url card)))))
 
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding false]
+          (mt/with-temporary-setting-values [enable-embedding-static false]
             (is (= "Embedding is not enabled."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card))))))
 
