@@ -412,19 +412,19 @@
   `(binding [*updating-dashboard* true]
      ~@body))
 
-(defn- was-dashboard-question? [card changes]
-  (or (dashboard-internal-card? card)
-      (and (contains? changes :dashboard_id)
-           (not (:dashboard_id changes)))))
-
 (defn- is-valid-dashboard-internal-card-for-update [card changes]
-  (or (not (was-dashboard-question? card changes))
+  (let [dq-will-change? (api/column-will-change? :dashboard_id card changes)
+        will-be-dq? (or (and (not dq-will-change?)
+                             (:dashboard_id card))
+                        (and dq-will-change?
+                             (:dashboard_id changes)))]
+    (if-not will-be-dq?
+      true
       (and
-       (was-dashboard-question? card changes)
        (or *updating-dashboard* (not (contains? changes :collection_id)))
        (not (contains? changes :collection_position))
        (or (not (contains? changes :type))
-           (contains? #{:question "question" nil} (:type changes))))))
+           (contains? #{:question "question" nil} (:type changes)))))))
 
 (defn- assert-is-valid-dashboard-internal-update [changes card]
   (let [dashboard-id->name (dissoc
@@ -435,7 +435,8 @@
                                                :join [[:report_dashboardcard :dc] [:= :dc.dashboard_id :dashboard.id]]
                                                :where [:= :dc.card_id (:id card)]
                                                :group-by [:dashboard_id :dashboard.name]})
-                            (:dashboard_id changes))]
+                            (:dashboard_id changes)
+                            (:dashboard_id card))]
     (when (and (:dashboard_id changes) (seq dashboard-id->name))
       (throw (ex-info (tru "Cannot convert to dashboard question: appears in other dashboards ({0})" (str/join "," (vals dashboard-id->name)))
                       {:status-code 400
@@ -624,8 +625,7 @@
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
     (query-analysis/analyze! card)))
 
-(defn- apply-dashboard-question-updates [changes card]
-  (assert-is-valid-dashboard-internal-update changes card)
+(defn- apply-dashboard-question-updates [changes]
   (if (:dashboard_id changes)
     (assoc changes :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id (:dashboard_id changes)))
     changes))
@@ -639,7 +639,7 @@
   ;; https://github.com/camsaul/toucan2/issues/145 .
   ;; TODO: ^ that's been fixed, this could be refactored
   (-> (into {:id (:id card)} (t2/changes (dissoc card :verified-result-metadata?)))
-      (apply-dashboard-question-updates card)
+      (apply-dashboard-question-updates)
 
       maybe-normalize-query
       ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
@@ -858,17 +858,20 @@
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
   included, otherwise the metadata will be saved to the database asynchronously."
-  [{:keys [card-before-update card-updates actor]}]
+  [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
     (api/maybe-reconcile-collection-position! card-before-update card-updates)
+
+    (assert-is-valid-dashboard-internal-update card-updates card-before-update)
 
     (when (:dashboard_id card-updates)
       (autoplace-dashcard-for-card! (:dashboard_id card-updates)
                                     card-before-update))
 
     (when (and (:dashboard_id card-updates)
-               (:dashboard_id card-before-update))
+               (:dashboard_id card-before-update)
+               delete-old-dashcards?)
       (t2/delete! :model/DashboardCard :card_id (:id card-before-update) :dashboard_id (:dashboard_id card-before-update)))
 
     (when (and (card-is-verified? card-before-update)
