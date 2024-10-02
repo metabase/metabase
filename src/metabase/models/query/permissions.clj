@@ -102,8 +102,8 @@
    placeholder value ::native if a native query can't be parsed, or the parser doesn't detect any tables, to indicate
    that full native access to the database should be required."
   [query :- :map]
-  (set/join (query->mbql-table-ids query)
-            (query->native-table-ids query)))
+  (set/union (query->mbql-table-ids query)
+             (query->native-table-ids query)))
 
 (def ^:dynamic *card-instances*
   "A map from card IDs to card instances with the collection_id (possibly nil).
