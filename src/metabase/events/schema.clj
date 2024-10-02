@@ -89,10 +89,11 @@
                                      [:first_name    {:optional true} [:maybe :string]]
                                      [:invite_method {:optional true} :string]
                                      [:sso_source    {:optional true} [:maybe [:or :keyword :string]]]]]
-                           [:details [:map {:closed true}
-                                      [:invitor [:map {:closed true}
-                                                 [:email                       ms/Email]
-                                                 [:first_name {:optional true} [:maybe :string]]]]]]])}))
+                           [:details {:optional true}
+                            [:map {:closed true}
+                             [:invitor [:map {:closed true}
+                                        [:email                       ms/Email]
+                                        [:first_name {:optional true} [:maybe :string]]]]]]])}))
 
 ;; metric events
 

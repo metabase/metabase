@@ -103,14 +103,21 @@
                   (hydrate! (events.schema/topic->schema topic)))
    :event-topic topic})
 
+(def ^:dynamic *skip-sending-notification?*
+  "Used as a hack for when we need to skip sending notifications for certain events.
+
+  It's an escape hatch until we implement conditional notifications."
+  false)
+
 (defn- maybe-send-notification-for-topic!
   [topic event-info]
-  (when-let [notifications (notifications-for-topic topic)]
-    (let [event-info (enriched-event-info topic event-info)]
-      (log/infof "Found %d %s for event: %s"
-                 (count notifications) (u/format-plural (count notifications) "notification" "notifications") topic)
-      (doseq [notification notifications]
-        (notification/send-notification! (assoc notification :payload event-info))))))
+  (when-not *skip-sending-notification?*
+    (when-let [notifications (notifications-for-topic topic)]
+      (let [event-info (enriched-event-info topic event-info)]
+        (log/infof "Found %d %s for event: %s"
+                   (count notifications) (u/format-plural (count notifications) "notification" "notifications") topic)
+        (doseq [notification notifications]
+          (notification/send-notification! (assoc notification :payload event-info)))))))
 
 (methodical/defmethod events/publish-event! ::notification
   [topic event-info]
