@@ -32,8 +32,8 @@ jobs:
       - name: Prepare build scripts
         run: cd ${{ github.workspace }}/release && yarn && yarn build
       - uses: actions/github-script@v7
-        if: ${{ github.event_name == 'push' }}
-        name: set milestone for single commit
+        if: ${{ !env.isNewReleaseBranch }}
+        name: Set milestone for single commit
         with:
           script: | # js
             const { setMilestoneForCommits } = require('${{ github.workspace }}/release/dist/index.cjs');
@@ -57,7 +57,7 @@ jobs:
           tsx release/src/release-branch-commits.ts ${{ inputs.version }} > commit-messages.json
       - uses: actions/github-script@v7
         if: ${{ env.isNewReleaseBranch }}
-        name: set milestone for new release branch
+        name: Set milestones for new release branch
         env:
           # this token has a higher rate limit than the default token, and
           # we will need it for this workflow to work
