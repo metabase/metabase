@@ -54,6 +54,6 @@
   template tags."
   [query]
   (if-let [name->tag (seq (get-in query [:native :template-tags]))]
-    ((requiring-resolve 'qp.compile/compile)
+    ((requiring-resolve 'metabase.query-processor.compile/compile)
      (assoc-in query [:native :template-tags] (update-vals name->tag tag-default)))
     (:native query)))
