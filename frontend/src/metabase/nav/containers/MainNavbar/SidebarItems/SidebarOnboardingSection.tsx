@@ -2,7 +2,6 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useHasTokenFeature } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
@@ -43,16 +42,12 @@ export function SidebarOnboardingSection({
 }: SidebarOnboardingProps) {
   const applicationName = useSelector(getApplicationName);
 
-  const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
   const isUploadEnabled = useSelector(
     state => getSetting(state, "uploads-settings")?.db_id,
   );
   const rootCollection = collections.find(
     ({ id, can_write }) => (id === null || id === "root") && can_write,
   );
-
-  const shouldShowCSVUploadButton =
-    rootCollection && (hasAttachedDWHFeature || isUploadEnabled);
 
   return (
     <Box
@@ -100,7 +95,7 @@ export function SidebarOnboardingSection({
                 />
               </Link>
             )}
-            {shouldShowCSVUploadButton && (
+            {rootCollection && !isUploadEnabled && (
               <Link to="/admin/settings/uploads">
                 <SidebarOnboardingMenuItem
                   icon="table2"
