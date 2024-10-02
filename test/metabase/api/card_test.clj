@@ -3987,4 +3987,12 @@
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:dashboard_id dest-dash-id})))
       (testing "old dashcards are deleting, a new one is created"
         (is (=? #{dest-dash-id}
-                (set (map :dashboard_id (t2/select :model/DashboardCard :card_id card-id)))))))))
+                (set (map :dashboard_id (t2/select :model/DashboardCard :card_id card-id))))))))
+  (testing "We can't move a question from a collection to a dashboard if it's in another dashboard"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Dashboard {other-dash-id :id} {}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:dashboard_id other-dash-id
+                                           :card_id card-id}]
+      (mt/user-http-request :rasta :put 400 (str "card/" card-id) {:dashboard_id dash-id}))))
