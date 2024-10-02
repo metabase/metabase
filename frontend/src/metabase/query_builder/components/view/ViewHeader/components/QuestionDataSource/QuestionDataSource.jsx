@@ -194,7 +194,11 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
     parts.push({
       icon: !subHead ? "database" : undefined,
       name: database.displayName(),
-      href: database.id >= 0 && Urls.browseSchema(table),
+      href: database.id >= 0 
+      && (isNative 
+          ? Urls.browseSchemaNative(database.id)
+          : Urls.browseSchema(table)
+        )
     });
   }
 
