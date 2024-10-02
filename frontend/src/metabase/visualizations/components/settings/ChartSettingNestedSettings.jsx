@@ -11,7 +11,7 @@ import ChartSettingsWidget from "../ChartSettingsWidget";
  * @deprecated HOCs are deprecated
  */
 const chartSettingNestedSettings =
-  ({ getObjectKey, getSettingsWidgetsForObject }) =>
+  ({ getObjectKey, getObjectSettings, getSettingsWidgetsForObject }) =>
   ComposedComponent =>
     class extends Component {
       constructor(props) {
@@ -55,15 +55,23 @@ const chartSettingNestedSettings =
         }
       };
 
-      handleChangeSettingsForObjectKey = (objectKey, changedSettings) => {
-        const { onChange } = this.props;
-        const objectsSettings = this.props.value || {};
-        const objectSettings = objectsSettings[objectKey] || {};
-        const newSettings = updateSettings(objectSettings, changedSettings);
-        onChange({
-          ...objectsSettings,
-          [objectKey]: newSettings,
-        });
+      handleChangeSettingsForObjectKey = (changedKey, changedSettings) => {
+        const { objects, onChange } = this.props;
+        const oldSettings = this.props.value || {};
+        const newSettings = objects.reduce((newSettings, object) => {
+          const currentKey = getObjectKey(object);
+          const objectSettings = getObjectSettings(oldSettings, object);
+          if (currentKey === changedKey) {
+            newSettings[currentKey] = updateSettings(
+              objectSettings,
+              changedSettings,
+            );
+          } else {
+            newSettings[currentKey] = objectSettings;
+          }
+          return newSettings;
+        }, {});
+        onChange(newSettings);
       };
 
       render() {
@@ -76,7 +84,8 @@ const chartSettingNestedSettings =
           );
           if (editingObject) {
             const objectsSettings = this.props.value || {};
-            const objectSettings = objectsSettings[editingObjectKey] || {};
+            const objectSettings =
+              getObjectSettings(objectsSettings, editingObject) ?? {};
             const objectSettingsWidgets = getSettingsWidgetsForObject(
               series,
               editingObject,
