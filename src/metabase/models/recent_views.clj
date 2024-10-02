@@ -284,6 +284,8 @@
                    (parent-collection-valid? model_object)
                    (ellide-archived model_object))]
     {:id model_id
+     :dashboard {:name (:dashboard_name card)
+                 :id (:dashboard_id card)}
      :name (:name card)
      :database_id (:database_id card)
      :description (:description card)
