@@ -347,15 +347,15 @@ function SidebarOnboardingSection({
             <Link to="/admin/databases/create">
               <SidebarOnboardingMenuItem
                 icon="database"
-                title="Add a database"
-                subtitle="PostgreSQL, MySQL, Snowflake, ..."
+                title={t`Add a database`}
+                subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
               />
             </Link>
             <Link to="/admin/settings/uploads">
               <SidebarOnboardingMenuItem
                 icon="table2"
-                title="Upload a spreadsheet"
-                subtitle=".csv, .tsv (50 MB max)"
+                title={t`Upload a spreadsheet`}
+                subtitle={t`.csv, .tsv (50 MB max)`}
               />
             </Link>
           </Menu.Dropdown>
@@ -377,8 +377,12 @@ function SidebarOnboardingMenuItem({
   return (
     <Menu.Item icon={<Icon name={icon} />} style={{ alignItems: "flex-start" }}>
       <Stack spacing="xs">
-        <Title c="inherit" order={4}>{t`${title}`}</Title>
-        <Text c="inherit" size="sm">{t`${subtitle}`}</Text>
+        <Title c="inherit" order={4}>
+          {title}
+        </Title>
+        <Text c="inherit" size="sm">
+          {subtitle}
+        </Text>
       </Stack>
     </Menu.Item>
   );
