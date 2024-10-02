@@ -213,15 +213,16 @@
       (lib/filterable-columns)))
 
 (defn- ensure-filterable-columns-for-card
-  [ctx card]
-  (if (contains? (get ctx :card-id->filterable-columns) (:id card))
+  [ctx {database-id   :database_id
+        dataset-query :dataset_query
+        id            :id
+        :as           _card}]
+  (if (contains? (get ctx :card-id->filterable-columns) id)
     ctx
-    (let [database-id   (:database_id card)
-          dataset-query (:dataset_query card)]
-      (if-not (and (not-empty dataset-query) (pos-int? database-id))
-        ctx
-        (assoc-in ctx [:card-id->filterable-columns (:id card)]
-                  (filterable-columns-for-query database-id dataset-query))))))
+    (if-not (and (not-empty dataset-query) (pos-int? database-id))
+      ctx
+      (assoc-in ctx [:card-id->filterable-columns id]
+                (filterable-columns-for-query database-id dataset-query)))))
 
 (defn- field-id-from-dashcards-filterable-columns
   "Update the `ctx` with `field-id`. This function is supposed to be used on params where target is a name field, in
@@ -270,11 +271,10 @@
      (swap! *field-id-context* update :card-id->filterable-columns
             merge (:card-id->filterable-columns ctx)))
    (set (:field-ids ctx)))
-  ([ctx param-dashcard-info]
-   (if-not (:param-target-field param-dashcard-info)
+  ([ctx {:keys [param-target-field] :as param-dashcard-info}]
+   (if-not param-target-field
      ctx
-     (let [param-target-field (get param-dashcard-info :param-target-field)
-           card               (get-in param-dashcard-info [:dashcard :card])]
+     (let [card (get-in param-dashcard-info [:dashcard :card])]
        (if-some [field-id (or
                            ;; Get the field id from the field-clause if it contains it. This is the common case
                            ;; for mbql queries.
