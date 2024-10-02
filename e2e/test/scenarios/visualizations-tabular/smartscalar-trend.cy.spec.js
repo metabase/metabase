@@ -389,10 +389,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("scalar-container").findByText("34’400%");
 
     // decimal places
-    cy.findByLabelText("Minimum number of decimal places")
-      .click()
-      .type("4")
-      .blur();
+    cy.findByLabelText("Number of decimal places").click().type("4").blur();
     cy.findByTestId("scalar-container").findByText("34’400.0000%");
 
     // multiply by a number
