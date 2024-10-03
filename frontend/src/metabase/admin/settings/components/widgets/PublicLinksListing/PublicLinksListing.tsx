@@ -6,9 +6,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import { Icon, Loader } from "metabase/ui";
-
-import { RevokeIconWrapper } from "./PublicLinksListing.styled";
+import { ActionIcon, Icon, Loader } from "metabase/ui";
 
 export const PublicLinksListing = <
   T extends { id: string | number; name: string },
@@ -81,9 +79,9 @@ export const PublicLinksListing = <
                       await revoke(item);
                     }}
                   >
-                    <RevokeIconWrapper name="close" aria-label={t`Revoke link`}>
+                    <ActionIcon aria-label={t`Revoke link`}>
                       <Icon name="close" />
-                    </RevokeIconWrapper>
+                    </ActionIcon>
                   </Confirm>
                 </td>
               )}

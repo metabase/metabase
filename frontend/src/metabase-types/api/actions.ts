@@ -1,4 +1,3 @@
-import type { WritebackActionId } from "./actions";
 import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
