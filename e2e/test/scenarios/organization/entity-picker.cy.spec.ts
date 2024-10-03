@@ -217,7 +217,6 @@ describe("scenarios > organization > entity picker", () => {
           restore("postgres-writable");
           cy.signInAsAdmin();
           resyncDatabase({ dbId: WRITABLE_DB_ID });
-          cy.signInAsNormalUser();
 
           cy.log("first database - pre-selected");
           startNewQuestion();
