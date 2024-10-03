@@ -25,7 +25,7 @@ export const PublicLinksListing = <
   isLoading: boolean;
   revoke?: (item: T) => Promise<unknown>;
   getUrl: (item: T) => string;
-  getPublicUrl?: (item: T) => string;
+  getPublicUrl?: (item: T) => string | null;
   noLinksMessage: string;
   "data-testid"?: string;
 }) => {
@@ -47,44 +47,49 @@ export const PublicLinksListing = <
         </tr>
       </thead>
       <tbody>
-        {data.map(item => (
-          <tr key={item.id}>
-            <td>
-              {getUrl ? (
-                <Link to={getUrl(item)} className={CS.textWrap}>
-                  {item.name}
-                </Link>
-              ) : (
-                item.name
-              )}
-            </td>
-            {getPublicUrl && (
+        {data.map(item => {
+          const internalUrl = getUrl?.(item);
+          const publicUrl = getPublicUrl?.(item);
+
+          return (
+            <tr key={item.id}>
               <td>
-                <ExternalLink
-                  href={getPublicUrl(item)}
-                  className={cx(CS.link, CS.textWrap)}
-                >
-                  {getPublicUrl(item)}
-                </ExternalLink>
+                {internalUrl ? (
+                  <Link to={internalUrl} className={CS.textWrap}>
+                    {item.name}
+                  </Link>
+                ) : (
+                  item.name
+                )}
               </td>
-            )}
-            {revoke && (
-              <td className={cx(CS.flex, CS.layoutCentered)}>
-                <Confirm
-                  title={t`Disable this link?`}
-                  content={t`They won't work anymore, and can't be restored, but you can create new links.`}
-                  action={async () => {
-                    await revoke(item);
-                  }}
-                >
-                  <RevokeIconWrapper name="close" aria-label={t`Revoke link`}>
-                    <Icon name="close" />
-                  </RevokeIconWrapper>
-                </Confirm>
-              </td>
-            )}
-          </tr>
-        ))}
+              {publicUrl && (
+                <td>
+                  <ExternalLink
+                    href={publicUrl}
+                    className={cx(CS.link, CS.textWrap)}
+                  >
+                    {publicUrl}
+                  </ExternalLink>
+                </td>
+              )}
+              {revoke && (
+                <td className={cx(CS.flex, CS.layoutCentered)}>
+                  <Confirm
+                    title={t`Disable this link?`}
+                    content={t`They won't work anymore, and can't be restored, but you can create new links.`}
+                    action={async () => {
+                      await revoke(item);
+                    }}
+                  >
+                    <RevokeIconWrapper name="close" aria-label={t`Revoke link`}>
+                      <Icon name="close" />
+                    </RevokeIconWrapper>
+                  </Confirm>
+                </td>
+              )}
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

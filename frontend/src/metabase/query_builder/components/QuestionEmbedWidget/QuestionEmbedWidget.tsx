@@ -22,9 +22,11 @@ type QuestionEmbedWidgetProps = {
   card: Card;
   onClose: () => void;
 };
-export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
-  const { className, card, onClose } = props;
-
+export const QuestionEmbedWidget = ({
+  className,
+  card,
+  onClose,
+}: QuestionEmbedWidgetProps) => {
   const metadata = useSelector(getMetadata);
 
   const dispatch = useDispatch();

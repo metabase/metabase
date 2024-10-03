@@ -1,7 +1,7 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
 
 import {
+  type PublicAction,
   useDeleteActionPublicLinkMutation,
   useDeleteCardPublicLinkMutation,
   useDeleteDashboardPublicLinkMutation,
@@ -25,12 +25,18 @@ export const PublicLinksDashboardListing = () => {
     <PublicLinksListing<GetPublicOrEmbeddableDashboard>
       revoke={revoke}
       getUrl={dashboard => Urls.dashboard(dashboard)}
-      getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
+      getPublicUrl={({ public_uuid }: GetPublicOrEmbeddableDashboard) => {
+        if (public_uuid) {
+          return Urls.publicDashboard(public_uuid);
+        }
+        return null;
+      }}
       noLinksMessage={t`No dashboards have been publicly shared yet.`}
       {...query}
     />
   );
 };
+
 export const PublicLinksQuestionListing = () => {
   const query = useListPublicCardsQuery();
   const [revoke] = useDeleteCardPublicLinkMutation();
@@ -38,9 +44,12 @@ export const PublicLinksQuestionListing = () => {
     <PublicLinksListing<GetPublicOrEmbeddableCard>
       revoke={revoke}
       getUrl={question => Urls.question(question)}
-      getPublicUrl={({ public_uuid }) =>
-        Urls.publicQuestion({ uuid: public_uuid })
-      }
+      getPublicUrl={({ public_uuid }) => {
+        if (public_uuid) {
+          return Urls.publicQuestion({ uuid: public_uuid });
+        }
+        return null;
+      }}
       noLinksMessage={t`No questions have been publicly shared yet.`}
       {...query}
     />
@@ -53,12 +62,7 @@ export const PublicLinksActionListing = () => {
   const [revoke] = useDeleteActionPublicLinkMutation();
 
   return (
-    <PublicLinksListing<{
-      id: number;
-      name: string;
-      public_uuid: string | null;
-      model_id: number;
-    }>
+    <PublicLinksListing<PublicAction>
       revoke={revoke}
       getUrl={action => Urls.action({ id: action.model_id }, action.id)}
       getPublicUrl={({ public_uuid }) =>

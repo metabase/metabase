@@ -3,7 +3,7 @@ import { createAction } from "redux-actions";
 import { createCardPublicLink, deleteCardPublicLink } from "metabase/api";
 import { createThunkAction } from "metabase/lib/redux";
 import { CardApi } from "metabase/services";
-import type { Card, GetPublicOrEmbeddableCard } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 import type { EmbedOptions } from "metabase-types/store";
 
 type CardIdPayload = Pick<Card, "id">;
@@ -25,7 +25,7 @@ export const DELETE_PUBLIC_LINK = "metabase/card/DELETE_PUBLIC_LINK";
 
 export const deletePublicLink = createThunkAction(
   DELETE_PUBLIC_LINK,
-  (card: GetPublicOrEmbeddableCard) => async dispatch =>
+  (card: Card) => async dispatch =>
     await dispatch(deleteCardPublicLink.initiate(card)),
 );
 

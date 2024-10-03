@@ -51,10 +51,10 @@ export const actionApi = Api.injectEndpoints({
   }),
 });
 
-type PublicAction = {
+export type PublicAction = {
   id: WritebackActionId;
   name: string;
-  public_uuid: string | null;
+  public_uuid: string;
   model_id: number;
 };
 

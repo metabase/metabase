@@ -344,6 +344,7 @@ export type CardQueryRequest = {
   parameters?: unknown[];
 };
 
-export type GetPublicOrEmbeddableCard = Pick<Card, "id" | "name"> & {
-  public_uuid: NonNullable<Card["public_uuid"]>;
-};
+export type GetPublicOrEmbeddableCard = Pick<
+  Card,
+  "id" | "name" | "public_uuid"
+>;
