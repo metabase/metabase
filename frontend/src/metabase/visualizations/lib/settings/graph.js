@@ -164,9 +164,6 @@ export const GRAPH_DATA_SETTINGS = {
       const seriesKeys = chartModel.seriesModels.map(
         s => s.legacySeriesSettingsObjectKey.card._seriesKey,
       );
-      if (chartModel.otherSeriesModel) {
-        seriesKeys.push(chartModel.otherSeriesModel.dataKey);
-      }
       // eslint-disable-next-line no-unused-vars
       const value = getSeriesOrderVisibilitySettings(
         computedSettings,

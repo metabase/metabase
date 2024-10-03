@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   getXAxisModel,
@@ -31,7 +29,10 @@ import type { RawSeries, SingleSeries } from "metabase-types/api";
 
 import type { ShowWarning } from "../../types";
 
-import { groupSeriesIntoOther } from "./other-series";
+import {
+  createOtherGroupSeriesModel,
+  groupSeriesIntoOther,
+} from "./other-series";
 import { getStackModels } from "./stack";
 import { getAxisTransforms } from "./transforms";
 import { getTrendLines } from "./trend-line";
@@ -122,16 +123,17 @@ export const getCartesianChartModel = (
   );
 
   const [sampleGroupedModel] = groupedSeriesModels;
-  const otherSeriesModel = sampleGroupedModel
-    ? {
-        name: t`Other`,
-        dataKey: OTHER_DATA_KEY,
-        color: renderingContext.getColor("text-light"),
-        visible: !hiddenSeries.includes(OTHER_DATA_KEY),
-        column: sampleGroupedModel.column,
-        columnIndex: sampleGroupedModel.columnIndex,
-      }
-    : undefined;
+  if (sampleGroupedModel) {
+    ungroupedSeriesModels.push(
+      createOtherGroupSeriesModel(
+        sampleGroupedModel.column,
+        sampleGroupedModel.columnIndex,
+        settings,
+        !hiddenSeries.includes(OTHER_DATA_KEY),
+        renderingContext,
+      ),
+    );
+  }
 
   const groupedSeriesKeys = groupedSeriesModels.map(
     seriesModel => seriesModel.dataKey,
@@ -222,7 +224,6 @@ export const getCartesianChartModel = (
     seriesLabelsFormatters,
     stackedLabelsFormatters,
     dataDensity,
-    otherSeriesModel,
     groupedSeriesModels,
   };
 };

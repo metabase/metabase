@@ -479,11 +479,15 @@ export const getSeriesOnlyTooltipModel = (
       const isHoveredSeries = seriesModel.dataKey === hoveredSeries.dataKey;
       const isFocused = isHoveredSeries && chartModel.seriesModels.length > 1;
 
-      const prevValue = computeDiffWithPreviousPeriod(
-        chartModel,
-        seriesModel,
-        dataIndex,
-      );
+      const value =
+        seriesModel.dataKey === OTHER_DATA_KEY
+          ? getGroupedSeriesTotal(chartModel.groupedSeriesModels ?? [], datum)
+          : datum[seriesModel.dataKey];
+
+      const prevValue =
+        seriesModel.dataKey === OTHER_DATA_KEY
+          ? null
+          : computeDiffWithPreviousPeriod(chartModel, seriesModel, dataIndex);
 
       return {
         isFocused,
@@ -493,39 +497,15 @@ export const getSeriesOnlyTooltipModel = (
         ),
         values: [
           formatValueForTooltip({
-            value: datum[seriesModel.dataKey],
+            value: value,
             column: seriesModel.column,
             settings,
             isAlreadyScaled: true,
           }),
           prevValue,
-        ],
+        ].filter(isNotNull),
       };
     });
-
-  if (chartModel.otherSeriesModel?.visible) {
-    const groupedSeriesTotal = (chartModel.groupedSeriesModels ?? []).reduce(
-      (sum, seriesModel) => {
-        const rowValue = datum[seriesModel.dataKey];
-        const value = typeof rowValue === "number" ? rowValue : 0;
-        return sum + value;
-      },
-      0,
-    );
-
-    seriesRows.push({
-      isFocused: false,
-      name: chartModel.otherSeriesModel.name,
-      markerColorClass: getMarkerColorClass(chartModel.otherSeriesModel.color),
-      values: [
-        formatValueForTooltip({
-          value: groupedSeriesTotal,
-          settings,
-          isAlreadyScaled: true,
-        }),
-      ],
-    });
-  }
 
   const additionalColumnsRows = getAdditionalTooltipRowsData(
     chartModel,
@@ -685,12 +665,6 @@ export const getOtherSeriesTooltipModel = (
     };
   });
 
-  const rowsTotal = groupedSeriesModels.reduce((sum, seriesModel) => {
-    const rowValue = datum[seriesModel.dataKey];
-    const value = typeof rowValue === "number" ? rowValue : 0;
-    return sum + value;
-  }, 0);
-
   return {
     header: String(
       formatValueForTooltip({
@@ -706,7 +680,7 @@ export const getOtherSeriesTooltipModel = (
         String(
           formatValueForTooltip({
             isAlreadyScaled: true,
-            value: rowsTotal,
+            value: getGroupedSeriesTotal(groupedSeriesModels, datum),
             settings,
             column:
               chartModel.leftAxisModel?.column ??
@@ -716,6 +690,17 @@ export const getOtherSeriesTooltipModel = (
       ],
     },
   };
+};
+
+const getGroupedSeriesTotal = (
+  groupedSeriesModels: SeriesModel[],
+  datum: Datum,
+) => {
+  return groupedSeriesModels.reduce((sum, seriesModel) => {
+    const rowValue = datum[seriesModel.dataKey];
+    const value = typeof rowValue === "number" ? rowValue : 0;
+    return sum + value;
+  }, 0);
 };
 
 export const getTimelineEventsForEvent = (

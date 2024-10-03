@@ -27,7 +27,6 @@ import type {
   LabelFormatter,
   NumericAxisScaleTransforms,
   NumericXAxisModel,
-  OtherSeriesModel,
   SeriesModel,
   StackTotalDataKey,
   TimeSeriesXAxisModel,
@@ -256,7 +255,7 @@ function getSelectionFrequency(
 }
 
 export const buildEChartsLabelOptions = (
-  seriesModel: SeriesModel | OtherSeriesModel,
+  seriesModel: SeriesModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   renderingContext: RenderingContext,
   chartWidth: number,
@@ -340,7 +339,7 @@ export const computeBarWidth = (
 };
 
 export const buildEChartsStackLabelOptions = (
-  seriesModel: SeriesModel | OtherSeriesModel,
+  seriesModel: SeriesModel,
   formatter: LabelFormatter | undefined,
   originalDataset: ChartDataset,
   renderingContext: RenderingContext,
@@ -436,7 +435,7 @@ const buildEChartsBarSeries = (
   xAxisModel: XAxisModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   chartMeasurements: ChartMeasurements,
-  seriesModel: SeriesModel | OtherSeriesModel,
+  seriesModel: SeriesModel,
   stackName: string | undefined,
   settings: ComputedVisualizationSettings,
   yAxisIndex: number,
@@ -861,12 +860,9 @@ export const buildEChartsSeries = (
     {} as Record<DataKey, number>,
   );
 
-  let barSeriesCount = Object.values(seriesSettingsByDataKey).filter(
+  const barSeriesCount = Object.values(seriesSettingsByDataKey).filter(
     seriesSettings => seriesSettings.display === "bar",
   ).length;
-  if (chartModel.otherSeriesModel) {
-    barSeriesCount += 1;
-  }
 
   const hasMultipleSeries = chartModel.seriesModels.length > 1;
 
@@ -937,30 +933,6 @@ export const buildEChartsSeries = (
         renderingContext,
       ),
     );
-  }
-
-  if (chartModel.otherSeriesModel?.visible) {
-    const otherSeries = buildEChartsBarSeries(
-      chartModel.transformedDataset,
-      chartModel.dataset,
-      chartModel.xAxisModel,
-      chartModel.yAxisScaleTransforms,
-      chartMeasurements,
-      chartModel.otherSeriesModel,
-      undefined,
-      settings,
-      0,
-      barSeriesCount,
-      true,
-      chartModel.dataDensity,
-      chartWidth,
-      chartModel.seriesLabelsFormatters?.[chartModel.otherSeriesModel.dataKey],
-      renderingContext,
-    );
-
-    if (!Array.isArray(otherSeries)) {
-      series.push(otherSeries);
-    }
   }
 
   return series;

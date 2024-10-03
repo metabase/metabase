@@ -1,8 +1,16 @@
-import { isNumber } from "metabase/lib/types";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { RowValue } from "metabase-types/api";
+import { t } from "ttag";
 
-import type { ChartDataset, SeriesModel } from "./types";
+import { isNumber } from "metabase/lib/types";
+import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/visualizations/types";
+import type { DatasetColumn, RowValue } from "metabase-types/api";
+
+import { OTHER_DATA_KEY } from "../constants/dataset";
+
+import type { ChartDataset, RegularSeriesModel, SeriesModel } from "./types";
 
 function getRowValueForSorting(value: RowValue) {
   if (isNumber(value)) {
@@ -59,3 +67,30 @@ export function groupSeriesIntoOther(
     groupedSeriesModels,
   };
 }
+
+export const createOtherGroupSeriesModel = (
+  column: DatasetColumn,
+  columnIndex: number,
+  settings: ComputedVisualizationSettings,
+  isVisible: boolean,
+  renderingContext: RenderingContext,
+): RegularSeriesModel => {
+  const customName = settings[SERIES_SETTING_KEY]?.[OTHER_DATA_KEY]?.title;
+  const name = customName ?? t`Other`;
+
+  return {
+    name,
+    dataKey: OTHER_DATA_KEY,
+    color: renderingContext.getColor("text-light"),
+    visible: isVisible,
+    column,
+    columnIndex,
+    vizSettingsKey: OTHER_DATA_KEY,
+    legacySeriesSettingsObjectKey: {
+      card: {
+        _seriesKey: OTHER_DATA_KEY,
+      },
+    },
+    tooltipName: name,
+  };
+};

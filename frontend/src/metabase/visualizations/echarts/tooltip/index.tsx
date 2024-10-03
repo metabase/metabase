@@ -143,10 +143,6 @@ export const useCartesianChartSeriesColorsClasses = (
       .map(groupedSeriesModel => groupedSeriesModel.color)
       .filter(isNotNull);
 
-    if (chartModel.otherSeriesModel) {
-      seriesColors.push(chartModel.otherSeriesModel.color);
-    }
-
     const settingColors = [
       settings["waterfall.increase_color"],
       settings["waterfall.decrease_color"],
