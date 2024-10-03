@@ -392,36 +392,43 @@ describe("scenarios > visualizations > pie chart", () => {
           color: "#51528D",
           name: "Saturday",
           value: "2,747",
+          secondaryValue: "14.64 %",
         },
         {
           color: "#ED8535",
           name: "Thursday",
           value: "2,698",
+          secondaryValue: "14.38 %",
         },
         {
           color: "#E75454",
           name: "Tuesday",
           value: "2,695",
+          secondaryValue: "14.37 %",
         },
         {
           color: "#689636",
           name: "Sunday",
           value: "2,671",
+          secondaryValue: "14.24 %",
         },
         {
           color: "#8A5EB0",
           name: "Monday",
           value: "2,664",
+          secondaryValue: "14.20 %",
         },
         {
           color: "#69C8C8",
           name: "Friday",
           value: "2,662",
+          secondaryValue: "14.19 %",
         },
         {
           color: "#F7C41F",
           name: "Wednesday",
           value: "2,623",
+          secondaryValue: "13.98 %",
         },
       ],
     });
@@ -464,18 +471,22 @@ describe("scenarios > visualizations > pie chart", () => {
         {
           name: "Doohickey",
           value: "606",
+          secondaryValue: "22.06 %",
         },
         {
           name: "Gadget",
           value: "740",
+          secondaryValue: "26.94 %",
         },
         {
           name: "Gizmo",
           value: "640",
+          secondaryValue: "23.30 %",
         },
         {
           name: "Widget",
           value: "761",
+          secondaryValue: "27.70 %",
         },
       ],
     });
