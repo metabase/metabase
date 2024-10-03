@@ -71,7 +71,9 @@ export const DashboardPickerModal = ({
     function () {
       setSelectedItem(canSelectItem(value) ? value : null);
     },
-    [value],
+    // sync back the value to selectedItem, but only when it changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [value.id, value.model],
   );
 
   const { tryLogRecentItem } = useLogRecentItem();
