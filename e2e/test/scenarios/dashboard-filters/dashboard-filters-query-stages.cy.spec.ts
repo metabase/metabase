@@ -1,5 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  changeSynchronousBatchUpdateSetting,
   createDashboardWithTabs,
   createQuestion,
   editDashboard,
@@ -113,6 +114,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(true); // prevent last_used_param_values from breaking test isolation
     createBaseQuestions();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -120,6 +122,10 @@ describe("scenarios > dashboard > filters > query stages", () => {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashboardData",
     );
+  });
+
+  afterEach(() => {
+    changeSynchronousBatchUpdateSetting(false);
   });
 
   // Sanity checks. If the base queries tests fail then something is very wrong.
