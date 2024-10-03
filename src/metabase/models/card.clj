@@ -869,10 +869,17 @@
       (autoplace-dashcard-for-card! (:dashboard_id card-updates)
                                     card-before-update))
 
-    (when (and (:dashboard_id card-updates)
-               (:dashboard_id card-before-update)
-               delete-old-dashcards?)
-      (t2/delete! :model/DashboardCard :card_id (:id card-before-update) :dashboard_id (:dashboard_id card-before-update)))
+    (when (or
+           ;; we're moving from one dashboard to another
+           (and (:dashboard_id card-updates)
+                (:dashboard_id card-before-update))
+           ;; we're moving from a dashboard into a collection, AND the user told us they want to remove the old dashcards
+           (and (:dashboard_id card-before-update)
+                (not (:dashboard_id card-updates))
+                delete-old-dashcards?))
+      (t2/delete! :model/DashboardCard
+                  :card_id (:id card-before-update)
+                  :dashboard_id (:dashboard_id card-before-update)))
 
     (when (and (card-is-verified? card-before-update)
                (changed? card-compare-keys card-before-update card-updates))
