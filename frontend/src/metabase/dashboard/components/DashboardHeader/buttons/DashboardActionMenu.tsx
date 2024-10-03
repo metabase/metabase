@@ -6,6 +6,8 @@ import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
 import type { Dashboard } from "metabase-types/api";
 
+import { DashboardBookmark } from "../../DashboardBookmark";
+
 export const DashboardActionMenu = (props: { items: any[] }) => (
   <EntityMenu
     key="dashboard-action-menu-button"
@@ -49,6 +51,10 @@ export const getExtraButtons = ({
     title: t`Enter fullscreen`,
     icon: "expand",
     action: (e: MouseEvent) => onFullscreenChange(!isFullscreen, !e.altKey),
+  });
+
+  extraButtons.push({
+    component: <DashboardBookmark />,
   });
 
   if (canEdit) {

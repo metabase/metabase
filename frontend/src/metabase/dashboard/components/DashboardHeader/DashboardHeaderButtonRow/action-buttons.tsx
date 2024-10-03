@@ -3,7 +3,6 @@ import { withRouter } from "react-router";
 import { DashboardSharingMenu } from "metabase/sharing/components/SharingMenu";
 import { Center, Divider } from "metabase/ui";
 
-import { DashboardBookmark } from "../../DashboardBookmark";
 import { ExtraEditButtonsMenu } from "../../ExtraEditButtonsMenu";
 import { RefreshWidget } from "../../RefreshWidget";
 import {
@@ -44,7 +43,6 @@ export const DASHBOARD_ACTION = {
   NIGHT_MODE_TOGGLE: "NIGHT_MODE_TOGGLE",
   FULLSCREEN_TOGGLE: "FULLSCREEN_TOGGLE",
   DASHBOARD_HEADER_ACTION_DIVIDER: "DASHBOARD_HEADER_ACTION_DIVIDER",
-  DASHBOARD_BOOKMARK: "DASHBOARD_BOOKMARK",
   DASHBOARD_INFO: "DASHBOARD_INFO",
   DASHBOARD_ACTION_MENU: "DASHBOARD_ACTION_MENU",
   FULLSCREEN_ANALYTICS_DASHBOARD: "FULLSCREEN_ANALYTICS_DASHBOARD",
@@ -142,10 +140,6 @@ export const dashboardActionButtons: Record<
     ),
     enabled: ({ isFullscreen, isPublic, isEmbeddingSdk = false }) =>
       isPublic || isFullscreen || isEmbeddingSdk,
-  },
-  [DASHBOARD_ACTION.DASHBOARD_BOOKMARK]: {
-    component: DashboardBookmark,
-    enabled: ({ isEditing, dashboard }) => !isEditing && !dashboard.archived,
   },
   [DASHBOARD_ACTION.DASHBOARD_INFO]: {
     component: DashboardInfoButton,

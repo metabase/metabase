@@ -5,6 +5,8 @@ import Bookmark from "metabase/entities/bookmarks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { DashboardId, Bookmark as IBookmark } from "metabase-types/api";
 
+import S from "./DashboardBookmark.module.css";
+
 export interface DashboardBookmarkProps {
   isBookmarked: boolean;
 }
@@ -42,6 +44,14 @@ export const DashboardBookmark = (): JSX.Element | null => {
       isBookmarked={isBookmarked}
       onCreateBookmark={handleCreateBookmark}
       onDeleteBookmark={handleDeleteBookmark}
+      shouldShowIconOnly={false}
+      variant="subtle"
+      w="100%"
+      h="40px"
+      c="var(--mb-color-text-dark)"
+      p="0.85em 1.45em" // To match menu item
+      styles={{ inner: { justifyContent: "flex-start" } }}
+      className={S.DashboardBookmarkToggle}
     />
   );
 };

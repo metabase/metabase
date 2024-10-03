@@ -41,9 +41,6 @@ describe("DashboardHeader - enterprise", () => {
     expect(screen.getByText("Make a copy")).toBeInTheDocument();
 
     //Other buttons
-    expect(
-      screen.getByRole("button", { name: /bookmark/i }),
-    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /info/i })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /fullscreen/i }),

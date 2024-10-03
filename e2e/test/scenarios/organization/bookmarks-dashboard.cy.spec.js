@@ -1,7 +1,9 @@
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   navigationSidebar,
+  openDashboardMenu,
   openNavigationSidebar,
+  popover,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -17,21 +19,23 @@ describe("scenarios > dashboard > bookmarks", () => {
     openNavigationSidebar();
 
     // Add bookmark
-    cy.get("main header").icon("bookmark").click();
+    openDashboardMenu();
+    popover().findByText("Bookmark").click();
 
-    navigationSidebar().within(() => {
-      cy.findByText("Orders in a dashboard");
-    });
+    navigationSidebar()
+      .findByLabelText("Bookmarks")
+      .findByText("Orders in a dashboard");
 
     // Rename bookmarked dashboard
     cy.findByTestId("dashboard-name-heading").click().type(" 2").blur();
 
-    navigationSidebar().within(() => {
-      cy.findByText("Orders in a dashboard 2");
-    });
+    navigationSidebar()
+      .findByLabelText("Bookmarks")
+      .findByText("Orders in a dashboard 2");
 
     // Remove bookmark
-    cy.get("main header").icon("bookmark_filled").click();
+    openDashboardMenu();
+    popover().findByText("Remove from bookmarks").click();
 
     navigationSidebar().within(() => {
       cy.findByText("Orders in a dashboard 2").should("not.exist");

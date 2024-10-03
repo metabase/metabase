@@ -3,7 +3,6 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
@@ -85,10 +84,6 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     tooltip: "Enter fullscreen",
   },
   [DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER]: {},
-  [DASHBOARD_ACTION.DASHBOARD_BOOKMARK]: {
-    icon: "bookmark",
-    tooltip: "Bookmark",
-  },
   [DASHBOARD_ACTION.DASHBOARD_INFO]: {
     icon: "info",
     tooltip: "More info",
@@ -122,8 +117,6 @@ const setup = ({
   isNightMode: boolean;
   isAdmin: boolean;
 }>) => {
-  setupBookmarksEndpoints([]);
-
   const MOCK_DATABASE = createMockDatabase({
     settings: {
       "database-enable-actions": hasModelActionsEnabled,
@@ -274,7 +267,6 @@ describe("DashboardHeaderButtonRow", () => {
           DASHBOARD_ACTION.DASHBOARD_SHARING,
           DASHBOARD_ACTION.REFRESH_WIDGET,
           DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER,
-          DASHBOARD_ACTION.DASHBOARD_BOOKMARK,
           DASHBOARD_ACTION.DASHBOARD_INFO,
           DASHBOARD_ACTION.DASHBOARD_ACTION_MENU,
         ],

@@ -28,7 +28,6 @@ const ICON_CASES_CARDS = [
 ];
 
 const ICON_CASES_LABELS = [
-  { label: "bookmark icon", tooltipText: "Bookmark" },
   { label: "info icon", tooltipText: "More info" },
   {
     label: "Move, trash, and more...",
