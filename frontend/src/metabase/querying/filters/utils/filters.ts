@@ -3,7 +3,7 @@ import * as Lib from "metabase-lib";
 
 import type { GroupItem } from "../types";
 
-function getGroupName(
+export function getGroupName(
   groupInfo: Lib.ColumnGroupDisplayInfo,
   stageIndex: number,
 ) {

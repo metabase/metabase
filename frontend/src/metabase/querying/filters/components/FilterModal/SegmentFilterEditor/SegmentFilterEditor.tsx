@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { SegmentItem } from "metabase/querying/filters/hooks/use-filter-modal";
+import type { SegmentItem } from "metabase/querying/filters/types";
 import { Flex, Grid, Icon, MultiSelect, Text } from "metabase/ui";
 
 interface SegmentFilterEditorProps {
