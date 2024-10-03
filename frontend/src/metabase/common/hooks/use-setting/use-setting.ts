@@ -1,7 +1,9 @@
 import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
-import { getAdminSettingDefinitions } from "metabase/admin/settings/selectors";
+// TODO - if I change this to metabase/admin/settings/selectors it borks.
+// why is that happening?
+import { getAdminSettingDefinitions } from "metabase/admin/settings/selectors/typed-selectors";
 import { updateSetting } from "metabase/admin/settings/settings";
 import type { SettingElement } from "metabase/admin/settings/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
