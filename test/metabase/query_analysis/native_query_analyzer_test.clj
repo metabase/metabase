@@ -1,4 +1,4 @@
-(ns metabase.query-analysis.native-query-analyzer-test
+(ns ^:parallel metabase.query-analysis.native-query-analyzer-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -6,7 +6,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
-(deftest ^:parallel field-quoting-test
+(deftest field-quoting-test
   (testing "unquoted fields are case-insensitive"
     (is (= [:= [:lower :f.name] "test"]
            (#'nqa/field-query :f.name "test")
@@ -19,7 +19,7 @@
            ;; this is "Perv""e""rse"
            (#'nqa/field-query :f.name "\"Perv\"\"e\"\"rse\"")))))
 
-(deftest ^:parallel consolidate-columns-test
+(deftest consolidate-columns-test
   (testing "We match references with known fields where possible, and remove redundancies"
     (is (= [{:field-id 1, :table "t1", :column "c1"}
             {:field-id 2, :table "t3", :column "c1"}
@@ -86,14 +86,14 @@
     ;; the table might be resolved...
     (nqa/table-reference (mt/id) schema table))))
 
-(deftest ^:parallel field-matching-simple-test
+(deftest field-matching-simple-test
   (testing "simple query matches"
     (let [sql "select id from venues"]
       (is (= [(field-reference :venues :id)] (field-refs sql)))
       (is (= [(table-reference :venues)] (table-refs sql)))
       (is (= [(table-reference :venues)] (basic-table-refs sql))))))
 
-(deftest ^:parallel field-matching-schema-test
+(deftest field-matching-schema-test
   (testing "real existent schema"
     (let [sql "select id from public.venues"]
       (is (= [(field-reference :venues :id)] (field-refs sql)))
@@ -105,7 +105,7 @@
       (is (= [{:schema "blah", :table "venues"}] (table-refs sql)))
       (is (= [{:schema "blah", :table "venues"}] (basic-table-refs sql))))))
 
-(deftest ^:parallel field-matching-case-test
+(deftest field-matching-case-test
   (testing "quotes stop case matching"
     (is (= [(missing-field-reference :venues :id)] (field-refs "select \"id\" from venues")))
     (is (= [(field-reference :venues :id)] (field-refs "select \"ID\" from venues"))))
@@ -140,7 +140,7 @@
             (field-reference :venues :name)]
            (field-refs "select v.`ID`, v.name from venues v")))))
 
-(deftest ^:parallel field-matching-multi-test
+(deftest field-matching-multi-test
   (testing "It will find all relevant columns if query is not specific"
     (is (= [(field-reference :checkins :id)
             (field-reference :venues :id)]
@@ -154,13 +154,13 @@
     (is (= {false 6}
            (frequencies (map :explicit-reference (field-refs "select v.* from venues v join checkins")))))))
 
-(deftest ^:parallel pseudo-table-fields-tests
+(deftest pseudo-table-fields-tests
   (testing "When macaw returns an unknown field without a table, we keep it even if it could be phantom."
     ;; At the time of writing this test, Macaw would (incorrectly) return "week" as an ambiguous source column.
     (is (= [{:column "some_exotic_constant", :explicit-reference true}]
            (field-refs "SELECT some_exotic_constant")))))
 
-(deftest ^:parallel field-matching-keywords-test
+(deftest field-matching-keywords-test
   (when (not (contains? #{:snowflake :oracle} driver/*driver*))
     (testing "Analysis does not fail due to keywords that are only reserved in other databases"
       (is (= [(field-reference :venues :id)]
@@ -168,7 +168,7 @@
       (is (= [(missing-field-reference :venues :final)]
              (field-refs "select final from venues"))))))
 
-(deftest ^:parallel table-without-field-reference-test
+(deftest table-without-field-reference-test
   (testing "We track table dependencies even when there are no fields being used"
     (is (= {:tables [(table-reference :venues)]
             :fields []}
