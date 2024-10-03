@@ -147,16 +147,15 @@
       (#'embed.settings/sync-origins-settings env)
       (cond
         (= expected-behavior :no-op)
-        (do (is (= (:embedding-app-origin original)
-                   (embed.settings/embedding-app-origins-interactive)))
-            (is (= (#'embed.settings/add-localhost (:embedding-app-origin original))
+        (do (is (= (:embedding-app-origins-interactive original) (embed.settings/embedding-app-origins-interactive)))
+            (is (= (#'embed.settings/add-localhost (:embedding-app-origins-sdk original))
                    (embed.settings/embedding-app-origins-sdk))))
 
         (= expected-behavior :sets-both)
-        (do (is (= [expected-behavior other-ip] [:sets-both (embed.settings/embedding-app-origins-interactive)]))
-            (is (= [expected-behavior (#'embed.settings/add-localhost other-ip)] [:sets-both (embed.settings/embedding-app-origins-sdk)])))
+        (do (is (= (embed.settings/embedding-app-origins-interactive) (:embedding-app-origin env)))
+            (is (= (embed.settings/embedding-app-origins-sdk) (#'embed.settings/add-localhost (:embedding-app-origin env)))))
 
-        :else (throw (ex-info "Invalid expected-behavior in test-sync-setting." {:expected-behavior expected-behavior}))))))
+        :else (throw (ex-info "Invalid expected-behavior in test-origin-sync." {:expected-behavior expected-behavior}))))))
 
 (deftest sync-origins-test
   ;; n.b. illegal combinations will be disallowed by [[embed.settings/check-and-sync-settings-on-startup!]], so we don't test syncing for them.
@@ -168,10 +167,10 @@
                                      embedding-app-origins-interactive ""
                                      embedding-app-origins-sdk (#'embed.settings/add-localhost "")]
     (test-origin-sync {} :no-op)
-    (test-origin-sync {:embedding-app-origins-sdk true} :no-op)
-    (test-origin-sync {:embedding-app-origins-sdk false} :no-op)
-    (test-origin-sync {:embedding-app-origins-interactive true} :no-op)
-    (test-origin-sync {:embedding-app-origins-interactive false} :no-op)
+    (test-origin-sync {:embedding-app-origins-sdk other-ip} :no-op)
+    (test-origin-sync {:embedding-app-origins-sdk other-ip} :no-op)
+    (test-origin-sync {:embedding-app-origins-interactive other-ip} :no-op)
+    (test-origin-sync {:embedding-app-origins-interactive nil} :no-op)
 
     (test-origin-sync {:embedding-app-origin other-ip} :sets-both)))
 
