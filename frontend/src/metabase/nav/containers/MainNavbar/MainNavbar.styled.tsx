@@ -63,11 +63,11 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
   }
 
   ${breakpointMinSmall} {
-    width: ${NAV_SIDEBAR_WIDTH};
+    width: ${props => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
   }
 
   ${breakpointMaxSmall} {
-    width: 90vw;
+    width: ${props => (props.isOpen ? "90vw" : 0)};
   }
 `;
 

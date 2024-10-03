@@ -35,6 +35,7 @@ import {
   TrashSidebarSection,
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
+import { SidebarOnboardingSection } from "../SidebarItems/SidebarOnboardingSection";
 import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
@@ -67,7 +68,7 @@ type Props = {
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
 const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
-function MainNavbarView({
+export function MainNavbarView({
   isAdmin,
   currentUser,
   bookmarks,
@@ -141,6 +142,7 @@ function MainNavbarView({
               {t`Home`}
             </PaddedSidebarLink>
 
+            {/* TODO: Remove by the end of MS1 */}
             {hasAttachedDWHFeature && uploadDbId && rootCollection && (
               <UploadCSV collection={rootCollection} />
             )}
@@ -185,6 +187,7 @@ function MainNavbarView({
                 onItemSelect={onItemSelect}
                 hasDataAccess={hasDataAccess}
               />
+              {/* TODO: Remove by the end of MS1 */}
               {hasDataAccess && (
                 <>
                   {!hasOwnDatabase && isAdmin && (
@@ -219,6 +222,7 @@ function MainNavbarView({
           )}
         </div>
         <WhatsNewNotification />
+        <SidebarOnboardingSection hasOwnDatabase={hasOwnDatabase} />
       </SidebarContentRoot>
     </ErrorBoundary>
   );
@@ -275,5 +279,3 @@ function CollectionSectionHeading({
     </SidebarHeadingWrapper>
   );
 }
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default MainNavbarView;

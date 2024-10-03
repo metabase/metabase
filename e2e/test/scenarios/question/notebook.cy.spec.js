@@ -330,7 +330,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     it("should work on custom column with `case`", () => {
-      cy.icon("add_data").click();
+      cy.findByLabelText("Custom column").click();
 
       enterCustomColumnDetails({
         formula: "case([Subtotal] + Tax > 100, 'Big', 'Small')",
