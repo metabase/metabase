@@ -37,7 +37,7 @@ import {
 
     describe("when embedding is disabled", () => {
       beforeEach(() => {
-        updateSetting("enable-embedding", false);
+        updateSetting("enable-embedding-static", false);
       });
 
       describe("when user is admin", () => {
@@ -72,7 +72,7 @@ import {
       describe("when public sharing is enabled", () => {
         beforeEach(() => {
           updateSetting("enable-public-sharing", true);
-          updateSetting("enable-embedding", true);
+          updateSetting("enable-embedding-static", true);
         });
 
         describe("when user is admin", () => {
@@ -138,7 +138,7 @@ import {
       describe("when public sharing is disabled", () => {
         beforeEach(() => {
           updateSetting("enable-public-sharing", false);
-          updateSetting("enable-embedding", true);
+          updateSetting("enable-embedding-static", true);
         });
 
         describe("when user is admin", () => {

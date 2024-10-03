@@ -35,6 +35,8 @@ export function StaticEmbeddingSettings({
 
   function handleToggleStaticEmbedding(event: ChangeEvent<HTMLInputElement>) {
     updateSetting({ key: "enable-embedding-static" }, event.target.checked);
+    // TODO: remove before merging integration branch
+    updateSetting({ key: "enable-embedding" }, event.target.checked);
   }
 
   return (
