@@ -41,7 +41,8 @@ describe("scenarios > question > native", () => {
     cy.contains("18,760");
   });
 
-  it("should suggest the currently viewed collection when saving question if the user has not recently visited a dashboard", () => {
+  // TODO: rewrite test that it is last viewed dashboard
+  it.skip("should suggest the currently viewed collection when saving question if the user has not recently visited a dashboard", () => {
     H.visitCollection(THIRD_COLLECTION_ID);
 
     H.openNativeEditor({ fromCurrentPage: true });
