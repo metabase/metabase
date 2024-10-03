@@ -1113,6 +1113,40 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
         });
 
+        it("penultimate stage aggregation", () => {
+          editDashboard();
+
+          cy.log("## last stage aggregations");
+          getFilter("Number").click();
+          sidebar().findByText("Filter operator").next().click();
+          popover().findByText("Between").click();
+
+          getDashboardCard(0).findByText("Select…").click();
+          popover().within(() => {
+            getPopoverItem(19, "Count").click();
+          });
+
+          cy.button("Save").click();
+
+          filterWidget().eq(0).click();
+          popover().within(() => {
+            cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
+            cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
+            cy.button("Add filter").click();
+          });
+          cy.wait("@dashboardData");
+
+          getDashboardCard(0).scrollIntoView();
+          getDashboardCard(0).findByText("Rows 1-1 of 3").should("be.visible");
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 3 rows",
+          );
+        });
+
         // cy.log("## last stage breakouts");
       });
     });
