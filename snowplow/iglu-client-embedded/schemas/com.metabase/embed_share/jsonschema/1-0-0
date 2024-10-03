@@ -44,8 +44,6 @@
       "maximum": 2147483647
     }
   },
-  "required": [
-    "event"
-  ],
+  "required": ["event"],
   "additionalProperties": true
 }
