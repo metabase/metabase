@@ -13,10 +13,11 @@ import {
   getSetting,
   getUpgradeUrl,
 } from "metabase/selectors/settings";
-import { Alert, Box, Button, Icon, Stack, Switch, Text } from "metabase/ui";
+import { Alert, Box, Button, Icon, Stack, Text } from "metabase/ui";
 
 import SettingHeader from "../SettingHeader";
 import { SetByEnvVarWrapper } from "../SettingsSetting";
+import { SwitchWithSetByEnvVar } from "../widgets/EmbeddingOption/SwitchWithSetByEnvVar";
 import { SettingTextInput } from "../widgets/SettingTextInput";
 
 import { useMergeSetting } from "./hooks";
@@ -76,7 +77,7 @@ export function EmbeddingSdkSettings({
   }
 
   function handleToggleEmbeddingSdk(event: ChangeEvent<HTMLInputElement>) {
-    updateSetting({ key: "enable-embedding-sdk" }, event.target.checked);
+    updateSetting({ key: "enable-embedding-sdk" }, event.currentTarget.checked);
   }
 
   const { url: activationUrl } = useDocsUrl(
@@ -151,12 +152,9 @@ export function EmbeddingSdkSettings({
             [t`Embedding SDK for React`],
           ]}
         />
-
-        <Switch
+        <SwitchWithSetByEnvVar
           label={t`Enable Embedded analytics SDK`}
-          labelPosition="left"
-          size="sm"
-          checked={isEmbeddingSdkEnabled}
+          settingKey="enable-embedding-sdk"
           onChange={handleToggleEmbeddingSdk}
         />
 

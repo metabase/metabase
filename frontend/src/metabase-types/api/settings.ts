@@ -181,12 +181,12 @@ export type PasswordComplexity = {
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
 
-export interface SettingDefinition {
-  key: string;
+export interface SettingDefinition<Key extends SettingKey> {
+  key: Key;
   env_name?: string;
-  is_env_setting: boolean;
-  value?: unknown;
-  default?: unknown;
+  is_env_setting?: boolean;
+  value?: SettingValue<Key>;
+  default?: SettingValue<Key>;
 }
 
 export interface OpenAiModel {
@@ -292,8 +292,9 @@ interface PublicSettings {
   "custom-homepage-dashboard": number | null;
   "ee-ai-features-enabled"?: boolean;
   "email-configured?": boolean;
-  "embedding-app-origin": string;
-  "embedding-app-origins-sdk": string;
+  "embedding-app-origin": string | null;
+  "embedding-app-origins-sdk": string | null;
+  "embedding-app-origins-interactive": string | null;
   "enable-enhancements?": boolean;
   "enable-password-login": boolean;
   engines: Record<string, Engine>;
@@ -352,4 +353,7 @@ export type Settings = InstanceSettings &
 
 export type SettingKey = keyof Settings;
 
-export type SettingValue = Settings[SettingKey];
+export type SettingValue<Key extends SettingKey = SettingKey> =
+  | Settings[Key]
+  | null
+  | undefined;

@@ -1,12 +1,19 @@
 import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
+import { updateSetting } from "metabase/admin/settings/settings";
+import type { SettingElement } from "metabase/admin/settings/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { getSetting } from "metabase/selectors/settings";
-import type { Settings, UserSettings } from "metabase-types/api";
+import type {
+  SettingDefinition,
+  SettingKey,
+  SettingValue,
+  UserSettings,
+} from "metabase-types/api";
 
-export const useSetting = <SettingName extends keyof Settings>(
+export const useSetting = <SettingName extends SettingKey>(
   settingName: SettingName,
 ) => {
   return useSelector(state => getSetting(state, settingName));
@@ -39,4 +46,41 @@ export const useUserSetting = <T extends keyof UserSettings>(
     [setter, debounceTimeout, debounceOnLeadingEdge],
   );
   return [currentValue, shouldDebounce ? debouncedSetter : setter];
+};
+
+export const useMergeSetting = <Key extends SettingKey>(
+  displaySetting: SettingElement<Key>,
+): SettingElement<Key> => {
+  const apiSetting: SettingDefinition<Key> = useSelector(
+    state => state.admin.settings.settings,
+  ).find(setting => setting.key === displaySetting.key);
+
+  const mergedSetting: SettingElement<Key> = useMemo(() => {
+    return {
+      ...(apiSetting ?? {}),
+      ...displaySetting,
+    };
+  }, [apiSetting, displaySetting]);
+
+  return mergedSetting;
+};
+
+export const useGetSetSetting = <Key extends SettingKey>(
+  displaySetting: SettingElement<Key>,
+  options: { onUpdate?: (value: SettingValue<Key>) => void } = {},
+): [SettingElement<Key>, (value: SettingValue<Key>) => void] => {
+  const mergedSetting = useMergeSetting(displaySetting);
+
+  const dispatch = useDispatch();
+
+  const handleSettingChange = async (value: SettingValue<Key>) => {
+    if (options.onUpdate) {
+      await options.onUpdate(value);
+    } else {
+      await dispatch(updateSetting({ key: displaySetting.key, value }));
+    }
+  };
+
+  // used to match useState's get/set pattern with array values
+  return [mergedSetting, handleSettingChange];
 };

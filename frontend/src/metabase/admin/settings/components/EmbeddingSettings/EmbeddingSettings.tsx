@@ -17,11 +17,14 @@ export function EmbeddingSettings({
   updateSetting,
 }: AdminSettingComponentProps) {
   function handleToggleStaticEmbedding(event: ChangeEvent<HTMLInputElement>) {
-    updateSetting({ key: "enable-embedding-static" }, event.target.checked);
+    updateSetting(
+      { key: "enable-embedding-static" },
+      event.currentTarget.checked,
+    );
   }
 
   function handleToggleEmbeddingSdk(event: ChangeEvent<HTMLInputElement>) {
-    updateSetting({ key: "enable-embedding-sdk" }, event.target.checked);
+    updateSetting({ key: "enable-embedding-sdk" }, event.currentTarget.checked);
   }
 
   function handleToggleInteractiveEmbedding(
@@ -29,7 +32,7 @@ export function EmbeddingSettings({
   ) {
     updateSetting(
       { key: "enable-embedding-interactive" },
-      event.target.checked,
+      event.currentTarget.checked,
     );
   }
 
