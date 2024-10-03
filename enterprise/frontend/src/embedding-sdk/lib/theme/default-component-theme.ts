@@ -1,7 +1,10 @@
 import { merge } from "icepick";
 
 import type { MetabaseComponentTheme } from "embedding-sdk";
-import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import {
+  EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID,
+  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
+} from "embedding-sdk/config";
 import type { DeepPartial } from "embedding-sdk/types/utils";
 import type { MantineThemeOverride } from "metabase/ui";
 
@@ -146,13 +149,13 @@ export function getEmbeddingComponentOverrides(
     ModalRoot: {
       defaultProps: {
         withinPortal: true,
-        target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
+        target: `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
       }, //  satisfies Partial<ModalRootProps>,
     },
     Modal: {
       defaultProps: {
         withinPortal: true,
-        target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
+        target: `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
       }, // satisfies Partial<ModalProps>,
     },
     Popover: {

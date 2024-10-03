@@ -1224,8 +1224,7 @@ describe("scenarios > question > offset", () => {
     ]);
   });
 
-  // unskip once https://github.com/metabase/metabase/issues/47854 is fixed
-  it.skip("should work with metrics (metabase#47854)", () => {
+  it("should work with metrics (metabase#47854)", () => {
     const metricName = "Count of orders";
     const ORDERS_SCALAR_METRIC: StructuredQuestionDetails = {
       name: metricName,
@@ -1234,6 +1233,13 @@ describe("scenarios > question > offset", () => {
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
+        breakout: [
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            { "base-type": "type/DateTime", "temporal-unit": "month" },
+          ],
+        ],
       },
       display: "scalar",
     };
