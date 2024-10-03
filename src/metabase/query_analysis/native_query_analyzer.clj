@@ -308,7 +308,9 @@
       (references-for-sql driver query))))
 
 (defn tables-for-native
-  "TODO"
+  "Returns a set of table identifiers that (may) be referenced in the given card's query.
+  Takes an options :mode option, which determines the complexity of queries it can handle, and what types of false
+  positives it may return."
   [query & {:as opts}]
   (let [driver (driver.u/database->driver (:database query))]
     ;; TODO this approach is not extensible, we need to move to multimethods.
