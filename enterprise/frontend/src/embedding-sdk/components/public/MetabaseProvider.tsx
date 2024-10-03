@@ -24,7 +24,10 @@ import { EmotionCacheProvider } from "metabase/styled-components/components/Emot
 
 import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
-import { PortalContainer } from "../private/SdkPortalContainer";
+import {
+  FullPagePortalContainer,
+  PortalContainer,
+} from "../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
 
 import "metabase/css/index.module.css";
@@ -90,6 +93,7 @@ export const MetabaseProviderInternal = ({
           {children}
           <SdkUsageProblemDisplay config={config} />
           <PortalContainer />
+          <FullPagePortalContainer />
         </div>
       </SdkThemeProvider>
     </EmotionCacheProvider>
