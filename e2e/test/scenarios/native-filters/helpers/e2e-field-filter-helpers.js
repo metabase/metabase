@@ -91,7 +91,7 @@ export function addDefaultStringFilter(value) {
 /**
  * Adds number filter value explicitly through the filter widget.
  *
- * @param {string|number[]} value
+ * @param {string} value
  * @return {function}
  */
 export function addWidgetNumberFilter(
