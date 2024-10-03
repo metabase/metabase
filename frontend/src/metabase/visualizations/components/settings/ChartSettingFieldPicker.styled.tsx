@@ -7,13 +7,8 @@ import { Icon } from "metabase/ui";
 
 import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
 
-interface SettingsIconProps {
-  noPointer?: boolean;
-  noMargin?: boolean;
-}
-
-export const SettingsButton = styled(Button)<SettingsIconProps>`
-  margin-left: ${props => (props.noMargin ? "0" : "0.75rem")};
+export const SettingsButton = styled(Button)`
+  margin-left: 0.75rem;
   padding: 0;
 
   &:hover {
@@ -21,14 +16,9 @@ export const SettingsButton = styled(Button)<SettingsIconProps>`
   }
 `;
 
-export const SettingsIcon = styled(Icon)<SettingsIconProps>`
-  margin-left: ${props => (props.noMargin ? "0" : "0.75rem")};
+export const GrabberHandle = styled(Icon)`
   color: var(--mb-color-text-medium);
-  cursor: ${props => (props.noPointer ? "inherit" : "pointer")};
-
-  &:hover {
-    color: var(--mb-color-brand);
-  }
+  cursor: inherit;
 `;
 
 export const FieldPickerColorPicker = styled(ChartSettingColorPicker)`
@@ -85,7 +75,7 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
   }
 
   &:hover {
-    ${SettingsIcon} {
+    ${GrabberHandle} {
       color: var(--mb-color-brand);
     }
   }
