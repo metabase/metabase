@@ -10,7 +10,9 @@ import type {
 
 export * from "./analytics-untyped";
 
-const VERSIONS: Record<SchemaType, string> = {
+type SchemaVersion = `${number}-${number}-${number}`;
+
+const VERSIONS: Record<SchemaType, SchemaVersion> = {
   account: "1-0-2",
   action: "1-0-0",
   browse_data: "1-0-0",
