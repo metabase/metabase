@@ -279,12 +279,7 @@ export const LEGEND_SETTINGS = {
 
 export const TOOLTIP_SETTINGS = {
   "graph.tooltip_type": {
-    getDefault: ([{ card }]) => {
-      const shouldShowComparisonTooltip = !["waterfall", "scatter"].includes(
-        card.display,
-      );
-      return shouldShowComparisonTooltip ? "series_comparison" : "default";
-    },
+    getDefault: () => "series_comparison",
     hidden: true,
   },
   "graph.tooltip_columns": {

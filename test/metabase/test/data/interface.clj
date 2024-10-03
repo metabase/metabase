@@ -40,6 +40,7 @@
 
 (defsetting database-source-dataset-name
   "The name of the test dataset this Database was created from, if any."
+  :encryption     :no
   :visibility     :internal
   :type           :string
   :database-local :only)

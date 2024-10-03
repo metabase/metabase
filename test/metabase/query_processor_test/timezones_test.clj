@@ -220,12 +220,24 @@
 (defn- supports-datetime-with-offset?  [] (driver-distinguishes-between-base-types? :type/DateTimeWithZoneOffset :type/DateTimeWithTZ))
 (defn- supports-datetime-with-zone-id? [] (driver-distinguishes-between-base-types? :type/DateTimeWithZoneID :type/DateTimeWithTZ))
 
+;; Following signals whether driver maps some database type to `:type/DateTime` (and not its descendants).
+(defmethod driver/database-supports? [::driver/driver :test/date-time-type]
+  [_driver _feature _database]
+  true)
+
+;; TODO: Remove this when https://github.com/metabase/metabase/issues/47359 is addressed.
+(defmethod driver/database-supports? [:databricks :test/date-time-type]
+  [_driver _feature _database]
+  false #_true)
+
 (defn- expected-attempts []
   (merge
    {:date         (t/local-date "2019-11-01")
-    :time         (t/local-time "00:23:18.331")
-    :datetime     (t/local-date-time "2019-11-01T00:23:18.331")
     :datetime_ltz (t/offset-date-time "2019-11-01T07:23:18.331Z")}
+   (when (driver/database-supports? driver/*driver* :test/date-time-type nil)
+     {:datetime (t/local-date-time "2019-11-01T00:23:18.331")})
+   (when (driver/database-supports? driver/*driver* :test/time-type nil)
+     {:time         (t/local-time "00:23:18.331")})
    (when (supports-time-with-time-zone?)
      {:time_ltz (t/offset-time "07:23:18.331Z")})
    (when (supports-time-with-offset?)
@@ -320,7 +332,8 @@
                 (is (= expected-row row))))))))))
 
 (deftest filter-datetime-by-date-in-timezone-relative-to-current-date-test
-  (mt/test-drivers (set-timezone-drivers)
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+                                     (set-timezone-drivers))
     (testing "Relative to current date"
       (let [expected-datetime (u.date/truncate (t/zoned-date-time) :second)]
         (mt/with-temp-test-data [["relative_filter"
@@ -344,7 +357,8 @@
                                    t/offset-date-time)))))))))))))
 
 (deftest filter-datetime-by-date-in-timezone-relative-to-days-since-test
-  (mt/test-drivers (set-timezone-drivers)
+  (mt/test-drivers (filter #(driver/database-supports? % :test/dynamic-dataset-loading nil)
+                           (set-timezone-drivers))
     (testing "Relative to days since"
       (let [expected-datetime (u.date/truncate (u.date/add (t/zoned-date-time) :day -1) :second)]
         (mt/with-temp-test-data [["relative_filter"

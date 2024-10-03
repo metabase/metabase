@@ -914,7 +914,7 @@ describeEE("issue 43088", () => {
 
   it("should be able to create ad-hoc questions based on instance analytics models (metabase#43088)", () => {
     cy.visit("/");
-    navigationSidebar().findByText("Metabase analytics").click();
+    navigationSidebar().findByText("Usage analytics").click();
     getPinnedSection().findByText("People").scrollIntoView().click();
     cy.wait("@dataset");
     summarize();

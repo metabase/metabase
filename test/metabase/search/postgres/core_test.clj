@@ -2,7 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [metabase.search :as search :refer [is-postgres?]]
+   [metabase.db :as mdb]
+   [metabase.search :as search]
    [metabase.search.postgres.core :as search.postgres]
    [metabase.search.postgres.index-test :refer [legacy-results]]
    [metabase.test :as mt]
@@ -13,7 +14,7 @@
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-setup [& body]
-  `(when (is-postgres?)
+  `(when (= :postgres (mdb/db-type))
      ;; TODO add more extensive data to search
      (mt/dataset ~'test-data
        (search.postgres/init! true)
@@ -59,21 +60,23 @@
     (testing "consistent results with minimal implementations\n"
       (doseq [term example-terms]
         (testing term
-          (is (= (hybrid term)
-                 (#'search.postgres/minimal term))))))))
+          ;; there is no ranking, so order is non-deterministic
+          (is (= (set (hybrid term))
+                 (set (#'search.postgres/minimal term)))))))))
 
 (deftest minimal-with-perms-test
   (with-setup
     (testing "consistent results with minimal implementations\n"
       (doseq [term (take 1 example-terms)]
         (testing term
-          (is (= (hybrid term)
-                 (#'search.postgres/minimal-with-perms
-                  term
-                  {:current-user-id    (mt/user->id :crowberto)
-                   :is-superuser?      true
-                   :archived?          false
-                   :current-user-perms #{"/"}
-                   :model-ancestors?   false
-                   :models             search/all-models
-                   :search-string      term}))))))))
+          ;; there is no ranking, so order is non-deterministic
+          (is (= (set (hybrid term))
+                 (set (#'search.postgres/minimal-with-perms
+                       term
+                       {:current-user-id    (mt/user->id :crowberto)
+                        :is-superuser?      true
+                        :archived?          false
+                        :current-user-perms #{"/"}
+                        :model-ancestors?   false
+                        :models             search/all-models
+                        :search-string      term})))))))))
