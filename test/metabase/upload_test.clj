@@ -2006,12 +2006,13 @@
               (is (= (header-with-auto-pk [(u/upper-case-en "α")])
                      (column-display-names-for-table table)))
              ;; Reorder as well for good measure
-              (let [csv-rows ["α,name"
+              (let [csv-rows ["α,ϐ"
                               "omega,Everything"]
                     file     (csv-file-with csv-rows)]
                 (testing "The new row is inserted with the values correctly reordered"
                   (is (= {:row-count 1} (update-csv! action {:file file, :table-id (:id table)})))
-                  (is (= (header-with-auto-pk [(u/upper-case-en "α") "name"])
+                  ;; It's a historic quirk that added columns don't get humanized display names
+                  (is (= (header-with-auto-pk [(u/upper-case-en "α") "ϐ"])
                          (column-display-names-for-table table)))
                   (is (= (set (updated-contents action
                                                 [["Obi-Wan Kenobi" nil]]
