@@ -235,6 +235,24 @@
 
 (comment moderation/keep-me)
 
+(defn archive-or-unarchive-internal-dashboard-questions!
+  "When updating dashboard cards, if we're removing all references to a Dashboard Question (which is internal to the
+  dashboard, not displayed as part of a collection) we want to archive it. Similarly, we want to mark any Dashboard
+  Questions that *are* on the Dashboard as *not* archived."
+  [dashboard new-cards]
+  (let [;; the set of ALL Dashboard Questions (internal to the dashboard) for this Dashboard
+        internal-dashboard-question-ids (t2/select-pks-set :model/Card :dashboard_id (:id dashboard))
+        ;; the set of all card IDs that are present on the dashboard
+        used-card-ids (into #{} (map :card_id new-cards))
+        ;; DQs that aren't used get archived
+        internal-dashboard-questions-to-archive (set/difference internal-dashboard-question-ids used-card-ids)
+        ;; DQs that ARE used get unarchived
+        internal-dashboard-questions-to-unarchive (set/intersection internal-dashboard-question-ids used-card-ids)]
+    (when-let [ids (seq internal-dashboard-questions-to-archive)]
+      (t2/update! :model/Card :id [:in ids] {:archived true :archived_directly true}))
+    (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
+      (t2/update! :model/Card :id [:in ids] {:archived false :archived_directly true}))))
+
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (def ^:private excluded-columns-for-dashboard-revision
@@ -271,11 +289,13 @@
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]
-  (let [current-cards    (t2/select-fn-vec #(apply dissoc (t2.realize/realize %) excluded-columns-for-dashcard-revision)
+  (let [dashboard        (t2/select-one :model/Dashboard dashboard-id)
+        current-cards    (t2/select-fn-vec #(apply dissoc (t2.realize/realize %) excluded-columns-for-dashcard-revision)
                                            :model/DashboardCard
                                            :dashboard_id dashboard-id)
         id->current-card (zipmap (map :id current-cards) current-cards)
         {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-cards)]
+    (archive-or-unarchive-internal-dashboard-questions! dashboard serialized-cards)
     (when (seq to-delete)
       (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
     (when (seq to-create)
