@@ -17,25 +17,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- exclude-existing-files
-  "Exclude files that already exist in the dump directory, as they are not part of the testing context."
-  [files]
-  (let [matchers     [(fn [file]
-                        ;; added in the v52.2024-10-01T08:00:01 migration
-                        (and (= "channeltemplates" (first file))
-                             (str/ends-with? (last file) "user_joined_email_template.yaml")))]
-        exclude-pred (fn [file]
-                       (some #(% file) matchers))]
-    (remove exclude-pred files)))
-
 (defn- file-set [^java.io.File dir]
   (let [base (.toPath dir)]
-    (-> (for [^java.io.File file (file-seq dir)
-              :when              (.isFile file)
-              :let               [rel (.relativize base (.toPath file))]]
-          (mapv str rel))
-        exclude-existing-files
-        set)))
+    (set (for [^java.io.File file (file-seq dir)
+               :when              (.isFile file)
+               :let               [rel (.relativize base (.toPath file))]]
+           (mapv str rel)))))
 
 (deftest basic-dump-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

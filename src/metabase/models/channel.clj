@@ -118,10 +118,3 @@
   [& _]
   (or (mi/superuser?)
       (perms/current-user-has-application-permissions? :setting)))
-
-(defmethod serdes/hash-fields :model/ChannelTemplate [_instance] [:name :channel_type :details])
-
-(defmethod serdes/make-spec "ChannelTemplate"
-  [_model-name _opts]
-  {:copy      [:name :channel_type :details :entity_id]
-   :transform {:created_at (serdes/date)}})
