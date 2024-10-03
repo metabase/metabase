@@ -294,7 +294,8 @@
                              (vswap! retry-errors conj e)
                              ;; Token errors have already been logged and we should not retry.
                              (when-not (should-retry-sending? e (:type channel))
-                               (throw e)))))]
+                               (throw e))
+                             (log/warnf "[Pulse %d] Failed to send to channel %s %d, retring..." pulse-id (:type channel) (:id channel)))))]
       (task-history/with-task-history {:task            "channel-send"
                                        :on-success-info (fn [update-map _result]
                                                           (cond-> update-map
@@ -306,7 +307,8 @@
                                                          :channel-type (:type channel)
                                                          :channel-id   (:id channel)
                                                          :pulse-id     pulse-id}}
-        ((retry/decorate send! (retry/random-exponential-backoff-retry (str (random-uuid)) retry-config)))))
+        ((retry/decorate send! (retry/random-exponential-backoff-retry (str (random-uuid)) retry-config)))
+        (log/debugf "[Pulse %d] Sent to channel %s %d with %d retires" pulse-id (:type channel) (:id channel) (count @retry-errors))))
     (catch Throwable e
       (log/error e "Error sending notification!"))))
 
@@ -353,13 +355,15 @@
                            messages (channel/render-notification (:type channel)
                                                                  (get-notification-info pulse parts pulse-channel)
                                                                  (channel-recipients pulse-channel))]
-                       (log/debugf "Rendered %d messages for %s %d to channel %s"
+                       (log/debugf "[Pulse %d] Rendered %d messages for %s %d to channel %s"
+                                   pulse-id
                                    (count messages)
                                    (alert-or-pulse pulse)
                                    (:id pulse)
                                    (:type channel))
                        (doseq [message messages]
-                         (log/debugf "Sending %s %d to channel %s"
+                         (log/debugf "[Pulse %d] Sending %s %d to channel %s"
+                                     pulse-id
                                      (alert-or-pulse pulse)
                                      (:id pulse)
                                      (:channel_type pulse-channel))
