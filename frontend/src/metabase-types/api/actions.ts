@@ -1,3 +1,4 @@
+import type { WritebackActionId } from "./actions";
 import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
 import type { BaseEntityId } from "./entity-id";
@@ -170,3 +171,7 @@ export interface WritebackActionListQuery {
 export interface GetActionRequest {
   id: number;
 }
+export type PublicAction = Pick<
+  WritebackActionBase,
+  "id" | "name" | "public_uuid" | "model_id"
+>;

@@ -346,3 +346,8 @@ export type CardQueryRequest = {
   ignore_cache?: boolean;
   parameters?: unknown[];
 };
+
+export type GetPublicOrEmbeddableCard = Pick<
+  Card,
+  "id" | "name" | "public_uuid"
+>;
