@@ -160,8 +160,11 @@
 
 (deftest sync-origins-test
   ;; n.b. illegal combinations will be disallowed by [[embed.settings/check-and-sync-settings-on-startup!]], so we don't test syncing for them.
-  (mt/with-temporary-setting-values [enable-embedding-sdk true
+  (mt/with-temporary-setting-values [enable-embedding false
+                                     enable-embedding-sdk true
                                      enable-embedding-interactive true
+                                     enable-embedding-static false
+                                     embedding-app-origin nil
                                      embedding-app-origins-interactive ""
                                      embedding-app-origins-sdk (#'embed.settings/add-localhost "")]
     (test-origin-sync {} :no-op)
