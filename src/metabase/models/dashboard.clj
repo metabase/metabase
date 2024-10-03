@@ -289,13 +289,11 @@
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]
-  (let [dashboard        (t2/select-one :model/Dashboard dashboard-id)
-        current-cards    (t2/select-fn-vec #(apply dissoc (t2.realize/realize %) excluded-columns-for-dashcard-revision)
+  (let [current-cards    (t2/select-fn-vec #(apply dissoc (t2.realize/realize %) excluded-columns-for-dashcard-revision)
                                            :model/DashboardCard
                                            :dashboard_id dashboard-id)
         id->current-card (zipmap (map :id current-cards) current-cards)
         {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-cards)]
-    (archive-or-unarchive-internal-dashboard-questions! dashboard serialized-cards)
     (when (seq to-delete)
       (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
     (when (seq to-create)
@@ -305,11 +303,18 @@
         (dashboard-card/update-dashboard-card! update-card (id->current-card (:id update-card)))))))
 
 (defn- remove-invalid-dashcards
-  "Given a list of dashcards, remove any dashcard that references cards that are either archived or not exist."
-  [dashcards]
+  "Given a list of dashcards, remove any dashcard that references cards that are archived, do not exist, or now belong to other dashboards ."
+  [dashboard-id dashcards]
   (let [card-ids          (set (keep :card_id dashcards))
         active-card-ids   (when-let [card-ids (seq card-ids)]
-                            (t2/select-pks-set :model/Card :id [:in card-ids] :archived false))
+                            (t2/select-pks-set :model/Card
+                                               {:where [:and
+                                                        [:in :id card-ids]
+                                                        [:= :archived false]
+                                                        ;; belong to this dashboard, or are not Dashboard Questions
+                                                        [:or
+                                                         [:= :dashboard_id dashboard-id]
+                                                         [:= :dashboard_id nil]]]}))
         inactive-card-ids (set/difference card-ids active-card-ids)]
     (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
 
@@ -322,9 +327,10 @@
         current-tabs              (t2/select-fn-vec #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
                                                     :model/DashboardTab :dashboard_id dashboard-id)
         {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
+        _                         (archive-or-unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
         serialized-dashcards      (cond->> serialized-dashcards
                                     true
-                                    remove-invalid-dashcards
+                                    (remove-invalid-dashcards dashboard-id)
                                     ;; in case reverting result in new tabs being created,
                                     ;; we need to remap the tab-id
                                     (seq old->new-tab-id)
