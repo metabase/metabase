@@ -185,7 +185,7 @@ export interface SettingDefinition<Key extends SettingKey = SettingKey> {
   key: Key;
   env_name?: string;
   is_env_setting?: boolean;
-  value?: SettingValue<Key>;
+  value?: SettingValue<Key> | null;
   default?: SettingValue<Key>;
 }
 
@@ -354,7 +354,4 @@ export type Settings = InstanceSettings &
 
 export type SettingKey = keyof Settings;
 
-export type SettingValue<Key extends SettingKey = SettingKey> =
-  | Settings[Key]
-  | null
-  | undefined;
+export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
