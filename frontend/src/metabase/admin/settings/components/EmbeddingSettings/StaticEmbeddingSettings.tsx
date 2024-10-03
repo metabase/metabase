@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
-import { useGetSetSetting, useSetting } from "metabase/common/hooks";
+import { useSetting } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { Box, Stack } from "metabase/ui";
+import type { SettingValue } from "metabase-types/api";
 
 import type { SettingElement } from "../../types";
 import SettingHeader from "../SettingHeader";
@@ -12,6 +13,7 @@ import { SwitchWithSetByEnvVar } from "../widgets/EmbeddingOption/SwitchWithSetB
 import { EmbeddedResources } from "../widgets/PublicLinksListing";
 import SecretKeyWidget from "../widgets/SecretKeyWidget";
 
+import { useMergeSetting } from "./hooks";
 import type { AdminSettingComponentProps } from "./types";
 
 const EMBEDDING_SECRET_KEY_SETTING: SettingElement<"embedding-secret-key"> = {
@@ -23,11 +25,13 @@ const EMBEDDING_SECRET_KEY_SETTING: SettingElement<"embedding-secret-key"> = {
 export function StaticEmbeddingSettings({
   updateSetting,
 }: AdminSettingComponentProps) {
-  const [embeddingSecretKeySetting, handleChangeEmbeddingSecretKey] =
-    useGetSetSetting(EMBEDDING_SECRET_KEY_SETTING, {
-      onUpdate: async value =>
-        await updateSetting({ key: EMBEDDING_SECRET_KEY_SETTING.key }, value),
-    });
+  const embeddingSecretKeySetting = useMergeSetting(
+    EMBEDDING_SECRET_KEY_SETTING,
+  );
+
+  const handleChangeEmbeddingSecretKey = async (
+    value: SettingValue<"embedding-secret-key">,
+  ) => await updateSetting({ key: EMBEDDING_SECRET_KEY_SETTING.key }, value);
 
   const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
 

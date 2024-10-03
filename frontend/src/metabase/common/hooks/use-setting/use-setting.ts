@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
+import { getAdminSettingDefinitions } from "metabase/admin/settings/selectors";
 import { updateSetting } from "metabase/admin/settings/settings";
 import type { SettingElement } from "metabase/admin/settings/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -51,8 +52,9 @@ export const useUserSetting = <T extends keyof UserSettings>(
 export const useMergeSetting = <Key extends SettingKey>(
   displaySetting: SettingElement<Key>,
 ): SettingElement<Key> => {
-  const apiSetting = useSelector(state => state.admin.settings.settings).find(
-    setting => setting.key === displaySetting.key,
+  const settingDefinitions = useSelector(getAdminSettingDefinitions);
+  const apiSetting = settingDefinitions.find(
+    (setting: SettingDefinition) => setting.key === displaySetting.key,
   ) as SettingDefinition<Key> | undefined;
 
   const mergedSetting: SettingElement<Key> = useMemo(() => {
@@ -67,18 +69,13 @@ export const useMergeSetting = <Key extends SettingKey>(
 
 export const useGetSetSetting = <Key extends SettingKey>(
   displaySetting: SettingElement<Key>,
-  options: { onUpdate?: (value: SettingValue<Key>) => void } = {},
 ): [SettingElement<Key>, (value: SettingValue<Key>) => void] => {
   const mergedSetting = useMergeSetting(displaySetting);
 
   const dispatch = useDispatch();
 
   const handleSettingChange = async (value: SettingValue<Key>) => {
-    if (options.onUpdate) {
-      await options.onUpdate(value);
-    } else {
-      await dispatch(updateSetting({ key: displaySetting.key, value }));
-    }
+    await dispatch(updateSetting({ key: displaySetting.key, value }));
   };
 
   // used to match useState's get/set pattern with array values

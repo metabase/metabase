@@ -18,32 +18,37 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   trackCustomHomepageDashboardEnabled,
   trackTrackingPermissionChanged,
-} from "./analytics";
-import { CloudPanel } from "./components/CloudPanel";
-import { BccToggleWidget } from "./components/Email/BccToggleWidget";
-import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
+} from "../analytics";
+import { CloudPanel } from "../components/CloudPanel";
+import { BccToggleWidget } from "../components/Email/BccToggleWidget";
+import { SettingsEmailForm } from "../components/Email/SettingsEmailForm";
 import {
   EmbeddingSdkSettings,
   EmbeddingSettings,
   StaticEmbeddingSettings,
-} from "./components/EmbeddingSettings";
-import SettingsLicense from "./components/SettingsLicense";
-import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
-import { UploadSettings } from "./components/UploadSettings";
-import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
-import FormattingWidget from "./components/widgets/FormattingWidget";
-import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
+} from "../components/EmbeddingSettings";
+import SettingsLicense from "../components/SettingsLicense";
+import SettingsUpdatesForm from "../components/SettingsUpdatesForm/SettingsUpdatesForm";
+import { UploadSettings } from "../components/UploadSettings";
+import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
+import FormattingWidget from "../components/widgets/FormattingWidget";
+import HttpsOnlyWidget from "../components/widgets/HttpsOnlyWidget";
 import {
   PublicLinksActionListing,
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
-} from "./components/widgets/PublicLinksListing";
-import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
-import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
-import { NotificationSettings } from "./notifications/NotificationSettings";
-import { updateSetting } from "./settings";
-import SetupCheckList from "./setup/components/SetupCheckList";
-import SlackSettings from "./slack/containers/SlackSettings";
+} from "../components/widgets/PublicLinksListing";
+import SettingCommaDelimitedInput from "../components/widgets/SettingCommaDelimitedInput";
+import SiteUrlWidget from "../components/widgets/SiteUrlWidget";
+import { NotificationSettings } from "../notifications/NotificationSettings";
+import { updateSetting } from "../settings";
+import SetupCheckList from "../setup/components/SetupCheckList";
+import SlackSettings from "../slack/containers/SlackSettings";
+
+import {
+  getAdminSettingDefinitions,
+  getAdminSettingWarnings,
+} from "./typed-selectors";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
@@ -519,8 +524,8 @@ export const getSectionsWithPlugins = _.once(() =>
 );
 
 export const getSettings = createSelector(
-  state => state.admin.settings.settings,
-  state => state.admin.settings.warnings,
+  getAdminSettingDefinitions,
+  getAdminSettingWarnings,
   (settings, warnings) =>
     settings.map(setting =>
       warnings[setting.key]

@@ -1,15 +1,14 @@
-import type { ComponentProps } from "react";
 import { t } from "ttag";
 
 import { useGetSetSetting } from "metabase/common/hooks";
-import { Switch, Text } from "metabase/ui";
+import { Switch, type SwitchProps, Text } from "metabase/ui";
 
-interface SwitchWithSetByEnvVarProps extends ComponentProps<typeof Switch> {
+export type SwitchWithSetByEnvVarProps = {
   settingKey:
     | "enable-embedding-static"
     | "enable-embedding-sdk"
     | "enable-embedding-interactive";
-}
+} & SwitchProps;
 
 export function SwitchWithSetByEnvVar({
   settingKey,
