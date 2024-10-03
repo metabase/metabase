@@ -1,6 +1,9 @@
 import styled from "@emotion/styled";
 
-import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import {
+  EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID,
+  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
+} from "embedding-sdk/config";
 
 import { PublicComponentStylesWrapper } from "./PublicComponentStylesWrapper";
 
@@ -9,9 +12,17 @@ import { PublicComponentStylesWrapper } from "./PublicComponentStylesWrapper";
  * so that it has our styles applied.
  * Mantine components needs to have the defaultProps set to use `EMBEDDING_SDK_PORTAL_CONTAINER_ELEMENT_ID` as target for the portal
  */
+export const FullPagePortalContainer = () => (
+  <PublicComponentStylesWrapper>
+    <FixedPosition
+      id={EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}
+    ></FixedPosition>
+  </PublicComponentStylesWrapper>
+);
+
 export const PortalContainer = () => (
   <PublicComponentStylesWrapper>
-    <FixedPosition id={EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}></FixedPosition>
+    <div id={EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}></div>
   </PublicComponentStylesWrapper>
 );
 
@@ -20,4 +31,7 @@ const FixedPosition = styled.div`
   position: fixed;
   left: 0;
   top: 0;
+
+  // TODO: allow users to change this and document the behaviour
+  z-index: 1000;
 `;
