@@ -15,6 +15,7 @@ import { setup } from "../setup";
 
 export type SetupOpts = {
   settingValues?: Partial<Settings>;
+  isEnvVar?: boolean;
   isHosted?: boolean;
   hasEmbeddingFeature?: boolean;
   hasEnterprisePlugins?: boolean;
@@ -22,6 +23,7 @@ export type SetupOpts = {
 
 export const setupEmbedding = async ({
   settingValues = {},
+  isEnvVar = false,
   isHosted = false,
   hasEmbeddingFeature = false,
   hasEnterprisePlugins = false,
@@ -31,6 +33,7 @@ export const setupEmbedding = async ({
       createMockSettingDefinition({
         key,
         value,
+        is_env_setting: isEnvVar,
       }),
     ),
     settingValues: createMockSettings(settingValues),
