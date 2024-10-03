@@ -3,7 +3,7 @@ import type {
   WritebackAction,
   WritebackActionId,
 } from "metabase-types/api";
-import type { PublicAction } from "metabase-types/api/actions";
+import type { GetPublicAction } from "metabase-types/api/actions";
 
 import { Api } from "./api";
 import { idTag, invalidateTags, listTag } from "./tags";
@@ -17,7 +17,7 @@ export const actionApi = Api.injectEndpoints({
       }),
       providesTags: action => (action ? [idTag("action", action.id)] : []),
     }),
-    listPublicActions: builder.query<PublicAction[], void>({
+    listPublicActions: builder.query<GetPublicAction[], void>({
       query: () => ({
         method: "GET",
         url: "/api/action/public",

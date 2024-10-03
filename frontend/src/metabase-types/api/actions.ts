@@ -171,7 +171,7 @@ export interface WritebackActionListQuery {
 export interface GetActionRequest {
   id: number;
 }
-export type PublicAction = Pick<
+export type GetPublicAction = Pick<
   WritebackActionBase,
   "id" | "name" | "public_uuid" | "model_id"
 >;
