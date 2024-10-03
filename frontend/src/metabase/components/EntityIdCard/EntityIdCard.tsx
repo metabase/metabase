@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { SidesheetCard } from "metabase/common/components/Sidesheet";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import { CopyButton } from "metabase/components/CopyButton";
 import Link from "metabase/core/components/Link";
 import { Flex, Group, Icon, Paper, Popover, Text } from "metabase/ui";
@@ -46,6 +46,13 @@ const EntityIdTitle = () => {
 };
 
 export function EntityIdCard({ entityId }: { entityId: string }) {
+  const hasSerialization = useHasTokenFeature("serialization");
+
+  // exposing this is useless without serialization, so, let's not.
+  if (!hasSerialization) {
+    return null;
+  }
+
   return (
     <SidesheetCard title={<EntityIdTitle />}>
       <Flex gap="sm" align="end">

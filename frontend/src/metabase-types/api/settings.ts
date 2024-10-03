@@ -162,6 +162,7 @@ export const tokenFeatures = [
   "sso_saml",
   "session_timeout_config",
   "whitelabel",
+  "serialization",
   "dashboard_subscription_filters",
   "snippet_collections",
   "email_allow_list",
