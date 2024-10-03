@@ -308,7 +308,6 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 });
 
 function resetEmbedding() {
-  updateSetting("enable-embedding-interactive", false);
   updateSetting("enable-embedding-static", false);
   updateSetting("embedding-secret-key", null);
 }

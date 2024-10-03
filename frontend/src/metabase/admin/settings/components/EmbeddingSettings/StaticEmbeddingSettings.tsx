@@ -15,6 +15,7 @@ import SecretKeyWidget from "../widgets/SecretKeyWidget";
 
 import { useMergeSetting } from "./hooks";
 import type { AdminSettingComponentProps } from "./types";
+import { ChangeEvent } from "react";
 
 const EMBEDDING_SECRET_KEY_SETTING: SettingElement<"embedding-secret-key"> = {
   key: "embedding-secret-key",
@@ -29,11 +30,17 @@ export function StaticEmbeddingSettings({
     EMBEDDING_SECRET_KEY_SETTING,
   );
 
+  const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
+
   const handleChangeEmbeddingSecretKey = async (
     value: SettingValue<"embedding-secret-key">,
-  ) => await updateSetting({ key: EMBEDDING_SECRET_KEY_SETTING.key }, value);
+  ) => await updateSetting({ key: embeddingSecretKeySetting.key }, value);
 
-  const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
+  function handleToggleStaticEmbedding(event: ChangeEvent<HTMLInputElement>) {
+    updateSetting({ key: "enable-embedding-static" }, event.currentTarget.checked);
+    // TODO: remove before merging integration branch
+    updateSetting({ key: "enable-embedding" }, event.currentTarget.checked);
+  }
 
   return (
     <Box p="0.5rem 1rem 0">
@@ -48,12 +55,7 @@ export function StaticEmbeddingSettings({
         <SwitchWithSetByEnvVar
           settingKey="enable-embedding-static"
           label={t`Enable Static embedding`}
-          onChange={event =>
-            updateSetting(
-              { key: "enable-embedding-static" },
-              event.currentTarget.checked,
-            )
-          }
+          onChange={handleToggleStaticEmbedding}
         />
         <Box data-testid="embedding-secret-key-setting">
           <SettingHeader
