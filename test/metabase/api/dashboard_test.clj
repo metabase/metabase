@@ -2621,7 +2621,7 @@
 (deftest fetch-embeddable-dashboards-test
   (testing "GET /api/dashboard/embeddable"
     (testing "Test that we can fetch a list of embeddable-accessible dashboards"
-      (mt/with-temporary-setting-values [enable-embedding-interactive true]
+      (mt/with-temporary-setting-values [enable-embedding-static true]
         (t2.with-temp/with-temp [Dashboard _ {:enable_embedding true}]
           (is (= [{:name true, :id true}]
                  (for [dash (mt/user-http-request :crowberto :get 200 "dashboard/embeddable")]

@@ -147,7 +147,7 @@
       (#'embed.settings/sync-origins-settings env)
       (cond
         (= expected-behavior :no-op)
-        (do (is (= (:embedding-app-orogin original)
+        (do (is (= (:embedding-app-origin original)
                    (embed.settings/embedding-app-origins-interactive)))
             (is (= (#'embed.settings/add-localhost (:embedding-app-origin original))
                    (embed.settings/embedding-app-origins-sdk))))
