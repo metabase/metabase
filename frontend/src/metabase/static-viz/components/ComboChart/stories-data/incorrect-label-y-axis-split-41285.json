@@ -87,7 +87,7 @@
         "description": "Your instance data. To customize these questions and dashboards, you can duplicate them and save them in the custom reports collection.",
         "archived": false,
         "slug": "metabase_analytics",
-        "name": "Metabase analytics",
+        "name": "Usage analytics",
         "personal_owner_id": null,
         "type": "instance-analytics",
         "id": 1362,

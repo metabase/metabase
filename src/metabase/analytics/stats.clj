@@ -354,16 +354,25 @@
 ;;; Execution Metrics
 
 (defn- execution-metrics-sql []
+  ;; Postgres automatically adjusts for daylight saving time when performing time calculations on TIMESTAMP WITH TIME
+  ;; ZONE. This can cause discrepancies when subtracting 30 days if the calculation crosses a DST boundary (e.g., in the
+  ;; Pacific/Auckland timezone). To avoid this, we ensure all date computations are done in UTC on Postgres to prevent
+  ;; any time shifts due to DST. See PR #48204
   (let [thirty-days-ago (case (db/db-type)
-                          :postgres "CURRENT_TIMESTAMP - INTERVAL '30 days'"
+                          :postgres "CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - INTERVAL '30 days'"
                           :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP)"
-                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")]
+                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")
+        started-at      (case (db/db-type)
+                          :postgres "started_at AT TIME ZONE 'UTC'"
+                          :h2       "started_at"
+                          :mysql    "started_at")
+        timestamp-where (str started-at " > " thirty-days-ago)]
     (str/join
      "\n"
      ["WITH user_executions AS ("
       "    SELECT executor_id, COUNT(*) AS num_executions"
       "    FROM query_execution"
-      "    WHERE started_at > " thirty-days-ago
+      "    WHERE " timestamp-where
       "    GROUP BY executor_id"
       "),"
       "query_stats_1 AS ("
@@ -380,7 +389,7 @@
       "        COALESCE(SUM(CASE WHEN running_time >= 1000000 AND running_time < 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__1001_10000,"
       "        COALESCE(SUM(CASE WHEN running_time >= 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__10000_plus"
       "    FROM query_execution"
-      "    WHERE started_at > " thirty-days-ago
+      "    WHERE " timestamp-where
       "),"
       "query_stats_2 AS ("
       "    SELECT"
@@ -588,12 +597,12 @@
 (defn- csv-upload-available?
   "Is CSV upload currently available to be used on this instance?"
   []
-  (let [major-version (config/current-major-version)
-        minor-version (config/current-minor-version)
-        engines       (t2/select-fn-set :engine :model/Database
-                                        {:where [:in :engine (map name (keys csv-upload-version-availability))]})]
-    (when (and major-version minor-version)
-      (boolean
+  (boolean
+   (let [major-version (config/current-major-version)
+         minor-version (config/current-minor-version)
+         engines       (t2/select-fn-set :engine :model/Database
+                                         {:where [:in :engine (map name (keys csv-upload-version-availability))]})]
+     (when (and major-version minor-version)
        (some
         (fn [engine]
           (when-let [[required-major required-minor] (csv-upload-version-availability engine)]
@@ -731,4 +740,7 @@
       #_{:clj-kondo/ignore [:deprecated-var]}
       (send-stats-deprecated! stats)
       (snowplow/track-event! ::snowplow/instance_stats
-                             (assoc snowplow-stats :metadata [{"stats_export_time_seconds" elapsed-secs}])))))
+                             (assoc snowplow-stats
+                                    :metadata
+                                    [{"key"   "stats_export_time_seconds"
+                                      "value" elapsed-secs}])))))

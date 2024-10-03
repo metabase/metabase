@@ -80,12 +80,15 @@ jobs:
     needs: check_jar_health
     strategy:
       matrix:
-        edition: [ee, oss]
+        edition: [ee, oss, ee-extra]
     services:
       registry:
         image: registry:2
         ports:
           - 5000:5000
+    permissions:
+      id-token: write
+      contents: read
     steps:
     - name: Extract and clean branch name
       shell: bash
@@ -98,12 +101,24 @@ jobs:
       with:
         ref: ${{ github.event.inputs.commit }}
     - name: Download uploaded artifacts to insert into container
+      if: ${{ matrix.edition != 'ee-extra' }}
       uses: actions/download-artifact@v4
       with:
         name: metabase-${{ matrix.edition }}-${{ github.sha }}-uberjar
         path: bin/docker/
+    - name: Download uploaded artifacts to insert into container
+      if: ${{ matrix.edition == 'ee-extra' }}
+      uses: actions/download-artifact@v4
+      with:
+        name: metabase-ee-${{ github.sha }}-uberjar
+        path: bin/docker/
     - name: Move the ${{ matrix.edition }} uberjar to the context dir
       run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
+    - name: Add partner drivers to the container
+      if: ${{ matrix.edition == 'ee-extra' }}
+      uses: ./.github/actions/build-ee-extra
+      with:
+        iam-role: ${{ secrets.METABASE_EE_EXTRA_IAM_ROLE }}
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v2.5.0
@@ -140,6 +155,10 @@ jobs:
     - name: Retag and push images if master (oss)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
       run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss ${{ github.repository_owner }}/metabase-head:latest && docker push ${{ github.repository_owner }}/metabase-head:latest
+
+    - name: Retag and push images if master (ee-extra)
+      if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee-extra' }}
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee-extra ${{ secrets.METABASE_EE_EXTRA_CONTAINER_REGISTRY }}/metabase-enterprise-head:latest && docker push ${{ secrets.METABASE_EE_EXTRA_CONTAINER_REGISTRY }}/metabase-enterprise-head:latest
 
     - name: Retag and push images if dev branch
       if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
