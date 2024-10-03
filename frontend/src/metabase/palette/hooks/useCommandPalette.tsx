@@ -325,9 +325,26 @@ export const getRecentItemSubtext = (item: RecentItem) => {
     return item.table_schema
       ? `${item.database.name} (${item.table_schema})`
       : item.database.name;
+  } else if (item.dashboard) {
+    return (
+      <>
+        <Icon name="dashboard" size={12} style={{ marginInline: "0.25rem" }} />
+        {item.dashboard.name}
+      </>
+    );
   } else if (item.parent_collection.id === null) {
-    return ROOT_COLLECTION.name;
+    return (
+      <>
+        <Icon name="collection" size={12} style={{ marginInline: "0.25rem" }} />
+        {ROOT_COLLECTION.name}
+      </>
+    );
   } else {
-    return item.parent_collection.name;
+    return (
+      <>
+        <Icon name="collection" size={12} style={{ marginInline: "0.25rem" }} />
+        {item.parent_collection.name}
+      </>
+    );
   }
 };

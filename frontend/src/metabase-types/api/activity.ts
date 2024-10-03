@@ -1,4 +1,5 @@
 import type { CollectionId } from "./collection";
+import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { CardDisplayType } from "./visualization";
 
@@ -54,12 +55,20 @@ export type RecentCollectionItem = BaseRecentItem & {
   authority_level?: "official" | null; // for collections
   moderated_status?: "verified" | null; // for models
   display?: CardDisplayType; // for questions
+  dashboard?: {
+    name: string;
+    id: DashboardId;
+  };
 };
 
 export type RecentItem = RecentTableItem | RecentCollectionItem;
 
 export const isRecentTableItem = (item: RecentItem): item is RecentTableItem =>
   item.model === "table";
+
+export const isRecentCollectionItem = (
+  item: RecentItem,
+): item is RecentCollectionItem => item.model !== "table";
 
 export interface RecentItemsResponse {
   recent_views: RecentItem[];

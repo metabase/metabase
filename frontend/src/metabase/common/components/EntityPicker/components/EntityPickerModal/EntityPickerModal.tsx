@@ -50,6 +50,8 @@ export const defaultOptions: EntityPickerModalOptions = {
 // needs to be above popovers and bulk actions
 export const ENTITY_PICKER_Z_INDEX = BULK_ACTIONS_Z_INDEX;
 
+const DEFAULT_RECENTS_FILTER = (item: RecentItem[]) => item;
+
 export interface EntityPickerModalProps<Model extends string, Item> {
   title?: string;
   selectedItem: Item | null;
@@ -88,7 +90,7 @@ export function EntityPickerModal<
   options,
   actionButtons = [],
   searchResultFilter,
-  recentFilter,
+  recentFilter = DEFAULT_RECENTS_FILTER,
   trapFocus = true,
   searchParams,
   defaultToRecentTab = true,
@@ -133,9 +135,7 @@ export function EntityPickerModal<
         tabModels.includes(recentItem.model as Model),
       ) || [];
 
-    return recentFilter
-      ? recentFilter(relevantModelRecents)
-      : relevantModelRecents;
+    return recentFilter(relevantModelRecents);
   }, [recentItems, tabModels, recentFilter]);
 
   const tabs: EntityTab<Model | "recents">[] = useMemo(
