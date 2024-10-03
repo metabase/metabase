@@ -7,6 +7,8 @@ export const LocaleProvider = ({
   children,
   locale = "en",
 }: PropsWithChildren<{ locale?: string | null }>) => {
+  // The state is not used explicitly, but we need to trigger a re-render when the locale changes
+  // as changing the locale in ttag doesn't trigger react components to update
   const [_isLoadingLocale, setIsLoadingLocale] = useState(false);
 
   useEffect(() => {
