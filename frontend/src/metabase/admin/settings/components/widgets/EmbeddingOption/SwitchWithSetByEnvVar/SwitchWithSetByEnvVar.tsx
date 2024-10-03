@@ -29,6 +29,9 @@ export function SwitchWithSetByEnvVar({
       labelPosition="left"
       checked={isEnabled}
       onChange={event => handleChange(event.currentTarget.checked)}
+      wrapperProps={{
+        "data-testid": "switch-with-env-var",
+      }}
       {...switchProps}
     />
   );

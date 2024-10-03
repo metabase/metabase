@@ -39,7 +39,7 @@ export function InteractiveEmbeddingSettings({
   ) {
     updateSetting(
       { key: "enable-embedding-interactive" },
-      event.target.checked,
+      event.currentTarget.checked,
     );
   }
 

@@ -171,7 +171,9 @@ export function EmbeddingSdkSettings({
           py="md"
           maw={620}
         >
-          <Text size="sm">{apiKeyBannerText}</Text>
+          <Text size="sm" data-testid="api-key-banner">
+            {apiKeyBannerText}
+          </Text>
         </Alert>
 
         <Box>
@@ -202,6 +204,7 @@ export function EmbeddingSdkSettings({
           />
           <SetByEnvVarWrapper setting={sdkOriginsSetting}>
             <SettingTextInput
+              data-testid="sdk-origins-input"
               id={sdkOriginsSetting.key}
               setting={sdkOriginsSetting}
               onChange={handleChangeSdkOrigins}
