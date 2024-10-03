@@ -1,8 +1,10 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ALL_USERS_GROUP_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   assertQueryBuilderRowCount,
   chartPathWithFillColor,
+  createApiKey,
   createNativeQuestion,
   entityPickerModal,
   entityPickerModalTab,
@@ -15,10 +17,12 @@ import {
   restore,
   summarize,
   tableHeaderClick,
+  visitFullAppEmbeddingUrl,
   visitQuestion,
   visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
+import { EMBEDDING_SDK_STORY_HOST } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
 
@@ -44,8 +48,14 @@ describe("scenarios > question > nested", () => {
     cy.signInAsAdmin();
   });
 
-  it("should allow 'Distribution' and 'Sum over time' on nested questions (metabase#12568)", () => {
+  it.only("should allow 'Distribution' and 'Sum over time' on nested questions (metabase#12568)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
+    // cy.visit("/");
+    // cy.pause();
+    createApiKey("Test API Key One", ALL_USERS_GROUP_ID).then(({ body }) => {
+      const apiKey = body.unmasked_key;
+      cy.wrap(apiKey).as("apiKey");
+    });
 
     // Make sure it works for a GUI question
     const guiQuestionDetails = {
@@ -63,9 +73,10 @@ describe("scenarios > question > nested", () => {
         baseQuestionDetails: guiQuestionDetails,
         nestedQuestionDetails: { name: "Nested GUI" },
       },
-      { loadBaseQuestionMetadata: true },
+      // { loadBaseQuestionMetadata: true },
     );
 
+    cy.get("#metabase-sdk-root").within(() => {});
     tableHeaderClick("Count");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Distribution").click();
@@ -606,11 +617,28 @@ function createNestedQuestion(
       ...details,
     };
 
-    return cy.createQuestion(composite, {
-      visitQuestion: visitNestedQuestion,
-      wrapId: true,
-      idAlias: "nestedQuestionId",
-    });
+    return cy
+      .createQuestion(composite, {
+        // visitQuestion: false,
+        wrapId: true,
+        idAlias: "nestedQuestionId",
+      })
+      .then(function (questionId) {
+        console.log({ questionId });
+        visitFullAppEmbeddingUrl({
+          url: EMBEDDING_SDK_STORY_HOST,
+          qs: {
+            id: "embeddingsdk-interactivequestion--default",
+            viewMode: "story",
+          },
+          onBeforeLoad: window => {
+            window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
+            window.QUESTION_ID = questionId;
+            window.METABASE_API_KEY = this.apiKey;
+            console.log(window);
+          },
+        });
+      });
   });
 
   function createBaseQuestion(query) {

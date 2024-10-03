@@ -158,7 +158,7 @@ const defaultConfig = {
     return config;
   },
   supportFile: "e2e/support/cypress.js",
-  chromeWebSecurity: true,
+  chromeWebSecurity: false,
   modifyObstructiveCode: false,
   // New `specPattern` is the combination of the old:
   //   1. testFiles and
