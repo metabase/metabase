@@ -44,6 +44,7 @@
 
     (testing "Frame ancestors is 'none' for nil `embedding-app-origin`"
       (tu/with-temporary-setting-values [enable-embedding-interactive true
+                                         embedding-app-origins-interactive nil
                                          embedding-app-origin nil]
         (is (= "frame-ancestors 'none'"
                (csp-directive "frame-ancestors")))))
@@ -180,17 +181,23 @@
     (is (true? (mw.security/approved-origin? "http://example.com:8080" "example.com:*"))))
 
   (testing "Should handle invalid origins"
-    (is (true? (mw.security/approved-origin? "http://example.com" "  fpt://something http://example.com ://123  4")))))
+    (is (true? (mw.security/approved-origin? "http://example.com" "  fpt://something ://123 4 http://example.com")))))
 
 (deftest test-access-control-headers?
   (testing "Should always allow localhost:*"
-    (tu/with-temporary-setting-values [enable-embedding-sdk      true
-                                       embedding-app-origins-sdk nil]
-      (is (= "http://localhost:8080" (get (mw.security/access-control-headers "http://localhost:8080") "Access-Control-Allow-Origin")))))
+    (tu/with-temporary-setting-values [enable-embedding                  false
+                                       enable-embedding-interactive      false
+                                       enable-embedding-static           false
+                                       enable-embedding-sdk              true
+                                       embedding-app-origin              nil
+                                       embedding-app-origins-interactive nil
+                                       embedding-app-origins-sdk         nil]
+      (is (= "http://localhost:8080" (-> "http://localhost:8080"
+                                         mw.security/access-control-headers
+                                         (get "Access-Control-Allow-Origin"))))))
 
   (testing "Should disable CORS when enable-embedding-sdk is disabled"
-    (tu/with-temporary-setting-values [enable-embedding-sdk      false
-                                       embedding-app-origins-sdk nil]
+    (tu/with-temporary-setting-values [enable-embedding-sdk      false]
       (is (= "http://localhost:8080"
              (get (mw.security/access-control-headers "http://localhost:8080")
                   "Access-Control-Allow-Origin"))
