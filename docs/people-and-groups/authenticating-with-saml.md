@@ -25,7 +25,7 @@ Once you've [confirmed the password to your Metabase admin account](#confirm-the
 
 The form includes three sections:
 
-1. [Metabase info that you'll have to input into your identity provider (IdP)](#setting-up-saml-with-your-idp).
+1. [Metabase info that you'll have to input into your identity provider (IdP)](#generic-saml-configuration).
 2. [IdP info that you'll need to tell Metabase about](#enabling-saml-authentication-in-metabase).
 3. [Signing SSO requests (optional)](#settings-for-signing-sso-requests-optional).
 
