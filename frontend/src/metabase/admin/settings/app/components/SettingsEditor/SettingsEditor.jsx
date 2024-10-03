@@ -9,6 +9,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { SwagButton } from "metabase/admin/settings/components/Swag/SwagButton";
 import { UpsellSSO } from "metabase/admin/upsells";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/components/ErrorPages";
@@ -254,6 +255,7 @@ class SettingsEditor extends Component {
       <aside className={cx(AdminS.AdminList, CS.flexNoShrink)}>
         <ul className={CS.pt1} data-testid="admin-list-settings-items">
           <ErrorBoundary>{renderedSections}</ErrorBoundary>
+          <SwagButton />
         </ul>
       </aside>
     );
