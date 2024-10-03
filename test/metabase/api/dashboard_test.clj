@@ -4971,3 +4971,32 @@
                                                                                          :col 0 :row 0}]}))
       (is (t2/exists? :model/DashboardCard :card_id card-id :dashboard_id dash-id))
       (is (not (t2/select-one-fn :archived :model/Card card-id))))))
+
+(deftest dashboard-items-works
+  (testing "Dashboard items is empty when the dashboard is a normal dashboard w/o DQs"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {}
+                   :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}]
+      (is (= {:total 0 :data [] :models []}
+             (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))))))
+  (testing "Dashboard items is present when the dashboard has DQs"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}]
+      (is (= {:total 1
+              :data [{:id card-id}]
+              :models ["card"]}
+             (update (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))
+                     :data
+                     #(map (fn [card] (select-keys card [:id])) %))))))
+  (testing "DQs don't appear twice even if they appear multiple times in the dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}
+                   :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}]
+      (is (= {:total 1
+              :data [{:id card-id}]
+              :models ["card"]}
+             (update (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))
+                     :data
+                     #(map (fn [card] (select-keys card [:id])) %)))))))
