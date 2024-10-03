@@ -128,11 +128,9 @@
                                        :first_name             first-name
                                        :last_name              last-name
                                        :email                  email
-                                       :user_group_memberships [{:id (:id (perms-group/all-users))}]}}
-                           logged-event))))
-                  (testing "created user is admin"
-                    (is (= (set (map :id [(perms-group/all-users) (perms-group/admin)]))
-                           (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id invited-user))))))))))))))
+                                       :user_group_memberships [{:id (:id (perms-group/all-users))}
+                                                                {:id (:id (perms-group/admin))}]}}
+                           logged-event)))))))))))))
 
 (deftest invite-user-test-2
   (testing "POST /api/setup"

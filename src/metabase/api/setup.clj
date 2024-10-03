@@ -74,8 +74,15 @@
   (when email
     (if-not (email/email-configured?)
       (log/error "Could not invite user because email is not configured.")
-      (u/prog1 (user/create-and-invite-user! user invitor true)
+      (u/prog1 (user/insert-new-user! user)
         (user/set-permissions-groups! <> [(perms-group/all-users) (perms-group/admin)])
+        (events/publish-event! :event/user-invited
+                               {:object
+                                (assoc <>
+                                       :is_from_setup true
+                                       :invite_method "email"
+                                       :sso_source    (:sso_source <>))
+                                :details {:invitor (select-keys invitor [:email :first_name])}})
         (snowplow/track-event! ::snowplow/invite
                                {:event           :invite-sent
                                 :invited-user-id (u/the-id <>)
