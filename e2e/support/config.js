@@ -158,7 +158,7 @@ const defaultConfig = {
     return config;
   },
   supportFile: "e2e/support/cypress.js",
-  chromeWebSecurity: false,
+  chromeWebSecurity: true,
   modifyObstructiveCode: false,
   // New `specPattern` is the combination of the old:
   //   1. testFiles and
@@ -175,7 +175,6 @@ const mainConfig = {
   ...defaultConfig,
   ...(isEmbeddingSdk
     ? {
-        chromeWebSecurity: true,
         hosts: {
           "my-site.local": "127.0.0.1",
         },
