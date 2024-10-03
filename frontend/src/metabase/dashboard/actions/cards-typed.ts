@@ -285,12 +285,12 @@ export const undoRemoveCardFromDashboard = createThunkAction(
 export const trashDashboardQuestion = createThunkAction(
   TRASH_DASHBOARD_QUESTION_FROM_DASH,
   ({
-      dashcardId,
-      cardId,
-    }: {
-      dashcardId: DashCardId;
-      cardId: DashboardCard["card_id"];
-    }) =>
+    dashcardId,
+    cardId,
+  }: {
+    dashcardId: DashCardId;
+    cardId: DashboardCard["card_id"];
+  }) =>
     async dispatch => {
       await dispatch(
         Questions.actions.setArchived({ id: cardId }, true, {
@@ -308,12 +308,12 @@ export const trashDashboardQuestion = createThunkAction(
 const undoTrashDashboardQuestion = createThunkAction(
   UNDO_TRASH_DASHBOARD_QUESTION_FROM_DASH,
   ({
-      dashcardId,
-      cardId,
-    }: {
-      dashcardId: DashCardId;
-      cardId: DashboardCard["card_id"];
-    }) =>
+    dashcardId,
+    cardId,
+  }: {
+    dashcardId: DashCardId;
+    cardId: DashboardCard["card_id"];
+  }) =>
     async dispatch => {
       await dispatch(
         Questions.actions.setArchived({ id: cardId }, false, {
