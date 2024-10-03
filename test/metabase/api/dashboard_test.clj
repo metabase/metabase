@@ -4952,3 +4952,22 @@
       (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived false})
       (is (not (t2/select-one-fn :archived :model/Dashboard dash-id)))
       (is (not (t2/select-one-fn :archived :model/Card card-id))))))
+
+(deftest dashboard-questions-are-archived-when-unused-and-vice-versa
+  (testing "The dashboard question is archived when it's removed from the dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}
+                   :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}]
+      (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id) {:dashcards []})
+      (is (not (t2/exists? :model/DashboardCard :card_id card-id :dashboard_id dash-id)))
+      (is (t2/select-one-fn :archived :model/Card card-id))))
+  (testing "The dashboard question is unarchived when it's re-added to the dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}]
+      (is (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id) {:dashcards [{:card_id card-id
+                                                                                               :id -1
+                                                                                               :size_x 10
+                                                                                               :size_y 10
+                                                                                               :col 0 :row 0}]}))
+      (is (t2/exists? :model/DashboardCard :card_id card-id :dashboard_id dash-id))
+      (is (not (t2/select-one-fn :archived :model/Card card-id))))))
