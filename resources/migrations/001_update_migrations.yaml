@@ -9467,7 +9467,7 @@ databaseChangeLog:
               INSERT INTO setting (key, value)
               SELECT 'embedding-app-origins-interactive', value
               FROM setting
-              WHERE key = embedding-app-origin';
+              WHERE key = 'embedding-app-origin';
         - sql:
             dbms: mysql,mariadb
             sql: >-
@@ -9516,21 +9516,21 @@ databaseChangeLog:
               INSERT INTO setting (key, value)
               SELECT 'embedding-app-origins-sdk', value
               FROM setting
-              WHERE key = 'embedding-app-origins-interactive';
+              WHERE key = 'embedding-app-origin';
         - sql:
             dbms: mysql,mariadb
             sql: >-
               INSERT INTO setting (`key`, `value`)
               SELECT 'embedding-app-origins-sdk', value
               FROM setting
-              WHERE `key` = 'embedding-app-origins-interactive';
+              WHERE `key` = 'embedding-app-origin';
         - sql:
             dbms: h2
             sql: >-
               INSERT INTO setting ("KEY", "VALUE")
               SELECT 'embedding-app-origins-sdk', "VALUE"
               FROM setting
-              WHERE "KEY" = 'embedding-app-origins-interactive';
+              WHERE "KEY" = 'embedding-app-origin';
       rollback: # not needed
 
 
