@@ -192,6 +192,7 @@ describe("LinkedEntityPicker", () => {
             await screen.findByPlaceholderText(/search/i),
             typedText,
           );
+          await userEvent.click(await screen.findByText("Everywhere"));
 
           expect(
             await screen.findByText(dashboardSearchResult.name),
@@ -254,6 +255,7 @@ describe("LinkedEntityPicker", () => {
             typedText,
           );
 
+          await userEvent.click(await screen.findByText("Everywhere"));
           expect(
             await screen.findByText(dashboardSearchResult.name),
           ).toBeInTheDocument();
