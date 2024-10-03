@@ -654,18 +654,11 @@
   (str "metabase/email/" template-name ".mustache"))
 
 ;; Paths to the templates for all of the alerts emails
-(def ^:private new-alert-template          (template-path "alert_new_confirmation"))
 (def ^:private you-unsubscribed-template   (template-path "alert_unsubscribed"))
 (def ^:private admin-unsubscribed-template (template-path "alert_admin_unsubscribed_you"))
 (def ^:private added-template              (template-path "alert_you_were_added"))
 (def ^:private stopped-template            (template-path "alert_stopped_working"))
 (def ^:private archived-template           (template-path "alert_archived"))
-
-(defn send-new-alert-email!
-  "Send out the initial 'new alert' email to the `creator` of the alert"
-  [{:keys [creator] :as alert}]
-  (send-email! creator "You set up an alert" new-alert-template
-               (common-alert-context alert alert-condition-text)))
 
 (defn send-you-unsubscribed-alert-email!
   "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `alert`"
