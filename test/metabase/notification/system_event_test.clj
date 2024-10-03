@@ -120,7 +120,7 @@
                           :message-type   :attachments
                           :subject        expected-subject
                           :message        [(zipmap (map str regexes) (repeat true))]
-                          :recipient-type "cc"}
+                          :recipient-type :cc}
                          (apply mt/summarize-multipart-single-email email regexes)))))]
     (testing "sent from invite page"
       (check false
