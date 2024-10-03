@@ -23,15 +23,6 @@
         (= y ::expression/type.unknown))
     ::expression/type.unknown
 
-    ;; Naive fix for https://github.com/metabase/metabase/issues/47887
-    ;; Following tuple not being in place, the :type/Temporal (the common ancestor) would be returned. That is
-    ;; unfortunately not very usable from filter pickers perspective.
-    (and (keyword? x)
-         (keyword? y)
-         (some #(isa? % :type/Date) [x y])
-         (some #(isa? % :type/DateTime) [x y]))
-    :type/Date
-
     ;; if both types are keywords return their most-specific ancestor.
     (and (keyword? x)
          (keyword? y))
@@ -69,13 +60,14 @@
   [:default [:? [:schema [:ref ::expression/expression]]]])
 
 (defmethod expression/type-of-method :case
-  [[_tag _opts pred-expr-pairs default]]
-  (reduce
-   (fn [best-guess [_pred expr]]
-     (let [expr-type (expression/type-of expr)]
-       (best-return-type best-guess expr-type)))
-   (when (some? default)
-     (expression/type-of default))
+  [[_tag _opts pred-expr-pairs _default]]
+  ;; Following logic for picking a type is taken from
+  ;; the [[metabase.query-processor.middleware.annotate/infer-expression-type]].
+  (some
+   (fn [[_pred expr]]
+     (if-some [t (expression/type-of expr)]
+       t
+       ::expression/type.unknown))
    pred-expr-pairs))
 
 ;;; TODO -- add constraint that these types have to be compatible
