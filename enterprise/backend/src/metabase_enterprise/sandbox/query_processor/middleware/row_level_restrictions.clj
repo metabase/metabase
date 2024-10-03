@@ -375,8 +375,8 @@
       (-> sandboxed-query
           (assoc ::original-metadata (expected-cols original-query))
           (update-in [::query-perms/perms :gtaps]
-                     (fn [required-perms] (merge required-perms
-                                                 (sandboxes->required-perms (vals table-id->gtap)))))))))
+                     (fn [required-perms] (merge-perms required-perms
+                                                       (sandboxes->required-perms (vals table-id->gtap)))))))))
 
 (def ^:private default-recursion-limit 20)
 (def ^:private ^:dynamic *recursion-limit* default-recursion-limit)
@@ -392,7 +392,7 @@
           (let [gtapped-query (gtapped-query query table-id->gtap)]
             (if (not= query gtapped-query)
               ;; Applying GTAPs to the query may have introduced references to tables that are also sandboxed,
-              ;; so we need to recursively appby the middleware until new queries are not returned.
+              ;; so we need to recursively apply the middleware until new queries are not returned.
               (if (= *recursion-limit* 0)
                 (throw (ex-info (trs "Reached recursion limit of {0} in \"apply-sandboxing\" middleware"
                                      default-recursion-limit)
