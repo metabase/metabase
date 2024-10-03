@@ -40,13 +40,15 @@ import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
 } from "metabase/visualizations/shared/utils/sizes";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
-import type {
-  BaseDashboardCard,
-  Card,
-  DashCardId,
-  Dashboard,
-  DashboardCard,
-  DashboardTabId,
+import {
+  type BaseDashboardCard,
+  type Card,
+  type DashCardId,
+  type Dashboard,
+  type DashboardCard,
+  type DashboardTabId,
+  type RecentItem,
+  isRecentCollectionItem,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -405,7 +407,8 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
   }
 
   renderReplaceCardModal() {
-    const { addUndo, replaceCard, setDashCardAttributes } = this.props;
+    const { addUndo, replaceCard, setDashCardAttributes, dashboard } =
+      this.props;
     const { replaceCardModalDashCard } = this.state;
 
     const hasValidDashCard =
@@ -434,6 +437,17 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       handleClose();
     };
 
+    const replaceCardModalRecentFilter = (items: RecentItem[]) => {
+      return items.filter(item => {
+        if (isRecentCollectionItem(item) && item.dashboard) {
+          if (item.dashboard.id !== dashboard.id) {
+            return false;
+          }
+        }
+        return true;
+      });
+    };
+
     const handleClose = () => {
       this.setState({ replaceCardModalDashCard: null });
     };
@@ -453,6 +467,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         models={["card", "dataset", "metric"]}
         onChange={handleSelect}
         onClose={handleClose}
+        recentFilter={replaceCardModalRecentFilter}
       />
     );
   }
