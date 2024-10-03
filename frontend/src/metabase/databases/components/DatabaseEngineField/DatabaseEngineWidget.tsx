@@ -2,10 +2,10 @@ import type { ChangeEvent, KeyboardEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
+import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Input from "metabase/core/components/Input";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import MetabaseSettings from "metabase/lib/settings";
 
 import type { EngineOption } from "../../types";
 import { getEngineLogo } from "../../utils/engine";
@@ -238,6 +238,11 @@ interface EngineEmptyStateProps {
 }
 
 const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup
+  const { url: docsUrl } = useDocsUrl(
+    "developers-guide/partner-and-community-drivers",
+  );
+
   return (
     <EngineEmptyStateRoot>
       <EngineEmptyIcon name="search" size={32} />
@@ -245,13 +250,7 @@ const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
         <EngineEmptyText>{t`Didn’t find anything`}</EngineEmptyText>
       ) : (
         <EngineEmptyText>{jt`Don’t see your database? Check out our ${(
-          <ExternalLink
-            key="link"
-            // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup
-            href={MetabaseSettings.docsUrl(
-              "developers-guide/partner-and-community-drivers",
-            )}
-          >
+          <ExternalLink key="link" href={docsUrl}>
             {t`Community Drivers`}
           </ExternalLink>
         )} page to see if it’s available for self-hosting.`}</EngineEmptyText>

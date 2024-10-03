@@ -48,7 +48,7 @@
           (if (failure-map/non-retryable? card)
             (log/warnf "Skipping analysis of Card %s as its query has caused failures in the past." card-id)
             (try
-              (query-analysis/analyze-card! card)
+              (query-analysis/analyze!* card)
               (failure-map/track-success! card)
               (let [taken-ms (Math/ceil (u/since-ms timer))
                     sleep-ms (wait-proportional taken-ms)]

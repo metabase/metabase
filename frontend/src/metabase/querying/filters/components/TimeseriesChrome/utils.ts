@@ -35,6 +35,6 @@ export function findBreakoutClause(
   const breakouts = Lib.breakouts(query, stageIndex);
   return breakouts.find(breakout => {
     const column = Lib.breakoutColumn(query, stageIndex, breakout);
-    return Lib.isTemporal(column);
+    return Lib.isDateOrDateTime(column);
   });
 }

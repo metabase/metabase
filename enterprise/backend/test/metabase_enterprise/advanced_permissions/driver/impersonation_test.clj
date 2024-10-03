@@ -63,6 +63,14 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"User does not have attribute required for connection impersonation."
+           (@#'impersonation/connection-impersonation-role (mt/db))))))
+
+  (testing "Throws an exception if impersonation should be enforced, but the user's attribute is not a single string"
+    (advanced-perms.api.tu/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                 :attributes     {"impersonation_attr" ["one" "two" "three"]}}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Connection impersonation attribute is invalid: role must be a single non-empty string."
            (@#'impersonation/connection-impersonation-role (mt/db)))))))
 
 (deftest conn-impersonation-test-postgres

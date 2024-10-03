@@ -28,9 +28,12 @@
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
   "Given `:metadata/column` column metadata for an expression, construct an `:expression` reference."
   [metadata :- ::lib.schema.metadata/column]
-  (let [options {:lib/uuid       (str (random-uuid))
-                 :base-type      (:base-type metadata)
-                 :effective-type ((some-fn :effective-type :base-type) metadata)}]
+  (let [options (merge
+                 {:lib/uuid       (str (random-uuid))
+                  :base-type      (:base-type metadata)
+                  :effective-type ((some-fn :effective-type :base-type) metadata)}
+                 (when-let [unit (:metabase.lib.field/temporal-unit metadata)]
+                   {:temporal-unit unit}))]
     [:expression options ((some-fn :lib/expression-name :name) metadata)]))
 
 (mu/defn resolve-expression :- ::lib.schema.expression/expression
@@ -57,13 +60,22 @@
 
 (defmethod lib.metadata.calculation/metadata-method :expression
   [query stage-number [_expression opts expression-name, :as expression-ref-clause]]
-  {:lib/type            :metadata/column
-   :lib/source-uuid     (:lib/uuid opts)
-   :name                expression-name
-   :lib/expression-name expression-name
-   :display-name        (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
-   :base-type           (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
-   :lib/source          :source/expressions})
+  (merge {:lib/type            :metadata/column
+          :lib/source-uuid     (:lib/uuid opts)
+          :name                expression-name
+          :lib/expression-name expression-name
+          :display-name        (lib.metadata.calculation/display-name query stage-number expression-ref-clause)
+          :base-type           (lib.metadata.calculation/type-of query stage-number expression-ref-clause)
+          :lib/source          :source/expressions}
+         (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
+           {:metabase.lib.field/temporal-unit unit})))
+
+(defmethod lib.temporal-bucket/available-temporal-buckets-method :expression
+  [query stage-number [_expression opts _expr-name, :as expr-clause]]
+  (lib.temporal-bucket/available-temporal-buckets-for-type
+   (lib.metadata.calculation/type-of query stage-number expr-clause)
+   :month
+   (:temporal-unit opts)))
 
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/integer
   [_query _stage-number n _style]
@@ -82,8 +94,13 @@
   (str s))
 
 (defmethod lib.metadata.calculation/display-name-method :expression
-  [_query _stage-number [_expression _opts expression-name] _style]
-  expression-name)
+  [_query _stage-number [_expression {:keys [temporal-unit] :as _opts} expression-name] _style]
+  (letfn [(temporal-format [display-name]
+            (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
+                                                       (str/replace \- \space)
+                                                       u/capitalize-en)))]
+    (cond-> expression-name
+      temporal-unit temporal-format)))
 
 (defmethod lib.metadata.calculation/column-name-method :expression
   [_query _stage-number [_expression _opts expression-name]]
@@ -186,6 +203,14 @@
 (defmethod lib.metadata.calculation/column-name-method :coalesce
   [query stage-number [_coalesce _opts expr _null-expr]]
   (lib.metadata.calculation/column-name query stage-number expr))
+
+(defmethod lib.temporal-bucket/with-temporal-bucket-method :expression
+  [expr-ref unit]
+  (lib.temporal-bucket/add-temporal-bucket-to-ref expr-ref unit))
+
+(defmethod lib.temporal-bucket/temporal-bucket-method :expression
+  [[_expression {:keys [temporal-unit]} _expr-name]]
+  temporal-unit)
 
 #_(defn- conflicting-name? [query stage-number expression-name]
     (let [stage     (lib.util/query-stage query stage-number)

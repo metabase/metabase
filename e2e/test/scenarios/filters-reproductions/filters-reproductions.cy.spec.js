@@ -686,7 +686,7 @@ describe("issue 25990", () => {
     queryBuilderHeader().button("Filter").click();
 
     modal().within(() => {
-      cy.findByText("Person").click();
+      cy.findByText("People").click();
       cy.findByPlaceholderText("Enter an ID").type("10").blur();
       cy.button("Apply filters").click();
     });
@@ -816,7 +816,8 @@ describe("issue 27123", () => {
   });
 });
 
-describe("issue 29094", () => {
+// TODO: Unskip this test when we bring back expression type checking. See #31877.
+describe.skip("issue 29094", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
@@ -1137,7 +1138,7 @@ describe("issue 35043", () => {
       .should("have.text", "Created At is Apr 15 – May 22, 2024")
       .click();
 
-    cy.findByTestId("datetime-filter-picker").within(() => {
+    cy.findByTestId("date-filter-picker").within(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.findByDisplayValue("May 22, 2024").type("{backspace}2").blur();
       cy.findByDisplayValue("May 22, 2022").should("exist");

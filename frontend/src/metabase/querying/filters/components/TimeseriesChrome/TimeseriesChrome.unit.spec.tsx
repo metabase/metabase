@@ -39,12 +39,12 @@ function setup({ query = createQuery() }: SetupOpts = {}) {
 }
 
 describe("TimeseriesChrome", () => {
-  it("should render nothing if there are no breakouts", () => {
+  it("should not render the chrome if there are no breakouts", () => {
     setup();
     expect(screen.queryByText("View")).not.toBeInTheDocument();
   });
 
-  it("should render nothing if there are no breakouts on a temporal column", () => {
+  it("should not render the chrome if there are no breakouts on a temporal column", () => {
     const query = createQueryWithClauses({
       breakouts: [{ tableName: "PRODUCTS", columnName: "CATEGORY" }],
     });

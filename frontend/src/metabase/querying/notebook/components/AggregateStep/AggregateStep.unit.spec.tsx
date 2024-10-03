@@ -1,38 +1,37 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import * as Lib from "metabase-lib";
 import {
-  columnFinder,
-  createQuery,
-  findAggregationOperator,
-} from "metabase-lib/test-helpers";
+  getIcon,
+  queryIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
+import * as Lib from "metabase-lib";
+import { createQueryWithClauses } from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   createMockQueryBuilderState,
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { createMockNotebookStep } from "../../test-utils";
+import { DEFAULT_QUESTION, createMockNotebookStep } from "../../test-utils";
+import type { NotebookStep } from "../../types";
 
 import { AggregateStep } from "./AggregateStep";
 
-function createAggregatedQuery({
-  table = "ORDERS",
-  column = "QUANTITY",
-}: { table?: string; column?: string } = {}) {
-  const initialQuery = createQuery();
-  const average = findAggregationOperator(initialQuery, "avg");
-  const findColumn = columnFinder(
-    initialQuery,
-    Lib.aggregationOperatorColumns(average),
-  );
-  const quantity = findColumn(table, column);
-  const clause = Lib.aggregationClause(average, quantity);
-  return Lib.aggregate(initialQuery, 0, clause);
+function createAggregatedQuery() {
+  return createQueryWithClauses({
+    aggregations: [
+      { operatorName: "avg", tableName: "ORDERS", columnName: "QUANTITY" },
+    ],
+  });
 }
 
-function setup(step = createMockNotebookStep()) {
+interface SetupOpts {
+  step?: NotebookStep;
+}
+
+function setup({ step = createMockNotebookStep() }: SetupOpts = {}) {
   const updateQuery = jest.fn();
 
   renderWithProviders(
@@ -81,19 +80,24 @@ describe("AggregateStep", () => {
   });
 
   it("should render correctly with an aggregation", () => {
-    setup(createMockNotebookStep({ query: createAggregatedQuery() }));
+    setup({ step: createMockNotebookStep({ query: createAggregatedQuery() }) });
     expect(screen.getByText("Average of Quantity")).toBeInTheDocument();
   });
 
   it("should use foreign key name for foreign table columns", () => {
-    setup(
-      createMockNotebookStep({
-        query: createAggregatedQuery({
-          table: "PRODUCTS",
-          column: "RATING",
+    setup({
+      step: createMockNotebookStep({
+        query: createQueryWithClauses({
+          aggregations: [
+            {
+              operatorName: "avg",
+              tableName: "PRODUCTS",
+              columnName: "RATING",
+            },
+          ],
         }),
       }),
-    );
+    });
     expect(screen.getByText("Average of Product → Rating")).toBeInTheDocument();
   });
 
@@ -114,9 +118,9 @@ describe("AggregateStep", () => {
   });
 
   it("should change an aggregation operator", async () => {
-    const { getNextQuery, getRecentAggregationClause } = setup(
-      createMockNotebookStep({ query: createAggregatedQuery() }),
-    );
+    const { getNextQuery, getRecentAggregationClause } = setup({
+      step: createMockNotebookStep({ query: createAggregatedQuery() }),
+    });
 
     await userEvent.click(screen.getByText("Average of Quantity"));
     await userEvent.click(screen.getByText("Average of ...")); // go back to operator selection
@@ -134,9 +138,9 @@ describe("AggregateStep", () => {
   });
 
   it("should change an aggregation column", async () => {
-    const { getNextQuery, getRecentAggregationClause } = setup(
-      createMockNotebookStep({ query: createAggregatedQuery() }),
-    );
+    const { getNextQuery, getRecentAggregationClause } = setup({
+      step: createMockNotebookStep({ query: createAggregatedQuery() }),
+    });
 
     await userEvent.click(screen.getByText("Average of Quantity"));
     await userEvent.click(screen.getByText("Total"));
@@ -153,13 +157,55 @@ describe("AggregateStep", () => {
   });
 
   it("should remove an aggregation", async () => {
-    const { getNextQuery } = setup(
-      createMockNotebookStep({ query: createAggregatedQuery() }),
-    );
+    const { getNextQuery } = setup({
+      step: createMockNotebookStep({ query: createAggregatedQuery() }),
+    });
 
     await userEvent.click(getIcon("close"));
 
     const nextQuery = getNextQuery();
     expect(Lib.aggregations(nextQuery, 0)).toHaveLength(0);
+  });
+
+  describe("metrics", () => {
+    it("should not allow to remove an existing aggregation or add another one", () => {
+      const query = createAggregatedQuery();
+      const question = DEFAULT_QUESTION.setType("metric").setQuery(query);
+      const step = createMockNotebookStep({ question, query });
+      setup({ step });
+
+      expect(screen.getByText("Average of Quantity")).toBeInTheDocument();
+      expect(queryIcon("close")).not.toBeInTheDocument();
+      expect(queryIcon("add")).not.toBeInTheDocument();
+    });
+
+    // TODO: unskip this once we enable "Compare to the past" again
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should not allow to use temporal comparisons for metrics", async () => {
+      const query = createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+      });
+      const question = DEFAULT_QUESTION.setType("metric").setQuery(query);
+      const step = createMockNotebookStep({ question, query });
+      setup({ step });
+
+      await userEvent.click(screen.getByText("Count"));
+      expect(await screen.findByText("Average of ...")).toBeInTheDocument();
+      expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
+    });
+
+    // TODO: unskip this once we enable "Compare to the past" again
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should allow to use temporal comparisons for non-metrics", async () => {
+      const query = createQueryWithClauses({
+        aggregations: [{ operatorName: "count" }],
+      });
+      const question = DEFAULT_QUESTION.setType("question").setQuery(query);
+      const step = createMockNotebookStep({ question, query });
+      setup({ step });
+
+      await userEvent.click(screen.getByText("Count"));
+      expect(screen.getByText(/compare/i)).toBeInTheDocument();
+    });
   });
 });

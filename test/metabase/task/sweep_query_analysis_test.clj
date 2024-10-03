@@ -14,27 +14,27 @@
     @card-ids))
 
 (deftest analyze-cards-without-query-fields-test
-  (setup/with-test-setup! [c1 c2 c3 c4]
+  (setup/with-test-setup! [c1 c2 c3 c4 archived invalid]
     (testing "There is at least one card with existing analysis"
       (is (pos? (t2/count :model/QueryField :card_id (:id c3)))))
-    (let [expected-ids (into #{} (map :id) [c1 c2 c4])
-          not-expected (into #{} (map :id) [c3 arch])
-          queued-ids   (queued-card-ids #'sweeper/analyze-cards-without-query-fields!)]
+    (let [expected-ids (into #{} (map :id) [c1 c2 c4 invalid])
+          not-expected (into #{} (map :id) [c3 archived])
+          queued-ids   (queued-card-ids #'sweeper/analyze-cards-without-complete-analysis!)]
       (testing "The expected cards were all sent to the analyzer"
         (is (= expected-ids (set/intersection expected-ids queued-ids))))
       (testing "The card with existing analysis was not sent to the analyzer again"
         (is (empty? (set/intersection not-expected queued-ids)))))))
 
 (deftest analyze-stale-cards-test
-  (setup/with-test-setup! [c1 c2 c3 c4 arch]
-    (let [expected-ids (into #{} (map :id) [c1 c2 c3 c4 arch])
+  (setup/with-test-setup! [c1 c2 c3 c4 archived invalid]
+    (let [expected-ids (into #{} (map :id) [c1 c2 c3 c4 archived invalid])
           queued-ids   (queued-card-ids #'sweeper/analyze-stale-cards!)]
       ;; Hopefully we can improve this inefficiency in the future.
       (testing "All the cards were all sent to the analyzer"
         (is (= expected-ids (set/intersection expected-ids queued-ids)))))))
 
 (deftest delete-orphan-analysis-test
-  (setup/with-test-setup! [c1 c2 c3 c4 arch]
+  (setup/with-test-setup! [c1 c2 c3 c4 archived invalid]
     (let [card-id (:id c3)]
       (testing "There is a card with existing analysis"
         (is (pos? (t2/count :model/QueryField :card_id card-id))))
@@ -50,7 +50,7 @@
       (testing "There is no analysis left after the task is run"
         (is (zero? (t2/count :model/QueryField :card_id card-id))))
       (testing "No cards were harmed in the process"
-        (is (= 5 (t2/count :model/Card :id [:in (mapv :id [c1 c2 c3 c4 arch])])))))))
+        (is (= 6 (t2/count :model/Card :id [:in (mapv :id [c1 c2 c3 c4 archived invalid])])))))))
 
 (comment
   (set! *warn-on-reflection* true)

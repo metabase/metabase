@@ -55,13 +55,13 @@ View data permission settings apply to different levels in your database:
 | View data permission | Database | Schema | Table |
 | -------------------- | -------- | ------ | ----- |
 | Can view             | ✅        | ✅      | ✅     |
-| Granular*             | ✅        | ✅      | ❌     |
+| Granular\*           | ✅        | ✅      | ❌     |
 | Sandboxed            | ❌        | ❌      | ✅     |
 | Impersonated         | ✅        | ❌      | ❌     |
 | Blocked              | ✅        | ✅      | ✅     |
 
 
-* The "Granular" setting is not itself a type of permission; it just signals that permissions are set at a level below the current level. For example, you can select "Granular" at a schema level to set permissions per table for tables in that schema.
+\* The "Granular" setting is not itself a type of permission; it just signals that permissions are set at a level below the current level. For example, you can select "Granular" at a schema level to set permissions per table for tables in that schema.
 
 In the free, open-source version of Metabase, the **View data** setting defaults to "Can view". Since the setting's options aren't available in the OSS version, Metabase will only display this **View data** setting in the Pro/Enterprise version.
 

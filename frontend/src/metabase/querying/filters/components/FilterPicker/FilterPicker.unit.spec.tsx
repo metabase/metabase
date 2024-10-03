@@ -114,13 +114,13 @@ const WIDGET_TEST_CASES: WidgetTestCase[] = [
     {
       section: "User",
       columnName: "Birth Date",
-      pickerId: "datetime-filter-picker",
+      pickerId: "date-filter-picker",
     },
   ],
   [
     "datetime",
     createQueryWithSpecificDateFilter(),
-    { columnName: "Created At", pickerId: "datetime-filter-picker" },
+    { columnName: "Created At", pickerId: "date-filter-picker" },
   ],
   [
     "number",
@@ -190,7 +190,7 @@ describe("FilterPicker", () => {
     it("should list filterable columns", async () => {
       setup();
 
-      expect(screen.getByText("Order")).toBeInTheDocument();
+      expect(screen.getByText("Orders")).toBeInTheDocument();
       expect(screen.getByText("Discount")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText("Product"));
@@ -338,9 +338,7 @@ describe("FilterPicker", () => {
         ["exclude", createQueryWithExcludeDateFilter()],
       ])(`should open the date picker for a %s date filter`, (type, opts) => {
         setup(opts);
-        expect(
-          screen.getByTestId("datetime-filter-picker"),
-        ).toBeInTheDocument();
+        expect(screen.getByTestId("date-filter-picker")).toBeInTheDocument();
       });
 
       it("should open the expression editor when column type isn't supported", () => {

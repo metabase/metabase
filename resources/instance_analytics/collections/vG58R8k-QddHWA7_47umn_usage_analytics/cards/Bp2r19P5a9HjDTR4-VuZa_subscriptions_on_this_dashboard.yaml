@@ -1,0 +1,196 @@
+name: Subscriptions on this dashboard
+description: null
+entity_id: Bp2r19P5a9HjDTR4-VuZa
+created_at: '2023-08-18T19:02:09.768319Z'
+creator_id: internal@metabase.com
+display: table
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_subscriptions
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_subscriptions
+        - created_at
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_subscriptions
+        - schedule_type
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_subscriptions
+        - schedule_day
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_subscriptions
+        - schedule_hour
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_subscriptions
+        - recipient_type
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_subscriptions
+        - recipients
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_subscriptions
+        - recipient_external
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_subscriptions
+        - parameters
+      - base-type: type/Text
+    joins:
+    - alias: Content - Dashboard Qualified
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_subscriptions
+          - dashboard_qualified_id
+        - base-type: type/Text
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Content - Dashboard Qualified
+      fields: none
+      source-table: AxSackBiyXVRUzM_TyyQY
+      strategy: left-join
+    - alias: People - Creator
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_subscriptions
+          - creator_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - base-type: type/Integer
+          join-alias: People - Creator
+      fields: none
+      source-table: 0wVIfjBJWclD0lKeABYYl
+      strategy: left-join
+    source-table: 5ojUtU9iE-DCggHdFPIll
+  type: query
+result_metadata: null
+visualization_settings:
+  column_settings:
+    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - Creator"}]]'
+    : column_title: User
+    ? '["ref",["field",["Internal Metabase Database","public","v_users","user_id"],{"base-type":"type/Integer","join-alias":"People - Creator"}]]'
+    : column_title: User ID
+  table.cell_column: recipient_external
+  table.columns:
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_subscriptions
+      - created_at
+    - base-type: type/DateTimeWithLocalTZ
+    name: created_at
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_subscriptions
+      - schedule_type
+    - base-type: type/Text
+    name: schedule_type
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_subscriptions
+      - schedule_hour
+    - base-type: type/Integer
+    name: schedule_hour
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_subscriptions
+      - recipient_type
+    - base-type: type/Text
+    name: recipient_type
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_subscriptions
+      - recipients
+    - base-type: type/Text
+    name: recipients
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_subscriptions
+      - recipient_external
+    - base-type: type/Text
+    name: recipient_external
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_subscriptions
+      - parameters
+    - base-type: type/Text
+    name: parameters
+  table.pivot_column: archived
+serdes/meta:
+- id: Bp2r19P5a9HjDTR4-VuZa
+  label: subscriptions_on_this_dashboard
+  model: Card
+archived_directly: false
+metabase_version: null
+source_card_id: 5ojUtU9iE-DCggHdFPIll
+type: question

@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { LocationDescriptor } from "history";
 import { getIn } from "icepick";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
-import { useMount } from "react-use";
+import { useMount, useUpdateEffect } from "react-use";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
@@ -22,7 +22,7 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
-import { mergeSettings } from "metabase/visualizations/lib/settings";
+import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import type {
   Card,
@@ -125,7 +125,7 @@ function DashCardInner({
     () => getDashcardHref(store.getState(), dashcard.id),
     [store, dashcard.id],
   );
-  const [isPreviewingCard, setIsPreviewingCard] = useState(false);
+  const [isPreviewingCard, setIsPreviewingCard] = useState(!dashcard.justAdded);
   const cardRootRef = useRef<HTMLDivElement>(null);
 
   const handlePreviewToggle = useCallback(() => {
@@ -141,14 +141,18 @@ function DashCardInner({
     }
   });
 
+  useUpdateEffect(() => {
+    if (!isEditing) {
+      setIsPreviewingCard(true);
+    }
+  }, [isEditing]);
+
   const mainCard: Card | VirtualCard = useMemo(
-    () => ({
-      ...dashcard.card,
-      visualization_settings: mergeSettings(
-        dashcard?.card?.visualization_settings,
+    () =>
+      extendCardWithDashcardSettings(
+        dashcard.card,
         dashcard.visualization_settings,
       ),
-    }),
     [dashcard],
   );
 
@@ -355,6 +359,7 @@ function DashCardInner({
             navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
           }
           onChangeLocation={onChangeLocation}
+          onTogglePreviewing={handlePreviewToggle}
           downloadsEnabled={downloadsEnabled}
         />
       </DashCardRoot>

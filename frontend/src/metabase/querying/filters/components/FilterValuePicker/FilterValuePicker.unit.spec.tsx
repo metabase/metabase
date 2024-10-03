@@ -369,12 +369,13 @@ describe("StringFilterValuePicker", () => {
       });
 
       const checkboxes = screen.getAllByRole("checkbox");
-      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
-      expect(checkboxes[0]).toBeChecked();
-      expect(checkboxes[1]).toHaveAccessibleName("To-do");
-      expect(checkboxes[1]).not.toBeChecked();
-      expect(checkboxes[2]).toHaveAccessibleName("Completed");
+      expect(checkboxes[0]).toHaveAccessibleName("Select all");
+      expect(checkboxes[1]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[1]).toBeChecked();
+      expect(checkboxes[2]).toHaveAccessibleName("To-do");
       expect(checkboxes[2]).not.toBeChecked();
+      expect(checkboxes[3]).toHaveAccessibleName("Completed");
+      expect(checkboxes[3]).not.toBeChecked();
     });
 
     it("should not elevate selected field values after checking an item", async () => {
@@ -404,12 +405,13 @@ describe("StringFilterValuePicker", () => {
         />,
       );
       const checkboxes = screen.getAllByRole("checkbox");
-      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
-      expect(checkboxes[0]).toBeChecked();
-      expect(checkboxes[1]).toHaveAccessibleName("To-do");
-      expect(checkboxes[1]).not.toBeChecked();
-      expect(checkboxes[2]).toHaveAccessibleName("Completed");
-      expect(checkboxes[2]).toBeChecked();
+      expect(checkboxes[0]).toHaveAccessibleName("Select all");
+      expect(checkboxes[1]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[1]).toBeChecked();
+      expect(checkboxes[2]).toHaveAccessibleName("To-do");
+      expect(checkboxes[2]).not.toBeChecked();
+      expect(checkboxes[3]).toHaveAccessibleName("Completed");
+      expect(checkboxes[3]).toBeChecked();
     });
 
     it("should not elevate selected field values after unchecking an item", async () => {
@@ -439,12 +441,13 @@ describe("StringFilterValuePicker", () => {
         />,
       );
       const checkboxes = screen.getAllByRole("checkbox");
-      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
-      expect(checkboxes[0]).not.toBeChecked();
-      expect(checkboxes[1]).toHaveAccessibleName("Completed");
-      expect(checkboxes[1]).toBeChecked();
-      expect(checkboxes[2]).toHaveAccessibleName("To-do");
-      expect(checkboxes[2]).not.toBeChecked();
+      expect(checkboxes[0]).toHaveAccessibleName("Select all");
+      expect(checkboxes[1]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[1]).not.toBeChecked();
+      expect(checkboxes[2]).toHaveAccessibleName("Completed");
+      expect(checkboxes[2]).toBeChecked();
+      expect(checkboxes[3]).toHaveAccessibleName("To-do");
+      expect(checkboxes[3]).not.toBeChecked();
     });
 
     it("should handle empty field values", async () => {
@@ -1024,12 +1027,13 @@ describe("NumberFilterValuePicker", () => {
       });
 
       const checkboxes = screen.getAllByRole("checkbox");
-      expect(checkboxes[0]).toHaveAccessibleName("In-progress");
-      expect(checkboxes[0]).toBeChecked();
-      expect(checkboxes[1]).toHaveAccessibleName("To-do");
-      expect(checkboxes[1]).not.toBeChecked();
-      expect(checkboxes[2]).toHaveAccessibleName("Completed");
+      expect(checkboxes[0]).toHaveAccessibleName("Select all");
+      expect(checkboxes[1]).toHaveAccessibleName("In-progress");
+      expect(checkboxes[1]).toBeChecked();
+      expect(checkboxes[2]).toHaveAccessibleName("To-do");
       expect(checkboxes[2]).not.toBeChecked();
+      expect(checkboxes[3]).toHaveAccessibleName("Completed");
+      expect(checkboxes[3]).not.toBeChecked();
     });
   });
 

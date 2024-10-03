@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
    [metabase.lib.schema :as lib.schema]
@@ -403,3 +404,46 @@
                :lib/desired-column-alias "Q2__avg"}]
              (map #(select-keys % [:name :lib/source-column-alias ::lib.join/join-alias :lib/desired-column-alias])
                   (lib/returned-columns query)))))))
+
+(deftest ^:parallel ensure-filter-stage-test
+  (testing "no stage is added if the filter stage already exists"
+    (doseq [query [lib.tu/venues-query
+                   (-> lib.tu/venues-query
+                       (lib/filter (lib/= (meta/field-metadata :venues :category-id) 1)))
+                   (-> lib.tu/venues-query
+                       (lib/breakout (meta/field-metadata :venues :category-id)))
+                   (-> lib.tu/venues-query
+                       (lib/aggregate (lib/count)))
+                   (-> lib.tu/venues-query
+                       (lib/breakout (meta/field-metadata :venues :category-id))
+                       (lib/aggregate (lib/count))
+                       (lib/append-stage))]]
+      (is (= query (lib/ensure-filter-stage query)))))
+  (testing "a stage is added if the filter stage doesn't exists yet"
+    (doseq [query [(-> lib.tu/venues-query
+                       (lib/breakout (meta/field-metadata :venues :category-id))
+                       (lib/aggregate (lib/count)))
+                   (-> lib.tu/venues-query
+                       (lib/filter (lib/= (meta/field-metadata :venues :category-id) 1))
+                       (lib/breakout (meta/field-metadata :venues :category-id))
+                       (lib/aggregate (lib/count)))
+                   (-> lib.tu/venues-query
+                       (lib/append-stage)
+                       (lib/breakout (meta/field-metadata :venues :category-id))
+                       (lib/aggregate (lib/count))
+                       (lib/expression "2price" (lib/* (meta/field-metadata :venues :price) 2)))
+                   (let [base (-> lib.tu/venues-query
+                                  (lib/append-stage)
+                                  (lib/breakout (meta/field-metadata :venues :category-id))
+                                  (lib/breakout (meta/field-metadata :venues :price))
+                                  (lib/aggregate (lib/count))
+                                  (lib/append-stage))
+                         columns (lib/visible-columns base)
+                         by-name #(m/find-first (comp #{%} :name) columns)]
+                     (-> base
+                         (lib/filter (lib/> (by-name "count") 0))
+                         (lib/aggregate (lib/avg (by-name "count")))
+                         (lib/breakout (by-name "PRICE"))
+                         (lib/breakout (by-name "CATEGORY_ID"))))]]
+      (is (= (inc (lib/stage-count query))
+             (lib/stage-count (lib/ensure-filter-stage query)))))))

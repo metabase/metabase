@@ -11,7 +11,9 @@ export interface EChartsTooltipRow {
   markerColorClass?: string;
   name: string;
   isFocused?: boolean;
+  isSecondary?: boolean;
   values: React.ReactNode[];
+  key?: string;
 }
 
 export interface EChartsTooltipFooter {
@@ -38,8 +40,10 @@ export const EChartsTooltip = ({
   }, 0);
 
   const paddedRows = rows.map(row => {
-    const paddedValues = [...row.values];
-    paddedValues.length = maxValuesColumns;
+    const paddedValues = Object.assign(
+      Array(maxValuesColumns).fill(null),
+      row.values.slice(0, maxValuesColumns),
+    );
 
     return {
       ...row,
@@ -63,12 +67,16 @@ export const EChartsTooltip = ({
         })}
       >
         <tbody>
-          {paddedRows.map((row, index) => {
-            return <TooltipRow key={index} {...row} />;
+          {paddedRows.map(row => {
+            return !row.isSecondary ? (
+              <TooltipRow {...row} />
+            ) : (
+              <SecondaryRow {...row} />
+            );
           })}
         </tbody>
         {footer != null && (
-          <tfoot>
+          <tfoot data-testid="echarts-tooltip-footer">
             <FooterRow
               {...footer}
               markerContent={hasMarkers ? <span /> : null}
@@ -89,7 +97,7 @@ const TooltipRow = ({
   isFocused,
 }: TooltipRowProps) => (
   <BaseRow
-    className={cx({ [TooltipStyles.RowFocused]: isFocused })}
+    className={cx(TooltipStyles.Row, { [TooltipStyles.RowFocused]: isFocused })}
     name={name}
     values={values}
     markerContent={
@@ -99,6 +107,17 @@ const TooltipRow = ({
     }
   />
 );
+
+const SecondaryRow = ({ name, values }: TooltipRowProps) => {
+  return (
+    <BaseRow
+      className={TooltipStyles.SecondaryRow}
+      name={name}
+      values={values}
+      markerContent={<span />}
+    />
+  );
+};
 
 const FooterRow = ({
   name,

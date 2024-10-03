@@ -54,7 +54,7 @@ export function BooleanFilterEditor({
   };
 
   return (
-    <HoverParent>
+    <HoverParent data-testid="boolean-filter-editor">
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle

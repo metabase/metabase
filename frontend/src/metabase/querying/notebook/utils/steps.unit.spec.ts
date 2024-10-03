@@ -101,6 +101,19 @@ describe("filtered and summarized query", () => {
       ]);
     });
 
+    it("should allow reverting the summarize step for regular queries", () => {
+      const [_dataStep, _filterStep, summarizeStep] = steps;
+      expect(summarizeStep.type).toBe("summarize");
+      expect(summarizeStep.revert).toBeDefined();
+    });
+
+    it("should not allow reverting the summarize step for metrics", () => {
+      const steps = getMetricStepsForMBQLQuery(filteredAndSummarizedQuery);
+      const [_dataStep, _filterStep, summarizeStep] = steps;
+      expect(summarizeStep.type).toBe("summarize");
+      expect(summarizeStep.revert).toBeNull();
+    });
+
     it("should not allow adding a new stage for metrics", () => {
       const steps = getMetricStepsForMBQLQuery(filteredAndSummarizedQuery);
       const [dataStep, filterStep, summarizeStep] = steps;

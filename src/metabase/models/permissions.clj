@@ -175,13 +175,14 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
    [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -277,25 +278,27 @@
 (defn set-has-full-permissions?
   "Does `permissions-set` grant *full* access to object with `path`?"
   ^Boolean [permissions-set path]
-  (boolean (some #(is-permissions-for-object? % path) permissions-set)))
+  (boolean (perf/some #(is-permissions-for-object? % path) permissions-set)))
 
 (defn set-has-partial-permissions?
   "Does `permissions-set` grant access full access to object with `path` *or* to a descendant of it?"
   ^Boolean [permissions-set path]
-  (boolean (some #(is-partial-permissions-for-object? % path) permissions-set)))
+  (boolean (perf/some #(is-partial-permissions-for-object? % path) permissions-set)))
 
 (mu/defn set-has-full-permissions-for-set? :- :boolean
   "Do the permissions paths in `permissions-set` grant *full* access to all the object paths in `paths-set`?"
   [permissions-set paths-set]
-  (every? (partial set-has-full-permissions? permissions-set)
-          paths-set))
+  (let [permissions (or (:as-vec (meta permissions-set))
+                        permissions-set)]
+    (every? (partial set-has-full-permissions? permissions) paths-set)))
 
 (mu/defn set-has-partial-permissions-for-set? :- :boolean
   "Do the permissions paths in `permissions-set` grant *partial* access to all the object paths in `paths-set`?
    (`permissions-set` must grant partial access to *every* object in `paths-set` set)."
   [permissions-set paths-set]
-  (every? (partial set-has-partial-permissions? permissions-set)
-          paths-set))
+  (let [permissions (or (:as-vec (meta permissions-set))
+                        permissions-set)]
+    (every? (partial set-has-partial-permissions? permissions) paths-set)))
 
 (mu/defn set-has-application-permission-of-type? :- :boolean
   "Does `permissions-set` grant *full* access to a application permission of type `perm-type`?"
@@ -345,11 +348,26 @@
 
 (derive :model/Permissions :metabase/model)
 
+(defn- maybe-break-out-permission-data
+  "Given a `Permissions` model, add `:collection_id`, `:perm_type`, and `:perm_value` iff we know how to break that out."
+  [permissions]
+  (let [[match? coll-id-str read?] (re-matches #"^/collection/(\d+)/(read/)?" (:object permissions))]
+    (cond-> permissions
+      match? (assoc :collection_id (parse-long coll-id-str)
+                    :perm_type :perms/collection-access
+                    :perm_value (if read?
+                                  :read
+                                  :read-and-write)))))
+
 (t2/define-before-insert :model/Permissions
   [permissions]
-  (u/prog1 permissions
+  (u/prog1 (maybe-break-out-permission-data permissions)
     (assert-valid permissions)
     (log/debug (u/format-color :green "Granting permissions for group %s: %s" (:group_id permissions) (:object permissions)))))
+
+(t2/deftransforms :model/Permissions
+  {:perm_type mi/transform-keyword
+   :perm_value mi/transform-keyword})
 
 (t2/define-before-update :model/Permissions
   [_]
@@ -505,3 +523,10 @@
   [group-or-id :- MapOrID collection-or-id :- MapOrID]
   (check-is-modifiable-collection collection-or-id)
   (grant-permissions! (u/the-id group-or-id) (collection-read-path collection-or-id)))
+
+(defenterprise current-user-has-application-permissions?
+  "Check if `*current-user*` has permissions for a application permissions of type `perm-type`.
+  This is a paid feature so it's `false` for OSS instances."
+  metabase-enterprise.advanced-permissions.common
+  [_instance]
+  false)

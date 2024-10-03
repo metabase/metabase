@@ -1,4 +1,4 @@
-import { select } from "@inquirer/prompts";
+import { search } from "@inquirer/prompts";
 import toggle from "inquirer-toggle";
 import ora from "ora";
 
@@ -25,11 +25,20 @@ export const addDatabaseConnectionStep: CliStepMethod = async state => {
     return [{ type: "error", message: "Aborted." }, state];
   }
 
+  const engineChoices = getEngineChoices(settings);
+
   // eslint-disable-next-line no-constant-condition -- keep asking until the user enters a valid connection.
   while (true) {
-    const engineKey = await select({
+    const engineKey = await search({
+      pageSize: 10,
       message: "What database are you connecting to?",
-      choices: getEngineChoices(settings),
+      source(term) {
+        return term
+          ? engineChoices.filter(choice =>
+              choice.name.toLowerCase().includes(term.toLowerCase()),
+            )
+          : engineChoices;
+      },
     });
 
     const engine = settings.engines[engineKey];

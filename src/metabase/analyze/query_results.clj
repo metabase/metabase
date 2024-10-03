@@ -110,11 +110,11 @@
                                          (fingerprinters/constant-fingerprinter fingerprint))))
       (insights/insights cols))
      (fn [[fingerprints insights]]
-       {:metadata (map (fn [fingerprint metadata]
-                         (if (instance? Throwable fingerprint)
-                           metadata
-                           (assoc metadata :fingerprint fingerprint)))
-                       fingerprints
-                       cols)
+       {:metadata (mapv (fn [fingerprint metadata]
+                          (if (instance? Throwable fingerprint)
+                            metadata
+                            (assoc metadata :fingerprint fingerprint)))
+                        fingerprints
+                        cols)
         :insights (when-not (instance? Throwable insights)
                     insights)}))))

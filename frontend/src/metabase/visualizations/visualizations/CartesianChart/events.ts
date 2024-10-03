@@ -61,7 +61,9 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
+  CardDisplayType,
   CardId,
   RawSeries,
   TimelineEvent,
@@ -154,11 +156,10 @@ export const getEventDimensions = (
 
 const getEventColumnsData = (
   chartModel: BaseCartesianChartModel,
-  seriesIndex: number,
+  seriesModel: SeriesModel,
   dataIndex: number,
 ): DataPoint[] => {
   const datum = chartModel.dataset[dataIndex];
-  const seriesModel = chartModel.seriesModels[seriesIndex];
 
   const seriesModelsByDataKey = _.indexBy(chartModel.seriesModels, "dataKey");
 
@@ -188,7 +189,7 @@ const getEventColumnsData = (
       const displayValue =
         isBreakoutSeries(seriesModel) && seriesModel.breakoutColumn === col
           ? seriesModel.name
-          : value ?? NULL_DISPLAY_VALUE;
+          : (value ?? NULL_DISPLAY_VALUE);
 
       return {
         key,
@@ -337,10 +338,41 @@ export const getSeriesHoverData = (
   };
 };
 
+const getAdditionalTooltipRowsData = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  seriesModel: SeriesModel,
+  dataIndex: number,
+): EChartsTooltipRow[] => {
+  const additionalColumns = new Set(settings["graph.tooltip_columns"]);
+  const data = getEventColumnsData(chartModel, seriesModel, dataIndex);
+
+  return data
+    .filter(
+      entry =>
+        entry.col != null && additionalColumns.has(getColumnKey(entry.col)),
+    )
+    .map(data => {
+      return {
+        isSecondary: true,
+        name: data.key,
+        values: [
+          formatValueForTooltip({
+            value: data.value,
+            column: data.col,
+            settings,
+            isAlreadyScaled: true,
+          }),
+        ],
+      };
+    });
+};
+
 export const getTooltipModel = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   echartsDataIndex: number,
+  display: CardDisplayType,
   seriesDataKey: DataKey,
 ): EChartsTooltipModel | null => {
   const dataIndex = getDataIndex(
@@ -367,7 +399,7 @@ export const getTooltipModel = (
       chartModel,
       settings,
       dataIndex,
-      seriesDataKey,
+      hoveredSeries,
     );
   }
 
@@ -380,6 +412,7 @@ export const getTooltipModel = (
       seriesDataKey,
       dataIndex,
       datum,
+      hoveredSeries,
     );
   }
 
@@ -388,7 +421,8 @@ export const getTooltipModel = (
     settings,
     datum,
     dataIndex,
-    seriesDataKey,
+    display,
+    hoveredSeries,
   );
 };
 
@@ -396,10 +430,9 @@ const getAllColumnsTooltipModel = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   dataIndex: number,
-  seriesDataKey: DataKey,
+  seriesModel: SeriesModel,
 ): EChartsTooltipModel | null => {
-  const seriesIndex = findSeriesModelIndexById(chartModel, seriesDataKey);
-  const rows = getEventColumnsData(chartModel, seriesIndex, dataIndex)
+  const rows = getEventColumnsData(chartModel, seriesModel, dataIndex)
     .map(getRowFromDataPoint)
     .map(dataPoint => {
       return {
@@ -420,12 +453,31 @@ const getAllColumnsTooltipModel = (
   };
 };
 
+export const mergeSeriesRowsAndAdditionalColumnsRows = (
+  seriesRows: EChartsTooltipRow[],
+  additionalColumnsRows: EChartsTooltipRow[],
+  hoveredSeries: SeriesModel,
+) => {
+  const rows = [...seriesRows];
+  if (isBreakoutSeries(hoveredSeries)) {
+    // For breakout series we show additional columns right below the series values
+    const additionalColumnsIndex =
+      seriesRows.findIndex(row => row.isFocused) + 1;
+    rows.splice(additionalColumnsIndex, 0, ...additionalColumnsRows);
+  } else {
+    rows.push(...additionalColumnsRows);
+  }
+
+  return rows;
+};
+
 export const getSeriesOnlyTooltipModel = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   datum: Datum,
   dataIndex: number,
-  seriesDataKey: DataKey,
+  display: CardDisplayType,
+  hoveredSeries: SeriesModel,
 ): EChartsTooltipModel | null => {
   const header = String(
     formatValueForTooltip({
@@ -435,19 +487,24 @@ export const getSeriesOnlyTooltipModel = (
     }),
   );
 
-  const rows: EChartsTooltipRow[] = chartModel.seriesModels.map(
-    (seriesModel, seriesIndex) => {
+  const seriesRows: EChartsTooltipRow[] = chartModel.seriesModels
+    .filter(seriesModel => seriesModel.visible)
+    .map((seriesModel, seriesIndex) => {
+      const isHoveredSeries = seriesModel.dataKey === hoveredSeries.dataKey;
+      const isFocused = isHoveredSeries && chartModel.seriesModels.length > 1;
+
       const prevValue = computeDiffWithPreviousPeriod(
         chartModel,
         seriesIndex,
         dataIndex,
       );
+
       return {
-        isFocused:
-          chartModel.seriesModels.length > 1 &&
-          seriesModel.dataKey === seriesDataKey,
+        isFocused,
         name: seriesModel.name,
-        markerColorClass: getMarkerColorClass(seriesModel.color),
+        markerColorClass: getMarkerColorClass(
+          getSeriesOnlyTooltipRowColor(seriesModel, datum, settings, display),
+        ),
         values: [
           formatValueForTooltip({
             value: datum[seriesModel.dataKey],
@@ -458,13 +515,42 @@ export const getSeriesOnlyTooltipModel = (
           prevValue,
         ],
       };
-    },
+    });
+
+  const additionalColumnsRows = getAdditionalTooltipRowsData(
+    chartModel,
+    settings,
+    hoveredSeries,
+    dataIndex,
+  );
+
+  const rows = mergeSeriesRowsAndAdditionalColumnsRows(
+    seriesRows,
+    additionalColumnsRows,
+    hoveredSeries,
   );
 
   return {
     header,
     rows,
   };
+};
+
+const getSeriesOnlyTooltipRowColor = (
+  seriesModel: SeriesModel,
+  datum: Datum,
+  settings: ComputedVisualizationSettings,
+  display: CardDisplayType,
+) => {
+  const value = datum[seriesModel.dataKey];
+  if (display === "waterfall" && typeof value === "number") {
+    const color =
+      value >= 0
+        ? settings["waterfall.increase_color"]
+        : settings["waterfall.decrease_color"];
+    return color ?? seriesModel.color;
+  }
+  return seriesModel.color;
 };
 
 export const getStackedTooltipModel = (
@@ -474,10 +560,13 @@ export const getStackedTooltipModel = (
   seriesDataKey: DataKey,
   dataIndex: number,
   datum: Datum,
+  hoveredSeries: SeriesModel,
 ): EChartsTooltipModel | null => {
   const stackSeriesRows = chartModel.seriesModels
-    .filter(seriesModel =>
-      seriesStack?.seriesKeys.includes(seriesModel.dataKey),
+    .filter(
+      seriesModel =>
+        seriesModel.visible &&
+        seriesStack?.seriesKeys.includes(seriesModel.dataKey),
     )
     .map(seriesModel => {
       return {
@@ -513,7 +602,7 @@ export const getStackedTooltipModel = (
     }),
   );
 
-  const formattedTooltipRows: EChartsTooltipRow[] = stackSeriesRows
+  const formattedSeriesRows: EChartsTooltipRow[] = stackSeriesRows
     .filter(row => row.value != null)
     .map(tooltipRow => {
       return {
@@ -529,9 +618,22 @@ export const getStackedTooltipModel = (
       };
     });
 
+  const additionalColumnsRows = getAdditionalTooltipRowsData(
+    chartModel,
+    settings,
+    hoveredSeries,
+    dataIndex,
+  );
+
+  const rows = mergeSeriesRowsAndAdditionalColumnsRows(
+    formattedSeriesRows,
+    additionalColumnsRows,
+    hoveredSeries,
+  );
+
   return {
     header,
-    rows: formattedTooltipRows,
+    rows,
     footer: isShowingTotalSensible
       ? {
           name: t`Total`,
@@ -623,7 +725,7 @@ export const getSeriesClickData = (
 
   const datum = chartModel.dataset[dataIndex];
 
-  const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
+  const data = getEventColumnsData(chartModel, seriesModel, dataIndex);
   const dimensions = getEventDimensions(
     chartModel,
     datum,

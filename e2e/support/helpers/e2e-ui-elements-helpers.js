@@ -83,6 +83,10 @@ export function leftSidebar() {
   return cy.findByTestId("sidebar-left");
 }
 
+export function sidesheet() {
+  return cy.findByTestId("sidesheet");
+}
+
 export function navigationSidebar() {
   return cy.findByTestId("main-navbar-root");
 }
@@ -264,6 +268,10 @@ export function dashboardCards() {
 
 export function tableInteractive() {
   return cy.findByTestId("TableInteractive-root");
+}
+
+export function tableInteractiveBody() {
+  return cy.get("#main-data-grid");
 }
 
 export function tableHeaderClick(headerString) {

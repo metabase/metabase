@@ -227,6 +227,30 @@
   [_query _stage-number _x]
   #{})
 
+(defn- mark-unit [options option-key unit]
+  (cond->> options
+    (some #(= (:unit %) unit) options)
+    (mapv (fn [option]
+            (cond-> option
+              (contains? option option-key) (dissoc option option-key)
+              (= (:unit option) unit)       (assoc option-key true))))))
+
+(defn available-temporal-buckets-for-type
+  "Given the type of this column and nillable `default-unit` and `selected-unit`s, return the correct list of buckets."
+  [column-type default-unit selected-unit]
+  (let [options       (cond
+                        (isa? column-type :type/DateTime) datetime-bucket-options
+                        (isa? column-type :type/Date)     date-bucket-options
+                        (isa? column-type :type/Time)     time-bucket-options
+                        :else                             [])
+        fallback-unit (if (isa? column-type :type/Time)
+                        :hour
+                        :month)
+        default-unit  (or default-unit fallback-unit)]
+    (cond-> options
+      default-unit  (mark-unit :default  default-unit)
+      selected-unit (mark-unit :selected selected-unit))))
+
 (mu/defn available-temporal-buckets :- [:sequential [:ref ::lib.schema.temporal-bucketing/option]]
   "Get a set of available temporal bucketing units for `x`. Returns nil if no units are available."
   ([query x]
@@ -243,3 +267,34 @@
   [temporal-column
    temporal-value :- [:or :int :string]]
   (shared.ut/format-unit temporal-value (:unit (temporal-bucket temporal-column))))
+
+(defn add-temporal-bucket-to-ref
+  "Internal helper shared between a few implementations of [[with-temporal-bucket-method]].
+
+  Not intended to be called otherwise."
+  [[tag options id-or-name] unit]
+  ;; if `unit` is an extraction unit like `:month-of-year`, then the `:effective-type` of the ref changes to
+  ;; `:type/Integer` (month of year returns an int). We need to record the ORIGINAL effective type somewhere in case
+  ;; we need to refer back to it, e.g. to see what temporal buckets are available if we want to change the unit, or if
+  ;; we want to remove it later. We will record this with the key `::original-effective-type`. Note that changing the
+  ;; unit multiple times should keep the original first value of `::original-effective-type`.
+  (if unit
+    (let [extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
+          original-effective-type ((some-fn :metabase.lib.field/original-effective-type :effective-type :base-type)
+                                   options)
+          new-effective-type      (if extraction-unit?
+                                    :type/Integer
+                                    original-effective-type)
+          options                 (assoc options
+                                         :temporal-unit unit
+                                         :effective-type new-effective-type
+                                         :metabase.lib.field/original-effective-type original-effective-type)]
+      [tag options id-or-name])
+    ;; `unit` is `nil`: remove the temporal bucket.
+    (let [options (if-let [original-effective-type (:metabase.lib.field/original-effective-type options)]
+                    (-> options
+                        (assoc :effective-type original-effective-type)
+                        (dissoc :metabase.lib.field/original-effective-type))
+                    options)
+          options (dissoc options :temporal-unit)]
+      [tag options id-or-name])))

@@ -53,6 +53,16 @@ describe("link", () => {
     expect(screen.getByText("23.12")).toBeInTheDocument();
   });
 
+  it("should not apply prefix or suffix to null values", () => {
+    setup(null, {
+      prefix: "foo ",
+      suffix: " bar",
+    });
+
+    const anyContent = screen.queryByText(/./);
+    expect(anyContent).not.toBeInTheDocument();
+  });
+
   it("should trim values to specified decimals", () => {
     setup(23.123459, {
       decimals: 5,

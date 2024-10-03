@@ -22,20 +22,23 @@
 ;; This number has not been chosen scientifically.
 (def ^:private max-delete-batch-size 1000)
 
-(defn- analyze-cards-without-query-fields!
+(defn- analyze-cards-without-complete-analysis!
   ([]
-   (analyze-cards-without-query-fields! query-analysis/analyze-sync!))
+   (analyze-cards-without-complete-analysis! query-analysis/queue-analysis!))
   ([analyze-fn]
    (let [cards (t2/reducible-select [:model/Card :id]
-                                    {:left-join [[:query_field :qf] [:= :qf.card_id :report_card.id]]
+                                    {:left-join [[:query_analysis :qa]
+                                                 [:and
+                                                  [:= :qa.card_id :report_card.id]
+                                                  [:= :qa.status "complete"]]]
                                      :where     [:and
                                                  [:not :report_card.archived]
-                                                 [:= :qf.id nil]]})]
+                                                 [:= :qa.id nil]]})]
      (run! analyze-fn cards))))
 
 (defn- analyze-stale-cards!
   ([]
-   (analyze-cards-without-query-fields! query-analysis/analyze-sync!))
+   (analyze-cards-without-complete-analysis! query-analysis/queue-analysis!))
   ([analyze-fn]
    ;; TODO once we are storing the hash of the query used for analysis, we'll be able to filter this properly.
    (let [cards (t2/reducible-select [:model/Card :id])]
@@ -63,11 +66,11 @@
    (sweep-query-analysis-loop! first-time?
                                (fn [card-or-id]
                                  (log/debugf "Queueing card %s for query analysis" (u/the-id card-or-id))
-                                 (query-analysis/analyze-sync! card-or-id))))
+                                 (query-analysis/queue-analysis! card-or-id))))
   ([first-time? analyze-fn]
    ;; prioritize cards that are missing analysis
    (log/info "Calculating analysis for cards without any")
-   (analyze-cards-without-query-fields! analyze-fn)
+   (analyze-cards-without-complete-analysis! analyze-fn)
 
    ;; we run through all the existing analysis on our first run, as it may be stale due to an old macaw version, etc.
    (when first-time?

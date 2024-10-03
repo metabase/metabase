@@ -23,7 +23,8 @@
 (sql-jdbc.tx/add-test-extensions! :athena)
 
 (doseq [feature [:test/time-type
-                 :test/timestamptz-type]]
+                 :test/timestamptz-type
+                 :test/dynamic-dataset-loading]]
   (defmethod driver/database-supports? [:athena feature]
     [_driver _feature _database]
     false))
@@ -182,6 +183,7 @@
                               :type/Float          "DOUBLE"
                               :type/Integer        "INT"
                               :type/Text           "STRING"
+                              :type/UUID           "UUID"
                               :type/Time           "TIMESTAMP"}]
   (defmethod sql.tx/field-base-type->sql-type [:athena base-type] [_ _] sql-type))
 

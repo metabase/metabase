@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.metadata :as sql-jdbc.metadata]
@@ -126,15 +127,27 @@
   [_driver _semantic_type expr]
   (h2x/->timestamp expr))
 
+(defmacro ^:private with-quoting [driver & body]
+  `(binding [sql/*dialect* (sql/get-dialect (sql.qp/quote-style ~driver))
+             sql/*quoted*  true]
+     ~@body))
+
+(defn- quote-identifier [ref]
+  [:raw (sql/format-entity ref)])
+
 (defn- create-table!-sql
   [driver table-name column-definitions & {:keys [primary-key]}]
-  (first (sql/format {:create-table (keyword table-name)
-                      :with-columns (cond-> (mapv (fn [[name type-spec]]
-                                                    (vec (cons name type-spec)))
-                                                  column-definitions)
-                                      primary-key (conj [(into [:primary-key] primary-key)]))}
-                     :quoted true
-                     :dialect (sql.qp/quote-style driver))))
+  (with-quoting driver
+    (first (sql/format {:create-table (keyword table-name)
+                        :with-columns (cond-> (mapv (fn [[col-name type-spec]]
+                                                      (vec (cons (quote-identifier col-name)
+                                                                 (if (string? type-spec)
+                                                                   [[:raw type-spec]]
+                                                                   type-spec))))
+                                                    column-definitions)
+                                        primary-key (conj [(into [:primary-key] primary-key)]))}
+                       :quoted true
+                       :dialect (sql.qp/quote-style driver)))))
 
 (defmethod driver/create-table! :sql-jdbc
   [driver database-id table-name column-definitions & {:keys [primary-key]}]
@@ -159,9 +172,7 @@
 
 (defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]
-  (let [table-name (keyword table-name)
-        columns    (map keyword column-names)
-        ;; We need to partition the insert into multiple statements for both performance and correctness.
+  (let [;; We need to partition the insert into multiple statements for both performance and correctness.
         ;;
         ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
         ;; little faster but not by much (3.63m), and 10,000 threw an error:
@@ -170,11 +181,12 @@
         ;; across all drivers. With that in mind, 100 seems like a safe compromise.
         ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
         chunks     (partition-all (or driver/*insert-chunk-rows* 100) values)
-        sqls       (map #(sql/format {:insert-into table-name
-                                      :columns     columns
+        dialect    (sql.qp/quote-style driver)
+        sqls       (map #(sql/format {:insert-into (keyword table-name)
+                                      :columns     (sql-jdbc.common/quote-columns dialect column-names)
                                       :values      %}
                                      :quoted true
-                                     :dialect (sql.qp/quote-style driver))
+                                     :dialect dialect)
                         chunks)]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (doseq [sql sqls]
@@ -183,16 +195,20 @@
 (defmethod driver/add-columns! :sql-jdbc
   [driver db-id table-name column-definitions & {:keys [primary-key]}]
   (mu/validate-throw [:maybe [:cat :keyword]] primary-key) ; we only support adding a single primary key column for now
-  (let [primary-key-column (first primary-key)
-        sql (first (sql/format {:alter-table (keyword table-name)
-                                :add-column (map (fn [[column-name type-and-constraints]]
-                                                   (cond-> (vec (cons column-name type-and-constraints))
-                                                     (= primary-key-column column-name)
-                                                     (conj :primary-key)))
-                                                 column-definitions)}
-                               :quoted true
-                               :dialect (sql.qp/quote-style driver)))]
-    (qp.writeback/execute-write-sql! db-id sql)))
+  (with-quoting driver
+    (let [primary-key-column (first primary-key)
+          sql                (first (sql/format {:alter-table (keyword table-name)
+                                                 :add-column  (map (fn [[column-name type-and-constraints]]
+                                                                     (cond-> (vec (cons (quote-identifier column-name)
+                                                                                        (if (string? type-and-constraints)
+                                                                                          [[:raw type-and-constraints]]
+                                                                                          type-and-constraints)))
+                                                                       (= primary-key-column column-name)
+                                                                       (conj :primary-key)))
+                                                                   column-definitions)}
+                                                :quoted true
+                                                :dialect (sql.qp/quote-style driver)))]
+      (qp.writeback/execute-write-sql! db-id sql))))
 
 (defmethod driver/alter-columns! :sql-jdbc
   [driver db-id table-name column-definitions]

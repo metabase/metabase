@@ -70,7 +70,7 @@ export function NumberFilterEditor({
   };
 
   return (
-    <HoverParent>
+    <HoverParent data-testid="number-filter-editor">
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle

@@ -3,14 +3,16 @@ import { useCallback } from "react";
 
 import type { DragEndEvent } from "metabase/core/components/Sortable";
 import { Sortable, SortableList } from "metabase/core/components/Sortable";
+import type { AccentColorOptions } from "metabase/lib/colors/types";
 import type { IconProps } from "metabase/ui";
 
 import { ColumnItem } from "../ColumnItem";
 
-interface SortableItem {
+export interface SortableItem {
   enabled: boolean;
   color?: string;
   icon?: IconProps["name"];
+  isOther?: boolean;
 }
 
 interface SortableColumnFunctions<T> {
@@ -27,6 +29,9 @@ interface ChartSettingOrderedItemsProps<T extends SortableItem>
   onSortEnd: ({ id, newIndex }: DragEndEvent) => void;
   items: T[];
   getId: (item: T) => string | number;
+  removeIcon?: IconProps["name"];
+  accentColorOptions?: AccentColorOptions;
+  getItemColor?: (item: SortableItem) => string | undefined;
 }
 
 export function ChartSettingOrderedItems<T extends SortableItem>({
@@ -40,6 +45,9 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   items,
   onColorChange,
   getId,
+  removeIcon,
+  accentColorOptions,
+  getItemColor = item => item.color,
 }: ChartSettingOrderedItemsProps<T>) {
   const isDragDisabled = items.length < 1;
   const pointerSensor = useSensor(PointerSensor, {
@@ -47,40 +55,46 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   });
 
   const renderItem = useCallback(
-    ({ item, id }: { item: T; id: string | number }) => (
-      <Sortable
-        id={id}
-        key={`sortable-${id}`}
-        disabled={isDragDisabled}
-        draggingStyle={{ opacity: 0.5 }}
-      >
-        <ColumnItem
-          title={getItemName(item)}
-          onEdit={
-            onEdit
-              ? (targetElement: HTMLElement) => onEdit(item, targetElement)
-              : undefined
-          }
-          onRemove={onRemove && item.enabled ? () => onRemove(item) : undefined}
-          onClick={onClick ? () => onClick(item) : undefined}
-          onAdd={onAdd ? () => onAdd(item) : undefined}
-          onEnable={
-            onEnable && !item.enabled ? () => onEnable(item) : undefined
-          }
-          onColorChange={
-            onColorChange
-              ? (color: string) => onColorChange(item, color)
-              : undefined
-          }
-          color={item.color}
-          draggable={!isDragDisabled}
-          icon={item.icon}
-          role="listitem"
-        />
-      </Sortable>
-    ),
+    ({ item, id }: { item: T; id: string | number }) =>
+      !item.isOther ? (
+        <Sortable
+          id={id}
+          key={`sortable-${id}`}
+          disabled={isDragDisabled}
+          draggingStyle={{ opacity: 0.5 }}
+        >
+          <ColumnItem
+            title={getItemName(item)}
+            onEdit={
+              onEdit
+                ? (targetElement: HTMLElement) => onEdit(item, targetElement)
+                : undefined
+            }
+            onRemove={
+              onRemove && item.enabled ? () => onRemove(item) : undefined
+            }
+            onClick={onClick ? () => onClick(item) : undefined}
+            onAdd={onAdd ? () => onAdd(item) : undefined}
+            onEnable={
+              onEnable && !item.enabled ? () => onEnable(item) : undefined
+            }
+            onColorChange={
+              onColorChange
+                ? (color: string) => onColorChange(item, color)
+                : undefined
+            }
+            color={getItemColor(item)}
+            draggable={!isDragDisabled}
+            icon={item.icon}
+            removeIcon={removeIcon}
+            role="listitem"
+            accentColorOptions={accentColorOptions}
+          />
+        </Sortable>
+      ) : null,
     [
       isDragDisabled,
+      removeIcon,
       getItemName,
       onEdit,
       onRemove,
@@ -88,6 +102,8 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
       onAdd,
       onEnable,
       onColorChange,
+      accentColorOptions,
+      getItemColor,
     ],
   );
 

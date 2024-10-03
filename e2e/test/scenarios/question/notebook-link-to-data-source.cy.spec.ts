@@ -1,4 +1,4 @@
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -8,6 +8,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   type NativeQuestionDetails,
+  assertDatasetReqIsSandboxed,
   createNativeQuestion,
   createQuestion,
   describeEE,
@@ -524,9 +525,14 @@ describe("scenarios > notebook > link to data source", () => {
           "have.text",
           "Showing 11 rows",
         );
+        assertDatasetReqIsSandboxed({
+          requestAlias: `@modelQuery${ORDERS_MODEL_ID}`,
+        });
       });
 
       it("should work for sandboxed users when joined table is sandboxed", () => {
+        cy.intercept("/api/dataset").as("dataset");
+
         openProductsTable({ mode: "notebook" });
         cy.findByTestId("action-buttons").button("Join data").click();
         entityPickerModal().within(() => {
@@ -543,6 +549,10 @@ describe("scenarios > notebook > link to data source", () => {
           "have.text",
           "Showing 11 rows",
         );
+        assertDatasetReqIsSandboxed({
+          columnId: ORDERS.USER_ID,
+          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+        });
       });
     });
   });
@@ -635,9 +645,6 @@ describe("scenarios > notebook > link to data source", () => {
           cy.log("Model should open in a new tab");
 
           getNotebookStep("join", { stage: 0, index: 0 }).within(() => {
-            // Clicking on a left join cell does not have any effect
-            cy.findByLabelText("Left table").click(clickConfig);
-
             cy.findByLabelText("Right table")
               .should("have.text", "Orders Model")
               .click(clickConfig);
@@ -663,9 +670,6 @@ describe("scenarios > notebook > link to data source", () => {
           cy.log("Saved question should open in a new tab");
 
           getNotebookStep("join", { stage: 0, index: 1 }).within(() => {
-            // Clicking on a left join cell does not have any effect
-            cy.findByLabelText("Left table").click(clickConfig);
-
             cy.findByLabelText("Right table")
               .should("have.text", savedQuestion.name)
               .click(clickConfig);
@@ -690,9 +694,6 @@ describe("scenarios > notebook > link to data source", () => {
         (function testRawTable() {
           cy.log("Raw table should open in a new tab");
           getNotebookStep("join", { stage: 0, index: 2 }).within(() => {
-            // Clicking on a left join cell does not have any effect
-            cy.findByLabelText("Left table").click(clickConfig);
-
             cy.findByLabelText("Right table")
               .should("have.text", "Reviews")
               .click(clickConfig);

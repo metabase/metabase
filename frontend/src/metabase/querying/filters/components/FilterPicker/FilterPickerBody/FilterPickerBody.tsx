@@ -52,14 +52,13 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isTime(column)) {
     return TimeFilterPicker;
   }
-  if (Lib.isTemporal(column)) {
+  if (Lib.isDateOrDateTime(column)) {
     return DateFilterPicker;
   }
-  if (Lib.isCoordinate(column)) {
-    return CoordinateFilterPicker;
-  }
   if (Lib.isNumeric(column)) {
-    return NumberFilterPicker;
+    return Lib.isCoordinate(column)
+      ? CoordinateFilterPicker
+      : NumberFilterPicker;
   }
   if (Lib.isStringOrStringLike(column)) {
     return StringFilterPicker;

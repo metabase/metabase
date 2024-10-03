@@ -6,6 +6,8 @@
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
@@ -44,18 +46,32 @@
            (assoc strategy :avg-execution-ms (or et 0)))
     strategy))
 
+(defn- filter-stage-used?
+  [parameters]
+  (boolean
+   (some (fn [{:keys [target]}]
+           (and (mbql.u/is-clause? :dimension target)
+                (contains? (get target 2) :stage-number)))
+         parameters)))
+
 (defn query-for-card
   "Generate a query for a saved Card"
   [{query :dataset_query
     :as   card} parameters constraints middleware & [ids]]
-  (let [query     (-> query
-                      ;; don't want default constraints overridding anything that's already there
-                      (m/dissoc-in [:middleware :add-default-userland-constraints?])
-                      (assoc :constraints constraints
-                             :parameters  parameters
-                             :middleware  middleware))
-        cs        (-> (cache-strategy card (:dashboard-id ids))
-                      (enrich-strategy query))]
+  (let [query (-> query
+                  ;; don't want default constraints overridding anything that's already there
+                  (m/dissoc-in [:middleware :add-default-userland-constraints?])
+                  (assoc :constraints constraints
+                         :parameters  parameters
+                         :middleware  middleware))
+        query (cond-> query
+                ;; If query has aggregation and breakout at the top level,
+                ;; parameters refer to stages as if a new stage was appended.
+                ;; This is so that we can distinguish if a filter should be applied
+                ;; before of after summarizing.
+                (filter-stage-used? parameters) lib/ensure-filter-stage)
+        cs    (-> (cache-strategy card (:dashboard-id ids))
+                  (enrich-strategy query))]
     (assoc query :cache-strategy cs)))
 
 (def ^:dynamic *allow-arbitrary-mbql-parameters*

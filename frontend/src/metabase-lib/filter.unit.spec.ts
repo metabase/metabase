@@ -1053,6 +1053,18 @@ describe("filter", () => {
         expect(filterParts).toBeNull();
       });
 
+      it("should ignore expressions based on time columns", () => {
+        const { filterParts } = addSpecificDateFilter(
+          query,
+          Lib.expressionClause("=", [
+            "2020-01-01",
+            findColumn(query, "PEOPLE", TIME_FIELD.name),
+          ]),
+        );
+
+        expect(filterParts).toBeNull();
+      });
+
       it("should ignore expressions with non-time arguments", () => {
         const { filterParts } = addSpecificDateFilter(
           query,
@@ -1238,6 +1250,19 @@ describe("filter", () => {
       expect(filterParts).toBeNull();
     });
 
+    it("should ignore expressions based on time columns", () => {
+      const { filterParts } = addRelativeDateFilter(
+        query,
+        Lib.expressionClause("time-interval", [
+          findColumn(query, "PEOPLE", TIME_FIELD.name),
+          "current",
+          "day",
+        ]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
     it("should ignore expressions without first column", () => {
       const { filterParts } = addRelativeDateFilter(
         query,
@@ -1400,6 +1425,29 @@ describe("filter", () => {
       const { filterParts } = addExcludeDateFilter(
         query,
         Lib.expressionClause("=", [column, "2020-01-01"]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions without arguments based on time columns", () => {
+      const { filterParts } = addExcludeDateFilter(
+        query,
+        Lib.expressionClause("is-null", [
+          findColumn(query, "PEOPLE", TIME_FIELD.name),
+        ]),
+      );
+
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with 1 argument based on time columns", () => {
+      const { filterParts } = addExcludeDateFilter(
+        query,
+        Lib.expressionClause("!=", [
+          findColumn(query, "PEOPLE", TIME_FIELD.name),
+          "2020-01-01",
+        ]),
       );
 
       expect(filterParts).toBeNull();

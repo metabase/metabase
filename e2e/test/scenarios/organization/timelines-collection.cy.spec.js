@@ -1,5 +1,7 @@
 import { USERS } from "e2e/support/cypress_data";
 import {
+  createTimeline,
+  createTimelineWithEvents,
   describeWithSnowplow,
   enableTracking,
   entityPickerModal,
@@ -84,7 +86,7 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should search for events", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         events: [
           { name: "RC1" },
           { name: "RC2" },
@@ -221,7 +223,7 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should edit an event", () => {
-      cy.createTimelineWithEvents({ events: [{ name: "RC1" }] });
+      createTimelineWithEvents({ events: [{ name: "RC1" }] });
       cy.visit("/collection/root/timelines");
 
       openMenu("RC1");
@@ -236,18 +238,17 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should move an event", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1" }],
       });
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Metrics" },
         events: [{ name: "RC2" }],
       });
 
       cy.visit("/collection/root/timelines");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Metrics").click();
+      modal().findByText("Metrics").click();
       openMenu("RC2");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Move event").click();
@@ -268,18 +269,17 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should move an event and undo", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1" }],
       });
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Metrics" },
         events: [{ name: "RC2" }],
       });
 
       cy.visit("/collection/root/timelines");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Metrics").click();
+      modal().findByText("Metrics").click();
       openMenu("RC2");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Move event").click();
@@ -298,7 +298,7 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should archive an event when editing this event", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1" }, { name: "RC2" }],
       });
@@ -319,7 +319,7 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should archive an event from the timeline and undo", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1" }, { name: "RC2" }],
       });
@@ -341,7 +341,7 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should unarchive an event from the archive and undo", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", archived: true }],
       });
@@ -369,7 +369,7 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should delete an event", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", archived: true }],
       });
@@ -392,22 +392,20 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should allow navigating back to the list of timelines", () => {
-      cy.createTimeline({ name: "Releases" });
-      cy.createTimeline({ name: "Metrics" });
+      createTimeline({ name: "Releases" });
+      createTimeline({ name: "Metrics" });
 
       cy.visit("/collection/root/timelines/1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Releases");
 
       cy.icon("chevronleft").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Releases");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Metrics");
+      modal().findByText("Releases");
+      modal().findByText("Metrics");
     });
 
     it("should not allow navigating back when there is only one timeline in a collection", () => {
-      cy.createTimeline({ name: "Releases" });
+      createTimeline({ name: "Releases" });
 
       cy.visit("/collection/root/timelines/1");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -416,7 +414,7 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should create an additional timeline", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1" }],
       });
@@ -437,7 +435,7 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should edit a timeline", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1" }],
       });
@@ -456,7 +454,7 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should move a timeline", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Events", default: true },
         events: [{ name: "RC1" }],
       });
@@ -481,7 +479,7 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should archive a timeline and undo", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1" }, { name: "RC2" }],
       });
@@ -510,12 +508,12 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should support markdown in timeline description", () => {
-      cy.createTimeline({
+      createTimeline({
         name: "Releases",
         description: "[Release notes](https://metabase.test)",
       });
 
-      cy.createTimeline({
+      createTimeline({
         name: "Holidays",
         description: "[Holiday list](https://metabase.test)",
       });
@@ -528,7 +526,7 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should support markdown in event description", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: {
           name: "Releases",
         },
@@ -546,7 +544,7 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should archive and unarchive a timeline", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1" }, { name: "RC2" }],
       });
@@ -575,7 +573,7 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should archive and delete a timeline", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1" }, { name: "RC2" }],
       });
@@ -639,7 +637,7 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should use custom date formatting settings", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         events: [{ name: "RC1", timestamp: "2022-10-12T18:15:30Z" }],
       });
       setFormattingSettings({
@@ -660,7 +658,7 @@ describe("scenarios > organization > timelines > collection", () => {
     });
 
     it("should use custom time formatting settings", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         events: [{ name: "RC1", timestamp: "2022-10-12T18:15:30Z" }],
       });
       setFormattingSettings({
@@ -695,7 +693,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
     it("should not allow creating new events in existing timelines", () => {
       cy.signInAsAdmin();
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1" }],
       });

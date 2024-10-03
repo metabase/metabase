@@ -9,12 +9,33 @@ import LegendItem from "./LegendItem";
 
 export default class LegendHorizontal extends Component {
   render() {
-    const { className, titles, colors, hovered, onHoverChange } = this.props;
+    const {
+      className,
+      titles,
+      colors,
+      hiddenIndices,
+      hovered,
+      onHoverChange,
+      onToggleSeriesVisibility,
+    } = this.props;
     return (
       <ol className={cx(className, LegendS.Legend, LegendS.horizontal)}>
         {titles.map((title, index) => {
           const isMuted =
             hovered && hovered.index != null && index !== hovered.index;
+          const isVisible = !hiddenIndices.includes(index);
+
+          const handleMouseEnter = () => {
+            onHoverChange?.({
+              index,
+              element: ReactDOM.findDOMNode(this.refs["legendItem" + index]),
+            });
+          };
+
+          const handleMouseLeave = () => {
+            onHoverChange?.(null);
+          };
+
           return (
             <li
               key={index}
@@ -26,17 +47,22 @@ export default class LegendHorizontal extends Component {
                 title={title}
                 color={colors[index % colors.length]}
                 isMuted={isMuted}
+                isVisible={isVisible}
                 showTooltip={false}
-                onMouseEnter={() =>
-                  onHoverChange &&
-                  onHoverChange({
-                    index,
-                    element: ReactDOM.findDOMNode(
-                      this.refs["legendItem" + index],
-                    ),
-                  })
-                }
-                onMouseLeave={() => onHoverChange && onHoverChange(null)}
+                onMouseEnter={() => {
+                  if (isVisible) {
+                    handleMouseEnter();
+                  }
+                }}
+                onMouseLeave={handleMouseLeave}
+                onToggleSeriesVisibility={event => {
+                  if (isVisible) {
+                    handleMouseLeave();
+                  } else {
+                    handleMouseEnter();
+                  }
+                  onToggleSeriesVisibility(event, index);
+                }}
               />
             </li>
           );

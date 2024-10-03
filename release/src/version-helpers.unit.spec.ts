@@ -1,21 +1,20 @@
 import type { Tag } from "./types";
 import {
-  isValidVersionString,
-  getOSSVersion,
+  findNextPatchVersion,
+  getBuildRequirements,
   getEnterpriseVersion,
-  isEnterpriseVersion,
-  isRCVersion,
-  getVersionType,
+  getGenericVersion,
+  getLastReleaseFromTags,
+  getMilestoneName,
+  getNextVersions,
+  getOSSVersion,
   getReleaseBranch,
   getVersionFromReleaseBranch,
-  isLatestVersion,
-  getBuildRequirements,
-  getNextVersions,
-  getGenericVersion,
-  getMilestoneName,
-  findNextPatchVersion,
+  getVersionType,
+  isEnterpriseVersion,
+  isRCVersion,
+  isValidVersionString,
   versionSort,
-  getLastReleaseFromTags,
 } from "./version-helpers";
 
 describe("version-helpers", () => {
@@ -221,102 +220,6 @@ describe("version-helpers", () => {
     });
   });
 
-  describe("isLatestVersion", () => {
-    it(`should return true for latest releases`, () => {
-      const cases: [string, string[]][] = [
-        ["v0.25.2.1", ["v0.24.0", "v0.25.1", "v0.25.2", "v0.9.0"]],
-        ["v0.25.3", ["v0.24.0", "v0.25.1", "v0.25.2"]],
-        ["v0.26.0", ["v0.24.0", "v0.25.1", "v0.25.2"]],
-        ["v0.26.0", ["v0.24.0", "v0.25.1", "v0.25.2"]],
-      ];
-      cases.forEach(([input, releases]) => {
-        expect(isLatestVersion(input, releases)).toEqual(true);
-        expect(isLatestVersion(input, releases.reverse())).toEqual(true);
-      });
-    });
-
-    it(`should return false for non-latest releases`, () => {
-      const cases: [string, string[]][] = [
-        ["v0.21.2.1", ["v0.24.0", "v0.25.1", "v0.25.2", "v0.9.9.9"]],
-        ["v0.25.1.2", ["v0.24.0", "v0.25.1", "v0.25.2", "v0.9.9.9"]],
-        ["v0.25.0", ["v0.24.0", "v0.25.1", "v0.25.2", "v0.9.0"]],
-        ["v0.25.1.99", ["v0.24.0", "v0.25.1", "v0.25.2", "v0.9.0"]],
-        ["v0.71", ["v0.24", "v0.25.1", "v0.25.2", "v0.80.0"]],
-      ];
-      cases.forEach(([input, releases]) => {
-        expect(isLatestVersion(input, releases)).toEqual(false);
-        expect(isLatestVersion(input, releases.reverse())).toEqual(false);
-      });
-    });
-
-    it("should ignore EE vs OSS version", () => {
-      const falseCases: [string, string[]][] = [
-        ["v0.21.2.1", ["v1.24", "v1.25.1", "v0.25.2"]],
-        ["v1.25.1.2", ["v0.24", "v1.25.1", "v0.25.2"]],
-        ["v0.25", ["v1.24", "v0.25.1", "v1.25.2"]],
-        ["v1.25.1.99", ["v0.24", "v0.25.1", "v1.25.2"]],
-      ];
-
-      falseCases.forEach(([input, releases]) => {
-        expect(isLatestVersion(input, releases)).toEqual(false);
-        expect(isLatestVersion(input, releases.reverse())).toEqual(false);
-      });
-
-      const trueCases: [string, string[]][] = [
-        ["v0.25.2.1", ["v0.24", "v0.25.1", "v0.25.2"]],
-        ["v0.25.3", ["v0.24", "v0.25.1", "v0.25.2"]],
-        ["v0.26", ["v0.24", "v0.25.1", "v0.25.2"]],
-        ["v0.26.0", ["v0.24", "v0.25.1", "v0.25.2"]],
-      ];
-
-      trueCases.forEach(([input, releases]) => {
-        expect(isLatestVersion(input, releases)).toEqual(true);
-        expect(isLatestVersion(input, releases.reverse())).toEqual(true);
-      });
-    });
-
-    it("should return true for an equal release", () => {
-      expect(isLatestVersion("v0.25.2", ["v0.25.2", "v0.25.1"])).toEqual(true);
-    });
-
-    it("should return true for an equal release of ee/oss", () => {
-      // this is important because if we release 0.25.2 and 1.25.2 at the same time,
-      // they should both be "latest" - and one of them will always be tagged first
-      expect(isLatestVersion("v0.25.2", ["v1.25.2", "v0.25.1"])).toEqual(true);
-      expect(isLatestVersion("v1.25.2", ["v0.25.2", "v0.25.1"])).toEqual(true);
-    });
-
-    it("should filter out invalid versions", () => {
-      const trueCases: [string, string[]][] = [
-        ["v0.25.2.1", ["v0.24", "v0.25.1", "99"]],
-        ["v0.25.3", ["v0.24", "v0.25.1", "xyz"]],
-        ["v0.26", ["v0.24", "v0.25.1", "v99.99.99"]],
-        ["v0.26.0", ["-1", "000", ""]],
-      ];
-
-      trueCases.forEach(([input, releases]) => {
-        expect(isLatestVersion(input, releases)).toEqual(true);
-        expect(isLatestVersion(input, releases.reverse())).toEqual(true);
-      });
-    });
-
-    it("should never mark an RC as latest", () => {
-      const cases: [string, string[]][] = [
-        ["v0.25.2.1-rc1", ["v0.24.0", "v0.25.1", "v0.25.2-rc1"]],
-        ["v0.25.3-rc2", ["v0.24.0", "v0.25.1", "v0.25.2-rc2"]],
-        ["v0.26.0-RC2", ["v0.24.0", "v0.25.1", "v0.25.2-rc3"]],
-        ["v0.24.5-rc1", ["v0.24.0", "v0.25.1", "v0.25.2-rc4"]],
-        ["v0.26.0-rc99", ["v0.24.0", "v0.25.1", "v0.25.2-rc4"]],
-        ["v0.99.0-rc99", ["v0.24.0", "v0.25.1", "v0.99-rc4", "v0.9.9.9"]],
-      ];
-
-      cases.forEach(([input, releases]) => {
-        expect(isLatestVersion(input, releases)).toEqual(false);
-        expect(isLatestVersion(input, releases.reverse())).toEqual(false);
-      });
-    });
-  });
-
   describe("getBuildRequirements", () => {
     it("should return the correct build requirements for provided ee version", () => {
       expect(getBuildRequirements("v1.47.2.1")).toEqual({
@@ -474,16 +377,16 @@ describe("version-helpers", () => {
 
   describe('getLastReleaseFromTags', () => {
     it('should return the latest release tag for minor versions', () => {
-      const latest = getLastReleaseFromTags([
+      const latest = getLastReleaseFromTags({ tags: [
         { ref: 'refs/tags/v0.12.0' },
         { ref: 'refs/tags/v0.12.2' },
         { ref: 'refs/tags/v0.12.1' },
-      ] as Tag[]);
+      ] as Tag[]});
       expect(latest).toBe('v0.12.2');
     });
 
     it('should return the latest release tag for patch versions', () => {
-      const latest = getLastReleaseFromTags([
+      const latest = getLastReleaseFromTags({ tags: [
         { ref: 'refs/tags/v0.12.0' },
         { ref: 'refs/tags/v0.11.2' },
         { ref: 'refs/tags/v0.12.2' },
@@ -491,25 +394,38 @@ describe("version-helpers", () => {
         { ref: 'refs/tags/v0.12.2.0' },
         { ref: 'refs/tags/v0.12.2.3' },
         { ref: 'refs/tags/v0.12.2.2' },
-      ] as Tag[]);
+      ] as Tag[]});
       expect(latest).toBe('v0.12.2.3');
     });
 
+    it('should ignore patches when the ignorePatches flag is passed', () => {
+      const latest = getLastReleaseFromTags({ tags: [
+        { ref: 'refs/tags/v0.12.0' },
+        { ref: 'refs/tags/v0.11.2' },
+        { ref: 'refs/tags/v0.12.2' },
+        { ref: 'refs/tags/v0.12.1' },
+        { ref: 'refs/tags/v0.12.2.0' },
+        { ref: 'refs/tags/v0.12.2.3' },
+        { ref: 'refs/tags/v0.12.2.2' },
+      ] as Tag[], ignorePatches: true });
+      expect(latest).toBe('v0.12.2');
+    });
+
     it('should return the latest tag for major version', () => {
-      const latest = getLastReleaseFromTags([
+      const latest = getLastReleaseFromTags({ tags: [
         { ref: 'refs/tags/v0.12.9' },
         { ref: 'refs/tags/v0.12.8' },
         { ref: 'refs/tags/v0.13.0' },
-      ] as Tag[]);
+      ] as Tag[] });
       expect(latest).toBe('v0.13.0');
     });
 
     it('should ignore release candidates', () => {
-      const latest = getLastReleaseFromTags([
+      const latest = getLastReleaseFromTags({ tags: [
         { ref: 'refs/tags/v0.12.0' },
         { ref: 'refs/tags/v0.12.2-RC99' },
         { ref: 'refs/tags/v0.12.1' },
-      ] as Tag[]);
+      ] as Tag[]});
       expect(latest).toBe('v0.12.1');
     });
   });

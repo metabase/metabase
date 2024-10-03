@@ -123,27 +123,6 @@
           (is (= expected
                  (update-cards! cards))))))))
 
-;; update-notification-channels!
-(deftest update-notification-channels-test
-  (t2.with-temp/with-temp [Pulse {:keys [id]}]
-    (pulse/update-notification-channels! {:id id} [{:enabled       true
-                                                    :channel_type  :email
-                                                    :schedule_type :daily
-                                                    :schedule_hour 4
-                                                    :recipients    [{:email "foo@bar.com"} {:id (mt/user->id :rasta)}]}])
-    (is (= (merge pulse-channel-defaults
-                  {:channel_type  :email
-                   :schedule_type :daily
-                   :schedule_hour 4
-                   :recipients    [{:email "foo@bar.com"}
-                                   (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})
-           (-> (t2/select-one PulseChannel :pulse_id id)
-               (t2/hydrate :recipients)
-               (dissoc :id :pulse_id :created_at :updated_at)
-               (update :entity_id boolean)
-               (m/dissoc-in [:details :emails])
-               mt/derecordize)))))
-
 ;; create-pulse!
 ;; simple example with a single card
 (deftest create-pulse-test

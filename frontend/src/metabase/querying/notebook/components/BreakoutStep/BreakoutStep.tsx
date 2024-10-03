@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
 import * as Lib from "metabase-lib";
 
-import type { NotebookStepUiComponentProps } from "../../types";
+import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
 export function BreakoutStep({
@@ -14,12 +14,23 @@ export function BreakoutStep({
   isLastOpened,
   readOnly,
   updateQuery,
-}: NotebookStepUiComponentProps) {
-  const { stageIndex } = step;
+}: NotebookStepProps) {
+  const { question, stageIndex } = step;
+  const isMetric = question.type() === "metric";
 
-  const breakouts = useMemo(() => {
-    return Lib.breakouts(query, stageIndex);
-  }, [query, stageIndex]);
+  const breakouts = useMemo(
+    () => Lib.breakouts(query, stageIndex),
+    [query, stageIndex],
+  );
+
+  const metricColumns = useMemo(() => {
+    return isMetric
+      ? Lib.breakoutableColumns(query, stageIndex).filter(Lib.isDateOrDateTime)
+      : [];
+  }, [query, stageIndex, isMetric]);
+
+  const hasAddButton = !readOnly && (!isMetric || breakouts.length === 0);
+  const isAddButtonDisabled = isMetric && metricColumns.length === 0;
 
   const renderBreakoutName = (clause: Lib.BreakoutClause) =>
     Lib.displayInfo(query, stageIndex, clause).longDisplayName;
@@ -58,10 +69,16 @@ export function BreakoutStep({
   return (
     <ClauseStep
       items={breakouts}
-      initialAddText={t`Pick a column to group by`}
+      initialAddText={
+        isAddButtonDisabled
+          ? t`No datetime columns available`
+          : t`Pick a column to group by`
+      }
       readOnly={readOnly}
       color={color}
       isLastOpened={isLastOpened}
+      hasAddButton={hasAddButton}
+      isAddButtonDisabled={isAddButtonDisabled}
       renderName={renderBreakoutName}
       renderPopover={({ item: breakout, index, onClose }) => (
         <BreakoutPopover
@@ -69,6 +86,7 @@ export function BreakoutStep({
           stageIndex={stageIndex}
           breakout={breakout}
           breakoutIndex={index}
+          isMetric={isMetric}
           onAddBreakout={handleAddBreakout}
           onUpdateBreakoutColumn={handleUpdateBreakoutColumn}
           onClose={onClose}
@@ -86,6 +104,7 @@ interface BreakoutPopoverProps {
   stageIndex: number;
   breakout: Lib.BreakoutClause | undefined;
   breakoutIndex: number | undefined;
+  isMetric: boolean;
   onAddBreakout: (column: Lib.ColumnMetadata) => void;
   onUpdateBreakoutColumn: (
     breakout: Lib.BreakoutClause,
@@ -99,6 +118,7 @@ const BreakoutPopover = ({
   stageIndex,
   breakout,
   breakoutIndex,
+  isMetric,
   onAddBreakout,
   onUpdateBreakoutColumn,
   onClose,
@@ -108,10 +128,11 @@ const BreakoutPopover = ({
     const filteredColumns = columns.reduce(
       (columns: Lib.ColumnMetadata[], column) => {
         const columnInfo = Lib.displayInfo(query, stageIndex, column);
-        const { breakoutPositions = [] } = columnInfo;
-        if (breakout && checkColumnSelected(columnInfo, breakoutIndex)) {
+        if (isMetric && !Lib.isDateOrDateTime(column)) {
+          return columns;
+        } else if (breakout && checkColumnSelected(columnInfo, breakoutIndex)) {
           columns.push(Lib.breakoutColumn(query, stageIndex, breakout));
-        } else if (breakoutPositions.length === 0) {
+        } else {
           columns.push(column);
         }
         return columns;
@@ -119,7 +140,7 @@ const BreakoutPopover = ({
       [],
     );
     return Lib.groupColumns(filteredColumns);
-  }, [query, stageIndex, breakout, breakoutIndex]);
+  }, [query, stageIndex, breakout, breakoutIndex, isMetric]);
 
   return (
     <QueryColumnPicker

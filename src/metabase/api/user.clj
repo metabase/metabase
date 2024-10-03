@@ -299,16 +299,18 @@
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard, excluding
   internal/automatically-loaded content."
   [user]
-  (let [coll-ids-filter (collection/visible-collection-ids->honeysql-filter-clause
-                         :collection_id
-                         (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
-        entity-exists? (fn [model] (t2/exists? model
-                                               {:where [:and
-                                                        [:= :archived false]
-                                                        coll-ids-filter
-                                                        (mi/exclude-internal-content-hsql model)]}))]
-    (assoc user :has_question_and_dashboard (and (entity-exists? :model/Card)
-                                                 (entity-exists? :model/Dashboard)))))
+  (let [collection-filter (collection/visible-collection-filter-clause)
+        entity-exists? (fn [model & additional-clauses] (t2/exists? model
+                                                                    {:where (into [:and
+                                                                                   [:= :archived false]
+                                                                                   collection-filter
+                                                                                   (mi/exclude-internal-content-hsql model)]
+                                                                                  additional-clauses)}))]
+    (-> user
+        (assoc :has_question_and_dashboard
+               (and (entity-exists? :model/Card)
+                    (entity-exists? :model/Dashboard)))
+        (assoc :has_model (entity-exists? :model/Card [:= :type "model"])))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
@@ -373,8 +375,10 @@
                                  @api/*current-user*
                                  false))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
-      (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id new-user-id
-                                                                           :source          "admin"})
+      (snowplow/track-event! ::snowplow/invite
+                             {:event           :invite-sent
+                              :invited-user-id new-user-id
+                              :source          "admin"})
       (-> (fetch-user :id new-user-id)
           (t2/hydrate :user_group_memberships)))))
 

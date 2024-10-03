@@ -43,6 +43,28 @@ const TEST_CARD_NATIVE = createMockCard({
   }),
 });
 
+const TEST_CARD_MODEL = createMockCard({
+  can_write: true,
+  type: "model",
+  dataset_query: createMockStructuredDatasetQuery({
+    database: SAMPLE_DB_ID,
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  }),
+});
+
+const TEST_CARD_METRIC = createMockCard({
+  can_write: true,
+  type: "metric",
+  dataset_query: createMockStructuredDatasetQuery({
+    database: SAMPLE_DB_ID,
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  }),
+});
+
 const TEST_CARD_NO_DATA_ACCESS = createMockCard({
   dataset_query: createMockStructuredDatasetQuery({
     database: SAMPLE_DB_ID,
@@ -127,6 +149,26 @@ describe("DashCardMenu", () => {
 
     const pathname = history?.getCurrentLocation().pathname;
     expect(pathname).toBe(`/question/${TEST_CARD_SLUG}`);
+  });
+
+  it("should display a link to the editor for models", async () => {
+    const { history } = setup({ card: TEST_CARD_MODEL });
+
+    await userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(await screen.findByText("Edit model"));
+
+    const pathname = history?.getCurrentLocation().pathname;
+    expect(pathname).toBe(`/model/${TEST_CARD_SLUG}/query`);
+  });
+
+  it("should display a link to the editor for metrics", async () => {
+    const { history } = setup({ card: TEST_CARD_METRIC });
+
+    await userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(await screen.findByText("Edit metric"));
+
+    const pathname = history?.getCurrentLocation().pathname;
+    expect(pathname).toBe(`/metric/${TEST_CARD_SLUG}/query`);
   });
 
   it("should not display a link to the notebook editor if the user does not have the data permission", async () => {

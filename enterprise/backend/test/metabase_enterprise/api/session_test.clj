@@ -18,10 +18,12 @@
                               :email-allow-list
                               :email-restrict-recipients
                               :embedding
+                              :embedding-sdk
                               :hosting
                               :llm-autodescription
                               :no-upsell
                               :official-collections
+                              :query-reference-validation
                               :sandboxes
                               :scim
                               :serialization
@@ -45,9 +47,11 @@
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
+            :embedding_sdk                  true
             :hosting                        true
             :llm_autodescription            true
             :official_collections           true
+            :query_reference_validation     true
             :sandboxes                      true
             :scim                           true
             :session_timeout_config         true

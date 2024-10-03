@@ -126,19 +126,49 @@
   [filter-clause & more-filter-clauses]
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
+(defn- legacy-last-stage-number
+  "Returns the canonical stage number of the last stage of the legacy `inner-query`."
+  [inner-query]
+  (loop [{:keys [source-query]} inner-query, n 0]
+    (if-not source-query
+      n
+      (recur source-query (inc n)))))
+
+(defn- stage-path
+  "Returns a vector consisting of :source-query elements that address the stage of `inner-query`
+  specified by `stage-number`.
+
+  Stage numbers are used as described in [[add-filter-clause]]."
+  [inner-query stage-number]
+  (let [elements (if (neg? stage-number)
+                   (dec (- stage-number))
+                   (- (legacy-last-stage-number inner-query) stage-number))]
+    (into [] (repeat elements :source-query))))
+
 (mu/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
   "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
-  needed."
-  [inner-query :- mbql.s/MBQLQuery
-   new-clause  :- [:maybe mbql.s/Filter]]
-  (if-not new-clause
+  needed.
+
+  Stage numbers work as in [[add-filter-clause]]."
+  [inner-query  :- mbql.s/MBQLQuery
+   stage-number :- [:maybe number?]
+   new-clause   :- [:maybe mbql.s/Filter]]
+  (if (not new-clause)
     inner-query
-    (update inner-query :filter combine-filter-clauses new-clause)))
+    (let [path (if-not stage-number
+                 []
+                 (stage-path inner-query stage-number))]
+      (update-in inner-query (conj path :filter) combine-filter-clauses new-clause))))
 
 (mu/defn add-filter-clause :- mbql.s/Query
-  "Add an additional filter clause to an `outer-query`. If `new-clause` is `nil` this is a no-op."
-  [outer-query :- mbql.s/Query new-clause :- [:maybe mbql.s/Filter]]
-  (update outer-query :query add-filter-clause-to-inner-query new-clause))
+  "Add an additional filter clause to an `outer-query` at stage `stage-number`
+  or at the last stage if `stage-number` is `nil`. If `new-clause` is `nil` this is a no-op.
+
+  Stage numbers can be negative: `-1` refers to the last stage, `-2` to the penultimate stage, etc."
+  [outer-query  :- mbql.s/Query
+   stage-number :- [:maybe number?]
+   new-clause   :- [:maybe mbql.s/Filter]]
+  (update outer-query :query add-filter-clause-to-inner-query stage-number new-clause))
 
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
@@ -818,6 +848,16 @@
          (lib.util.match/match coll
            [:field (id :guard integer?) opts]
            [id (:source-field opts)]))))
+
+(defn pred-matches-form?
+  "Check if `form` or any of its children forms match `pred`. This function is used for validation; during normal
+  operation it will never match, so calling this function before `matching-locations` is more efficient."
+  [form pred]
+  (cond
+    (pred form)        true
+    (map? form)        (reduce-kv (fn [b _ v] (or b (pred-matches-form? v pred))) false form)
+    (sequential? form) (reduce (fn [b x] (or b (pred-matches-form? x pred))) false form)
+    :else              false))
 
 (defn matching-locations
   "Find the forms matching pred, returns a list of tuples of location (as used in get-in) and the match."

@@ -3,8 +3,18 @@ WITH root AS (
          0      AS model_id,
          'ttl'  AS strategy,
          json_build_object(
-           'multiplier', coalesce((select CEILING(value::numeric(10,1))::integer from setting where key = 'query-caching-ttl-ratio'), 10),
-           'min_duration_ms', coalesce((select CEILING(value::numeric(10,1))::integer from setting where key = 'query-caching-min-ttl'), 60000)
+          'multiplier', coalesce((select CEILING(CASE
+                                                  WHEN value::numeric(20, 1) >= 2147483648
+                                                    THEN 2147483647.0
+                                                  ELSE value::numeric(20, 1)
+                                                 END)::integer
+                                  from setting where key = 'query-caching-ttl-ratio'), 10),
+          'min_duration_ms', coalesce((select CEILING(CASE
+                                                       WHEN value::numeric(20, 1) >= 2147483648
+                                                        THEN 2147483647.0
+                                                       ELSE value::numeric(20, 1)
+                                                      END)::integer
+                                       from setting where key = 'query-caching-min-ttl'), 60000)
          ) AS config
 ), database AS (
   select 'database' AS model,

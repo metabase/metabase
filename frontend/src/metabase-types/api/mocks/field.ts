@@ -19,7 +19,7 @@ export const createMockField = (opts?: Partial<Field>): Field => ({
   table_id: 1,
 
   base_type: "type/Text",
-  semantic_type: "type/Text",
+  semantic_type: null,
   fk_target_field_id: null,
 
   active: true,

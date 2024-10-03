@@ -38,9 +38,12 @@
             Table
             User]]
    [metabase.models.collection :as collection]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2]))
@@ -487,25 +490,27 @@
   (mt/test-driver :postgres
     (testing "FKs are not created automatically in Postgres, check that migrations add necessary indexes"
       (is (= [{:table_name  "field_usage"
-               :column_name "query_execution_id"}]
+               :column_name "query_execution_id"}
+              {:table_name  "pulse_channel"
+               :column_name "channel_id"}]
              (t2/query
               "SELECT
-                   conrelid::regclass::text AS table_name,
-                   a.attname AS column_name
-               FROM
-                   pg_constraint AS c
-                   JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
-               WHERE
-                   c.contype = 'f'
-                   AND NOT EXISTS (
-                       SELECT 1
-                       FROM pg_index AS i
-                       WHERE i.indrelid = c.conrelid
-                         AND a.attnum = ANY(i.indkey)
-                   )
-               ORDER BY
-                   table_name,
-                   column_name;"))))))
+                    conrelid::regclass::text AS table_name,
+                    a.attname AS column_name
+                FROM
+                    pg_constraint AS c
+                    JOIN pg_attribute AS a ON a.attnum = ANY(c.conkey) AND a.attrelid = c.conrelid
+                WHERE
+                    c.contype = 'f'
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM pg_index AS i
+                        WHERE i.indrelid = c.conrelid
+                          AND a.attnum = ANY(i.indkey)
+                    )
+                ORDER BY
+                    table_name,
+                    column_name;"))))))
 
 (deftest remove-collection-color-test
   (testing "Migration v48.00-019"
@@ -1554,6 +1559,20 @@
                 (->> (t2/select :cache_config)
                      (mapv #(update % :config json/decode true)))))))))
 
+(deftest cache-config-handle-big-value-test
+  (testing "Caching config is correctly copied over"
+    (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
+                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt (str (bigint 10e11)))}
+                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt (str (bigint 10e11)))}])
+      (migrate!)
+      (is (=? [{:model    "root"
+                :strategy "ttl"
+                :config   {:multiplier      2147483647
+                           :min_duration_ms 2147483647}}]
+              (->> (t2/select :cache_config)
+                   (mapv #(update % :config json/decode true))))))))
+
 (deftest cache-config-migration-test-2
   (testing "And not copied if caching is disabled"
     (impl/test-migrations ["v50.2024-04-12T12:33:07"] [migrate!]
@@ -2553,3 +2572,58 @@
         (testing "After the migration, fields are deactivated correctly"
           (doseq [[active? field] active+field]
             (is (= active? (t2/select-one-fn :active :metabase_field (:id field))))))))))
+
+(deftest populate-new-permission-fields-works
+  (testing "Migration v49.2024-08-21T08:33:10"
+    (impl/test-migrations ["v49.2024-08-21T08:33:06" "v49.2024-08-21T08:33:10"] [migrate!]
+      (let [read-coll-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
+                                                                     {:slug "foo"}))
+            read-coll-path (perms/collection-read-path read-coll-id)
+            write-coll-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
+                                                                      {:slug "foo"}))
+            write-coll-path (perms/collection-readwrite-path write-coll-id)
+
+            ;; a nonexistent collection permission - should get deleted!
+            nonexistent-path "/collection/99123457/"
+            nonexistent-read-path "/collection/99123456/read/"
+
+            both-perms-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
+                                                                      {:slug "foo"}))]
+        (t2/insert! :permissions {:object nonexistent-path
+                                  :group_id (u/the-id (perms-group/all-users))})
+        (t2/insert! :permissions {:object nonexistent-read-path
+                                  :group_id (u/the-id (perms-group/all-users))})
+        (t2/insert! :permissions {:object read-coll-path :group_id (u/the-id (perms-group/all-users))})
+        (t2/insert! :permissions {:object write-coll-path :group_id (u/the-id (perms-group/all-users))})
+
+        (t2/insert! :permissions {:object (perms/collection-readwrite-path both-perms-id)
+                                  :group_id (u/the-id (perms-group/all-users))})
+        (t2/insert! :permissions {:object (perms/collection-read-path both-perms-id)
+                                  :group_id (u/the-id (perms-group/all-users))})
+
+        (migrate!)
+        (testing "the valid permissions objects got updated correctly"
+          (is (= [{:collection_id read-coll-id
+                   :perm_type :perms/collection-access
+                   :perm_value :read
+                   :object (str "/collection/" read-coll-id "/read/")}
+                  {:collection_id write-coll-id
+                   :perm_type :perms/collection-access
+                   :perm_value :read-and-write
+                   :object (str "/collection/" write-coll-id "/")}
+                  ;; NOTE: We have two `:perms/collection-access` values for `both-perms-id`, because there were two
+                  ;; permissions rows to start with. The migration doesn't do any kind of coalescing or deduplication
+                  ;; - we may want do do that down the road.
+                  {:collection_id both-perms-id
+                   :perm_type :perms/collection-access
+                   :perm_value :read-and-write
+                   :object (str "/collection/" both-perms-id "/")}
+                  {:collection_id both-perms-id
+                   :perm_type :perms/collection-access
+                   :perm_value :read
+                   :object (str "/collection/" both-perms-id "/read/")}]
+                 (->> [read-coll-id write-coll-id both-perms-id]
+                      (mapcat #(t2/select :model/Permissions :collection_id %))
+                      (map #(select-keys % [:collection_id :perm_type :perm_value :object]))))))
+        (testing "the invalid permissions (for a nonexistent table) were deleted"
+          (is (empty? (t2/select :model/Permissions :object [:in [nonexistent-path nonexistent-read-path]]))))))))

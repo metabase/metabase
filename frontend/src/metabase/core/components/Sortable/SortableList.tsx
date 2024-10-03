@@ -24,10 +24,14 @@ export type RenderItemProps<T> = {
   id: ItemId;
   isDragOverlay?: boolean;
 };
-type useSortableListProps<T> = {
+type SortableListProps<T> = {
   items: T[];
   getId: (item: T) => ItemId;
-  renderItem: ({ item, id, isDragOverlay }: RenderItemProps<T>) => JSX.Element;
+  renderItem: ({
+    item,
+    id,
+    isDragOverlay,
+  }: RenderItemProps<T>) => JSX.Element | null;
   onSortStart?: (event: DragStartEvent) => void;
   onSortEnd?: ({ id, newIndex }: DragEndEvent) => void;
   sensors?: SensorDescriptor<any>[];
@@ -44,7 +48,7 @@ export const SortableList = <T,>({
   sensors = [],
   modifiers = [],
   useDragOverlay = true,
-}: useSortableListProps<T>) => {
+}: SortableListProps<T>) => {
   const [itemIds, setItemIds] = useState<ItemId[]>([]);
   const [indexedItems, setIndexedItems] = useState<Partial<Record<ItemId, T>>>(
     {},

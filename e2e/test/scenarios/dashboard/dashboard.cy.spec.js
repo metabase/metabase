@@ -9,15 +9,18 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  addIFrameWhileEditing,
   addOrUpdateDashboardCard,
   appBar,
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
+  closeDashboardInfoSidebar,
   closeNavigationSidebar,
   collectionOnTheGoModal,
   commandPalette,
   commandPaletteButton,
   createDashboardWithTabs,
+  createQuestionAndDashboard,
   dashboardHeader,
   describeEE,
   describeWithSnowplow,
@@ -32,6 +35,7 @@ import {
   getDashboardCards,
   getTextCardDetails,
   modal,
+  openDashboardInfoSidebar,
   openDashboardMenu,
   openProductsTable,
   openQuestionsSidebar,
@@ -41,14 +45,13 @@ import {
   removeDashboardCard,
   resetSnowplow,
   restore,
-  rightSidebar,
   saveDashboard,
   selectDashboardFilter,
   setFilter,
   setTokenFeatures,
   showDashboardCardActions,
   sidebar,
-  toggleDashboardInfoSidebar,
+  sidesheet,
   updateDashboardCards,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -319,6 +322,59 @@ describe("scenarios > dashboard", () => {
         }
       });
 
+      describe("iframe cards", () => {
+        it("should be possible to add an iframe card", () => {
+          editDashboard();
+          addIFrameWhileEditing("https://example.com");
+          cy.button("Done").click();
+          validateIFrame("https://example.com");
+          saveDashboard();
+          validateIFrame("https://example.com");
+        });
+
+        it("should handle various iframe and URL inputs", () => {
+          const testCases = [
+            {
+              input: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+              expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            },
+            {
+              input: "https://youtu.be/dQw4w9WgXcQ",
+              expected: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            },
+            {
+              input: "https://www.loom.com/share/1234567890abcdef",
+              expected: "https://www.loom.com/embed/1234567890abcdef",
+            },
+            {
+              input: "https://vimeo.com/123456789",
+              expected: "https://player.vimeo.com/video/123456789",
+            },
+            {
+              input: "example.com",
+              expected: "https://example.com",
+            },
+            {
+              input: "https://example.com",
+              expected: "https://example.com",
+            },
+            {
+              input:
+                '<iframe src="https://example.com" onload="alert(\'XSS\')"></iframe>',
+              expected: "https://example.com",
+            },
+          ];
+
+          editDashboard();
+
+          testCases.forEach(({ input, expected }, index) => {
+            addIFrameWhileEditing(input);
+            cy.button("Done").click();
+            validateIFrame(expected, index);
+          });
+        });
+      });
+
       it("should hide personal collections when adding questions to a dashboard in public collection", () => {
         const collectionInRoot = {
           name: "Collection in root collection",
@@ -401,9 +457,60 @@ describe("scenarios > dashboard", () => {
         popover().findByText("Edit question").should("be.visible").click();
         cy.findByRole("button", { name: "Visualize" }).should("be.visible");
       });
+
+      it("should allow navigating to the model editor directly from a dashboard card", () => {
+        createQuestionAndDashboard({
+          questionDetails: {
+            name: "orders",
+            type: "model",
+            query: {
+              "source-table": ORDERS_ID,
+            },
+          },
+          dashboardDetails: {
+            name: "Dashboard",
+          },
+        }).then(({ body: { dashboard_id, card } }) => {
+          cy.wrap(`${card.id}-${card.name}`).as("slug");
+          visitDashboard(dashboard_id);
+        });
+
+        showDashboardCardActions();
+        getDashboardCardMenu().click();
+        popover().findByText("Edit model").should("be.visible").click();
+        cy.get("@slug").then(slug => {
+          cy.location("pathname").should("eq", `/model/${slug}/query`);
+        });
+      });
+
+      it("should allow navigating to the metric editor directly from a dashboard card", () => {
+        createQuestionAndDashboard({
+          questionDetails: {
+            name: "orders",
+            type: "metric",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+            },
+          },
+          dashboardDetails: {
+            name: "Dashboard",
+          },
+        }).then(({ body: { dashboard_id, card } }) => {
+          cy.wrap(`${card.id}-${card.name}`).as("slug");
+          visitDashboard(dashboard_id);
+        });
+
+        showDashboardCardActions();
+        getDashboardCardMenu().click();
+        popover().findByText("Edit metric").should("be.visible").click();
+        cy.get("@slug").then(slug => {
+          cy.location("pathname").should("eq", `/metric/${slug}/query`);
+        });
+      });
     });
 
-    context("title and description", () => {
+    describe("title and description", () => {
       beforeEach(() => {
         cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
         cy.intercept(
@@ -422,9 +529,9 @@ describe("scenarios > dashboard", () => {
         cy.wait("@updateDashboard");
         cy.wait("@getDashboard");
 
-        toggleDashboardInfoSidebar();
+        openDashboardInfoSidebar();
 
-        rightSidebar()
+        sidesheet()
           .findByPlaceholderText("Add description")
           .type(newDescription)
           .blur();
@@ -439,8 +546,9 @@ describe("scenarios > dashboard", () => {
         cy.wait("@getDashboard");
 
         dashboardHeader().findByDisplayValue(newTitle);
-        toggleDashboardInfoSidebar();
-        sidebar().findByText(newDescription);
+        openDashboardInfoSidebar();
+        sidesheet().findByText(newDescription);
+        closeDashboardInfoSidebar();
 
         cy.log("should not call unnecessary API requests (metabase#31721)");
         cy.get("@updateDashboardSpy").should("have.callCount", 2);
@@ -451,8 +559,11 @@ describe("scenarios > dashboard", () => {
         cy.get("@updateDashboardSpy").should("have.callCount", 2);
 
         cy.log("Should revert the description change if escaped");
-        sidebar().findByText(newDescription).type("Baz{esc}");
-        sidebar().findByText(newDescription);
+        openDashboardInfoSidebar();
+        sidesheet().within(() => {
+          cy.findByText(newDescription).type("Baz{esc}");
+          cy.findByText(newDescription);
+        });
         cy.get("@updateDashboardSpy").should("have.callCount", 2);
       });
 
@@ -478,7 +589,7 @@ describe("scenarios > dashboard", () => {
           .findByText(/^Edited a few seconds ago/)
           .click();
 
-        rightSidebar()
+        sidesheet()
           .findByPlaceholderText("Add description")
           .type(newDescription)
           .blur();
@@ -487,6 +598,7 @@ describe("scenarios > dashboard", () => {
         // This might be a bug! We're applying the description while still in the edit mode!
         // OTOH, the title is preserved only on save.
         cy.wait("@updateDashboard");
+        closeDashboardInfoSidebar();
 
         saveDashboard();
         cy.wait("@updateDashboard");
@@ -494,19 +606,19 @@ describe("scenarios > dashboard", () => {
       });
 
       it("should not have markdown content overflow the description area (metabase#31326)", () => {
-        toggleDashboardInfoSidebar();
+        openDashboardInfoSidebar();
 
         const testMarkdownContent =
           "# Heading 1{enter}{enter}**bold** https://www.metabase.com/community_posts/how-to-measure-the-success-of-new-product-features-and-why-it-is-important{enter}{enter}![alt](/app/assets/img/welcome-modal-2.png){enter}{enter}This is my description. ";
 
-        rightSidebar()
+        sidesheet()
           .findByPlaceholderText("Add description")
           .type(testMarkdownContent, { delay: 0 })
           .blur();
 
         cy.wait("@updateDashboard");
 
-        rightSidebar().within(() => {
+        sidesheet().within(() => {
           cy.log("Markdown content should not be bigger than its container");
           cy.findByTestId("editable-text").then($markdown => {
             const el = $markdown[0];
@@ -1047,7 +1159,8 @@ describeWithSnowplow("scenarios > dashboard", () => {
   it("should allow users to add link cards to dashboards", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
-    cy.findByTestId("dashboard-header").icon("link").click();
+    cy.findByLabelText("Add a link or iframe").click();
+    popover().findByText("Link").click();
 
     cy.wait("@recentViews");
     cy.findByTestId("custom-edit-text-link").click().type("Orders");
@@ -1264,12 +1377,10 @@ describeEE("scenarios > dashboard > caching", () => {
     interceptPerformanceRoutes();
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    openSidebarCacheStrategyForm();
+    openSidebarCacheStrategyForm("dashboard");
 
-    rightSidebar().within(() => {
-      cy.findByRole("heading", { name: /Caching settings/ }).should(
-        "be.visible",
-      );
+    sidesheet().within(() => {
+      cy.findByText(/Caching settings/).should("be.visible");
       durationRadioButton().click();
       cy.findByLabelText("Cache results for this many hours").type("48");
       cy.findByRole("button", { name: /Save/ }).click();
@@ -1277,13 +1388,41 @@ describeEE("scenarios > dashboard > caching", () => {
       cy.log(
         "Check that the newly chosen cache invalidation policy - Duration - is now visible in the sidebar",
       );
-      cy.findByLabelText(/Caching policy/).should("contain", "Duration");
-      cy.findByLabelText(/Caching policy/).click();
+      cy.findByLabelText(/When to get new results/).should(
+        "contain",
+        "Duration",
+      );
+      cy.findByLabelText(/When to get new results/).click();
       adaptiveRadioButton().click();
       cy.findByLabelText(/Minimum query duration/).type("999");
       cy.findByRole("button", { name: /Save/ }).click();
       cy.wait("@putCacheConfig");
-      cy.findByLabelText(/Caching policy/).should("contain", "Adaptive");
+      cy.findByLabelText(/When to get new results/).should(
+        "contain",
+        "Adaptive",
+      );
+    });
+  });
+
+  it("can click 'Clear cache' for a dashboard", () => {
+    interceptPerformanceRoutes();
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
+    openSidebarCacheStrategyForm("dashboard");
+
+    sidesheet().within(() => {
+      cy.findByText(/Caching settings/).should("be.visible");
+      cy.findByRole("button", {
+        name: /Clear cache for this dashboard/,
+      }).click();
+    });
+
+    cy.findByTestId("confirm-modal").within(() => {
+      cy.findByRole("button", { name: /Clear cache/ }).click();
+    });
+    cy.wait("@invalidateCache");
+    sidesheet().within(() => {
+      cy.findByText("Cache cleared").should("be.visible");
     });
   });
 });
@@ -1390,3 +1529,16 @@ describe("scenarios > dashboard > permissions", () => {
     cy.findByText("Sorry, you don’t have permission to see that.");
   });
 });
+
+function validateIFrame(src, index = 0) {
+  getDashboardCards()
+    .get("iframe")
+    .eq(index)
+    .should("have.attr", "src", src)
+    .and(
+      "have.attr",
+      "sandbox",
+      "allow-scripts allow-same-origin allow-forms allow-popups",
+    )
+    .and("not.have.attr", "onload");
+}

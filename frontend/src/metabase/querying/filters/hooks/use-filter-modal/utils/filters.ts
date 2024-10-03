@@ -1,9 +1,4 @@
-import { t } from "ttag";
-
-import {
-  getColumnGroupIcon,
-  getColumnGroupName,
-} from "metabase/common/utils/column-groups";
+import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import * as Lib from "metabase-lib";
 
 import type { GroupItem } from "../types";
@@ -17,13 +12,17 @@ export function appendStageIfAggregated(query: Lib.Query) {
     : query;
 }
 
-function getStageIndexes(query: Lib.Query) {
-  const stageCount = Lib.stageCount(query);
-  return stageCount > 1 ? [-2, -1] : [-1];
+function getGroupName(
+  groupInfo: Lib.ColumnGroupDisplayInfo,
+  stageIndex: number,
+) {
+  return groupInfo.isMainGroup && stageIndex > 1
+    ? `${groupInfo.displayName} (${stageIndex})`
+    : groupInfo.displayName;
 }
 
 export function getGroupItems(query: Lib.Query): GroupItem[] {
-  const stageIndexes = getStageIndexes(query);
+  const stageIndexes = Lib.stageIndexes(query);
   return stageIndexes.flatMap(stageIndex => {
     const columns = Lib.filterableColumns(query, stageIndex);
     const groups = Lib.groupColumns(columns);
@@ -36,8 +35,8 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
 
       return {
         key: `${stageIndex}-${groupIndex}`,
-        displayName: getColumnGroupName(groupInfo) || t`Summaries`,
-        icon: getColumnGroupIcon(groupInfo) || "sum",
+        displayName: getGroupName(groupInfo, stageIndex),
+        icon: getColumnGroupIcon(groupInfo),
         columnItems: availableColumns.map(column => {
           const columnInfo = Lib.displayInfo(query, stageIndex, column);
           return {
@@ -61,7 +60,7 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
 }
 
 export function hasFilters(query: Lib.Query) {
-  const stageIndexes = getStageIndexes(query);
+  const stageIndexes = Lib.stageIndexes(query);
   const filters = stageIndexes.flatMap(stageIndex =>
     Lib.filters(query, stageIndex),
   );
@@ -69,7 +68,7 @@ export function hasFilters(query: Lib.Query) {
 }
 
 export function removeFilters(query: Lib.Query) {
-  const stageIndexes = getStageIndexes(query);
+  const stageIndexes = Lib.stageIndexes(query);
   return stageIndexes.reduce(
     (newQuery, stageIndex) => Lib.removeFilters(newQuery, stageIndex),
     query,

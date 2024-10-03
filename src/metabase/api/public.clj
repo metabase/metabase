@@ -15,6 +15,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
@@ -138,6 +139,14 @@
         (mw.session/as-admin
           (qp (update query :info merge info) rff))))))
 
+(mu/defn- export-format->context :- ::lib.schema.info/context
+  [export-format]
+  (case export-format
+    "csv"  :public-csv-download
+    "xlsx" :public-xlsx-download
+    "json" :public-json-download
+    :public-question))
+
 (mu/defn process-query-for-card-with-id
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
   Returns a `StreamingResponse` object that should be returned as the result of an API endpoint."
@@ -155,7 +164,7 @@
   (mw.session/as-admin
     (m/mapply qp.card/process-query-for-card card-id export-format
               :parameters parameters
-              :context    :public-question
+              :context    (export-format->context export-format)
               :qp         qp
               :make-run   process-query-for-card-with-id-run-fn
               options)))
@@ -354,7 +363,7 @@
           ;; Run this query with full superuser perms. We don't want the various perms checks
           ;; failing because there are no current user perms; if this Dashcard is public
           ;; you're by definition allowed to run it without a perms check anyway
-          (binding [api/*current-user-permissions-set* (delay #{"/"})]
+          (mw.session/as-admin
             ;; Undo middleware string->keyword coercion
             (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
 
@@ -670,11 +679,13 @@
         ;; Run this query with full superuser perms. We don't want the various perms checks
         ;; failing because there are no current user perms; if this Dashcard is public
         ;; you're by definition allowed to run it without a perms check anyway
-        (binding [api/*current-user-permissions-set* (delay #{"/"})]
+        (mw.session/as-admin
           (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
-            (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :public_form
-                                                                                     :type      (:type action)
-                                                                                     :action_id (:id action)})
+            (snowplow/track-event! ::snowplow/action
+                                   {:event     :action-executed
+                                    :source    :public_form
+                                    :type      (:type action)
+                                    :action_id (:id action)})
             ;; Undo middleware string->keyword coercion
             (actions/execute-action! action (update-keys parameters name))))))))
 

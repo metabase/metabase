@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import type { StaleCollectionItem } from "metabase-types/api";
+import type { StaleCollectionItem } from "../types";
 
 // constant portion of this string is how mantine calculates the height of the modal
 export const getModalHeightCalc = (additionalOffset?: string) => {
@@ -59,8 +59,8 @@ export const dateFilterOptions = [
   },
 ] as const;
 
-export type DateFilter = typeof dateFilterOptions[number]["value"];
-export type DateDurations = typeof dateFilterOptions[number]["duration"];
+export type DateFilter = (typeof dateFilterOptions)[number]["value"];
+export type DateDurations = (typeof dateFilterOptions)[number]["duration"];
 export type DateFilterOption = {
   label: string;
   value: DateFilter;

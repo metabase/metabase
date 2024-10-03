@@ -1,5 +1,6 @@
 import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
+import type { BaseEntityId } from "./entity-id";
 import type { Parameter, ParameterId, ParameterTarget } from "./parameters";
 import type { NativeDatasetQuery } from "./query";
 import type { UserId, UserInfo } from "./user";
@@ -27,6 +28,7 @@ export interface WritebackActionBase {
   public_uuid: string | null;
   database_id?: DatabaseId;
   database_enabled_actions?: boolean;
+  entity_id: BaseEntityId;
 }
 
 export type PublicWritebackAction = Pick<

@@ -345,9 +345,8 @@ async function handleQBInit(
 
   const objectId = params?.objectId || queryParams?.objectId;
 
-  uiControls.isShowingNotebookNativePreview = getIsNotebookNativePreviewShown(
-    getState(),
-  );
+  uiControls.isShowingNotebookNativePreview =
+    getIsNotebookNativePreviewShown(getState());
   uiControls.notebookNativePreviewSidebarWidth =
     getNotebookNativePreviewSidebarWidth(getState());
 

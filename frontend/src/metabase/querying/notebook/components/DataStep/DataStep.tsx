@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import type { NotebookStepUiComponentProps } from "../../types";
+import type { NotebookStepProps } from "../../types";
 import { FieldPicker, type FieldPickerItem } from "../FieldPicker";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import { NotebookDataPicker } from "../NotebookDataPicker";
@@ -17,10 +17,11 @@ export const DataStep = ({
   readOnly,
   color,
   updateQuery,
-}: NotebookStepUiComponentProps) => {
-  const { stageIndex } = step;
+}: NotebookStepProps) => {
+  const { question, stageIndex } = step;
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
+  const isMetric = question.type() === "metric";
 
   const isRaw = useMemo(() => {
     return (
@@ -36,7 +37,12 @@ export const DataStep = ({
     metadataProvider: Lib.MetadataProvider,
   ) => {
     const newQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
-    await updateQuery(newQuery);
+    const newAggregations = Lib.aggregations(newQuery, stageIndex);
+    if (isMetric && newAggregations.length === 0) {
+      await updateQuery(Lib.aggregateByCount(newQuery, stageIndex));
+    } else {
+      await updateQuery(newQuery);
+    }
   };
 
   return (

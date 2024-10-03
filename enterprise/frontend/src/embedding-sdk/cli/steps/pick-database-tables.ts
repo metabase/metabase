@@ -4,7 +4,10 @@ import ora from "ora";
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 import type { Table } from "metabase-types/api";
 
-import { propagateErrorResponse } from "../utils/propagate-error-response";
+import {
+  cliError,
+  propagateErrorResponse,
+} from "../utils/propagate-error-response";
 import { retry } from "../utils/retry";
 
 export const pickDatabaseTables: CliStepMethod = async state => {
@@ -36,36 +39,33 @@ export const pickDatabaseTables: CliStepMethod = async state => {
       { retries: 10, delay: 1000 },
     );
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    const message = `Cannot fetch database schema. Reason: ${reason}`;
     spinner.fail();
 
-    return [{ type: "error", message }, state];
+    return [cliError("Cannot fetch database schema", error), state];
   }
 
-  const tables: Table[] = [];
+  const tablesWithoutMetadata: Table[] = [];
 
-  // Fetch the database tables
-  for (const schemaKey of schemas) {
-    const url = `${instanceUrl}/api/database/${databaseId}/schema/${schemaKey}?include_hidden=true`;
+  try {
+    // Scan the database tables in each schemas
+    for (const schemaKey of schemas) {
+      const url = `${instanceUrl}/api/database/${databaseId}/schema/${schemaKey}?include_hidden=true`;
 
-    const res = await fetch(url, {
-      method: "GET",
-      headers: { "content-type": "application/json", cookie },
-    });
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { "content-type": "application/json", cookie },
+      });
 
-    if (!res.ok) {
-      const message = `Cannot fetch database table from schema ${schemaKey}.`;
+      await propagateErrorResponse(res);
 
-      return [{ type: "error", message }, state];
+      const schemaTables: Table[] = await res.json();
+      tablesWithoutMetadata.push(...schemaTables);
     }
-
-    const schemaTables: Table[] = await res.json();
-
-    tables.push(...schemaTables);
+  } catch (error) {
+    return [cliError("Cannot scan database tables", error), state];
   }
 
-  if (tables.length === 0) {
+  if (tablesWithoutMetadata.length === 0) {
     spinner.fail();
 
     return [{ type: "error", message: "No tables found in database." }, state];
@@ -73,14 +73,75 @@ export const pickDatabaseTables: CliStepMethod = async state => {
 
   spinner.succeed();
 
-  const chosenTables = await checkbox({
-    validate: choices => choices.length > 0,
-    message: "Select the tables to embed:",
-    choices: tables.map(table => ({
+  const chosenTableIds = await checkbox({
+    validate: choices => {
+      if (choices.length === 0) {
+        return "Pick 1 - 3 tables to embed.";
+      }
+
+      if (choices.length > 3) {
+        return "You can only choose up to 3 tables.";
+      }
+
+      return true;
+    },
+    message: "Pick 1 - 3 tables to embed:",
+    choices: tablesWithoutMetadata.map(table => ({
       name: table.name,
-      value: table,
+      value: table.id,
     })),
   });
 
-  return [{ type: "done" }, { ...state, tables: chosenTables }];
+  spinner.start("Fetching table metadata...");
+
+  const chosenTables: Table[] = [];
+
+  try {
+    for (const tableId of chosenTableIds) {
+      const datasetQuery = {
+        type: "query",
+        database: databaseId,
+        query: { "source-table": tableId },
+      };
+
+      // The table's fields may still be syncing, so we retry a few times.
+      const table = await retry(
+        async () => {
+          // Get the query metadata from a table
+          const res = await fetch(`${instanceUrl}/api/dataset/query_metadata`, {
+            method: "POST",
+            headers: { "content-type": "application/json", cookie },
+            body: JSON.stringify(datasetQuery),
+          });
+
+          await propagateErrorResponse(res);
+
+          const metadataResult = (await res.json()) as { tables: Table[] };
+          const table = metadataResult.tables.find(t => t.id === tableId);
+
+          if (!table) {
+            throw new Error(`Table "${tableId}" not found.`);
+          }
+
+          if (!table?.fields || table.fields.length === 0) {
+            throw new Error(`Table "${table.name}" has no fields.`);
+          }
+
+          return table;
+        },
+        { retries: 5, delay: 1000 },
+      );
+
+      chosenTables.push(table);
+    }
+  } catch (error) {
+    return [cliError("Cannot fetch table metadata", error), state];
+  }
+
+  spinner.succeed();
+
+  return [
+    { type: "done" },
+    { ...state, tables: tablesWithoutMetadata, chosenTables },
+  ];
 };

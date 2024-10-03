@@ -1,10 +1,10 @@
 import _ from "underscore";
 
-import { checkNotNull } from "metabase/lib/types";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { CardType } from "metabase-types/api";
 
 import type { NotebookStep, OpenSteps } from "../types";
 
@@ -14,10 +14,16 @@ import type { NotebookStep, OpenSteps } from "../types";
 
 // identifier for this step, e.x. `0:data` (or `0:join:1` for sub-steps)
 
-type NotebookStepDef = Pick<NotebookStep, "type" | "clauseType" | "revert"> & {
+type NotebookStepDef = Pick<NotebookStep, "type" | "clauseType"> & {
   valid: (query: Query, stageIndex: number, metadata: Metadata) => boolean;
   active: (query: Query, stageIndex: number, index?: number) => boolean;
   subSteps?: (query: Lib.Query, stageIndex: number) => number;
+  revert: (
+    query: Lib.Query,
+    stageIndex: number,
+    itemIndex?: number,
+  ) => Lib.Query;
+  canRevert: (type: CardType) => boolean;
 };
 
 const STEPS: NotebookStepDef[] = [
@@ -26,7 +32,8 @@ const STEPS: NotebookStepDef[] = [
     clauseType: "data",
     valid: (_query, stageIndex) => stageIndex === 0,
     active: () => true,
-    revert: null, // this step is non-reversible (i.e. non-removable)
+    revert: query => query,
+    canRevert: () => false,
   },
   {
     type: "join",
@@ -58,6 +65,7 @@ const STEPS: NotebookStepDef[] = [
 
       return Lib.removeClause(query, stageIndex, join);
     },
+    canRevert: () => true,
   },
   {
     type: "expression",
@@ -74,6 +82,7 @@ const STEPS: NotebookStepDef[] = [
         return Lib.removeClause(query, stageIndex, expression);
       }, query);
     },
+    canRevert: () => true,
   },
   {
     type: "filter",
@@ -89,6 +98,7 @@ const STEPS: NotebookStepDef[] = [
         return Lib.removeClause(query, stageIndex, filter);
       }, query);
     },
+    canRevert: () => true,
   },
   {
     // NOTE: summarize is a combination of aggregate and breakout
@@ -113,6 +123,7 @@ const STEPS: NotebookStepDef[] = [
         return Lib.removeClause(query, stageIndex, clause);
       }, query);
     },
+    canRevert: type => type !== "metric",
   },
   {
     type: "sort",
@@ -136,6 +147,7 @@ const STEPS: NotebookStepDef[] = [
     revert: (query, stageIndex) => {
       return Lib.removeOrderBys(query, stageIndex);
     },
+    canRevert: () => true,
   },
   {
     type: "limit",
@@ -159,6 +171,7 @@ const STEPS: NotebookStepDef[] = [
     revert: (query, stageIndex) => {
       return Lib.limit(query, stageIndex, null);
     },
+    canRevert: () => true,
   },
 ];
 
@@ -257,11 +270,8 @@ function getStageSteps(
         STEP.valid(query, stageIndex, metadata) &&
         Boolean(active || openSteps[id]),
       testID: getTestId(STEP, itemIndex),
-      revert: STEP.revert
-        ? (query: Lib.Query) => {
-            const revert = checkNotNull(STEP.revert);
-            return revert(query, stageIndex, itemIndex ?? undefined);
-          }
+      revert: STEP.canRevert(question.type())
+        ? query => STEP.revert(query, stageIndex, itemIndex ?? undefined)
         : null,
       // `actions`, `next` and `previous` will be set later
       actions: [],

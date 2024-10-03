@@ -33,7 +33,7 @@ export function DateFilterPicker({
   };
 
   return (
-    <div data-testid="datetime-filter-picker">
+    <div data-testid="date-filter-picker">
       <DatePicker
         value={value}
         availableOperators={availableOperators}

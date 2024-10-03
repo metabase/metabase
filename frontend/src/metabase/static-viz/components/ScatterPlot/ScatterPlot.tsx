@@ -21,7 +21,6 @@ const LEGEND_PADDING = 8;
 
 export function ScatterPlot({
   rawSeries,
-  dashcardSettings,
   renderingContext,
   width = WIDTH,
   height = HEIGHT,
@@ -31,13 +30,13 @@ export function ScatterPlot({
 
   const computedVisualizationSettings = computeStaticComboChartSettings(
     rawSeries,
-    dashcardSettings,
     renderingContext,
   );
 
   const chartModel = getScatterPlotModel(
     rawSeries,
     computedVisualizationSettings,
+    [],
     renderingContext,
   );
 

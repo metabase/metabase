@@ -1,4 +1,4 @@
-import { compare as compareVersions, coerce } from "semver";
+import { coerce, compare as compareVersions } from "semver";
 
 import type { GithubProps, Tag } from "./types";
 
@@ -97,31 +97,6 @@ export const getVersionFromReleaseBranch = (branch: string) => {
   return `v0.${majorVersion}.0`;
 }
 
-export const isLatestVersion = (thisVersion: string, allVersions: string[]) => {
-  if (isRCVersion(thisVersion)) {
-    return false;
-  }
-
-  const normalizedVersions = allVersions
-    .filter(isValidVersionString)
-    .filter(version => !isRCVersion(version))
-    .map(version => String(coerce(version.replace(/(v1|v0)\./, ""))))
-    .sort(compareVersions);
-
-  if (!normalizedVersions.length) {
-    return true;
-  }
-
-  const lastVersion = normalizedVersions[normalizedVersions.length - 1];
-
-  return (
-    compareVersions(
-      String(coerce(thisVersion.replace(/(v1|v0)\./, ""))),
-      lastVersion,
-    ) > -1
-  );
-};
-
 export const versionRequirements: Record<
   number,
   { java: number; node: number }
@@ -204,6 +179,11 @@ export function ignorePatches(version: string) {
   return version.split('.').length < 4;
 }
 
+export function isPatchVersion(version: string) {
+  // v0.50.20.1
+  return version.split('.').length === 4;
+}
+
 const normalizeVersionForSorting = (version: string) =>
   version.replace(/^(v?)(0|1)\./, '');
 
@@ -227,31 +207,33 @@ export function versionSort(a: string, b: string) {
   return 0;
 }
 
-export function getLastReleaseFromTags(tags: Tag[]) {
+export function getLastReleaseFromTags({tags, ignorePatches = false}: { tags: Tag[], ignorePatches?: boolean }) {
   return tags
     .map(tag => tag.ref.replace('refs/tags/', ''))
     .filter(tag => !isRCVersion(tag)) // we want to ignore RC tags because release notes should be cumulative
+    .filter(ignorePatches ? v => !isPatchVersion(v) :  () => true)
     .sort(versionSort)
     .reverse()[0];
 }
 
 /**
  * queries the github api to get all release version tags,
- * optionally filtered by a major version
+ * optionally filtered by a major version, and can optionally exclude patch versions
  */
 export async function getLastReleaseTag({
   github,
   owner,
   repo,
   version = '',
-}: GithubProps & { version?: string }) {
+  ignorePatches = false,
+}: GithubProps & { version?: string, ignorePatches?: boolean }) {
   const tags =  await github.paginate(github.rest.git.listMatchingRefs, {
     owner,
     repo,
     ref: `tags/v0.${version ? getMajorVersion(version) : ''}`,
   });
 
-  const lastRelease = getLastReleaseFromTags(tags);
+  const lastRelease = getLastReleaseFromTags({ tags, ignorePatches });
 
   return lastRelease;
 }
@@ -277,7 +259,7 @@ export const getNextPatchVersion = async ({
 }: GithubProps & { majorVersion: number }) => {
   const lastRelease = await getLastReleaseTag({
     github, owner, repo,
-    version: `v0.${majorVersion.toString()}.0`
+    version: `v0.${majorVersion.toString()}.0`,
   });
 
   const nextPatch = findNextPatchVersion(lastRelease);

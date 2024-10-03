@@ -125,6 +125,7 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
+     metabase.channel.core/send!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
      metabase.pulse/send-pulse!
      metabase.query-processor.store/store-database!
@@ -145,6 +146,7 @@
               ;; module drivers
               :athena
               :bigquery-cloud-sdk
+              :databricks
               :druid
               :druid-jdbc
               :googleanalytics
@@ -371,7 +373,10 @@
                                      metabase.sync.util}                                            ; TODO -- consolidate these into a real API namespace.
     metabase.task                  #{metabase.task
                                      metabase.task.index-values
-                                     metabase.task.persist-refresh}                                 ; TODO -- consolidate these into a real API namespace.
+                                     metabase.task.persist-refresh
+                                     ;; We need to expose this to the metabase.search module.
+                                     ;; Ideally, it would just live inside that module.
+                                     metabase.task.search-index}                                    ; TODO -- consolidate these into a real API namespace.
     metabase.troubleshooting       #{metabase.troubleshooting}
     metabase.types                 #{metabase.types}
     metabase.upload                #{metabase.upload}
@@ -605,6 +610,7 @@
     metabase.models.collection                                    collection
     metabase.models.collection.graph                              graph
     metabase.models.collection-permission-graph-revision          c-perm-revision
+    metabase.models.channel                                       models.channel
     metabase.models.dashboard-card                                dashboard-card
     metabase.models.database                                      database
     metabase.models.dependency                                    dependency
@@ -748,6 +754,8 @@
   metabase.api.search-test/do-test-users                                                clojure.core/let
   metabase.async.api-response-test/with-response                                        clojure.core/let
   metabase.dashboard-subscription-test/with-dashboard-sub-for-card                      clojure.core/let
+  metabase.channel.http-test/with-captured-http-requests                                clojure.core/fn
+  metabase.channel.http-test/with-server                                                clojure.core/let
   metabase.db.custom-migrations/define-migration                                        clj-kondo.lint-as/def-catch-all
   metabase.db.custom-migrations/define-reversible-migration                             clj-kondo.lint-as/def-catch-all
   metabase.db.data-migrations/defmigration                                              clojure.core/def
@@ -833,6 +841,7 @@
    metabase.api.common/defendpoint                                                                                           hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async                                                                                     hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
+   metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
    metabase.api.embed-test/do-response-formats                                                                               hooks.common/with-two-bindings

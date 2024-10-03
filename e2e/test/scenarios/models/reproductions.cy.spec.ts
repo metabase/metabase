@@ -49,6 +49,7 @@ import {
   setTokenFeatures,
   sidebar,
   sidebar,
+  sidesheet,
   startNewModel,
   startNewQuestion,
   summarize,
@@ -913,7 +914,7 @@ describeEE("issue 43088", () => {
 
   it("should be able to create ad-hoc questions based on instance analytics models (metabase#43088)", () => {
     cy.visit("/");
-    navigationSidebar().findByText("Metabase analytics").click();
+    navigationSidebar().findByText("Usage analytics").click();
     getPinnedSection().findByText("People").scrollIntoView().click();
     cy.wait("@dataset");
     summarize();
@@ -994,7 +995,7 @@ describe("issue 34574", () => {
       questionInfoButton().click();
     });
 
-    cy.findByTestId("sidebar-right").within(() => {
+    sidesheet().within(() => {
       cy.log("Set the model description to a markdown text");
       cy.intercept("GET", "/api/card/*/query_metadata").as("metadata");
       cy.findByPlaceholderText("Add description").type(
@@ -1010,7 +1011,7 @@ describe("issue 34574", () => {
     cy.log(
       "Make sure the markdown is properly preserved in the model details page",
     );
-    cy.findByRole("link", { name: "Model details" }).click();
+    cy.findByRole("link", { name: "See more about this model" }).click();
     cy.findByLabelText("Description").within(assertMarkdownPreview);
 
     cy.log(

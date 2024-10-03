@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   appBar,
+  changeSynchronousBatchUpdateSetting,
   clearFilterWidget,
   createNativeQuestion,
   createQuestion,
@@ -23,6 +24,7 @@ import {
   undoToast,
   undoToastList,
   updateDashboardCards,
+  updateSetting,
   visitDashboard,
   visitEmbeddedPage,
 } from "e2e/support/helpers";
@@ -114,7 +116,13 @@ const expressionBreakoutQuestionDetails = {
         "day",
       ],
     },
-    breakout: [["expression", "Date", { "base-type": "type/DateTime" }]],
+    breakout: [
+      [
+        "expression",
+        "Date",
+        { "base-type": "type/DateTime", "temporal-unit": "day" },
+      ],
+    ],
   },
 };
 
@@ -230,7 +238,14 @@ const getParameterMapping = card => ({
 describe("scenarios > dashboard > temporal unit parameters", () => {
   beforeEach(() => {
     restore();
+    cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(true);
     cy.signInAsNormalUser();
+  });
+
+  afterEach(() => {
+    cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(false);
   });
 
   describe("mapping targets", () => {
@@ -313,8 +328,18 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       cy.log("breakout by expression");
       addQuestion(expressionBreakoutQuestionDetails.name);
       editParameter(parameterDetails.name);
-      getDashboardCard().findByText("No valid fields").should("be.visible");
-      dashboardParametersDoneButton().click();
+      getDashboardCard().findByText("Select…").click();
+      popover().findByText("Date").click();
+      saveDashboard();
+      filterWidget().click();
+      popover().findByText("Quarter").click();
+      getDashboardCard().within(() => {
+        cy.findByText("Date: Quarter").should("be.visible");
+        cy.findByText(expressionBreakoutQuestionDetails.name).click();
+      });
+      queryBuilderMain().findByText("Date: Quarter").should("be.visible");
+      backToDashboard();
+      editDashboard();
       removeQuestion();
 
       cy.log("breakout by a column with a binning strategy");
@@ -491,7 +516,10 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     it("should pass a temporal unit with 'update dashboard filter' click behavior", () => {
       createDashboardWithMappedQuestion({
         extraQuestions: [nativeUnitQuestionDetails],
-      }).then(dashboard => visitDashboard(dashboard.id));
+      }).then(dashboard => {
+        cy.wrap(dashboard.id).as("dashboardId");
+        visitDashboard(dashboard.id);
+      });
 
       cy.log("unsupported column types are ignored");
       editDashboard();
@@ -525,9 +553,18 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       saveDashboard();
 
       cy.log("verify click behavior with a valid temporal unit");
+
+      // this is done to bypass race condition problem, the root cause for it is
+      // described in `updateDashboardAndCards` from frontend/src/metabase/dashboard/actions/save.js
+      visitDashboard("@dashboardId");
+
       getDashboardCard(1).findByText("year").click();
+
+      getDashboardCard(0)
+        .findByText("Created At: Year", { timeout: 10000 })
+        .should("be.visible");
+
       filterWidget().findByText("Year").should("be.visible");
-      getDashboardCard(0).findByText("Created At: Year").should("be.visible");
 
       cy.log("verify that invalid temporal units are ignored");
       getDashboardCard(1).findByText("invalid").click();
@@ -962,7 +999,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   describe("embedding", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+      updateSetting("enable-public-sharing", true);
     });
 
     it("should be able to use temporal unit parameters in a public dashboard", () => {

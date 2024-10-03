@@ -46,8 +46,7 @@
         timelines (->> (t2/select Timeline
                                   {:where    [:and
                                               [:= :archived archived?]
-                                              (collection/visible-collection-ids->honeysql-filter-clause
-                                               (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                                              (collection/visible-collection-filter-clause)]
                                    :order-by [[:%lower.name :asc]]})
                        (map collection.root/hydrate-root-collection))]
     (cond->> (t2/hydrate timelines :creator [:collection :can_write])

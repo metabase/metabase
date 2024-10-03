@@ -226,11 +226,11 @@
    "make sure we're not running around trying to normalize the type in native query params"
    {{:type       :native
      :parameters [{:type   "date/range"
-                   :target [:dimension [:template-tag "checkin_date"]]
+                   :target [:dimension [:template-tag "checkin_date"] {:stage-number -2}]
                    :value  "2015-04-01~2015-05-01"}]}
     {:type       :native
      :parameters [{:type   :date/range
-                   :target [:dimension [:template-tag "checkin_date"]]
+                   :target [:dimension [:template-tag "checkin_date"] {:stage-number -2}]
                    :value  "2015-04-01~2015-05-01"}]}}
 
    "`:parameters` `:type` should get normalized, but `:value` should not."

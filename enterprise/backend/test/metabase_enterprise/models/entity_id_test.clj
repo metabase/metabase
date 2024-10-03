@@ -20,7 +20,8 @@
 
 (def ^:private entities-external-name
   "Entities with external names, so they don't need a generated entity_id."
-  #{;; Databases have external names based on their URLs; tables are nested under databases; fields under tables.
+  #{:model/Channel
+    ;; Databases have external names based on their URLs; tables are nested under databases; fields under tables.
     :model/Database
     :model/Table
     :model/Field

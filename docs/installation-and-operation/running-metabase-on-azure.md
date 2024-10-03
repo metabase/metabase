@@ -152,11 +152,11 @@ Enabling health checking in Metabase is a good practice.  Go to your **web app**
 
 ### How to upgrade
 
-Go to the Metabase web app you created and click in **Settings** -> **Container Settings**.
+Go to the Metabase web app you created and click on **Deployment** -> **Deployment Center**.
 
-In the textbox of your Metabase Docker container, change the version of the container to the new version. See available versions in [Dockerhub](https://hub.docker.com/r/metabase/metabase/tags?page=1&ordering=last_updated).
+Change the version of the container to the new version in the **Full Image Name and Tag** text field under **Registry settings**, and click on **Save**. Available versions of the Metabase Docker image can be found on [Docker Hub](https://hub.docker.com/r/metabase/metabase/tags?page=1&ordering=last_updated).
 
-**Important**: always ensure you have a backup of your Database before doing a version upgrade, *especially* when upgrading between major versions. Also remember that Metabase doesn't officially support downgrading versions.
+**Important**: always ensure you have backed up the Metabase application database before upgrading, *especially* when doing so between major versions. Metabase also doesn't officially support downgrading versions.
 
 ### How to see the logs
 

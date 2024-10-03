@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
    [metabase.audit :as audit]
    [metabase.core :as mbc]
    [metabase.models
@@ -31,6 +32,10 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(comment
+  ;; Use this spell in your test body to add the given fixtures to the round trip baseline.
+  (round-trip-test/add-to-baseline!))
 
 (defn- by-model [model-name extraction]
   (->> extraction
@@ -330,6 +335,7 @@
                        _
                        {:action_id action-id
                         :dashboard_id other-dash-id}]
+
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one Card :id c1-id))]
           (is (=? {:serdes/meta                 [{:model "Card" :id c1-eid :label "some_question"}]
@@ -871,7 +877,7 @@
               (let [ser (ts/extract-one "Action" action-id)]
                 (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
                          :creator_id  "ann@heart.band"
-                         :type        :implicit
+                         :type        "implicit"
                          :created_at  string?
                          :model_id    card-eid-1
                          :implicit    [{:kind "row/update"}]}
@@ -909,7 +915,7 @@
               (let [ser (ts/extract-one "Action" action-id)]
                 (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
                          :creator_id  "ann@heart.band"
-                         :type        :http
+                         :type        "http"
                          :created_at  string?
                          :model_id    card-eid-1
                          :http        [{:template {}}]}
@@ -949,7 +955,7 @@
                 (is (=? {:serdes/meta [{:model "Action"
                                         :id    (:entity_id action)
                                         :label "my_action"}]
-                         :type        :query
+                         :type        "query"
                          :creator_id  "ann@heart.band"
                          :created_at  string?
                          :query       [{:dataset_query {:database "My Database"
@@ -1404,7 +1410,13 @@
 
       (testing "Fields that reference parents are properly exported as Field references"
         (is (= ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]
-               (:parent_id (ts/extract-one "Field" nested-id))))))))
+               (:parent_id (ts/extract-one "Field" nested-id))))
+        (is (= [{:model "Database", :id "My Database"}
+                {:model "Schema", :id "PUBLIC"}
+                {:model "Table", :id "Schema'd Table"}
+                {:model "Field", :id "Other Field"}
+                {:model "Field", :id "Nested Field"}]
+               (:serdes/meta (ts/extract-one "Field" nested-id))))))))
 
 (deftest escape-report-test
   (mt/with-empty-h2-app-db

@@ -1,7 +1,9 @@
+import cx from "classnames";
 import { useState } from "react";
 import CopyToClipboard from "react-copy-to-clipboard";
 import { t } from "ttag";
 
+import Styles from "metabase/css/core/index.css";
 import { Icon, Text, Tooltip } from "metabase/ui";
 
 type CopyButtonProps = {
@@ -11,10 +13,11 @@ type CopyButtonProps = {
   style?: object;
   "aria-label"?: string;
 };
+
 export const CopyButton = ({
   value,
   onCopy,
-  className,
+  className = cx(Styles.textBrandHover, Styles.cursorPointer),
   style,
 }: CopyButtonProps) => {
   const [copied, setCopied] = useState(false);

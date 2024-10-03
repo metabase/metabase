@@ -69,7 +69,7 @@ export function StringFilterEditor({
   };
 
   return (
-    <HoverParent>
+    <HoverParent data-testid="string-filter-editor">
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle

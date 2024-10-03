@@ -4,27 +4,18 @@ import { t } from "ttag";
 import { ViewFooterButton } from "metabase/components/ViewFooterButton";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Flex, Popover } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
-import type {
-  DashCardId,
-  DashboardId,
-  Dataset,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { Dataset } from "metabase-types/api";
 
 import { QueryDownloadPopover } from "../QueryDownloadPopover";
-import { useDownloadData } from "../QueryDownloadPopover/use-download-data";
+import {
+  type UseDownloadDataParams,
+  useDownloadData,
+} from "../QueryDownloadPopover/use-download-data";
 
-interface QueryDownloadWidgetProps {
+export type QueryDownloadWidgetProps = {
   className?: string;
-  question: Question;
-  result: Dataset;
-  uuid?: string;
-  token?: string;
-  visualizationSettings?: VisualizationSettings;
-  dashcardId?: DashCardId;
-  dashboardId?: DashboardId;
-}
+} & Pick<UseDownloadDataParams, "question" | "result"> &
+  Partial<Omit<UseDownloadDataParams, "question" | "result">>;
 
 const QueryDownloadWidget = ({
   className,

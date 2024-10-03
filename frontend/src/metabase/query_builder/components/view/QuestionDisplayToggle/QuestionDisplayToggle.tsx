@@ -6,7 +6,7 @@ import type Question from "metabase-lib/v1/Question";
 
 import { ToggleIcon, Well } from "./QuestionDisplayToggle.styled";
 
-interface QuestionDisplayToggleProps {
+export interface QuestionDisplayToggleProps {
   className?: string;
   question: Question;
   isShowingRawTable: boolean;

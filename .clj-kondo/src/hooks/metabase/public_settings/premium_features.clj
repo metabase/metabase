@@ -1,6 +1,7 @@
 (ns hooks.metabase.public-settings.premium-features
   (:require
-   [clj-kondo.hooks-api :as hooks]))
+   [clj-kondo.hooks-api :as hooks]
+   [hooks.common]))
 
 (defn defenterprise [{node :node}]
   (let [[_defenterprise fn-name & args] (:children node)
@@ -26,7 +27,8 @@
                                  fn-name
                                  docstring))
                    fn-tail))
-                 (with-meta (update (meta node) :clj-kondo/ignore #(hooks/vector-node (cons :clojure-lsp/unused-public-var (:children %))))))))}))
+                 (with-meta (meta node))
+                 hooks.common/add-lsp-ignore-unused-public-var-metadata)))}))
 
 (comment
   (defn- defenterprise* [form]

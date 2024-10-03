@@ -166,6 +166,8 @@
              {:pred #'lib.types.isa/title?,              :positive :type/Title,             :negative :type/Name}
              {:pred #'lib.types.isa/any?,                :positive :type/*}
              {:pred #'lib.types.isa/numeric-base-type?,  :positive :type/Integer,           :negative :type/String}
+             {:pred #'lib.types.isa/date-or-datetime?,   :positive :type/Date,              :negative :type/Time}
+             {:pred #'lib.types.isa/date-or-datetime?,   :positive :type/DateTime,          :negative :type/Interval}
              {:pred #'lib.types.isa/date-without-time?,  :positive :type/Date,              :negative :type/Time}
              {:pred #'lib.types.isa/creation-timestamp?, :positive :type/CreationTimestamp, :negative :type/CreationDate}
              {:pred #'lib.types.isa/creation-date?,      :positive :type/CreationDate,      :negative :type/CreationTimestamp}

@@ -12,6 +12,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -678,6 +679,7 @@
                                                     :source-card 3}]})]
       (is (= [{:lib/type                 :metadata/column
                :base-type                :type/*
+               :effective-type           :type/*
                :id                       4
                :name                     "Field 4"
                :fk-target-field-id       nil
@@ -985,6 +987,35 @@
             (let [implied-query (lib/add-field field-query -1 (nth implicit-columns 6))]
               (is (=? implied-query
                       (lib/add-field implied-query -1 (nth implicit-columns 6)))))))))))
+
+(deftest ^:parallel add-field-multiple-breakouts-test
+  (testing "multiple breakouts of the same column in the previous stage"
+    (let [query   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year))
+                      (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                      (lib/append-stage))
+          columns (lib/fieldable-columns query)]
+      (testing "removing the column coming from the first breakout"
+        (is (=? [[:field {} "CREATED_AT_2"] [:field {} "count"]]
+                (-> query
+                    (lib/remove-field 1 (first columns))
+                    fields-of))))
+      (testing "removing the column coming from the second breakout"
+        (is (=? [[:field {} "CREATED_AT"] [:field {} "count"]]
+                (-> query
+                    (lib/remove-field 1 (second columns))
+                    fields-of))))
+      (testing "removing and adding back the column from the first breakout"
+        (is (nil? (-> query
+                      (lib/remove-field 1 (first columns))
+                      (lib/add-field 1 (first columns))
+                      fields-of))))
+      (testing "removing and adding back the column from the second breakout"
+        (is (nil? (-> query
+                      (lib/remove-field 1 (second columns))
+                      (lib/add-field 1 (second columns))
+                      fields-of)))))))
 
 (defn- clean-ref [column]
   (-> column
@@ -1610,3 +1641,12 @@
                             :base-type :type/Integer})
                 lib/visible-columns
                 last))))))
+
+(deftest ^:parallel with-temporal-bucket-effective-type-test
+  (let [column (meta/field-metadata :orders :created-at)]
+    (testing "should restore the original effective-type when removing a temporal-unit"
+      (doseq [unit lib.schema.temporal-bucketing/datetime-bucketing-units]
+        (is (= (:effective-type column) (-> column
+                                            (lib/with-temporal-bucket unit)
+                                            (lib/with-temporal-bucket nil)
+                                            (:effective-type))))))))

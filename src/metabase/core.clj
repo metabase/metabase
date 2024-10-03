@@ -4,6 +4,7 @@
    [clojure.tools.trace :as trace]
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.channel.core :as channel]
    [metabase.config :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.initialization-status :as init-status]
@@ -158,6 +159,8 @@
   (settings/migrate-encrypted-settings!)
   ;; start scheduler at end of init!
   (task/start-scheduler!)
+  ;; load the channels
+  (channel/find-and-load-metabase-channels!)
   (init-status/set-complete!)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
         duration   (- (System/currentTimeMillis) start-time)]

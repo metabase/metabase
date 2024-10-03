@@ -1,12 +1,13 @@
 import type { UserId } from "metabase-types/api/user";
 
-import type { CardDisplayType, CardId } from "./card";
+import type { CardId } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { FieldReference } from "./query";
 import type { TableId } from "./table";
+import type { CardDisplayType } from "./visualization";
 
 const ENABLED_SEARCH_MODELS = [
   "collection",
@@ -22,9 +23,9 @@ const ENABLED_SEARCH_MODELS = [
 
 export const SEARCH_MODELS = [...ENABLED_SEARCH_MODELS, "segment"] as const;
 
-export type EnabledSearchModel = typeof ENABLED_SEARCH_MODELS[number];
+export type EnabledSearchModel = (typeof ENABLED_SEARCH_MODELS)[number];
 
-export type SearchModel = typeof SEARCH_MODELS[number];
+export type SearchModel = (typeof SEARCH_MODELS)[number];
 
 export interface SearchScore {
   weight: number;
@@ -41,7 +42,6 @@ export interface SearchScore {
     | "text-total-occurrences"
     | "text-fullness";
   match?: string;
-  "match-context-thunk"?: string;
   column?: string;
 }
 

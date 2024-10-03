@@ -73,7 +73,7 @@ export function CoordinateFilterEditor({
   };
 
   return (
-    <HoverParent>
+    <HoverParent data-testid="coordinate-filter-editor">
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle
