@@ -109,15 +109,14 @@ describe("QuestionInfoSidebar", () => {
       expect(screen.getByText("Products")).toBeInTheDocument();
     });
 
-    it("should show entity id", () => {
+    it("should not show entity id", () => {
       const card = createMockCard({
         name: "Question",
         entity_id: "jenny8675309" as BaseEntityId,
       });
       setup({ card });
 
-      expect(screen.getByText("Entity ID")).toBeInTheDocument();
-      expect(screen.getByText("jenny8675309")).toBeInTheDocument();
+      expect(screen.queryByText("Entity ID")).not.toBeInTheDocument();
     });
 
     it("should show if a public link is enabled", () => {
