@@ -114,7 +114,7 @@ export function SelectEmbedTypePane({
         >
           <SharingPaneButton
             title={t`Interactive embedding`}
-            badge={<Badge color="brand">{t`Pro / Enterprise`}</Badge>}
+            badge={<Badge color="brand">{t`Pro`}</Badge>}
             illustration={<InteractiveEmbeddingIllustration />}
           >
             <List>
@@ -138,7 +138,7 @@ export function SelectEmbedTypePane({
             badge={
               <>
                 <Badge color="gray">{t`Beta`}</Badge>
-                <Badge color="brand">{t`Pro / Enterprise`}</Badge>
+                <Badge color="brand">{t`Pro`}</Badge>
               </>
             }
             illustration={<SdkIllustration />}
@@ -148,7 +148,7 @@ export function SelectEmbedTypePane({
               {/* eslint-disable-next-line no-literal-metabase-strings -- visible only to admin */}
               <List.Item>{t`Embed Metabase components with React (like standalone charts, dashboards, the Query Builder, and more)`}</List.Item>
               <List.Item>{t`Manage access and interactivity per component`}</List.Item>
-              <List.Item>{t`Advanced customization options for seamless styling`}</List.Item>
+              <List.Item>{t`Advanced customization options for styling`}</List.Item>
             </List>
           </SharingPaneButton>
         </a>
