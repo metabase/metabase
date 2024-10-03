@@ -7,8 +7,38 @@ import { Icon } from "metabase/ui";
 
 import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
 
+interface SettingsIconProps {
+  noPointer?: boolean;
+  noMargin?: boolean;
+}
+
+export const SettingsButton = styled(Button)<SettingsIconProps>`
+  margin-left: ${props => (props.noMargin ? "0" : "0.75rem")};
+  padding: 0;
+
+  &:hover {
+    background-color: unset;
+  }
+`;
+
+export const SettingsIcon = styled(Icon)<SettingsIconProps>`
+  margin-left: ${props => (props.noMargin ? "0" : "0.75rem")};
+  color: var(--mb-color-text-medium);
+  cursor: ${props => (props.noPointer ? "inherit" : "pointer")};
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+`;
+
+export const FieldPickerColorPicker = styled(ChartSettingColorPicker)`
+  margin-bottom: 0;
+  margin-left: 0.25rem;
+`;
+
 interface ChartSettingFieldPickerRootProps {
   disabled: boolean;
+  showDragHandle: boolean;
 }
 
 export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRootProps>`
@@ -19,6 +49,7 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
   padding-right: 1rem;
   padding-left: 0.5rem;
   background: var(--mb-color-bg-white);
+  cursor: ${props => (props.showDragHandle ? "grab" : "default")};
 
   ${Triggerable.Trigger} {
     flex: 1;
@@ -52,33 +83,10 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
   ${SelectButton.Root}:disabled {
     background-color: var(--mb-color-bg-white);
   }
-`;
-
-interface SettingsIconProps {
-  noPointer?: boolean;
-  noMargin?: boolean;
-}
-
-export const SettingsButton = styled(Button)<SettingsIconProps>`
-  margin-left: ${props => (props.noMargin ? "0" : "0.75rem")};
-  padding: 0;
 
   &:hover {
-    background-color: unset;
+    ${SettingsIcon} {
+      color: var(--mb-color-brand);
+    }
   }
-`;
-
-export const SettingsIcon = styled(Icon)<SettingsIconProps>`
-  margin-left: ${props => (props.noMargin ? "0" : "0.75rem")};
-  color: var(--mb-color-text-medium);
-  cursor: ${props => (props.noPointer ? "inherit" : "pointer")};
-
-  &:hover {
-    color: var(--mb-color-brand);
-  }
-`;
-
-export const FieldPickerColorPicker = styled(ChartSettingColorPicker)`
-  margin-bottom: 0;
-  margin-left: 0.25rem;
 `;

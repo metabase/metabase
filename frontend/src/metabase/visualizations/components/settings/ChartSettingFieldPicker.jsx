@@ -51,6 +51,7 @@ const ChartSettingFieldPicker = ({
     <ChartSettingFieldPickerRoot
       className={className}
       disabled={options.length === 1 && options[0].value === value}
+      showDragHandle={showDragHandle}
       data-testid="chartsettings-field-picker"
     >
       {showDragHandle && <SettingsIcon name="grabber" noPointer noMargin />}
