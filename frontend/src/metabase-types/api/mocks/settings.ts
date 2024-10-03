@@ -125,6 +125,7 @@ export const createMockTokenFeatures = (
   collection_cleanup: false,
   upload_management: false,
   query_reference_validation: false,
+  serialization: false,
   ...opts,
 });
 
