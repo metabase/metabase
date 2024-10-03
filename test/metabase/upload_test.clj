@@ -1343,13 +1343,12 @@
         schema-name       (ddl.i/format-name driver schema-name)
         schema+table-name (#'upload/table-identifier {:schema schema-name :name table-name})
         ->normalized-col  (comp keyword (partial #'upload/normalize-column-name driver) name)
-        name->display     (->> (keys col->upload-type)
+        names             (->> (keys col->upload-type)
                                (map name)
-                               (remove #{upload/auto-pk-column-name})
-                               ((juxt
-                                 (partial map (comp name ->normalized-col))
-                                 (partial #'upload/derive-display-names driver)))
-                               (apply zipmap))
+                               (remove #{upload/auto-pk-column-name}))
+        normal-names      (for [n names] (#'upload/normalize-column-name driver n))
+        display-names     (#'upload/derive-display-names driver names)
+        name->display     (zipmap normal-names display-names)
         col->upload-type  (update-keys col->upload-type ->normalized-col)
         insert-col-names  (remove #{upload/auto-pk-column-keyword} (keys col->upload-type))
         col-definitions   (#'upload/column-definitions driver col->upload-type)]
