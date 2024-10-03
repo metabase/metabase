@@ -1,3 +1,4 @@
+import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
@@ -15,7 +16,6 @@ import SecretKeyWidget from "../widgets/SecretKeyWidget";
 
 import { useMergeSetting } from "./hooks";
 import type { AdminSettingComponentProps } from "./types";
-import { ChangeEvent } from "react";
 
 const EMBEDDING_SECRET_KEY_SETTING: SettingElement<"embedding-secret-key"> = {
   key: "embedding-secret-key",
@@ -37,7 +37,10 @@ export function StaticEmbeddingSettings({
   ) => await updateSetting({ key: embeddingSecretKeySetting.key }, value);
 
   function handleToggleStaticEmbedding(event: ChangeEvent<HTMLInputElement>) {
-    updateSetting({ key: "enable-embedding-static" }, event.currentTarget.checked);
+    updateSetting(
+      { key: "enable-embedding-static" },
+      event.currentTarget.checked,
+    );
     // TODO: remove before merging integration branch
     updateSetting({ key: "enable-embedding" }, event.currentTarget.checked);
   }
