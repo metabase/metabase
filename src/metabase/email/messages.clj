@@ -1,6 +1,8 @@
 (ns metabase.email.messages
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
-   NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
+   NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails.
+
+  NOTE: This namespace is deprecated, all of these emails will soon be converted to System Email Notifications."
   (:require
    [buddy.core.codecs :as codecs]
    [cheshire.core :as json]
@@ -540,7 +542,7 @@
   (or (:card alert)
       (first (:cards alert))))
 
-(defn- common-alert-context
+(defn common-alert-context
   "Template context that is applicable to all alert templates, including alert management templates
   (e.g. the subscribed/unsubscribed emails)"
   ([alert]
@@ -629,7 +631,8 @@
                          nil
                          (assoc-attachment-booleans alert results))))
 
-(def ^:private alert-condition-text
+(def alert-condition-text
+  "A map of alert conditions to their corresponding text."
   {:meets "when this question meets its goal"
    :below "when this question goes below its goal"
    :rows  "whenever this question has any results"})

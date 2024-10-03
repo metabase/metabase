@@ -7,6 +7,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.urls :as urls]
    [toucan2.core :as t2]))
 
 (use-fixtures
@@ -148,3 +149,36 @@
              [#"Crowberto's happiness and productivity over time"
               #"Ngoc could use your help setting up Metabase"
               #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>"]))))
+
+(deftest alert-create-email-test
+  (mt/with-temp [:model/Card card {:name "A Card"}]
+    (let [rasta (mt/fetch-user :rasta)
+          check (fn [alert-condition condition-regex]
+                  (let [regexes [#"This is just a confirmation"
+                                 (re-pattern (format "<a href=\"%s\"*>%s</a>" (urls/card-url (:id card)) (:name card)))
+                                 condition-regex]
+                        email (-> (notification.tu/with-captured-channel-send!
+                                    (events/publish-event! :event/alert-create {:object (t2/instance :model/Pulse
+                                                                                                     (merge {:name "A Pulse"
+                                                                                                             :card card}
+                                                                                                            alert-condition))
+                                                                                :user-id (:id rasta)}))
+                                  :channel/email
+                                  first)]
+                    (is (= {:recipients     #{(:email rasta)}
+                            :message-type   :attachments
+                            :subject        "You set up an alert"
+                            :message        [(zipmap (map str regexes) (repeat true))]
+                            :recipient-type :cc}
+                           (apply mt/summarize-multipart-single-email email regexes)))))]
+
+      (doseq [[alert-condition condition-regex]
+              [[{:alert_condition "rows"}
+                #"This alert will be sent whenever this question has any results"]
+               [{:alert_condition "goal"
+                 :alert_above_goal true}
+                #"This alert will be sent when this question meets its goal"]
+               [{:alert_condition "goal"
+                 :alert_above_goal false}
+                #"This alert will be sent when this question goes below its goal"]]]
+        (check alert-condition condition-regex)))))

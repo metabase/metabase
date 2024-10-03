@@ -25,6 +25,9 @@
                                        :model model})
      schema]))
 
+(def ^:private user-hydrate
+  [:model/User :first_name :last_name :email])
+
 (let [default-schema (mc/schema
                       [:map {:closed true}
                        [:user-id  pos-int?]
@@ -140,7 +143,8 @@
 (def ^:private alert-schema
   {:event/alert-create (mc/schema
                         [:map {:closed true}
-                         [:user-id pos-int?]
+                         (-> [:user-id pos-int?]
+                             (with-hydrate :user user-hydrate))
                          [:object [:and
                                    [:fn #(t2/instance-of? :model/Pulse %)]
                                    [:map

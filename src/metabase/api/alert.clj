@@ -124,9 +124,7 @@
 
 (defn- notify-new-alert-created! [alert]
   (when (email/email-configured?)
-
-    (messages/send-new-alert-email! alert)
-
+    #_(messages/send-new-alert-email! alert)
     (doseq [recipient (non-creator-recipients alert)]
       (messages/send-you-were-added-alert-email! alert recipient @api/*current-user*))))
 
