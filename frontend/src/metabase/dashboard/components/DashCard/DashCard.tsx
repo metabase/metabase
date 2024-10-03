@@ -260,8 +260,12 @@ function DashCardInner({
     }
   }, [dashcard, dashboard.collection_authority_level]);
 
+  const isEditingCardContent = !isPreviewingCard;
   const isEditingDashboardLayout =
-    isEditing && !clickBehaviorSidebarDashcard && !isEditingParameter;
+    isEditing &&
+    !clickBehaviorSidebarDashcard &&
+    !isEditingParameter &&
+    !isEditingCardContent;
 
   const isClickBehaviorSidebarOpen = !!clickBehaviorSidebarDashcard;
   const isEditingDashCardClickBehavior =
