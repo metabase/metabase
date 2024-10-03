@@ -28,6 +28,23 @@
 (p/import-vars
  [nqa.replacement replace-names])
 
+;; For now, we only support a small set of drivers, so we'll define them all here.
+(doseq [driver [:h2
+                :mysql
+                :postgres
+                :redshift
+                :sqlite
+                :sqlserver]]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (defmethod driver/database-supports? [driver :sql-parsing]
+    [actual-driver _feat _db]
+    ;; We require exact matches, as derived drivers may have unsupported extensions.
+    (= driver actual-driver)))
+
+(defn- supported? [driver]
+  (and (isa? driver/hierarchy driver :sql)
+       (driver.u/supports? driver :sql-parsing nil)))
+
 (def ^:private field-and-table-fragment
   "HoneySQL fragment to get the Field and Table"
   {:select    [[:f.id :field-id] [:f.name :column]
@@ -290,11 +307,11 @@
   Errs on the side of optimism: i.e., it may return tables that are *not* in the query, and is unlikely to fail
   to return tables that are in the query."
   [driver query & {:keys [mode] :or {mode :ast-walker-1}}]
-  (let [db-id         (:database query)
-        macaw-opts    (nqa.impl/macaw-options driver)
-        table-opts    (assoc macaw-opts :mode mode)
-        sql-string    (:query (nqa.sub/replace-tags query))
-        parsed-query  (macaw/query->tables sql-string table-opts)]
+  (let [db-id        (:database query)
+        macaw-opts   (nqa.impl/macaw-options driver)
+        table-opts   (assoc macaw-opts :mode mode)
+        sql-string   (:query (nqa.sub/replace-tags query))
+        parsed-query (macaw/query->tables sql-string table-opts)]
     (table-refs-for-query parsed-query db-id)))
 
 (defn references-for-native
@@ -304,6 +321,8 @@
   (let [driver (driver.u/database->driver (:database query))]
     ;; TODO this approach is not extensible, we need to move to multimethods.
     ;; See https://github.com/metabase/metabase/issues/43516 for long term solution.
+    ;; For now we are not restricting this based on the multimethod, as its useful to gather info on which drivers
+    ;; have errors or inaccuracies in practice.
     (when (isa? driver/hierarchy driver :sql)
       (references-for-sql driver query))))
 
@@ -313,7 +332,6 @@
   positives it may return."
   [query & {:as opts}]
   (let [driver (driver.u/database->driver (:database query))]
-    ;; TODO this approach is not extensible, we need to move to multimethods.
-    ;; See https://github.com/metabase/metabase/issues/43516 for long term solution.
-    (when (isa? driver/hierarchy driver :sql)
-      (tables-for-sql driver query opts))))
+    (if (supported? driver)
+      (tables-for-sql driver query opts)
+      :query-analysis.error/driver-not-supported)))
