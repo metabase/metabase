@@ -115,7 +115,7 @@ export function IFrameViz({
           <Text
             color="text-medium"
             align={"center"}
-          >{t`There was a problem loading your iFrame`}</Text>
+          >{t`There was a problem loading your iframe`}</Text>
         </Box>
       )}
     </IFrameWrapper>

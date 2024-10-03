@@ -12,7 +12,7 @@ import { IFrameViz, type IFrameVizProps } from "./IFrameViz";
 
 registerVisualizations();
 
-const iFrameDashcard = createMockIFrameDashboardCard({
+const iframeDashcard = createMockIFrameDashboardCard({
   visualization_settings: {
     iframe: "<iframe src='https://example.com'></iframe>",
   },
@@ -30,12 +30,12 @@ const setup = (options?: Partial<IFrameVizProps>) => {
 
   renderWithProviders(
     <IFrameViz
-      dashcard={iFrameDashcard}
+      dashcard={iframeDashcard}
       dashboard={createMockDashboard()}
       isEditing={true}
       isPreviewing={false}
       onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-      settings={iFrameDashcard.visualization_settings as VisualizationSettings}
+      settings={iframeDashcard.visualization_settings as VisualizationSettings}
       width={800}
       height={600}
       gridSize={{ width: 18, height: 6 }}
@@ -154,7 +154,7 @@ describe("IFrameViz", () => {
       screen.queryByTestId("iframe-visualization"),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText("There was a problem loading your iFrame"),
+      screen.getByText("There was a problem loading your iframe"),
     ).toBeInTheDocument();
   });
 
@@ -189,7 +189,7 @@ describe("IFrameViz", () => {
       screen.queryByTestId("iframe-visualization"),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText("There was a problem loading your iFrame"),
+      screen.getByText("There was a problem loading your iframe"),
     ).toBeInTheDocument();
   });
 });

@@ -1159,7 +1159,7 @@ describeWithSnowplow("scenarios > dashboard", () => {
   it("should allow users to add link cards to dashboards", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
-    cy.findByLabelText("Add a link or iFrame").click();
+    cy.findByLabelText("Add a link or iframe").click();
     popover().findByText("Link").click();
 
     cy.wait("@recentViews");

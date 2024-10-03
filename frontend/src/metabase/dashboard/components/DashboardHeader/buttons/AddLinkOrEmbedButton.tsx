@@ -40,10 +40,10 @@ export const AddLinkOrEmbedButton = () => {
     <Menu position="bottom-end">
       <Menu.Target>
         <ToolbarButton
-          tooltipLabel={t`Add a link or iFrame`}
+          tooltipLabel={t`Add a link or iframe`}
           w="3rem"
-          data-element-id={t`Add a link or iFrame`}
-          aria-label={t`Add a link or iFrame`}
+          data-element-id={t`Add a link or iframe`}
+          aria-label={t`Add a link or iframe`}
         >
           <Group spacing="xs" noWrap>
             <Icon name="link" size={18} />
@@ -59,7 +59,7 @@ export const AddLinkOrEmbedButton = () => {
         </Menu.Item>
         <Menu.Item onClick={onAddIFrameCard}>
           <Text pr="xl" fw="bold">
-            {t`iFrame`}
+            {t`IFrame`}
           </Text>
         </Menu.Item>
       </Menu.Dropdown>
