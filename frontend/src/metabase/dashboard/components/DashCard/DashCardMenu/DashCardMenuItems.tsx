@@ -28,7 +28,8 @@ export const DashCardMenuItems = ({
 
   const {
     plugins,
-    onEditQuestion = question => dispatch(editQuestion(question, "editor")),
+    onEditQuestion = (question, mode = "notebook") =>
+      dispatch(editQuestion(question, mode)),
   } = useInteractiveDashboardContext();
 
   const dashcardMenuItems = plugins?.dashboard?.dashcardMenu as
@@ -61,7 +62,7 @@ export const DashCardMenuItems = ({
           key: "MB_EDIT_MODEL",
           iconName: "pencil",
           label: t`Edit model`,
-          onClick: () => onEditQuestion(question),
+          onClick: () => onEditQuestion(question, "query"),
         });
       }
       if (type === "metric") {
@@ -69,7 +70,7 @@ export const DashCardMenuItems = ({
           key: "MB_EDIT_METRIC",
           iconName: "pencil",
           label: t`Edit metric`,
-          onClick: () => onEditQuestion(question),
+          onClick: () => onEditQuestion(question, "query"),
         });
       }
     }
