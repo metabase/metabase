@@ -695,10 +695,7 @@
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
     ;; against except for Athena and Databricks which currently require test data to be loaded separately.
-    :test/dynamic-dataset-loading
-
-    ;; Whether the driver is officially supported by Metabase's query parser.
-    :sql-parsing})
+    :test/dynamic-dataset-loading})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

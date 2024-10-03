@@ -28,23 +28,6 @@
 (p/import-vars
  [nqa.replacement replace-names])
 
-;; For now, we only support a small set of drivers, so we'll define them all here.
-(doseq [driver [:h2
-                :mysql
-                :postgres
-                :redshift
-                :sqlite
-                :sqlserver]]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (defmethod driver/database-supports? [driver :sql-parsing]
-    [actual-driver _feat _db]
-    ;; We require exact matches, as derived drivers may have unsupported extensions.
-    (= driver actual-driver)))
-
-(defn- supported? [driver]
-  (and (isa? driver/hierarchy driver :sql)
-       (driver.u/supports? driver :sql-parsing nil)))
-
 (def ^:private field-and-table-fragment
   "HoneySQL fragment to get the Field and Table"
   {:select    [[:f.id :field-id] [:f.name :column]
@@ -302,7 +285,7 @@
     {:tables (strip-model-refs table-refs)
      :fields (strip-model-refs field-refs)}))
 
-(defn- tables-for-sql
+(defn- tables-via-macaw
   "Returns a set of table identifiers that (may) be referenced in the given card's query.
   Errs on the side of optimism: i.e., it may return tables that are *not* in the query, and is unlikely to fail
   to return tables that are in the query."
@@ -314,6 +297,26 @@
         parsed-query (macaw/query->tables sql-string table-opts)]
     (table-refs-for-query parsed-query db-id)))
 
+;; Keeping this multimethod private for now, need some hammock time on what to expose to drivers.
+(defmulti ^:private tables-for-native*
+  "Returns a set of table identifiers that (may) be referenced in the given card's query.
+  Errs on the side of optimism: i.e., it may return tables that are *not* in the query, and is unlikely to fail
+  to return tables that are in the query.
+
+  If it is unable to analyze the query, it should return an error of the form `:query-analysis.error/...`"
+  (fn [driver _query _opts] driver)
+  :hierarchy #'driver/hierarchy)
+
+(defmethod tables-for-native* :default
+  [_driver _query _opts]
+  :query-analysis.error/driver-not-supported)
+
+(defmethod tables-for-native* :sql
+  [driver query opts]
+  (if (nqa.impl/trusted-for-table-permissions? driver)
+    (tables-via-macaw driver query opts)
+    :query-analysis.error/driver-not-supported))
+
 (defn references-for-native
   "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's
   query. Currently only support SQL-based dialects."
@@ -321,8 +324,9 @@
   (let [driver (driver.u/database->driver (:database query))]
     ;; TODO this approach is not extensible, we need to move to multimethods.
     ;; See https://github.com/metabase/metabase/issues/43516 for long term solution.
-    ;; For now we are not restricting this based on the multimethod, as its useful to gather info on which drivers
-    ;; have errors or inaccuracies in practice.
+    ;; For now we are not restricting this as we are for [[tables-for-native]], yet.
+    ;; As we don't have any hard dependencies on this data, its useful to gather info on which drivers have errors or
+    ;; inaccuracies in practice.
     (when (isa? driver/hierarchy driver :sql)
       (references-for-sql driver query))))
 
@@ -332,6 +336,4 @@
   positives it may return."
   [query & {:as opts}]
   (let [driver (driver.u/database->driver (:database query))]
-    (if (supported? driver)
-      (tables-for-sql driver query opts)
-      :query-analysis.error/driver-not-supported)))
+    (tables-for-native* driver query opts)))
