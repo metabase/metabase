@@ -2655,30 +2655,30 @@
 
 (deftest populate-enabled-embedding-settings-encrypted-works
   (testing "With encryption turned on > "
-      (mt/with-temp-env-var-value! [MB_ENCRYPTION_SECRET_KEY "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"]
-        (testing "Check that embedding settings are nil when enable-embedding is nil"
-          (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
-            (t2/delete! :model/Setting :key "enable-embedding")
-            (migrate!)
-            (is (= nil (t2/select-one :model/Setting :key "enable-embedding-interactive")))
-            (is (= nil (t2/select-one :model/Setting :key "enable-embedding-static")))
-            (is (= nil (t2/select-one :model/Setting :key "enable-embedding-sdk")))))
-        (testing "Check that embedding settings are true when enable-embedding is true"
-          (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
-            (t2/delete! :model/Setting :key "enable-embedding")
-            (t2/insert! :model/Setting {:key "enable-embedding" :value "true"})
-            (migrate!)
-            (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive")))
-            (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
-            (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk")))))
-        (testing "Check that embedding settings are false when enable-embedding is false"
-          (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
-            (t2/delete! :model/Setting :key "enable-embedding")
-            (t2/insert! :model/Setting {:key "enable-embedding" :value "false"})
-            (migrate!)
-            (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive")))
-            (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
-            (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk"))))))))
+    (mt/with-temp-env-var-value! [MB_ENCRYPTION_SECRET_KEY "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"]
+      (testing "Check that embedding settings are nil when enable-embedding is nil"
+        (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
+          (t2/delete! :model/Setting :key "enable-embedding")
+          (migrate!)
+          (is (= nil (t2/select-one :model/Setting :key "enable-embedding-interactive")))
+          (is (= nil (t2/select-one :model/Setting :key "enable-embedding-static")))
+          (is (= nil (t2/select-one :model/Setting :key "enable-embedding-sdk")))))
+      (testing "Check that embedding settings are true when enable-embedding is true"
+        (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
+          (t2/delete! :model/Setting :key "enable-embedding")
+          (t2/insert! :model/Setting {:key "enable-embedding" :value "true"})
+          (migrate!)
+          (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive")))
+          (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
+          (is (= "true" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk")))))
+      (testing "Check that embedding settings are false when enable-embedding is false"
+        (impl/test-migrations ["v51.2024-09-26T03:01:00" "v51.2024-09-26T03:03:00"] [migrate!]
+          (t2/delete! :model/Setting :key "enable-embedding")
+          (t2/insert! :model/Setting {:key "enable-embedding" :value "false"})
+          (migrate!)
+          (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-interactive")))
+          (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-static")))
+          (is (= "false" (t2/select-one-fn :value :model/Setting :key "enable-embedding-sdk"))))))))
 
 (deftest populate-embedding-origin-settings-works
   (testing "Check that embedding-origins are unset when embedding-app-origin is unset"
