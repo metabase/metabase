@@ -236,7 +236,7 @@ export function MainNavbarView({
           )}
         </div>
         <WhatsNewNotification />
-        <SidebarOnboardingSection initialState={!hasOwnDatabase} />
+        <SidebarOnboardingSection hasOwnDatabase={hasOwnDatabase} />
       </SidebarContentRoot>
     </ErrorBoundary>
   );
@@ -294,7 +294,12 @@ function CollectionSectionHeading({
   );
 }
 
-function SidebarOnboardingSection({ initialState }: { initialState: boolean }) {
+function SidebarOnboardingSection({
+  hasOwnDatabase,
+}: {
+  hasOwnDatabase: boolean;
+}) {
+  const initialState = !hasOwnDatabase;
   const applicationName = useSelector(getApplicationName);
 
   return (
