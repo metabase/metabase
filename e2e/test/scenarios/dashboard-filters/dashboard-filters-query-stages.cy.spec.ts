@@ -1085,11 +1085,10 @@ describe("scenarios > dashboard > filters > query stages", () => {
         }
       });
 
-      describe("applies the filter to the card and allows to drill via dashcard header", () => {
+      describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
         it("2nd stage aggregation", () => {
           editDashboard();
 
-          cy.log("## last stage aggregations");
           getFilter("Number").click();
           sidebar().findByText("Filter operator").next().click();
           popover().findByText("Between").click();
@@ -1121,10 +1120,42 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
         });
 
+        it("2nd stage breakout", () => {
+          editDashboard();
+
+          getFilter("Text").click();
+
+          getDashboardCard(0).findByText("Select…").click();
+          popover().within(() => {
+            getPopoverItem(12, "Category").click();
+          });
+
+          cy.button("Save").click();
+          cy.wait("@updateDashboard");
+
+          filterWidget().eq(0).click();
+          popover().within(() => {
+            cy.findByLabelText("Gadget").click();
+            cy.button("Add filter").click();
+          });
+          cy.wait("@dashboardData");
+
+          getDashboardCard(0).scrollIntoView();
+          getDashboardCard(0)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 1,077 rows",
+          );
+        });
+
         it("3rd stage aggregation", () => {
           editDashboard();
 
-          cy.log("## last stage aggregations");
           getFilter("Number").click();
           sidebar().findByText("Filter operator").next().click();
           popover().findByText("Between").click();
@@ -1156,7 +1187,38 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
         });
 
-        // cy.log("## last stage breakouts");
+        it("3rd stage breakout", () => {
+          editDashboard();
+
+          getFilter("Text").click();
+
+          getDashboardCard(0).findByText("Select…").click();
+          popover().within(() => {
+            getPopoverItem(15, "Category").click();
+          });
+
+          cy.button("Save").click();
+          cy.wait("@updateDashboard");
+
+          filterWidget().eq(0).click();
+          popover().within(() => {
+            cy.findByLabelText("Gadget").click();
+            cy.button("Add filter").click();
+          });
+          cy.wait("@dashboardData");
+
+          getDashboardCard(0).scrollIntoView();
+          getDashboardCard(0)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 1,077 rows",
+          );
+        });
       });
     });
   });
