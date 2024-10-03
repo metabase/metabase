@@ -21,7 +21,6 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { UploadCSV } from "metabase/nav/containers/MainNavbar/SidebarItems/UploadCSV";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -85,7 +84,6 @@ const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
 export function MainNavbarView({
   isAdmin,
-  isOpen,
   currentUser,
   bookmarks,
   collections,
@@ -238,10 +236,7 @@ export function MainNavbarView({
           )}
         </div>
         <WhatsNewNotification />
-        <SidebarOnboardingSection
-          initialState={!hasOwnDatabase}
-          isSidebarOpen={isOpen}
-        />
+        <SidebarOnboardingSection initialState={!hasOwnDatabase} />
       </SidebarContentRoot>
     </ErrorBoundary>
   );
@@ -299,22 +294,14 @@ function CollectionSectionHeading({
   );
 }
 
-function SidebarOnboardingSection({
-  initialState,
-  isSidebarOpen,
-}: {
-  initialState: boolean;
-  isSidebarOpen: boolean;
-}) {
+function SidebarOnboardingSection({ initialState }: { initialState: boolean }) {
   const applicationName = useSelector(getApplicationName);
 
   return (
     <Box
       m={0}
       bottom={0}
-      pos="fixed"
-      w={isSidebarOpen ? NAV_SIDEBAR_WIDTH : 0}
-      h={isSidebarOpen ? "auto" : 0}
+      pos="sticky"
       bg="bg-white"
       className={cx({ [CS.borderTop]: !initialState })}
     >
