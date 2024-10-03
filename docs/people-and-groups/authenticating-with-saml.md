@@ -47,7 +47,7 @@ If you don't see your IdP listed here:
 
 ## Generic SAML configuration
 
-The top portion of the [SAML form in Metabase](#setting-up-saml-with-your-idp) has the information you'll need to fill out your IdP's SAML form, with buttons to make copying the information easy.
+The top portion of the SAML form in Metabase has the information you'll need to fill out your IdP's SAML form, with buttons to make copying the information easy.
 
 The names of the fields in the Metabase SAML form won't always match the names used by your IdP. We've provided a description of each field below to help you map information from one place to another.
 
