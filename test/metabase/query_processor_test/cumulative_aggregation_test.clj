@@ -490,9 +490,39 @@
                   [->local-date str ->local-date int int]
                   (qp/process-query query)))))))))
 
-(deftest ^:parallel cumulative-count-offset-day-of-year-test
+(deftest ^:parallel cumulative-count-different-temporal-fields-test
   (testing "day is finer than day-of-year"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            orders            (lib.metadata/table metadata-provider (mt/id :orders))
+            created-at        (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+            birth-date        (->> (lib/breakoutable-columns (lib/query metadata-provider orders))
+                                   (m/find-first (comp #{(mt/id :people :birth_date)} :id)))
+            query             (-> (lib/query metadata-provider orders)
+                                  (lib/breakout (lib/with-temporal-bucket birth-date :month-of-year))
+                                  (lib/breakout (lib/with-temporal-bucket created-at :year))
+                                  (lib/aggregate (lib/count))
+                                  (lib/aggregate (lib/cum-count))
+                                  (lib/limit 10)
+                                  (assoc-in [:middleware :format-rows?] false))]
+        (mt/with-native-query-testing-context query
+          (is (= [["1"  #t "2016-01-01" 66  66]
+                  ["2"  #t "2016-01-01" 83 149]
+                  ["3"  #t "2016-01-01" 46 195]
+                  ["4"  #t "2016-01-01" 70 265]
+                  ["5"  #t "2016-01-01" 57 322]
+                  ["6"  #t "2016-01-01" 67 389]
+                  ["7"  #t "2016-01-01" 49 438]
+                  ["8"  #t "2016-01-01" 76 514]
+                  ["9"  #t "2016-01-01" 61 575]
+                  ["10" #t "2016-01-01" 57 632]]
+                 (mt/formatted-rows
+                  [str ->local-date int int]
+                  (qp/process-query query)))))))))
+
+(deftest ^:parallel cumulative-count-offset-day-of-year-test
+  (testing "day is finer than day-of-year"
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative :window-functions/offset)
       (let [metadata-provider   (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders              (lib.metadata/table metadata-provider (mt/id :orders))
             created-at          (lib.metadata/field metadata-provider (mt/id :orders :created_at))
@@ -505,16 +535,47 @@
                                     (assoc-in [:middleware :format-rows?] false))
             query               base-query]
         (mt/with-native-query-testing-context query
-          (is (= [[1 #t "2017-01-01" 5 nil]
-                  [1 #t "2018-01-01" 10 5]
-                  [1 #t "2019-01-01" 16 10]
-                  [1 #t "2020-01-01" 14 16]
-                  [2 #t "2017-01-02" 3 nil]
-                  [2 #t "2018-01-02" 12 3]
-                  [2 #t "2019-01-02" 21 12]
-                  [2 #t "2020-01-02" 20 21]
-                  [3 #t "2017-01-03" 8 nil]
-                  [3 #t "2018-01-03" 14 8]]
+          (is (= [[1 #t "2017-01-01"  5 nil]
+                  [1 #t "2018-01-01" 10   5]
+                  [1 #t "2019-01-01" 16  10]
+                  [1 #t "2020-01-01" 14  16]
+                  [2 #t "2017-01-02"  3 nil]
+                  [2 #t "2018-01-02" 12   3]
+                  [2 #t "2019-01-02" 21  12]
+                  [2 #t "2020-01-02" 20  21]
+                  [3 #t "2017-01-03"  8 nil]
+                  [3 #t "2018-01-03" 14   8]]
                  (mt/formatted-rows
                   [int ->local-date int int]
+                  (qp/process-query query)))))))))
+
+(deftest ^:parallel offset-filtering-test
+  (testing "can filter offset aggregations"
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative :window-functions/offset)
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            orders            (lib.metadata/table metadata-provider (mt/id :orders))
+            created-at        (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+            total             (lib.metadata/field metadata-provider (mt/id :orders :total))
+            base-query        (-> (lib/query metadata-provider orders)
+                                  (lib/breakout (lib/with-temporal-bucket created-at :month))
+                                  (lib/breakout (lib/with-temporal-bucket created-at :month-of-year))
+                                  (lib/aggregate (lib/sum total))
+                                  (lib/aggregate (lib/offset (lib/sum total) -1))
+                                  lib/append-stage)
+            created-at-month  (->> (lib/filterable-columns base-query)
+                                   (m/find-first (comp #{"Created At: Month"} :display-name)))
+            query             (-> base-query
+                                  (lib/filter (lib/between created-at-month "2019-09-03" "2020-10-03"))
+                                  (lib/limit 10)
+                                  (assoc-in [:middleware :format-rows?] false))]
+        (mt/with-native-query-testing-context query
+          (is (= [[#t "2020-01-01" #t "0001-01-01" 52249.36 51634.1]
+                  [#t "2020-02-01" #t "0002-01-01" 47403.79 47075.6]
+                  [#t "2020-03-01" #t "0003-01-01" 45683.47 51346.97]
+                  [#t "2020-04-01" #t "0004-01-01" 30759.31 47554.92]
+                  [#t "2019-10-01" #t "0010-01-01" 46273.34 47728.54]
+                  [#t "2019-11-01" #t "0011-01-01" 47410.27 46431.86]
+                  [#t "2019-12-01" #t "0012-01-01" 48260.52 48242.06]]
+                 (mt/formatted-rows
+                  [->local-date ->local-date 2.0 2.0]
                   (qp/process-query query)))))))))
