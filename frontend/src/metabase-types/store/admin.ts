@@ -40,7 +40,7 @@ export interface AdminState {
     };
   };
   settings: {
-    settings: SettingDefinition[];
+    settings: SettingDefinition<SettingKey>[];
     warnings: Partial<Record<SettingKey, unknown>>;
   };
 }

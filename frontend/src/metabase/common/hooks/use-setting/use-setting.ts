@@ -51,9 +51,9 @@ export const useUserSetting = <T extends keyof UserSettings>(
 export const useMergeSetting = <Key extends SettingKey>(
   displaySetting: SettingElement<Key>,
 ): SettingElement<Key> => {
-  const apiSetting: SettingDefinition<Key> = useSelector(
-    state => state.admin.settings.settings,
-  ).find(setting => setting.key === displaySetting.key);
+  const apiSetting = useSelector(state => state.admin.settings.settings).find(
+    setting => setting.key === displaySetting.key,
+  ) as SettingDefinition<Key> | undefined;
 
   const mergedSetting: SettingElement<Key> = useMemo(() => {
     return {

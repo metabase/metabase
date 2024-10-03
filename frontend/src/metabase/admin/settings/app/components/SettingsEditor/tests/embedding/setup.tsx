@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import _ from "underscore";
 
 import { screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
@@ -20,18 +21,18 @@ export type SetupOpts = {
 };
 
 export const setupEmbedding = async ({
-  settingValues,
+  settingValues = {},
   isHosted = false,
   hasEmbeddingFeature = false,
   hasEnterprisePlugins = false,
 }: SetupOpts) => {
   const returnedValue = await setup({
-    settings: Object.entries(settingValues ?? {}).map(([key, value]) => {
-      return createMockSettingDefinition({
+    settings: _.pairs<Partial<Settings>>(settingValues).map(([key, value]) =>
+      createMockSettingDefinition({
         key,
         value,
-      });
-    }),
+      }),
+    ),
     settingValues: createMockSettings(settingValues),
     tokenFeatures: createMockTokenFeatures({
       hosting: isHosted,
