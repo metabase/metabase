@@ -135,30 +135,40 @@ export function createEmptyTextBox() {
 }
 
 export function addTextBox(
-  string: string,
+  text: string,
   options: Partial<Cypress.TypeOptions> = {},
 ) {
   cy.findByLabelText("Edit dashboard").click();
-  addTextBoxWhileEditing(string, options);
+  addTextBoxWhileEditing(text, options);
 }
 
 export function addLinkWhileEditing(
-  string: string,
+  url: string,
   options: Partial<Cypress.TypeOptions> = {},
 ) {
-  cy.findByLabelText("Add link card").click();
-  cy.findByPlaceholderText("https://example.com").type(string, options);
+  cy.findByLabelText("Add a link or iframe").click();
+  popover().findByText("Link").click();
+  cy.findByPlaceholderText("https://example.com").type(url, options);
+}
+
+export function addIFrameWhileEditing(
+  embed: string,
+  options: Partial<Cypress.TypeOptions> = {},
+) {
+  cy.findByLabelText("Add a link or iframe").click();
+  popover().findByText("IFrame").click();
+  cy.findByTestId("iframe-card-input").type(embed, options);
 }
 
 export function addTextBoxWhileEditing(
-  string: string,
+  text: string,
   options: Partial<Cypress.TypeOptions> = {},
 ) {
   cy.findByLabelText("Add a heading or text box").click();
   popover().findByText("Text").click();
   cy.findByPlaceholderText(
     "You can use Markdown here, and include variables {{like_this}}",
-  ).type(string, options);
+  ).type(text, options);
 }
 
 export function createEmptyHeading() {

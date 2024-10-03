@@ -67,7 +67,12 @@ export const DataPickerModal = ({
   onClose,
 }: Props) => {
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
-  const { hasQuestions, hasModels, hasMetrics } = useAvailableData({
+  const {
+    hasQuestions,
+    hasModels,
+    hasMetrics,
+    isLoading: isLoadingAvailableData,
+  } = useAvailableData({
     databaseId,
   });
 
@@ -210,6 +215,7 @@ export const DataPickerModal = ({
       onClose={onClose}
       onItemSelect={handleChange}
       recentsContext={["selections"]}
+      isLoadingTabs={isLoadingAvailableData}
     />
   );
 };
