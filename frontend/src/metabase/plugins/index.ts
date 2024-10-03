@@ -25,10 +25,13 @@ import {
 } from "metabase/admin/permissions/types";
 import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
-  ActualModelFilters,
-  AvailableModelFilters,
+  MetricFilterControlsProps,
+  MetricFilterSettings,
+} from "metabase/browse/metrics";
+import type {
   ModelFilterControlsProps,
-} from "metabase/browse/utils";
+  ModelFilterSettings,
+} from "metabase/browse/models";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -52,7 +55,6 @@ import type {
   GroupsPermissions,
   ModelCacheRefreshStatus,
   Revision,
-  SearchResult,
   User,
   UserListResult,
 } from "metabase-types/api";
@@ -375,7 +377,7 @@ export const PLUGIN_MODERATION = {
     _usersById: Record<string, UserListResult>,
     _currentUser: User | null,
   ) => [] as RevisionOrModerationEvent[],
-  getMenuItems: (
+  useMenuItems: (
     _question?: Question,
     _isModerator?: boolean,
     _reload?: () => void,
@@ -504,19 +506,22 @@ export const PLUGIN_EMBEDDING = {
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
+  contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
-  availableModelFilters: {} as AvailableModelFilters,
-  ModelFilterControls: (() => null) as ComponentType<ModelFilterControlsProps>,
-  sortModelsByVerification: (_a: SearchResult, _b: SearchResult) => 0,
   sortCollectionsByVerification: (
     _a: CollectionEssentials,
     _b: CollectionEssentials,
   ) => 0,
-  useModelFilterSettings: () =>
-    [{}, _.noop] as [
-      ActualModelFilters,
-      Dispatch<SetStateAction<ActualModelFilters>>,
-    ],
+
+  ModelFilterControls: (_props: ModelFilterControlsProps) => null,
+  getDefaultModelFilters: (_state: State): ModelFilterSettings => ({
+    verified: false,
+  }),
+
+  getDefaultMetricFilters: (_state: State): MetricFilterSettings => ({
+    verified: false,
+  }),
+  MetricFilterControls: (_props: MetricFilterControlsProps) => null,
 };
 
 export const PLUGIN_DASHBOARD_HEADER = {

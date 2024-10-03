@@ -414,6 +414,7 @@ class View extends Component {
       runQuestionQuery,
       cancelQuery,
       setQueryBuilderMode,
+      runDirtyQuestionQuery,
       isShowingQuestionInfoSidebar,
       isShowingQuestionSettingsSidebar,
       cancelQuestionChanges,
@@ -457,8 +458,9 @@ class View extends Component {
                 setQueryBuilderMode("view");
               }}
               onCancel={question => {
-                cancelQuestionChanges();
                 if (question.isSaved()) {
+                  cancelQuestionChanges();
+                  runDirtyQuestionQuery();
                   setQueryBuilderMode("view");
                 } else {
                   onChangeLocation("/");

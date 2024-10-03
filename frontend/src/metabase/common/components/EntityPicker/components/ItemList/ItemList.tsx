@@ -78,7 +78,7 @@ export const ItemList = <
         const icon = getEntityPickerIcon(item, isSelected && isCurrentLevel);
 
         return (
-          <div key={`${item.model}-${item.id}`}>
+          <div data-testid="picker-item" key={`${item.model}-${item.id}`}>
             <NavLink
               disabled={shouldDisableItem?.(item)}
               rightSection={

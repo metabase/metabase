@@ -146,6 +146,11 @@ export const getIsShowDashboardInfoSidebar = createSelector(
   sidebar => sidebar.name === SIDEBAR_NAME.info,
 );
 
+export const getIsShowDashboardSettingsSidebar = createSelector(
+  [getSidebar],
+  sidebar => sidebar.name === SIDEBAR_NAME.settings,
+);
+
 export const getDashboardId = (state: State) => state.dashboard.dashboardId;
 
 export const getDashboard = createSelector(

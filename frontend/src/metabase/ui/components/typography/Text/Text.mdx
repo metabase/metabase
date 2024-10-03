@@ -1,0 +1,48 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Box, Grid, Text } from "metabase/ui";
+import * as TextStories from "./Text.stories";
+
+<Meta of={TextStories} />
+
+# Text
+
+Our themed wrapper around [Mantine Text](https://v6.mantine.dev/core/text/).
+
+## When to use Text
+
+The Text component allows users to display text with themed styles, and replaces the usage of `<div>text</div>` or `<span>text</span>`. This component also handles sizing, line clamps, text decoration, and font weight. For links, use the `Anchor` component, and for code, use the `Code` component.
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/h6aMN8H67eu2w8wmDngfnM/Typography-%2F-Text?type=design&node-id=1-96&mode=design&t=2eUYOsqZZeMc4OGT-0)
+- [Mantine Text Docs](https://v6.mantine.dev/core/text/)
+
+## Examples
+
+<Canvas>
+  <Story of={TextStories.Default} />
+</Canvas>
+
+### Sizes
+
+<Canvas>
+  <Story of={TextStories.Sizes} />
+</Canvas>
+
+### Multiline
+
+<Canvas>
+  <Story of={TextStories.Multiline} />
+</Canvas>
+
+### Truncated
+
+<Canvas>
+  <Story of={TextStories.Truncated} />
+</Canvas>
+
+## Related components
+
+- Anchor
+- Code

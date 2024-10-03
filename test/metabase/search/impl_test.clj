@@ -8,11 +8,28 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.config :as config]
+   [metabase.search :as search]
    [metabase.search.config :as search.config]
    [metabase.search.impl :as search.impl]
+   [metabase.search.legacy :as search.legacy]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(deftest ^:parallel parse-engine-test
+  (testing "Default engine"
+    (is (= :search.engine/in-place (#'search.impl/parse-engine nil))))
+  (testing "Unknown engine resolves to the default"
+    (is (=  (#'search.impl/parse-engine nil)
+            (#'search.impl/parse-engine "vespa"))))
+  (testing "Registered engines"
+    (is (= :search.engine/in-place (#'search.impl/parse-engine "in-place")))
+    (when (search/supports-index?)
+      (is (= :search.engine/fulltext (#'search.impl/parse-engine "fulltext")))))
+  (when (search/supports-index?)
+    (testing "Subclasses"
+      (is (= :search.engine/hybrid (#'search.impl/parse-engine "hybrid")))
+      (is (= :search.engine/minimal (#'search.impl/parse-engine "minimal"))))))
 
 (deftest ^:parallel order-clause-test
   (testing "it includes all columns and normalizes the query"
@@ -31,7 +48,7 @@
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
              [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
              :else [:inline 1]]]
-           (search.impl/order-clause "Foo")))))
+           (search.legacy/order-clause "Foo")))))
 
 (deftest search-db-call-count-test
   (let [search-string (mt/random-name)]

@@ -1,25 +1,21 @@
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ALL_USERS_GROUP_ID,
   FIRST_COLLECTION_ID,
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   type StructuredQuestionDetails,
   assertIsEllipsified,
-  createNativeQuestion,
   createQuestion,
   describeEE,
   getSidebarSectionTitle,
   main,
   navigationSidebar,
+  openNavigationSidebar,
   popover,
   restore,
   setTokenFeatures,
-  tooltip,
 } from "e2e/support/helpers";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -90,53 +86,6 @@ const NON_NUMERIC_METRIC: StructuredQuestionDetailsWithName = {
   display: "scalar",
 };
 
-const TEMPORAL_METRIC_WITH_SORT: StructuredQuestionDetailsWithName = {
-  name: "Count of orders over time",
-  type: "metric",
-  description: "A metric",
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-    breakout: [
-      [
-        "field",
-        ORDERS.CREATED_AT,
-        { "base-type": "type/DateTime", "temporal-unit": "month" },
-      ],
-    ],
-    "order-by": [["asc", ["aggregation", 0]]],
-  },
-};
-
-const SCALAR_METRIC_WITH_NO_VALUE: StructuredQuestionDetailsWithName = {
-  name: "Scalar metric with no value",
-  type: "metric",
-  description: "A metric",
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["max", ["field", ORDERS.TOTAL, {}]]],
-    filter: ["=", ["field", ORDERS.TOTAL, {}], 3.333],
-  },
-};
-
-const TIMESERIES_METRIC_WITH_NO_VALUE: StructuredQuestionDetailsWithName = {
-  name: "Timeseries metric with no value",
-  type: "metric",
-  description: "A metric",
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["max", ["field", ORDERS.TOTAL, {}]]],
-    filter: ["=", ["field", ORDERS.TOTAL, {}], 3.333],
-    breakout: [
-      [
-        "field",
-        ORDERS.CREATED_AT,
-        { "base-type": "type/DateTime", "temporal-unit": "month" },
-      ],
-    ],
-  },
-};
-
 const ALL_METRICS = [
   ORDERS_SCALAR_METRIC,
   ORDERS_SCALAR_MODEL_METRIC,
@@ -144,40 +93,6 @@ const ALL_METRICS = [
   PRODUCTS_SCALAR_METRIC,
   NON_NUMERIC_METRIC,
 ];
-
-function createMetrics(
-  metrics: StructuredQuestionDetailsWithName[] = ALL_METRICS,
-) {
-  metrics.forEach(metric => createQuestion(metric));
-}
-
-function metricsTable() {
-  return cy.findByLabelText("Table of metrics").should("be.visible");
-}
-
-function findMetric(name: string) {
-  return metricsTable().findByText(name).should("be.visible");
-}
-
-function getMetricsTableItem(index: number) {
-  return metricsTable().findAllByTestId("metric-name").eq(index);
-}
-
-function shouldHaveBookmark(name: string) {
-  getSidebarSectionTitle(/Bookmarks/).should("be.visible");
-  navigationSidebar().findByText(name).should("be.visible");
-}
-
-function shouldNotHaveBookmark(name: string) {
-  getSidebarSectionTitle(/Bookmarks/).should("not.exist");
-  navigationSidebar().findByText(name).should("not.exist");
-}
-
-function checkMetricValueAndTooltipExist(value: string, label: string) {
-  metricsTable().findByText(value).should("be.visible");
-  metricsTable().findByText(value).realHover();
-  tooltip().should("contain", label);
-}
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -260,7 +175,7 @@ describe("scenarios > browse > metrics", () => {
 
     it("should render truncated markdown in the table", () => {
       const description =
-        "This is a _very_ **long description** that should be truncated";
+        "This is a _very_ **long description** that should be truncated by the metrics table because it is really very long.";
 
       createMetrics([
         {
@@ -426,132 +341,150 @@ describe("scenarios > browse > metrics", () => {
     });
   });
 
-  describe("scalar metric value", () => {
-    it("should render a scalar metric's value in the table", () => {
-      restore();
-      cy.signInAsAdmin();
-      createMetrics([ORDERS_SCALAR_METRIC]);
-      cy.visit("/browse/metrics");
-
-      checkMetricValueAndTooltipExist("18,760", "Overall");
-    });
-
-    it("should render a scalar metric's value in the table even when it's not a number", () => {
-      restore();
-      cy.signInAsAdmin();
-      createMetrics([NON_NUMERIC_METRIC]);
-      cy.visit("/browse/metrics");
-
-      checkMetricValueAndTooltipExist("Widget", "Overall");
-    });
-  });
-
-  describeEE("scalar metric value", () => {
-    it("should not render a scalar metric's value when the user does not have permissions to see it", () => {
-      cy.signInAsAdmin();
-      createMetrics([ORDERS_SCALAR_METRIC]);
-
-      setTokenFeatures("all");
-      cy.updatePermissionsGraph({
-        [ALL_USERS_GROUP_ID]: {
-          [SAMPLE_DB_ID]: {
-            "view-data": DataPermissionValue.BLOCKED,
-          },
-        },
+  describe("verified metrics", () => {
+    describeEE("on enterprise", () => {
+      beforeEach(() => {
+        cy.signInAsAdmin();
+        setTokenFeatures("all");
       });
 
-      cy.signInAsNormalUser();
-      cy.visit("/browse/metrics");
+      it("should not the verified metrics filter when there are no verified metrics", () => {
+        createMetrics();
+        cy.visit("/browse/metrics");
 
-      metricsTable().findByText("18,760").should("not.exist");
-    });
-  });
-
-  describe("temporal metric value", () => {
-    it("should show the last value of a temporal metric", () => {
-      cy.signInAsAdmin();
-      createMetrics([ORDERS_TIMESERIES_METRIC]);
-      cy.visit("/browse/metrics");
-
-      checkMetricValueAndTooltipExist("344", "April 2026");
-    });
-
-    it("should show the last value of a temporal metric with a sort clause", () => {
-      cy.signInAsAdmin();
-      createMetrics([TEMPORAL_METRIC_WITH_SORT]);
-      cy.visit("/browse/metrics");
-
-      checkMetricValueAndTooltipExist("584", "January 2025");
-    });
-
-    it("should render an empty value for a scalar metric with no value", () => {
-      cy.signInAsAdmin();
-      createMetrics([SCALAR_METRIC_WITH_NO_VALUE]);
-      cy.visit("/browse/metrics");
-
-      findMetric(SCALAR_METRIC_WITH_NO_VALUE.name).should("be.visible");
-      cy.findByTestId("metric-value").should("be.empty");
-    });
-
-    it("should render an empty value for a timeseries metric with no value", () => {
-      cy.signInAsAdmin();
-      createMetrics([TIMESERIES_METRIC_WITH_NO_VALUE]);
-      cy.visit("/browse/metrics");
-
-      findMetric(TIMESERIES_METRIC_WITH_NO_VALUE.name).should("be.visible");
-      cy.findByTestId("metric-value").should("be.empty");
-    });
-
-    it("should render an empty value for metric with errors", () => {
-      cy.signInAsAdmin();
-
-      createNativeQuestion(
-        {
-          name: "Question with error",
-          native: {
-            query: "SELECT __syntax_error__;",
-          },
-        },
-        { wrapId: true },
-      ).then(id => {
-        createMetrics([
-          {
-            name: "Metric with error",
-            type: "metric",
-            description: "A metric",
-            query: {
-              "source-table": `card__${id}`,
-              aggregation: [["count"]],
-            },
-          },
-        ]);
+        cy.findByLabelText("Filters").should("not.exist");
       });
 
-      cy.visit("/browse/metrics");
+      it("should show the verified metrics filter when there are verified metrics", () => {
+        cy.intercept(
+          "PUT",
+          "/api/setting/browse-filter-only-verified-metrics",
+        ).as("setSetting");
 
-      findMetric("Metric with error").should("be.visible");
-      cy.findByTestId("metric-value").should("be.empty");
-    });
-  });
+        createMetrics([ORDERS_SCALAR_METRIC, ORDERS_SCALAR_MODEL_METRIC]);
+        cy.visit("/browse/metrics");
 
-  describeEE("temporal metric value", () => {
-    it("should not render a temporal metric's value when the user does not have permissions to see it", () => {
-      cy.signInAsAdmin();
-      createMetrics([ORDERS_TIMESERIES_METRIC]);
+        findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
+        findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
 
-      setTokenFeatures("all");
-      cy.updatePermissionsGraph({
-        [ALL_USERS_GROUP_ID]: {
-          [SAMPLE_DB_ID]: {
-            "view-data": DataPermissionValue.BLOCKED,
-          },
-        },
+        verifyMetric(ORDERS_SCALAR_METRIC);
+
+        findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
+        findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
+
+        toggleVerifiedMetricsFilter();
+        cy.get<{ request: Request }>("@setSetting").should(xhr => {
+          expect(xhr.request.body).to.deep.equal({ value: false });
+        });
+
+        findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
+        findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
+
+        toggleVerifiedMetricsFilter();
+        cy.get<{ request: Request }>("@setSetting").should(xhr => {
+          expect(xhr.request.body).to.deep.equal({ value: true });
+        });
+        cy.wait("@setSetting");
+
+        findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
+        findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
+
+        unverifyMetric(ORDERS_SCALAR_METRIC);
+
+        findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible");
+        findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
       });
 
-      cy.signInAsNormalUser();
-      cy.visit("/browse/metrics");
+      it("should respect the user setting on wether or not to only show verified metrics", () => {
+        cy.intercept("GET", "/api/session/properties", req => {
+          req.continue(res => {
+            res.body["browse-filter-only-verified-metrics"] = true;
+            res.send();
+          });
+        });
 
-      metricsTable().findByText("344").should("not.exist");
+        createMetrics([ORDERS_SCALAR_METRIC, ORDERS_SCALAR_MODEL_METRIC]);
+        cy.visit("/browse/metrics");
+        verifyMetric(ORDERS_SCALAR_METRIC);
+
+        cy.findByLabelText("Filters").should("be.visible").click();
+        popover()
+          .findByLabelText("Show verified metrics only")
+          .should("be.checked");
+
+        cy.intercept("GET", "/api/session/properties", req => {
+          req.continue(res => {
+            res.body["browse-filter-only-verified-metrics"] = true;
+            res.send();
+          });
+        });
+
+        cy.visit("/browse/metrics");
+        cy.findByLabelText("Filters").should("be.visible").click();
+        popover()
+          .findByLabelText("Show verified metrics only")
+          .should("not.be.checked");
+      });
     });
   });
 });
+
+function createMetrics(
+  metrics: StructuredQuestionDetailsWithName[] = ALL_METRICS,
+) {
+  metrics.forEach(metric => createQuestion(metric));
+}
+
+function metricsTable() {
+  return cy.findByLabelText("Table of metrics").should("be.visible");
+}
+
+function findMetric(name: string) {
+  return metricsTable().findByText(name);
+}
+
+function getMetricsTableItem(index: number) {
+  return metricsTable().findAllByTestId("metric-name").eq(index);
+}
+
+function shouldHaveBookmark(name: string) {
+  getSidebarSectionTitle(/Bookmarks/).should("be.visible");
+  navigationSidebar().findByText(name).should("be.visible");
+}
+
+function shouldNotHaveBookmark(name: string) {
+  getSidebarSectionTitle(/Bookmarks/).should("not.exist");
+  navigationSidebar().findByText(name).should("not.exist");
+}
+
+function verifyMetric(metric: StructuredQuestionDetailsWithName) {
+  metricsTable().findByText(metric.name).should("be.visible").click();
+
+  cy.button("Move, trash, and more...").click();
+  popover().findByText("Verify this metric").click();
+
+  openNavigationSidebar();
+
+  navigationSidebar()
+    .findByRole("listitem", { name: "Browse metrics" })
+    .click();
+}
+
+function unverifyMetric(metric: StructuredQuestionDetailsWithName) {
+  metricsTable().findByText(metric.name).should("be.visible").click();
+
+  cy.button("Move, trash, and more...").click();
+  popover().findByText("Remove verification").click();
+
+  openNavigationSidebar();
+
+  navigationSidebar()
+    .findByRole("listitem", { name: "Browse metrics" })
+    .click();
+}
+
+function toggleVerifiedMetricsFilter() {
+  cy.findByLabelText("Filters").should("be.visible").click();
+  popover().findByText("Show verified metrics only").click();
+  cy.findByLabelText("Filters").should("be.visible").click();
+}

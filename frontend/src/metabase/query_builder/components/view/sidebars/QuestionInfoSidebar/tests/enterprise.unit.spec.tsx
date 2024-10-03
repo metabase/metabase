@@ -14,9 +14,9 @@ const setupEnterprise = (opts: SetupOpts) => {
   });
 };
 
-describe("QuestionInfoSidebar", () => {
+describe("QuestionInfoSidebar > enterprise", () => {
   describe("moderation reviews", () => {
-    it("should not show the verification badge", async () => {
+    it("should not show the verification badge without content verification feature", async () => {
       const card = createMockCard({
         moderation_reviews: [
           createMockModerationReview({ status: "verified" }),

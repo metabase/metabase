@@ -1,0 +1,39 @@
+info:
+  name: Databricks driver
+  version: 1.0.0
+  description: Allows Metabase to connect to Databricks SQL warehouse
+driver:
+  - name: hive-like
+    lazy-load: true
+    abstract: true
+    parent: sql-jdbc
+  - name: databricks
+    display-name: Databricks
+    lazy-load: true
+    parent: hive-like
+    connection-properties:
+      - host
+      - name: http-path
+        display-name: HTTP path
+        required: true
+      - name: token
+        display-name: Personal Access Token
+        required: true
+      - name: catalog
+        display-name: Catalog
+        default: default
+        required: true
+      - name: schema-filters
+        type: schema-filters
+        display-name: Schemas
+      - advanced-options-start
+      - merge:
+        - additional-options
+        - placeholder: 'IgnoreTransactions=0'
+init:
+  - step: load-namespace
+    namespace: metabase.driver.hive-like
+  - step: load-namespace
+    namespace: metabase.driver.databricks
+  - step: register-jdbc-driver
+    class: com.databricks.client.jdbc.Driver

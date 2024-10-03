@@ -30,6 +30,7 @@ import {
 
 import { DEFAULT_QUESTION, createMockNotebookStep } from "../../test-utils";
 import type { NotebookStep } from "../../types";
+import { NotebookProvider } from "../Notebook/context";
 
 import { DataStep } from "./DataStep";
 
@@ -78,16 +79,18 @@ const setup = ({
   });
 
   renderWithProviders(
-    <DataStep
-      step={step}
-      query={step.query}
-      stageIndex={step.stageIndex}
-      readOnly={readOnly}
-      color="brand"
-      isLastOpened={false}
-      reportTimezone="UTC"
-      updateQuery={updateQuery}
-    />,
+    <NotebookProvider>
+      <DataStep
+        step={step}
+        query={step.query}
+        stageIndex={step.stageIndex}
+        readOnly={readOnly}
+        color="brand"
+        isLastOpened={false}
+        reportTimezone="UTC"
+        updateQuery={updateQuery}
+      />
+    </NotebookProvider>,
     { storeInitialState },
   );
 
