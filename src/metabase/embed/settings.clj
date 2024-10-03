@@ -136,8 +136,8 @@
 (defn- check-enable-settings
   "Ensure either: nothing is set, the deprecated setting is set, or only supported settings are set"
   [env]
-  (let [deprecated-enable-env-var-set? (some? (:enable-embedding env))
-        supported-enable-env-vars-set (select-keys env [:enable-embedding-sdk :enable-embedding-interactive :enable-embedding-static])]
+  (let [deprecated-enable-env-var-set? (some? (:mb-enable-embedding env))
+        supported-enable-env-vars-set (select-keys env [:mb-enable-embedding-sdk :mb-enable-embedding-interactive :mb-enable-embedding-static])]
     (when (and deprecated-enable-env-var-set? (seq supported-enable-env-vars-set))
       (throw (ex-info "Both deprecated and new enable-embedding env vars are set, please remove MB_ENABLE_EMBEDDING."
                       {:deprecated-enable-env-vars-set deprecated-enable-env-var-set?
@@ -147,7 +147,7 @@
   "If Only the deprecated enable-embedding is set, we want to sync the new settings to the deprecated one."
   [env]
   ;; we use [[find]], so we get the value if it is ∈ #{true false}, and skips nil
-  (when-let [[_ enable-embedding-from-env] (find env :enable-embedding)]
+  (when-let [[_ enable-embedding-from-env] (find env :mb-enable-embedding)]
     (log/warn (str/join "\n"
                         ["Setting MB_ENABLE_EMBEDDING is deprecated as of Metabase 0.51.0 and will be removed in a future version."
                          (str "Setting MB_ENABLE_EMBEDDING_SDK, MB_ENABLE_EMBEDDING_INTERACTIVE, "
@@ -160,9 +160,9 @@
 (defn- check-origins-settings
   "Ensure either: nothing is set, the deprecated setting is set, or only supported settings are set"
   [env]
-  (let [deprecated-origin-env-var-set? (some? (:embedding-app-origin env))
+  (let [deprecated-origin-env-var-set? (some? (:mb-embedding-app-origin env))
         supported-origins-env-vars-set (select-keys env
-                                                    [:embedding-app-origins-sdk :embedding-app-origins-interactive])]
+                                                    [:mb-embedding-app-origins-sdk :mb-embedding-app-origins-interactive])]
     (when (and deprecated-origin-env-var-set? (seq supported-origins-env-vars-set))
       (throw (ex-info "Both deprecated and new enable-embedding env vars are set, please remove MB_ENABLE_EMBEDDING."
                       {:deprecated-enable-env-vars-set deprecated-origin-env-var-set?
@@ -172,7 +172,7 @@
   "If Only the deprecated enable-embedding is set, we want to sync the new settings to the deprecated one."
   [env]
   ;; we use [[find]], so we get the value if it is ∈ #{true false}, and skips nil
-  (when-let [[_ app-origin-from-env] (find env :embedding-app-origin)]
+  (when-let [[_ app-origin-from-env] (find env :mb-embedding-app-origin)]
     (log/warn (str/join "\n"
                         ["Setting MB_EMBEDDING_APP_ORIGIN is deprecated as of Metabase 0.51.0 and will be removed in a future version."
                          (str "Setting MB_EMBEDDING_APP_ORIGINS_SDK, MB_EMBEDDING_APP_ORIGINS_INTERACTIVE "
