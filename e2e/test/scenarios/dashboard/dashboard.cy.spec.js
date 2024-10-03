@@ -20,6 +20,7 @@ import {
   commandPalette,
   commandPaletteButton,
   createDashboardWithTabs,
+  createQuestionAndDashboard,
   dashboardHeader,
   describeEE,
   describeWithSnowplow,
@@ -455,6 +456,57 @@ describe("scenarios > dashboard", () => {
         getDashboardCardMenu().click();
         popover().findByText("Edit question").should("be.visible").click();
         cy.findByRole("button", { name: "Visualize" }).should("be.visible");
+      });
+
+      it("should allow navigating to the model editor directly from a dashboard card", () => {
+        createQuestionAndDashboard({
+          questionDetails: {
+            name: "orders",
+            type: "model",
+            query: {
+              "source-table": ORDERS_ID,
+            },
+          },
+          dashboardDetails: {
+            name: "Dashboard",
+          },
+        }).then(({ body: { dashboard_id, card } }) => {
+          cy.wrap(`${card.id}-${card.name}`).as("slug");
+          visitDashboard(dashboard_id);
+        });
+
+        showDashboardCardActions();
+        getDashboardCardMenu().click();
+        popover().findByText("Edit model").should("be.visible").click();
+        cy.get("@slug").then(slug => {
+          cy.location("pathname").should("eq", `/model/${slug}/query`);
+        });
+      });
+
+      it("should allow navigating to the metric editor directly from a dashboard card", () => {
+        createQuestionAndDashboard({
+          questionDetails: {
+            name: "orders",
+            type: "metric",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+            },
+          },
+          dashboardDetails: {
+            name: "Dashboard",
+          },
+        }).then(({ body: { dashboard_id, card } }) => {
+          cy.wrap(`${card.id}-${card.name}`).as("slug");
+          visitDashboard(dashboard_id);
+        });
+
+        showDashboardCardActions();
+        getDashboardCardMenu().click();
+        popover().findByText("Edit metric").should("be.visible").click();
+        cy.get("@slug").then(slug => {
+          cy.location("pathname").should("eq", `/metric/${slug}/query`);
+        });
       });
     });
 
