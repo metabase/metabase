@@ -285,27 +285,16 @@
     {:tables (strip-model-refs table-refs)
      :fields (strip-model-refs field-refs)}))
 
-;; tmp - waiting for macaw version bump
-(defn- raw-components [xs]
-  (into (empty xs) (keep :component) xs))
-
-;; tmp - waiting for macaw version bump
-(defn- query->tables
-  [sql & {:as opts}]
-  (-> (macaw/parsed-query sql)
-      (macaw/query->components opts)
-      :tables
-      raw-components))
-
 (defn- tables-for-sql
   "Returns a set of table identifiers that (may) be referenced in the given card's query.
-  Errs on the side of optimism: i.e., it may return talbes that are *not* in the query, and is unlikely to fail
+  Errs on the side of optimism: i.e., it may return tables that are *not* in the query, and is unlikely to fail
   to return tables that are in the query."
-  [driver query]
+  [driver query & {:keys [mode] :or {mode :ast-walker-1}}]
   (let [db-id         (:database query)
         macaw-opts    (nqa.impl/macaw-options driver)
+        table-opts    (assoc macaw-opts :mode mode)
         sql-string    (:query (nqa.sub/replace-tags query))
-        parsed-query  (#_macaw/query->tables query->tables sql-string macaw-opts)]
+        parsed-query  (macaw/query->tables sql-string table-opts)]
     (table-refs-for-query parsed-query db-id)))
 
 (defn references-for-native
@@ -320,9 +309,9 @@
 
 (defn tables-for-native
   "TODO"
-  [query]
+  [query & {:as opts}]
   (let [driver (driver.u/database->driver (:database query))]
     ;; TODO this approach is not extensible, we need to move to multimethods.
     ;; See https://github.com/metabase/metabase/issues/43516 for long term solution.
     (when (isa? driver/hierarchy driver :sql)
-      (tables-for-sql driver query))))
+      (tables-for-sql driver query opts))))
