@@ -564,18 +564,21 @@
                                   lib/append-stage)
             created-at-month  (->> (lib/filterable-columns base-query)
                                    (m/find-first (comp #{"Created At: Month"} :display-name)))
+            created-at-ymonth (->> (lib/orderable-columns base-query)
+                                   (m/find-first (comp #{"Created At: Month of year"} :display-name)))
             query             (-> base-query
                                   (lib/filter (lib/between created-at-month "2019-09-03" "2020-10-03"))
+                                  (lib/order-by created-at-ymonth)
                                   (lib/limit 10)
                                   (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
-          (is (= [[#t "2020-01-01" #t "0001-01-01" 52249.36 51634.1]
-                  [#t "2020-02-01" #t "0002-01-01" 47403.79 47075.6]
-                  [#t "2020-03-01" #t "0003-01-01" 45683.47 51346.97]
-                  [#t "2020-04-01" #t "0004-01-01" 30759.31 47554.92]
-                  [#t "2019-10-01" #t "0010-01-01" 46273.34 47728.54]
-                  [#t "2019-11-01" #t "0011-01-01" 47410.27 46431.86]
-                  [#t "2019-12-01" #t "0012-01-01" 48260.52 48242.06]]
+          (is (= [[#t "2020-01-01"  1 52249.36 51634.1]
+                  [#t "2020-02-01"  2 47403.79 47075.6]
+                  [#t "2020-03-01"  3 45683.47 51346.97]
+                  [#t "2020-04-01"  4 30759.31 47554.92]
+                  [#t "2019-10-01" 10 46273.34 47728.54]
+                  [#t "2019-11-01" 11 47410.27 46431.86]
+                  [#t "2019-12-01" 12 48260.52 48242.06]]
                  (mt/formatted-rows
-                  [->local-date ->local-date 2.0 2.0]
+                  [->local-date int 2.0 2.0]
                   (qp/process-query query)))))))))
