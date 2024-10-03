@@ -57,7 +57,7 @@ export const PublicEmbedCard = ({
           >{t`Get embedding code`}</Button>
         </Popover.Target>
         <Popover.Dropdown>
-          <Stack p="lg" w="28rem" mih="7.5rem" justify="center">
+          <Stack p="lg" w="28rem" mih="7.5rem">
             {loading ? (
               <Center>
                 <Loader />
