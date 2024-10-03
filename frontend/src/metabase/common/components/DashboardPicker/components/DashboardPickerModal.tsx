@@ -67,6 +67,9 @@ export const DashboardPickerModal = ({
     canSelectItem(value) ? value : null,
   );
 
+  const [dashboardsPath, setDashboardsPath] =
+    useState<DashboardPickerStatePath>();
+
   useEffect(
     function () {
       setSelectedItem(canSelectItem(value) ? value : null);
@@ -74,6 +77,16 @@ export const DashboardPickerModal = ({
     // sync back the value to selectedItem, but only when it changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [value.id, value.model],
+  );
+
+  useEffect(
+    function () {
+      const last = dashboardsPath?.[dashboardsPath.length - 1];
+      if (last && canSelectItem(last?.selectedItem ?? null)) {
+        setSelectedItem(last.selectedItem);
+      }
+    },
+    [dashboardsPath],
   );
 
   const { tryLogRecentItem } = useLogRecentItem();
@@ -123,9 +136,6 @@ export const DashboardPickerModal = ({
       {t`Create a new dashboard`}
     </Button>,
   ];
-
-  const [dashboardsPath, setDashboardsPath] =
-    useState<DashboardPickerStatePath>();
 
   const tabs: EntityPickerTab<
     DashboardPickerItem["id"],
