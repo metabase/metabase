@@ -55,7 +55,7 @@ export const colors = {
 
 export const originalColors = { ...colors };
 
-const aliases: Record<string, (palette: ColorPalette) => string> = {
+export const aliases: Record<string, (palette: ColorPalette) => string> = {
   dashboard: palette => color("brand", palette),
   nav: palette => color("bg-white", palette),
   content: palette => color("bg-light", palette),
