@@ -528,13 +528,16 @@
                     :from      [[:report_card :c]]
                     :where     [:and
                                 [:= :c.dashboard_id id]
+                                [:exists {:select 1
+                                          :from [[:report_dashboardcard :dc]]
+                                          :where [:and [:= :c.id :dc.card_id] [:= :c.dashboard_id :dc.dashboard_id]]}]
                                 [:= :c.archived false]]}
         cards      (mdb.query/query query)]
     {:total  (count cards)
      :data   (into []
                    (map #(update % :dataset_query (comp mbql.normalize/normalize json/parse-string)))
                    (last-edit/with-last-edit-info cards :card))
-     :models ["card"]}))
+     :models (if (seq cards) ["card"] [])}))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
