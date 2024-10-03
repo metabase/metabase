@@ -1,7 +1,9 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  assertEChartsTooltip,
   chartPathWithFillColor,
+  echartsContainer,
   getDraggableElements,
   getNotebookStep,
   leftSidebar,
@@ -15,7 +17,7 @@ import {
   visualize,
 } from "e2e/support/helpers";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID, ORDERS_ID, ORDERS, PEOPLE } = SAMPLE_DATABASE;
 
 const testQuery = {
   type: "query",
@@ -25,6 +27,53 @@ const testQuery = {
     breakout: [["field", PRODUCTS.CATEGORY, null]],
   },
   database: SAMPLE_DB_ID,
+};
+
+const twoRingQuery = {
+  database: 1,
+  type: "query",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "day-of-week" },
+      ],
+      [
+        "field",
+        PRODUCTS.CATEGORY,
+        { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+      ],
+    ],
+  },
+};
+
+const threeRingQuery = {
+  database: 1,
+  type: "query",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "year" },
+      ],
+      [
+        "field",
+        PEOPLE.SOURCE,
+        { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+      ],
+      [
+        "field",
+        PRODUCTS.CATEGORY,
+        { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+      ],
+    ],
+  },
 };
 
 describe("scenarios > visualizations > pie chart", () => {
@@ -39,7 +88,12 @@ describe("scenarios > visualizations > pie chart", () => {
       display: "pie",
     });
 
-    ensurePieChartRendered(["Doohickey", "Gadget", "Gizmo", "Widget"], 200);
+    ensurePieChartRendered(
+      ["Doohickey", "Gadget", "Gizmo", "Widget"],
+      null,
+      null,
+      200,
+    );
 
     // chart should be centered (#48123)
     cy.findByTestId("chart-legend").then(([legend]) => {
@@ -230,9 +284,215 @@ describe("scenarios > visualizations > pie chart", () => {
       cy.get("li").eq(3).contains("Woooget");
     });
   });
+
+  it("should automatically map dimension columns in query to rings", () => {
+    visitQuestionAdhoc({
+      dataset_query: twoRingQuery,
+      display: "pie",
+    });
+
+    ensurePieChartRendered(
+      [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ],
+      ["Doohickey", "Gadget", "Gizmo", "Widget"],
+    );
+  });
+
+  it("should allow the user to edit rings", () => {
+    visitQuestionAdhoc({
+      dataset_query: threeRingQuery,
+      display: "pie",
+      visualization_settings: {
+        "pie.slice_threshold": 0,
+      },
+    });
+
+    ensurePieChartRendered(
+      ["2022", "2023", "2024", "2025", "2026"],
+      ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
+      ["Doohickey", "Gadget", "Gizmo", "Widget"],
+    );
+
+    cy.findByTestId("viz-settings-button").click();
+
+    cy.findAllByTestId("chartsettings-field-picker")
+      .last()
+      .within(() => {
+        cy.icon("close").click();
+      });
+
+    ensurePieChartRendered(
+      ["2022", "2023", "2024", "2025", "2026"],
+      ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
+    );
+
+    cy.findAllByTestId("chartsettings-field-picker")
+      .last()
+      .within(() => {
+        cy.icon("chevrondown").click();
+      });
+
+    cy.get("[data-element-id=list-section]").last().click();
+
+    ensurePieChartRendered(
+      ["2022", "2023", "2024", "2025", "2026"],
+      ["Doohickey", "Gadget", "Gizmo", "Widget"],
+    );
+
+    leftSidebar().within(() => {
+      cy.findByText("Add Ring").click();
+    });
+
+    cy.get("[data-element-id=list-section]").last().click();
+
+    ensurePieChartRendered(
+      ["2022", "2023", "2024", "2025", "2026"],
+      ["Doohickey", "Gadget", "Gizmo", "Widget"],
+      ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
+    );
+  });
+
+  it("should handle hover and click actions correctly", () => {
+    visitQuestionAdhoc({
+      dataset_query: twoRingQuery,
+      display: "pie",
+      visualization_settings: {
+        "pie.slice_threshold": 0,
+      },
+    });
+
+    ensurePieChartRendered(
+      [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ],
+      ["Doohickey", "Gadget", "Gizmo", "Widget"],
+    );
+
+    echartsContainer().within(() => {
+      cy.findByText("Saturday").as("saturdaySlice").trigger("mousemove");
+    });
+
+    assertEChartsTooltip({
+      header: "Created At",
+      rows: [
+        {
+          color: "#51528D",
+          name: "Saturday",
+          value: "2,747",
+        },
+        {
+          color: "#ED8535",
+          name: "Thursday",
+          value: "2,698",
+        },
+        {
+          color: "#E75454",
+          name: "Tuesday",
+          value: "2,695",
+        },
+        {
+          color: "#689636",
+          name: "Sunday",
+          value: "2,671",
+        },
+        {
+          color: "#8A5EB0",
+          name: "Monday",
+          value: "2,664",
+        },
+        {
+          color: "#69C8C8",
+          name: "Friday",
+          value: "2,662",
+        },
+        {
+          color: "#F7C41F",
+          name: "Wednesday",
+          value: "2,623",
+        },
+      ],
+    });
+
+    cy.get("@saturdaySlice").click({ force: true });
+
+    popover().within(() => {
+      cy.findByText("=").click();
+    });
+
+    cy.findByTestId("qb-filters-panel").within(() => {
+      cy.findByText("Count is equal to 2747").should("be.visible");
+    });
+
+    cy.go("back");
+
+    ensurePieChartRendered(
+      [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ],
+      ["Doohickey", "Gadget", "Gizmo", "Widget"],
+    );
+
+    echartsContainer().within(() => {
+      cy.findAllByText("Doohickey")
+        .first()
+        .as("doohickeySlice")
+        .trigger("mousemove");
+    });
+
+    assertEChartsTooltip({
+      header: "Saturday",
+      rows: [
+        {
+          name: "Doohickey",
+          value: "606",
+        },
+        {
+          name: "Gadget",
+          value: "740",
+        },
+        {
+          name: "Gizmo",
+          value: "640",
+        },
+        {
+          name: "Widget",
+          value: "761",
+        },
+      ],
+    });
+
+    cy.get("@doohickeySlice").click({ force: true });
+
+    popover().within(() => {
+      cy.findByText("=").click();
+    });
+
+    cy.findByTestId("qb-filters-panel").within(() => {
+      cy.findByText("Count is equal to 606").should("be.visible");
+    });
+  });
 });
 
-function ensurePieChartRendered(rows, totalValue) {
+function ensurePieChartRendered(rows, middleRows, outerRows, totalValue) {
   cy.findByTestId("query-visualization-root").within(() => {
     // detail
     if (totalValue != null) {
@@ -241,7 +501,17 @@ function ensurePieChartRendered(rows, totalValue) {
     }
 
     // slices
-    pieSlices().should("have.length", rows.length);
+    let rowCount = rows.length;
+    const hasMiddleRows = middleRows != null && middleRows.length > 0;
+    const hasOuterRows = outerRows != null && outerRows.length > 0;
+
+    if (hasMiddleRows) {
+      rowCount += rows.length * middleRows.length;
+    }
+    if (hasMiddleRows && hasOuterRows) {
+      rowCount += rows.length * middleRows.length * outerRows.length;
+    }
+    pieSlices().should("have.length", rowCount);
 
     // legend
     rows.forEach((name, i) => {
