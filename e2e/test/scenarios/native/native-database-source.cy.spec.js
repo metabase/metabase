@@ -286,14 +286,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     cy.contains("37.65");
 
     // Save the query
-    saveQuestion(
-      "sql count",
-      { wrapId: true },
-      {
-        tab: "Browse",
-        path: ["Our analytics"],
-      },
-    );
+    saveQuestion("sql count", { wrapId: true });
     cy.url().should("match", /\/dashboard\/\d+#add=\d+&edit/);
   });
 });
