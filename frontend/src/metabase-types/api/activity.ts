@@ -1,4 +1,5 @@
 import type { CollectionId } from "./collection";
+import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { CardDisplayType } from "./visualization";
 
@@ -54,6 +55,10 @@ export type RecentCollectionItem = BaseRecentItem & {
   authority_level?: "official" | null; // for collections
   moderated_status?: "verified" | null; // for cards / models / dashboards
   display?: CardDisplayType; // for questions
+  dashboard?: {
+    name: string;
+    id: DashboardId;
+  };
 };
 
 export type RecentItem = RecentTableItem | RecentCollectionItem;

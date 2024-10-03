@@ -69,6 +69,8 @@ export const DEFAULT_RECENTS_CONTEXT: RecentContexts[] = [
   "views",
 ];
 
+const DEFAULT_RECENTS_FILTER = (item: RecentItem[]) => item;
+
 const DEFAULT_SEARCH_RESULT_FILTER = (results: SearchResult[]) => results;
 
 export interface EntityPickerModalProps<
@@ -111,7 +113,7 @@ export function EntityPickerModal<
   options,
   actionButtons = [],
   searchResultFilter = DEFAULT_SEARCH_RESULT_FILTER,
-  recentFilter,
+  recentFilter = DEFAULT_RECENTS_FILTER,
   trapFocus = true,
   searchParams,
   defaultToRecentTab = true,
@@ -177,13 +179,13 @@ export function EntityPickerModal<
     },
   );
 
-  // const tabModels = useMemo(
-  //   () =>
-  //     passedTabs
-  //       .flatMap(t => (t.additionalModels || []).concat(t.model))
-  //       .filter(Boolean),
-  //   [passedTabs],
-  // );
+  const tabModels = useMemo(
+    () =>
+      passedTabs
+        .flatMap(t => (t.additionalModels || []).concat(t.model || []))
+        .filter(Boolean),
+    [passedTabs],
+  );
 
   const finalSearchResults = useMemo(() => {
     if (searchScope === "folder") {
@@ -208,10 +210,8 @@ export function EntityPickerModal<
       return searchModels.includes(recentItem.model);
     });
 
-    return recentFilter
-      ? recentFilter(relevantModelRecents)
-      : relevantModelRecents;
-  }, [recentItems, searchModels, recentFilter]);
+    return recentFilter(relevantModelRecents);
+  }, [recentItems, recentFilter, searchModels, tabModels]);
 
   const tabs: EntityPickerTab<Id, Model, Item>[] = (function getTabs() {
     const computedTabs: EntityPickerTab<Id, Model, Item>[] = [];
