@@ -1086,42 +1086,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
 
       describe("applies the filter to the card and allows to drill via dashcard header", () => {
-        it("last stage aggregation", () => {
-          editDashboard();
-
-          cy.log("## last stage aggregations");
-          getFilter("Number").click();
-          sidebar().findByText("Filter operator").next().click();
-          popover().findByText("Between").click();
-
-          getDashboardCard(0).findByText("Select…").click();
-          popover().within(() => {
-            getPopoverItem(23, "Count").click();
-          });
-
-          cy.button("Save").click();
-          cy.wait("@updateDashboard");
-
-          filterWidget().eq(0).click();
-          popover().within(() => {
-            cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
-            cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
-            cy.button("Add filter").click();
-          });
-          cy.wait("@dashboardData");
-
-          getDashboardCard(0).scrollIntoView();
-          getDashboardCard(0).findByText("Rows 1-1 of 6").should("be.visible");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 6 rows",
-          );
-        });
-
-        it("penultimate stage aggregation", () => {
+        it("2nd stage aggregation", () => {
           editDashboard();
 
           cy.log("## last stage aggregations");
@@ -1153,6 +1118,41 @@ describe("scenarios > dashboard > filters > query stages", () => {
           cy.findByTestId("question-row-count").should(
             "have.text",
             "Showing 3 rows",
+          );
+        });
+
+        it("3rd stage aggregation", () => {
+          editDashboard();
+
+          cy.log("## last stage aggregations");
+          getFilter("Number").click();
+          sidebar().findByText("Filter operator").next().click();
+          popover().findByText("Between").click();
+
+          getDashboardCard(0).findByText("Select…").click();
+          popover().within(() => {
+            getPopoverItem(23, "Count").click();
+          });
+
+          cy.button("Save").click();
+          cy.wait("@updateDashboard");
+
+          filterWidget().eq(0).click();
+          popover().within(() => {
+            cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
+            cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
+            cy.button("Add filter").click();
+          });
+          cy.wait("@dashboardData");
+
+          getDashboardCard(0).scrollIntoView();
+          getDashboardCard(0).findByText("Rows 1-1 of 6").should("be.visible");
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 6 rows",
           );
         });
 
