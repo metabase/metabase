@@ -17,7 +17,7 @@ Integrating your SSO with Metabase allows you to:
 
 Before setting up SAML, make sure you know the password for your Metabase admin account. If you encounter any issues during the setup process, you can login via the "Admin backup login" option on the sign-in screen.
 
-## Setting up SAML with your IdP
+## Setting up SAML with your IdP in Metabase
 
 Once you've [confirmed the password to your Metabase admin account](#confirm-the-password-for-your-metabase-admin-account), head over to the **Settings** section of the Admin Panel, then click on the **Authentication** tab. Click the **Configure** button in the SAML section of the Authentication page, and you'll see this form:
 
@@ -153,7 +153,7 @@ https://metabase.example.com/auth/sso/handle_slo
 
 ## Synchronizing group membership with your IdP
 
-This setting allows you to assign users to Metabase groups based on an attribute of your users in your IdP.this setting may not correlate to group functionality provided by your IdP; you may need to create a separate user attribute to set people's Metabase groups, like `metabaseGroups`.
+This setting allows you to assign users to Metabase groups based on an attribute of your users in your IdP. This setting may not correlate to group functionality provided by your IdP; you may need to create a separate user attribute to set people's Metabase groups, like `metabaseGroups`.
 
 First, you will need to create a SAML user attribute that you will use to indicate which Metabase groups the person should be a part of. This created user attribute can be a XML string or a list of XML strings. Different IdPs have different ways of handling this, but you will likely need to edit your user profiles or find a way to map a user's groups to a list of Metabase group names.
 
@@ -169,7 +169,7 @@ Once you've gotten everything set up in your SAML provider, you'll need to confi
 6. Click **Save**.
 7. After that, type in the name of the user attribute you added in your SAML provider. In this case, we told Okta that the `metabaseGroups` attribute should be named `MetabaseGroupName`, so that's what we'll enter in the Group Attribute Name field in Metabase.
 
-![Group schema](images/saml-group-schema.png)
+![Group schema](images/saml-okta-groups.png)
 
 ## Creating Metabase accounts with SSO
 
@@ -189,7 +189,7 @@ To _require_ people to log in with SSO, disable password authentication from **A
 
 ## New account notification emails
 
-When people log in to Metabase for the first time via SSO, Metabase will automatically create an account for them, which will trigger an email notification to Metabase administrators. If you don't want these notifications to be sent, you can toggle off the turn this toggle off at the bottom of the Authentication page.
+When people log in to Metabase for the first time via SSO, Metabase will automatically create an account for them, which will trigger an email notification to Metabase administrators. If you don't want these notifications to be sent, you can toggle them off at the bottom of the Authentication page.
 
 ## Example code using SAML
 
