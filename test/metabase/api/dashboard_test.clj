@@ -4965,9 +4965,9 @@
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:dashboard_id dash-id}]
       (is (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id) {:dashcards [{:card_id card-id
-                                                                                               :id -1
-                                                                                               :size_x 10
-                                                                                               :size_y 10
-                                                                                               :col 0 :row 0}]}))
+                                                                                         :id -1
+                                                                                         :size_x 10
+                                                                                         :size_y 10
+                                                                                         :col 0 :row 0}]}))
       (is (t2/exists? :model/DashboardCard :card_id card-id :dashboard_id dash-id))
       (is (not (t2/select-one-fn :archived :model/Card card-id))))))
