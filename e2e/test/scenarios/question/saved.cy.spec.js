@@ -10,7 +10,7 @@ import {
   WEBHOOK_TEST_URL,
   addSummaryGroupingField,
   appBar,
-  collectionOnTheGoModal,
+  dashboardOnTheGoModal,
   entityPickerModal,
   entityPickerModalTab,
   getAlertChannel,
@@ -145,7 +145,7 @@ describe("scenarios > question > saved", () => {
     });
   });
 
-  it("should duplicate a saved question to a collection created on the go", () => {
+  it("should duplicate a saved question to a dashboard created on the go", () => {
     cy.intercept("POST", "/api/card").as("cardCreate");
 
     visitQuestion(ORDERS_QUESTION_ID);
@@ -157,14 +157,14 @@ describe("scenarios > question > saved", () => {
 
     modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
-      cy.findByTestId("collection-picker-button").click();
+      cy.findByTestId("dashboard-and-collection-picker-button").click();
     });
 
-    entityPickerModal().findByText("Create a new collection").click();
+    entityPickerModal().findByText("Create a new dashboard").click();
 
-    const NEW_COLLECTION = "Foo";
-    collectionOnTheGoModal().then(() => {
-      cy.findByPlaceholderText("My new collection").type(NEW_COLLECTION);
+    const NEW_DASHBOARD = "Foo";
+    dashboardOnTheGoModal().then(() => {
+      cy.findByPlaceholderText("My new dashboard").type(NEW_DASHBOARD);
       cy.findByText("Create").click();
     });
 
@@ -172,10 +172,11 @@ describe("scenarios > question > saved", () => {
 
     modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
-      cy.findByTestId("collection-picker-button").should(
+      cy.findByTestId("dashboard-and-collection-picker-button").should(
         "have.text",
-        NEW_COLLECTION,
+        NEW_DASHBOARD,
       );
+      // TODO: text should say something like "Duplicate in this dashboard" or something...
       cy.findByText("Duplicate").click();
       cy.wait("@cardCreate");
     });
@@ -186,7 +187,7 @@ describe("scenarios > question > saved", () => {
       cy.findByDisplayValue("Orders - Duplicate");
     });
 
-    cy.get("header").findByText(NEW_COLLECTION);
+    cy.get("header").findByText(NEW_DASHBOARD);
   });
 
   it("should revert a saved question to a previous version", () => {

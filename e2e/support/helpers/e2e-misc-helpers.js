@@ -352,6 +352,14 @@ export function saveQuestion(
   }
 }
 
+export function saveQuestionToCollection(
+  name,
+  pickEntityOptions = { tab: "Browse", path: ["Our analytics"] },
+  reqInfo,
+) {
+  saveQuestion(name, reqInfo, pickEntityOptions);
+}
+
 export function saveSavedQuestion() {
   cy.intercept("PUT", "/api/card/**").as("updateQuestion");
   cy.findByText("Save").click();

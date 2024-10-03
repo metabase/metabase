@@ -158,7 +158,14 @@ describe("scenarios > public > question", () => {
 
     cy.get("@editor").type("{moveToStart}select ");
 
-    saveQuestion("test question", { wrapId: true });
+    saveQuestion(
+      "test question",
+      { wrapId: true },
+      {
+        tab: "Browse",
+        path: ["Our analytics"],
+      },
+    );
 
     cy.get("@questionId").then(id => {
       createPublicQuestionLink(id).then(({ body: { uuid } }) => {
@@ -184,7 +191,14 @@ describe("scenarios > public > question", () => {
         .type("select * from {{#")
         .type(`{leftarrow}{leftarrow}${id}`);
 
-      saveQuestion("test question", { wrapId: true });
+      saveQuestion(
+        "test question",
+        { wrapId: true },
+        {
+          tab: "Browse",
+          path: ["Our analytics"],
+        },
+      );
       cy.get("@questionId").then(id => {
         createPublicQuestionLink(id).then(({ body: { uuid } }) => {
           cy.signOut();
