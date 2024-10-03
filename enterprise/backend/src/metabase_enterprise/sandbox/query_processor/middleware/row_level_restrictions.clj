@@ -303,13 +303,13 @@
              (update merged k (fn [old-v]
                                 (cond
                                   (and (keyword? old-v) (keyword? v))
-                                  (data-perms/coalesce k #{old-v v})
+                                  (data-perms/coalesce k [old-v v])
 
                                   (keyword? old-v) old-v
                                   (keyword? v)     v
 
                                   (and (map? old-v) (map? v))
-                                  (merge-with #(data-perms/coalesce k #{%1 %2}) old-v v)
+                                  (merge-with #(data-perms/coalesce k [%1 %2]) old-v v)
 
                                   :else v))))
            (or perms-a {})
