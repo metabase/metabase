@@ -216,7 +216,7 @@
         (testing "recent_views endpoint shows the current user's recently viewed items."
           (clear-recent-views-for-user :crowberto)
           (testing (str "> EVENT: " :event/card-read " does create recent views.")
-            (doseq [[topic event] [[:event/card-read      {:user-id (mt/user->id :crowberto) :object-id #p card-id :context :question}]]]
+            (doseq [[topic event] [[:event/card-read      {:user-id (mt/user->id :crowberto) :object-id card-id :context :question}]]]
               (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
             (let [recent-views (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
               (is (= [{:model "card" :id card-id :name "dashboard question card" :dashboard {:name "the dashboard name"
