@@ -116,7 +116,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
     createBaseQuestions();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query").as(
+    cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashboardData",
     );
   });
@@ -1093,6 +1094,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
 
           cy.button("Save").click();
+          cy.wait("@updateDashboard");
 
           filterWidget().eq(0).click();
           popover().within(() => {
@@ -1127,6 +1129,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
 
           cy.button("Save").click();
+          cy.wait("@updateDashboard");
 
           filterWidget().eq(0).click();
           popover().within(() => {
@@ -1430,7 +1433,7 @@ function createAndVisitDashboard(cards: Card[]) {
         id: getNextId(),
         size_x: CARD_WIDTH,
         size_y: CARD_HEIGHT,
-        row: CARD_HEIGHT * index,
+        row: CARD_HEIGHT * Math.floor(index / 2),
         col: index % 2 === 0 ? 0 : CARD_WIDTH,
         card,
         card_id: card.id,
