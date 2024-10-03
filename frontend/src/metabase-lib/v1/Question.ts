@@ -55,6 +55,7 @@ import type {
   UserInfo,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isDimensionTarget } from "metabase-types/guards";
 
 import type { Query } from "../types";
 
@@ -747,7 +748,6 @@ class Question {
 
   _convertParametersToMbql(): Question {
     const query = this.query();
-    const stageIndex = -1;
     const { isNative } = Lib.queryDisplayInfo(query);
 
     if (isNative) {
@@ -756,8 +756,12 @@ class Question {
 
     const newQuery = this.parameters().reduce((query, parameter) => {
       if (isFilterParameter(parameter)) {
-        return applyFilterParameter(query, stageIndex, parameter);
+        const targetStageIndex = isDimensionTarget(parameter.target)
+          ? (parameter.target[2]?.["stage-number"] ?? -1)
+          : -1;
+        return applyFilterParameter(query, targetStageIndex, parameter);
       } else if (isTemporalUnitParameter(parameter)) {
+        const stageIndex = -1; // temporal unit parameters at different stages are not supported
         return applyTemporalUnitParameter(query, stageIndex, parameter);
       } else {
         return query;
