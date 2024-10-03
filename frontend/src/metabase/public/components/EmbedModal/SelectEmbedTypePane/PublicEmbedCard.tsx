@@ -45,6 +45,9 @@ export const PublicEmbedCard = ({
         withArrow
         shadow="md"
         opened={isOpen}
+        // onClose is still needed to close the popover when the user clicks outside of it
+        // even if it we're using Popover as controlled
+        onClose={() => setIsOpen(false)}
       >
         <Popover.Target>
           <Button
