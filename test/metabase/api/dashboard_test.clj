@@ -4929,10 +4929,24 @@
                    :model/Card {card-id :id} {:dashboard_id dash-id}]
       (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived "true"})
       (is (t2/select-one-fn :archived :model/Card card-id))))
+  (testing "It gets unarchived with the dashboard"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}]
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived "true"})
+      (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:archived "false"})
+      (is (not (t2/select-one-fn :archived :model/Card card-id)))))
   (testing "It gets archived with the dashboard if the dashboard is archived from a collection"
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
                    :model/Card {card-id :id} {:dashboard_id dash-id}]
       (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived "true"})
       (is (t2/select-one-fn :archived :model/Dashboard dash-id))
-      (is (t2/select-one-fn :archived :model/Card card-id)))))
+      (is (t2/select-one-fn :archived :model/Card card-id))))
+  (testing "It gets unarchived with the dashboard if the dashboard is unarchived from a collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {:dashboard_id dash-id}]
+      (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
+      (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived false})
+      (is (not (t2/select-one-fn :archived :model/Dashboard dash-id)))
+      (is (not (t2/select-one-fn :archived :model/Card card-id))))))
