@@ -27,7 +27,7 @@ import {
 import { expressionClause, expressionParts } from "./expression";
 import { isColumnMetadata } from "./internal";
 import { displayInfo } from "./metadata";
-import { removeClause, stageCount } from "./query";
+import { removeClause } from "./query";
 import {
   availableTemporalBuckets,
   temporalBucket,
@@ -98,17 +98,6 @@ export function removeFilters(query: Query, stageIndex: number): Query {
     (newQuery, filter) => removeClause(newQuery, stageIndex, filter),
     query,
   );
-}
-
-/**
- * Returns indexes of stages from which columns are exposed for filtering.
- *
- * This function should live in metabase/querying/utils/filters/utils.ts
- * but needs to be used in metabase-lib/v1 which would cause a forbidden import.
- * TODO: Move it there when metabase-lib/v1 is no more.
- */
-export function filterStageIndexes(query: Query): number[] {
-  return stageCount(query) > 1 ? [-2, -1] : [-1];
 }
 
 export function filterArgsDisplayName(
