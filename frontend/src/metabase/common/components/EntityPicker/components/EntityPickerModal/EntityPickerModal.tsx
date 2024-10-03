@@ -11,6 +11,7 @@ import { Icon, Modal, TextInput } from "metabase/ui";
 import type {
   RecentContexts,
   RecentItem,
+  SearchItem,
   SearchRequest,
   SearchResult,
   SearchResultId,
@@ -172,16 +173,19 @@ export function EntityPickerModal<
     },
   );
 
-  const searchResults = useMemo(() => {
+  const finalSearchResults = useMemo(() => {
     if (isFetching || !data) {
       return null;
     }
 
-    return searchResultFilter ? searchResultFilter(data.data) : data.data;
-  }, [isFetching, data, searchResultFilter]);
-
-  const finalSearchResults =
-    (searchScope === "folder" ? scopedSearchResults : searchResults) ?? [];
+    if (searchScope === "folder") {
+      return searchResultFilter
+        ? searchResultFilter(scopedSearchResults as SearchItem[])
+        : scopedSearchResults;
+    } else {
+      return searchResultFilter ? searchResultFilter(data.data) : data.data;
+    }
+  }, [searchScope, scopedSearchResults, isFetching, data, searchResultFilter]);
 
   const filteredRecents = useMemo(() => {
     if (!recentItems) {
