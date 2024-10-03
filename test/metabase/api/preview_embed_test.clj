@@ -35,7 +35,7 @@
                  (mt/user-http-request :rasta :get 403 (card-url card)))))
 
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding false]
+          (mt/with-temporary-setting-values [enable-embedding-static false]
             (is (= "Embedding is not enabled."
                    (embed-test/with-temp-card [card]
                      (mt/user-http-request :crowberto :get 400 (card-url card)))))))
@@ -238,7 +238,7 @@
                  (mt/user-http-request :rasta :get 403 (dashboard-url dash)))))
 
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
-          (mt/with-temporary-setting-values [enable-embedding false]
+          (mt/with-temporary-setting-values [enable-embedding-static false]
             (is (= "Embedding is not enabled."
                    (mt/user-http-request :crowberto :get 400 (dashboard-url dash))))))
 
@@ -284,7 +284,7 @@
 
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (is (= "Embedding is not enabled."
-                 (mt/with-temporary-setting-values [enable-embedding false]
+                 (mt/with-temporary-setting-values [enable-embedding-static false]
                    (mt/user-http-request :crowberto :get 400 (dashcard-url dashcard))))))
 
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
