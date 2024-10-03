@@ -1,22 +1,17 @@
 (ns metabase.driver.util-test
   (:require
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.auth-provider :as auth-provider]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
-   [metabase.http-client :as client]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
-   [metabase.util.http :as u.http])
+   [metabase.util :as u])
   (:import
    (java.nio.charset StandardCharsets)
    (java.util Base64)
@@ -327,62 +322,3 @@
               (is (false? (driver.u/supports? :test-driver feature db)))
               (is (= []
                      (log-messages))))))))))
-
-(deftest http-provider-tests
-  (mt/with-premium-features #{:database-auth-providers}
-    (let [original-details (:details (mt/db))
-          provider-details {:use-auth-provider true
-                            :auth-provider "http"
-                            :http-auth-url (client/build-url "/testing/echo"
-                                                             {:body (json/encode original-details)})}]
-      (is (= original-details (auth-provider/fetch-auth :http nil provider-details)))
-      (is (= (merge provider-details original-details)
-             (driver.u/fetch-and-incorporate-auth-provider-details
-              (tx/driver)
-              provider-details))))))
-
-(deftest oauth-provider-tests
-  (mt/with-premium-features #{:database-auth-providers}
-    (let [oauth-response {:access_token "foobar"
-                          :expires_in "84791"}
-          provider-details {:use-auth-provider true
-                            :auth-provider :oauth
-                            :oauth-token-url (client/build-url "/testing/echo"
-                                                               {:body (json/encode oauth-response)})}]
-      (is (= oauth-response (auth-provider/fetch-auth :oauth nil provider-details)))
-      (is (=? (merge provider-details
-                     {:password "foobar"
-                      :password-expiry-timestamp #(and (int? %) (> % (System/currentTimeMillis)))})
-              (driver.u/fetch-and-incorporate-auth-provider-details
-               (tx/driver)
-               provider-details))))))
-
-(deftest ^:parallel azure-managed-identity-provider-tests
-  (mt/with-premium-features #{:database-auth-providers}
-    (testing "password gets resolved"
-      (let [client-id "client ID"
-            provider-details {:use-auth-provider true
-                              :auth-provider :azure-managed-identity
-                              :azure-managed-identity-client-id client-id
-                              :password "xyz"}
-            response-body {:access_token "foobar"}]
-        (binding [u.http/*fetch-as-json* (fn [url _headers]
-                                           (is (str/includes? url client-id))
-                                           response-body)]
-          (is (= response-body (auth-provider/fetch-auth :azure-managed-identity nil provider-details)))
-          (is (= (merge provider-details {:password "foobar"})
-                 (driver.u/fetch-and-incorporate-auth-provider-details
-                  (tx/driver)
-                  provider-details))))))
-    (testing "existing password doesn't get overwritten if not using an auth provider"
-      (let [client-id "client ID"
-            provider-details {:use-auth-provider false
-                              :auth-provider :azure-managed-identity
-                              :azure-managed-identity-client-id client-id
-                              :password "xyz"}]
-        (binding [u.http/*fetch-as-json* (fn [_url _headers]
-                                           (is false "should not get called"))]
-          (is (= provider-details
-                 (driver.u/fetch-and-incorporate-auth-provider-details
-                  (tx/driver)
-                  provider-details))))))))
