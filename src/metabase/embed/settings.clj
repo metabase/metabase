@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [crypto.random :as crypto-random]
-   [environ.core :as env]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
@@ -185,22 +184,25 @@
 (defn- check-settings
   "We want to disallow setting both deprecated embed settings, and the new ones at the same time. This is to prevent
    confusion and to make sure that we're not setting the same thing twice."
-  []
-  (check-enable-settings env/env)
-  (check-origins-settings env/env))
+  [env]
+  (check-enable-settings env)
+  (check-origins-settings env))
 
-(defn- sync-settings []
-  (sync-enable-settings env/env)
-  (sync-origins-settings env/env))
+(defn- sync-settings
+  "Sync settings to ensure that we can accept `MB_ENABLE_EMBEDDING` and `MB_EMBEDDING_APP_ORIGIN`. This should always
+  be called after [[check-settings]] so we don't overwrite a setting!"
+  [env]
+  (sync-enable-settings env)
+  (sync-origins-settings env))
 
 (defn check-and-sync-settings-on-startup!
   "Check and sync settings on startup. This is to ensure that we don't have any conflicting settings. A conflicting
   setting would be setting a deprecated setting and a new setting at the same time. If a deprecated setting is set
   (and none of its corresponding new settings are set), we want to sync the deprecated setting to the new settings and
   print a deprecation warning."
-  []
-  (check-settings)
-  (sync-settings))
+  [env]
+  (check-settings env)
+  (sync-settings env))
 
 (mu/defn some-embedding-enabled? :- :boolean
   "Is any kind of embedding setup?"

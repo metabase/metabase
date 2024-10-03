@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.trace :as trace]
+   [environ.core :as env]
    [java-time.api :as t]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
@@ -157,7 +158,7 @@
   (ensure-audit-db-installed!)
   (init-status/set-progress! 0.95)
 
-  (embed.settings/check-and-sync-settings-on-startup!)
+  (embed.settings/check-and-sync-settings-on-startup! env/env)
   (init-status/set-progress! 0.97)
 
   (settings/migrate-encrypted-settings!)
