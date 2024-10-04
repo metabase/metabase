@@ -277,7 +277,6 @@ describe("scenarios > organization > entity picker", () => {
           restore("postgres-writable");
           cy.signInAsAdmin();
           resyncDatabase({ dbId: WRITABLE_DB_ID });
-          cy.signInAsNormalUser();
 
           cy.log("first schema");
           startNewQuestion();
@@ -318,7 +317,7 @@ describe("scenarios > organization > entity picker", () => {
         { tags: "@external" },
         () => {
           restore("mysql-8");
-          cy.signInAsNormalUser();
+          cy.signInAsAdmin();
           startNewQuestion();
           entityPickerModal().within(() => {
             entityPickerModalTab("Tables").click();
