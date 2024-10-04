@@ -100,7 +100,7 @@ export const getCartesianChartModel = (
   );
 
   // We currently ignore sorting and visibility settings on combined cards
-  const seriesModels = hasMultipleCards
+  const ungroupedSeriesModels = hasMultipleCards
     ? unsortedSeriesModels
     : getSortedSeriesModels(unsortedSeriesModels, settings);
 
@@ -114,17 +114,14 @@ export const getCartesianChartModel = (
     settings["graph.x_axis.scale"],
     showWarning,
   );
-  const scaledDataset = scaleDataset(dataset, seriesModels, settings);
+  const scaledDataset = scaleDataset(dataset, ungroupedSeriesModels, settings);
 
-  const { ungroupedSeriesModels, groupedSeriesModels } = groupSeriesIntoOther(
-    dataset,
-    seriesModels,
-    settings,
-  );
+  const { ungroupedSeriesModels: seriesModels, groupedSeriesModels } =
+    groupSeriesIntoOther(dataset, ungroupedSeriesModels, settings);
 
   const [sampleGroupedModel] = groupedSeriesModels;
   if (sampleGroupedModel) {
-    ungroupedSeriesModels.push(
+    seriesModels.push(
       createOtherGroupSeriesModel(
         sampleGroupedModel.column,
         sampleGroupedModel.columnIndex,
@@ -157,7 +154,7 @@ export const getCartesianChartModel = (
     scaledDataset,
     stackModels,
     xAxisModel,
-    ungroupedSeriesModels,
+    seriesModels,
     groupedSeriesKeys,
     yAxisScaleTransforms,
     settings,
@@ -187,7 +184,7 @@ export const getCartesianChartModel = (
   );
 
   const { leftAxisModel, rightAxisModel } = getYAxesModels(
-    ungroupedSeriesModels,
+    seriesModels,
     dataset,
     transformedDataset,
     settings,
@@ -202,7 +199,7 @@ export const getCartesianChartModel = (
     rawSeries,
     [leftAxisModel, rightAxisModel],
     yAxisScaleTransforms,
-    ungroupedSeriesModels,
+    seriesModels,
     transformedDataset,
     settings,
     stackModels,
@@ -213,7 +210,7 @@ export const getCartesianChartModel = (
     stackModels,
     dataset: scaledDataset,
     transformedDataset,
-    seriesModels: ungroupedSeriesModels,
+    seriesModels,
     yAxisScaleTransforms,
     columnByDataKey,
     dimensionModel,

@@ -755,6 +755,7 @@ export const applyVisualizationSettingsDataTransformations = (
 
   return transformDataset(dataset, [
     getNullReplacerTransform(settings, seriesModels),
+    getOtherSeriesTransform(groupedSeriesKeys),
     {
       condition: settings["stackable.stack_type"] === "normalized",
       fn: getNormalizedDatasetTransform(stackModels),
@@ -773,7 +774,6 @@ export const applyVisualizationSettingsDataTransformations = (
           : value;
       }),
     },
-    getOtherSeriesTransform(groupedSeriesKeys),
     {
       condition: isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel),
       fn: getKeyBasedDatasetTransform([X_AXIS_DATA_KEY], value => {

@@ -559,12 +559,17 @@ export const getStackedTooltipModel = (
         seriesStack?.seriesKeys.includes(seriesModel.dataKey),
     )
     .map(seriesModel => {
+      const datum = chartModel.dataset[dataIndex];
+      const value =
+        seriesModel.dataKey === OTHER_DATA_KEY
+          ? getGroupedSeriesTotal(chartModel.groupedSeriesModels ?? [], datum)
+          : datum[seriesModel.dataKey];
       return {
         isFocused: seriesModel.dataKey === seriesDataKey,
         name: seriesModel.name,
         color: seriesModel.color,
-        value: chartModel.dataset[dataIndex][seriesModel.dataKey],
         dataKey: seriesModel.dataKey,
+        value,
       };
     });
 
