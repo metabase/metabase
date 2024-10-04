@@ -1,18 +1,27 @@
 import cx from "classnames";
-import { useState } from "react";
+import { type ChangeEvent, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { UploadInfoModal } from "metabase/collections/components/CollectionHeader/CollectionUploadInfoModal";
+import {
+  type CollectionOrTableIdProps,
+  ModelUploadModal,
+} from "metabase/collections/components/ModelUploadModal";
+import type { OnFileUpload } from "metabase/collections/types";
+import { UploadInput } from "metabase/components/upload";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { useToggle } from "metabase/hooks/use-toggle";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   MAX_UPLOAD_STRING,
   UPLOAD_DATA_FILE_TYPES,
+  type UploadFileProps,
+  uploadFile as uploadFileAction,
 } from "metabase/redux/uploads";
-import { getLearnUrl } from "metabase/selectors/settings";
+import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
@@ -37,8 +46,59 @@ export function SidebarOnboardingSection({
   isAdmin,
 }: SidebarOnboardingProps) {
   const initialState = !hasOwnDatabase;
+
+  const [
+    isModelUploadModalOpen,
+    { turnOn: openModelUploadModal, turnOff: closeModelUploadModal },
+  ] = useToggle(false);
+
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
   const applicationName = useSelector(getApplicationName);
+  const uploadDbId = useSelector(
+    state => getSetting(state, "uploads-settings")?.db_id,
+  );
+  const isUploadEnabled = !!uploadDbId;
+
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+
+  const dispatch = useDispatch();
+  const uploadFile = useCallback(
+    ({ file, modelId, collectionId, tableId, uploadMode }: UploadFileProps) =>
+      dispatch(
+        uploadFileAction({ file, modelId, collectionId, tableId, uploadMode }),
+      ),
+    [dispatch],
+  );
+
+  const handleFileInput = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (file !== undefined) {
+      setUploadedFile(file);
+      openModelUploadModal();
+
+      // reset the input so that the same file can be uploaded again
+      if (uploadInputRef.current) {
+        uploadInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleFileUpload = useCallback<OnFileUpload>(
+    (uploadFileArgs: CollectionOrTableIdProps) => {
+      const { collectionId, tableId } = uploadFileArgs;
+      if (uploadedFile && (collectionId || tableId)) {
+        closeModelUploadModal();
+        uploadFile({
+          file: uploadedFile,
+          ...uploadFileArgs,
+        });
+      }
+    },
+    [uploadFile, uploadedFile, closeModelUploadModal],
+  );
 
   return (
     <Box
@@ -82,15 +142,25 @@ export function SidebarOnboardingSection({
                   subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
                 />
               </Link>
-
-              <SidebarOnboardingMenuItem
-                icon="table2"
-                title={t`Upload a spreadsheet`}
-                subtitle={t`${UPLOAD_DATA_FILE_TYPES.join(
-                  ", ",
-                )} (${MAX_UPLOAD_STRING} MB max)`}
-                onClick={() => setShowInfoModal(true)}
-              />
+              {!isUploadEnabled ? (
+                <SidebarOnboardingMenuItem
+                  icon="table2"
+                  title={t`Upload a spreadsheet`}
+                  subtitle={t`${UPLOAD_DATA_FILE_TYPES.join(
+                    ", ",
+                  )} (${MAX_UPLOAD_STRING} MB max)`}
+                  onClick={() => setShowInfoModal(true)}
+                />
+              ) : (
+                <SidebarOnboardingMenuItem
+                  icon="table2"
+                  title={t`Upload a spreadsheet`}
+                  subtitle={t`${UPLOAD_DATA_FILE_TYPES.join(
+                    ", ",
+                  )} (${MAX_UPLOAD_STRING} MB max)`}
+                  onClick={() => uploadInputRef.current?.click()}
+                />
+              )}
             </Menu.Dropdown>
           </Menu>
         </Box>
@@ -101,6 +171,17 @@ export function SidebarOnboardingSection({
           onClose={() => setShowInfoModal(false)}
         />
       )}
+      <UploadInput
+        id="onboarding-upload-input"
+        ref={uploadInputRef}
+        onChange={handleFileInput}
+      />
+      <ModelUploadModal
+        collectionId="root"
+        opened={isModelUploadModalOpen}
+        onClose={closeModelUploadModal}
+        onUpload={handleFileUpload}
+      />
     </Box>
   );
 }
