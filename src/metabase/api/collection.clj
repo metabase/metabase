@@ -591,7 +591,7 @@
       (dissoc :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
-(defn- annotate-dashboards
+(defn annotate-dashboards
   "Populates 'here' and 'below' on dashboard"
   [dashboards]
   (let [dashboard-ids (into #{} (map :id dashboards))
