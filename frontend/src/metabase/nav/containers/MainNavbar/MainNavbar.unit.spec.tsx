@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
@@ -265,38 +266,6 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
-  describe("setup database link", () => {
-    it("should render when there are no databases connected", async () => {
-      await setup({
-        hasOwnDatabase: false,
-        user: createMockUser({ is_superuser: true }),
-      });
-      const link = screen.getByRole("link", { name: /Add your own data/i });
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", "/admin/databases/create");
-    });
-
-    it("should not render when there is a database connected", async () => {
-      await setup({
-        hasOwnDatabase: true,
-        user: createMockUser({ is_superuser: true }),
-      });
-      expect(
-        screen.queryByRole("link", { name: /Add your own data/i }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("should not render to non-admin users", async () => {
-      await setup({
-        hasOwnDatabase: false,
-        user: createMockUser({ is_superuser: false }),
-      });
-      expect(
-        screen.queryByRole("link", { name: /Add your own data/i }),
-      ).not.toBeInTheDocument();
-    });
-  });
-
   describe("collection tree", () => {
     it("should show collections", async () => {
       const {
@@ -465,6 +434,95 @@ describe("nav > containers > MainNavbar", () => {
       expect(
         screen.getByRole("treeitem", { name: /Our analytics/i }),
       ).toHaveAttribute("aria-selected", "false");
+    });
+  });
+
+  describe("better onboarding section", () => {
+    it("should render Metabase learn link to admins", async () => {
+      await setup({ user: createMockUser({ is_superuser: true }) });
+      const link = screen.getByRole("link", { name: /How to use Metabase/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", "https://www.metabase.com/learn/");
+    });
+
+    it("should render Metabase learn link to regular users", async () => {
+      await setup({ user: createMockUser({ is_superuser: false }) });
+      const link = screen.getByRole("link", { name: /How to use Metabase/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", "https://www.metabase.com/learn/");
+    });
+
+    it("data section should not render to non-admins", async () => {
+      await setup({ user: createMockUser({ is_superuser: false }) });
+
+      const introCTA = screen.queryByText(
+        "Start by adding your data. Connect to a database or upload a CSV file.",
+      );
+      const addDataButton = screen.queryByRole("button", { name: /Add data/i });
+
+      expect(introCTA).not.toBeInTheDocument();
+      expect(addDataButton).not.toBeInTheDocument();
+    });
+
+    it("intro CTA should not render when there are databases connected", async () => {
+      await setup({
+        hasOwnDatabase: true,
+        user: createMockUser({ is_superuser: true }),
+      });
+
+      const introCTA = screen.queryByText(
+        "Start by adding your data. Connect to a database or upload a CSV file.",
+      );
+      expect(introCTA).not.toBeInTheDocument();
+    });
+
+    it("data section should render for admins", async () => {
+      await setup({
+        hasOwnDatabase: false,
+        user: createMockUser({ is_superuser: true }),
+      });
+
+      const introCTA = screen.getByText(
+        "Start by adding your data. Connect to a database or upload a CSV file.",
+      );
+      const addDataButton = screen.getByRole("button", { name: /Add data/i });
+
+      expect(introCTA).toBeInTheDocument();
+      expect(addDataButton).toBeInTheDocument();
+      await userEvent.click(addDataButton);
+
+      const menuItems = screen.getAllByRole("menuitem");
+      expect(screen.getAllByRole("menuitem")).toHaveLength(2);
+
+      const [addDatabase, uploadCSV] = menuItems;
+
+      expect(within(addDatabase).getByRole("link")).toHaveAttribute(
+        "href",
+        "/admin/databases/create",
+      );
+      expect(
+        within(addDatabase).getByText("Add a database"),
+      ).toBeInTheDocument();
+      expect(
+        within(addDatabase).getByText("PostgreSQL, MySQL, Snowflake, ..."),
+      ).toBeInTheDocument();
+      expect(
+        within(addDatabase).getByLabelText("database icon"),
+      ).toBeInTheDocument();
+
+      expect(within(uploadCSV).getByRole("link")).toHaveAttribute(
+        "href",
+        "/admin/settings/uploads",
+      );
+      expect(
+        within(uploadCSV).getByText("Upload a spreadsheet"),
+      ).toBeInTheDocument();
+      expect(
+        within(uploadCSV).getByText(".csv, .tsv (50 MB max)"),
+      ).toBeInTheDocument();
+      expect(
+        within(uploadCSV).getByLabelText("table2 icon"),
+      ).toBeInTheDocument();
     });
   });
 });
