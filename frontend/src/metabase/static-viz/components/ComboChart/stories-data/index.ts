@@ -28,6 +28,7 @@ import barLinearXScale from "./bar-linear-x-scale.json";
 import barLogYScaleStackedNegative from "./bar-log-y-scale-stacked-negative.json";
 import barLogYScaleStacked from "./bar-log-y-scale-stacked.json";
 import barMaxCategoriesDefault from "./bar-max-categories-default.json";
+import barMaxCategoriesStacked from "./bar-max-categories-stacked.json";
 import barMinHeightLimit from "./bar-min-height-limit.json";
 import barOrdinalXScaleAutoRotatedLabels from "./bar-ordinal-x-scale-auto-rotated-labels.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
@@ -227,6 +228,7 @@ export const data = {
   barStackedSeriesLabelsNormalizedAutoCompactness,
   barStackedLabelsNullVsZero,
   barMaxCategoriesDefault,
+  barMaxCategoriesStacked,
   barMinHeightLimit,
   comboDataLabelsAutoCompactnessPropagatesFromLine,
   comboDataLabelsAutoCompactnessPropagatesFromTotals,

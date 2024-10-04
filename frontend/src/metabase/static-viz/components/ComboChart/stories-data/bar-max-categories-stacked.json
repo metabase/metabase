@@ -1,0 +1,605 @@
+[
+  {
+    "card": {
+      "cache_invalidated_at": null,
+      "description": null,
+      "archived": false,
+      "view_count": 151,
+      "collection_position": null,
+      "source_card_id": null,
+      "table_id": 5,
+      "can_run_adhoc_query": true,
+      "result_metadata": [
+        {
+          "description": "The state or province of the account’s billing address",
+          "semantic_type": "type/State",
+          "coercion_strategy": null,
+          "name": "STATE",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            48,
+            {
+              "base-type": "type/Text",
+              "source-field": 43
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 48,
+          "visibility_type": "normal",
+          "display_name": "User → State",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 49,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 1,
+                "average-length": 2
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 41,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "name": "count",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 12,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 1.8849307066960952,
+                "q3": 5.5,
+                "max": 12,
+                "sd": 2.737211604119948,
+                "avg": 4.086956521739131
+              }
+            }
+          }
+        }
+      ],
+      "creator": {
+        "email": "anton@metabase.test",
+        "first_name": "Anton",
+        "last_login": "2024-09-24T15:34:26.000532+01:00",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Kulyk",
+        "date_joined": "2024-08-19T15:09:37.030585+01:00",
+        "common_name": "Anton Kulyk"
+      },
+      "initially_published_at": null,
+      "can_write": true,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "Bar chart with \"Other\"",
+      "last_query_start": "2024-10-04T14:53:58.731799+01:00",
+      "dashboard_count": 1,
+      "last_used_at": "2024-10-04T14:53:58.783195+01:00",
+      "type": "question",
+      "average_query_time": 71.96116504854369,
+      "creator_id": 1,
+      "can_restore": false,
+      "moderation_reviews": [],
+      "updated_at": "2024-10-04T14:58:53.488082+01:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              48,
+              {
+                "base-type": "type/Text",
+                "source-field": 43
+              }
+            ],
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ]
+          ],
+          "filter": [
+            "and",
+            [
+              "between",
+              [
+                "field",
+                41,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month"
+                }
+              ],
+              "2022-09-01T00:00Z",
+              "2023-02-01T00:00Z"
+            ],
+            [
+              "=",
+              [
+                "field",
+                48,
+                {
+                  "base-type": "type/Text",
+                  "source-field": 43
+                }
+              ],
+              "AK",
+              "AL",
+              "AR",
+              "AZ",
+              "CA",
+              "CO",
+              "CT",
+              "DE",
+              "FL",
+              "GA",
+              "IA",
+              "ID",
+              "IL",
+              "KY"
+            ]
+          ]
+        }
+      },
+      "id": 47,
+      "parameter_mappings": [],
+      "display": "bar",
+      "archived_directly": false,
+      "entity_id": "ez2Yb1JhGrltIJMNwZfwU",
+      "collection_preview": true,
+      "last-edit-info": {
+        "timestamp": "2024-10-04T13:58:53.546Z",
+        "id": 1,
+        "first_name": "Anton",
+        "last_name": "Kulyk",
+        "email": "anton@metabase.test"
+      },
+      "visualization_settings": {
+        "graph.max_categories": 4,
+        "graph.dimensions": ["CREATED_AT", "STATE"],
+        "graph.series_order": [
+          {
+            "key": "AK",
+            "color": "#509EE3",
+            "enabled": true,
+            "name": "AK"
+          },
+          {
+            "key": "AL",
+            "color": "#227FD2",
+            "enabled": true,
+            "name": "AL"
+          },
+          {
+            "key": "AR",
+            "color": "#88BF4D",
+            "enabled": true,
+            "name": "AR"
+          },
+          {
+            "key": "AZ",
+            "color": "#689636",
+            "enabled": true,
+            "name": "AZ"
+          },
+          {
+            "key": "CA",
+            "color": "#A989C5",
+            "enabled": true,
+            "name": "CA"
+          },
+          {
+            "key": "CO",
+            "color": "#8A5EB0",
+            "enabled": true,
+            "name": "CO"
+          },
+          {
+            "key": "CT",
+            "color": "#EF8C8C",
+            "enabled": true,
+            "name": "CT"
+          },
+          {
+            "key": "DE",
+            "color": "#E75454",
+            "enabled": true,
+            "name": "DE"
+          },
+          {
+            "key": "GA",
+            "color": "#F9D45C",
+            "enabled": true,
+            "name": "GA"
+          },
+          {
+            "key": "IA",
+            "color": "#F7C41F",
+            "enabled": true,
+            "name": "IA"
+          },
+          {
+            "key": "ID",
+            "color": "#F2A86F",
+            "enabled": true,
+            "name": "ID"
+          },
+          {
+            "key": "KY",
+            "color": "#ED8535",
+            "enabled": true,
+            "name": "KY"
+          },
+          {
+            "key": "LA",
+            "color": "#98D9D9",
+            "enabled": true,
+            "name": "LA"
+          }
+        ],
+        "graph.series_order_dimension": "STATE",
+        "stackable.stack_type": "stacked",
+        "pie.dimension": ["STATE"],
+        "graph.metrics": ["count"]
+      },
+      "collection": null,
+      "metabase_version": "v0.1.37-SNAPSHOT (5b4a5d6)",
+      "parameters": [],
+      "created_at": "2024-10-01T13:37:28.812936+01:00",
+      "parameter_usage_count": 0,
+      "public_uuid": null,
+      "can_delete": false
+    },
+    "data": {
+      "rows": [
+        ["AK", "2022-09-01T00:00:00+01:00", 2],
+        ["AK", "2022-10-01T00:00:00+01:00", 3],
+        ["AK", "2022-11-01T00:00:00Z", 1],
+        ["AK", "2022-12-01T00:00:00Z", 3],
+        ["AK", "2023-01-01T00:00:00Z", 9],
+        ["AK", "2023-02-01T00:00:00Z", 4],
+        ["AL", "2022-09-01T00:00:00+01:00", 1],
+        ["AL", "2022-10-01T00:00:00+01:00", 3],
+        ["AL", "2022-11-01T00:00:00Z", 2],
+        ["AL", "2022-12-01T00:00:00Z", 6],
+        ["AL", "2023-01-01T00:00:00Z", 6],
+        ["AL", "2023-02-01T00:00:00Z", 6],
+        ["AR", "2022-10-01T00:00:00+01:00", 2],
+        ["AR", "2022-11-01T00:00:00Z", 4],
+        ["AR", "2022-12-01T00:00:00Z", 3],
+        ["AR", "2023-01-01T00:00:00Z", 4],
+        ["AR", "2023-02-01T00:00:00Z", 1],
+        ["AZ", "2023-01-01T00:00:00Z", 1],
+        ["AZ", "2023-02-01T00:00:00Z", 1],
+        ["CA", "2022-09-01T00:00:00+01:00", 5],
+        ["CA", "2022-10-01T00:00:00+01:00", 5],
+        ["CA", "2022-11-01T00:00:00Z", 4],
+        ["CA", "2022-12-01T00:00:00Z", 6],
+        ["CA", "2023-01-01T00:00:00Z", 11],
+        ["CA", "2023-02-01T00:00:00Z", 11],
+        ["CO", "2022-09-01T00:00:00+01:00", 4],
+        ["CO", "2022-10-01T00:00:00+01:00", 6],
+        ["CO", "2022-11-01T00:00:00Z", 12],
+        ["CO", "2022-12-01T00:00:00Z", 8],
+        ["CO", "2023-01-01T00:00:00Z", 7],
+        ["CO", "2023-02-01T00:00:00Z", 9],
+        ["CT", "2022-10-01T00:00:00+01:00", 1],
+        ["DE", "2022-10-01T00:00:00+01:00", 1],
+        ["DE", "2022-12-01T00:00:00Z", 1],
+        ["FL", "2022-09-01T00:00:00+01:00", 1],
+        ["FL", "2022-10-01T00:00:00+01:00", 2],
+        ["FL", "2022-11-01T00:00:00Z", 4],
+        ["FL", "2023-01-01T00:00:00Z", 3],
+        ["FL", "2023-02-01T00:00:00Z", 4],
+        ["GA", "2022-09-01T00:00:00+01:00", 1],
+        ["GA", "2022-10-01T00:00:00+01:00", 7],
+        ["GA", "2022-11-01T00:00:00Z", 3],
+        ["GA", "2022-12-01T00:00:00Z", 1],
+        ["GA", "2023-01-01T00:00:00Z", 8],
+        ["GA", "2023-02-01T00:00:00Z", 3],
+        ["IA", "2022-09-01T00:00:00+01:00", 3],
+        ["IA", "2022-10-01T00:00:00+01:00", 4],
+        ["IA", "2022-11-01T00:00:00Z", 5],
+        ["IA", "2022-12-01T00:00:00Z", 5],
+        ["IA", "2023-01-01T00:00:00Z", 10],
+        ["IA", "2023-02-01T00:00:00Z", 7],
+        ["ID", "2022-09-01T00:00:00+01:00", 1],
+        ["ID", "2022-10-01T00:00:00+01:00", 1],
+        ["ID", "2022-11-01T00:00:00Z", 1],
+        ["ID", "2022-12-01T00:00:00Z", 2],
+        ["ID", "2023-01-01T00:00:00Z", 3],
+        ["ID", "2023-02-01T00:00:00Z", 4],
+        ["IL", "2022-09-01T00:00:00+01:00", 1],
+        ["IL", "2022-10-01T00:00:00+01:00", 3],
+        ["IL", "2022-11-01T00:00:00Z", 3],
+        ["IL", "2022-12-01T00:00:00Z", 6],
+        ["IL", "2023-01-01T00:00:00Z", 5],
+        ["IL", "2023-02-01T00:00:00Z", 5],
+        ["KY", "2022-09-01T00:00:00+01:00", 2],
+        ["KY", "2022-10-01T00:00:00+01:00", 5],
+        ["KY", "2022-11-01T00:00:00Z", 5],
+        ["KY", "2022-12-01T00:00:00Z", 4],
+        ["KY", "2023-01-01T00:00:00Z", 4],
+        ["KY", "2023-02-01T00:00:00Z", 3]
+      ],
+      "cols": [
+        {
+          "description": "The state or province of the account’s billing address",
+          "database_type": "CHARACTER",
+          "semantic_type": "type/State",
+          "table_id": 3,
+          "coercion_strategy": null,
+          "name": "STATE",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "fk_field_id": 43,
+          "field_ref": [
+            "field",
+            48,
+            {
+              "base-type": "type/Text",
+              "source-field": 43
+            }
+          ],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 48,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "User → State",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 49,
+              "nil%": 0.0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0.0,
+                "percent-url": 0.0,
+                "percent-email": 0.0,
+                "percent-state": 1.0,
+                "average-length": 2.0
+              }
+            }
+          },
+          "base_type": "type/Text",
+          "source_alias": "PEOPLE__via__USER_ID"
+        },
+        {
+          "description": "The date and time an order was submitted.",
+          "database_type": "TIMESTAMP",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 41,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0.0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "database_type": "BIGINT",
+          "semantic_type": "type/Quantity",
+          "name": "count",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "effective_type": "type/BigInteger",
+          "aggregation_index": 0,
+          "display_name": "Count",
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"PEOPLE__via__USER_ID\".\"STATE\" AS \"PEOPLE__via__USER_ID__STATE\", DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", COUNT(*) AS \"count\" FROM \"PUBLIC\".\"ORDERS\" LEFT JOIN \"PUBLIC\".\"PEOPLE\" AS \"PEOPLE__via__USER_ID\" ON \"PUBLIC\".\"ORDERS\".\"USER_ID\" = \"PEOPLE__via__USER_ID\".\"ID\" WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= timestamp '2022-09-01 00:00:00.000') AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < timestamp '2023-03-01 00:00:00.000') AND ((\"PEOPLE__via__USER_ID\".\"STATE\" = 'AK') OR (\"PEOPLE__via__USER_ID\".\"STATE\" = 'AL') OR (\"PEOPLE__via__USER_ID\".\"STATE\" = 'AR') OR (\"PEOPLE__via__USER_ID\".\"STATE\" = 'AZ') OR (\"PEOPLE__via__USER_ID\".\"STATE\" = 'CA') OR (\"PEOPLE__via__USER_ID\".\"STATE\" = 'CO') OR (\"PEOPLE__via__USER_ID\".\"STATE\" = 'CT') OR (\"PEOPLE__via__USER_ID\".\"STATE\" = 'DE') OR (\"PEOPLE__via__USER_ID\".\"STATE\" = 'FL') OR (\"PEOPLE__via__USER_ID\".\"STATE\" = 'GA') OR (\"PEOPLE__via__USER_ID\".\"STATE\" = 'IA') OR (\"PEOPLE__via__USER_ID\".\"STATE\" = 'ID') OR (\"PEOPLE__via__USER_ID\".\"STATE\" = 'IL') OR (\"PEOPLE__via__USER_ID\".\"STATE\" = 'KY')) GROUP BY \"PEOPLE__via__USER_ID\".\"STATE\", DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ORDER BY \"PEOPLE__via__USER_ID\".\"STATE\" ASC, DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "Europe/Lisbon",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The state or province of the account’s billing address",
+            "semantic_type": "type/State",
+            "coercion_strategy": null,
+            "name": "STATE",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              48,
+              {
+                "base-type": "type/Text",
+                "source-field": 43
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 48,
+            "visibility_type": "normal",
+            "display_name": "User → State",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 49,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0.0,
+                  "percent-url": 0.0,
+                  "percent-email": 0.0,
+                  "percent-state": 1.0,
+                  "average-length": 2.0
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 41,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "name": "count",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 12,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1.0,
+                  "q1": 1.8849307066960952,
+                  "q3": 5.5,
+                  "max": 12.0,
+                  "sd": 2.737211604119948,
+                  "avg": 4.086956521739131
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 4,
+          "unit": "month",
+          "offset": -377.8969468095498,
+          "last-change": -0.25,
+          "col": "count",
+          "slope": 0.019777876708186145,
+          "last-value": 3,
+          "best-fit": [
+            "*",
+            4.201731368215701e-45,
+            ["exp", ["*", 0.005350764152580669, "x"]]
+          ]
+        }
+      ]
+    }
+  }
+]
