@@ -89,6 +89,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      security-events: write
     steps:
     - name: Extract and clean branch name
       shell: bash
