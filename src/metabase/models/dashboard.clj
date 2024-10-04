@@ -241,9 +241,9 @@
   Questions that *are* on the Dashboard as *not* archived. This function takes a dashboard and the set of dashcards
   about to be saved, and ensures that all DQs that appear on the dashboard are unarchived and all DQs that DON'T
   appear on the dashboard are archived."
-  [dashboard new-cards]
+  [dashboard-id new-cards]
   (let [;; the set of ALL Dashboard Questions (internal to the dashboard) for this Dashboard
-        internal-dashboard-question-ids (t2/select-pks-set :model/Card :dashboard_id (:id dashboard))
+        internal-dashboard-question-ids (t2/select-pks-set :model/Card :dashboard_id dashboard-id)
         ;; the set of all card IDs that are present on the dashboard
         used-card-ids (into #{} (map :card_id new-cards))
         ;; DQs that aren't used get archived
@@ -312,6 +312,8 @@
                             (t2/select-pks-set :model/Card
                                                {:where [:and
                                                         [:in :id card-ids]
+                                                        ;; skip when archived
+                                                        [:= :archived false]
                                                         ;; belong to this dashboard, or are not Dashboard Questions
                                                         [:or
                                                          [:= :dashboard_id dashboard-id]
