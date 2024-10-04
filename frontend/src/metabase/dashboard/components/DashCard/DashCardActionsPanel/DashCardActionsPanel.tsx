@@ -135,19 +135,15 @@ function DashCardActionsPanelInner({
     );
   }
 
-  if (supportPreviewing) {
+  if (supportPreviewing && isPreviewing) {
     buttons.push(
       <DashCardActionButton
         key="preview"
         onClick={onPreviewToggle}
-        tooltip={isPreviewing ? t`Edit` : t`Preview`}
-        aria-label={isPreviewing ? t`Edit card` : t`Preview card`}
+        tooltip={t`Edit`}
+        aria-label={t`Edit card`}
       >
-        {isPreviewing ? (
-          <DashCardActionButton.Icon name="edit_document" />
-        ) : (
-          <DashCardActionButton.Icon name="eye" size={18} />
-        )}
+        {isPreviewing ? <DashCardActionButton.Icon name="pencil" /> : null}
       </DashCardActionButton>,
     );
   }

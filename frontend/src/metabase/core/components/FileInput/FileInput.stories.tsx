@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import FileInput from "./FileInput";
 
@@ -7,11 +7,14 @@ export default {
   component: FileInput,
 };
 
-const Template: ComponentStory<typeof FileInput> = args => {
+const Template: StoryFn<typeof FileInput> = args => {
   return <FileInput {...args} />;
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  name: "file",
+export const Default = {
+  render: Template,
+
+  args: {
+    name: "file",
+  },
 };
