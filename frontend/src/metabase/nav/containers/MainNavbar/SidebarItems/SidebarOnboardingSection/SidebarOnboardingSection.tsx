@@ -23,23 +23,11 @@ import {
 } from "metabase/redux/uploads";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import {
-  Box,
-  Button,
-  Icon,
-  type IconName,
-  Menu,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Box, Button, Icon, Menu, Stack, Text, Title } from "metabase/ui";
 
 import { PaddedSidebarLink } from "../../MainNavbar.styled";
 
-type SidebarOnboardingProps = {
-  hasOwnDatabase: boolean;
-  isAdmin: boolean;
-};
+import type { OnboaringMenuItemProps, SidebarOnboardingProps } from "./types";
 
 export function SidebarOnboardingSection({
   hasOwnDatabase,
@@ -186,18 +174,9 @@ export function SidebarOnboardingSection({
   );
 }
 
-type OnboaringMenuItemProps = {
-  icon: IconName;
-  title: string;
-
-  subtitle: string;
-  onClick?: () => void;
-};
-
 function SidebarOnboardingMenuItem({
   icon,
   title,
-
   subtitle,
   onClick,
 }: OnboaringMenuItemProps) {
