@@ -111,6 +111,11 @@ export const HomeLayout = () => {
   }, []);
 
   useEffect(() => {
+
+    setInputValue("");
+    dispatch(setInitialMessage(""));
+    setShowChatAssistant(false);
+
     if (window.location.pathname === "/browse/insights") {
       setSelectedChatType("insights");
       setSelectedChatHistoryType("getInsights");
