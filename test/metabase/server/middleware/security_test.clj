@@ -184,6 +184,19 @@
   (testing "Should handle invalid origins"
     (is (true? (mw.security/approved-origin? "http://example.com" "  fpt://something ://123 4 http://example.com")))))
 
+(defn- has-localhost? [s] (some->> s (re-matches #".*localhost.*")))
+
+(deftest embedding-app-origins-sdk-always-allows-localhost-test
+  (mt/with-temporary-setting-values [enable-embedding-sdk true]
+    (is (has-localhost? (embed.settings/embedding-app-origins-sdk))
+        "Localhost should always be allowed."))
+  (mt/with-temporary-setting-values [enable-embedding-sdk false]
+    (is (has-localhost? (embed.settings/embedding-app-origins-sdk))
+        "Localhost should always be allowed."))
+  (mt/with-temporary-setting-values [enable-embedding-sdk nil]
+    (is (has-localhost? (embed.settings/embedding-app-origins-sdk))
+        "Localhost should always be allowed.")))
+
 (deftest test-access-control-headers?
   (testing "Should always allow localhost:*"
     (tu/with-temporary-setting-values [enable-embedding-sdk true]
