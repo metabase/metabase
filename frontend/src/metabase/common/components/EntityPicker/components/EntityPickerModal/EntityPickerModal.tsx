@@ -12,7 +12,6 @@ import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type {
   RecentContexts,
   RecentItem,
-  SearchItem,
   SearchRequest,
   SearchResult,
   SearchResultId,
@@ -178,12 +177,12 @@ export function EntityPickerModal<
 
   const finalSearchResults = useMemo(() => {
     if (isFetching || !data) {
-      return null;
+      return [];
     }
 
     if (searchScope === "folder") {
       return searchResultFilter
-        ? searchResultFilter(scopedSearchResults as SearchItem[])
+        ? searchResultFilter(scopedSearchResults as SearchResult[])
         : scopedSearchResults;
     } else {
       return searchResultFilter ? searchResultFilter(data.data) : data.data;
