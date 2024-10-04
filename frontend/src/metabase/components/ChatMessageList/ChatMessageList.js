@@ -10,6 +10,8 @@ import { PlanDisplay } from "metabase/components/Insight/InsightPlan";
 import { InsightText } from "metabase/components/Insight/InsightText";
 import { InsightImg } from "metabase/components/Insight/InsightImg";
 import { InsightCode } from "metabase/components/Insight/InsightCode";
+import { TableDisplay } from "../Insight/InsightTable";
+import { InsightReport } from "../Insight/InsightReport";
 import JSZip from 'jszip';
 
 const ChatMessageList = ({
@@ -33,7 +35,14 @@ const ChatMessageList = ({
   showCubeEditButton,
   sendAdminRequest,
   insightsCsv,
-  insightFile
+  insightFile,
+  insightTables,
+  insightReasoning,
+  insightCellCode,
+  insightTitle,
+  insightSummary,
+  insightSections,
+  insightRecommendations
 }) => {
   const messageEndRef = useRef(null);
   useEffect(() => {
@@ -201,6 +210,29 @@ const ChatMessageList = ({
             sendAdminRequest={sendAdminRequest}
             onSuggestion={onSuggestion}
           />
+
+          {/* Loop over insightsTables and display matching items */}
+          {insightTables && insightTables.length > 0 &&
+            message.showType == "tableReview" && (
+              <div style={{ padding: '10px' }}>
+                <TableDisplay tables={insightTables} reasoning={insightReasoning} />
+              </div>
+            )
+          }
+
+          {insightCellCode.map((singleCode, index) => (
+            message.showType == "insightCellCode" && message.visualizationIdx === index && (
+                  <div style={{ marginTop: '10px' }}>
+                    <InsightCode index={index} insightCode={singleCode} />
+                  </div>
+            )
+          ))}
+
+          {insightTitle && insightSummary && message.showType == "insightReport" && (
+            <div style={{ marginTop: '10px' }}>
+              <InsightReport insightTitle={insightTitle} insightSummary={insightSummary} insightSections={insightSections} insightRecommendations={insightRecommendations} />
+            </div>
+          )}
 
           {/* Loop over insightsPlan and display matching items */}
           {insightsPlan.map((planItem, index) => (

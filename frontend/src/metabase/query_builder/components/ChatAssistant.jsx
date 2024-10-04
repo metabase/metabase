@@ -62,6 +62,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const [insightsCode, setInsightsCode] = useState([]);
     const [insightsCsv, setInsightsCsv] = useState([]);
     const [insightFile, setInsightFile] = useState([]);
+    const [insightTables, setInsightTables] = useState([]);
+    const [insightReasoning, setInsightReasoning] = useState([]);
+    const [insightCellCode, setInsightCellCode] = useState([]);
+    const [insightTitle, setInsightTitle] = useState([]);
+    const [insightSummary, setInsightSummary] = useState([]);
+    const [insightSections, setInsightSections] = useState([]);
+    const [insightRecommendations, setInsightRecommendations] = useState([]);
     const [codeIndex, setCodeIndex] = useState(-1);
     const [insightTextIndex, setInsightTextIndex] = useState(-1);
     const [runId, setRunId] = useState('');
@@ -237,7 +244,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
 
     const handleFunctionalityMessages = async functions => {
         functions.forEach(async func => {
-            switch (func.function_name) {
+            const functionName = func.function_name || func.name;
+            switch (functionName) {
                 case "getDatasetQuery":
                     await handleGetDatasetQuery(func);
                     break;
@@ -267,6 +275,30 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     break;
                 case "getCsv":
                     await handleGetCsv(func);
+                    break;
+                case "messageRequest":
+                    await handleMessageRequest(func);
+                    break;
+                case "identifyRelevantTables":
+                    await handleInsightTables(func);
+                    break;
+                case "identifyingTablesDone":
+                    await handleInsightTablesDone(func);
+                    break;
+                case "generateCode":
+                    await handleInsightCode(func);
+                    break;
+                case "generatePlan":
+                    await handleInsightPlan(func);
+                    break;
+                case "generateImages":
+                    await handleGenerateImages(func);
+                    break;
+                case "generateReport":
+                    await handleGenerateReport(func);
+                    break;
+                case "generateText":
+                    await handleGenerateText(func);
                     break;
                 default:
                     console.log(func);
@@ -516,6 +548,12 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         setIsLoading(false);
         removeLoadingMessage();
     };
+    
+    const removeExistingMessage = (messageContent) => {
+        setMessages(prevMessages =>
+            prevMessages.filter(message => message.text !== messageContent)
+        );
+    };
 
     const handlePlanReview = async func => {
         const { planReview, plan } = func.arguments;
@@ -620,6 +658,162 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         }
     }
 
+    const handleMessageRequest = async func => {
+        setToolWaitingResponse("messageRequest");
+        try {
+            addServerMessage(
+                func.text || "Received a message from the server.",
+                "text",
+            );
+        } catch (error) {
+            console.error("Error getting csv", error);
+        }
+    }
+
+    const handleInsightTables = async func => {
+        const { relevantTables, reasoning } = func.args;
+        try {
+            removeLoadingMessage();
+            setToolWaitingResponse("identifyRelevantTables");
+            setInsightTables(relevantTables);
+            setInsightReasoning(reasoning);
+            addServerMessageWithType(
+                `Here ${relevantTables.length > 1 ? "are" : "is"} the relevant table${relevantTables.length > 1 ? "s" : ""} for your insights`,
+                "text",
+                "tableReview"
+            );
+            addServerMessage(
+                `Now we are going to create a plan for your insights. Please wait until we generate the plan...`,
+                "text"
+            );
+        } catch (error) {
+            console.error("Error getting tables", error);
+        }
+    }
+
+    const handleInsightTablesDone = async func => {
+        try {
+            setToolWaitingResponse("identifyingTablesDone")
+        } catch (error) {
+            console.error("Error getting tables", error);
+        }
+    }
+
+    const handleInsightCode = async func => {
+        const { pythonCode, explanation } = func.args;
+        try {
+            removeLoadingMessage();
+            // setToolWaitingResponse("generateCode");
+            setInsightTextIndex(prevIndex => {
+                const currentIndex = prevIndex + 1;
+                addServerMessageWithType(
+                    explanation,
+                    "text",
+                    "insightCellCode",
+                    currentIndex
+                );
+                return currentIndex;
+            });
+            setInsightCellCode(prevCode => [...prevCode, pythonCode]);
+        } catch (error) {
+            console.error("Error getting code", error);
+        }
+    }
+
+    const handleInsightPlan = async func => {
+        const { plan } = func.args;
+    
+        // Check and remove the two messages if they exist
+        removeExistingMessage("Here is a plan how we want to get insights for your task. Have a look at it. We will keep you updated on each step of the plan.");
+        removeExistingMessage("Here is your plan please provide an answer to continue the task");
+        removeExistingMessage("Now we are going to create a plan for your insights. Please wait until we generate the plan...")
+        addServerMessageWithType(
+            "Here is a plan how we want to get insights for your task. Have a look at it. We will keep you updated on each step of the plan." || "Received a message from the server.",
+            "text",
+            "planReview"
+        );
+        setIsLoading(false);
+        setToolWaitingResponse("generatePlan");
+        setInisghtPlan(plan);
+        removeLoadingMessage();
+        clearInfoMessage();
+        addServerMessage(
+            "Here is your plan please provide an answer to continue the task",
+            "text",
+        )
+    }
+
+    const handleGenerateImages = async func => {
+        const { generatedImages } = func.arguments;
+        try {
+            if (generatedImages && typeof generatedImages === "string") {
+                // If you are already getting a Base64 string, you can use it directly
+                const base64Image = `data:image/png;base64,${generatedImages}`;
+        
+                setInsightsImg(prevInsightsImg => [...prevInsightsImg, base64Image]);
+            } else {
+                throw new Error('Invalid image buffer format');
+            }
+            setVisualizationIndex(prevIndex => {
+                const currentIndex = prevIndex + 1;
+                addServerMessageWithType(
+                    `Here is your visualization`,
+                    "text",
+                    "insightImg",
+                    currentIndex
+                );
+                return currentIndex;
+            });
+            setIsLoading(false);
+        } catch (error) {
+            console.error("Error getting image", error);
+        }
+    }
+
+    const handleGenerateReport = async func => {
+        try {
+            const { title, summary, sections, recommendations } = func.args;
+            setInsightTitle(title);
+            setInsightSummary(summary);
+            setInsightSections(sections);
+            setInsightRecommendations(recommendations);
+            setVisualizationIndex(prevIndex => {
+                const currentIndex = prevIndex + 1;
+                addServerMessageWithType(
+                    `Here is your final report`,
+                    "text",
+                    "insightReport",
+                    currentIndex
+                );
+                return currentIndex;
+            });
+        } catch (error) {
+            console.error("Error generating report", error);
+        }
+    }
+
+    const handleGenerateText = async func => {
+        const { generatedTexts } = func.arguments;
+        try {
+            setInsightTextIndex(prevIndex => {
+                const currentIndex = prevIndex + 1;
+                addServerMessageWithType(
+                    "Current Step:",
+                    "text",
+                    "insightText",
+                    currentIndex
+                );
+                return currentIndex;
+            });
+            setInsightsText(prevInsightsText => [...prevInsightsText, generatedTexts]);
+            setIsLoading(false);
+            removeLoadingMessage();
+            clearInfoMessage();
+        } catch (error) {
+            console.error("Error getting text", error);
+        }
+    }
+
     const handleDefaultMessage = data => {
         if (data.message) {
             addServerMessage(
@@ -682,6 +876,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
     const handleInfoMessage = data => {
         removeLoadingMessage();
         clearPlanMessage();
+        removeExistingMessage("Now we are going to create a plan for your insights. Please wait until we generate the plan...")
         const infoMessage = data.functions.payload.message;
 
         if(infoMessage.includes("There was an error with the AI models. Please contact with Omniloy support team.")){
@@ -862,7 +1057,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     thread_id: threadId,
                 }
             ]);
-            if (toolWaitingResponse === "planReview") {
+            if (toolWaitingResponse === "generatePlan" || toolWaitingResponse === "planReview" || toolWaitingResponse === "messageRequest") {
                 setMessages(prevMessages => [
                     ...prevMessages,
                     {
@@ -875,7 +1070,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                     }
                 ]);
                 setIsLoading(true)
-                setChatLoading(true);
             }
             if (toolWaitingResponse === "continue") {
                 setMessages(prevMessages => [
@@ -1088,6 +1282,20 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
         }
     }, [initialDbName, initialCompanyName, initialSchema])
 
+    useEffect(() => {
+        if (toolWaitingResponse === "identifyRelevantTables" || toolWaitingResponse === "generateCode" || toolWaitingResponse === "identifyingTablesDone") {
+            ws.send(
+                JSON.stringify({
+                    type: "toolResponse",
+                    response: {
+                        function_name: toolWaitingResponse,
+                        response: "OK",
+                    },
+                })
+            );
+            setToolWaitingResponse(null);
+        }
+    }, [toolWaitingResponse])
 
     return (
         <>
@@ -1132,7 +1340,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, setSelectedThreadId
                                 card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} insightsList={insightsList}
                                 showError={showError} insightsPlan={inisghtPlan}
                                 insightsText={insightsText} insightsImg={insightsImg} insightsCode={insightsCode} showCubeEditButton={showCubeEditButton} sendAdminRequest={handleCubeRequestDialogOpen} onSuggestion={handleSuggestion}
-                                insightsCsv={insightsCsv} insightFile={insightFile}
+                                insightsCsv={insightsCsv} insightFile={insightFile} insightTables={insightTables} insightReasoning={insightReasoning} insightCellCode={insightCellCode}
+                                insightTitle={insightTitle} insightSummary={insightSummary} insightSections={insightSections} insightRecommendations={insightRecommendations}
                             />
                             <div
                                 style={{
