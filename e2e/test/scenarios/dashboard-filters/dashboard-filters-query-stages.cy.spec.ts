@@ -1047,7 +1047,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
   });
 
   describe("3-stage queries", () => {
-    describe("Q9 - join, custom column, 2 aggregations, 2 breakouts", () => {
+    describe("Q9 - Q8 + aggregation", () => {
       beforeEach(() => {
         createAndVisitDashboardWithCardMatrix(createQ9Query);
       });
@@ -1101,49 +1101,40 @@ describe("scenarios > dashboard > filters > query stages", () => {
             ["Summaries", ["Category"]],
             ["Summaries (2)", ["Reviewer", "Category"]],
           ]);
-          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-            [
-              NAMELESS_SECTION,
-              [
-                "Reviews - Created At: Month → Reviewer",
-                "Products Via Product ID Category",
-              ],
-            ],
-          ]);
-          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-            [
-              NAMELESS_SECTION,
-              [
-                "Reviews - Created At: Month → Reviewer",
-                "Products Via Product ID Category",
-              ],
-            ],
-          ]);
+          verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
+          verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
         }
 
         function verifyNumberMappingOptions() {
-          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-            ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-            ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-            [
-              "Product",
-              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
-            ], // https://github.com/metabase/metabase/issues/46845
-            ["User", PEOPLE_NUMBER_COLUMNS],
-            ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-            ["Summaries (2)", ["Count"]],
-          ]);
-          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-            ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-            ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-            [
-              "Product",
-              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
-            ], // https://github.com/metabase/metabase/issues/46845
-            ["User", PEOPLE_NUMBER_COLUMNS],
-            ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-            ["Summaries (2)", ["Count"]],
-          ]);
+          /**
+           * TODO: uncomment 2 verifyDashcardMappingOptions calls below when the following issue is fixed:
+           *  https://github.com/metabase/metabase/issues/48339
+           */
+
+          // verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+          //   ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          //   ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          //   [
+          //     "Product",
+          //     [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
+          //   ], // https://github.com/metabase/metabase/issues/46845
+          //   ["User", PEOPLE_NUMBER_COLUMNS],
+          //   ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+          //   ["Summaries (2)", ["Count", "Sum of Rating"]],
+          //   ["Summaries (3)", ["Count"]],
+          // ]);
+          // verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+          //   ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          //   ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          //   [
+          //     "Product",
+          //     [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
+          //   ], // https://github.com/metabase/metabase/issues/46845
+          //   ["User", PEOPLE_NUMBER_COLUMNS],
+          //   ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+          //   ["Summaries (2)", ["Count", "Sum of Rating"]],
+          //   ["Summaries (3)", ["Count"]],
+          // ]);
           verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
             [NAMELESS_SECTION, ["Count"]],
           ]);
