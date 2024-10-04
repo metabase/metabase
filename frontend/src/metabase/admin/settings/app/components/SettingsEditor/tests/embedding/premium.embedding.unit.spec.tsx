@@ -170,7 +170,7 @@ describe("[EE, with token] embedding settings", () => {
         await setupPremium({
           settingValues: {
             "enable-embedding-interactive": false,
-            "embedding-app-origin": "localhost:9999",
+            "embedding-app-origins-interactive": "localhost:9999",
             "session-cookie-samesite": "strict",
           },
         })
@@ -397,7 +397,7 @@ describe("[EE, with token] embedding settings", () => {
         await setupPremium({
           settingValues: {
             "enable-embedding-interactive": true,
-            "embedding-app-origin": "localhost:9999",
+            "embedding-app-origins-interactive": "localhost:9999",
             "session-cookie-samesite": "strict",
           },
         })
