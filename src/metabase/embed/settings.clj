@@ -85,21 +85,19 @@
   Checks that we have SDK embedding feature and that it's enabled, then sets the value accordingly."
   [new-value]
   (add-localhost ;; return the same value that is returned from the getter
-   (when (and (premium-features/has-feature? :embedding-sdk)
-              ;; Cannot set the SDK origins if the SDK embedding is disabled. so it will remain localhost:*.
-              (setting/get-value-of-type :boolean :enable-embedding-sdk))
-     (->> new-value
-          ignore-localhost
-          ;; Why ignore-localhost?, because localhost:* will always be allowed, so we don't need to store it, if we
-          ;; were to store it, and the value was set N times, it would have localhost:* prefixed N times. Also, we
-          ;; should not store localhost:port, since it's covered by localhost:* (which is the minumum value).
-          (setting/set-value-of-type! :string :embedding-app-origins-sdk)))))
+   (->> new-value
+        ignore-localhost
+        ;; Why ignore-localhost?, because localhost:* will always be allowed, so we don't need to store it, if we
+        ;; were to store it, and the value was set N times, it would have localhost:* prefixed N times. Also, we
+        ;; should not store localhost:port, since it's covered by localhost:* (which is the minumum value).
+        (setting/set-value-of-type! :string :embedding-app-origins-sdk))))
 
 (defsetting embedding-app-origins-sdk
   (deferred-tru "Allow Metabase SDK access to these space delimited origins.")
   :type       :string
   :export?    false
   :visibility :public
+  :feature    :embedding-sdk
   :encryption :no
   :audit      :getter
   :getter    (fn embedding-app-origins-sdk-getter []
@@ -178,8 +176,10 @@
                          (str "Setting MB_EMBEDDING_APP_ORIGINS_SDK, MB_EMBEDDING_APP_ORIGINS_INTERACTIVE "
                               " to match MB_ENABLE_EMBEDDING, which is "
                               (pr-str app-origin-from-env) ".")]))
-    (embedding-app-origins-sdk! app-origin-from-env)
-    (embedding-app-origins-interactive! app-origin-from-env)))
+    (when (premium-features/has-feature? :embedding-sdk)
+      (embedding-app-origins-sdk! app-origin-from-env))
+    (when (premium-features/has-feature? :embedding)
+      (embedding-app-origins-interactive! app-origin-from-env))))
 
 (defn- check-settings!
   "We want to disallow setting both deprecated embed settings, and the new ones at the same time. This is to prevent

@@ -128,18 +128,19 @@
       :else (throw (ex-info "Invalid expected-behavior in test-enabled-sync." {:expected-behavior expected-behavior})))))
 
 (deftest sync-enabled-test
-  ;; n.b. illegal combinations will be disallowed by [[embed.settings/check-and-sync-settings-on-startup!]], so we don't test syncing for them.
-  (test-enabled-sync! {} :no-op)
-  (test-enabled-sync! {:mb-enable-embedding-static true} :no-op)
-  (test-enabled-sync! {:mb-enable-embedding-static false} :no-op)
-  (test-enabled-sync! {:mb-enable-embedding-interactive true} :no-op)
-  (test-enabled-sync! {:mb-enable-embedding-interactive false} :no-op)
-  (test-enabled-sync! {:mb-enable-embedding-interactive true :mb-enable-embedding-static true} :no-op)
-  (test-enabled-sync! {:mb-enable-embedding-interactive false :mb-enable-embedding-static true} :no-op)
+  (mt/with-premium-features #{:embedding :embedding-sdk}
+    ;; n.b. illegal combinations will be disallowed by [[embed.settings/check-and-sync-settings-on-startup!]], so we don't test syncing for them.
+    (test-enabled-sync! {} :no-op)
+    (test-enabled-sync! {:mb-enable-embedding-static true} :no-op)
+    (test-enabled-sync! {:mb-enable-embedding-static false} :no-op)
+    (test-enabled-sync! {:mb-enable-embedding-interactive true} :no-op)
+    (test-enabled-sync! {:mb-enable-embedding-interactive false} :no-op)
+    (test-enabled-sync! {:mb-enable-embedding-interactive true :mb-enable-embedding-static true} :no-op)
+    (test-enabled-sync! {:mb-enable-embedding-interactive false :mb-enable-embedding-static true} :no-op)
 
-  (test-enabled-sync! {:mb-enable-embedding true} :sets-all-true)
+    (test-enabled-sync! {:mb-enable-embedding true} :sets-all-true)
 
-  (test-enabled-sync! {:mb-enable-embedding false} :sets-all-false))
+    (test-enabled-sync! {:mb-enable-embedding false} :sets-all-false)))
 
 (defn test-origin-sync! [env expected-behavior]
   (testing (str "origin sync with expected-behavior: " expected-behavior)
@@ -165,19 +166,20 @@
 
 (deftest sync-origins-test
   ;; n.b. illegal combinations will be disallowed by [[embed.settings/check-and-sync-settings-on-startup!]], so we don't test syncing for them.
-  (mt/with-temporary-setting-values [enable-embedding true
-                                     enable-embedding-sdk true
-                                     enable-embedding-interactive true
-                                     enable-embedding-static true
-                                     embedding-app-origin nil
-                                     embedding-app-origins-interactive nil
-                                     embedding-app-origins-sdk nil]
-    (test-origin-sync! {} :no-op)
+  (mt/with-premium-features #{:embedding :embedding-sdk}
+    (mt/with-temporary-setting-values [enable-embedding true
+                                       enable-embedding-sdk true
+                                       enable-embedding-interactive true
+                                       enable-embedding-static true
+                                       embedding-app-origin nil
+                                       embedding-app-origins-interactive nil
+                                       embedding-app-origins-sdk nil]
+      (test-origin-sync! {} :no-op)
 
-    (test-origin-sync! {:mb-embedding-app-origins-sdk other-ip} :no-op)
-    (test-origin-sync! {:mb-embedding-app-origins-sdk nil} :no-op)
+      (test-origin-sync! {:mb-embedding-app-origins-sdk other-ip} :no-op)
+      (test-origin-sync! {:mb-embedding-app-origins-sdk nil} :no-op)
 
-    (test-origin-sync! {:mb-embedding-app-origins-interactive other-ip} :no-op)
-    (test-origin-sync! {:mb-embedding-app-origins-interactive nil} :no-op)
+      (test-origin-sync! {:mb-embedding-app-origins-interactive other-ip} :no-op)
+      (test-origin-sync! {:mb-embedding-app-origins-interactive nil} :no-op)
 
-    (test-origin-sync! {:mb-embedding-app-origin other-ip} :sets-both)))
+      (test-origin-sync! {:mb-embedding-app-origin other-ip} :sets-both))))
