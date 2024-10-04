@@ -16,7 +16,7 @@ const updateChannelSetting = {
   display_name: "Update Channel",
   type: "select",
   description:
-    "Select an update channel to customize which Metabase releases you receive notifications for.",
+    "Metabase will notify you when a new release is available for the channel you select.",
   defaultValue: "latest",
   options: [
     { name: c("describes a software version").t`Stable`, value: "latest" },
