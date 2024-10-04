@@ -251,7 +251,7 @@
   {:card-id->filterable-columns {}
    :field-ids                   #{}})
 
-(mu/defn- field-id-into-context-rf
+(defn- field-id-into-context-rf
   "Reducing function that generates _field id_ corresponding to `:parameter` of `param-dashcard-info` if possible,
   and returns new _context_ (`ctx`) with the _field id_ added.
 
