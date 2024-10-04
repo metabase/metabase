@@ -80,7 +80,7 @@
     (setting/set-value-of-type! :string :update-channel new-channel)))
 
 (defsetting update-channel
-  (deferred-tru "Select an update channel to customize which Metabase releases you receive notifications for.")
+  (deferred-tru "Metabase will notify you when a new release is available for the channel you select.")
   :visibility :admin
   :type       :string
   :encryption :no
