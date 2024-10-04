@@ -19,12 +19,16 @@ import {
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import type { SDKConfig } from "embedding-sdk/types";
 import type { MetabaseTheme } from "embedding-sdk/types/theme";
+import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 
 import { SCOPED_CSS_RESET } from "../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../private/SdkGlobalFontsStyles";
-import { PortalContainer } from "../private/SdkPortalContainer";
+import {
+  FullPagePortalContainer,
+  PortalContainer,
+} from "../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
 
 import "metabase/css/index.module.css";
@@ -37,6 +41,7 @@ export interface MetabaseProviderProps {
   eventHandlers?: SdkEventHandlersConfig;
   theme?: MetabaseTheme;
   className?: string;
+  locale?: string;
 }
 
 interface InternalMetabaseProviderProps extends MetabaseProviderProps {
@@ -51,6 +56,7 @@ export const MetabaseProviderInternal = ({
   theme,
   store,
   className,
+  locale,
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
   useInitData({ config });
@@ -87,9 +93,10 @@ export const MetabaseProviderInternal = ({
       <SdkThemeProvider theme={theme}>
         <SdkFontsGlobalStyles baseUrl={config.metabaseInstanceUrl} />
         <div className={className} id={EMBEDDING_SDK_ROOT_ELEMENT_ID}>
-          {children}
+          <LocaleProvider locale={locale}>{children}</LocaleProvider>
           <SdkUsageProblemDisplay config={config} />
           <PortalContainer />
+          <FullPagePortalContainer />
         </div>
       </SdkThemeProvider>
     </EmotionCacheProvider>

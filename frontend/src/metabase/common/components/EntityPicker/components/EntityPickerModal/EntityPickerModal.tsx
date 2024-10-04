@@ -7,7 +7,8 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
-import { Icon, Modal, TextInput } from "metabase/ui";
+import { Box, Flex, Icon, Modal, Skeleton, TextInput } from "metabase/ui";
+import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type {
   RecentContexts,
   RecentItem,
@@ -93,6 +94,7 @@ export interface EntityPickerModalProps<
   onClose: () => void;
   onConfirm?: () => void;
   onItemSelect: (item: Item) => void;
+  isLoadingTabs?: boolean;
 }
 
 export function EntityPickerModal<
@@ -116,6 +118,7 @@ export function EntityPickerModal<
   onClose,
   onConfirm,
   onItemSelect,
+  isLoadingTabs = false,
 }: EntityPickerModalProps<Id, Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchScope, setSearchScope] =
@@ -378,32 +381,36 @@ export function EntityPickerModal<
           <Modal.CloseButton size={21} pos="relative" top="1px" />
         </Modal.Header>
         <ModalBody p="0">
-          <ErrorBoundary>
-            {hasTabs ? (
-              <TabsView
-                selectedTabId={selectedTabId}
-                tabs={tabs}
-                onItemSelect={handleSelectItem}
-                onTabChange={handleTabChange}
-              />
-            ) : (
-              <SinglePickerView data-testid="single-picker-view">
-                {tabs[0]?.render({
-                  onItemSelect: item => handleSelectItem(item, tabs[0].id),
-                }) ?? null}
-              </SinglePickerView>
-            )}
-            {!!hydratedOptions.hasConfirmButtons && onConfirm && (
-              <ButtonBar
-                onConfirm={onConfirm}
-                onCancel={onClose}
-                canConfirm={canSelectItem}
-                actionButtons={showActionButtons ? actionButtons : []}
-                confirmButtonText={options?.confirmButtonText}
-                cancelButtonText={options?.cancelButtonText}
-              />
-            )}
-          </ErrorBoundary>
+          {!isLoadingTabs && !isLoadingRecentItems ? (
+            <ErrorBoundary>
+              {hasTabs ? (
+                <TabsView
+                  selectedTabId={selectedTabId}
+                  tabs={tabs}
+                  onItemSelect={handleSelectItem}
+                  onTabChange={handleTabChange}
+                />
+              ) : (
+                <SinglePickerView data-testid="single-picker-view">
+                  {tabs[0]?.render({
+                    onItemSelect: item => handleSelectItem(item, tabs[0].id),
+                  }) ?? null}
+                </SinglePickerView>
+              )}
+              {!!hydratedOptions.hasConfirmButtons && onConfirm && (
+                <ButtonBar
+                  onConfirm={onConfirm}
+                  onCancel={onClose}
+                  canConfirm={canSelectItem}
+                  actionButtons={showActionButtons ? actionButtons : []}
+                  confirmButtonText={options?.confirmButtonText}
+                  cancelButtonText={options?.cancelButtonText}
+                />
+              )}
+            </ErrorBoundary>
+          ) : (
+            <EntityPickerLoadingSkeleton />
+          )}
         </ModalBody>
       </ModalContent>
     </Modal.Root>
@@ -420,3 +427,23 @@ const assertValidProps = (
     );
   }
 };
+
+const EntityPickerLoadingSkeleton = () => (
+  <Box data-testid="loading-indicator">
+    <Flex px="2rem" gap="1.5rem" mb="3.5rem">
+      <Repeat times={3}>
+        <Skeleton h="2rem" w="5rem" mb="0.5rem" />
+      </Repeat>
+    </Flex>
+    <Flex px="2rem" mb="2.5rem" direction="column">
+      <Repeat times={2}>
+        <Skeleton h="3rem" mb="0.5rem" />
+      </Repeat>
+    </Flex>
+    <Flex px="2rem" direction="column">
+      <Repeat times={3}>
+        <Skeleton h="3rem" mb="0.5rem" />
+      </Repeat>
+    </Flex>
+  </Box>
+);

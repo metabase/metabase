@@ -351,6 +351,8 @@ import sun_component from "./sun.svg?component";
 import sun_source from "./sun.svg?source";
 import sync_component from "./sync.svg?component";
 import sync_source from "./sync.svg?source";
+import t_shirt_component from "./t-shirt.svg?component";
+import t_shirt_source from "./t-shirt.svg?source";
 import tab_component from "./tab.svg?component";
 import tab_source from "./tab.svg?source";
 import table_component from "./table.svg?component";
@@ -1092,6 +1094,10 @@ export const Icons = {
   sun: {
     component: sun_component,
     source: sun_source,
+  },
+  "t-shirt": {
+    component: t_shirt_component,
+    source: t_shirt_source,
   },
   tab: {
     component: tab_component,
