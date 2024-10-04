@@ -3,6 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertEChartsTooltip,
   chartPathWithFillColor,
+  createQuestionAndDashboard,
   echartsContainer,
   getDraggableElements,
   getNotebookStep,
@@ -13,6 +14,7 @@ import {
   popover,
   restore,
   tableHeaderClick,
+  visitDashboard,
   visitQuestionAdhoc,
   visualize,
 } from "e2e/support/helpers";
@@ -359,7 +361,7 @@ describe("scenarios > visualizations > pie chart", () => {
     );
   });
 
-  it("should handle hover and click actions correctly", () => {
+  it("should handle hover and drill throughs correctly", () => {
     visitQuestionAdhoc({
       dataset_query: twoRingQuery,
       display: "pie",
@@ -501,6 +503,36 @@ describe("scenarios > visualizations > pie chart", () => {
       cy.findByText("Count is equal to 606").should("be.visible");
     });
   });
+
+  it("should handle click behavior correctly", () => {
+    createQuestionAndDashboard({
+      questionDetails: {
+        query: threeRingQuery.query,
+        display: "pie",
+        visualization_settings: {
+          click_behavior: {
+            type: "link",
+            linkType: "url",
+            linkTemplate: "question/{{count}}",
+          },
+        },
+      },
+      cardDetails: {
+        size_x: 30,
+        size_y: 15,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      visitDashboard(dashboard_id);
+    });
+
+    confirmSliceClickBehavior("2025", 6578);
+    confirmSliceClickBehavior("Affiliate", 1270, 0);
+    confirmSliceClickBehavior("Doohickey", 282, 0);
+
+    confirmSliceClickBehavior("2024", 5834);
+    confirmSliceClickBehavior("Organic", 1180, 1);
+    confirmSliceClickBehavior("Gizmo", 354, 8);
+  });
 });
 
 function ensurePieChartRendered(rows, middleRows, outerRows, totalValue) {
@@ -556,4 +588,17 @@ function changeRowLimit(from, to) {
   });
 
   visualize();
+}
+
+function confirmSliceClickBehavior(sliceLabel, value, elementIndex) {
+  echartsContainer().within(() => {
+    if (elementIndex == null) {
+      cy.findByText(sliceLabel).click({ force: true });
+    } else {
+      cy.findAllByText(sliceLabel).eq(elementIndex).click({ force: true });
+    }
+  });
+
+  cy.location("pathname").should("eq", `/question/${value}`);
+  cy.go("back");
 }
