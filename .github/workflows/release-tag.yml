@@ -314,11 +314,10 @@ jobs:
     - name: Generate new version info
       uses: actions/github-script@v7
       id: new_version_info
-      if: ${{ inputs.tag_name }} == "latest"
       with:
         result-encoding: string
         script: | # js
-          const { updateVersionInfoLatest } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const { updateVersionInfoChannel } = require('${{ github.workspace }}/release/dist/index.cjs');
           const fs = require('fs');
 
           const edition = '${{ matrix.edition }}';
@@ -327,15 +326,15 @@ jobs:
             ? '${{ needs.check-version.outputs.ee }}'
             : '${{ needs.check-version.outputs.oss }}';
 
-          const newVersionInfo = await updateVersionInfoLatest({
-            newLatestVersion: canonical_version,
+          const newVersionInfo = await updateVersionInfoChannel({
+            channel: '${{ inputs.tag_name }}',
+            newVersion: canonical_version,
             rollout: ${{ inputs.tag_rollout }},
           });
 
           fs.writeFileSync('version-info.json', JSON.stringify(newVersionInfo));
 
     - name: Upload new version-info.json to S3
-      if: ${{ inputs.tag_name }} == "latest"
       run: |
         if [[ "${{ matrix.edition }}" == "ee" ]]; then
           aws s3 cp version-info.json s3://${{ vars.AWS_S3_STATIC_BUCKET }}/version-info-ee.json
@@ -343,7 +342,6 @@ jobs:
           aws s3 cp version-info.json s3://${{ vars.AWS_S3_STATIC_BUCKET }}/version-info.json
         fi
     - name: Create cloudfront invalidation for version-info.json and version-info-ee.json
-      if: ${{ inputs.tag_name }} == "latest"
       run: |
         aws cloudfront create-invalidation \
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \

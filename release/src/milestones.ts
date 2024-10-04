@@ -149,7 +149,7 @@ async function getOriginalIssues({
   return [issue.number];
 }
 
-async function setMilestone({ github, owner, repo, issueNumber, milestone }: GithubProps & { issueNumber: number, milestone: Milestone }) {
+async function setMilestone({ github, owner, repo, issueNumber, milestone, ignoreExistingMilestones }: GithubProps & { issueNumber: number, milestone: Milestone, ignoreExistingMilestones?: boolean }) {
   // we can use this for both issues and PRs since they're the same for many purposes in github
   const issue = await getIssueWithCache({
     github,
@@ -159,12 +159,17 @@ async function setMilestone({ github, owner, repo, issueNumber, milestone }: Git
   });
 
   if (!issue?.milestone) {
+    console.log(`Setting milestone ${milestone.title} for issue # ${issueNumber}`);
     return github.rest.issues.update({
       owner,
       repo,
       issue_number: issueNumber,
       milestone: milestone.number,
     });
+  }
+
+  if (ignoreExistingMilestones) {
+    return;
   }
 
   const existingMilestone = issue.milestone;
@@ -223,7 +228,8 @@ export async function setMilestoneForCommits({
   repo,
   branchName,
   commitMessages,
-}: GithubProps & { commitMessages: string[], branchName: string}) {
+  ignoreExistingMilestones,
+}: GithubProps & { commitMessages: string[], branchName: string, ignoreExistingMilestones?: boolean }) {
   // figure out milestone
   const branchVersion = getVersionFromReleaseBranch(branchName);
   const majorVersion = getMajorVersion(branchVersion);
@@ -264,7 +270,14 @@ export async function setMilestoneForCommits({
   console.log(`Tagging ${uniqueIssuesToTag.length} issues with milestone ${nextMilestone.title}`)
 
   for (const issueNumber of uniqueIssuesToTag) { // for loop to avoid rate limiting
-    await setMilestone({ github, owner, repo, issueNumber, milestone: nextMilestone });
+    await setMilestone({
+      github,
+      owner,
+      repo,
+      issueNumber,
+      milestone: nextMilestone,
+      ignoreExistingMilestones,
+    });
   }
 }
 
