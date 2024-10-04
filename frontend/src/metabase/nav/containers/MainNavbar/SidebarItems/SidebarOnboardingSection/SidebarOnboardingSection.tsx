@@ -27,6 +27,7 @@ import { Box, Button, Icon, Menu, Stack, Text, Title } from "metabase/ui";
 
 import { PaddedSidebarLink } from "../../MainNavbar.styled";
 
+import { trackAddDataViaCSV, trackAddDataViaDatabase } from "./analytics";
 import type { OnboaringMenuItemProps, SidebarOnboardingProps } from "./types";
 
 export function SidebarOnboardingSection({
@@ -61,6 +62,7 @@ export function SidebarOnboardingSection({
   );
 
   const handleFileInput = (event: ChangeEvent<HTMLInputElement>) => {
+    trackAddDataViaCSV();
     const file = event.target.files?.[0];
 
     if (file !== undefined) {
@@ -128,6 +130,7 @@ export function SidebarOnboardingSection({
                   icon="database"
                   title={t`Add a database`}
                   subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
+                  onClick={() => trackAddDataViaDatabase()}
                 />
               </Link>
               {!isUploadEnabled ? (
