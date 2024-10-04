@@ -10045,6 +10045,77 @@ databaseChangeLog:
                   remarks: the cron schedule for the subscription
                   constraints:
                     nullable: true
+  - changeSet:
+      id: v52.2024-11-20T05:41:59
+      author: johnswanson
+      comment: >
+        add a table for user-level KV. This is intended for use as a lightweight mechanism for the frontend to be able
+        to mark things as seen, unseen, dismissed, etc
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - tableExists:
+              tableName: user_key_value
+      changes:
+        - createTable:
+            tableName: user_key_value
+            remarks: A simple key value store for each user.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'The ID of the user this KV-pair is for'
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_user_key_value_user_id
+              - column:
+                  name: key
+                  remarks: 'The key'
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: value
+                  remarks: 'The value'
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  remarks: 'When this row was created'
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: 'When this row was last updated'
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+
+  - changeSet:
+      id: v51.2024-10-08T10:46:36
+      author: johnswanson
+      comment: Add a unique constraint for user_id,key
+      changes:
+        - addUniqueConstraint:
+            tableName: user_key_value
+            columnNames: user_id, key
+            constraintName: unique_user_key_value_user_id_key
+      rollback: # will be deleted with table
+>>>>>>> c6ae5bb77e9 (Super simple user-local key-value store API)
 
   - changeSet:
       id: v52.2024-10-26T18:42:42
