@@ -5008,14 +5008,14 @@
 
 (defn- update-dashcards! [dash-id card-ids]
   (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id)
-                           {:dashcards (map-indexed (fn [idx card-id]
-                                                      {:id (- (inc idx))
-                                                       :card_id card-id
-                                                       :col 0
-                                                       :row idx
-                                                       :size_x 10
-                                                       :size_y 10})
-                                                    card-ids)}))
+                        {:dashcards (map-indexed (fn [idx card-id]
+                                                   {:id (- (inc idx))
+                                                    :card_id card-id
+                                                    :col 0
+                                                    :row idx
+                                                    :size_x 10
+                                                    :size_y 10})
+                                                 card-ids)}))
 
 (deftest revert-dashboard-behaves-for-dashboard-questions
   (testing "POST /api/dashboard/:id/revert"
