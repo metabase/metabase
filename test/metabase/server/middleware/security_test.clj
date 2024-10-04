@@ -184,22 +184,10 @@
   (testing "Should handle invalid origins"
     (is (true? (mw.security/approved-origin? "http://example.com" "  fpt://something ://123 4 http://example.com")))))
 
-(defn- has-localhost? [s] (some->> s (re-matches #".*localhost.*")))
-
-(deftest embedding-app-origins-sdk-always-allows-localhost-test
-  (mt/with-temporary-setting-values [enable-embedding-sdk true]
-    (is (has-localhost? (embed.settings/embedding-app-origins-sdk))
-        "Localhost should always be allowed."))
-  (mt/with-temporary-setting-values [enable-embedding-sdk false]
-    (is (has-localhost? (embed.settings/embedding-app-origins-sdk))
-        "Localhost should always be allowed."))
-  (mt/with-temporary-setting-values [enable-embedding-sdk nil]
-    (is (has-localhost? (embed.settings/embedding-app-origins-sdk))
-        "Localhost should always be allowed.")))
-
-(deftest test-access-control-headers?
+(deftest test-access-control-headers
   (testing "Should always allow localhost:*"
-    (tu/with-temporary-setting-values [enable-embedding-sdk true]
+    (tu/with-temporary-setting-values [enable-embedding-sdk true
+                                       embedding-app-origins-sdk "localhost:*"]
       (is (= "http://localhost:8080" (-> "http://localhost:8080"
                                          (mw.security/access-control-headers
                                           (embed.settings/enable-embedding-sdk)
@@ -208,17 +196,17 @@
 
   (testing "Should disable CORS when enable-embedding-sdk is disabled"
     (tu/with-temporary-setting-values [enable-embedding-sdk false]
-      (is (= nil
-             (get (mw.security/access-control-headers "http://localhost:8080"
-                                                      (embed.settings/enable-embedding-sdk)
-                                                      (embed.settings/embedding-app-origins-sdk))
-                  "Access-Control-Allow-Origin"))
-          "Localhost is only permitted when `enable-embedding-sdk` is `true`.")
       (is (= nil (get (mw.security/access-control-headers
-                       "http://1.2.3.4:5555"
+                       "http://localhost:8080"
                        (embed.settings/enable-embedding-sdk)
                        (embed.settings/embedding-app-origins-sdk))
-                      "Access-Control-Allow-Origin")))))
+                      "Access-Control-Allow-Origin"))
+          "Localhost is only permitted when `enable-embedding-sdk` is `true`."))
+    (is (= nil (get (mw.security/access-control-headers
+                     "http://1.2.3.4:5555"
+                     false
+                     "localhost:*")
+                    "Access-Control-Allow-Origin"))))
 
   (testing "Should work with embedding-app-origin"
     (mt/with-premium-features #{:embedding-sdk}
