@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
+   [metabase.embed.settings :as embed.settings]
    [metabase.server.middleware.security :as mw.security]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
@@ -193,16 +194,23 @@
                                        embedding-app-origins-interactive nil
                                        embedding-app-origins-sdk         nil]
       (is (= "http://localhost:8080" (-> "http://localhost:8080"
-                                         mw.security/access-control-headers
+                                         (mw.security/access-control-headers
+                                          (embed.settings/enable-embedding-sdk)
+                                          (embed.settings/embedding-app-origins-sdk))
                                          (get "Access-Control-Allow-Origin"))))))
 
   (testing "Should disable CORS when enable-embedding-sdk is disabled"
-    (tu/with-temporary-setting-values [enable-embedding-sdk      false]
+    (tu/with-temporary-setting-values [enable-embedding-sdk false]
       (is (= "http://localhost:8080"
-             (get (mw.security/access-control-headers "http://localhost:8080")
+             (get (mw.security/access-control-headers "http://localhost:8080"
+                                                      (embed.settings/enable-embedding-sdk)
+                                                      (embed.settings/embedding-app-origins-sdk))
                   "Access-Control-Allow-Origin"))
           "Localhost is always permitted.")
-      (is (= nil (get (mw.security/access-control-headers "http://1.2.3.4:5555")
+      (is (= nil (get (mw.security/access-control-headers
+                       "http://1.2.3.4:5555"
+                       (embed.settings/enable-embedding-sdk)
+                       (embed.settings/embedding-app-origins-sdk))
                       "Access-Control-Allow-Origin")))))
 
   (testing "Should work with embedding-app-origin"
@@ -210,4 +218,7 @@
       (tu/with-temporary-setting-values [enable-embedding-sdk      true
                                          embedding-app-origins-sdk "https://example.com"]
         (is (= "https://example.com"
-               (get (mw.security/access-control-headers "https://example.com") "Access-Control-Allow-Origin")))))))
+               (get (mw.security/access-control-headers "https://example.com"
+                                                        (embed.settings/enable-embedding-sdk)
+                                                        (embed.settings/embedding-app-origins-sdk))
+                    "Access-Control-Allow-Origin")))))))
