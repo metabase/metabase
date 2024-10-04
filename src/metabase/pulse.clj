@@ -538,7 +538,6 @@
               (try
                 (log/debugf "[Pulse %d] Sending to %s channel" pulse-id channel-name)
                 (send-notification! notification)
-                (throw (ex-info "Error" {}))
                 (catch Exception e
                   (log/warnf e "[Pulse %d] Error sending to %s channel. Retrying..." pulse-id channel-name)
                   (throw e)))))]
