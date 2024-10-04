@@ -48,11 +48,6 @@ export const PreviewQueryModal = ({
       isLoading={isFetching}
       onClose={onClose}
     >
-      {formattedError && showMetabaseLinks && (
-        <ModalExternalLink href={learnUrl}>
-          {t`Learn how to debug SQL errors`}
-        </ModalExternalLink>
-      )}
     </NativeQueryPreview>
   );
 };
