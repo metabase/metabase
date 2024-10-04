@@ -64,11 +64,11 @@ describe("scenarios > collections > clean up", () => {
       cy.log(
         "should show in a normal collection that user has write access to",
       );
+      visitCollection(FIRST_COLLECTION_ID);
       collectionMenu().click();
       popover().within(() => {
         cy.findByText("Clean things up").should("exist");
       });
-      visitCollection(FIRST_COLLECTION_ID);
 
       cy.log("should not show in custom analytics collections");
       popover().within(() => {
@@ -116,7 +116,6 @@ describe("scenarios > collections > clean up", () => {
 
         cy.log("should be able to navigate to clean up modal");
         visitCollection(seedData.collection.id);
-
         selectCleanThingsUpCollectionAction();
         cy.url().should("include", "cleanup");
 
