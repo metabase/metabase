@@ -657,7 +657,6 @@ export const getOtherSeriesTooltipModel = (
     );
     return {
       name: seriesModel.name,
-      markerColorClass: getMarkerColorClass(seriesModel.color),
       values: [
         formatValueForTooltip({
           value: datum[seriesModel.dataKey],
