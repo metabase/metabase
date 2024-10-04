@@ -1,8 +1,10 @@
 (ns metabase.analytics.stats-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.analytics.stats :as stats :refer [anonymous-usage-stats]]
+   [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
+   [metabase.config :as config]
    [metabase.core :as mbc]
    [metabase.db :as mdb]
    [metabase.email :as email]
@@ -12,6 +14,7 @@
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.query-execution :refer [QueryExecution]]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -94,10 +97,10 @@
                                        google-auth-enabled false
                                        enable-embedding    false]
       (mt/with-temp [:model/Database _ {:is_sample true}]
-        (let [stats (anonymous-usage-stats)]
+        (let [stats (legacy-anonymous-usage-stats)]
           (is (partial= {:running_on                           :unknown
                          :check_for_updates                    true
-                         :startup_time_millis                  1234.0
+                         :startup_time_millis                  1234
                          :friendly_names                       false
                          :email_configured                     false
                          :slack_configured                     false
@@ -143,10 +146,10 @@
                                          application-colors           {:brand "#123456"}
                                          show-metabase-links          false]
         (mt/with-temp [:model/Database _ {:is_sample true}]
-          (let [stats (anonymous-usage-stats)]
+          (let [stats (legacy-anonymous-usage-stats)]
             (is (partial= {:running_on                           :unknown
                            :check_for_updates                    true
-                           :startup_time_millis                  1234.0
+                           :startup_time_millis                  1234
                            :friendly_names                       false
                            :email_configured                     false
                            :slack_configured                     false
@@ -173,7 +176,7 @@
 
 (deftest ^:parallel conversion-test
   (is (= #{true}
-         (let [system-stats (get-in (anonymous-usage-stats) [:stats :system])]
+         (let [system-stats (get-in (legacy-anonymous-usage-stats) [:stats :system])]
            (into #{} (map #(contains? system-stats %) [:java_version :java_runtime_name :max_memory]))))
       "Spot checking a few system stats to ensure conversion from property names and presence in the anonymous-usage-stats"))
 
@@ -224,25 +227,26 @@
         "the new version of the executions metrics works the same way the old one did")))
 
 (deftest execution-metrics-started-at-test
-  (testing "execution metrics should not be sensitive to the app db time zone"
+  (testing "execution metrics should not be sensitive to the app db time zone\n"
     (doseq [tz ["Pacific/Auckland" "Europe/Helsinki"]]
-      (mt/with-app-db-timezone-id! tz
-        (let [get-executions #(:executions (#'stats/execution-metrics))
-              before         (get-executions)]
-          (mt/with-temp [QueryExecution _ (merge query-execution-defaults
-                                                 {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
-                                                                  (t/minus (t/days 30))
-                                                                  (t/plus (t/minutes 10)))})]
-            (is (= (inc before)
-                   (get-executions))
-                "execution metrics include query executions since 30 days ago"))
-          (mt/with-temp [QueryExecution _ (merge query-execution-defaults
-                                                 {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
-                                                                  (t/minus (t/days 30))
-                                                                  (t/minus (t/minutes 10)))})]
-            (is (= before
-                   (get-executions))
-                "the executions metrics exclude query executions before 30 days ago")))))))
+      (testing tz
+        (mt/with-app-db-timezone-id! tz
+          (let [get-executions #(:executions (#'stats/execution-metrics))
+                before         (get-executions)]
+            (mt/with-temp [QueryExecution _ (merge query-execution-defaults
+                                                   {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
+                                                                    (t/minus (t/days 30))
+                                                                    (t/plus (t/minutes 10)))})]
+              (is (= (inc before)
+                     (get-executions))
+                  "execution metrics include query executions since 30 days ago"))
+            (mt/with-temp [QueryExecution _ (merge query-execution-defaults
+                                                   {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
+                                                                    (t/minus (t/days 30))
+                                                                    (t/minus (t/minutes 10)))})]
+              (is (= before
+                     (get-executions))
+                  "the executions metrics exclude query executions before 30 days ago"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Pulses & Alerts                                                 |
@@ -370,3 +374,74 @@
                 :public             {}
                 :embedded           {}}
                (#'stats/dashboard-metrics)))))))
+
+(deftest activation-signals-test
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? true)
+
+    (testing "sufficient-users? correctly counts the number of users within three days of instance creation"
+      (is (false? (@#'stats/sufficient-users? 1)))
+
+      (mt/with-temp [:model/User _ {:date_joined
+                                    (t/plus (t/offset-date-time) (t/days 4))}]
+        (is (false? (@#'stats/sufficient-users? 1))))
+
+      (mt/with-temp [:model/User _ {:date_joined (t/offset-date-time)}]
+        (is (true? (@#'stats/sufficient-users? 1)))))
+
+    (testing "sufficient-queries? correctly counts the number of queries"
+      (is (false? (@#'stats/sufficient-queries? 1)))
+      (mt/with-temp [:model/QueryExecution _ query-execution-defaults]
+        (is (true? (@#'stats/sufficient-queries? 1)))))))
+
+(deftest csv-upload-available-test
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? true)
+
+    (testing "csv-upload-available? currently detects upload availability based on the current MB version"
+      (mt/with-temp [:model/Database _ {:engine :postgres}]
+        (with-redefs [config/current-major-version (constantly 46)
+                      config/current-minor-version (constantly 0)]
+          (is false? (@#'stats/csv-upload-available?)))
+
+        (with-redefs [config/current-major-version (constantly 47)
+                      config/current-minor-version (constantly 1)]
+          (is true? (@#'stats/csv-upload-available?))))
+
+      (mt/with-temp [:model/Database _ {:engine :redshift}]
+        (with-redefs [config/current-major-version (constantly 49)
+                      config/current-minor-version (constantly 5)]
+          (is false? (@#'stats/csv-upload-available?)))
+
+        (with-redefs [config/current-major-version (constantly 49)
+                      config/current-minor-version (constantly 6)]
+          (is true? (@#'stats/csv-upload-available?))))
+
+      ;; If we can't detect the MB version, return nil
+      (with-redefs [config/current-major-version (constantly nil)
+                    config/current-minor-version (constantly nil)]
+        (is false? (@#'stats/csv-upload-available?))))))
+
+(def ^:private excluded-features
+  "Set of features intentionally excluded from the daily stats ping. If you add a new feature, either add it to the stats ping
+  or to this set, so that [[every-feature-is-accounted-for-test]] passes."
+  #{:audit-app ;; tracked under :mb-analytics
+    :enhancements
+    :embedding
+    :embedding-sdk
+    :collection-cleanup
+    :llm-autodescription
+    :query-reference-validation
+    :session-timeout-config})
+
+(deftest every-feature-is-accounted-for-test
+  (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"
+    (let [included-features     (->> (concat (@#'stats/snowplow-features-data) (@#'stats/ee-snowplow-features-data))
+                                     (map :name))
+          included-features-set (set included-features)
+          all-features      @premium-features/premium-features]
+      ;; make sure features are not missing
+      (is (empty? (set/difference all-features included-features-set excluded-features)))
+
+      ;; make sure features are not duplicated
+      (is (= (count included-features) (count included-features-set))))))

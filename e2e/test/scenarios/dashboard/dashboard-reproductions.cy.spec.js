@@ -1,7 +1,7 @@
 import { assoc } from "icepick";
 import _ from "underscore";
 
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
@@ -10,8 +10,11 @@ import {
 import {
   addTextBox,
   appBar,
+  assertDatasetReqIsSandboxed,
+  assertQueryBuilderRowCount,
   cartesianChartCircle,
   closeDashboardInfoSidebar,
+  closeDashboardSettingsSidebar,
   createDashboard,
   createDashboardWithTabs,
   createSegment,
@@ -30,6 +33,7 @@ import {
   modal,
   navigationSidebar,
   openDashboardInfoSidebar,
+  openDashboardSettingsSidebar,
   openQuestionsSidebar,
   popover,
   queryBuilderHeader,
@@ -394,9 +398,15 @@ describe("issue 16559", () => {
           .should("be.visible");
 
         cy.log("Toggle auto-apply filters");
+      });
+      closeDashboardInfoSidebar();
 
-        cy.findByRole("tab", { name: "Overview" }).click();
-        cy.findByText("Auto-apply filters").click();
+      openDashboardSettingsSidebar();
+      sidesheet().findByText("Auto-apply filters").click();
+      closeDashboardSettingsSidebar();
+
+      openDashboardInfoSidebar();
+      sidesheet().within(() => {
         cy.findByRole("tab", { name: "History" }).click();
 
         cy.findByTestId("dashboard-history-list")
@@ -667,12 +677,13 @@ describe("issue 28756", () => {
 
 describeEE("issue 29076", () => {
   beforeEach(() => {
-    restore("default-ee");
+    restore();
 
     cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as("cardQuery");
 
     cy.signInAsAdmin();
     setTokenFeatures("all");
+
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
         [SAMPLE_DB_ID]: {
@@ -688,9 +699,9 @@ describeEE("issue 29076", () => {
       },
     });
     cy.sandboxTable({
-      table_id: PRODUCTS_ID,
+      table_id: ORDERS_ID,
       attribute_remappings: {
-        attr_uid: ["dimension", ["field", PRODUCTS.ID, null]],
+        attr_uid: ["dimension", ["field", ORDERS.ID, null]],
       },
     });
     cy.signInAsSandboxedUser();
@@ -699,11 +710,19 @@ describeEE("issue 29076", () => {
   it("should be able to drilldown to a saved question in a dashboard with sandboxing (metabase#29076)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@cardQuery");
+    // test that user is sandboxed - normal users has over 2000 rows
+    getDashboardCard().find("tbody > tr").should("have.length", 1);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("be.visible");
+    assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
+    assertDatasetReqIsSandboxed({
+      requestAlias: "@cardQuery",
+      columnId: ORDERS.USER_ID,
+      columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+    });
   });
 });
 
@@ -771,7 +790,8 @@ describe("issue 31274", () => {
       editDashboard(dashboard.id);
     });
 
-    cy.icon("link").click();
+    cy.findByLabelText("Add a link or iframe").click();
+    popover().findByText("Link").click();
     cy.findByPlaceholderText("https://example.com").realHover();
 
     cy.log(
@@ -1039,6 +1059,7 @@ describe("should not redirect users to other pages when linking an entity (metab
     });
 
     cy.icon("link").click();
+    popover().findByText("Link").click();
     cy.wait("@recentViews");
 
     cy.findByTestId("recents-list-container").within(() => {
@@ -1069,6 +1090,7 @@ describe("should not redirect users to other pages when linking an entity (metab
     });
 
     cy.icon("link").click();
+    popover().findByText("Link").click();
     cy.findByTestId("custom-edit-text-link").type(TEST_QUESTION_NAME);
     cy.findByTestId("search-results-list").within(() => {
       cy.findByText(TEST_QUESTION_NAME).click();

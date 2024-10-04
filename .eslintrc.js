@@ -142,6 +142,7 @@ module.exports = {
     "plugin:import/warnings",
     "plugin:import/typescript",
     "plugin:depend/recommended",
+    "plugin:storybook/recommended"
   ],
   settings: {
     "import/internal-regex": "^metabase/|^metabase-lib/",

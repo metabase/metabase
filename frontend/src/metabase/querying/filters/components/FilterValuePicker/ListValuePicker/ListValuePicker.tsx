@@ -51,25 +51,33 @@ function CheckboxListPicker({
 }: ListValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [elevatedValues] = useState(selectedValues);
-  const options = getEffectiveOptions(
+  const availableOptions = getEffectiveOptions(
     fieldValues,
     selectedValues,
     elevatedValues,
   );
-  const visibleOptions = searchOptions(options, searchValue);
-  const isAll = options.length === selectedValues.length;
-  const isNone = selectedValues.length === 0;
+  const filteredOptions = searchOptions(availableOptions, searchValue);
+  const selectedValuesSet = new Set(selectedValues);
+  const selectedFilteredOptions = filteredOptions.filter(option =>
+    selectedValuesSet.has(option.value),
+  );
+  const isAll = selectedFilteredOptions.length === filteredOptions.length;
+  const isNone = selectedFilteredOptions.length === 0;
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     setSearchValue(event.currentTarget.value);
   };
 
   const handleToggleAll = () => {
-    if (isAll) {
-      onChange([]);
-    } else {
-      onChange(options.map(option => option.value));
-    }
+    const newSelectedValuesSet = new Set(selectedValues);
+    filteredOptions.forEach(option => {
+      if (isAll) {
+        newSelectedValuesSet.delete(option.value);
+      } else {
+        newSelectedValuesSet.add(option.value);
+      }
+    });
+    onChange(Array.from(newSelectedValuesSet));
   };
 
   return (
@@ -80,7 +88,7 @@ function CheckboxListPicker({
         autoFocus={autoFocus}
         onChange={handleInputChange}
       />
-      {visibleOptions.length > 0 ? (
+      {filteredOptions.length > 0 ? (
         <Stack>
           <Checkbox
             variant="stacked"
@@ -92,7 +100,7 @@ function CheckboxListPicker({
           />
           <Checkbox.Group value={selectedValues} onChange={onChange}>
             <Stack>
-              {visibleOptions.map(option => (
+              {filteredOptions.map(option => (
                 <Checkbox
                   key={option.value}
                   value={option.value}

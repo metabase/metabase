@@ -21,7 +21,6 @@ import type {
   FieldId,
   ForeignKey,
   GroupListQuery,
-  ListDashboardsResponse,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
@@ -213,6 +212,13 @@ export function provideModelIndexListTags(
   ];
 }
 
+export function provideModeratedItemTags(
+  itemType: TagType,
+  itemId: number,
+): TagDescription<TagType>[] {
+  return [listTag(itemType), idTag(itemType, itemId)];
+}
+
 export function provideChannelTags(
   channel: NotificationChannel,
 ): TagDescription<TagType>[] {
@@ -259,7 +265,7 @@ export function provideDatabaseTags(
 }
 
 export function provideDashboardListTags(
-  dashboards: ListDashboardsResponse,
+  dashboards: Pick<Dashboard, "id">[],
 ): TagDescription<TagType>[] {
   return [
     listTag("dashboard"),

@@ -1,4 +1,3 @@
-import { t } from "ttag";
 import _ from "underscore";
 
 import { GRAPH_GOAL_SETTINGS } from "metabase/visualizations/lib/settings/goal";
@@ -50,12 +49,6 @@ export const getCartesianChartDefinition = (
     },
 
     checkRenderable(series, settings) {
-      if (series.length > (this.maxMetricsSupported ?? Infinity)) {
-        throw new Error(
-          t`${this.uiName} chart does not support multiple series`,
-        );
-      }
-
       validateDatasetRows(series);
       validateChartDataSettings(settings);
       validateStacking(settings);
