@@ -597,6 +597,35 @@ describe("[EE, no token] embedding settings", () => {
   });
 
   describe("when environment variables are set", () => {
+    it("should show `Set by environment variable` when the embedding-app-origins-sdk is an env var", async () => {
+      await setupEnterprise({
+        settingValues: { "embedding-app-origins-sdk": null },
+        isEnvVar: true,
+      });
+
+      const withinEmbeddingSdkCard = within(
+        screen.getByRole("article", {
+          name: "Embedded analytics SDK",
+        }),
+      );
+
+      await userEvent.click(withinEmbeddingSdkCard.getByText("Try it out"));
+
+      const withinEnvVarMessage = within(
+        screen.getByTestId("setting-env-var-message"),
+      );
+
+      expect(
+        withinEnvVarMessage.getByText(/this has been set by the/i),
+      ).toBeInTheDocument();
+      expect(
+        withinEnvVarMessage.getByText(/embedding-app-origins-sdk/i),
+      ).toBeInTheDocument();
+      expect(
+        withinEnvVarMessage.getByText(/environment variable/i),
+      ).toBeInTheDocument();
+    });
+
     it("should show `Set by environment variable` when the enable-embedding-static is an env var", async () => {
       await setupEnterprise({
         settingValues: { "enable-embedding-static": true },

@@ -136,7 +136,7 @@ export const createMockSettingDefinition = <
 ): SettingDefinition<Key> => ({
   env_name: "",
   is_env_setting: false,
-  value: null,
+  value: opts.value,
   ...opts,
 });
 

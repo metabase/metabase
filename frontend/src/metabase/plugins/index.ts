@@ -197,7 +197,7 @@ export const PLUGIN_LDAP_FORM_FIELDS = {
       [setting: string]: {
         display_name?: string | undefined;
         warningMessage?: string | undefined;
-        description?: string | undefined;
+        description?: string | ReactNode | undefined;
         note?: string | undefined;
       };
     };

@@ -115,9 +115,11 @@ export const SetByEnvVar = ({ setting }) => {
   const { url: docsUrl } = useGetEnvVarDocsUrl(setting.env_name);
 
   return (
-    <SettingEnvVarMessage>
+    <SettingEnvVarMessage data-testid="setting-env-var-message">
       {jt`This has been set by the ${(
-        <ExternalLink href={docsUrl}>{setting.env_name}</ExternalLink>
+        <ExternalLink key={docsUrl} href={docsUrl}>
+          {setting.env_name}
+        </ExternalLink>
       )} environment variable.`}
     </SettingEnvVarMessage>
   );

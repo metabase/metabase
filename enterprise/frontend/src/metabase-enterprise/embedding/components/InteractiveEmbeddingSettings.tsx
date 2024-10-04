@@ -17,7 +17,7 @@ import {
 } from "./EmbeddingAppSameSiteCookieDescription";
 
 const INTERACTIVE_EMBEDDING_ORIGINS_SETTING = {
-  key: "embedding-app-origin",
+  key: "embedding-app-origins-interactive",
   display_name: t`Authorized origins`,
   description: <EmbeddingAppOriginDescription />,
   placeholder: "https://*.example.com",

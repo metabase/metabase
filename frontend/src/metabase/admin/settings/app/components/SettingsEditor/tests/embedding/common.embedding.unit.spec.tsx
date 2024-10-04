@@ -646,5 +646,26 @@ describe("[OSS] embedding settings", () => {
         ),
       ).toBeVisible();
     });
+
+    it("should show `Set by environment variable` when the embedding-app-origins-sdk is an env var", async () => {
+      await setupEmbedding({
+        settingValues: { "embedding-app-origins-sdk": null },
+        isEnvVar: true,
+      });
+
+      const withinEmbeddingSdkCard = within(
+        screen.getByRole("article", {
+          name: "Embedded analytics SDK",
+        }),
+      );
+
+      await userEvent.click(withinEmbeddingSdkCard.getByText("Try it out"));
+
+      expect(screen.getByText(/this has been set by the/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/embedding-app-origins-sdk/i),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/environment variable/i)).toBeInTheDocument();
+    });
   });
 });

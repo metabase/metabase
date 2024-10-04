@@ -185,7 +185,7 @@ export interface SettingDefinition<Key extends SettingKey = SettingKey> {
   key: Key;
   env_name?: string;
   is_env_setting?: boolean;
-  value?: SettingValue<Key> | null;
+  value?: SettingValue<Key>;
   default?: SettingValue<Key>;
 }
 

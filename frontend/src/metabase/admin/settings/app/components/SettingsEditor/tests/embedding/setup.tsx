@@ -34,6 +34,9 @@ export const setupEmbedding = async ({
         key,
         value,
         is_env_setting: isEnvVar,
+        // in reality this would be the MB_[whatever] env name, but
+        // we can just use the key for easier testing
+        env_name: key,
       }),
     ),
     settingValues: createMockSettings(settingValues),
