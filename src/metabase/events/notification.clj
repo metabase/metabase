@@ -83,7 +83,8 @@
     :event/alert-create
     {:alert-create-condition-description (->> event-info :object
                                               messages/pulse->alert-condition-kwd
-                                              (get messages/alert-condition-text))}))
+                                              (get messages/alert-condition-text))}
+    nil))
 
 (defn- enriched-event-info
   [topic event-info]
