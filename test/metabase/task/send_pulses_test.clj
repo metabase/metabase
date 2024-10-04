@@ -77,25 +77,25 @@
           (is (= 0
                  (t2/count PulseChannel))))))
 
-   (testing "http"
-     (testing "do not clear if has a channel_id"
-       (mt/with-temp [:model/Channel {channel-id :id} {:type :channel/metabase-test
-                                                       :details {}}
-                      :model/Pulse  {pulse-id :id} {}
-                      :model/PulseChannel _ {:pulse_id     pulse-id
-                                             :channel_id   channel-id
-                                             :channel_type "http"}]
-         (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
-         (is (= 1
-                (t2/count :model/PulseChannel)))))
+    (testing "http"
+      (testing "do not clear if has a channel_id"
+        (mt/with-temp [:model/Channel {channel-id :id} {:type :channel/metabase-test
+                                                        :details {}}
+                       :model/Pulse  {pulse-id :id} {}
+                       :model/PulseChannel _ {:pulse_id     pulse-id
+                                              :channel_id   channel-id
+                                              :channel_type "http"}]
+          (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
+          (is (= 1
+                 (t2/count :model/PulseChannel)))))
 
-     (testing "clear if there is no channel_id"
-       (mt/with-temp [:model/Pulse  {pulse-id :id} {}
-                      :model/PulseChannel _ {:pulse_id     pulse-id
-                                             :channel_type :http}]
-         (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
-         (is (= 0
-                (t2/count :model/PulseChannel))))))))
+      (testing "clear if there is no channel_id"
+        (mt/with-temp [:model/Pulse  {pulse-id :id} {}
+                       :model/PulseChannel _ {:pulse_id     pulse-id
+                                              :channel_type :http}]
+          (#'task.send-pulses/clear-pulse-channels-no-recipients! pulse-id)
+          (is (= 0
+                 (t2/count :model/PulseChannel))))))))
 
 (def ^:private daily-at-1am
   {:schedule_type  "daily"
