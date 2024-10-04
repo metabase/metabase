@@ -34,7 +34,7 @@ import {
   Title,
 } from "metabase/ui";
 
-import { PaddedSidebarLink } from "../MainNavbar.styled";
+import { PaddedSidebarLink } from "../../MainNavbar.styled";
 
 type SidebarOnboardingProps = {
   hasOwnDatabase: boolean;
