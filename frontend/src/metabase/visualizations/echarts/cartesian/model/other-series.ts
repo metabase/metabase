@@ -29,6 +29,7 @@ export function groupSeriesIntoOther(
   ungroupedSeriesModels: SeriesModel[];
   groupedSeriesModels: SeriesModel[];
 } {
+  const maxCategories = settings["graph.max_categories"];
   const isBarOnly = seriesModels.every(
     seriesModel =>
       settings.series(seriesModel.legacySeriesSettingsObjectKey).display ===
@@ -37,8 +38,9 @@ export function groupSeriesIntoOther(
 
   if (
     !isBarOnly ||
-    settings["graph.max_categories"] == null ||
-    seriesModels.length <= settings["graph.max_categories"]
+    !maxCategories ||
+    maxCategories <= 0 ||
+    seriesModels.length <= maxCategories
   ) {
     return {
       ungroupedSeriesModels: seriesModels,

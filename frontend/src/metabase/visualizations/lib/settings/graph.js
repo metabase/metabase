@@ -465,6 +465,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     title: t`Maximum number of categories`,
     widget: "number",
     getDefault: getDefaultMaxCategories,
+    isValid: (_, settings) => settings["graph.max_categories"] >= 0,
     getHidden: series => {
       const isAllBar = series.every(s => s.card.display === "bar");
       return isAllBar && series.length < 2;
