@@ -177,7 +177,7 @@ export function EntityPickerModal<
 
   const finalSearchResults = useMemo(() => {
     if (isFetching || !data) {
-      return [];
+      return null;
     }
 
     if (searchScope === "folder") {
@@ -245,7 +245,7 @@ export function EntityPickerModal<
             folder={selectedFolder}
             isLoading={isFetching}
             searchScope={searchScope}
-            searchResults={finalSearchResults}
+            searchResults={finalSearchResults ?? []}
             selectedItem={selectedItem}
             onItemSelect={onItemSelect}
             onSearchScopeChange={setSearchScope}
