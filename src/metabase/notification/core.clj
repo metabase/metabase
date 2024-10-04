@@ -2,6 +2,7 @@
   (:require
    [metabase.channel.core :as channel]
    [metabase.models.notification :as models.notification]
+   [metabase.models.setting :as setting]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -40,12 +41,19 @@
               :template
               :recipients))
 
+(setting/defsetting notification-thread-pool-size
+  "The size of the thread pool used to send notifications."
+  :default 10
+  :export? false
+  :type :integer
+  :visibility :internal)
+
 (defonce ^:private pool
-  (Executors/newFixedThreadPool
-   10 ;; TODO: this should be configurable
-   (.build
-    (doto (BasicThreadFactory$Builder.)
-      (.namingPattern "send-notification-thread-pool-%d")))))
+  (delay (Executors/newFixedThreadPool
+          (notification-thread-pool-size)
+          (.build
+           (doto (BasicThreadFactory$Builder.)
+             (.namingPattern "send-notification-thread-pool-%d"))))))
 
 (mu/defn- send-notification-sync!
   "Send the notification to all handlers synchronously. Do not use this directly, use *send-notification!* instead."
@@ -70,7 +78,7 @@
   [notification]
   (let [task (bound-fn []
                (send-notification-sync! notification))]
-    (.submit ^ExecutorService pool ^Callable task))
+    (.submit ^ExecutorService @pool ^Callable task))
   nil)
 
 (def ^:dynamic send-notification!
