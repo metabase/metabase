@@ -43,8 +43,8 @@
                      (.writeUTF data-output (.toHexString oid)))
 
 (nippy/extend-thaw :mongodb/ObjectId
-  [data-input]
-  (ObjectId. (.readUTF data-input)))
+                   [data-input]
+                   (ObjectId. (.readUTF data-input)))
 
 (driver/register! :mongo)
 
@@ -95,7 +95,6 @@
     :invalid-key-format
 
     message))
-
 
 ;;; ### Syncing
 
@@ -283,7 +282,13 @@
   have to execute."
   ;; Cal 2024-09-15: I chose 100 as the limit because it's a pretty safe bet it won't be exceeded (the documents we've
   ;; seen on cloud are all <20 levels deep)
-  100)
+  ;; Case 2024-10-04: Sharded clusters seem to run into exponentially more work the bigger this is. Over 20 and this
+  ;; risks never finishing.
+  ;; From arakaki:
+  ;;  > I think we can pick a max-depth that works well. I know that some other related tools set limits of 7 nested levels.
+  ;;  > And that would be definitely ok for most.
+  ;;  > If people have problems with that, I think we can make it configurable.
+  7)
 
 (mu/defn- describe-table :- [:sequential
                              [:map {:closed true}
@@ -323,7 +328,7 @@
         "timestamp"  :type/Instant
         "long"       :type/Integer
         "decimal"    :type/Decimal}
-        type-alias :type/*))
+       type-alias :type/*))
 
 (defn- add-database-position
   "Adds :database-position to all fields. It starts at 0 and is ordered by a depth-first traversal of nested fields."
@@ -476,9 +481,9 @@
 ;; Following code is using monger. Leaving it here for a reference as it could be transformed when there is need
 ;; for ssl experiments.
 #_(comment
-  (require '[clojure.java.io :as io]
-           '[monger.credentials :as mcred])
-  (import javax.net.ssl.SSLSocketFactory)
+    (require '[clojure.java.io :as io]
+             '[monger.credentials :as mcred])
+    (import javax.net.ssl.SSLSocketFactory)
 
   ;; The following forms help experimenting with the behaviour of Mongo
   ;; servers with different configurations. They can be used to check if
@@ -487,52 +492,52 @@
   ;; constellations.
 
   ;; Test connection to Mongo with client and server SSL authentication.
-  (let [ssl-socket-factory
-        (driver.u/ssl-socket-factory
-         :private-key (-> "ssl/mongo/metabase.key" io/resource slurp)
-         :password "passw"
-         :own-cert (-> "ssl/mongo/metabase.crt" io/resource slurp)
-         :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
-        connection-options
-        (mg/mongo-options {:ssl-enabled true
-                           :ssl-invalid-host-name-allowed false
-                           :socket-factory ssl-socket-factory})
-        credentials
-        (mcred/create "metabase" "admin" "metasample123")]
-    (with-open [connection (mg/connect (mg/server-address "127.0.0.1")
-                                       connection-options
-                                       credentials)]
-      (mg/get-db-names connection)))
+    (let [ssl-socket-factory
+          (driver.u/ssl-socket-factory
+           :private-key (-> "ssl/mongo/metabase.key" io/resource slurp)
+           :password "passw"
+           :own-cert (-> "ssl/mongo/metabase.crt" io/resource slurp)
+           :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
+          connection-options
+          (mg/mongo-options {:ssl-enabled true
+                             :ssl-invalid-host-name-allowed false
+                             :socket-factory ssl-socket-factory})
+          credentials
+          (mcred/create "metabase" "admin" "metasample123")]
+      (with-open [connection (mg/connect (mg/server-address "127.0.0.1")
+                                         connection-options
+                                         credentials)]
+        (mg/get-db-names connection)))
 
   ;; Test what happens if the client only support server authentication.
-  (let [server-auth-ssl-socket-factory
-        (driver.u/ssl-socket-factory
-         :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
-        server-auth-connection-options
-        (mg/mongo-options {:ssl-enabled true
-                           :ssl-invalid-host-name-allowed false
-                           :socket-factory server-auth-ssl-socket-factory
-                           :server-selection-timeout 200})
-        credentials
-        (mcred/create "metabase" "admin" "metasample123")]
-    (with-open [server-auth-connection
-                (mg/connect (mg/server-address "127.0.0.1")
-                            server-auth-connection-options
-                            credentials)]
-      (mg/get-db-names server-auth-connection)))
+    (let [server-auth-ssl-socket-factory
+          (driver.u/ssl-socket-factory
+           :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
+          server-auth-connection-options
+          (mg/mongo-options {:ssl-enabled true
+                             :ssl-invalid-host-name-allowed false
+                             :socket-factory server-auth-ssl-socket-factory
+                             :server-selection-timeout 200})
+          credentials
+          (mcred/create "metabase" "admin" "metasample123")]
+      (with-open [server-auth-connection
+                  (mg/connect (mg/server-address "127.0.0.1")
+                              server-auth-connection-options
+                              credentials)]
+        (mg/get-db-names server-auth-connection)))
 
   ;; Test what happens if the client support only server authentication
   ;; with well known (default) CAs.
-  (let [unauthenticated-connection-options
-        (mg/mongo-options {:ssl-enabled true
-                           :ssl-invalid-host-name-allowed false
-                           :socket-factory (SSLSocketFactory/getDefault)
-                           :server-selection-timeout 200})
-        credentials
-        (mcred/create "metabase" "admin" "metasample123")]
-    (with-open [unauthenticated-connection
-                (mg/connect (mg/server-address "127.0.0.1")
-                            unauthenticated-connection-options
-                            credentials)]
-      (mg/get-db-names unauthenticated-connection)))
-  :.)
+    (let [unauthenticated-connection-options
+          (mg/mongo-options {:ssl-enabled true
+                             :ssl-invalid-host-name-allowed false
+                             :socket-factory (SSLSocketFactory/getDefault)
+                             :server-selection-timeout 200})
+          credentials
+          (mcred/create "metabase" "admin" "metasample123")]
+      (with-open [unauthenticated-connection
+                  (mg/connect (mg/server-address "127.0.0.1")
+                              unauthenticated-connection-options
+                              credentials)]
+        (mg/get-db-names unauthenticated-connection)))
+    :.)
