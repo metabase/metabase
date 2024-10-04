@@ -41,6 +41,26 @@ describe("onboarding sidebar section", () => {
       });
     },
   );
+
+  it(
+    "sidebar should be scrollable and all items accessible",
+    { viewportHeight: 400 },
+    () => {
+      cy.visit("/");
+      cy.findByTestId("main-navbar-root")
+        .findByText("Trash")
+        .scrollIntoView()
+        .click();
+
+      cy.location("pathname").should("eq", "/trash");
+      cy.go("back");
+
+      cy.findByTestId("main-navbar-root").findByText("Add data").click();
+      cy.findByRole("menu")
+        .should("contain", "Add a database")
+        .and("contain", "Upload a spreadsheet");
+    },
+  );
 });
 
 describeWithSnowplow(
