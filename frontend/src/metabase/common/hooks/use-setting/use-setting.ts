@@ -1,10 +1,8 @@
 import { useCallback, useMemo } from "react";
 import _ from "underscore";
 
-// TODO - if I change this to metabase/admin/settings/selectors it borks.
-// why is that happening?
+// Don't touch this import or the auth page will break. referring to the barrel doesn't work right now
 import { getAdminSettingDefinitions } from "metabase/admin/settings/selectors/typed-selectors";
-import { updateSetting } from "metabase/admin/settings/settings";
 import type { SettingElement } from "metabase/admin/settings/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
@@ -12,7 +10,6 @@ import { getSetting } from "metabase/selectors/settings";
 import type {
   SettingDefinition,
   SettingKey,
-  SettingValue,
   UserSettings,
 } from "metabase-types/api";
 
@@ -67,19 +64,4 @@ export const useMergeSetting = <Key extends SettingKey>(
   }, [apiSetting, displaySetting]);
 
   return mergedSetting;
-};
-
-export const useGetSetSetting = <Key extends SettingKey>(
-  displaySetting: SettingElement<Key>,
-): [SettingElement<Key>, (value: SettingValue<Key>) => void] => {
-  const mergedSetting = useMergeSetting(displaySetting);
-
-  const dispatch = useDispatch();
-
-  const handleSettingChange = async (value: SettingValue<Key>) => {
-    await dispatch(updateSetting({ key: displaySetting.key, value }));
-  };
-
-  // used to match useState's get/set pattern with array values
-  return [mergedSetting, handleSettingChange];
 };

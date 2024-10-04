@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import type {
   SettingDefinition,
@@ -12,7 +12,7 @@ export type SettingElement<Key extends SettingKey = SettingKey> =
     tab?: string;
     display_name?: string;
     type?: string;
-    description?: string;
+    description?: string | ReactNode;
     note?: string;
     searchProp?: string;
     placeholder?: string;
@@ -26,7 +26,7 @@ export type SettingElement<Key extends SettingKey = SettingKey> =
     noHeader?: boolean;
     disableDefaultUpdate?: boolean;
     validations?: [string, string][];
-    widget?: ReactElement;
+    widget?: ComponentType<any>;
     warningMessage?: string;
     postUpdateActions?: VoidFunction[];
     getProps?: (setting: SettingDefinition<Key>) => Record<string, any>;

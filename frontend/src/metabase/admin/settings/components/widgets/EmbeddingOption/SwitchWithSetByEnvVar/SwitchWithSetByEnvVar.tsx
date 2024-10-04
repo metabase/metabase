@@ -1,6 +1,7 @@
+import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import { useGetSetSetting } from "metabase/common/hooks";
+import { useMergeSetting } from "metabase/common/hooks";
 import { Switch, type SwitchProps, Text } from "metabase/ui";
 
 export type SwitchWithSetByEnvVarProps = {
@@ -8,13 +9,15 @@ export type SwitchWithSetByEnvVarProps = {
     | "enable-embedding-static"
     | "enable-embedding-sdk"
     | "enable-embedding-interactive";
-} & SwitchProps;
+  onChange: (value: boolean) => void;
+} & Omit<SwitchProps, "onChange">;
 
 export function SwitchWithSetByEnvVar({
   settingKey,
+  onChange,
   ...switchProps
 }: SwitchWithSetByEnvVarProps) {
-  const [setting, handleChange] = useGetSetSetting({ key: settingKey });
+  const setting = useMergeSetting({ key: settingKey });
 
   if (setting.is_env_setting) {
     return (
@@ -28,10 +31,12 @@ export function SwitchWithSetByEnvVar({
       size="sm"
       labelPosition="left"
       checked={isEnabled}
-      onChange={event => handleChange(event.currentTarget.checked)}
       wrapperProps={{
         "data-testid": "switch-with-env-var",
       }}
+      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+        onChange(event.currentTarget.checked)
+      }
       {...switchProps}
     />
   );

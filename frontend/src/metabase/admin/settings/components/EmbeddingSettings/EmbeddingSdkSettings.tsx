@@ -1,8 +1,7 @@
-import type { ChangeEvent } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { useDocsUrl, useMergeSetting, useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -20,7 +19,6 @@ import { SetByEnvVarWrapper } from "../SettingsSetting";
 import { SwitchWithSetByEnvVar } from "../widgets/EmbeddingOption/SwitchWithSetByEnvVar";
 import { SettingTextInput } from "../widgets/SettingTextInput";
 
-import { useMergeSetting } from "./hooks";
 import type { AdminSettingComponentProps } from "./types";
 
 export function EmbeddingSdkSettings({
@@ -76,8 +74,8 @@ export function EmbeddingSdkSettings({
     updateSetting({ key: sdkOriginsSetting.key }, value);
   }
 
-  function handleToggleEmbeddingSdk(event: ChangeEvent<HTMLInputElement>) {
-    updateSetting({ key: "enable-embedding-sdk" }, event.currentTarget.checked);
+  function handleToggleEmbeddingSdk(value: boolean) {
+    updateSetting({ key: "enable-embedding-sdk" }, value);
   }
 
   const { url: activationUrl } = useDocsUrl(
@@ -171,9 +169,7 @@ export function EmbeddingSdkSettings({
           py="md"
           maw={620}
         >
-          <Text size="sm" data-testid="api-key-banner">
-            {apiKeyBannerText}
-          </Text>
+          <Text size="sm">{apiKeyBannerText}</Text>
         </Alert>
 
         <Box>
@@ -204,7 +200,6 @@ export function EmbeddingSdkSettings({
           />
           <SetByEnvVarWrapper setting={sdkOriginsSetting}>
             <SettingTextInput
-              data-testid="sdk-origins-input"
               id={sdkOriginsSetting.key}
               setting={sdkOriginsSetting}
               onChange={handleChangeSdkOrigins}

@@ -21,7 +21,6 @@ export interface SettingInputProps {
   type: "text" | "password";
   normalize?: (value: Value) => Value;
   disabled?: boolean;
-  "data-testid"?: string;
 }
 
 const identity = (value: Value) => value;
@@ -35,7 +34,6 @@ export const SettingTextInput = ({
   type = "text",
   normalize = identity,
   disabled,
-  "data-testid": dataTestId,
 }: SettingInputProps) => {
   const [valueState, setValueState] = useState<string>(setting.value ?? "");
   const changeHandler = (e: { target: HTMLInputElement }) => {
@@ -51,7 +49,6 @@ export const SettingTextInput = ({
 
   return (
     <TextInput
-      data-testid={dataTestId}
       className={cx({
         [AdminS.SettingsInput]: type !== "password",
         [AdminS.SettingsPassword]: type === "password",

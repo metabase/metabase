@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import _ from "underscore";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
 import type { AuthCardProps, AuthSetting } from "./AuthCard";
 import AuthCard from "./AuthCard";
@@ -79,10 +80,12 @@ describe("AuthCard", () => {
   });
 });
 
-const getSetting = (opts?: Partial<AuthSetting>): AuthSetting => ({
-  value: false,
-  ...opts,
-});
+const getSetting = (opts?: Partial<AuthSetting>): AuthSetting =>
+  createMockSettingDefinition({
+    key: "google-auth-enabled",
+    value: false,
+    ...opts,
+  });
 
 const getProps = (opts?: Partial<AuthCardProps>): AuthCardProps => ({
   setting: getSetting(),

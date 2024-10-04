@@ -31,22 +31,18 @@ const setup = ({
   settingKey = "enable-embedding-static",
   label = undefined,
   disabled = undefined,
-  env_name,
   is_env_setting = false,
   value = false,
-  default: defaultValue,
 }: SetupProps = {}) => {
   const settings = [
     createMockSettingDefinition({
       key: settingKey,
-      env_name,
       is_env_setting,
       value,
-      default: defaultValue,
     }),
   ];
   const settingValues = createMockSettings({
-    [settingKey]: value ?? defaultValue,
+    [settingKey]: value,
   });
 
   const state = createMockState({
@@ -62,8 +58,11 @@ const setup = ({
   setupSettingsEndpoints(settings);
   setupPropertiesEndpoints(settingValues);
 
-  return renderWithProviders(
+  const onChange = jest.fn();
+
+  renderWithProviders(
     <SwitchWithSetByEnvVar
+      onChange={onChange}
       settingKey={settingKey}
       disabled={disabled}
       {...(label ? { label } : {})}
@@ -72,6 +71,8 @@ const setup = ({
       storeInitialState: state,
     },
   );
+
+  return { onChange };
 };
 
 describe("SwitchWithSetByEnvVar", () => {
@@ -112,39 +113,25 @@ describe("SwitchWithSetByEnvVar", () => {
     });
 
     it("should send a PUT request with value=true when setting is off", async () => {
-      setup({
+      const { onChange } = setup({
         value: false,
       });
 
       expect(screen.getByRole("checkbox")).not.toBeChecked();
       await userEvent.click(screen.getByRole("checkbox"));
 
-      const settingPutCalls = fetchMock.calls(
-        "path:/api/setting/enable-embedding-static",
-      );
-
-      expect(settingPutCalls.length).toBe(1);
-      expect(await settingPutCalls[0]?.request?.json()).toEqual({
-        value: true,
-      });
+      expect(onChange).toHaveBeenCalledWith(true);
     });
 
     it("should send a PUT request with value=false when setting is on", async () => {
-      setup({
+      const { onChange } = setup({
         value: true,
       });
 
       expect(screen.getByRole("checkbox")).toBeChecked();
       await userEvent.click(screen.getByRole("checkbox"));
 
-      const settingPutCalls = fetchMock.calls(
-        "path:/api/setting/enable-embedding-static",
-      );
-
-      expect(settingPutCalls.length).toBe(1);
-      expect(await settingPutCalls[0]?.request?.json()).toEqual({
-        value: false,
-      });
+      expect(onChange).toHaveBeenCalledWith(false);
     });
   });
 

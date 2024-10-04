@@ -1,12 +1,11 @@
-import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import { useMergeSetting } from "metabase/admin/settings/components/EmbeddingSettings/hooks";
 import type { AdminSettingComponentProps } from "metabase/admin/settings/components/EmbeddingSettings/types";
 import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 import { SetByEnvVarWrapper } from "metabase/admin/settings/components/SettingsSetting";
 import { SwitchWithSetByEnvVar } from "metabase/admin/settings/components/widgets/EmbeddingOption/SwitchWithSetByEnvVar";
 import { SettingTextInput } from "metabase/admin/settings/components/widgets/SettingTextInput";
+import { useMergeSetting } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { Box, Stack } from "metabase/ui";
 import type { SessionCookieSameSite } from "metabase-types/api";
@@ -34,13 +33,8 @@ const SAME_SITE_SETTING = {
 export function InteractiveEmbeddingSettings({
   updateSetting,
 }: AdminSettingComponentProps) {
-  function handleToggleInteractiveEmbedding(
-    event: ChangeEvent<HTMLInputElement>,
-  ) {
-    updateSetting(
-      { key: "enable-embedding-interactive" },
-      event.currentTarget.checked,
-    );
+  function handleToggleInteractiveEmbedding(value: boolean) {
+    updateSetting({ key: "enable-embedding-interactive" }, value);
   }
 
   const interactiveEmbeddingOriginsSetting = useMergeSetting(

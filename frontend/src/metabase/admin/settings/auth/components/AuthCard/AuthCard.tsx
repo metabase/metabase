@@ -19,8 +19,8 @@ import {
   CardTitle,
 } from "./AuthCard.styled";
 
-export type AuthSetting = Omit<SettingDefinition, "value" | "key"> & {
-  value?: boolean | null;
+export type AuthSetting = Omit<SettingDefinition, "value"> & {
+  value: boolean | null;
 };
 
 export interface AuthCardProps {
