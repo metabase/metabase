@@ -582,3 +582,39 @@
                  (mt/formatted-rows
                   [->local-date int 2.0 2.0]
                   (qp/process-query query)))))))))
+
+(deftest ^:parallel offset-function-expression-breakout-test
+  (testing "can break out by expression aggregations"
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative :window-functions/offset)
+      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            orders            (lib.metadata/table metadata-provider (mt/id :orders))
+            created-at        (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+            total             (lib.metadata/field metadata-provider (mt/id :orders :total))
+            produnct-category (->> (lib/breakoutable-columns (lib/query metadata-provider orders))
+                                   (m/find-first (comp #{(mt/id :products :category)} :id)))
+            base-query        (-> (lib/query metadata-provider orders)
+                                  (lib/expression "CC Product Category" (lib/concat produnct-category " from products")))
+            cc-column         (->> (lib/breakoutable-columns base-query)
+                                   (m/find-first (comp #{"CC Product Category"} :display-name)))
+            _                 (assert (some? cc-column))
+            query             (-> base-query
+                                  (lib/breakout (lib/with-temporal-bucket created-at :year))
+                                  (lib/breakout cc-column)
+                                  (lib/aggregate (lib/sum total))
+                                  (lib/aggregate (lib/offset (lib/sum total) -1))
+                                  (lib/limit 10)
+                                  (assoc-in [:middleware :format-rows?] false))]
+        (mt/with-native-query-testing-context query
+          (is (= [[#t "2016-01-01" "Doohickey from products"   9031.71        nil]
+                  [#t "2017-01-01" "Doohickey from products"  43069.67    9031.71]
+                  [#t "2018-01-01" "Doohickey from products"  98515.46   43069.67]
+                  [#t "2019-01-01" "Doohickey from products" 110322.05   98515.46]
+                  [#t "2020-01-01" "Doohickey from products"  36332.58  110322.05]
+                  [#t "2016-01-01" "Gadget from products"     10672.75        nil]
+                  [#t "2017-01-01" "Gadget from products"     54961.01   10672.75]
+                  [#t "2018-01-01" "Gadget from products"    133811.07   54961.01]
+                  [#t "2019-01-01" "Gadget from products"    160501.62  133811.07]
+                  [#t "2020-01-01" "Gadget from products"     46673.3   160501.62]]
+                 (mt/formatted-rows
+                  [->local-date str 2.0 2.0]
+                  (qp/process-query query)))))))))

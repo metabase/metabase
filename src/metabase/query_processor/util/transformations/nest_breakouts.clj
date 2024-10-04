@@ -62,7 +62,8 @@
    first-stage-cols :- [:sequential ::lib.schema.metadata/column]]
   (lib.util.match/replace stage
     #{:field :expression}
-    (if-let [col (lib.equality/find-matching-column &match first-stage-cols)]
+    (if-let [col (when-not (some #{:expressions} &parents)
+                   (lib.equality/find-matching-column &match first-stage-cols))]
       (-> col
           update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
           lib/ref)
@@ -156,8 +157,9 @@
   (let [query            (assoc-in query path first-stage)
         first-stage-cols (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)]
     (-> stage
-        (dissoc :expressions :joins :source-table :source-card :lib/stage-metadata :filters)
+        (dissoc :joins :source-table :source-card :lib/stage-metadata :filters)
         (update-second-stage-refs first-stage-cols)
+        (dissoc :expressions)
         add-implicit-breakouts)))
 
 (mu/defn- nest-breakouts-in-stage :- [:maybe [:sequential {:min 2, :max 2} ::lib.schema/stage]]
