@@ -230,6 +230,10 @@ export type VisualizationSettings = {
   "pie.colors"?: Record<string, string>;
 
   [key: string]: any;
+} & EmbedVisualizationSettings;
+
+export type EmbedVisualizationSettings = {
+  iframe?: string;
 };
 
 export interface ModerationReview {
@@ -347,3 +351,8 @@ export type CardQueryRequest = {
   ignore_cache?: boolean;
   parameters?: unknown[];
 };
+
+export type GetPublicOrEmbeddableCard = Pick<
+  Card,
+  "id" | "name" | "public_uuid"
+>;
