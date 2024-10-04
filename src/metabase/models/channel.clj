@@ -22,7 +22,6 @@
 
 (doto :model/ChannelTemplate
   (derive :metabase/model)
-  (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
 ;; ------------------------------------------------------------------------------------------------;;
