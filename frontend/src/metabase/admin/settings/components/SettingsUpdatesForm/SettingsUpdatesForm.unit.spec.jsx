@@ -23,6 +23,9 @@ function setup({
   isPaid = false,
   currentVersion = "v1.0.0",
   latestVersion = "v2.0.0",
+  nightlyVersion = "v1.2.1",
+  betaVersion = "v1.3.0",
+  channel = "latest",
 } = {}) {
   const version = currentVersion
     ? createMockVersion({ tag: currentVersion })
@@ -31,6 +34,8 @@ function setup({
   const versionInfo = currentVersion
     ? createMockVersionInfo({
         latest: createMockVersionInfoRecord({ version: latestVersion }),
+        nightly: createMockVersionInfoRecord({ version: nightlyVersion }),
+        beta: createMockVersionInfoRecord({ version: betaVersion }),
       })
     : null;
 
@@ -40,6 +45,7 @@ function setup({
     "version-info": versionInfo,
     "check-for-updates": true,
     "token-status": createMockTokenStatus({ valid: isPaid }),
+    "update-channel": channel,
   });
 
   const state = createMockState({
@@ -86,6 +92,41 @@ describe("SettingsUpdatesForm", () => {
     setup({ currentVersion: "v1.0.0", latestVersion: null });
     expect(
       screen.getByText(/You're running Metabase 1.0.0/),
+    ).toBeInTheDocument();
+  });
+
+  it("shows upgrade call to action on the stable channel", () => {
+    setup({
+      currentVersion: "v1.0.0",
+      latestVersion: "v1.7.0",
+      nightlyVersion: "v1.7.1",
+      betaVersion: "v1.7.2",
+      channel: "latest",
+    });
+    expect(screen.getByText(/Metabase 1.7.0 is available/)).toBeInTheDocument();
+  });
+
+  it("shows upgrade call to action on the nightly channel", () => {
+    setup({
+      currentVersion: "v1.0.0",
+      latestVersion: "v1.7.0",
+      nightlyVersion: "v1.7.1",
+      betaVersion: "v1.7.2",
+      channel: "nightly",
+    });
+    expect(screen.getByText(/Metabase 1.7.1 is available/)).toBeInTheDocument();
+  });
+
+  it("shows upgrade call to action on the beta channel", () => {
+    setup({
+      currentVersion: "v1.0.0",
+      latestVersion: "v1.7.0",
+      nightlyVersion: "v1.7.1",
+      betaVersion: "v1.7.2-beta",
+      channel: "beta",
+    });
+    expect(
+      screen.getByText(/Metabase 1.7.2-beta is available/),
     ).toBeInTheDocument();
   });
 
