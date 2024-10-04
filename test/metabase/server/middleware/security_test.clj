@@ -208,12 +208,12 @@
 
   (testing "Should disable CORS when enable-embedding-sdk is disabled"
     (tu/with-temporary-setting-values [enable-embedding-sdk false]
-      (is (= "http://localhost:8080"
+      (is (= nil
              (get (mw.security/access-control-headers "http://localhost:8080"
                                                       (embed.settings/enable-embedding-sdk)
                                                       (embed.settings/embedding-app-origins-sdk))
                   "Access-Control-Allow-Origin"))
-          "Localhost is always permitted.")
+          "Localhost is only permitted when `enable-embedding-sdk` is `true`.")
       (is (= nil (get (mw.security/access-control-headers
                        "http://1.2.3.4:5555"
                        (embed.settings/enable-embedding-sdk)

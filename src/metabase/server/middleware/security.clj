@@ -182,16 +182,14 @@
 (defn access-control-headers
   "Returns headers for CORS requests"
   [origin enabled? approved-origins]
-  (let [localhost-origin? (approved-origin? origin "localhost:*")]
-    ;; If the origin is localhost, we allow it to be used in the SDK, even if `enabled?` is `false`.
-    (when (or enabled? localhost-origin?)
-      (merge
-       (when (approved-origin? origin (if enabled? approved-origins "localhost:*"))
-         {"Access-Control-Allow-Origin" origin
-          "Vary"                        "Origin"})
-       {"Access-Control-Allow-Headers"  "*"
-        "Access-Control-Allow-Methods"  "*"
-        "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token"}))))
+  (when enabled?
+    (merge
+     (when (approved-origin? origin (if enabled? approved-origins "localhost:*"))
+       {"Access-Control-Allow-Origin" origin
+        "Vary"                        "Origin"})
+     {"Access-Control-Allow-Headers"  "*"
+      "Access-Control-Allow-Methods"  "*"
+      "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token"})))
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
