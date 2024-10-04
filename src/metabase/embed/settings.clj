@@ -98,6 +98,7 @@
   :export?    false
   :visibility :public
   :feature    :embedding-sdk
+  :default    "localhost:*"
   :encryption :no
   :audit      :getter
   :getter    (fn embedding-app-origins-sdk-getter []
