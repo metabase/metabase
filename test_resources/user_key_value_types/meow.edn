@@ -1,0 +1,4 @@
+[:map
+ [:value [:maybe [:map
+                  [:key1 :string]
+                  [:key2 :int]]]]]
