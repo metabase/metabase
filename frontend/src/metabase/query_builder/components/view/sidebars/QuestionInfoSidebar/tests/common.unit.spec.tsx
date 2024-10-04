@@ -98,6 +98,21 @@ describe("QuestionInfoSidebar", () => {
       expect(screen.getByText("My Big Collection")).toBeInTheDocument();
     });
 
+    it("should show correct link for root collection", () => {
+      const card = createMockCard({
+        name: "Question",
+        // @ts-expect-error - ye olde null root collection bugbear
+        collection: createMockCollection({ id: null, name: "Our analytics" }),
+        collection_id: null,
+      });
+      setup({ card });
+
+      expect(screen.getByText("Our analytics")).toHaveAttribute(
+        "href",
+        "/collection/root",
+      );
+    });
+
     it("should show source information", () => {
       const card = createMockCard({
         name: "Question",
