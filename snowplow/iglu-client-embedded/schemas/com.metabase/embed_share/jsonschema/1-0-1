@@ -5,7 +5,7 @@
     "vendor": "com.metabase",
     "name": "embed_share",
     "format": "jsonschema",
-    "version": "1-0-0"
+    "version": "1-0-1"
   },
   "type": "object",
   "properties": {
@@ -14,7 +14,13 @@
       "type": "string",
       "enum": [
         "embedding_enabled",
-        "embedding_disabled"
+        "embedding_disabled",
+        "sdk_embedding_enabled",
+        "sdk_embedding_disabled",
+        "static_embedding_enabled",
+        "static_embedding_disabled",
+        "interactive_embedding_enabled",
+        "interactive_embedding_disabled"
       ],
       "maxLength": 1024
     },
@@ -44,6 +50,8 @@
       "maximum": 2147483647
     }
   },
-  "required": ["event"],
+  "required": [
+    "event"
+  ],
   "additionalProperties": true
 }
