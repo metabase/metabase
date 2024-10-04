@@ -7,6 +7,7 @@ import {
 import {
   assertPermissionForItem,
   assertSheetRowsCount,
+  createNativeQuestion,
   describeEE,
   downloadAndAssert,
   modal,
@@ -173,21 +174,31 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
 
-      cy.createNativeQuestion(
+      createNativeQuestion(
         {
           name: "Native Orders",
           native: {
             query: "select * from orders",
           },
         },
-        { wrapId: true, idAlias: "nativeQuestionId" },
+        { wrapId: true, idAlias: "nativeOrdersQuestionId" },
+      );
+
+      createNativeQuestion(
+        {
+          name: "Native Products",
+          native: {
+            query: "select * from products",
+          },
+        },
+        { wrapId: true, idAlias: "nativeProductsQuestionId" },
       );
     });
 
     it("lets user download results from native queries", () => {
       cy.signInAsNormalUser();
 
-      cy.get("@nativeQuestionId").then(id => {
+      cy.get("@nativeOrdersQuestionId").then(id => {
         visitQuestion(id);
 
         downloadAndAssert(
@@ -213,12 +224,12 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
       });
     });
 
-    it("prevents user from downloading a native question even if only one table doesn't have download permissions", () => {
-      setDownloadPermissionsForProductsTable("none");
+    it("prevents user from downloading a native question if a referenced table doesn't have download permissions", () => {
+      setDownloadPermissionsForOrdersTable("none");
 
       cy.signInAsNormalUser();
 
-      cy.get("@nativeQuestionId").then(id => {
+      cy.get("@nativeOrdersQuestionId").then(id => {
         visitQuestion(id);
 
         cy.findByText("Showing first 2,000 rows");
@@ -232,8 +243,6 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
         cy.icon("download").should("not.exist");
 
         // Convert question to a model, which also shouldn't be downloadable
-        cy.request("PUT", `/api/card/${id}`, { name: "Native Model" });
-
         visitQuestion(id);
 
         cy.findByText("Showing first 2,000 rows");
@@ -241,12 +250,12 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
       });
     });
 
-    it("limits download results for a native question even if only one table has `limited` download permissions", () => {
-      setDownloadPermissionsForProductsTable("limited");
+    it("limits download results for a native question if a referenced table has `limited` download permissions", () => {
+      setDownloadPermissionsForOrdersTable("limited");
 
       cy.signInAsNormalUser();
 
-      cy.get("@nativeQuestionId").then(id => {
+      cy.get("@nativeOrdersQuestionId").then(id => {
         visitQuestion(id);
 
         downloadAndAssert(
@@ -274,15 +283,15 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
   });
 });
 
-function setDownloadPermissionsForProductsTable(permission) {
+function setDownloadPermissionsForOrdersTable(permission) {
   cy.updatePermissionsGraph({
     [ALL_USERS_GROUP]: {
       [SAMPLE_DB_ID]: {
         download: {
           schemas: {
             PUBLIC: {
-              [PRODUCTS_ID]: permission,
-              [ORDERS_ID]: "full",
+              [PRODUCTS_ID]: "full",
+              [ORDERS_ID]: permission,
               [PEOPLE_ID]: "full",
               [REVIEWS_ID]: "full",
               [ACCOUNTS_ID]: "full",

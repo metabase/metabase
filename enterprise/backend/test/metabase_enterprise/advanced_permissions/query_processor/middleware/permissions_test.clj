@@ -215,10 +215,16 @@
             :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}})
 
           (streaming-test/do-test!
-           "A user with limited download perms for a table has limited download perms for native queries on all tables"
+           "A user with limited download perms for a table has them enforced for native queries"
+           {:query      (mt/native-query {:query "SELECT * FROM orders LIMIT 10;"})
+            :endpoints  [:card :dataset]
+            :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}})
+
+          (streaming-test/do-test!
+           "A user with limited download perms for a table still has full download perms for native queries on other tables"
            {:query      (mt/native-query {:query "SELECT * FROM checkins LIMIT 10;"})
             :endpoints  [:card :dataset]
-            :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))))))
+            :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}}))))))
 
 (deftest no-download-perms-test
   (testing "Users with no download perms cannot run download queries"
@@ -285,13 +291,19 @@
           :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}})
 
         (streaming-test/do-test!
-         "A user with no download perms for a table has no download perms for native queries on all tables"
-         {:query      (mt/native-query {:query "SELECT * FROM checkins LIMIT 10;"})
+         "A user with no download perms for a table has it enforced for native queries on the table"
+         {:query      (mt/native-query {:query "SELECT * FROM venues LIMIT 10;"})
           :endpoints  [:card :dataset]
           :assertions {:csv (fn [results]
                               (is (partial=
                                    {:error "You do not have permissions to download the results of this query."}
-                                   results)))}})))))
+                                   results)))}})
+
+        (streaming-test/do-test!
+         "A user with no download perms for a table still has full download perms for native queries on other tables"
+         {:query      (mt/native-query {:query "SELECT * FROM checkins LIMIT 10;"})
+          :endpoints  [:card :dataset]
+          :assertions {:csv (fn [results] (is (= 10 (csv-row-count results))))}})))))
 
 (deftest joins-test
   (mt/with-full-data-perms-for-all-users!

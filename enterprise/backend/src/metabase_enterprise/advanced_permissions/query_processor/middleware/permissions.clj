@@ -10,6 +10,8 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private max-rows-in-limited-downloads 10000)
 
 (defn- is-download?
@@ -17,31 +19,22 @@
   [query]
   (some-> query :info :context name (str/includes? "download")))
 
-(defmulti ^:private current-user-download-perms-level :type)
-
-(defmethod current-user-download-perms-level :default
-  [_]
-  :one-million-rows)
-
-(defmethod current-user-download-perms-level :native
-  [{database :database}]
-  (data-perms/native-download-permission-for-user api/*current-user-id* database))
-
-(defmethod current-user-download-perms-level :query
+(defn- current-user-download-perms-level
   [{db-id :database, :as query}]
-  ;; Remove the :native key (containing the transpiled MBQL) so that this helper function doesn't think the query is
-  ;; a native query. Actual native queries are dispatched to a different method by the :type key.
-  (let [table-ids   (query-perms/query->source-table-ids (dissoc query :native))
-        table-perms (into #{}
-                          (map (fn [table-id]
-                                 (if (= table-id ::query-perms/native)
-                                   (data-perms/native-download-permission-for-user api/*current-user-id* db-id)
-                                   (data-perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id)))
-                               table-ids))]
-    ;; The download perm level for a query should be equal to the lowest perm level of any table referenced by the query.
-    (or (table-perms :no)
-        (table-perms :ten-thousand-rows)
-        :one-million-rows)))
+  (let [table-ids          (query-perms/query->source-table-ids query)
+        full-native-perms? (contains? table-ids ::query-perms/native)]
+    (if full-native-perms?
+      ;; If we can't parse individual tables from a native query, use the lowest permission for *any* table in the DB
+      (data-perms/native-download-permission-for-user api/*current-user-id* db-id)
+      (let [table-perms
+            (into #{}
+              (map (fn [table-id]
+                     (data-perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id))
+                   table-ids))]
+        ;; The download perm level for a query should be equal to the lowest perm level of any table referenced by the query.
+        (or (table-perms :no)
+            (table-perms :ten-thousand-rows)
+            :one-million-rows)))))
 
 (defenterprise apply-download-limit
   "Pre-processing middleware to apply row limits to MBQL export queries if the user has `ten-thousand-rows` download
