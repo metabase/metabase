@@ -218,7 +218,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
       {
         key: "bcc-enabled?",
         display_name: t`Add Recipients as CC or BCC`,
-        description: t`Control the visibility of recipients.`,
+        description: t`Control the visibility of alerts and subscriptions recipients.`,
         options: [
           { value: true, name: t`BCC - Hide recipients` },
           {

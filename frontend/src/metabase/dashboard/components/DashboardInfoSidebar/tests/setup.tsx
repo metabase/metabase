@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupDashboardEndpoints,
@@ -59,12 +61,17 @@ export async function setup({
   }
 
   renderWithProviders(
-    <DashboardInfoSidebar
-      dashboard={dashboard}
-      setDashboardAttribute={setDashboardAttribute}
-      onClose={onClose}
+    <Route
+      path="*"
+      component={() => (
+        <DashboardInfoSidebar
+          dashboard={dashboard}
+          setDashboardAttribute={setDashboardAttribute}
+          onClose={onClose}
+        />
+      )}
     />,
-    { storeInitialState: state },
+    { storeInitialState: state, withRouter: true },
   );
   await waitForLoaderToBeRemoved();
 
