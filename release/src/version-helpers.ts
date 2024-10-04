@@ -167,10 +167,10 @@ export const getNextVersions = (versionString: string): string[] => {
 
 // our milestones don't have the v prefix or a .0 suffix
 export const getMilestoneName = (version: string) => {
-  return getOSSVersion(version)
-    .replace(/^v/, "")
-    .replace(/-rc\d+$/i, "") // RC versions use the major version milestone
-    .replace(/\.0$/, "");
+  const [_prefix, major, minor] = getOSSVersion(version)
+    .split(/\.|\-/g)
+
+  return Number(minor) ? `0.${major}.${minor}` : `0.${major}`;
 };
 
 // for auto-setting milestones, we don't ever want to auto-set a patch milestone
