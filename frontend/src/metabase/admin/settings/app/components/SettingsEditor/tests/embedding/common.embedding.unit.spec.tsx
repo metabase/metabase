@@ -234,15 +234,15 @@ describe("[OSS] embedding settings", () => {
   describe("when static embedding is enabled", () => {
     let history: History;
 
-    describe("static embedding", () => {
-      beforeEach(async () => {
-        history = (
-          await setupEmbedding({
-            settingValues: { "enable-embedding-static": true },
-          })
-        ).history;
-      });
+    beforeEach(async () => {
+      history = (
+        await setupEmbedding({
+          settingValues: { "enable-embedding-static": true },
+        })
+      ).history;
+    });
 
+    describe("static embedding", () => {
       it("should show info about static embedding", async () => {
         const withinStaticEmbeddingCard = within(
           screen.getByRole("article", {
@@ -310,34 +310,16 @@ describe("[OSS] embedding settings", () => {
         expect(location.pathname).toEqual(staticEmbeddingSettingsUrl);
       });
     });
-
-    it("should show `Set by environment variable` when the setting is an env var", async () => {
-      history = (
-        await setupEmbedding({
-          settingValues: { "enable-embedding-static": true },
-          isEnvVar: true,
-        })
-      ).history;
-
-      const withinStaticEmbeddingCard = within(
-        screen.getByRole("article", {
-          name: "Static embedding",
-        }),
-      );
-      expect(
-        withinStaticEmbeddingCard.getByText("Set via environment variable"),
-      ).toBeVisible();
-    });
   });
 
   describe("when embedding SDK is enabled", () => {
-    describe("embedding SDK", () => {
-      beforeEach(async () => {
-        await setupEmbedding({
-          settingValues: { "enable-embedding-sdk": true },
-        });
+    beforeEach(async () => {
+      await setupEmbedding({
+        settingValues: { "enable-embedding-sdk": true },
       });
+    });
 
+    describe("embedding SDK", () => {
       it("should show info about embedding SDK", async () => {
         const withinEmbeddingSdkCard = within(
           screen.getByRole("article", {
@@ -381,35 +363,19 @@ describe("[OSS] embedding settings", () => {
         ).toBeDisabled();
       });
     });
-
-    it("should show `Set by environment variable` when the setting is an env var", async () => {
-      await setupEmbedding({
-        settingValues: { "enable-embedding-sdk": true },
-        isEnvVar: true,
-      });
-
-      const withinEmbeddingSdkCard = within(
-        screen.getByRole("article", {
-          name: "Embedded analytics SDK",
-        }),
-      );
-      expect(
-        withinEmbeddingSdkCard.getByText("Set via environment variable"),
-      ).toBeVisible();
-    });
   });
 
   describe("when interactive embedding is enabled", () => {
     let history: History;
 
+    beforeEach(async () => {
+      history = (
+        await setupEmbedding({
+          settingValues: { "enable-embedding-interactive": true },
+        })
+      ).history;
+    });
     describe("interactive embedding", () => {
-      beforeEach(async () => {
-        history = (
-          await setupEmbedding({
-            settingValues: { "enable-embedding-interactive": true },
-          })
-        ).history;
-      });
       it("should show info about interactive embedding", async () => {
         const withinInteractiveEmbeddingCard = within(
           screen.getByRole("article", {
@@ -476,26 +442,6 @@ describe("[OSS] embedding settings", () => {
           embeddingSettingsUrl,
         );
       });
-    });
-
-    it("should show `Set by environment variable` when the setting is an env var", async () => {
-      history = (
-        await setupEmbedding({
-          settingValues: { "enable-embedding-interactive": true },
-          isEnvVar: true,
-        })
-      ).history;
-
-      const withinInteractiveEmbeddingCard = within(
-        screen.getByRole("article", {
-          name: "Interactive embedding",
-        }),
-      );
-      expect(
-        withinInteractiveEmbeddingCard.getByText(
-          "Set via environment variable",
-        ),
-      ).toBeVisible();
     });
   });
 
@@ -647,6 +593,58 @@ describe("[OSS] embedding settings", () => {
           screen.queryByRole("link", { name: "Request version pinning" }),
         ).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe("when environment variables are set", () => {
+    it("should show `Set by environment variable` when the enable-embedding-static is an env var", async () => {
+      await setupEmbedding({
+        settingValues: { "enable-embedding-static": true },
+        isEnvVar: true,
+      });
+
+      const withinStaticEmbeddingCard = within(
+        screen.getByRole("article", {
+          name: "Static embedding",
+        }),
+      );
+      expect(
+        withinStaticEmbeddingCard.getByText("Set via environment variable"),
+      ).toBeVisible();
+    });
+
+    it("should show `Set by environment variable` when the enable-embedding-sdk is an env var", async () => {
+      await setupEmbedding({
+        settingValues: { "enable-embedding-sdk": true },
+        isEnvVar: true,
+      });
+
+      const withinEmbeddingSdkCard = within(
+        screen.getByRole("article", {
+          name: "Embedded analytics SDK",
+        }),
+      );
+      expect(
+        withinEmbeddingSdkCard.getByText("Set via environment variable"),
+      ).toBeVisible();
+    });
+
+    it("should show `Set by environment variable` when the enable-embedding-interactive is an env var", async () => {
+      await setupEmbedding({
+        settingValues: { "enable-embedding-interactive": true },
+        isEnvVar: true,
+      });
+
+      const withinInteractiveEmbeddingCard = within(
+        screen.getByRole("article", {
+          name: "Interactive embedding",
+        }),
+      );
+      expect(
+        withinInteractiveEmbeddingCard.getByText(
+          "Set via environment variable",
+        ),
+      ).toBeVisible();
     });
   });
 });

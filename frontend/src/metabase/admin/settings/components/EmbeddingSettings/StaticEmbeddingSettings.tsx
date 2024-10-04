@@ -10,7 +10,7 @@ import SettingHeader from "../SettingHeader";
 import { SettingTitle } from "../SettingHeader/SettingHeader.styled";
 import { SetByEnvVarWrapper } from "../SettingsSetting";
 import { SwitchWithSetByEnvVar } from "../widgets/EmbeddingOption/SwitchWithSetByEnvVar";
-import { EmbeddedResources } from "../widgets/PublicLinksListing";
+import { EmbeddedResources } from "../widgets/PublicLinksListing/EmbeddedResources";
 import SecretKeyWidget from "../widgets/SecretKeyWidget";
 
 import type { AdminSettingComponentProps } from "./types";
@@ -75,7 +75,7 @@ export function StaticEmbeddingSettings({
         </Box>
         <Box data-testid="embedded-resources">
           <SettingTitle>{t`Manage embeds`}</SettingTitle>
-          <EmbeddedResources key={isStaticEmbeddingEnabled.toString()} />
+          <EmbeddedResources />
         </Box>
       </Stack>
     </Box>
