@@ -19,7 +19,8 @@
   [user-kw card]
   (t2.with-temp/with-temp [Pulse     pulse {:creator_id (test.users/user->id user-kw)}
                            PulseCard _     {:pulse_id (:id pulse), :card_id (u/the-id card)}]
-    (with-redefs [pulse/send-notifications!    identity
+    (with-redefs [pulse/send-notifications!  (fn [_pulse-id notifications]
+                                               notifications)
                   pulse/parts->notifications (fn [_ results]
                                                (vec results))]
       (let [[{:keys [result]}] (pulse/send-pulse! pulse)]
