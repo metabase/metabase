@@ -5,6 +5,7 @@ import { Route } from "react-router";
 import {
   setupCardsEndpoints,
   setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
@@ -110,6 +111,10 @@ async function setup({
   });
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints(models);
+  setupCollectionItemsEndpoint({
+    collection: createMockCollection(ROOT_COLLECTION),
+    collectionItems: [],
+  });
   fetchMock.get("path:/api/bookmark", []);
 
   if (openQuestionCard) {
