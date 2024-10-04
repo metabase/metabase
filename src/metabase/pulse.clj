@@ -314,7 +314,7 @@
                                                          :channel-id   (:id channel)
                                                          :pulse-id     pulse-id}}
         ((retry/decorate send! (retry/random-exponential-backoff-retry (str (random-uuid)) retry-config)))
-        (log/debugf "[Pulse %d] Sent to channel %s with %d retires" pulse-id (format-channel channel) (count @retry-errors))))
+        (log/debugf "[Pulse %d] Sent to channel %s with %d retries" pulse-id (format-channel channel) (count @retry-errors))))
     (catch Throwable e
       (log/errorf e "[Pulse %d] Error sending notification!" pulse-id))))
 
