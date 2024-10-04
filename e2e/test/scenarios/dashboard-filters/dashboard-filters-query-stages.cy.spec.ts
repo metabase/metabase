@@ -589,7 +589,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
   });
 
   describe("2-stage queries", () => {
-    describe("Q5 - join, custom column, no aggregations, no breakouts", () => {
+    describe("Q5 - Q4 + 2nd stage with join, custom column, no aggregations, no breakouts", () => {
       beforeEach(() => {
         createAndVisitDashboardWithCardMatrix(createQ5Query);
       });
@@ -684,7 +684,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       }
     });
 
-    describe("Q6 - join, custom column, 2 aggregations, no breakouts", () => {
+    describe("Q6 - Q4 + 2nd stage with join, custom column, 2 aggregations, no breakouts", () => {
       beforeEach(() => {
         createAndVisitDashboardWithCardMatrix(createQ6Query);
       });
@@ -779,7 +779,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       }
     });
 
-    describe("Q7 - join, custom column, no aggregations, 2 breakouts", () => {
+    describe("Q7 - Q4 + 2nd stage with join, custom column, no aggregations, 2 breakouts", () => {
       beforeEach(() => {
         createAndVisitDashboardWithCardMatrix(createQ7Query);
       });
@@ -880,7 +880,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       }
     });
 
-    describe("Q8 - join, custom column, 2 aggregations, 2 breakouts", () => {
+    describe("Q8 - Q4 + 2nd stage with join, custom column, 2 aggregations, 2 breakouts", () => {
       beforeEach(() => {
         createAndVisitDashboardWithCardMatrix(createQ8Query);
       });
@@ -1057,7 +1057,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
   });
 
   describe("3-stage queries", () => {
-    describe("Q9 - Q8 + aggregation", () => {
+    describe("Q9 - Q8 + 3rd stage with 1 aggregation", () => {
       beforeEach(() => {
         createAndVisitDashboardWithCardMatrix(createQ9Query);
       });
