@@ -14,6 +14,7 @@ const COLOR_VARIANTS = {
   },
 };
 
+// TODO: use Badge from metabase/ui when it's available
 export const Badge = styled.span<{
   color: BadgeColor;
   uppercase?: boolean;
