@@ -1,0 +1,23 @@
+import { useState } from "react";
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Box, Icon, Stack, Text, TextInput } from "metabase/ui";
+import { iconNames } from "./icons";
+import * as IconStories from "./Icon.stories";
+
+<Meta of={IconStories} />
+
+# Icon
+
+Our component wrapper around SVG icons.
+
+## Examples
+
+<Canvas>
+  <Story of={IconStories.Default} />
+</Canvas>
+
+### List
+
+<Canvas>
+  <Story of={IconStories.List} />
+</Canvas>

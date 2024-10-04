@@ -131,6 +131,28 @@ export const useCommandPaletteBasicActions = ({
       });
     }
 
+    if (hasDataAccess) {
+      actions.push({
+        id: "new_metric",
+        name: t`New metric`,
+        section: "basic",
+        icon: "metric",
+        perform: () => {
+          dispatch(closeModal());
+          dispatch(push("metric/query"));
+          dispatch(
+            push(
+              Urls.newQuestion({
+                mode: "query",
+                cardType: "metric",
+                collectionId,
+              }),
+            ),
+          );
+        },
+      });
+    }
+
     if (hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
       actions.push({
         id: "new_action",

@@ -3,6 +3,7 @@
   (:require
    [metabase.channel.core :as channel]
    [metabase.events.notification :as events.notification]
+   [metabase.notification.core :as notification]
    [metabase.util :as u]))
 
 (def test-channel-type
@@ -22,14 +23,21 @@
   [_channel message]
   message)
 
+(defmacro with-send-notification-sync!
+  "Notifications are sent async by default, wrap the body in this macro to send them synchronously."
+  [& body]
+  `(binding [notification/send-notification! #'notification/send-notification-sync!]
+     ~@body))
+
 (defn do-with-captured-channel-send!
   [thunk]
   (let [channel-messages (atom {})]
-    (with-redefs
-     [channel/send! (fn [channel message]
-                      (swap! channel-messages update (:type channel) u/conjv message))]
-     (thunk)
-     @channel-messages)))
+    (with-send-notification-sync!
+      (with-redefs
+        [channel/send! (fn [channel message]
+                         (swap! channel-messages update (:type channel) u/conjv message))]
+        (thunk)
+        @channel-messages))))
 
 (defmacro with-captured-channel-send!
   "Macro that captures all messages sent to channels in the body of the macro.
@@ -56,6 +64,8 @@
        (finally
          (doseq [topic# topics#]
            (underive topic# :metabase/event))))))
+
+
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Dummy Data                                              ;;
