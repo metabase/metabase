@@ -669,7 +669,7 @@
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/row-diff current-cards new-cards)]
-    (dashboard/archive-or-unarchive-internal-dashboard-questions! dashboard new-cards)
+    (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
     (assert-new-dashcards-are-not-internal-to-other-dashboards dashboard to-create)
     (when (seq to-update)
       (update-dashcards! dashboard to-update))
