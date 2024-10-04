@@ -889,92 +889,160 @@ describe("scenarios > dashboard > filters > query stages", () => {
         cy.log("## number columns");
         getFilter("Number").click();
         verifyNumberMappingOptions();
+
+        function verifyDateMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", ORDERS_DATE_COLUMNS],
+            ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", ORDERS_DATE_COLUMNS],
+            ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_DATE_COLUMNS],
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+          ]);
+          verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
+          verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
+        }
+
+        function verifyTextMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            ["Summaries", ["Category"]],
+            ["Summaries (2)", ["Reviewer", "Category"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_TEXT_COLUMNS],
+            ["Summaries", ["Category"]],
+            ["Summaries (2)", ["Reviewer", "Category"]],
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [
+              NAMELESS_SECTION,
+              [
+                "Reviews - Created At: Month → Reviewer",
+                "Products Via Product ID Category",
+              ],
+            ],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [
+              NAMELESS_SECTION,
+              [
+                "Reviews - Created At: Month → Reviewer",
+                "Products Via Product ID Category",
+              ],
+            ],
+          ]);
+        }
+
+        function verifyNumberMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
+            ], // https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+            ["Summaries (2)", ["Count", "Sum of Rating"]],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+            ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+            [
+              "Product",
+              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
+            ], // https://github.com/metabase/metabase/issues/46845
+            ["User", PEOPLE_NUMBER_COLUMNS],
+            ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
+            ["Summaries (2)", ["Count", "Sum of Rating"]],
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [
+              NAMELESS_SECTION,
+              ["Count", "Sum of Reviews - Created At: Month → Rating"],
+            ],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [
+              NAMELESS_SECTION,
+              ["Count", "Sum of Reviews - Created At: Month → Rating"],
+            ],
+          ]);
+        }
       });
 
-      function verifyDateMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", ORDERS_DATE_COLUMNS],
-          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-          ["Summaries", ["Created At: Month", "Created At: Year"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", ORDERS_DATE_COLUMNS],
-          ["Reviews", [...REVIEWS_DATE_COLUMNS, ...REVIEWS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_DATE_COLUMNS],
-          ["Summaries", ["Created At: Month", "Created At: Year"]],
-        ]);
-        verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
-        verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
-      }
+      describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
+        it("1st stage aggregation", () => {
+          setup1stStageAggregationFilter();
 
-      function verifyTextMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category"]],
-          ["Summaries (2)", ["Reviewer", "Category"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Reviews", [...REVIEWS_TEXT_COLUMNS, ...REVIEWS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_TEXT_COLUMNS],
-          ["Summaries", ["Category"]],
-          ["Summaries (2)", ["Reviewer", "Category"]],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [
-            NAMELESS_SECTION,
-            [
-              "Reviews - Created At: Month → Reviewer",
-              "Products Via Product ID Category",
-            ],
-          ],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [
-            NAMELESS_SECTION,
-            [
-              "Reviews - Created At: Month → Reviewer",
-              "Products Via Product ID Category",
-            ],
-          ],
-        ]);
-      }
+          getDashboardCard(0).scrollIntoView();
+          getDashboardCard(0).findByText("Rows 1-1 of 3").should("be.visible");
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
 
-      function verifyNumberMappingOptions() {
-        verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
-          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_NUMBER_COLUMNS],
-          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-          ["Summaries (2)", ["Count", "Sum of Rating"]],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
-          ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-          ["Reviews", [...REVIEWS_NUMBER_COLUMNS, ...REVIEWS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-          ["User", PEOPLE_NUMBER_COLUMNS],
-          ["Summaries", ["Count", "Sum of Total", "5 * Count"]],
-          ["Summaries (2)", ["Count", "Sum of Rating"]],
-        ]);
-        verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
-          [
-            NAMELESS_SECTION,
-            ["Count", "Sum of Reviews - Created At: Month → Rating"],
-          ],
-        ]);
-        verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
-          [
-            NAMELESS_SECTION,
-            ["Count", "Sum of Reviews - Created At: Month → Rating"],
-          ],
-        ]);
-      }
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 3 rows",
+          );
+        });
+
+        it("1st stage breakout", () => {
+          setup1stStageBreakoutFilter();
+
+          getDashboardCard(0).scrollIntoView();
+          getDashboardCard(0)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 1,077 rows",
+          );
+        });
+
+        it("2nd stage aggregation", () => {
+          setup2ndStageAggregationFilter();
+
+          getDashboardCard(0).scrollIntoView();
+          getDashboardCard(0).findByText("Rows 1-1 of 6").should("be.visible");
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 6 rows",
+          );
+        });
+
+        it("2nd stage breakout", () => {
+          setup2ndStageBreakoutFilter();
+
+          getDashboardCard(0).scrollIntoView();
+          getDashboardCard(0)
+            .findByText("Rows 1-1 of 1077")
+            .should("be.visible");
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 1,077 rows",
+          );
+        });
+      });
     });
   });
 
@@ -1091,141 +1159,55 @@ describe("scenarios > dashboard > filters > query stages", () => {
          * TODO: add a test with unit of time parameter and non-last stage filter parameter
          */
         it("1st stage aggregation", () => {
-          editDashboard();
-
-          getFilter("Number").click();
-          sidebar().findByText("Filter operator").next().click();
-          popover().findByText("Between").click();
-
-          getDashboardCard(0).findByText("Select…").click();
-          popover().within(() => {
-            getPopoverList().scrollTo("bottom");
-            getPopoverItem("Count").click();
-          });
-
-          cy.button("Save").click();
-          cy.wait("@updateDashboard");
-
-          filterWidget().eq(0).click();
-          popover().within(() => {
-            cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
-            cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
-            cy.button("Add filter").click();
-          });
-          cy.wait("@dashboardData");
+          setup1stStageAggregationFilter();
 
           getDashboardCard(0).scrollIntoView();
-          getDashboardCard(0).findByText("Rows 1-1 of 3").should("be.visible");
+          getDashboardCard(0)
+            .findByTestId("cell-data")
+            .should("have.text", "3");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
 
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 3 rows",
-          );
+          cy.findAllByTestId("cell-data").last().should("have.text", "3");
         });
 
         it("1st stage breakout", () => {
-          editDashboard();
-
-          getFilter("Text").click();
-
-          getDashboardCard(0).findByText("Select…").click();
-          popover().within(() => {
-            getPopoverList().scrollTo("bottom");
-            getPopoverItem("Category", 1).click();
-          });
-
-          cy.button("Save").click();
-          cy.wait("@updateDashboard");
-
-          filterWidget().eq(0).click();
-          popover().within(() => {
-            cy.findByLabelText("Gadget").click();
-            cy.button("Add filter").click();
-          });
-          cy.wait("@dashboardData");
+          setup1stStageBreakoutFilter();
 
           getDashboardCard(0).scrollIntoView();
           getDashboardCard(0)
-            .findByText("Rows 1-1 of 1077")
-            .should("be.visible");
+            .findByTestId("cell-data")
+            .should("have.text", "1,077");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
 
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 1,077 rows",
-          );
+          cy.findAllByTestId("cell-data").last().should("have.text", "1,077");
         });
 
         it("2nd stage aggregation", () => {
-          editDashboard();
-
-          getFilter("Number").click();
-          sidebar().findByText("Filter operator").next().click();
-          popover().findByText("Between").click();
-
-          getDashboardCard(0).findByText("Select…").click();
-          popover().within(() => {
-            getPopoverList().scrollTo("bottom");
-            getPopoverItem("Count", 1).click();
-          });
-
-          cy.button("Save").click();
-          cy.wait("@updateDashboard");
-
-          filterWidget().eq(0).click();
-          popover().within(() => {
-            cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
-            cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
-            cy.button("Add filter").click();
-          });
-          cy.wait("@dashboardData");
-
-          getDashboardCard(0).scrollIntoView();
-          getDashboardCard(0).findByText("Rows 1-1 of 6").should("be.visible");
-          getDashboardCard(0).findByTestId("legend-caption-title").click();
-          cy.wait("@dataset");
-
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 6 rows",
-          );
-        });
-
-        it("2nd stage breakout", () => {
-          editDashboard();
-
-          getFilter("Text").click();
-
-          getDashboardCard(0).findByText("Select…").click();
-          popover().within(() => {
-            getPopoverList().scrollTo("bottom");
-            getPopoverItem("Category", 2).click();
-          });
-
-          cy.button("Save").click();
-          cy.wait("@updateDashboard");
-
-          filterWidget().eq(0).click();
-          popover().within(() => {
-            cy.findByLabelText("Gadget").click();
-            cy.button("Add filter").click();
-          });
-          cy.wait("@dashboardData");
+          setup2ndStageAggregationFilter();
 
           getDashboardCard(0).scrollIntoView();
           getDashboardCard(0)
-            .findByText("Rows 1-1 of 1077")
-            .should("be.visible");
+            .findByTestId("cell-data")
+            .should("have.text", "6");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
 
-          cy.findByTestId("question-row-count").should(
-            "have.text",
-            "Showing 1,077 rows",
-          );
+          cy.findAllByTestId("cell-data").last().should("have.text", "6");
+        });
+
+        it("2nd stage breakout", () => {
+          setup2ndStageBreakoutFilter();
+
+          getDashboardCard(0).scrollIntoView();
+          getDashboardCard(0)
+            .findByTestId("cell-data")
+            .should("have.text", "1,077");
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+
+          cy.findAllByTestId("cell-data").last().should("have.text", "1,077");
         });
       });
     });
@@ -1458,7 +1440,6 @@ function createQ8Query(source: Card): StructuredQuery {
 function createQ9Query(source: Card): StructuredQuery {
   return {
     "source-query": createQ8Query(source),
-    ...createQ8Query(source),
     aggregation: [["count"]],
   };
 }
@@ -1516,6 +1497,100 @@ function createAndVisitDashboard(cards: Card[]) {
       })),
     ],
   }).then(dashboard => visitDashboard(dashboard.id));
+}
+
+function setup1stStageAggregationFilter() {
+  editDashboard();
+
+  getFilter("Number").click();
+  sidebar().findByText("Filter operator").next().click();
+  popover().findByText("Between").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Count").click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
+    cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
+    cy.button("Add filter").click();
+  });
+  cy.wait("@dashboardData");
+}
+
+function setup1stStageBreakoutFilter() {
+  editDashboard();
+
+  getFilter("Text").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Category", 1).click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findByLabelText("Gadget").click();
+    cy.button("Add filter").click();
+  });
+  cy.wait("@dashboardData");
+}
+
+function setup2ndStageAggregationFilter() {
+  editDashboard();
+
+  getFilter("Number").click();
+  sidebar().findByText("Filter operator").next().click();
+  popover().findByText("Between").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Count", 1).click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
+    cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
+    cy.button("Add filter").click();
+  });
+  cy.wait("@dashboardData");
+}
+
+function setup2ndStageBreakoutFilter() {
+  editDashboard();
+
+  getFilter("Text").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("Category", 2).click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findByLabelText("Gadget").click();
+    cy.button("Add filter").click();
+  });
+  cy.wait("@dashboardData");
 }
 
 function getFilter(name: string) {
