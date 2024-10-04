@@ -23,7 +23,7 @@ export function MetricEmptyState({
         {t`A metric is one of the key numbers you want to keep track of`}
       </Text>
       <Text mb="lg" c="text-medium" maw="28.75rem" align="center">
-        {t`To create one, you’ll need to define how its calculated, add any required filters, and optionally pick the main dimension for your metric.`}
+        {t`To create one, you’ll need to define how it’s calculated, add any required filters, and optionally pick the main dimension for your metric.`}
       </Text>
       {isRunnable && (
         <Button variant="filled" onClick={() => runQuestionQuery()}>
