@@ -401,7 +401,3 @@
                       (merge (when channel-ids {:channel-ids channel-ids})))]
     (when (not (:archived dashboard))
       (send-pulse!* pulse dashboard))))
-
-#_(send-pulse! (t2/select-one :model/Pulse))
-
-#_(metabase.test/set-ns-log-level! 'metabase.pulse :debug)
