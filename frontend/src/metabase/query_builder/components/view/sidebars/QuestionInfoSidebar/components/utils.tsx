@@ -19,12 +19,14 @@ export interface QuestionSource {
 
 export const useQuestionSourcesInfo = (
   question: Question,
-): QuestionSource[] | null => {
+): QuestionSource[] => {
+  /** This might be a table or the underlying question that the presently viewed question is based on */
   const sourceInfo = question.legacyQueryTable();
+
   const metadata = useSelector(getMetadata);
 
   if (!sourceInfo) {
-    return null;
+    return [];
   }
 
   const sourceModel = String(sourceInfo.id).includes("card__")
@@ -43,18 +45,16 @@ export const useQuestionSourcesInfo = (
 
   const iconProps = getIcon(modelForIcon);
 
-  if (sourceInfo) {
-    return [
-      {
-        url: Urls.browseDatabase(sourceInfo.db),
-        name: sourceInfo.db.name,
-        iconProps: { name: "database" },
-      },
-      { url: sourceUrl, name: sourceInfo.display_name, iconProps },
-    ];
-  } else {
-    return null;
+  const sources = [];
+  if (sourceInfo.db) {
+    sources.push({
+      url: Urls.browseDatabase(sourceInfo.db),
+      name: sourceInfo.db.name,
+      iconProps: { name: "database" as const },
+    });
   }
+  sources.push({ url: sourceUrl, name: sourceInfo.display_name, iconProps });
+  return sources;
 };
 
 export const getSourceUrl = ({
