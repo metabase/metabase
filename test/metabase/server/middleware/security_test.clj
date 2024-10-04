@@ -186,13 +186,7 @@
 
 (deftest test-access-control-headers?
   (testing "Should always allow localhost:*"
-    (tu/with-temporary-setting-values [enable-embedding                  false
-                                       enable-embedding-interactive      false
-                                       enable-embedding-static           false
-                                       enable-embedding-sdk              true
-                                       embedding-app-origin              nil
-                                       embedding-app-origins-interactive nil
-                                       embedding-app-origins-sdk         nil]
+    (tu/with-temporary-setting-values [enable-embedding-sdk true]
       (is (= "http://localhost:8080" (-> "http://localhost:8080"
                                          (mw.security/access-control-headers
                                           (embed.settings/enable-embedding-sdk)

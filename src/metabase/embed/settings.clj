@@ -133,7 +133,7 @@
   :audit      :getter
   :setter     (make-embedding-toggle-setter :enable-embedding-static "static-embedding"))
 
-(defn- check-enable-settings
+(defn- check-enable-settings!
   "Ensure either: nothing is set, the deprecated setting is set, or only supported settings are set"
   [env]
   (let [deprecated-enable-env-var-set? (some? (:mb-enable-embedding env))
@@ -143,7 +143,7 @@
                       {:deprecated-enable-env-vars-set deprecated-enable-env-var-set?
                        :current-enable-env-vars-set    supported-enable-env-vars-set})))))
 
-(defn- sync-enable-settings
+(defn- sync-enable-settings!
   "If Only the deprecated enable-embedding is set, we want to sync the new settings to the deprecated one."
   [env]
   ;; we use [[find]], so we get the value if it is ∈ #{true false}, and skips nil
@@ -157,7 +157,7 @@
     (enable-embedding-interactive! enable-embedding-from-env)
     (enable-embedding-static! enable-embedding-from-env)))
 
-(defn- check-origins-settings
+(defn- check-origins-settings!
   "Ensure either: nothing is set, the deprecated setting is set, or only supported settings are set"
   [env]
   (let [deprecated-origin-env-var-set? (some? (:mb-embedding-app-origin env))
@@ -168,7 +168,7 @@
                       {:deprecated-enable-env-vars-set deprecated-origin-env-var-set?
                        :current-enable-env-vars-set    supported-origins-env-vars-set})))))
 
-(defn- sync-origins-settings
+(defn- sync-origins-settings!
   "If Only the deprecated enable-embedding is set, we want to sync the new settings to the deprecated one."
   [env]
   ;; we use [[find]], so we get the value if it is ∈ #{true false}, and skips nil
@@ -181,19 +181,19 @@
     (embedding-app-origins-sdk! app-origin-from-env)
     (embedding-app-origins-interactive! app-origin-from-env)))
 
-(defn- check-settings
+(defn- check-settings!
   "We want to disallow setting both deprecated embed settings, and the new ones at the same time. This is to prevent
    confusion and to make sure that we're not setting the same thing twice."
   [env]
-  (check-enable-settings env)
-  (check-origins-settings env))
+  (check-enable-settings! env)
+  (check-origins-settings! env))
 
-(defn- sync-settings
+(defn- sync-settings!
   "Sync settings to ensure that we can accept `MB_ENABLE_EMBEDDING` and `MB_EMBEDDING_APP_ORIGIN`. This should always
   be called after [[check-settings]] so we don't overwrite a setting!"
   [env]
-  (sync-enable-settings env)
-  (sync-origins-settings env))
+  (sync-enable-settings! env)
+  (sync-origins-settings! env))
 
 (defn check-and-sync-settings-on-startup!
   "Check and sync settings on startup. This is to ensure that we don't have any conflicting settings. A conflicting
@@ -201,8 +201,8 @@
   (and none of its corresponding new settings are set), we want to sync the deprecated setting to the new settings and
   print a deprecation warning."
   [env]
-  (check-settings env)
-  (sync-settings env))
+  (check-settings! env)
+  (sync-settings! env))
 
 (mu/defn some-embedding-enabled? :- :boolean
   "Is any kind of embedding setup?"
