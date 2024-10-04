@@ -114,13 +114,6 @@ export function VisualizationError({
             <QueryErrorTitle>{t`An error occurred in your query`}</QueryErrorTitle>
           </QueryErrorHeader>
           <QueryErrorMessage>{processedError}</QueryErrorMessage>
-          {isSql && showMetabaseLinks && (
-            <QueryErrorLink
-              href={MetabaseSettings.learnUrl("debugging-sql/sql-syntax")}
-            >
-              {t`Learn how to debug SQL errors`}
-            </QueryErrorLink>
-          )}
         </QueryErrorContent>
       </QueryError>
     );
