@@ -44,7 +44,7 @@ describe("scenarios > collections > clean up", () => {
       cy.log("should not show in custom analytics collections");
       visitCollection("root");
       navigationSidebar().within(() => {
-        cy.findByText("Metabase analytics").click();
+        cy.findByText("Usage analytics").click();
         cy.findByText("Custom reports").click();
       });
       collectionMenu().click();
