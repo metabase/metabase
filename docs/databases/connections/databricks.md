@@ -28,7 +28,7 @@ See [Personal Access Token (PAT)](https://docs.databricks.com/en/dev-tools/auth/
 
 ## Catalog
 
-For now, Metabase doesn't support multi-catalog connections.
+For now, you can only select one catalog. Metabase doesn't support multi-catalog connections.
 
 ## Schemas
 
