@@ -8,6 +8,7 @@ import {
   getDraggableElements,
   getNotebookStep,
   leftSidebar,
+  main,
   moveDnDKitElement,
   openNotebook,
   pieSlices,
@@ -600,5 +601,8 @@ function confirmSliceClickBehavior(sliceLabel, value, elementIndex) {
   });
 
   cy.location("pathname").should("eq", `/question/${value}`);
+  main().within(() => {
+    cy.findByText("We're a little lost...");
+  });
   cy.go("back");
 }
