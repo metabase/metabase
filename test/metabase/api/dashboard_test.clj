@@ -5000,3 +5000,46 @@
              (update (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))
                      :data
                      #(map (fn [card] (select-keys card [:id])) %)))))))
+
+(defn- get-revisions-http-req [dash-id]
+  (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/revisions")))
+
+(defn- post-revert-http-req [dash-id rev-id]
+  (mt/user-http-request :rasta :post 200 (str "dashboard/" dash-id "/revert")
+                        {:revision_id rev-id}))
+
+(defn- update-dashcards! [dash-id card-ids]
+  (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id)
+                           {:dashcards (map-indexed (fn [idx card-id]
+                                                      {:id (- (inc idx))
+                                                       :card_id card-id
+                                                       :col 0
+                                                       :row idx
+                                                       :size_x 10
+                                                       :size_y 10})
+                                                    card-ids)}))
+
+(deftest revert-dashboard-behaves-for-dashboard-questions
+  (testing "POST /api/dashboard/:id/revert"
+    (testing "My DQ is moved to another Dashboard"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/Dashboard {other-dash-id :id} {}
+                     :model/Card {dq-id :id} {:dashboard_id dash-id}
+                     :model/Card {card-id :id} {}]
+        (update-dashcards! dash-id [card-id dq-id])
+        (update-dashcards! dash-id [])
+        (t2/update! :model/Card dq-id {:dashboard_id other-dash-id})
+        (post-revert-http-req dash-id (:id (second (get-revisions-http-req dash-id))))
+        (is (= #{card-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))
+        (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))))
+    (testing "A regular card is moved to another Dashboard"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/Dashboard {other-dash-id :id} {}
+                     :model/Card {dq-id :id} {:dashboard_id dash-id}
+                     :model/Card {card-id :id} {}]
+        (update-dashcards! dash-id [card-id dq-id])
+        (update-dashcards! dash-id [])
+        (t2/update! :model/Card card-id {:dashboard_id other-dash-id})
+        (post-revert-http-req dash-id (:id (second (get-revisions-http-req dash-id))))
+        (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))
+        (is (= #{dq-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))))))
