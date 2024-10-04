@@ -138,7 +138,8 @@
    :embedding_app_origin_set             (boolean  (or
                                                     #_:clj-kondo/ignore (embed.settings/embedding-app-origin)
                                                     (embed.settings/embedding-app-origins-interactive)
-                                                    (embed.settings/embedding-app-origins-sdk)))
+                                                    (let [sdk-origins (embed.settings/embedding-app-origins-sdk)]
+                                                      (and sdk-origins (not= "localhost:*" sdk-origins)))))
    :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
    :appearance_help_link                 (public-settings/help-link)
    :appearance_logo                      (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")

@@ -28,7 +28,8 @@
                                   :embedding-app-origin-set   (boolean
                                                                (or (setting/get-value-of-type :string :embedding-app-origin)
                                                                    (setting/get-value-of-type :string :embedding-app-origins-interactive)
-                                                                   (setting/get-value-of-type :string :embedding-app-origins-sdk)))
+                                                                   (let [sdk-origins (setting/get-value-of-type :string :embedding-app-origins-sdk)]
+                                                                     (and sdk-origins (not= "localhost:*" sdk-origins)))))
                                   :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
                                   :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
 
