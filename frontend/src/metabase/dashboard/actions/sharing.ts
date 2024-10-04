@@ -1,7 +1,11 @@
+import {
+  createDashboardPublicLink,
+  deleteDashboardPublicLink,
+} from "metabase/api";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import { createAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 import { DashboardApi } from "metabase/services";
-import type { Dashboard, DashboardId } from "metabase-types/api";
+import type { DashboardId } from "metabase-types/api";
 import type { Dispatch, EmbedOptions } from "metabase-types/store";
 
 import { closeSidebar, setSidebar } from "./ui";
@@ -42,25 +46,31 @@ export const updateEmbeddingParams = createAction(
 );
 
 export const CREATE_PUBLIC_LINK = "metabase/dashboard/CREATE_PUBLIC_LINK";
-
-export const createPublicLink = createAction(
+export const createPublicLink = createThunkAction(
   CREATE_PUBLIC_LINK,
-  async ({
-    id,
-  }: DashboardIdPayload): Promise<{
-    id: DashboardId;
-    uuid: Dashboard["public_uuid"];
-  }> => {
-    const { uuid } = await DashboardApi.createPublicLink({ id });
-    return { id, uuid };
-  },
+  ({ id }: DashboardIdPayload) =>
+    async (dispatch: Dispatch) => {
+      const { data } = await (dispatch(
+        createDashboardPublicLink.initiate({
+          id,
+        }),
+      ) as Promise<{ data: { uuid: string }; error: unknown }>);
+
+      return { id, uuid: data.uuid };
+    },
 );
 
 export const DELETE_PUBLIC_LINK = "metabase/dashboard/DELETE_PUBLIC_LINK";
-export const deletePublicLink = createAction(
+export const deletePublicLink = createThunkAction(
   DELETE_PUBLIC_LINK,
-  async ({ id }: DashboardIdPayload): Promise<DashboardIdPayload> => {
-    await DashboardApi.deletePublicLink({ id });
-    return { id };
-  },
+  ({ id }: DashboardIdPayload) =>
+    async (dispatch: Dispatch) => {
+      await dispatch(
+        deleteDashboardPublicLink.initiate({
+          id,
+        }),
+      );
+
+      return { id };
+    },
 );

@@ -110,7 +110,7 @@
                          :minute-of-hour :hour-of-day
                          :day-of-week :day-of-month :day-of-year
                          :week-of-year :month-of-year :quarter-of-year}
-        expected-defaults [{:lib/type :option/temporal-bucketing, :unit :day, :default true}]]
+        expected-defaults [{:lib/type :option/temporal-bucketing, :unit :month, :default true}]]
     (testing "missing fingerprint"
       (let [column (dissoc column :fingerprint)
             options (lib.temporal-bucket/available-temporal-buckets-method nil -1 column)]
@@ -123,8 +123,8 @@
                              "2017-04-15T13:34:19.931Z" :week
                              "2016-05-15T13:34:19.931Z" :day
                              "2016-04-27T13:34:19.931Z" :minute
-                             nil                        :day
-                             "garbage"                  :day}]
+                             nil                        :month
+                             "garbage"                  :month}]
         (testing latest
           (let [bounds {:earliest "2016-04-26T19:29:55.147Z"
                         :latest latest}
@@ -166,12 +166,11 @@
 
 (deftest ^:parallel temporal-bucketing-options-expressions-test
   (testing "Temporal bucketing should be available for Date and DateTime-valued expressions"
-    ;; TODO: Why is the default :month for a Field and :day for an expression?
     (is (=? [{:unit :minute}
              {:unit :hour}
-             {:unit :day, :default true}
+             {:unit :day}
              {:unit :week}
-             {:unit :month}
+             {:unit :month, :default true}
              {:unit :quarter}
              {:unit :year}
              {:unit :minute-of-hour}

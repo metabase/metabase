@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import _ from "underscore";
 
 import { screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
@@ -14,24 +15,30 @@ import { setup } from "../setup";
 
 export type SetupOpts = {
   settingValues?: Partial<Settings>;
+  isEnvVar?: boolean;
   isHosted?: boolean;
   hasEmbeddingFeature?: boolean;
   hasEnterprisePlugins?: boolean;
 };
 
 export const setupEmbedding = async ({
-  settingValues,
+  settingValues = {},
+  isEnvVar = false,
   isHosted = false,
   hasEmbeddingFeature = false,
   hasEnterprisePlugins = false,
 }: SetupOpts) => {
   const returnedValue = await setup({
-    settings: Object.entries(settingValues ?? {}).map(([key, value]) => {
-      return createMockSettingDefinition({
+    settings: _.pairs<Partial<Settings>>(settingValues).map(([key, value]) =>
+      createMockSettingDefinition({
         key,
         value,
-      });
-    }),
+        is_env_setting: isEnvVar,
+        // in reality this would be the MB_[whatever] env name, but
+        // we can just use the key for easier testing
+        env_name: key,
+      }),
+    ),
     settingValues: createMockSettings(settingValues),
     tokenFeatures: createMockTokenFeatures({
       hosting: isHosted,

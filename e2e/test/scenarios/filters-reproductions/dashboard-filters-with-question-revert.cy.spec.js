@@ -13,6 +13,7 @@ import {
   saveDashboard,
   setFilter,
   snapshot,
+  updateSetting,
   visitDashboard,
   visitEmbeddedPage,
   visitQuestion,
@@ -221,13 +222,11 @@ describe("issue 35954", () => {
         });
 
         // Discard the legalese modal so we don't need to do an extra click in the UI
-        cy.request("PUT", "/api/setting/show-static-embed-terms", {
-          value: false,
-        });
+        updateSetting("show-static-embed-terms", false);
 
         visitDashboard(id);
         openSharingMenu("Embed");
-        modal().findByText("Static embed").click();
+        modal().findByText("Static embedding").click();
 
         cy.findByTestId("embedding-preview").within(() => {
           cy.intercept("GET", "api/preview_embed/dashboard/**").as(

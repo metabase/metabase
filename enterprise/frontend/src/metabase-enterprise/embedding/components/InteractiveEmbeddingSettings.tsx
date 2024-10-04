@@ -1,14 +1,13 @@
-import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import { useMergeSetting } from "metabase/admin/settings/components/EmbeddingSettings/hooks";
 import type { AdminSettingComponentProps } from "metabase/admin/settings/components/EmbeddingSettings/types";
 import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 import { SetByEnvVarWrapper } from "metabase/admin/settings/components/SettingsSetting";
+import { SwitchWithSetByEnvVar } from "metabase/admin/settings/components/widgets/EmbeddingOption/SwitchWithSetByEnvVar";
 import { SettingTextInput } from "metabase/admin/settings/components/widgets/SettingTextInput";
-import { useSetting } from "metabase/common/hooks/use-setting/use-setting";
+import { useMergeSetting } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { Box, Stack, Switch } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import type { SessionCookieSameSite } from "metabase-types/api";
 
 import { EmbeddingAppOriginDescription } from "./EmbeddingAppOriginDescription";
@@ -18,7 +17,7 @@ import {
 } from "./EmbeddingAppSameSiteCookieDescription";
 
 const INTERACTIVE_EMBEDDING_ORIGINS_SETTING = {
-  key: "embedding-app-origin",
+  key: "embedding-app-origins-interactive",
   display_name: t`Authorized origins`,
   description: <EmbeddingAppOriginDescription />,
   placeholder: "https://*.example.com",
@@ -34,17 +33,8 @@ const SAME_SITE_SETTING = {
 export function InteractiveEmbeddingSettings({
   updateSetting,
 }: AdminSettingComponentProps) {
-  const isInteractiveEmbeddingEnabled = useSetting(
-    "enable-embedding-interactive",
-  );
-
-  function handleToggleInteractiveEmbedding(
-    event: ChangeEvent<HTMLInputElement>,
-  ) {
-    updateSetting(
-      { key: "enable-embedding-interactive" },
-      event.target.checked,
-    );
+  function handleToggleInteractiveEmbedding(value: boolean) {
+    updateSetting({ key: "enable-embedding-interactive" }, value);
   }
 
   const interactiveEmbeddingOriginsSetting = useMergeSetting(
@@ -71,12 +61,10 @@ export function InteractiveEmbeddingSettings({
             [t`Interactive embedding`],
           ]}
         />
-        <Switch
-          label={t`Enable Interactive embedding`}
-          labelPosition="left"
-          size="sm"
-          checked={isInteractiveEmbeddingEnabled}
+        <SwitchWithSetByEnvVar
+          settingKey="enable-embedding-interactive"
           onChange={handleToggleInteractiveEmbedding}
+          label={t`Enable Interactive embedding`}
         />
         <Box>
           <SettingHeader

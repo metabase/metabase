@@ -152,6 +152,25 @@ describe("DashboardInfoSidebar", () => {
     expect(await screen.findByText("My little collection")).toBeInTheDocument();
   });
 
+  it("should show root collection", async () => {
+    await setup({
+      dashboard: createMockDashboard({
+        collection_id: null,
+        collection: createMockCollection({
+          name: "Our analytics",
+          // @ts-expect-error - ye olde null root collection bugbear
+          id: null,
+        }),
+      }),
+    });
+
+    expect(screen.getByText("Saved in")).toBeInTheDocument();
+    expect(await screen.findByText("Our analytics")).toHaveAttribute(
+      "href",
+      "/collection/root",
+    );
+  });
+
   it("should not show Visibility section when not shared publicly", async () => {
     await setup();
     expect(screen.queryByText("Visibility")).not.toBeInTheDocument();

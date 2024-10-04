@@ -1,4 +1,3 @@
-import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -16,21 +15,18 @@ import type { AdminSettingComponentProps } from "./types";
 export function EmbeddingSettings({
   updateSetting,
 }: AdminSettingComponentProps) {
-  function handleToggleStaticEmbedding(event: ChangeEvent<HTMLInputElement>) {
-    updateSetting({ key: "enable-embedding-static" }, event.target.checked);
+  function handleToggleStaticEmbedding(value: boolean) {
+    updateSetting({ key: "enable-embedding-static" }, value);
+    // TODO: remove before merging integration branch
+    updateSetting({ key: "enable-embedding" }, value);
   }
 
-  function handleToggleEmbeddingSdk(event: ChangeEvent<HTMLInputElement>) {
-    updateSetting({ key: "enable-embedding-sdk" }, event.target.checked);
+  function handleToggleEmbeddingSdk(value: boolean) {
+    updateSetting({ key: "enable-embedding-sdk" }, value);
   }
 
-  function handleToggleInteractiveEmbedding(
-    event: ChangeEvent<HTMLInputElement>,
-  ) {
-    updateSetting(
-      { key: "enable-embedding-interactive" },
-      event.target.checked,
-    );
+  function handleToggleInteractiveEmbedding(value: boolean) {
+    updateSetting({ key: "enable-embedding-interactive" }, value);
   }
 
   return (

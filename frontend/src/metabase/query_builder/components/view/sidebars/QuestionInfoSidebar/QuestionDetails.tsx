@@ -63,7 +63,7 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
           />
           <Text>
             <Link
-              to={`/collection/${question.collection()?.id}`}
+              to={`/collection/${question.collectionId() ?? "root"}`}
               variant="brand"
             >
               {question.collection()?.name}
