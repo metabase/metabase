@@ -421,10 +421,9 @@
     (if-not will-be-dq?
       true
       (and
-       (or *updating-dashboard* (not (contains? changes :collection_id)))
-       (not (contains? changes :collection_position))
-       (or (not (contains? changes :type))
-           (contains? #{:question "question" nil} (:type changes)))))))
+       (or *updating-dashboard* (not (api/column-will-change? :collection_id card changes)))
+       (not (api/column-will-change? :collection_position card changes))
+       (not (api/column-will-change? :type card changes))))))
 
 (defn- assert-is-valid-dashboard-internal-update [changes card]
   (let [dashboard-id->name (dissoc
