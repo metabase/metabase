@@ -1,6 +1,7 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
 /* eslint-disable import/order */
+const nodeExternals = require("webpack-node-externals");
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 const webpack = require("webpack");
@@ -118,12 +119,18 @@ module.exports = env => {
       ],
     },
 
-    externals: {
-      ...mainConfig.externals,
-      react: "react",
-      "react-dom": "react-dom",
-      "react/jsx-runtime": "react/jsx-runtime",
-    },
+    // externals: {
+    //   ...mainConfig.externals,
+    //   react: "react",
+    //   "react-dom": "react-dom",
+    //   "react/jsx-runtime": "react/jsx-runtime",
+    // },
+    // externals: [/(node_modules)/],
+    externals: [
+      nodeExternals({
+        allowlist: ["process/browser.js", "process", "moment"],
+      }),
+    ],
 
     optimization: !isDevMode
       ? {
