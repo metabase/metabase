@@ -649,25 +649,35 @@ export const getOtherSeriesTooltipModel = (
 ) => {
   const { groupedSeriesModels = [] } = chartModel;
 
-  const rows = groupedSeriesModels.map(seriesModel => {
-    const prevValue = computeDiffWithPreviousPeriod(
-      chartModel,
-      seriesModel,
-      dataIndex,
-    );
-    return {
+  const rows = groupedSeriesModels
+    .map(seriesModel => ({
       name: seriesModel.name,
+      column: seriesModel.column,
+      value: datum[seriesModel.dataKey],
+      prevValue: computeDiffWithPreviousPeriod(
+        chartModel,
+        seriesModel,
+        dataIndex,
+      ),
+    }))
+    .sort((a, b) => {
+      if (typeof a.value === "number" && typeof b.value === "number") {
+        return b.value - a.value;
+      }
+      return a.value === undefined ? 1 : -1;
+    })
+    .map(row => ({
+      name: row.name,
       values: [
         formatValueForTooltip({
-          value: datum[seriesModel.dataKey],
-          column: seriesModel.column,
-          settings,
+          value: row.value,
+          column: row.column,
           isAlreadyScaled: true,
+          settings,
         }),
-        prevValue,
+        row.prevValue,
       ],
-    };
-  });
+    }));
 
   return {
     header: String(
