@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.events :as events]
    [metabase.models.notification :as models.notification]
-   [metabase.notification.core :as notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
@@ -25,7 +24,7 @@
 (deftest system-event-e2e-test
   (testing "a system event that sends to an email channel with a custom template to an user recipient"
     (mt/with-model-cleanup [:model/Notification]
-      (binding [notification/send-notification! #'notification/send-notification-sync!]
+      (notification.tu/with-send-notification-sync!
         (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                     :details      {:type    :email/mustache
                                                                    :subject "Welcome {{event-info.object.first_name}} to {{context.site-name}}"
@@ -63,7 +62,7 @@
 (deftest system-event-resouce-template-test
   (testing "a system event that sends to an email channel with a custom template to an user recipient"
     (mt/with-model-cleanup [:model/Notification]
-      (binding [notification/send-notification! #'notification/send-notification-sync!]
+      (notification.tu/with-send-notification-sync!
         (mt/with-temp [:model/ChannelTemplate tmpl {:channel_type :channel/email
                                                     :details      {:type    :email/resource
                                                                    :subject "Welcome {{event-info.object.first_name}} to {{context.site-name}}"
