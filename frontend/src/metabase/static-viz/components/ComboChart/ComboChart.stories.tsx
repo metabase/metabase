@@ -1092,6 +1092,15 @@ export const BarStackedAllLabelsTimeseriesWithGap45717 = {
   },
 };
 
+export const BarMaxCategoriesDefault = {
+  render: Template,
+
+  args: {
+    rawSeries: data.barMaxCategoriesDefault as any,
+    renderingContext,
+  },
+};
+
 export const Default = {
   render: Template,
 
