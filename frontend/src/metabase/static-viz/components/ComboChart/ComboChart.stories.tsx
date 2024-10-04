@@ -1110,6 +1110,15 @@ export const BarMaxCategoriesStacked = {
   },
 };
 
+export const BarMaxCategoriesStackedNormalized = {
+  render: Template,
+
+  args: {
+    rawSeries: data.barMaxCategoriesStackedNormalized as any,
+    renderingContext,
+  },
+};
+
 export const Default = {
   render: Template,
 
