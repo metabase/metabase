@@ -173,10 +173,8 @@
                              (lib/filter (lib/= (meta/field-metadata :orders :quantity) 1)))
           venue-id       (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "PRODUCT_ID"])
           user-id        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "USER_ID"])
-          #_#_filtered-venue (-> basic
-                                 (lib/filter (lib/= (lib.metadata/field basic (meta/id :orders :product-id))
-                                                    (get-in lib.drill-thru.tu/test-queries
-                                                            ["ORDERS" :unaggregated :row "PRODUCT_ID"]))))]
+          exp-user-id    [:field {} (lib.drill-thru.tu/field-key= "USER_ID"  (meta/id :checkins :user-id))]
+          exp-venue-id   [:field {} (lib.drill-thru.tu/field-key= "VENUE_ID" (meta/id :checkins :venue-id))]]
       (testing "work as normal with no related filter"
         (lib.drill-thru.tu/test-drill-application
          {:column-name    "PRODUCT_ID"
@@ -185,44 +183,46 @@
           :custom-query   query
           :drill-type     :drill-thru/fk-details
           :expected       {:type            :drill-thru/fk-details
-                           :column          (m/find-first #(= (:name %) "PRODUCT_ID") (lib/returned-columns query))
+                           :column          {:name "PRODUCT_ID"}
                            :object-id       venue-id
                             ;; TODO: This field actually refers to the source table, not the target one. Is that right?
                             ;; Tech Debt Issue: #39409
                            :many-pks?       false}
-          :expected-query {:stages [{:filters [[:= {} [:field {} (meta/id :checkins :venue-id)] venue-id]]}]}}))
+          :expected-query {:stages [{:filters [[:= {} exp-venue-id venue-id]]}]}}))
 
       (testing "preserve any existing filter for another PK on the same table"
         (testing "existing USER_ID, new \"VENUE_ID\" (really PRODUCT_ID)"
-          (let [filtered-user (lib/filter query (lib/= (lib.metadata/field query (meta/id :orders :user-id)) user-id))]
+          (letfn [(filtered-user [query]
+                    (lib/filter query (lib/= (lib.metadata/field query (meta/id :orders :user-id)) user-id)))]
             (lib.drill-thru.tu/test-drill-application
              {:column-name    "PRODUCT_ID"
               :click-type     :cell
               :query-type     :unaggregated
-              :custom-query   filtered-user
+              :custom-query   (filtered-user query)
+              :custom-native  (-> query lib.drill-thru.tu/->native-wrapped filtered-user)
               :drill-type     :drill-thru/fk-details
-              :expected       {:type            :drill-thru/fk-details
-                               :column          (m/find-first #(= (:name %) "PRODUCT_ID")
-                                                              (lib/returned-columns filtered-user))
-                               :object-id       venue-id
-                               :many-pks?       false}
+              :expected       {:type      :drill-thru/fk-details
+                               :column    {:name "PRODUCT_ID"}
+                               :object-id venue-id
+                               :many-pks? false}
               :expected-query
-              {:stages [{:filters [[:= {} [:field {} (meta/id :checkins :user-id)]  user-id]
-                                   [:= {} [:field {} (meta/id :checkins :venue-id)] venue-id]]}]}})))
+              {:stages [{:filters [[:= {} exp-user-id  user-id]
+                                   [:= {} exp-venue-id venue-id]]}]}})))
         (testing "existing \"VENUE_ID\" (really PRODUCT_ID), new USER_ID"
-          (let [filtered-venue (lib/filter query (lib/= (lib.metadata/field query (meta/id :orders :product-id))
-                                                        venue-id))]
+          (letfn [(filtered-venue [query]
+                    (lib/filter query (lib/= (lib.metadata/field query (meta/id :orders :product-id))
+                                             venue-id)))]
             (lib.drill-thru.tu/test-drill-application
              {:column-name    "USER_ID"
               :click-type     :cell
               :query-type     :unaggregated
-              :custom-query   filtered-venue
+              :custom-query   (filtered-venue query)
+              :custom-native  (-> query lib.drill-thru.tu/->native-wrapped filtered-venue)
               :drill-type     :drill-thru/fk-details
-              :expected       {:type            :drill-thru/fk-details
-                               :column          (m/find-first #(= (:name %) "USER_ID")
-                                                              (lib/returned-columns filtered-venue))
-                               :object-id       user-id
-                               :many-pks?       false}
+              :expected       {:type      :drill-thru/fk-details
+                               :column    {:name "USER_ID"}
+                               :object-id user-id
+                               :many-pks? false}
               :expected-query
-              {:stages [{:filters [[:= {} [:field {} (meta/id :checkins :venue-id)] venue-id]
-                                   [:= {} [:field {} (meta/id :checkins :user-id)]  user-id]]}]}})))))))
+              {:stages [{:filters [[:= {} exp-venue-id venue-id]
+                                   [:= {} exp-user-id  user-id]]}]}})))))))

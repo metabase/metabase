@@ -23,6 +23,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -402,11 +403,17 @@
   [a-query      :- ::lib.schema/query
    stage-number :- :int
    card-id      :- [:maybe ::lib.schema.id/card]]
-  (if (and (lib.util/native-stage? a-query stage-number) card-id)
-    {:query        (query a-query (lib.metadata/card a-query card-id))
-     :stage-number -1}
-    {:query        a-query
-     :stage-number stage-number}))
+  (or (and (lib.util/native-stage? a-query stage-number)
+           card-id
+           (if-let [card (lib.metadata/card a-query card-id)]
+             {:query        (query a-query card)
+              :stage-number -1}
+             (do
+               (log/warn "Failed to wrap native query with MBQL; card not found" {:query   a-query
+                                                                                  :card-id card-id})
+               nil)))
+      {:query        a-query
+       :stage-number stage-number}))
 
 (defn with-wrapped-native-query
   "Calls [[wrap-native-query-with-mbql]] on the given `a-query`, `stage-number` and `card-id`, then calls

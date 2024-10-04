@@ -660,16 +660,16 @@
 
 (deftest ^:parallel available-drill-thrus-test-3
   (lib.drill-thru.tu/test-available-drill-thrus
-   {:click-type  :cell
-    :query-type  :unaggregated
-    :column-name "SUBTOTAL"
-    :expected    [{:type      :drill-thru/zoom
-                   :object-id (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "ID"])
-                   :many-pks? false}
-                  {:type :drill-thru/quick-filter, :operators [{:name "<"}
-                                                               {:name ">"}
-                                                               {:name "="}
-                                                               {:name "≠"}]}]}))
+    {:click-type  :cell
+     :query-type  :unaggregated
+     :column-name "SUBTOTAL"
+     :expected    [{:type      :drill-thru/zoom
+                    :object-id (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "ID"])
+                    :many-pks? false}
+                   {:type :drill-thru/quick-filter, :operators [{:name "<"}
+                                                                {:name ">"}
+                                                                {:name "="}
+                                                                {:name "≠"}]}]}))
 
 (deftest ^:parallel available-drill-thrus-test-4
   (lib.drill-thru.tu/test-available-drill-thrus
@@ -748,7 +748,10 @@
                    :row-count  77
                    :table-name "Orders"}
                   {:display-name "See this month by week"
-                   :type         :drill-thru/zoom-in.timeseries}]}))
+                   :type         :drill-thru/zoom-in.timeseries}]
+    ;; Underlying records and automatic insights are not supported for native.
+    ;; zoom-in.timeseries can't be because we don't know what unit (if any) it's currently bucketed by.
+    :native-drills #{:drill-thru/quick-filter}}))
 
 (deftest ^:parallel available-drill-thrus-test-10
   (testing (str "fk-filter should not get returned for non-fk column (#34440) "
@@ -764,7 +767,8 @@
                     {:type :drill-thru/quick-filter, :operators [{:name "="}
                                                                  {:name "≠"}]}
                     {:type :drill-thru/underlying-records, :row-count 2, :table-name "Orders"}
-                    {:type :drill-thru/zoom-in.timeseries, :display-name "See this month by week"}]})))
+                    {:type :drill-thru/zoom-in.timeseries, :display-name "See this month by week"}]
+      :native-drills #{:drill-thru/quick-filter}})))
 
 ;; FIXME: quick-filter gets returned for non-metric column (#34443)
 (deftest ^:parallel available-drill-thrus-test-11

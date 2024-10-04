@@ -140,6 +140,7 @@
    {:drill-type   :drill-thru/sort
     :click-type   :header
     :query-type   :unaggregated
+    :query-kinds  [:mbql] ; This test only makes sense on MBQL; for native we don't know it's already sorted.
     :column-name  "TOTAL"
     :custom-query (-> (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                       (lib/order-by (meta/field-metadata :orders :total) :desc))
@@ -158,6 +159,7 @@
    {:drill-type   :drill-thru/sort
     :click-type   :header
     :query-type   :unaggregated
+    :query-kinds  [:mbql] ; This test only makes sense on MBQL; for native we don't know it's already sorted.
     :column-name  "CREATED_AT"
     :custom-query (-> (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
                       (lib/order-by (meta/field-metadata :orders :created-at) :asc))
@@ -210,6 +212,7 @@
    {:drill-type   :drill-thru/sort
     :click-type   :header
     :query-type   :aggregated
+    :query-kinds  [:mbql] ; This test only makes sense on MBQL; for native we don't know it's already sorted.
     :column-name  "CREATED_AT"
     :custom-query (->
                    (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
@@ -227,13 +230,15 @@
                        {"CustomColumn" 2
                         "avg"          13.2})]
       (lib.drill-thru.tu/test-drill-application
-       {:column-name    "CustomColumn"
-        :click-type     :header
-        :query-type     :aggregated
-        :custom-query   query
-        :custom-row     row
-        :drill-type     :drill-thru/sort
-        :expected       {:type            :drill-thru/sort
-                         :column          {:name "CustomColumn"}
-                         :sort-directions [:asc :desc]}
-        :expected-query {:stages [{:order-by [[:asc {} [:expression {} "CustomColumn"]]]}]}}))))
+       {:column-name     "CustomColumn"
+        :click-type      :header
+        :query-type      :aggregated
+        :custom-query    query
+        :custom-native   (lib.drill-thru.tu/->native-wrapped query)
+        :custom-row      row
+        :drill-type      :drill-thru/sort
+        :expected        {:type            :drill-thru/sort
+                          :column          {:name "CustomColumn"}
+                          :sort-directions [:asc :desc]}
+        :expected-query  {:stages [{:order-by [[:asc {} [:expression {} "CustomColumn"]]]}]}
+        :expected-native {:stages [{:order-by [[:asc {} [:field {} "CustomColumn"]]]}]}}))))

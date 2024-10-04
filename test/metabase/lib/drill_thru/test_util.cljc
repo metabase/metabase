@@ -6,9 +6,11 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -72,24 +74,79 @@
    [:custom-query {:optional true} [:maybe ::lib.schema/query]]
    [:custom-row   {:optional true} [:maybe Row]]])
 
+(def ^:private native-card-id 12)
+
+(defn ->native
+  "Wraps a given MBQL query into a dummy SQL query, backed by a card. Returns the native query."
+  [mbql-query]
+  (let [cols        (try
+                      (->> (lib/returned-columns mbql-query)
+                           (map #(assoc % :lib/source :source/native)))
+                      (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
+                        ;; Not all the input queries passed to this are real. Some of them are skeletons used
+                        ;; as test expectations. If we fail to generate the returned columns, just return nil.
+                        ;; We don't care about retrieving the columns from a test expectation.
+                        (if (-> e ex-data :type #{:metabase.util.malli.fn/invalid-input})
+                          nil ; Return a blank column list if we failed to validate.
+                          (throw e))))
+        original-mp (lib.metadata/->metadata-provider mbql-query)
+        base        (lib/native-query original-mp "dummy SQL query")
+        new-mp      (lib.tu/metadata-provider-with-card-from-query
+                      original-mp native-card-id base
+                      {:result-metadata cols})]
+    (lib/native-query new-mp "dummy SQL query")))
+
+(defn ->native-wrapped
+  "Wraps a given MBQL query into a dummy SQL query, backed by a card. Returns an MBQL query using that card
+  as its source."
+  [mbql-query]
+  (let [native (->native mbql-query)
+        mp     (lib.metadata/->metadata-provider native)
+        card   (lib.metadata/card mp native-card-id)]
+    (lib/query mp card)))
+
+(defn field-key=
+  "Given some possible field keys (column names or IDs), returns a function that tries to match its input against
+  each of them, returning the one that matched.
+
+  This is intended to be used in `=?` expectations as a matcher function."
+  [& exps]
+  (fn [x]
+    (some #(= x %) exps)))
+
+(def ^:private unsupported-on-native
+  #{:drill-thru/automatic-insights
+    :drill-thru/pivot
+    :drill-thru/underlying-records
+    :drill-thru/zoom-in.binning
+    :drill-thru/zoom-in.geographic
+    :drill-thru/zoom-in.timeseries})
+
 (mu/defn query-and-row-for-test-case :- [:map
-                                         [:query ::lib.schema/query]
-                                         [:row   Row]]
-  [{:keys [query-table query-type custom-query custom-row]
+                                         [:mbql   ::lib.schema/query]
+                                         [:native [:maybe ::lib.schema/query]]
+                                         [:row    Row]]
+  [{:keys [query-table query-type custom-query custom-native custom-row]
     :or   {query-table "ORDERS"}
     :as   test-case} :- TestCase]
-  {:query (or custom-query
-              (get-in test-queries [query-table query-type :query])
-              (throw (ex-info "Invalid query-table/query-:type no matching test query" {:test-case test-case})))
-   :row   (or custom-row
-              (get-in test-queries [query-table query-type :row])
-              (throw (ex-info "Invalid query-table/query-:type no matching test query" {:test-case test-case})))})
+  (let [queries (if custom-query
+                  {:mbql   custom-query
+                   :native (or custom-native (->native custom-query))}
+                  (when-let [mbql (get-in test-queries [query-table query-type :query])]
+                    {:mbql   mbql
+                     :native (->native mbql)}))
+        row     (or custom-row (get-in test-queries [query-table query-type :row]))]
+    (when-not (and queries row)
+      (throw (ex-info "Invalid query-table/query-:type no matching test query" {:test-case test-case})))
+    (assoc queries :row row)))
 
 (mu/defn test-case-context :- ::lib.schema.drill-thru/context
-  [query     :- ::lib.schema/query
-   row       :- Row
+  [{:keys [mbql row]} :- [:map] ;; TODO: Better type? Does one exist?
+   query-kind         :- [:enum :mbql :native]
    {:keys [column-name click-type query-type], :as _test-case} :- TestCase]
-  (let [cols       (lib/returned-columns query -1 (lib.util/query-stage query -1))
+  (let [cols       (cond->> (lib/returned-columns mbql -1 (lib.util/query-stage mbql -1))
+                     true                   (map #(assoc % :lib/original-source (:lib/source %)))
+                     (= query-kind :native) (map #(assoc % :lib/source :source/native)))
         by-name    (m/index-by :name cols)
         col        (get by-name column-name)
         refs       (update-vals by-name lib/ref)
@@ -101,7 +158,7 @@
                        (if (some? v) v :null)))
         dimensions (when (= query-type :aggregated)
                      (for [col   cols
-                           :when (and (= (:lib/source col) :source/breakouts)
+                           :when (and (= (:lib/original-source col) :source/breakouts)
                                       (not= (:name col) column-name))]
                        {:column     col
                         :column-ref (get refs (:name col))
@@ -110,6 +167,8 @@
      {:column     col
       :column-ref (get refs column-name)
       :value      nil}
+     (when (= query-kind :native)
+       {:card-id native-card-id})
      (when (= click-type :cell)
        {:value      value
         :row        (for [[column-name value] row
@@ -127,21 +186,31 @@
   [:merge
    TestCase
    [:map
-    [:expected [:sequential [:map
-                             [:type ::lib.schema.drill-thru/drill-thru.type]]]]]])
+    [:expected [:or [:-> [:sequential [:map
+                                       [:type ::lib.schema.drill-thru/drill-thru.type]]]
+                     :boolean]
+                [:sequential [:map
+                              [:type ::lib.schema.drill-thru/drill-thru.type]]]]]]])
 
 (mu/defn test-available-drill-thrus
-  [{:keys [column-name click-type query-type query-table expected]
-    :or   {query-table "ORDERS"}
+  [{:keys [column-name click-type query-type query-table query-kinds expected native-drills]
+    :or   {query-table     "ORDERS"
+           query-kinds     [:mbql :native]
+           ;; By default, skip these drills for native queries - these drills never work for native.
+           native-drills   (complement unsupported-on-native)}
     :as   test-case} :- AvailableDrillsTestCase]
-  (testing (lib.util/format "should return correct drills for %s.%s %s in %s query"
-                            query-table column-name (name click-type) (name query-type))
-    (let [{:keys [query row]} (query-and-row-for-test-case test-case)
-          context             (test-case-context query row test-case)]
-      (testing (str "\nQuery = \n"   (u/pprint-to-str query)
-                    "\nContext =\n" (u/pprint-to-str context))
-        (is (=? expected
-                (lib/available-drill-thrus query -1 context)))))))
+  (doseq [query-kind query-kinds]
+    (testing (lib.util/format "should return correct drills for %s.%s %s in %s %s query"
+                              query-table column-name (name click-type) (name query-type) (name query-kind))
+      (let [selected (query-and-row-for-test-case test-case)
+            query    (get selected query-kind)
+            context  (test-case-context selected query-kind test-case)]
+        (testing (str "\nQuery = \n"   (u/pprint-to-str query)
+                      "\nContext =\n" (u/pprint-to-str context))
+          (is (=? (cond->> expected
+                    (and (sequential? expected)
+                         (= query-kind :native)) (filterv (comp native-drills :type)))
+                  (lib/available-drill-thrus query -1 context))))))))
 
 (def ^:private TestCaseWithDrillType
   [:merge
@@ -156,51 +225,80 @@
     [:expected [:map
                 [:type ::lib.schema.drill-thru/drill-thru.type]]]]])
 
+(defn- drop-uuids [form]
+  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid))
+                 form))
+
+(defn- clean-expected-query [form]
+  (-> form
+      drop-uuids
+      (dissoc :lib/metadata)))
+
+(defn- clean-expected-query-on-drill [form query-kind]
+  (cond-> form
+    (and (:lib/metadata form)
+         (= query-kind :native)) ->native-wrapped
+    true                         clean-expected-query))
+
 (mu/defn test-returns-drill :- [:maybe ::lib.schema.drill-thru/drill-thru]
   "Test that a certain drill gets returned. Returns the drill."
-  [{:keys [drill-type query-table column-name click-type query-type expected]
-    :or   {query-table "ORDERS"}
+  [{:keys [drill-type query-table column-name click-type query-type query-kinds expected drill-query-native]
+    :or   {query-table "ORDERS"
+           query-kinds (cond-> [:mbql]
+                         (not (unsupported-on-native drill-type)) (conj :native))}
     :as   test-case} :- ReturnsDrillTestCase]
-  (let [{:keys [query row]} (query-and-row-for-test-case test-case)
-        context             (test-case-context query row test-case)]
-    (testing (str (lib.util/format "should return %s drill for %s.%s %s in %s query"
-                                   drill-type
-                                   query-table
-                                   column-name
-                                   (name click-type)
-                                   (name query-type))
-                  "\nQuery =\n"   (u/pprint-to-str query)
-                  "\nContext =\n" (u/pprint-to-str context))
-      (let [drills (lib/available-drill-thrus query -1 context)]
-        (testing (str "\nAvailable Drills =\n" (u/pprint-to-str (into #{} (map :type) drills)))
-          (let [drill (m/find-first (fn [drill]
-                                      (= (:type drill) drill-type))
-                                    drills)]
-            (is (=? expected
-                    drill))
-            drill))))))
+  (last
+    (for [query-kind query-kinds]
+      (let [selected (query-and-row-for-test-case test-case)
+            query    (get selected query-kind)
+            context  (test-case-context selected query-kind test-case)]
+        (testing (str (lib.util/format "should return %s drill for %s.%s %s in %s %s query"
+                                       drill-type
+                                       query-table
+                                       column-name
+                                       (name click-type)
+                                       (name query-type)
+                                       (name query-kind))
+                      "\nQuery =\n"   (u/pprint-to-str query)
+                      "\nContext =\n" (u/pprint-to-str context))
+          (let [drills (lib/available-drill-thrus query -1 context)]
+            (testing (str "\nAvailable Drills =\n" (u/pprint-to-str (into #{} (map :type) drills)))
+              (let [drill (m/find-first (fn [drill]
+                                          (= (:type drill) drill-type))
+                                        drills)]
+                (is (=? (or (and (= query-kind :native)
+                                 (:query expected)
+                                 drill-query-native
+                                 (assoc expected :query (clean-expected-query drill-query-native)))
+                            (m/update-existing expected :query clean-expected-query-on-drill query-kind))
+                        drill))
+                drill))))))))
 
 (mu/defn test-drill-not-returned
   "Test that a drill is NOT returned in a certain situation."
-  [{:keys [drill-type query-table column-name click-type query-type]
-    :or   {query-table "ORDERS"}
+  [{:keys [drill-type query-table column-name click-type query-type query-kinds]
+    :or   {query-table "ORDERS"
+           query-kinds [:mbql :native]}
     :as   test-case} :- TestCaseWithDrillType]
-  (let [{:keys [query row]} (query-and-row-for-test-case test-case)
-        context             (test-case-context query row test-case)]
-    (testing (str (lib.util/format "should NOT return %s drill for %s.%s %s in %s query"
-                                   drill-type
-                                   query-table
-                                   column-name
-                                   (name click-type)
-                                   (name query-type))
-                  "\nQuery = \n"  (u/pprint-to-str query)
-                  "\nRow = \n"    (u/pprint-to-str row)
-                  "\nContext =\n" (u/pprint-to-str context))
-      (let [drills (into #{}
-                         (map :type)
-                         (lib/available-drill-thrus query context))]
-        (testing (str "\nAvailable drills =\n" (u/pprint-to-str drills))
-          (is (not (contains? drills drill-type))))))))
+  (doseq [query-kind query-kinds]
+    (let [selected (query-and-row-for-test-case test-case)
+          query    (get selected query-kind)
+          context  (test-case-context selected query-kind test-case)]
+      (testing (str (lib.util/format "should NOT return %s drill for %s.%s %s in %s %s query"
+                                     drill-type
+                                     query-table
+                                     column-name
+                                     (name click-type)
+                                     (name query-type)
+                                     (name query-kind))
+                    "\nQuery = \n"  (u/pprint-to-str query)
+                    "\nRow = \n"    (u/pprint-to-str (:row selected))
+                    "\nContext =\n" (u/pprint-to-str context))
+        (let [drills (into #{}
+                           (map :type)
+                           (lib/available-drill-thrus query context))]
+          (testing (str "\nAvailable drills =\n" (u/pprint-to-str drills))
+            (is (not (contains? drills drill-type)))))))))
 
 (def ^:private DrillApplicationTestCase
   [:merge
@@ -209,18 +307,24 @@
     [:expected-query :map]
     [:drill-args {:optional true} [:maybe [:sequential :any]]]]])
 
-(defn- drop-uuids [form]
-  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid))
-                 form))
-
 (mu/defn test-drill-application
   "Test that a certain drill gets returned, AND when applied to a query returns the expected query."
-  [{:keys [expected-query drill-args], :as test-case} :- DrillApplicationTestCase]
-  (let [{:keys [query]} (query-and-row-for-test-case test-case)]
-    (when-let [drill (test-returns-drill test-case)]
-      (testing (str "Should return expected query when applying the drill"
-                    "\nQuery = \n" (u/pprint-to-str query)
-                    "\nDrill = \n" (u/pprint-to-str drill))
-        (let [query' (apply lib/drill-thru query -1 nil drill drill-args)]
-          (is (=? (drop-uuids expected-query)
-                  query')))))))
+  [{:keys [drill-type expected-query expected-native drill-args query-kinds]
+    :or   {query-kinds (cond-> [:mbql]
+                         (not (unsupported-on-native drill-type)) (conj :native))}
+    :as test-case} :- DrillApplicationTestCase]
+  (let [selected (query-and-row-for-test-case test-case)]
+    (doseq [query-kind query-kinds
+            :let [query (get selected query-kind)]]
+      (when-let [drill (test-returns-drill (assoc test-case :query-kinds [query-kind]))]
+        (testing (str "Should return expected " (name query-kind) " query when applying the drill"
+                      "\nQuery = \n" (u/pprint-to-str query)
+                      "\nDrill = \n" (u/pprint-to-str drill))
+          (let [query' (apply lib/drill-thru query -1
+                              (when (= query-kind :native)
+                                native-card-id)
+                              drill drill-args)]
+            (is (=? (or (when (= query-kind :native)
+                          expected-native)
+                        (clean-expected-query expected-query))
+                    query'))))))))
