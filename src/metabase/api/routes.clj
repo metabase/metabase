@@ -53,6 +53,7 @@
    [metabase.api.timeline :as api.timeline]
    [metabase.api.timeline-event :as api.timeline-event]
    [metabase.api.user :as api.user]
+   [metabase.api.user-key-value :as api.user-key-value]
    [metabase.api.util :as api.util]
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader]
@@ -153,6 +154,7 @@
   (context "/timeline"             [] (+auth api.timeline/routes))
   (context "/timeline-event"       [] (+auth api.timeline-event/routes))
   (context "/user"                 [] (+auth api.user/routes))
+  (context "/user-key-value"       [] (+auth api.user-key-value/routes))
   (context "/api-key"              [] (+auth api.api-key/routes))
   (context "/util"                 [] api.util/routes)
   (route/not-found (constantly {:status 404, :body (deferred-tru "API endpoint does not exist.")})))
