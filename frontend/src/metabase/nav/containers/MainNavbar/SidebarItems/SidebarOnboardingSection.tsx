@@ -68,20 +68,19 @@ export function SidebarOnboardingSection({
               >{t`Add data`}</Button>
             </Menu.Target>
             <Menu.Dropdown>
-              <Link to="/admin/databases/create">
-                <SidebarOnboardingMenuItem
-                  icon="database"
-                  title={t`Add a database`}
-                  subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
-                />
-              </Link>
-              <Link to="/admin/settings/uploads">
-                <SidebarOnboardingMenuItem
-                  icon="table2"
-                  title={t`Upload a spreadsheet`}
-                  subtitle={t`.csv, .tsv (50 MB max)`}
-                />
-              </Link>
+              <SidebarOnboardingMenuItem
+                icon="database"
+                title={t`Add a database`}
+                to="/admin/databases/create"
+                subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
+              />
+
+              <SidebarOnboardingMenuItem
+                icon="table2"
+                title={t`Upload a spreadsheet`}
+                to="/admin/settings/uploads"
+                subtitle={t`.csv, .tsv (50 MB max)`}
+              />
             </Menu.Dropdown>
           </Menu>
         </Box>
@@ -93,24 +92,28 @@ export function SidebarOnboardingSection({
 type OnboaringMenuItemProps = {
   icon: IconName;
   title: string;
+  to: string;
   subtitle: string;
 };
 
 function SidebarOnboardingMenuItem({
   icon,
   title,
+  to,
   subtitle,
 }: OnboaringMenuItemProps) {
   return (
     <Menu.Item icon={<Icon name={icon} />} style={{ alignItems: "flex-start" }}>
-      <Stack spacing="xs">
-        <Title c="inherit" order={4}>
-          {title}
-        </Title>
-        <Text c="inherit" size="sm">
-          {subtitle}
-        </Text>
-      </Stack>
+      <Link to={to}>
+        <Stack spacing="xs">
+          <Title c="inherit" order={4}>
+            {title}
+          </Title>
+          <Text c="inherit" size="sm">
+            {subtitle}
+          </Text>
+        </Stack>
+      </Link>
     </Menu.Item>
   );
 }
