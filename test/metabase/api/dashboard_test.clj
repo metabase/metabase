@@ -5030,6 +5030,17 @@
         (post-revert-http-req dash-id (:id (second (get-revisions-http-req dash-id))))
         (is (= #{card-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))
         (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))))
+    (testing "My DQ is turned into a regular Question in a collection"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/Card {dq-id :id} {:dashboard_id dash-id}
+                     :model/Card {card-id :id} {}]
+        (update-dashcards! dash-id [card-id dq-id])
+        ;; make it a non-DQ before removing it, otherwise it will be auto-archived
+        (t2/update! :model/Card dq-id {:dashboard_id nil})
+        (update-dashcards! dash-id [])
+        (post-revert-http-req dash-id (:id (second (get-revisions-http-req dash-id))))
+        (is (= #{dq-id card-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))
+        (is (= 2 (t2/count :model/DashboardCard :dashboard_id dash-id)))))
     (testing "A regular card is moved to another Dashboard"
       (mt/with-temp [:model/Dashboard {dash-id :id} {}
                      :model/Dashboard {other-dash-id :id} {}
@@ -5038,6 +5049,29 @@
         (update-dashcards! dash-id [card-id dq-id])
         (update-dashcards! dash-id [])
         (t2/update! :model/Card card-id {:dashboard_id other-dash-id})
+        (post-revert-http-req dash-id (:id (second (get-revisions-http-req dash-id))))
+        (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))
+        (is (= #{dq-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))))
+    (testing "A card becomes a model"
+      (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                     :model/Card {dq-id :id} {:dashboard_id dash-id
+                                              :name "Total orders per month"
+                                              :display :line
+                                              :visualization_settings
+                                              {:graph.dimensions ["CREATED_AT"]
+                                               :graph.metrics ["sum"]}
+                                              :dataset_query
+                                              (mt/$ids
+                                                {:database (mt/id)
+                                                 :type     :query
+                                                 :query    {:source-table $$orders
+                                                            :aggregation  [[:sum $orders.total]]
+                                                            :breakout     [!month.orders.created_at]}})}]
+        (update-dashcards! dash-id [dq-id])
+        ;; turn it into a model outside the DQ
+        (t2/update! :model/Card dq-id {:dashboard_id nil :type :model})
+        ;; remove it from the dashboard
+        (update-dashcards! dash-id [])
         (post-revert-http-req dash-id (:id (second (get-revisions-http-req dash-id))))
         (is (= 1 (t2/count :model/DashboardCard :dashboard_id dash-id)))
         (is (= #{dq-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))))))
