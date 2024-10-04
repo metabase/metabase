@@ -4,6 +4,7 @@ import {
   ChartTypeSettings,
   useChartTypeVisualizations,
 } from "metabase/query_builder/components/chart-type-selector";
+import type { CardDisplayType } from "metabase-types/api";
 
 import { useInteractiveQuestionContext } from "../context";
 
@@ -32,7 +33,11 @@ export const useChartTypeSelectors = () => {
   };
 };
 
-export const ChartTypeSelector = () => {
+export const ChartTypeSelector = ({
+  onChange,
+}: {
+  onChange?: (display: CardDisplayType) => void;
+}) => {
   const {
     selectedVisualization,
     updateQuestionVisualization,
@@ -47,7 +52,10 @@ export const ChartTypeSelector = () => {
       sensibleVisualizations={sensibleVisualizations}
       nonSensibleVisualizations={nonSensibleVisualizations}
       selectedVisualization={selectedVisualization}
-      onSelectVisualization={updateQuestionVisualization}
+      onSelectVisualization={(display: CardDisplayType) => {
+        onChange(display);
+        updateQuestionVisualization(display);
+      }}
     />
   );
 };

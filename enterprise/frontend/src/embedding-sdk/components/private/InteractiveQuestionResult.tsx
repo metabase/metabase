@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { type ReactElement, type ReactNode, useState } from "react";
 import { t } from "ttag";
@@ -8,7 +7,7 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import CS from "metabase/css/core/index.css";
-import { Box, Button, Flex, Group, Icon, Stack } from "metabase/ui";
+import { Box, Button, Flex, Group, Icon, Popover, Stack } from "metabase/ui";
 
 import { InteractiveQuestion } from "../public/InteractiveQuestion";
 
@@ -24,40 +23,29 @@ export interface InteractiveQuestionResultProps {
 type QuestionView = "notebook" | "filter" | "summarize" | "visualization";
 
 const VisualizationResultView = () => {
-  const [isVisualizationSelectorOpen, { toggle: toggleVisualizationSelector }] =
-    useDisclosure();
-
   return (
-    <Stack>
+    <Stack h="100%">
       <Group m="sm">
-        <Button
-          compact={true}
-          radius="xl"
-          py="sm"
-          px="md"
-          variant="filled"
-          color="brand"
-          onClick={toggleVisualizationSelector}
-        >
-          <Group>
-            <Icon
-              name={isVisualizationSelectorOpen ? "arrow_left" : "arrow_right"}
-            />
-            <Icon name="eye" />
-          </Group>
-        </Button>
+        <Popover position="bottom-start">
+          <Popover.Target>
+            <Button
+              compact={true}
+              radius="xl"
+              py="sm"
+              px="md"
+              variant="filled"
+              color="brand"
+            >
+              <Icon name="eye" />
+            </Button>
+          </Popover.Target>
+          <Popover.Dropdown>
+            <InteractiveQuestion.ChartTypeSelector onChange={} />
+          </Popover.Dropdown>
+        </Popover>
       </Group>
-      <Group noWrap>
-        {isVisualizationSelectorOpen && (
-          <InteractiveQuestion.ChartTypeSelector />
-        )}
-        {/* 
-              A very hacky thing to force the visualization to resize.
-                there's definitely a better way to do this.
-                 */}
-        <InteractiveQuestion.QuestionVisualization
-          key={String(isVisualizationSelectorOpen)}
-        />
+      <Group noWrap h="100%">
+        <InteractiveQuestion.QuestionVisualization />
       </Group>
     </Stack>
   );
@@ -138,17 +126,18 @@ export const InteractiveQuestionResult = ({
 
         <InteractiveQuestion.FilterBar />
 
-        <Group
+        <Box
           h="100%"
-          pos="relative"
-          align="flex-start"
-          className={CS.overflowHidden}
+          // pos="relative"
+          // align="flex-start"
+          // className={CS.overflowHidden}
+          w="100%"
         >
           <ResultView
             questionView={questionView}
             setQuestionView={setQuestionView}
           />
-        </Group>
+        </Box>
       </Stack>
     );
   }
