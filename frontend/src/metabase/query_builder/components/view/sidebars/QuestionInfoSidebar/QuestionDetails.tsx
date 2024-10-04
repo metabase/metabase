@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { useState } from "react";
 import { c, t } from "ttag";
+
 import { getCollectionName } from "metabase/collections/utils";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import DateTime from "metabase/components/DateTime";
@@ -12,8 +13,9 @@ import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { QuestionPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
 import { Box, Flex, FixedSizeIcon as Icon, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import { QuestionSources } from "./components/QuestionSources";
+
 import SidebarStyles from "./QuestionInfoSidebar.module.css";
+import { QuestionSources } from "./components/QuestionSources";
 
 export const QuestionDetails = ({ question }: { question: Question }) => {
   const lastEditInfo = question.lastEditInfo();
