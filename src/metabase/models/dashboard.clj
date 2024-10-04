@@ -238,7 +238,9 @@
 (defn archive-or-unarchive-internal-dashboard-questions!
   "When updating dashboard cards, if we're removing all references to a Dashboard Question (which is internal to the
   dashboard, not displayed as part of a collection) we want to archive it. Similarly, we want to mark any Dashboard
-  Questions that *are* on the Dashboard as *not* archived."
+  Questions that *are* on the Dashboard as *not* archived. This function takes a dashboard and the set of dashcards
+  about to be saved, and ensures that all DQs that appear on the dashboard are unarchived and all DQs that DON'T
+  appear on the dashboard are archived."
   [dashboard new-cards]
   (let [;; the set of ALL Dashboard Questions (internal to the dashboard) for this Dashboard
         internal-dashboard-question-ids (t2/select-pks-set :model/Card :dashboard_id (:id dashboard))
@@ -310,7 +312,6 @@
                             (t2/select-pks-set :model/Card
                                                {:where [:and
                                                         [:in :id card-ids]
-                                                        [:= :archived false]
                                                         ;; belong to this dashboard, or are not Dashboard Questions
                                                         [:or
                                                          [:= :dashboard_id dashboard-id]
