@@ -14,8 +14,9 @@ describe("EmbedModalContent", () => {
     it("should render", () => {
       setup();
 
-      expect(screen.getByText("Static embed")).toBeInTheDocument();
-      expect(screen.getByText("Public embed")).toBeInTheDocument();
+      expect(screen.getByText("Static embedding")).toBeInTheDocument();
+      expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
+      expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
     });
 
     it("should switch to StaticEmbedSetupPane", async () => {
@@ -23,7 +24,7 @@ describe("EmbedModalContent", () => {
 
       expect(goToNextStep).toHaveBeenCalledTimes(0);
 
-      await userEvent.click(screen.getByText("Set this up"));
+      await userEvent.click(screen.getByText("Static embedding"));
 
       expect(goToNextStep).toHaveBeenCalledTimes(1);
     });
@@ -36,6 +37,19 @@ describe("EmbedModalContent", () => {
       });
 
       expect(screen.getByText("Setting up a static embed")).toBeInTheDocument();
+    });
+
+    it("should mention the sdk and link to metaba.se/sdk", () => {
+      setup();
+
+      expect(screen.getByText("Embedded analytics SDK")).toBeInTheDocument();
+
+      expect(
+        screen.getByRole("link", { name: /Embedded analytics SDK/ }),
+      ).toHaveAttribute(
+        "href",
+        "https://metaba.se/sdk?utm_source=product&source_plan=oss&utm_content=embed-modal",
+      );
     });
   });
 });

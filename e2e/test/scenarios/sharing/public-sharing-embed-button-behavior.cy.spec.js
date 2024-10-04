@@ -157,8 +157,11 @@ import {
             cy.findByTestId("embed-menu-embed-modal-item").click();
 
             getEmbedModalSharingPane().within(() => {
-              cy.findByText("Static embed").should("be.visible");
-              cy.findByText("Public embed").should("be.visible");
+              cy.findByText("Static embedding").should("be.visible");
+              cy.findByText(/Use public embedding/).should("not.exist");
+              cy.findByText("Public embeds and links are disabled.").should(
+                "be.visible",
+              );
             });
           });
         });
@@ -190,23 +193,17 @@ describe("embed modal display", () => {
   });
 
   describeEE("when the user has a paid instance", () => {
-    it("should display a link to the interactive embedding settings", () => {
+    it("should display a link to the Interactive embedding settings", () => {
       setTokenFeatures("all");
       visitDashboard("@dashboardId");
 
       openSharingMenu("Embed");
 
       getEmbedModalSharingPane().within(() => {
-        cy.findByText("Static embed").should("be.visible");
-        cy.findByText("Public embed").should("be.visible");
-        cy.findByTestId("interactive-embedding-cta").within(() => {
-          cy.findByText("Interactive Embedding").should("be.visible");
-          cy.findByText(
-            "Your plan allows you to use Interactive Embedding create interactive embedding experiences with drill-through and more.",
-          ).should("be.visible");
-          cy.findByText("Set it up").should("be.visible");
-        });
-        cy.findByTestId("interactive-embedding-cta").click();
+        cy.findByText("Static embedding").should("be.visible");
+        cy.findByText("Interactive embedding").should("be.visible");
+
+        cy.findByText("Interactive embedding").click();
 
         cy.url().should(
           "equal",
@@ -224,16 +221,10 @@ describe("embed modal display", () => {
       openSharingMenu("Embed");
 
       getEmbedModalSharingPane().within(() => {
-        cy.findByText("Static embed").should("be.visible");
-        cy.findByText("Public embed").should("be.visible");
-        cy.findByTestId("interactive-embedding-cta").within(() => {
-          cy.findByText("Interactive Embedding").should("be.visible");
-          cy.findByText(
-            "Give your customers the full power of Metabase in your own app, with SSO, advanced permissions, customization, and more.",
-          ).should("be.visible");
-          cy.findByText("Learn more").should("be.visible");
-        });
-        cy.findByTestId("interactive-embedding-cta").should(
+        cy.findByText("Static embedding").should("be.visible");
+        cy.findByText("Interactive embedding").should("be.visible");
+
+        cy.findByRole("link", { name: /Interactive embedding/ }).should(
           "have.attr",
           "href",
           "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
@@ -361,10 +352,20 @@ describe("#39152 sharing an unsaved question", () => {
           });
 
           openSharingMenu("Embed");
-          cy.findByTestId("sharing-pane-public-embed-button").within(() => {
-            cy.findByText("Get an embed link").click();
-            cy.findByTestId("copy-button").realClick();
+
+          modal().findByText("Get embedding code").click();
+
+          // mock clipboardData so that copy-to-clipboard doesn't use window.prompt, pausing the tests
+          cy.window().then(win => {
+            win.clipboardData = {
+              setData: (...args) =>
+                // eslint-disable-next-line no-console
+                console.log("clipboardData.setData", ...args),
+            };
           });
+
+          popover().findByTestId("copy-button").click();
+
           expectGoodSnowplowEvent({
             event: "public_embed_code_copied",
             artifact: resource,
@@ -378,10 +379,10 @@ describe("#39152 sharing an unsaved question", () => {
           });
 
           openSharingMenu("Embed");
-          cy.findByTestId("sharing-pane-public-embed-button").within(() => {
-            cy.findByText("Get an embed link").click();
-            cy.button("Remove public URL").click();
-          });
+          modal().findByText("Get embedding code").click();
+
+          popover().findByText("Remove public link").click();
+
           expectGoodSnowplowEvent({
             event: "public_link_removed",
             artifact: resource,
