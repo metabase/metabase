@@ -176,15 +176,17 @@ export function EntityPickerModal<
   );
 
   const finalSearchResults = useMemo(() => {
-    if (isFetching || !data) {
-      return null;
-    }
-
     if (searchScope === "folder") {
+      if (!scopedSearchResults) {
+        return null;
+      }
       return searchResultFilter
         ? searchResultFilter(scopedSearchResults as SearchResult[])
         : scopedSearchResults;
     } else {
+      if (isFetching || !data) {
+        return null;
+      }
       return searchResultFilter ? searchResultFilter(data.data) : data.data;
     }
   }, [searchScope, scopedSearchResults, isFetching, data, searchResultFilter]);
