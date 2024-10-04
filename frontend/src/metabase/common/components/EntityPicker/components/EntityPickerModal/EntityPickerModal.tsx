@@ -98,6 +98,7 @@ export function EntityPickerModal<
   isLoadingTabs = false,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchError, setSearchError] = useState<Error | null>(null);
   const { data: recentItems, isLoading: isLoadingRecentItems } =
     useListRecentsQuery(
       { context: recentsContext },
@@ -217,6 +218,7 @@ export function EntityPickerModal<
                 setSearchQuery={setSearchQuery}
                 searchFilter={searchResultFilter}
                 searchParams={searchParams}
+                setSearchError={setSearchError}
               />
             )}
           </GrowFlex>
@@ -231,6 +233,7 @@ export function EntityPickerModal<
                   onItemSelect={onItemSelect}
                   searchQuery={searchQuery}
                   searchResults={searchResults}
+                  searchError={searchError}
                   selectedItem={selectedItem}
                   initialValue={initialValue}
                   defaultToRecentTab={defaultToRecentTab}

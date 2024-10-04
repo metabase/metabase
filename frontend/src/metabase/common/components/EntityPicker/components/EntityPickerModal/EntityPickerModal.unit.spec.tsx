@@ -7,6 +7,7 @@ import {
   mockScrollBy,
   renderWithProviders,
   screen,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { Button } from "metabase/ui";
@@ -297,6 +298,46 @@ describe("EntityPickerModal", () => {
       expect(
         screen.queryByRole("button", { name: "Click Me" }),
       ).not.toBeInTheDocument();
+    });
+
+    it("should gracefully handle search errors", async () => {
+      setup();
+
+      fetchMock.get("path:/api/search", 500, {
+        overwriteRoutes: true,
+      });
+
+      await userEvent.type(
+        await screen.findByPlaceholderText("Search…"),
+        "My ",
+        {
+          delay: 50,
+        },
+      );
+
+      await waitForLoaderToBeRemoved();
+
+      expect(await screen.findByText("It's dead Jim")).toBeInTheDocument();
+    });
+
+    it("should gracefully handle non json responses", async () => {
+      setup();
+
+      fetchMock.get("path:/api/search", "It's a string", {
+        overwriteRoutes: true,
+      });
+
+      await userEvent.type(
+        await screen.findByPlaceholderText("Search…"),
+        "My ",
+        {
+          delay: 50,
+        },
+      );
+
+      await waitForLoaderToBeRemoved();
+
+      expect(await screen.findByText("It's dead Jim")).toBeInTheDocument();
     });
   });
 

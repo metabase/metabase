@@ -17,10 +17,12 @@ export const searchApi = Api.injectEndpoints({
       onQueryStarted: (args, { queryFulfilled }) => {
         if (args.context) {
           const start = Date.now();
-          queryFulfilled.then(({ data }) => {
-            const duration = Date.now() - start;
-            trackSearchRequest(args, data, duration);
-          });
+          queryFulfilled
+            .then(({ data }) => {
+              const duration = Date.now() - start;
+              trackSearchRequest(args, data, duration);
+            })
+            .catch(console.warn);
         }
       },
     }),

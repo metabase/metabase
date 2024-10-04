@@ -53,11 +53,13 @@ export const TabsView = <
   initialValue,
   defaultToRecentTab,
   setShowActionButtons,
+  searchError,
 }: {
   tabs: EntityTab<Model>[];
   onItemSelect: (item: Item) => void;
   searchQuery: string;
   searchResults: SearchResult[] | null;
+  searchError: Error | null;
   selectedItem: Item | null;
   initialValue?: Partial<Item>;
   searchParams?: Partial<SearchRequest>;
@@ -160,6 +162,7 @@ export const TabsView = <
         >
           <EntityPickerSearchResults
             searchResults={searchResults}
+            searchError={searchError}
             onItemSelect={onItemSelect}
             selectedItem={selectedItem}
           />

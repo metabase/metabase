@@ -30,6 +30,7 @@ export function EntityPickerSearchInput({
   models,
   searchFilter = defaultSearchFilter,
   searchParams = {},
+  setSearchError,
 }: {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -37,11 +38,12 @@ export function EntityPickerSearchInput({
   models: SearchModel[];
   searchFilter?: (results: SearchResult[]) => SearchResult[];
   searchParams?: Partial<SearchRequest>;
+  setSearchError: (error: Error | null) => void;
 }) {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
 
-  const { data, isFetching } = useSearchQuery(
+  const { data, isFetching, isError, error } = useSearchQuery(
     {
       q: debouncedSearchQuery,
       models,
@@ -54,12 +56,30 @@ export function EntityPickerSearchInput({
   );
 
   useLayoutEffect(() => {
-    if (data && !isFetching) {
-      setSearchResults(searchFilter(data.data));
+    if (isError) {
+      setSearchError(error as Error);
+      setSearchResults(null);
+    } else if (data && !isFetching) {
+      if (!Array.isArray(data.data)) {
+        setSearchError(new Error(t`non json response`));
+        setSearchResults(null);
+      } else {
+        setSearchResults(searchFilter(data.data));
+        setSearchError(null);
+      }
     } else {
       setSearchResults(null);
+      setSearchError(null);
     }
-  }, [data, isFetching, searchFilter, setSearchResults]);
+  }, [
+    data,
+    isFetching,
+    isError,
+    error,
+    searchFilter,
+    setSearchResults,
+    setSearchError,
+  ]);
 
   return (
     <TextInput
@@ -82,11 +102,26 @@ export const EntityPickerSearchResults = <
   searchResults,
   onItemSelect,
   selectedItem,
+  searchError,
 }: {
   searchResults: SearchResult[] | null;
   onItemSelect: (item: Item) => void;
   selectedItem: Item | null;
+  searchError: Error;
 }) => {
+  if (searchError) {
+    return (
+      <Box h="100%" bg="bg-light">
+        <Flex direction="column" justify="center" h="100%">
+          <EmptyState
+            title={t`It's dead Jim`}
+            message={t`Not sure why, but the search errored`}
+          />
+        </Flex>
+      </Box>
+    );
+  }
+
   if (!searchResults) {
     return <DelayedLoadingSpinner text={t`Loading…`} />;
   }
@@ -119,6 +154,13 @@ export const EntityPickerSearchResults = <
             ))}
           </VirtualizedList>
         </Stack>
+      ) : searchError ? (
+        <Flex direction="column" justify="center" h="100%">
+          <EmptyState
+            title={t`It's dead jim`}
+            message={t`Not sure why, but the search errored`}
+          />
+        </Flex>
       ) : (
         <Flex direction="column" justify="center" h="100%">
           <EmptyState
