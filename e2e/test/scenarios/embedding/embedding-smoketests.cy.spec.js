@@ -8,7 +8,6 @@ import {
   openSharingMenu,
   openStaticEmbeddingModal,
   restore,
-  setTokenFeatures,
   sharingMenu,
   sharingMenuButton,
   visitDashboard,
@@ -53,7 +52,6 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     });
 
     it("should display the embedding page correctly", () => {
-      setTokenFeatures("all");
       cy.visit("/admin/settings/setup");
       sidebar().within(() => {
         cy.findByRole("link", { name: "Embedding" }).click();
