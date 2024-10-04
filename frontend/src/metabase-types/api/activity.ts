@@ -1,7 +1,6 @@
+import type { CollectionId } from "./collection";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { CardDisplayType } from "./visualization";
-
-import type { Collection } from ".";
 
 export const ACTIVITY_MODELS = [
   "table",
@@ -47,7 +46,11 @@ export type RecentCollectionItem = BaseRecentItem & {
   model: "collection" | "dashboard" | "card" | "dataset" | "metric";
   can_write: boolean;
   database_id?: DatabaseId; // for models and questions
-  parent_collection: Pick<Collection, "id" | "name" | "authority_level">;
+  parent_collection: {
+    id: CollectionId | null;
+    name: string;
+    authority_level?: "official" | null;
+  };
   authority_level?: "official" | null; // for collections
   moderated_status?: "verified" | null; // for models
   display?: CardDisplayType; // for questions

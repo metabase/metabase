@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,6 +13,7 @@ import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import Questions from "metabase/entities/questions";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import type { UpdateQuestionOpts } from "metabase/query_builder/actions/core/updateQuestion";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
@@ -28,7 +30,13 @@ import MoveEventModal from "metabase/timelines/questions/containers/MoveEventMod
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Alert, Card, CollectionId, User } from "metabase-types/api";
+import type {
+  Alert,
+  Card,
+  CollectionId,
+  DashboardTabId,
+  User,
+} from "metabase-types/api";
 import type {
   QueryBuilderMode,
   QueryBuilderUIControls,
@@ -45,7 +53,7 @@ interface QueryModalsProps {
   setUIControls: (opts: Partial<QueryBuilderUIControls>) => void;
   originalQuestion: Question;
   card: Card;
-  onCreate: (question: Question) => Promise<void>;
+  onCreate: (question: Question) => Promise<Question>;
   onSave: (
     question: Question,
     config?: { rerunQuery: boolean },
@@ -111,24 +119,77 @@ export function QueryModals({
 
   const handleCreateAndClose = useCallback(
     async (question: Question) => {
-      await onCreate(question);
+      const newQuestion = await onCreate(question);
       onCloseModal();
+      return newQuestion;
     },
     [onCloseModal, onCreate],
   );
 
+  const nativeToDashboarQuestionDashboard = useCallback(
+    (question: Question, tabId?: DashboardTabId) => {
+      const dashboardId = question.dashboardId();
+
+      if (!dashboardId) {
+        throw new Error("must provide a valid dashboard question");
+      }
+
+      dispatch(
+        push(
+          Urls.dashboard(
+            { id: dashboardId, name: "" },
+            {
+              editMode: true,
+              addCardWithId: question.id(),
+              tabId,
+            },
+          ),
+        ),
+      );
+    },
+    [dispatch],
+  );
+
   const handleSaveModalCreate = useCallback(
-    async (question: Question) => {
-      await onCreate(question);
+    async (
+      question: Question,
+      options?: { dashboardTabId?: DashboardTabId },
+    ) => {
+      const newQuestion = await onCreate(question);
       const type = question.type();
+      const isDashboardQuestion = _.isNumber(question.dashboardId());
+
       if (type === "model" || type === "metric") {
         onCloseModal();
         setQueryBuilderMode("view");
+      } else if (isDashboardQuestion) {
+        nativeToDashboarQuestionDashboard(newQuestion, options?.dashboardTabId);
+      } else {
+        onOpenModal(MODAL_TYPES.SAVED);
+      }
+
+      return newQuestion;
+    },
+    [
+      onCloseModal,
+      onCreate,
+      onOpenModal,
+      setQueryBuilderMode,
+      nativeToDashboarQuestionDashboard,
+    ],
+  );
+
+  const handleCopySaved = useCallback(
+    (newQuestion: Question) => {
+      const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
+
+      if (isDashboardQuestion) {
+        nativeToDashboarQuestionDashboard(newQuestion);
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
     },
-    [onCloseModal, onCreate, onOpenModal, setQueryBuilderMode],
+    [onOpenModal, nativeToDashboarQuestionDashboard],
   );
 
   switch (modal) {
@@ -166,8 +227,9 @@ export function QueryModals({
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
           onCreate={async question => {
-            await onCreate(question);
+            const newQuestion = await onCreate(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
+            return newQuestion;
           }}
           onClose={onCloseModal}
           opened={true}
@@ -201,8 +263,9 @@ export function QueryModals({
             showAlertsAfterQuestionSaved();
           }}
           onCreate={async question => {
-            await onCreate(question);
+            const newQuestion = await onCreate(question);
             showAlertsAfterQuestionSaved();
+            return newQuestion;
           }}
           onClose={onCloseModal}
           opened={true}
@@ -285,13 +348,14 @@ export function QueryModals({
                 questionWithParameters
                   .setDisplayName(formValues.name)
                   .setCollectionId(formValues.collection_id)
+                  .setDashboardId(formValues.dashboard_id)
                   .setDescription(formValues.description || null),
               );
 
-              return { payload: { object } };
+              return object;
             }}
             onClose={onCloseModal}
-            onSaved={() => onOpenModal(MODAL_TYPES.SAVED)}
+            onSaved={handleCopySaved}
           />
         </Modal>
       );

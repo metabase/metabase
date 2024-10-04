@@ -6,7 +6,7 @@ import CS from "metabase/css/core/index.css";
 
 import { ViewSectionRoot } from "./ViewSection.styled";
 
-interface ViewSectionProps extends HTMLAttributes<HTMLDivElement> {
+export interface ViewSectionProps extends HTMLAttributes<HTMLDivElement> {
   className?: string;
   style?: CSSProperties;
   children?: ReactNode;

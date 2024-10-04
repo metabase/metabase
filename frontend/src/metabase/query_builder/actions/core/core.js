@@ -224,6 +224,8 @@ export const apiCreateQuestion = question => {
     if (isModel || isMetric) {
       dispatch(runQuestionQuery());
     }
+
+    return createdQuestion;
   };
 };
 

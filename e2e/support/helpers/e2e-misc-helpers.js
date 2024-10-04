@@ -1,3 +1,5 @@
+import { pickEntity } from "./e2e-collection-helpers";
+
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
 export function typeAndBlurUsingLabel(label, value) {
@@ -310,14 +312,29 @@ export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
 export function saveQuestion(
   name,
   { wrapId = false, idAlias = "questionId" } = {},
+  pickEntityOptions,
 ) {
   cy.intercept("POST", "/api/card").as("saveQuestion");
   cy.findByTestId("qb-header").button("Save").click();
 
-  cy.findByTestId("save-question-modal").within(modal => {
+  cy.findByTestId("save-question-modal").within(() => {
     if (name) {
       cy.findByLabelText("Name").clear().type(name);
     }
+
+    if (pickEntityOptions) {
+      cy.findByLabelText(/Where do you want to save this/).click();
+    }
+  });
+
+  if (pickEntityOptions) {
+    pickEntity({ ...pickEntityOptions, select: true });
+  }
+
+  let wasSavedToCollection = true;
+
+  cy.findByTestId("save-question-modal").within(() => {
+    wasSavedToCollection = cy.$$(".Icon-dashboard").length === 0;
     cy.findByText("Save").click();
   });
 
@@ -327,10 +344,20 @@ export function saveQuestion(
     }
   });
 
-  cy.get("#QuestionSavedModal").within(() => {
-    cy.findByText(/add this to a dashboard/i);
-    cy.findByText("Not now").click();
-  });
+  if (wasSavedToCollection) {
+    cy.get("#QuestionSavedModal").within(() => {
+      cy.findByText(/add this to a dashboard/i);
+      cy.findByText("Not now").click();
+    });
+  }
+}
+
+export function saveQuestionToCollection(
+  name,
+  pickEntityOptions = { tab: "Browse", path: ["Our analytics"] },
+  reqInfo,
+) {
+  saveQuestion(name, reqInfo, pickEntityOptions);
 }
 
 export function saveSavedQuestion() {

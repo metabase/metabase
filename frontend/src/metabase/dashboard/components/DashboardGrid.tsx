@@ -61,6 +61,7 @@ import {
   setDashCardAttributes,
   setMultipleDashCardAttributes,
   showClickBehaviorSidebar,
+  trashDashboardQuestion,
   undoRemoveCardFromDashboard,
 } from "../actions";
 import { getDashcardDataMap } from "../selectors";
@@ -108,6 +109,7 @@ const mapStateToProps = (state: State) => ({
 const mapDispatchToProps = {
   addUndo,
   removeCardFromDashboard,
+  trashDashboardQuestion,
   showClickBehaviorSidebar,
   markNewCardSeen,
   setMultipleDashCardAttributes,

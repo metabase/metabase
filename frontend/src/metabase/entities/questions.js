@@ -116,6 +116,7 @@ const Questions = createEntity({
             { id: card.id },
             {
               collection_id: canonicalCollectionId(collection && collection.id),
+              dashboard_id: null,
               archived: isRootTrashCollection(collection),
             },
             undo(opts, getLabel(card), t`moved`),
@@ -207,6 +208,7 @@ const Questions = createEntity({
     "enable_embedding",
     "embedding_params",
     "collection_id",
+    "dashboard_id",
     "collection_position",
     "collection_preview",
     "result_metadata",

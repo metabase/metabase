@@ -7,6 +7,7 @@ import {
   moveDnDKitElement,
   openNavigationSidebar,
   openOrdersTable,
+  pickEntity,
   popover,
   restore,
   sidebar,
@@ -466,6 +467,11 @@ describe("scenarios > question > settings", () => {
       openOrdersTable();
 
       cy.findByTestId("qb-header").contains("Save").click();
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByLabelText(/Where do you want to save this/).click();
+      });
+      pickEntity({ tab: "Browse", path: ["Our analytics"], select: false });
+      entityPickerModal().findByText("Save in this collection").click();
       cy.findByTestId("save-question-modal").findByText("Save").click();
       modal().findByText("Yes please!").click();
       entityPickerModal().within(() => {

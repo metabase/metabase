@@ -390,7 +390,9 @@ describe("collection permissions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
-    cy.findByLabelText(/Which collection/).findByText("Our analytics");
+    cy.findByLabelText(/Where do you want to save this/).findByText(
+      "Our analytics",
+    );
   });
 
   it("should load the collection permissions admin pages", () => {
