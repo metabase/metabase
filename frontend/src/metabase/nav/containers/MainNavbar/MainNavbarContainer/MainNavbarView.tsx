@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useUserSetting } from "metabase/common/hooks";
-import { useHasTokenFeature } from "metabase/common/hooks/use-has-token-feature";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
@@ -14,11 +13,8 @@ import {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import { isSmallScreen } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import { UploadCSV } from "metabase/nav/containers/MainNavbar/SidebarItems/UploadCSV";
-import { getSetting } from "metabase/selectors/settings";
 import type { IconName, IconProps } from "metabase/ui";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
@@ -109,18 +105,6 @@ export function MainNavbarView({
     [isAtHomepageDashboard, onItemSelect],
   );
 
-  // Can upload CSVs if
-  // - properties.token_features.attached_dwh === true
-  // - properties.uploads-settings.db_id exists
-  // - retrieve collection using properties.uploads-settings.db_id
-  const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
-  const uploadDbId = useSelector(
-    state => getSetting(state, "uploads-settings")?.db_id,
-  );
-  const rootCollection = collections.find(
-    ({ id, can_write }) => (id === null || id === "root") && can_write,
-  );
-
   const [[trashCollection], collectionsWithoutTrash] = useMemo(
     () => _.partition(collections, c => c.type === "trash"),
     [collections],
@@ -139,11 +123,6 @@ export function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
-
-            {/* TODO: Remove by the end of MS1 */}
-            {hasAttachedDWHFeature && uploadDbId && rootCollection && (
-              <UploadCSV collection={rootCollection} />
-            )}
           </SidebarSection>
 
           {bookmarks.length > 0 && (
