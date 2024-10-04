@@ -75,7 +75,9 @@ export function StaticEmbeddingSettings({
         </Box>
         <Box data-testid="embedded-resources">
           <SettingTitle>{t`Manage embeds`}</SettingTitle>
-          <EmbeddedResources />
+          {/* Right now, when changing the setting, we don't have a mechanism to reload the data.
+          For now we'll have to use this key.   */}
+          <EmbeddedResources key={isStaticEmbeddingEnabled.toString()} />
         </Box>
       </Stack>
     </Box>
