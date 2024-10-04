@@ -1086,7 +1086,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
 
       describe("applies filter to the the dashcard and allows to drill via dashcard header", () => {
-        it("2nd stage aggregation", () => {
+        /**
+         * TODO: connect rest of charts to parameters
+         * TODO: add a test with unit of time parameter and non-last stage filter parameter
+         */
+        it("1st stage aggregation", () => {
           editDashboard();
 
           getFilter("Number").click();
@@ -1095,7 +1099,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           getDashboardCard(0).findByText("Select…").click();
           popover().within(() => {
-            getPopoverItem(19, "Count").click();
+            getPopoverList().scrollTo("bottom");
+            getPopoverItem("Count").click();
           });
 
           cy.button("Save").click();
@@ -1120,14 +1125,15 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
         });
 
-        it("2nd stage breakout", () => {
+        it("1st stage breakout", () => {
           editDashboard();
 
           getFilter("Text").click();
 
           getDashboardCard(0).findByText("Select…").click();
           popover().within(() => {
-            getPopoverItem(12, "Category").click();
+            getPopoverList().scrollTo("bottom");
+            getPopoverItem("Category", 1).click();
           });
 
           cy.button("Save").click();
@@ -1153,7 +1159,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
         });
 
-        it("3rd stage aggregation", () => {
+        it("2nd stage aggregation", () => {
           editDashboard();
 
           getFilter("Number").click();
@@ -1162,7 +1168,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           getDashboardCard(0).findByText("Select…").click();
           popover().within(() => {
-            getPopoverItem(23, "Count").click();
+            getPopoverList().scrollTo("bottom");
+            getPopoverItem("Count", 1).click();
           });
 
           cy.button("Save").click();
@@ -1187,14 +1194,15 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
         });
 
-        it("3rd stage breakout", () => {
+        it("2nd stage breakout", () => {
           editDashboard();
 
           getFilter("Text").click();
 
           getDashboardCard(0).findByText("Select…").click();
           popover().within(() => {
-            getPopoverItem(15, "Category").click();
+            getPopoverList().scrollTo("bottom");
+            getPopoverItem("Category", 2).click();
           });
 
           cy.button("Save").click();
@@ -1514,14 +1522,19 @@ function getFilter(name: string) {
   return cy.findByTestId("fixed-width-filters").findByText(name);
 }
 
+function getPopoverList() {
+  return cy.findAllByRole("grid").eq(0);
+}
+
 function getPopoverItems() {
   return cy.get("[data-element-id=list-section]");
 }
 
-function getPopoverItem(index: number, name: string) {
-  getPopoverItems().eq(index).scrollIntoView();
-  getPopoverItems().eq(index).should("be.visible").and("have.text", name);
-  return getPopoverItems().eq(index).should("be.visible");
+/**
+ * @param index if more than 1 item with the same name is visible, specify which one should be used
+ */
+function getPopoverItem(name: string, index = 0) {
+  return cy.findAllByText(name).eq(index);
 }
 
 function clickAway() {
@@ -1567,7 +1580,7 @@ function verifyPopoverMappingOptions(sections: MappingSection[]) {
 
       for (const [sectionName, columnNames] of sections) {
         const item = cy.wrap($items[index]);
-        item.scrollIntoView();
+        item.scrollIntoView(); // the list is virtualized, we need to keep scrolling to see all the items
         item.should("have.text", sectionName);
         ++index;
 
