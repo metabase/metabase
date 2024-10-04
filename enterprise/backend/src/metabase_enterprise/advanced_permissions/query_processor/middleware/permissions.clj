@@ -28,9 +28,9 @@
       (data-perms/native-download-permission-for-user api/*current-user-id* db-id)
       (let [table-perms
             (into #{}
-              (map (fn [table-id]
-                     (data-perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id))
-                   table-ids))]
+                  (map (fn [table-id]
+                         (data-perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id))
+                       table-ids))]
         ;; The download perm level for a query should be equal to the lowest perm level of any table referenced by the query.
         (or (table-perms :no)
             (table-perms :ten-thousand-rows)
