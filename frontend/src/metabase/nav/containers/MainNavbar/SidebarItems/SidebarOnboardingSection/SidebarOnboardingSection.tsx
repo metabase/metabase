@@ -1,3 +1,4 @@
+import { useMediaQuery } from "@mantine/hooks";
 import cx from "classnames";
 import { type ChangeEvent, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
@@ -24,6 +25,7 @@ import {
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Button, Icon, Menu, Stack, Text, Title } from "metabase/ui";
+import { breakpoints } from "metabase/ui/theme";
 
 import { PaddedSidebarLink } from "../../MainNavbar.styled";
 
@@ -90,6 +92,8 @@ export function SidebarOnboardingSection({
     [uploadFile, uploadedFile, closeModelUploadModal],
   );
 
+  const isMobileSafe = useMediaQuery(`(min-width: ${breakpoints.sm})`);
+
   return (
     <Box
       m={0}
@@ -117,7 +121,7 @@ export function SidebarOnboardingSection({
             >{t`Start by adding your data. Connect to a database or upload a CSV file.`}</Text>
           )}
 
-          <Menu position="right-end" shadow="md">
+          <Menu position={isMobileSafe ? "right-end" : "top"} shadow="md">
             <Menu.Target>
               <Button
                 leftIcon={<Icon name="add_data" />}
