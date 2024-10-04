@@ -1,20 +1,21 @@
-import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useMergeSetting, useSetting } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { Box, Stack, Switch } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
+import type { SettingValue } from "metabase-types/api";
 
+import type { SettingElement } from "../../types";
 import SettingHeader from "../SettingHeader";
 import { SettingTitle } from "../SettingHeader/SettingHeader.styled";
 import { SetByEnvVarWrapper } from "../SettingsSetting";
-import { EmbeddedResources } from "../widgets/PublicLinksListing";
+import { SwitchWithSetByEnvVar } from "../widgets/EmbeddingOption/SwitchWithSetByEnvVar";
+import { EmbeddedResources } from "../widgets/PublicLinksListing/EmbeddedResources";
 import SecretKeyWidget from "../widgets/SecretKeyWidget";
 
-import { useMergeSetting } from "./hooks";
 import type { AdminSettingComponentProps } from "./types";
 
-const EMBEDDING_SECRET_KEY_SETTING = {
+const EMBEDDING_SECRET_KEY_SETTING: SettingElement<"embedding-secret-key"> = {
   key: "embedding-secret-key",
   display_name: t`Embedding secret key`,
   description: t`Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.`,
@@ -29,14 +30,14 @@ export function StaticEmbeddingSettings({
 
   const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
 
-  function handleChangeEmbeddingSecretKey(value: string | null) {
-    updateSetting({ key: embeddingSecretKeySetting.key }, value);
-  }
+  const handleChangeEmbeddingSecretKey = (
+    value: SettingValue<"embedding-secret-key">,
+  ) => updateSetting({ key: embeddingSecretKeySetting.key }, value);
 
-  function handleToggleStaticEmbedding(event: ChangeEvent<HTMLInputElement>) {
-    updateSetting({ key: "enable-embedding-static" }, event.target.checked);
+  function handleToggleStaticEmbedding(value: boolean) {
+    updateSetting({ key: "enable-embedding-static" }, value);
     // TODO: remove before merging integration branch
-    updateSetting({ key: "enable-embedding" }, event.target.checked);
+    updateSetting({ key: "enable-embedding" }, value);
   }
 
   return (
@@ -49,11 +50,9 @@ export function StaticEmbeddingSettings({
             [t`Static embedding`],
           ]}
         />
-        <Switch
+        <SwitchWithSetByEnvVar
+          settingKey="enable-embedding-static"
           label={t`Enable Static embedding`}
-          labelPosition="left"
-          size="sm"
-          checked={isStaticEmbeddingEnabled}
           onChange={handleToggleStaticEmbedding}
         />
         <Box data-testid="embedding-secret-key-setting">
@@ -76,6 +75,8 @@ export function StaticEmbeddingSettings({
         </Box>
         <Box data-testid="embedded-resources">
           <SettingTitle>{t`Manage embeds`}</SettingTitle>
+          {/* Right now, when changing the setting, we don't have a mechanism to reload the data.
+          For now we'll have to use this key.   */}
           <EmbeddedResources key={isStaticEmbeddingEnabled.toString()} />
         </Box>
       </Stack>

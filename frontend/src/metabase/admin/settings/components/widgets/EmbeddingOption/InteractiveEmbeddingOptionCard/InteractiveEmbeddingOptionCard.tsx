@@ -7,10 +7,11 @@ import { Badge } from "metabase/home/components/EmbedHomepage/Badge";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
-import { Box, Button, Flex, Icon, Switch, Text } from "metabase/ui";
+import { Box, Button, Group, Icon, Text } from "metabase/ui";
 
 import { EmbeddingOption } from "../EmbeddingOption";
 import { LinkButton } from "../LinkButton";
+import { SwitchWithSetByEnvVar } from "../SwitchWithSetByEnvVar";
 import type { EmbeddingOptionCardProps } from "../types";
 
 import { InteractiveEmbeddingIcon } from "./InteractiveEmbeddingIcon";
@@ -72,7 +73,7 @@ export const InteractiveEmbeddingOptionCard = ({
           <Icon name="share" aria-hidden />
         </Box>
       </Text>
-      <Flex align="center" w="100%">
+      <Group position="apart" align="center" w="100%">
         {isEE ? (
           <LinkButton
             to={"/admin/settings/embedding-in-other-applications/full-app"}
@@ -87,16 +88,12 @@ export const InteractiveEmbeddingOptionCard = ({
             {t`Learn More`}
           </Button>
         )}
-        <Switch
-          size="sm"
-          label={isInteractiveEmbeddingEnabled ? t`Enabled` : t`Disabled`}
-          ml="auto"
-          labelPosition="left"
+        <SwitchWithSetByEnvVar
+          settingKey="enable-embedding-interactive"
           disabled={!isEE}
-          checked={isInteractiveEmbeddingEnabled}
           onChange={onToggle}
         />
-      </Flex>
+      </Group>
     </EmbeddingOption>
   );
 };

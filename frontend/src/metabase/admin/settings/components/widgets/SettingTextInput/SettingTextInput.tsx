@@ -9,8 +9,8 @@ type Value = string | null;
 export interface SettingInputProps {
   setting: {
     key: string;
-    value: string | null;
-    default?: string;
+    value?: string | null;
+    default?: string | null;
     placeholder?: string;
   };
   onChange: (value: Value) => void;
