@@ -48,7 +48,7 @@ export const CollectionCaption = ({
   );
 
   return (
-    <CaptionRoot>
+    <CaptionRoot data-testid="collection-caption">
       <CaptionTitleContainer>
         <CollectionCaptionIcon collection={collection} />
         <CaptionTitle
@@ -73,6 +73,7 @@ export const CollectionCaption = ({
           isVisible={Boolean(collection.description)}
           canWrite={isEditable}
           onChange={handleChangeDescription}
+          data-testid="collection-description-in-caption"
           left={0}
         />
       )}
