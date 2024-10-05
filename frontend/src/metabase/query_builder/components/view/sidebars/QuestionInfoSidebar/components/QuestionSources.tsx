@@ -22,7 +22,7 @@ export const QuestionSources = ({ question }: { question: Question }) => {
     question,
     subHead: false,
     isObjectDetail: true,
-    formatTableAs: "record",
+    formatTableAsComponent: false,
   }) as unknown as QuestionSource[];
 
   const sourcesWithIcons: QuestionSource[] = useMemo(() => {
