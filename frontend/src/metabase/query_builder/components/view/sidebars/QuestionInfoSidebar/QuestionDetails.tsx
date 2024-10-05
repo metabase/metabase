@@ -1,5 +1,6 @@
 import cx from "classnames";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
+import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { getTableUrl } from "metabase/browse/containers/TableBrowser/TableBrowser";
@@ -8,14 +9,24 @@ import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import DateTime from "metabase/components/DateTime";
 import Link from "metabase/core/components/Link";
 import Styles from "metabase/css/core/index.css";
+import { getIcon } from "metabase/lib/icon";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { QuestionPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
-import { Box, Flex, FixedSizeIcon as Icon, Text } from "metabase/ui";
+import {
+  Box,
+  Flex,
+  FixedSizeIcon as Icon,
+  Text,
+  type TextProps,
+} from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { Database } from "metabase-types/api";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { TableId } from "metabase-types/api";
 
 import SidebarStyles from "./QuestionInfoSidebar.module.css";
 
@@ -24,6 +35,10 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
   const createdBy = question.getCreator();
   const createdAt = question.getCreatedAt();
   const collection = question.collection();
+
+  const collectionSectionTitle = c(
+    "This is a heading that appears above the name of a collection - a collection that a dashboard is saved in. Feel free to translate this heading as though it said 'Saved in collection', if you think that would make more sense in your language.",
+  ).t`Saved in`;
 
   return (
     <>
@@ -56,23 +71,24 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
           </Flex>
         )}
       </SidesheetCardSection>
-      <SidesheetCardSection title={t`Saved in`}>
-        <Flex gap="sm" align="top" color="var(--mb-color-brand)">
-          <Icon
-            name="folder"
-            color="var(--mb-color-brand)"
-            className={SidebarStyles.IconMargin}
-          />
-          <Text>
-            <Link to={Urls.collection(collection)} variant="brand">
-              {
-                // We need to use getCollectionName or the name of the root collection will not be displayed
-                getCollectionName(collection)
-              }
-            </Link>
-          </Text>
-        </Flex>
-      </SidesheetCardSection>
+      {collection && (
+        <SidesheetCardSection title={collectionSectionTitle}>
+          <Flex gap="sm" align="top" color="var(--mb-color-brand)">
+            <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
+              collection={collection}
+              className={SidebarStyles.IconMargin}
+            />
+            <Text>
+              <Link to={Urls.collection(collection)} variant="brand">
+                {
+                  // We need to use getCollectionName or the name of the root collection will not be displayed
+                  getCollectionName(collection)
+                }
+              </Link>
+            </Text>
+          </Flex>
+        </SidesheetCardSection>
+      )}
       <SharingDisplay question={question} />
       <SourceDisplay question={question} />
     </>
@@ -80,6 +96,7 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
 };
 
 function SourceDisplay({ question }: { question: Question }) {
+  /** This might be a table or the underlying question that the presently viewed question is based on */
   const sourceInfo = question.legacyQueryTable();
   const metadata = useSelector(getMetadata);
 
@@ -87,34 +104,46 @@ function SourceDisplay({ question }: { question: Question }) {
     return null;
   }
 
-  const model = String(sourceInfo.id).includes("card__") ? "card" : "table";
+  const sourceModel = String(sourceInfo.id).includes("card__")
+    ? "card"
+    : "table";
 
-  const sourceUrl =
-    model === "card"
-      ? Urls.browseDatabase(sourceInfo.db as Database)
-      : getTableUrl(sourceInfo, metadata);
+  const sourceUrl = getSourceUrl({ model: sourceModel, sourceInfo, metadata });
+
+  const modelForIcon = match({
+    model: sourceModel,
+    type: "type" in sourceInfo ? sourceInfo.type : null,
+  })
+    .with({ type: "question" }, () => ({ model: "card" as const }))
+    .with({ type: "model" }, () => ({ model: "dataset" as const }))
+    .otherwise(() => ({ model: "table" as const }));
+
+  const iconProps = getIcon(modelForIcon);
 
   return (
-    <SidesheetCardSection title={t`Based on`}>
-      <Flex gap="sm" align="center">
+    <SidesheetCardSection
+      title={c(
+        "This is a heading that appears above the names of the database, table, and/or question that a question is based on -- the 'sources' for the question. Feel free to translate this heading as though it said 'Based on these sources', if you think that would make more sense in your language.",
+      ).t`Based on`}
+    >
+      <Flex gap="sm" align="flex-start">
         {sourceInfo.db && (
           <>
-            <Text>
-              <Link
-                to={`/browse/databases/${sourceInfo.db.id}`}
-                variant="brand"
-              >
+            <Link to={Urls.browseDatabase(sourceInfo.db)} variant="brand">
+              <SourceFlex>
+                <Box component={Icon} mt={2} c="text-dark" name="database" />
                 {sourceInfo.db.name}
-              </Link>
-            </Text>
-            {"/"}
+              </SourceFlex>
+            </Link>
+            <SourceFlex>{"/"}</SourceFlex>
           </>
         )}
-        <Text>
-          <Link to={sourceUrl} variant="brand">
+        <Link to={sourceUrl} variant="brand">
+          <SourceFlex>
+            <Box component={Icon} mt={2} c="text-dark" {...iconProps} />
             {sourceInfo?.display_name}
-          </Link>
-        </Text>
+          </SourceFlex>
+        </Link>
       </Flex>
     </SidesheetCardSection>
   );
@@ -165,3 +194,33 @@ function SharingDisplay({ question }: { question: Question }) {
     </SidesheetCardSection>
   );
 }
+
+const SourceFlex = ({
+  children,
+  ...props
+}: { children: ReactNode } & TextProps) => (
+  <Flex gap="sm" lh="1.25rem" maw="20rem" {...props}>
+    {children}
+  </Flex>
+);
+
+const getSourceUrl = ({
+  model,
+  sourceInfo,
+  metadata,
+}: {
+  model: string;
+  sourceInfo: { db?: Database; id: TableId };
+  metadata: Metadata;
+}) => {
+  if (model === "card") {
+    const questionInfo = sourceInfo;
+    const questionId = Number(`${questionInfo.id}`.split("__")[1]);
+    return Urls.question({
+      ...questionInfo,
+      id: questionId,
+    });
+  } else {
+    return getTableUrl(sourceInfo, metadata);
+  }
+};
