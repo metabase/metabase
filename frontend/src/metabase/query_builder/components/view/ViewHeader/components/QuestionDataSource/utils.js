@@ -20,8 +20,7 @@ export function getDataSourceParts({
   question,
   subHead,
   isObjectDetail,
-  // Set TableComponent to null to make this function return only objects
-  TableComponent = QuestionTableBadges,
+  formatTableAs = "component",
 }) {
   if (!question) {
     return [];
@@ -89,20 +88,21 @@ export function getDataSourceParts({
         }),
     ].filter(isNotNull);
 
-    const part = isValidElement(TableComponent) ? (
-      <TableComponent
-        tables={allTables}
-        subHead={subHead}
-        hasLink={hasTableLink}
-        isLast={!isObjectDetail}
-      />
-    ) : (
-      {
-        name: table.displayName(),
-        href: hasTableLink ? getTableURL(table) : "",
-        model: "table",
-      }
-    );
+    const part =
+      formatTableAs === "component" ? (
+        <QuestionTableBadges
+          tables={allTables}
+          subHead={subHead}
+          hasLink={hasTableLink}
+          isLast={!isObjectDetail}
+        />
+      ) : (
+        {
+          name: table.displayName(),
+          href: hasTableLink ? getTableURL(table) : "",
+          model: "table",
+        }
+      );
 
     parts.push(part);
   }
