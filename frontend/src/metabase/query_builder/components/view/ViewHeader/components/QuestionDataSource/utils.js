@@ -20,7 +20,7 @@ export function getDataSourceParts({
   question,
   subHead,
   isObjectDetail,
-  formatTableAs = "component",
+  formatTableAsComponent = true,
 }) {
   if (!question) {
     return [];
@@ -88,21 +88,20 @@ export function getDataSourceParts({
         }),
     ].filter(isNotNull);
 
-    const part =
-      formatTableAs === "component" ? (
-        <QuestionTableBadges
-          tables={allTables}
-          subHead={subHead}
-          hasLink={hasTableLink}
-          isLast={!isObjectDetail}
-        />
-      ) : (
-        {
-          name: table.displayName(),
-          href: hasTableLink ? getTableURL(table) : "",
-          model: "table",
-        }
-      );
+    const part = formatTableAsComponent ? (
+      <QuestionTableBadges
+        tables={allTables}
+        subHead={subHead}
+        hasLink={hasTableLink}
+        isLast={!isObjectDetail}
+      />
+    ) : (
+      {
+        name: table.displayName(),
+        href: hasTableLink ? getTableURL(table) : "",
+        model: "table",
+      }
+    );
 
     parts.push(part);
   }

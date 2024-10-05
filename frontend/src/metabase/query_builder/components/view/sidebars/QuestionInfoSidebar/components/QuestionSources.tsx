@@ -22,8 +22,7 @@ export const QuestionSources = ({ question }: { question: Question }) => {
     question,
     subHead: false,
     isObjectDetail: true,
-    // This function should return an object for each source. Let's override its default behavior, which is to return a component for tables
-    TableComponent: undefined,
+    formatTableAs: "record",
   }) as unknown as QuestionSource[];
 
   const sourcesWithIcons: QuestionSource[] = useMemo(() => {
