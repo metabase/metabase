@@ -31,7 +31,7 @@ const modelIconMap: Record<IconModel, IconName> = {
   action: "bolt",
   "indexed-entity": "index",
   dashboard: "dashboard",
-  card: "table",
+  card: "table2",
   segment: "segment",
   metric: "metric",
   snippet: "unknown",
