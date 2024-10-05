@@ -18,7 +18,7 @@ type Collection = Pick<
   "id" | "name" | "originalName" | "personal_owner_id" | "type"
 >;
 
-function slugifyPersonalCollection(collection: Collection) {
+export function slugifyPersonalCollection(collection: Collection) {
   // Current user's personal collection name is replaced with "Your personal collection"
   // `originalName` keeps the original name like "John Doe's Personal Collection"
   const name = collection.originalName || collection.name;
@@ -57,7 +57,7 @@ export function collection(
     ? slugifyPersonalCollection(collection)
     : slugg(collection.name);
 
-  return appendSlug(`/collection/${collection.id}`, slug);
+  return appendSlug(`/collection/${collection.id ?? "root"}`, slug);
 }
 
 export function isCollectionPath(path: string) {
