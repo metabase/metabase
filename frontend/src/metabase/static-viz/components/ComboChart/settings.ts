@@ -145,7 +145,7 @@ export const computeStaticComboChartSettings = (
     cardsColumns,
     [],
     settings,
-    renderingContext,
+    renderingContext.formatValue,
   );
 
   const seriesVizSettingsKeys = seriesModels.map(

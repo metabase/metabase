@@ -7,6 +7,7 @@ import {
   getMaxMetricsSupported,
 } from "metabase/visualizations";
 import { getCardsColumns } from "metabase/visualizations/echarts/cartesian/model";
+import { getCardsSeriesModels } from "metabase/visualizations/echarts/cartesian/model/series";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
@@ -15,7 +16,10 @@ import {
   getFriendlyName,
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  ComputedVisualizationSettings,
+  Formatter,
+} from "metabase/visualizations/types";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isAny,
@@ -437,4 +441,19 @@ export function getComputedAdditionalColumnsValue(
   ).filter((columnKey: string) => availableAdditionalColumnKeys.has(columnKey));
 
   return filteredStoredColumns;
+}
+
+export function getSeriesModelsForSettings(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+  formatValue: Formatter,
+) {
+  const cardsColumns = getCardsColumns(rawSeries, settings);
+  return getCardsSeriesModels(
+    rawSeries,
+    cardsColumns,
+    [],
+    settings,
+    formatValue,
+  );
 }

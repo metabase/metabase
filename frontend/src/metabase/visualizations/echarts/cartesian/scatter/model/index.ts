@@ -71,7 +71,7 @@ export function getScatterPlotModel(
     cardsColumns,
     hiddenSeries,
     settings,
-    renderingContext,
+    renderingContext.formatValue,
   );
 
   // We currently ignore sorting and visibility settings on combined cards

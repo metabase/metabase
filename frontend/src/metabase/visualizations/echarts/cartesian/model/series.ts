@@ -29,6 +29,7 @@ import {
 } from "metabase/visualizations/shared/settings/series";
 import type {
   ComputedVisualizationSettings,
+  Formatter,
   RenderingContext,
 } from "metabase/visualizations/types";
 import type {
@@ -122,7 +123,7 @@ export const getCardsSeriesModels = (
   cardsColumns: CartesianChartColumns[],
   hiddenSeries: string[],
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
+  formatValue: Formatter,
 ) => {
   const hasMultipleCards = rawSeries.length > 1;
   return rawSeries.flatMap((cardDataset, index) => {
@@ -135,7 +136,7 @@ export const getCardsSeriesModels = (
       hasMultipleCards,
       index === 0,
       settings,
-      renderingContext,
+      formatValue,
     );
   });
 };
@@ -158,7 +159,7 @@ export const getCardSeriesModels = (
   hasMultipleCards: boolean,
   isFirstCard: boolean,
   settings: ComputedVisualizationSettings,
-  renderingContext: RenderingContext,
+  formatValue: Formatter,
 ): SeriesModel[] => {
   const cardId = card.id ?? null;
   const hasBreakout = "breakout" in columns;
@@ -223,7 +224,7 @@ export const getCardSeriesModels = (
     // which can be different based on a user's locale.
     const formattedBreakoutValue =
       breakoutValue != null && breakoutValue !== ""
-        ? renderingContext.formatValue(breakoutValue, {
+        ? formatValue(breakoutValue, {
             column: breakout.column,
           })
         : NULL_DISPLAY_VALUE;

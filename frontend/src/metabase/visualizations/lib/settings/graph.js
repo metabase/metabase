@@ -1,22 +1,15 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
-import { measureTextHeight, measureTextWidth } from "metabase/lib/measure-text";
-import { computeStaticComboChartSettings } from "metabase/static-viz/components/ComboChart/settings";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
 } from "metabase/visualizations";
 import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
-import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import {
-  keyForSingleSeries,
-  seriesSetting,
-} from "metabase/visualizations/lib/settings/series";
+import { seriesSetting } from "metabase/visualizations/lib/settings/series";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import { MAX_SERIES, columnsAreValid } from "metabase/visualizations/lib/utils";
@@ -45,6 +38,7 @@ import {
   getDefaultYAxisTitle,
   getIsXAxisLabelEnabledDefault,
   getIsYAxisLabelEnabledDefault,
+  getSeriesModelsForSettings,
   getSeriesOrderDimensionSetting,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
@@ -140,51 +134,31 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     widget: ChartSettingSeriesOrder,
     marginBottom: "1rem",
-
-    getValue: series => {
-      const rawSeries = series?._raw ?? series;
-      const renderingContext = {
-        getColor: name => color(name),
-        formatValue: (value, options) => String(formatValue(value, options)),
-        measureText: measureTextWidth,
-        measureTextHeight: measureTextHeight,
-        fontFamily: "",
-        theme: {},
-      };
-      const computedSettings = computeStaticComboChartSettings(
+    useRawSeries: true,
+    getValue: (rawSeries, settings) => {
+      const seriesModels = getSeriesModelsForSettings(
         rawSeries,
-        renderingContext,
-      );
-      const chartModel = getCartesianChartModel(
-        rawSeries,
-        computedSettings,
-        [],
-        renderingContext,
-      );
-      const seriesKeys = chartModel.seriesModels.map(
-        s => s.legacySeriesSettingsObjectKey.card._seriesKey,
-      );
-      // eslint-disable-next-line no-unused-vars
-      const value = getSeriesOrderVisibilitySettings(
-        computedSettings,
-        seriesKeys,
+        settings,
+        formatValue,
       );
 
-      const oldValue = getSeriesOrderVisibilitySettings(
-        computedSettings,
-        series.map(s => keyForSingleSeries(s)),
-      );
-
-      // return value;
-      return oldValue;
+      const seriesKeys = seriesModels.map(s => s.vizSettingsKey);
+      return getSeriesOrderVisibilitySettings(settings, seriesKeys);
     },
+    getProps: () => {},
     getHidden: (series, settings) => {
       return (
         settings["graph.dimensions"]?.length < 2 || series.length > MAX_SERIES
       );
     },
     dashboard: false,
-    readDependencies: ["series_settings.colors", "series_settings"],
+    readDependencies: [
+      "series_settings.colors",
+      "series_settings",
+      "graph.metrics",
+      "graph.dimensions",
+      "graph.max_categories",
+    ],
     writeDependencies: ["graph.series_order_dimension"],
   },
   "graph.metrics": {
