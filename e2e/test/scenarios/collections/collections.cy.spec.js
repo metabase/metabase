@@ -209,14 +209,14 @@ describe("scenarios > collection defaults", () => {
   });
 
   it("should support markdown in collection description", () => {
-    cy.request("PUT", `/api/collection/${FIRST_COLLECTION_ID}`, {
+    cy.request("PUT", `/api/collection/${SECOND_COLLECTION_ID}`, {
       description: "[link](https://metabase.com)",
     });
 
     visitCollection(FIRST_COLLECTION_ID);
 
     cy.get("table").within(() => {
-      cy.findByText("First collection")
+      cy.findByText("Second collection")
         .closest("tr")
         .within(() => {
           cy.icon("info").trigger("mouseenter");
