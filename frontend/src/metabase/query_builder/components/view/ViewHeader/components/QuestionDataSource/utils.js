@@ -16,7 +16,13 @@ import { HeadBreadcrumbs } from "../HeaderBreadcrumbs";
 
 import { IconWrapper, TablesDivider } from "./QuestionDataSource.styled";
 
-export function getDataSourceParts({ question, subHead, isObjectDetail }) {
+export function getDataSourceParts({
+  question,
+  subHead,
+  isObjectDetail,
+  // Set TableComponent to null to make this function return only objects
+  TableComponent = QuestionTableBadges,
+}) {
   if (!question) {
     return [];
   }
@@ -39,6 +45,7 @@ export function getDataSourceParts({ question, subHead, isObjectDetail }) {
       icon: !subHead ? "database" : undefined,
       name: database.displayName(),
       href: database.id >= 0 && Urls.browseDatabase(database),
+      model: "database",
     });
   }
 
@@ -49,6 +56,7 @@ export function getDataSourceParts({ question, subHead, isObjectDetail }) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (!isBasedOnSavedQuestion) {
       parts.push({
+        model: "question",
         name: table.schema_name,
         href: database.id >= 0 && Urls.browseSchema(table),
       });
@@ -81,14 +89,22 @@ export function getDataSourceParts({ question, subHead, isObjectDetail }) {
         }),
     ].filter(isNotNull);
 
-    parts.push(
-      <QuestionTableBadges
+    const part = isValidElement(TableComponent) ? (
+      <TableComponent
         tables={allTables}
         subHead={subHead}
         hasLink={hasTableLink}
         isLast={!isObjectDetail}
-      />,
+      />
+    ) : (
+      {
+        name: table.displayName(),
+        href: hasTableLink ? getTableURL(table) : "",
+        model: "table",
+      }
     );
+
+    parts.push(part);
   }
 
   return parts.filter(part => isValidElement(part) || part.name || part.icon);

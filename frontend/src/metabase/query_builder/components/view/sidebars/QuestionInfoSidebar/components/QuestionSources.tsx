@@ -1,18 +1,46 @@
-import { Fragment } from "react";
+import { Fragment, useMemo } from "react";
+import { match } from "ts-pattern";
 import { c } from "ttag";
 
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import Link from "metabase/core/components/Link";
-import { Box, Flex, Icon } from "metabase/ui";
+import { getIcon } from "metabase/lib/icon";
+import { Box, Flex, Icon, type IconProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
-import { useQuestionSourcesInfo } from "./utils";
+import { getDataSourceParts } from "../../../ViewHeader/components/QuestionDataSource/utils";
+
+interface QuestionSource {
+  href: string;
+  name: string;
+  model?: string;
+  iconProps: Omit<IconProps, "display">;
+}
 
 export const QuestionSources = ({ question }: { question: Question }) => {
-  const sources = useQuestionSourcesInfo(question);
+  const sources = getDataSourceParts({
+    question,
+    subHead: false,
+    isObjectDetail: true,
+    // This function should return an object for each source. Let's override its default behavior, which is to return a component for tables
+    TableComponent: undefined,
+  }) as unknown as QuestionSource[];
+
+  const sourcesWithIcons: QuestionSource[] = useMemo(() => {
+    return sources.map(source => {
+      const modelForIcon = match(source.model)
+        .with("question", () => ({ model: "card" as const }))
+        .with("model", () => ({ model: "dataset" as const }))
+        .otherwise(() => ({ model: "table" as const }));
+      const iconProps = getIcon(modelForIcon);
+      return { ...source, iconProps };
+    });
+  }, [sources]);
+
   if (!sources.length) {
     return null;
   }
+
   const title = c(
     "This is a heading that appears above the names of the database, table, and/or question that a question is based on -- the 'sources' for the question. Feel free to translate this heading as though it said 'Based on these sources', if you think that would make more sense in your language.",
   ).t`Based on`;
@@ -20,9 +48,9 @@ export const QuestionSources = ({ question }: { question: Question }) => {
   return (
     <SidesheetCardSection title={title}>
       <Flex gap="sm" align="flex-start">
-        {sources.map(({ url, name, iconProps }, index) => (
-          <Fragment key={url}>
-            <Link to={url} variant="brand">
+        {sourcesWithIcons.map(({ href, name, iconProps }, index) => (
+          <Fragment key={`${href}-${name}`}>
+            <Link to={href} variant="brand">
               <Flex gap="sm" lh="1.25rem" maw="20rem">
                 <Box component={Icon} mt={2} c="text-dark" {...iconProps} />
                 {name}
