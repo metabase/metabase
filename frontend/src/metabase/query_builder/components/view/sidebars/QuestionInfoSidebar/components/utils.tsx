@@ -2,13 +2,12 @@ import { match } from "ts-pattern";
 
 import { getTableUrl } from "metabase/browse/containers/TableBrowser/TableBrowser";
 import { getIcon } from "metabase/lib/icon";
-import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { IconProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { TableId } from "metabase-types/api";
 
 export interface QuestionSource {
@@ -17,13 +16,12 @@ export interface QuestionSource {
   iconProps: Omit<IconProps, "display">;
 }
 
-export const useQuestionSourcesInfo = (
+export const getQuestionSourcesInfo = (
   question: Question,
+  metadata: Metadata,
 ): QuestionSource[] => {
   /** This might be a table or the underlying question that the presently viewed question is based on */
   const sourceInfo = question.legacyQueryTable();
-
-  const metadata = useSelector(getMetadata);
 
   if (!sourceInfo) {
     return [];
@@ -68,7 +66,8 @@ export const getSourceUrl = ({
 }) => {
   if (model === "card") {
     const questionInfo = sourceInfo;
-    const questionId = Number(`${questionInfo.id}`.split("__")[1]);
+
+    const questionId = getQuestionIdFromVirtualTableId(questionInfo.id);
     return Urls.question({
       ...questionInfo,
       id: questionId,
