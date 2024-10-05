@@ -153,6 +153,7 @@ const EditableText = forwardRef(function EditableText(
       ) : (
         <EditableTextArea
           ref={inputRef}
+          value={inputValue}
           placeholder={placeholder}
           disabled={isDisabled}
           data-testid={dataTestId}
@@ -160,9 +161,7 @@ const EditableText = forwardRef(function EditableText(
           onBlur={handleBlur}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-        >
-          {inputValue}
-        </EditableTextArea>
+        />
       )}
     </Box>
   );

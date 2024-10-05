@@ -23,6 +23,7 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
   const lastEditInfo = question.lastEditInfo();
   const createdBy = question.getCreator();
   const createdAt = question.getCreatedAt();
+  const collection = question.collection();
 
   return (
     <>
@@ -63,13 +64,10 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
             className={SidebarStyles.IconMargin}
           />
           <Text>
-            <Link
-              to={`/collection/${question.collectionId() ?? "root"}`}
-              variant="brand"
-            >
+            <Link to={Urls.collection(collection)} variant="brand">
               {
                 // We need to use getCollectionName or the name of the root collection will not be displayed
-                getCollectionName(question.collection())
+                getCollectionName(collection)
               }
             </Link>
           </Text>
