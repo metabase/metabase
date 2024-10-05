@@ -33,13 +33,13 @@ Additionally, this Metabase analytics collection has a default sub-collection ca
 
 ## Viewing usage insights for a question, dashboard, or model
 
-> Only people in groups with view access to the Metabase analytics collection will see this Insights option.
+> Only people in groups with view access to the Metabase analytics collection will see this Usage insights option.
 
 To view usage analytics for a question, dashboard, or model:
 
 - Visit the item.
-- Click on the info button in the upper right.
-- Click **Insights**.
+- Click on the dot menu (**...**).
+- Select **Usage insights**.
 
 Metabase will take you to the relevant usage dashboard and plug in the item's ID.
 
