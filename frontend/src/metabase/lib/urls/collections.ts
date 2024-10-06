@@ -57,7 +57,7 @@ export function collection(
     ? slugifyPersonalCollection(collection)
     : slugg(collection.name);
 
-  return appendSlug(`/collection/${collection.id ?? "root"}`, slug);
+  return appendSlug(`/collection/${collection.id}`, slug);
 }
 
 export function isCollectionPath(path: string) {
