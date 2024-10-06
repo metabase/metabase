@@ -652,7 +652,8 @@
             (setup-header-row! sheet (count ordered-cols))
             (let [modified-row (cond->> (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) true)
                                  @pivot-grouping-idx (m/remove-nth @pivot-grouping-idx))]
-              (spreadsheet/add-row! sheet modified-row)))))
+              (spreadsheet/add-row! sheet modified-row))
+            (vreset! cell-styles (cond->> @cell-styles @pivot-grouping-idx (m/remove-nth @pivot-grouping-idx))))))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
         (let [ordered-row             (vec (if output-order
