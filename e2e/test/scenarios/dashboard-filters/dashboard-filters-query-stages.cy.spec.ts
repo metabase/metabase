@@ -1168,8 +1168,18 @@ describe("scenarios > dashboard > filters > query stages", () => {
           cy.findAllByTestId("cell-data").last().should("have.text", "953");
         });
 
-        // TODO
-        it.skip("1st stage implicit join (data source)", () => {});
+        it("1st stage implicit join (data source)", () => {
+          setup1stStageImplicitSourceJoinFilter();
+
+          getDashboardCard(0).scrollIntoView();
+          getDashboardCard(0)
+            .findByTestId("cell-data")
+            .should("have.text", "4,292");
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+
+          cy.findAllByTestId("cell-data").last().should("have.text", "4,292");
+        });
 
         // TODO
         it.skip("1st stage implicit join (joined data source)", () => {});
@@ -1582,14 +1592,16 @@ function setup1stStageExplicitJoinFilter() {
   cy.wait("@dashboardData");
 }
 
-function setup2ndStageExplicitJoinFilter() {
+function setup1stStageImplicitSourceJoinFilter() {
   editDashboard();
 
-  getFilter("Text").click();
+  getFilter("Number").click();
+  sidebar().findByText("Filter operator").next().click();
+  popover().findByText("Between").click();
 
   getDashboardCard(0).findByText("Select…").click();
   popover().within(() => {
-    getPopoverItem("Reviewer", 1).click();
+    getPopoverItem("Rating", 2).click(); // product rating
   });
 
   cy.button("Save").click();
@@ -1597,7 +1609,8 @@ function setup2ndStageExplicitJoinFilter() {
 
   filterWidget().eq(0).click();
   popover().within(() => {
-    cy.findByPlaceholderText("Search by Reviewer").type("abe.gorczany");
+    cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
+    cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
     cy.button("Add filter").click();
   });
   cy.wait("@dashboardData");
@@ -1645,6 +1658,27 @@ function setup1stStageBreakoutFilter() {
   filterWidget().eq(0).click();
   popover().within(() => {
     cy.findByLabelText("Gadget").click();
+    cy.button("Add filter").click();
+  });
+  cy.wait("@dashboardData");
+}
+
+function setup2ndStageExplicitJoinFilter() {
+  editDashboard();
+
+  getFilter("Text").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Reviewer", 1).click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findByPlaceholderText("Search by Reviewer").type("abe.gorczany");
     cy.button("Add filter").click();
   });
   cy.wait("@dashboardData");
