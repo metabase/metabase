@@ -6,6 +6,7 @@
    [honey.sql :as sql]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver.oracle]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -22,6 +23,8 @@
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.driver.oracle/keep-me)
 
 (sql-jdbc.tx/add-test-extensions! :oracle)
 

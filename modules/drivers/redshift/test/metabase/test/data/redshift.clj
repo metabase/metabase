@@ -15,6 +15,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.redshift]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
@@ -27,6 +28,9 @@
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
+
+;;; need to load this so we can properly override the implementation of `describe-database` below
+(comment metabase.driver.redshift/keep-me)
 
 (defmethod driver/database-supports? [:redshift :test/time-type]
   [_driver _feature _database]
