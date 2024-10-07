@@ -2,9 +2,14 @@ import { createAction } from "redux-actions";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
+import { getOriginalCard } from "metabase/query_builder/selectors";
 import { updateUserSetting } from "metabase/redux/settings";
 import { UserApi } from "metabase/services";
-import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
+import type {
+  Dispatch,
+  GetState,
+  QueryBuilderMode,
+} from "metabase-types/store";
 
 import { updateUrl } from "./navigation";
 import { cancelQuery } from "./querying";
@@ -107,3 +112,13 @@ export const setNotebookNativePreviewSidebarWidth = (width: number) =>
     key: "notebook-native-preview-sidebar-width",
     value: width,
   });
+
+export const CANCEL_QUESTION_CHANGES = "metabase/qb/CANCEL_QUESTION_CHANGES";
+export const cancelQuestionChanges =
+  () => (dispatch: Dispatch, getState: GetState) => {
+    const cardBeforeChanges = getOriginalCard(getState());
+    dispatch({
+      type: CANCEL_QUESTION_CHANGES,
+      payload: { card: cardBeforeChanges },
+    });
+  };

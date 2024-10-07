@@ -3,7 +3,7 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { parseTimestamp } from "metabase/lib/time";
-import { compareVersions, numberToWord } from "metabase/lib/utils";
+import { numberToWord } from "metabase/lib/utils";
 import type {
   PasswordComplexity,
   SettingKey,
@@ -146,13 +146,6 @@ class MetabaseSettings {
   }
 
   /**
-   * @deprecated use getSetting(state, "has-user-setup")
-   */
-  hasUserSetup() {
-    return this.get("has-user-setup");
-  }
-
-  /**
    * @deprecated use getSetting(state, "hide-embed-branding?")
    */
   hideEmbedBranding() {
@@ -185,17 +178,6 @@ class MetabaseSettings {
    */
   isOtherSsoEnabled() {
     return this.get("other-sso-enabled?");
-  }
-
-  /**
-   * @deprecated use getSetting(state, ...)
-   */
-  isSsoEnabled() {
-    return (
-      this.isLdapEnabled() ||
-      this.isGoogleAuthEnabled() ||
-      this.isOtherSsoEnabled()
-    );
   }
 
   /**
@@ -274,35 +256,6 @@ class MetabaseSettings {
   }
 
   /**
-   * @deprecated use getLearnUrl
-   */
-  learnUrl(path = "") {
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- This is the implementation of MetabaseSettings.learnUrl()
-    return `https://www.metabase.com/learn/${path}`;
-  }
-
-  /**
-   * @deprecated use getStoreUrl
-   */
-  storeUrl(path = "") {
-    return `https://store.metabase.com/${path}`;
-  }
-
-  migrateToCloudGuideUrl() {
-    return "https://www.metabase.com/cloud/docs/migrate/guide";
-  }
-
-  newVersionAvailable() {
-    const result = compareVersions(this.currentVersion(), this.latestVersion());
-    return result != null && result < 0;
-  }
-
-  versionIsLatest() {
-    const result = compareVersions(this.currentVersion(), this.latestVersion());
-    return result != null && result >= 0;
-  }
-
-  /**
    * @deprecated use getSetting(state, "version-info")
    */
   versionInfo() {
@@ -315,14 +268,6 @@ class MetabaseSettings {
   currentVersion() {
     const version = this.get("version") || {};
     return version.tag;
-  }
-
-  /**
-   * @deprecated use getSetting(state, "version-info")
-   */
-  latestVersion() {
-    const { latest } = this.versionInfo();
-    return latest && latest.version;
   }
 
   /**

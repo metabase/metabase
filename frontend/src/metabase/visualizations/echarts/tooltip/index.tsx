@@ -5,10 +5,12 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";
 
 import type { BaseCartesianChartModel } from "../cartesian/model/types";
-import type { PieChartModel } from "../pie/model/types";
+import type { PieChartModel, SliceTreeNode } from "../pie/model/types";
+import { getArrayFromMapValues } from "../pie/util";
 
 export const TOOLTIP_POINTER_MARGIN = 10;
 
@@ -130,22 +132,36 @@ export const useClickedStateTooltipSync = (
 
 export const useCartesianChartSeriesColorsClasses = (
   chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
 ) => {
-  const hexColors = useMemo(
-    () =>
-      chartModel.seriesModels
-        .map(seriesModel => seriesModel.color)
-        .filter(isNotNull),
-    [chartModel],
-  );
+  const hexColors = useMemo(() => {
+    const seriesColors = chartModel.seriesModels
+      .map(seriesModel => seriesModel.color)
+      .filter(isNotNull);
+
+    const settingColors = [
+      settings["waterfall.increase_color"],
+      settings["waterfall.decrease_color"],
+    ].filter(isNotNull);
+
+    return [...seriesColors, ...settingColors];
+  }, [chartModel, settings]);
 
   return useInjectSeriesColorsClasses(hexColors);
 };
 
+function getColorsFromSlices(slices: SliceTreeNode[]) {
+  const colors = slices.map(s => s.color);
+  slices.forEach(s =>
+    colors.push(...getColorsFromSlices(getArrayFromMapValues(s.children))),
+  );
+  return colors;
+}
+
 export const usePieChartValuesColorsClasses = (chartModel: PieChartModel) => {
   const hexColors = useMemo(() => {
-    return chartModel.slices.map(slice => slice.data.color);
-  }, [chartModel.slices]);
+    return getColorsFromSlices(getArrayFromMapValues(chartModel.sliceTree));
+  }, [chartModel]);
 
   return useInjectSeriesColorsClasses(hexColors);
 };

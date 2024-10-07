@@ -54,7 +54,6 @@ import {
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
-import { MetricEmptyState } from "./MetricEmptyState";
 import { TabHintToast } from "./TabHintToast";
 import { EDITOR_TAB_INDEXES } from "./constants";
 
@@ -72,11 +71,12 @@ const propTypes = {
   isResultDirty: PropTypes.bool.isRequired,
   isRunning: PropTypes.bool.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
+  runDirtyQuestionQuery: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
   setMetadataDiff: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
   onCancelCreateNewModel: PropTypes.func.isRequired,
-  onCancelDatasetChanges: PropTypes.func.isRequired,
+  cancelQuestionChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
   updateQuestion: PropTypes.func.isRequired,
   runQuestionQuery: PropTypes.func.isRequired,
@@ -184,8 +184,8 @@ function getColumnTabIndex(columnIndex, focusedFieldIndex) {
   return columnIndex === focusedFieldIndex
     ? EDITOR_TAB_INDEXES.FOCUSED_FIELD
     : columnIndex > focusedFieldIndex
-    ? EDITOR_TAB_INDEXES.NEXT_FIELDS
-    : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
+      ? EDITOR_TAB_INDEXES.NEXT_FIELDS
+      : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
 }
 
 function DatasetEditor(props) {
@@ -201,12 +201,12 @@ function DatasetEditor(props) {
     height,
     isDirty: isModelQueryDirty,
     isResultDirty,
-    isRunning,
     setQueryBuilderMode,
+    runDirtyQuestionQuery,
     runQuestionQuery,
     setDatasetEditorTab,
     setMetadataDiff,
-    onCancelDatasetChanges,
+    cancelQuestionChanges,
     onCancelCreateNewModel,
     onSave,
     updateQuestion,
@@ -214,8 +214,6 @@ function DatasetEditor(props) {
     onOpenModal,
   } = props;
 
-  const isMetric = question.type() === "metric";
-  const isMetricEmptyState = isMetric && !result && !isRunning;
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const isDirty = isModelQueryDirty || isMetadataDirty;
   const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
@@ -330,7 +328,8 @@ function DatasetEditor(props) {
 
   const handleCancelEdit = () => {
     setShowCancelEditWarning(false);
-    onCancelDatasetChanges();
+    cancelQuestionChanges();
+    runDirtyQuestionQuery();
     setQueryBuilderMode("view");
   };
 
@@ -354,15 +353,12 @@ function DatasetEditor(props) {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
     const questionWithMetadata = question.setResultMetadataDiff(metadataDiff);
-    const questionWithDisplay = isMetric
-      ? questionWithMetadata.setDefaultDisplay()
-      : questionWithMetadata;
 
     if (canBeDataset && isBrandNewDataset) {
-      await updateQuestion(questionWithDisplay, { rerunQuery: false });
+      await updateQuestion(questionWithMetadata, { rerunQuery: false });
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
-      await onSave(questionWithDisplay, { rerunQuery: true });
+      await onSave(questionWithMetadata, { rerunQuery: true });
       await setQueryBuilderMode("view");
       runQuestionQuery();
     } else {
@@ -372,7 +368,6 @@ function DatasetEditor(props) {
   }, [
     question,
     metadataDiff,
-    isMetric,
     updateQuestion,
     onSave,
     setQueryBuilderMode,
@@ -480,16 +475,11 @@ function DatasetEditor(props) {
         data-testid="dataset-edit-bar"
         title={question.displayName()}
         center={
-          // Metadata tab is temporarily disabled for metrics.
-          // It should be enabled in #37993
-          // @see https://github.com/metabase/metabase/issues/37993
-          isMetric ? null : (
-            <EditorTabs
-              currentTab={datasetEditorTab}
-              disabledMetadata={!resultsMetadata}
-              onChange={onChangeEditorTab}
-            />
-          )
+          <EditorTabs
+            currentTab={datasetEditorTab}
+            disabledMetadata={!resultsMetadata}
+            onChange={onChangeEditorTab}
+          />
         }
         buttons={[
           <Button
@@ -541,25 +531,18 @@ function DatasetEditor(props) {
           </QueryEditorContainer>
           <TableContainer isSidebarOpen={!!sidebar}>
             <DebouncedFrame className={cx(CS.flexFull)} enabled>
-              {isMetricEmptyState ? (
-                <MetricEmptyState
-                  query={question.query()}
-                  runQuestionQuery={runQuestionQuery}
-                />
-              ) : (
-                <QueryVisualization
-                  {...props}
-                  className={CS.spread}
-                  noHeader
-                  queryBuilderMode="dataset"
-                  isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}
-                  hasMetadataPopovers={false}
-                  handleVisualizationClick={handleTableElementClick}
-                  tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
-                  renderTableHeaderWrapper={renderTableHeaderWrapper}
-                  scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
-                />
-              )}
+              <QueryVisualization
+                {...props}
+                className={CS.spread}
+                noHeader
+                queryBuilderMode="dataset"
+                isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}
+                hasMetadataPopovers={false}
+                handleVisualizationClick={handleTableElementClick}
+                tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
+                renderTableHeaderWrapper={renderTableHeaderWrapper}
+                scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
+              />
             </DebouncedFrame>
             <TabHintToastContainer
               isVisible={isEditingMetadata && isTabHintVisible && !result.error}

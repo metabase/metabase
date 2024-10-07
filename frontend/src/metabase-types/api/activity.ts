@@ -1,6 +1,8 @@
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { CardDisplayType } from "./visualization";
 
+import type { Collection } from ".";
+
 export const ACTIVITY_MODELS = [
   "table",
   "card",
@@ -10,7 +12,7 @@ export const ACTIVITY_MODELS = [
   "collection",
 ] as const;
 
-export type ActivityModel = typeof ACTIVITY_MODELS[number];
+export type ActivityModel = (typeof ACTIVITY_MODELS)[number];
 
 export const isActivityModel = (model: string): model is ActivityModel =>
   (ACTIVITY_MODELS as unknown as string[]).includes(model);
@@ -22,15 +24,15 @@ export const isLoggableActivityModel = (item: {
   return typeof item.id === "number" && isActivityModel(item.model);
 };
 
-export interface BaseRecentItem {
+export type BaseRecentItem = {
   id: number;
   name: string;
   model: ActivityModel;
   description?: string | null;
   timestamp: string;
-}
+};
 
-export interface RecentTableItem extends BaseRecentItem {
+export type RecentTableItem = BaseRecentItem & {
   model: "table";
   display_name: string;
   table_schema: string;
@@ -39,21 +41,17 @@ export interface RecentTableItem extends BaseRecentItem {
     name: string;
     initial_sync_status: InitialSyncStatus;
   };
-}
+};
 
-export interface RecentCollectionItem extends BaseRecentItem {
+export type RecentCollectionItem = BaseRecentItem & {
   model: "collection" | "dashboard" | "card" | "dataset" | "metric";
   can_write: boolean;
   database_id?: DatabaseId; // for models and questions
-  parent_collection: {
-    id: number | null;
-    name: string;
-    authority_level?: "official" | null;
-  };
+  parent_collection: Pick<Collection, "id" | "name" | "authority_level">;
   authority_level?: "official" | null; // for collections
   moderated_status?: "verified" | null; // for models
   display?: CardDisplayType; // for questions
-}
+};
 
 export type RecentItem = RecentTableItem | RecentCollectionItem;
 

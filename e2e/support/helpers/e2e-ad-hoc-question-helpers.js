@@ -132,7 +132,12 @@ export function visitQuestionAdhoc(
 /**
  * Open a table as an ad-hoc query in a simple or a notebook mode, and optionally limit the number of results.
  *
- * @param {{database?: number, table: number, mode: (undefined|"notebook"), limit: number, callback?: function}} config
+ * @param {Object} config
+ * @param {number} [config.database=SAMPLE_DB_ID]
+ * @param {number} config.table
+ * @param {("notebook"|undefined)} [config.mode]
+ * @param {number} [config.limit]
+ * @param {function} [config.callback]
  */
 export function openTable({
   database = SAMPLE_DB_ID,

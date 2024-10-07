@@ -106,6 +106,7 @@ export const createMockTokenFeatures = (
   disable_password_login: false,
   content_verification: false,
   embedding: false,
+  embedding_sdk: false,
   hosting: false,
   official_collections: false,
   llm_autodescription: false,
@@ -124,6 +125,7 @@ export const createMockTokenFeatures = (
   collection_cleanup: false,
   upload_management: false,
   query_reference_validation: false,
+  serialization: false,
   ...opts,
 });
 
@@ -200,7 +202,7 @@ export const createMockSettings = (
   "openai-organization": null,
   "openai-model": null,
   "openai-available-models": [],
-  "other-sso-enabled?": null,
+  "other-sso-enabled?": false,
   "password-complexity": { total: 6, digit: 1 },
   "persisted-models-enabled": false,
   "persisted-model-refresh-cron-schedule": "0 0 0/6 * * ? *",
@@ -254,5 +256,8 @@ export const createMockSettings = (
   "setup-license-active-at-setup": false,
   "notebook-native-preview-shown": false,
   "notebook-native-preview-sidebar-width": null,
+  "query-analysis-enabled": false,
+  "check-for-updates": true,
+  "update-channel": "latest",
   ...opts,
 });

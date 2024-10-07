@@ -1,10 +1,8 @@
 import { t } from "ttag";
 
-import { Box } from "metabase/ui";
+import { Box, Space, Text } from "metabase/ui";
 
 import { ChartTypeList, type ChartTypeListProps } from "../ChartTypeList";
-
-import { OptionLabel } from "./ChartTypeSettings.styled";
 
 export type ChartTypeSettingsProps = {
   sensibleVisualizations: ChartTypeListProps["visualizationList"];
@@ -24,7 +22,17 @@ export const ChartTypeSettings = ({
       onSelectVisualization={onSelectVisualization}
       selectedVisualization={selectedVisualization}
     />
-    <OptionLabel>{t`Other charts`}</OptionLabel>
+
+    <Space h="xl" />
+
+    <Text
+      fw="bold"
+      color="text-medium"
+      tt="uppercase"
+      fz="sm"
+    >{t`Other charts`}</Text>
+
+    <Space h="sm" />
 
     <ChartTypeList
       data-testid="display-options-not-sensible"

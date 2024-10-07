@@ -2,8 +2,11 @@ import type {
   Card,
   CardId,
   CardQueryMetadata,
+  CardQueryRequest,
   CreateCardRequest,
+  Dataset,
   GetCardRequest,
+  GetPublicOrEmbeddableCard,
   ListCardsRequest,
   UpdateCardRequest,
 } from "metabase-types/api";
@@ -15,6 +18,7 @@ import {
   listTag,
   provideCardListTags,
   provideCardQueryMetadataTags,
+  provideCardQueryTags,
   provideCardTags,
 } from "./tags";
 
@@ -46,6 +50,14 @@ export const cardApi = Api.injectEndpoints({
       }),
       providesTags: (metadata, error, id) =>
         metadata ? provideCardQueryMetadataTags(id, metadata) : [],
+    }),
+    getCardQuery: builder.query<Dataset, CardQueryRequest>({
+      query: ({ cardId, ...body }) => ({
+        method: "POST",
+        url: `/api/card/${cardId}/query`,
+        body,
+      }),
+      providesTags: (_data, _error, { cardId }) => provideCardQueryTags(cardId),
     }),
     createCard: builder.mutation<Card, CreateCardRequest>({
       query: body => ({
@@ -137,6 +149,54 @@ export const cardApi = Api.injectEndpoints({
         }, PERSISTED_MODEL_REFRESH_DELAY);
       },
     }),
+    listEmbeddableCards: builder.query<GetPublicOrEmbeddableCard[], void>({
+      query: params => ({
+        method: "GET",
+        url: "/api/card/embeddable",
+        params,
+      }),
+      providesTags: (result = []) => [
+        ...result.map(res => idTag("embed-card", res.id)),
+        listTag("embed-card"),
+      ],
+    }),
+    listPublicCards: builder.query<GetPublicOrEmbeddableCard[], void>({
+      query: params => ({
+        method: "GET",
+        url: "/api/card/public",
+        params,
+      }),
+      providesTags: (result = []) => [
+        ...result.map(res => idTag("public-card", res.id)),
+        listTag("public-card"),
+      ],
+    }),
+    deleteCardPublicLink: builder.mutation<void, GetPublicOrEmbeddableCard>({
+      query: ({ id, ...params }) => ({
+        method: "DELETE",
+        url: `/api/card/${id}/public_link`,
+        params,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          listTag("public-card"),
+          idTag("public-card", id),
+        ]),
+    }),
+    createCardPublicLink: builder.mutation<
+      {
+        uuid: Card["public_uuid"];
+      },
+      Pick<Card, "id">
+    >({
+      query: ({ id, ...params }) => ({
+        method: "POST",
+        url: `/api/card/${id}/public_link`,
+        params,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("public-card")]),
+    }),
   }),
 });
 
@@ -144,6 +204,7 @@ export const {
   useListCardsQuery,
   useGetCardQuery,
   useGetCardQueryMetadataQuery,
+  useGetCardQueryQuery,
   useCreateCardMutation,
   useUpdateCardMutation,
   useDeleteCardMutation,
@@ -151,4 +212,8 @@ export const {
   useRefreshModelCacheMutation,
   usePersistModelMutation,
   useUnpersistModelMutation,
+  useListEmbeddableCardsQuery,
+  useListPublicCardsQuery,
+  useDeleteCardPublicLinkMutation,
+  endpoints: { createCardPublicLink, deleteCardPublicLink },
 } = cardApi;

@@ -6,6 +6,7 @@ import type {
   DashboardQueryMetadata,
   GetDashboardQueryMetadataRequest,
   GetDashboardRequest,
+  GetPublicOrEmbeddableDashboard,
   ListDashboardsRequest,
   ListDashboardsResponse,
   SaveDashboardRequest,
@@ -108,6 +109,57 @@ export const dashboardApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("dashboard")]),
     }),
+    listEmbeddableDashboards: builder.query<
+      GetPublicOrEmbeddableDashboard[],
+      void
+    >({
+      query: params => ({
+        method: "GET",
+        url: "/api/dashboard/embeddable",
+        params,
+      }),
+      providesTags: (result = []) => [
+        ...result.map(res => idTag("embed-dashboard", res.id)),
+        listTag("embed-dashboard"),
+      ],
+    }),
+    listPublicDashboards: builder.query<GetPublicOrEmbeddableDashboard[], void>(
+      {
+        query: params => ({
+          method: "GET",
+          url: "/api/dashboard/public",
+          params,
+        }),
+        providesTags: (result = []) => [
+          ...result.map(res => idTag("public-dashboard", res.id)),
+          listTag("public-dashboard"),
+        ],
+      },
+    ),
+    createDashboardPublicLink: builder.mutation<
+      GetPublicOrEmbeddableDashboard,
+      Pick<Dashboard, "id">
+    >({
+      query: ({ id, ...params }) => ({
+        method: "POST",
+        url: `/api/dashboard/${id}/public_link`,
+        params,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("public-dashboard")]),
+    }),
+    deleteDashboardPublicLink: builder.mutation<void, Pick<Dashboard, "id">>({
+      query: ({ id, ...params }) => ({
+        method: "DELETE",
+        url: `/api/dashboard/${id}/public_link`,
+        params,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [
+          listTag("public-dashboard"),
+          idTag("public-dashboard", id),
+        ]),
+    }),
   }),
 });
 
@@ -120,4 +172,8 @@ export const {
   useSaveDashboardMutation,
   useDeleteDashboardMutation,
   useCopyDashboardMutation,
+  useListEmbeddableDashboardsQuery,
+  useListPublicDashboardsQuery,
+  useDeleteDashboardPublicLinkMutation,
+  endpoints: { deleteDashboardPublicLink, createDashboardPublicLink },
 } = dashboardApi;

@@ -132,19 +132,6 @@ const setup = ({
 
 describe("useInitData hook", () => {
   describe("before authentication", () => {
-    it("should have an error if JWT URI is not provided", async () => {
-      setup({ isValidConfig: false });
-      expect(screen.getByTestId("test-component")).toHaveAttribute(
-        "data-login-status",
-        "error",
-      );
-
-      expect(screen.getByTestId("test-component")).toHaveAttribute(
-        "data-error-message",
-        "No JWT URI or API key provided.",
-      );
-    });
-
     it("should set a context for all API requests", async () => {
       jest
         .spyOn(sdkConfigModule, "getEmbeddingSdkVersion")

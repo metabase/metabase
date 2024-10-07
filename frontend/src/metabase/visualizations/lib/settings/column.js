@@ -362,7 +362,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     getDefault: getDefaultNumberSeparators,
   },
   decimals: {
-    title: t`Minimum number of decimal places`,
+    title: t`Number of decimal places`,
     widget: "number",
     props: {
       placeholder: "1",

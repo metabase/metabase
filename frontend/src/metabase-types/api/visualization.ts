@@ -4,9 +4,10 @@ export const virtualCardDisplayTypes = [
   "link",
   "placeholder",
   "text",
+  "iframe",
 ] as const;
 
-export type VirtualCardDisplay = typeof virtualCardDisplayTypes[number];
+export type VirtualCardDisplay = (typeof virtualCardDisplayTypes)[number];
 
 export const isVirtualCardDisplayType = (
   value: string,
@@ -38,6 +39,6 @@ export const isCardDisplayType = (value: unknown): value is CardDisplayType =>
   typeof value === "string" &&
   cardDisplayTypes.includes(value as CardDisplayType);
 
-export type CardDisplayType = typeof cardDisplayTypes[number];
+export type CardDisplayType = (typeof cardDisplayTypes)[number];
 
 export type VisualizationDisplay = VirtualCardDisplay | CardDisplayType;

@@ -11,6 +11,7 @@ import {
 import {
   addHeadingWhileEditing,
   addLinkWhileEditing,
+  changeSynchronousBatchUpdateSetting,
   createDashboardWithTabs,
   createNewTab,
   dashboardCards,
@@ -45,6 +46,7 @@ import {
   sidebar,
   undo,
   updateDashboardCards,
+  updateSetting,
   visitCollection,
   visitDashboard,
   visitDashboardAndCreateTab,
@@ -90,12 +92,6 @@ const TAB_1 = {
 const TAB_2 = {
   id: 2,
   name: "Tab 2",
-};
-
-const changeSynchronousBatchUpdateSetting = value => {
-  cy.request("PUT", "/api/setting/synchronous-batch-updates", {
-    value: value,
-  });
 };
 
 describe("scenarios > dashboard > tabs", () => {
@@ -515,7 +511,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Go to public dashboard
-    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    updateSetting("enable-public-sharing", true);
     cy.request(
       "POST",
       `/api/dashboard/${ORDERS_DASHBOARD_ID}/public_link`,

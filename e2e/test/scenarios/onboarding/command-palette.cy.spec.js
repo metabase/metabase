@@ -49,6 +49,7 @@ describe("command palette", () => {
       cy.findByText("New dashboard");
       cy.findByText("New collection");
       cy.findByText("New model");
+      cy.findByText("New metric").should("not.exist");
 
       cy.log("Should show recent items");
       cy.findByRole("option", { name: "Orders in a dashboard" }).should(
@@ -94,6 +95,9 @@ describe("command palette", () => {
       cy.findByRole("option", { name: "REVIEWS" }).should("exist");
       cy.findByRole("option", { name: "PRODUCTS" }).should("exist");
       commandPaletteInput().clear();
+
+      commandPaletteInput().clear().type("New met");
+      cy.findByText("New metric").should("exist");
     });
 
     cy.log("We can close the command palette using escape");
@@ -207,5 +211,17 @@ describe("command palette", () => {
     cy.viewport("iphone-x");
     cy.visit("/");
     commandPaletteButton().should("not.contain.text", "search");
+  });
+
+  it("Should have a new metric item", () => {
+    cy.visit("/");
+    cy.findByRole("button", { name: /Search/ }).click();
+
+    commandPalette().within(() => {
+      commandPaletteInput().should("exist").type("Me");
+      cy.findByText("New metric").should("be.visible").click();
+
+      cy.location("pathname").should("eq", "/metric/query");
+    });
   });
 });

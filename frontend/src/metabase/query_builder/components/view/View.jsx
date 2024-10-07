@@ -20,6 +20,7 @@ import {
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
+import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
 import { Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -391,6 +392,8 @@ class View extends Component {
   render() {
     const {
       question,
+      result,
+      rawSeries,
       databases,
       isShowingNewbModal,
       isShowingTimelineSidebar,
@@ -404,13 +407,20 @@ class View extends Component {
       reportTimezone,
       readOnly,
       isDirty,
+      isRunning,
       isRunnable,
       isResultDirty,
       hasVisualizeButton,
       runQuestionQuery,
+      cancelQuery,
       setQueryBuilderMode,
+      runDirtyQuestionQuery,
       isShowingQuestionInfoSidebar,
       isShowingQuestionSettingsSidebar,
+      cancelQuestionChanges,
+      onCreate,
+      onSave,
+      onChangeLocation,
     } = this.props;
 
     // if we don't have a question at all or no databases then we are initializing, so keep it simple
@@ -422,13 +432,44 @@ class View extends Component {
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
     const isNewQuestion = !isNative && Lib.sourceTableOrCardId(query) === null;
-    const isModelOrMetric =
-      question.type() === "model" || question.type() === "metric";
+    const isModel = question.type() === "model";
+    const isMetric = question.type() === "metric";
 
-    if (isModelOrMetric && queryBuilderMode === "dataset") {
+    if ((isModel || isMetric) && queryBuilderMode === "dataset") {
       return (
         <>
-          <DatasetEditor {...this.props} />
+          {isModel && <DatasetEditor {...this.props} />}
+          {isMetric && (
+            <MetricEditor
+              question={question}
+              result={result}
+              rawSeries={rawSeries}
+              reportTimezone={reportTimezone}
+              isDirty={isDirty}
+              isResultDirty={isResultDirty}
+              isRunning={isRunning}
+              onChange={updateQuestion}
+              onCreate={async question => {
+                await onCreate(question);
+                setQueryBuilderMode("view");
+              }}
+              onSave={async question => {
+                await onSave(question);
+                setQueryBuilderMode("view");
+              }}
+              onCancel={question => {
+                if (question.isSaved()) {
+                  cancelQuestionChanges();
+                  runDirtyQuestionQuery();
+                  setQueryBuilderMode("view");
+                } else {
+                  onChangeLocation("/");
+                }
+              }}
+              onRunQuery={runQuestionQuery}
+              onCancelQuery={cancelQuery}
+            />
+          )}
           <QueryModals
             questionAlerts={this.props.questionAlerts}
             user={this.props.user}

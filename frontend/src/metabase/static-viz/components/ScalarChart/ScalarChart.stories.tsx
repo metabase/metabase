@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
@@ -9,6 +9,8 @@ import {
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
+import type { StaticChartProps } from "../StaticVisualization";
+
 import { ScalarChart } from "./ScalarChart";
 import { data } from "./stories-data";
 
@@ -17,7 +19,7 @@ export default {
   component: ScalarChart,
 };
 
-const Template: ComponentStory<typeof ScalarChart> = args => {
+const Template: StoryFn<StaticChartProps> = args => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
       <ScalarChart {...args} isStorybook />
@@ -35,9 +37,11 @@ const renderingContext: RenderingContext = {
   theme: DEFAULT_VISUALIZATION_THEME,
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  rawSeries: data.twoScalars as any,
-  dashcardSettings: {},
-  renderingContext,
+export const Default = {
+  render: Template,
+
+  args: {
+    rawSeries: data.twoScalars as any,
+    renderingContext,
+  },
 };

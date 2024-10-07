@@ -78,7 +78,7 @@ describe("SortStep", () => {
     await userEvent.click(getIcon("add"));
 
     // Tables
-    expect(await screen.findByText("Order")).toBeInTheDocument();
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
     expect(screen.getByText("Product")).toBeInTheDocument();
     expect(screen.getByText("User")).toBeInTheDocument();
     // Order columns

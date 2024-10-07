@@ -15,8 +15,8 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockModelResult } from "metabase/browse/test-utils";
-import type { ModelResult } from "metabase/browse/types";
+import type { ModelResult } from "metabase/browse/models";
+import { createMockModelResult } from "metabase/browse/models/test-utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
 import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
@@ -246,11 +246,11 @@ describe("nav > containers > MainNavbar", () => {
       expect(link).toHaveAttribute("href", "/browse/models");
     });
 
-    it("should not render when there are no models", async () => {
+    it("should render when there are no models", async () => {
       await setup({ models: [] });
       expect(
-        screen.queryByRole("listitem", { name: /Browse models/i }),
-      ).not.toBeInTheDocument();
+        screen.getByRole("listitem", { name: /Browse models/i }),
+      ).toBeInTheDocument();
     });
 
     it("should be highlighted if selected", async () => {

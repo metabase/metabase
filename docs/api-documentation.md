@@ -81,6 +81,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Slack](api/slack.md)
 - [SSO*](api/ee/sso.md)
 - [SSO SAML](api/sso-saml.md)
+- [Stale](api/stale.md)
 - [Table](api/table.md)
 - [Task](api/task.md)
 - [Tiles](api/tiles.md)

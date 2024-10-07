@@ -5,19 +5,19 @@ import { Modal, Stack } from "metabase/ui";
 
 import Styles from "./sidesheet.module.css";
 
-type Size = "xs" | "sm" | "md" | "lg" | "xl" | "auto";
+export type SidesheetSize = "xs" | "sm" | "md" | "lg" | "xl" | "auto";
 
 interface SidesheetProps {
   title?: React.ReactNode;
   isOpen: boolean;
   onClose: () => void;
-  size?: Size;
+  size?: SidesheetSize;
   children: React.ReactNode;
   /** use this if you want to enable interior scrolling of tab panels */
   removeBodyPadding?: boolean;
 }
 
-const sizes: Record<Size, string> = {
+const sizes: Record<SidesheetSize, string> = {
   xs: "20rem",
   sm: "30rem",
   md: "40rem",

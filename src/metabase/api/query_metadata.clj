@@ -74,8 +74,7 @@
                              [id ""]
                              [Integer/MAX_VALUE (str id)]))
                          tables)
-     :fields    (or (sort-by :id (api.field/get-fields template-tag-field-ids))
-                    [])}))
+     :fields    (sort-by :id (api.field/get-fields template-tag-field-ids))}))
 
 (defn batch-fetch-query-metadata
   "Fetch dependent metadata for ad-hoc queries."

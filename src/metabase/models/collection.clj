@@ -83,8 +83,10 @@
   ;; in some circumstances we don't have a `:type` on the collection (e.g. search or collection items lists, where we
   ;; select a subset of columns). Use the type if it's there, but fall back to the ID to be sure.
   ;; We can't *only* use the id because getting that requires selecting a collection :sweat-smile:
-  (or (= (:type collection-or-id) trash-collection-type)
-      (some-> collection-or-id u/id (= (trash-collection-id)))))
+  (let [type (:type collection-or-id ::not-found)]
+    (if (identical? type ::not-found)
+      (some-> collection-or-id u/id (= (trash-collection-id)))
+      (= type trash-collection-type))))
 
 (defn is-trash-or-descendant?
   "Is this the trash collection, or a descendant of it?"
@@ -179,8 +181,9 @@
   'Explode' a `location-path` into a sequence of Collection IDs, and parse them as integers. THIS DOES NOT VALIDATE
   THAT THE PATH OR RESULTS ARE VALID. This unchecked version exists solely to power the other version below."
   [location-path]
-  (for [^String id-str (rest (str/split location-path #"/"))]
-    (Integer/parseInt id-str)))
+  (if (= location-path "/")
+    []
+    (mapv parse-long (rest (str/split location-path #"/")))))
 
 (defn- valid-location-path? [s]
   (boolean
@@ -500,24 +503,24 @@
    :archive-operation-id nil
    :permission-level :read})
 
-(def ^:private ^{:arglists '([read-or-write])} can-access-root-collection?
+(def ^:private ^{:arglists '([user-scope read-or-write])} can-access-root-collection?
   "Cached function to determine whether the current user can access the root collection"
   (memoize/ttl
-   ^{::memoize/args-fn (fn [[read-or-write]]
+   ^{::memoize/args-fn (fn [[{:keys [current-user-id]} read-or-write]]
                          ;; If this is running in the context of a request, cache it for the duration of that request.
                          ;; Otherwise, don't cache the results at all.)
                          (if-let [req-id *request-id*]
-                           [req-id api/*current-user-id* read-or-write]
-                           [(random-uuid) api/*current-user-id* read-or-write]))}
+                           [req-id current-user-id read-or-write]
+                           [(random-uuid) current-user-id read-or-write]))}
    (fn can-access-root-collection?*
-     [read-or-write]
-     (or api/*is-superuser?*
+     [{:keys [current-user-id is-superuser?]} read-or-write]
+     (or is-superuser?
          (t2/exists? :model/Permissions {:select [:p.*]
                                          :from [[:permissions :p]]
                                          :join [[:permissions_group :pg] [:= :pg.id :p.group_id]
                                                 [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
                                          :where [:and
-                                                 [:= :pgm.user_id api/*current-user-id*]
+                                                 [:= :pgm.user_id current-user-id]
                                                  [:or
                                                   [:= :p.object "/collection/root/"]
                                                   (when (= :read read-or-write)
@@ -527,19 +530,24 @@
 
 (defn- should-display-root-collection?
   "Should this user be shown the root collection, given the `visibility-config` passed?"
-  [visibility-config]
-  (and
-   ;; we have permission for it.
-   (can-access-root-collection? (:permission-level visibility-config))
+  ([visibility-config]
+   (should-display-root-collection?
+    {:current-user-id api/*current-user-id*
+     :is-superuser?   api/*is-superuser?*}
+    visibility-config))
+  ([user-scope visibility-config]
+   (and
+    ;; we have permission for it.
+    (can-access-root-collection? user-scope (:permission-level visibility-config))
 
-   ;; we're not *only* looking for archived items
-   (not= :only (:include-archived-items visibility-config))
+    ;; we're not *only* looking for archived items
+    (not= :only (:include-archived-items visibility-config))
 
-   ;; we're not looking for a particular `archive_operation_id`
-   (not (:archive-operation-id visibility-config))
+    ;; we're not looking for a particular `archive_operation_id`
+    (not (:archive-operation-id visibility-config))
 
-   ;; we're not looking for the children of a collection (root definitely isn't a child!)
-   (not (:effective-child-of visibility-config))))
+    ;; we're not looking for the children of a collection (root definitely isn't a child!)
+    (not (:effective-child-of visibility-config)))))
 
 (mu/defn visible-collection-filter-clause
   "Given a `CollectionVisibilityConfig`, return a honeysql filter clause ready for use in queries."
@@ -554,7 +562,7 @@
                                       :is-superuser?   api/*is-superuser?*}))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
     visibility-config :- CollectionVisibilityConfig
-    {:keys [current-user-id is-superuser?]} :- UserScope]
+    {:keys [current-user-id is-superuser?] :as user-scope} :- UserScope]
    (let [visibility-config (merge default-visibility-config visibility-config)]
      ;; This giant query looks scary, but it's actually only moderately terrifying! Let's walk through it step by
      ;; step. What we're doing here is adding a filter clause to a surrounding query, to make sure that
@@ -572,14 +580,16 @@
      ;; `should-display-root-collection?` but it's pretty simple. We can't include the root collection along with the
      ;; rest because it's not a Real collection.
      [:or
-      (when (should-display-root-collection? visibility-config)
+      (when (should-display-root-collection? user-scope visibility-config)
         [:= collection-id-field nil])
       ;; the non-root collections are here. We're saying "let this row through if..."
       [:in collection-id-field
        {:select :id
         ;; the `FROM` clause is where we limit the collections to the ones we have permissions on. For a superuser,
-        ;; that's all of them. For regular users, it's a) the collections they have permission in the DB for, and b)
-        ;; their personal collection and its descendants.
+        ;; that's all of them. For regular users, it's:
+        ;; a) the collections they have permission in the DB for,
+        ;; b) the trash collection, and
+        ;; c) their personal collection and its descendants
         :from [(if is-superuser?
                  [:collection :c]
                  [{:union-all [{:select [:c.*]
@@ -595,6 +605,9 @@
                                           [:= :p.perm_value "read-and-write"]
                                           (when (= :read (:permission-level visibility-config))
                                             [:= :p.perm_value "read"])]]}
+                               {:select [[:c.*]]
+                                :from   [[:collection :c]]
+                                :where  [:= :type "trash"]}
                                (when-let [personal-collection-and-descendant-ids (user->personal-collection-and-descendant-ids current-user-id)]
                                  {:select [:c.*]
                                   :from   [[:collection :c]]
@@ -640,18 +653,14 @@
                                              (when-not (collection.root/is-root-collection? parent-coll)
                                                [:not= :c2.id (u/the-id parent-coll)])]}]]]))]}]])))
 
-(def ^{:arglists '([visibility-config])} visible-collection-ids
-  "Returns all collection IDs that are visible given the `visibility-config` passed in. (Config provides knobs for
-  toggling permission level, trash/archive visibility, etc). If you're trying to filter based on this, you should
-  probably try to use `visible-collection-filter-clause` instead.
-
-  Cached for the lifetime of the request, maximum 10 seconds."
+(def ^{:arglists '([visibility-config])} visible-collection-ids*
+  "Impl for `visible-collection-ids`, caches for the lifetime of the request, maximum 10 seconds."
   (memoize/ttl
    ^{::memoize/args-fn (fn [[visibility-config]]
                          (if-let [req-id *request-id*]
                            [req-id api/*current-user-id* visibility-config]
                            [(random-uuid) api/*current-user-id* visibility-config]))}
-   (fn visible-collection-ids*
+   (fn
      [visibility-config]
      (cond-> (t2/select-pks-set :model/Collection {:where (visible-collection-filter-clause :id visibility-config)})
        (should-display-root-collection? visibility-config)
@@ -660,37 +669,34 @@
    ;; large
    :ttl/threshold (* 60 60 1000)))
 
-(mu/defn- effective-location-path* :- [:maybe LocationPath]
-  ([collection :- CollectionWithLocationOrRoot]
-   (when-not (collection.root/is-root-collection? collection)
-     (effective-location-path* (if (:archived_directly collection)
-                                 (trash-path)
-                                 (:location collection))
-                               (visible-collection-ids
-                                {:include-archived-items    (if (:archived collection)
-                                                              :only
-                                                              :exclude)
-                                 :include-trash-collection? true
-                                 :archive-operation-id      (:archive_operation_id collection)
-                                 :permission-level          :read}))))
-  ([real-location-path     :- LocationPath
-    allowed-collection-ids :- VisibleCollections]
-   (apply location-path (for [id    (location-path->ids real-location-path)
-                              :when (contains? allowed-collection-ids id)]
-                          id))))
+(mu/defn visible-collection-ids :- VisibleCollections
+  "Returns all collection IDs that are visible given the `visibility-config` passed in. (Config provides knobs for
+  toggling permission level, trash/archive visibility, etc). If you're trying to filter based on this, you should
+  probably use `visible-collection-filter-clause` instead."
+  [visibility-config :- CollectionVisibilityConfig]
+  (visible-collection-ids* visibility-config))
 
-(mi/define-simple-hydration-method effective-location-path
+(mi/define-batched-hydration-method effective-location-path*
   :effective_location
-  "Given a `location-path` and a set of Collection IDs one is allowed to view (obtained from
-  `visible-collection-ids` above), calculate the 'effective' location path (excluding IDs of
-  Collections for which we do not have read perms) we should show to the User.
+  "Given a seq of `collections`, batch hydrates them with their effective location."
+  [collections]
+  (when (seq collections)
+    (let [collection-ids (visible-collection-ids {:include-archived-items :all
+                                                  :include-trash-collection? true})]
+      (for [collection collections]
+        (assoc collection :effective_location
+               (when-not (or (nil? collection) (collection.root/is-root-collection? collection))
+                 (let [real-location-path (if (:archived_directly collection)
+                                            (trash-path)
+                                            (:location collection))]
+                   (apply location-path (for [id    (location-path->ids real-location-path)
+                                              :when (contains? collection-ids id)]
+                                          id)))))))))
 
-  When called with a single argument, `collection`, this is used as a hydration function to hydrate
-  `:effective_location`."
-  ([collection]
-   (effective-location-path* collection))
-  ([real-location-path allowed-collection-ids]
-   (effective-location-path* real-location-path allowed-collection-ids)))
+(defn effective-location-path
+  "Given a collection, returns the effective location (hiding parts of the path that the current user doesn't have access to)."
+  [collection]
+  (:effective_location (t2/hydrate collection :effective_location)))
 
 (def ^:private effective-parent-fields
   "Fields that should be included when hydrating the `:effective_parent` of a collection. Used for displaying recent views
@@ -1549,19 +1555,23 @@
                             m
                             child-type->parent-ids)))
                 (zipmap (keys child-type->parent-ids) (repeat #{}))
-                collections)]
-    (map (fn [{:keys [id] :as collection}]
-           (let [below (apply set/union
-                              (for [[child-type coll-id-set] child-type->ancestor-ids]
-                                (when (contains? coll-id-set id)
-                                  #{child-type})))
-                 here (into #{} (for [[child-type coll-id-set] child-type->parent-ids
-                                      :when (contains? coll-id-set id)]
-                                  child-type))]
-             (cond-> collection
-               (seq below) (assoc :below below)
-               (seq here) (assoc :here here))))
-         collections)))
+                collections)
+
+        collect-present-child-types
+        (fn [child-type-map id]
+          (persistent!
+           (reduce-kv (fn [acc child-type coll-id-set]
+                        (cond-> acc
+                          (contains? coll-id-set id) (conj! child-type)))
+                      (transient #{})
+                      child-type-map)))]
+    (mapv (fn [{:keys [id] :as collection}]
+            (let [below (collect-present-child-types child-type->ancestor-ids id)
+                  here (collect-present-child-types child-type->parent-ids id)]
+              (cond-> collection
+                (seq below) (assoc :below below)
+                (seq here) (assoc :here here))))
+          collections)))
 
 (defn collections->tree
   "Convert a flat sequence of Collections into a tree structure e.g.
@@ -1603,11 +1613,16 @@
        ;; effectively "pulling" a Collection up to a higher level. e.g. if we have A > B > C and we can't see B then
        ;; the tree should come back as A > C.
        ([m collection]
-        (let [path (as-> (location-path->ids (:location collection)) ids
-                     (filter all-visible-ids ids)
-                     (concat ids [(:id collection)])
-                     (interpose :children ids))]
-          (update-in m path merge collection)))
+        (let [ids (location-path->ids (:location collection))
+              path (if (empty? ids)
+                     [(:id collection)]
+                     (as-> ids ids
+                       (filterv all-visible-ids ids)
+                       (conj ids (:id collection))
+                       (interpose :children ids)
+                       (vec ids)))]
+          ;; Using conj instead of merge because the latter is inefficient with its varargs and reduce1.
+          (update-in m path #(if %1 (conj %1 %2) %2) collection)))
        ;; 3. Once we've build the entire tree structure, go in and convert each ID->Collection map into a flat sequence,
        ;; sorted by the lowercased Collection name. Do this recursively for the `:children` of each Collection e.g.
        ;;

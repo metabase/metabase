@@ -1,4 +1,4 @@
-import type { ComponentStory } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 import moment from "moment-timezone";
 import { useState } from "react";
 
@@ -9,7 +9,7 @@ export default {
   component: TimeInput,
 };
 
-const Template: ComponentStory<typeof TimeInput> = args => {
+const Template: StoryFn<typeof TimeInput> = args => {
   const [value, setValue] = useState(moment("2020-01-01T10:20"));
 
   return (
@@ -17,4 +17,6 @@ const Template: ComponentStory<typeof TimeInput> = args => {
   );
 };
 
-export const Default = Template.bind({});
+export const Default = {
+  render: Template,
+};

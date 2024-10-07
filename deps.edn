@@ -36,6 +36,8 @@
                                              :exclusions  [it.unimi.dsi/fastutil
                                                            org.slf4j/slf4j-api]}
   com.draines/postal                        {:mvn/version "2.0.5"}              ; SMTP library
+  ; Detect the charset in uploaded CSV files
+  com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
   com.github.seancorfield/honeysql          {:mvn/version "2.6.1126"}           ; Honey SQL 2. SQL generation from Clojure data maps
   com.github.seancorfield/next.jdbc         {:mvn/version "1.3.925"}            ; Talk to JDBC DBs
   com.github.steffan-westcott/clj-otel-api  {:mvn/version "0.2.6"}              ; Telemetry library
@@ -64,6 +66,7 @@
   compojure/compojure                       {:mvn/version "1.7.1"               ; HTTP Routing library built on Ring
                                              :exclusions  [ring/ring-codec]}
   crypto-random/crypto-random               {:mvn/version "1.2.1"}              ; library for generating cryptographically secure random bytes and strings
+  diehard/diehard                           {:mvn/version "0.11.12"}
   dk.ative/docjure                          {:mvn/version "1.19.0"              ; excel export
                                              :exclusions  [org.apache.poi/poi
                                                            org.apache.poi/poi-ooxml]}
@@ -384,6 +387,7 @@
   {:extra-paths
    ["modules/drivers/athena/test"
     "modules/drivers/bigquery-cloud-sdk/test"
+    "modules/drivers/databricks/test"
     "modules/drivers/druid/test"
     "modules/drivers/druid-jdbc/test"
     "modules/drivers/mongo/test"
@@ -475,6 +479,7 @@
                 "enterprise/backend/src"
                 "modules/drivers/athena/src"
                 "modules/drivers/bigquery-cloud-sdk/src"
+                "modules/drivers/databricks/src"
                 "modules/drivers/druid/src"
                 "modules/drivers/druid-jdbc/src"
                 "modules/drivers/mongo/src"
@@ -497,6 +502,7 @@
                                  "enterprise/backend/src"
                                  "modules/drivers/athena/src"
                                  "modules/drivers/bigquery-cloud-sdk/src"
+                                 "modules/drivers/databricks/src"
                                  "modules/drivers/druid/src"
                                  "modules/drivers/druid-jdbc/src"
                                  "modules/drivers/mongo/src"

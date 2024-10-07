@@ -142,7 +142,7 @@ describe("scenarios > metrics > editing", () => {
       popover().findByText("Edit metric definition").click();
       addBreakout({ tableName: "Product", columnName: "Created At" });
       updateMetric();
-      verifyLineAreaBarChart({ xAxis: "Created At", yAxis: "Count" });
+      verifyLineAreaBarChart({ xAxis: "Product → Created At", yAxis: "Count" });
     });
 
     it("should pin new metrics automatically", () => {
@@ -163,6 +163,26 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("New metric").should("be.visible");
         verifyScalarValue("18,760");
       });
+    });
+
+    it("should not crash when cancelling creation of a new metric (metabase#48024)", () => {
+      startNewMetric();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      cancelMetricEditing();
+    });
+
+    it("should not crash when cancelling editing of an existing metric (metabase#48024)", () => {
+      createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
+        visitMetric(card.id),
+      );
+      openQuestionActions();
+      popover().findByText("Edit metric definition").click();
+      addBreakout({ tableName: "Product", columnName: "Created At" });
+      cancelMetricEditing();
+      verifyScalarValue("18,760");
     });
   });
 
@@ -615,4 +635,17 @@ function verifyLineAreaBarChart({ xAxis, yAxis }) {
     cy.findByText(yAxis).should("be.visible");
     cy.findByText(xAxis).should("be.visible");
   });
+}
+
+function cancelMetricEditing() {
+  cy.log("click cancel but do not confirm");
+  cy.button("Cancel").click();
+  modal().button("Cancel").click();
+  modal().should("not.exist");
+  appBar().should("not.exist");
+
+  cy.log("click cancel and confirm");
+  cy.button("Cancel").click();
+  modal().button("Discard changes").click();
+  appBar().should("be.visible");
 }
