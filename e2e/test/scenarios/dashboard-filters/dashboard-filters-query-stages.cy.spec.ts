@@ -1175,10 +1175,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
           cy.findAllByTestId("cell-data").last().should("have.text", "4,292");
         });
 
+        // TODO: https://github.com/metabase/metabase/issues/46774
         it.skip("1st stage implicit join (joined data source)", () => {
           setup1stStageImplicitJoinFromJoinFilter();
 
-          // TODO: update assertions https://github.com/metabase/metabase/issues/46774
+          // TODO: add assertions once the issue is fixed
           getDashboardCard(0)
             .findByTestId("cell-data")
             .should("have.text", "4,292");
@@ -1188,8 +1189,17 @@ describe("scenarios > dashboard > filters > query stages", () => {
           cy.findAllByTestId("cell-data").last().should("have.text", "4,292");
         });
 
-        //TODO
-        it.skip("1st stage custom column", () => {});
+        it("1st stage custom column", () => {
+          setup1stStageCustomColumnFilter();
+
+          getDashboardCard(0)
+            .findByTestId("cell-data")
+            .should("have.text", "688");
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+
+          cy.findAllByTestId("cell-data").last().should("have.text", "688");
+        });
 
         it("1st stage aggregation", () => {
           setup1stStageAggregationFilter();
@@ -1227,8 +1237,17 @@ describe("scenarios > dashboard > filters > query stages", () => {
           cy.findAllByTestId("cell-data").last().should("have.text", "4");
         });
 
-        //TODO
-        it.skip("2nd stage custom column", () => {});
+        it("2nd stage custom column", () => {
+          setup2ndStageCustomColumnFilter();
+
+          getDashboardCard(0)
+            .findByTestId("cell-data")
+            .should("have.text", "31");
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+
+          cy.findAllByTestId("cell-data").last().should("have.text", "31");
+        });
 
         it("2nd stage aggregation", () => {
           setup2ndStageAggregationFilter();
@@ -1629,6 +1648,30 @@ function setup1stStageImplicitJoinFromJoinFilter() {
   cy.wait("@dashboardData");
 }
 
+function setup1stStageCustomColumnFilter() {
+  editDashboard();
+
+  getFilter("Number").click();
+  sidebar().findByText("Filter operator").next().click();
+  popover().findByText("Between").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Net").click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
+    cy.findAllByPlaceholderText("Enter a number").eq(1).type("20");
+    cy.button("Add filter").click();
+  });
+  cy.wait("@dashboardData");
+}
+
 function setup1stStageAggregationFilter() {
   editDashboard();
 
@@ -1692,6 +1735,31 @@ function setup2ndStageExplicitJoinFilter() {
   filterWidget().eq(0).click();
   popover().within(() => {
     cy.findByPlaceholderText("Search by Reviewer").type("abe.gorczany");
+    cy.button("Add filter").click();
+  });
+  cy.wait("@dashboardData");
+}
+
+function setup2ndStageCustomColumnFilter() {
+  editDashboard();
+
+  getFilter("Number").click();
+  sidebar().findByText("Filter operator").next().click();
+  popover().findByText("Between").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverList().scrollTo("bottom");
+    getPopoverItem("5 * Count").click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
+    cy.findAllByPlaceholderText("Enter a number").eq(1).type("20");
     cy.button("Add filter").click();
   });
   cy.wait("@dashboardData");
