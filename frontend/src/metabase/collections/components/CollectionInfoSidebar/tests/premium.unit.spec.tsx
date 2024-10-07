@@ -11,6 +11,7 @@ const setup = ({ collection }: { collection: Collection }) =>
   baseSetup({
     collection,
     enableOfficialCollections: true,
+    enableSerialization: true,
   });
 
 describe("CollectionInfoSidebar (EE with token)", () => {
