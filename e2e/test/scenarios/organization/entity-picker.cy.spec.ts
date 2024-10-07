@@ -730,6 +730,7 @@ describe("scenarios > organization > entity picker", () => {
       popover().findByText("Add to dashboard").click();
 
       entityPickerModal().within(() => {
+        cy.findByText("Our analytics").click();
         enterSearchText({
           text: "dashboard",
           placeholder: "Search this collection or everywhere…",
@@ -747,6 +748,7 @@ describe("scenarios > organization > entity picker", () => {
       popover().findByText("Add to dashboard").click();
 
       entityPickerModal().within(() => {
+        cy.findByText("Our analytics").click();
         enterSearchText({
           text: "dashboard",
           placeholder: "Search this collection or everywhere…",
@@ -768,6 +770,7 @@ describe("scenarios > organization > entity picker", () => {
 
       cy.log("root collection - automatically selected");
       entityPickerModal().within(() => {
+        cy.findByText("Our analytics").click();
         enterSearchText({
           text: "dashboard 1",
           placeholder: "Search this collection or everywhere…",
