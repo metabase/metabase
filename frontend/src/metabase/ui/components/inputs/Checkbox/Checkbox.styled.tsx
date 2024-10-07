@@ -46,7 +46,7 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         height: getSize({ size, sizes: SIZES }),
         cursor: "pointer",
         borderRadius: theme.radius.xs,
-        border: "1px solid var(--mb-color-text-secondary)",
+        border: "1px solid var(--mb-color-bg-dark)",
         backgroundColor: "var(--mb-color-background)",
 
         "&:checked": {
@@ -81,24 +81,18 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
       },
     }),
     variants: {
-      stacked: (theme, { labelPosition }) => ({
+      stacked: theme => ({
         inner: {
           position: "relative",
           zIndex: 0,
-        },
-        label: {
-          paddingLeft: labelPosition === "right" ? "0.75rem" : "0.5rem",
-        },
-        description: {
-          paddingLeft: labelPosition === "right" ? "0.75rem" : "0.5rem",
         },
         input: {
           "&:after": {
             content: "''",
             border: `1px solid ${theme.fn.themeColor("bg-dark")}`,
             position: "absolute",
-            top: rem(-4),
-            left: rem(4),
+            top: rem(-2),
+            left: rem(2),
             height: "100%",
             width: "100%",
             borderRadius: rem(4),
