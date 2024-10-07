@@ -1154,6 +1154,29 @@ describe("scenarios > dashboard > filters > query stages", () => {
          * TODO: connect rest of charts to parameters
          * TODO: add a test with unit of time parameter and non-last stage filter parameter
          */
+
+        it("1st stage explicit join", () => {
+          setup1stStageExplicitJoinFilter();
+
+          getDashboardCard(0).scrollIntoView();
+          getDashboardCard(0)
+            .findByTestId("cell-data")
+            .should("have.text", "953");
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+
+          cy.findAllByTestId("cell-data").last().should("have.text", "953");
+        });
+
+        // TODO
+        it.skip("1st stage implicit join (data source)", () => {});
+
+        // TODO
+        it.skip("1st stage implicit join (joined data source)", () => {});
+
+        //TODO
+        it.skip("1st stage custom column", () => {});
+
         it("1st stage aggregation", () => {
           setup1stStageAggregationFilter();
 
@@ -1179,6 +1202,28 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
           cy.findAllByTestId("cell-data").last().should("have.text", "1,077");
         });
+
+        it("2nd stage explicit join", () => {
+          setup2ndStageExplicitJoinFilter();
+
+          getDashboardCard(0).scrollIntoView();
+          getDashboardCard(0)
+            .findByTestId("cell-data")
+            .should("have.text", "4");
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+
+          cy.findAllByTestId("cell-data").last().should("have.text", "4");
+        });
+
+        // TODO
+        it.skip("2nd stage implicit join (data source)", () => {});
+
+        // TODO
+        it.skip("2nd stage implicit join (joined data source)", () => {});
+
+        //TODO
+        it.skip("2nd stage custom column", () => {});
 
         it("2nd stage aggregation", () => {
           setup2ndStageAggregationFilter();
@@ -1516,6 +1561,48 @@ function createAndVisitDashboard(cards: Card[]) {
   }).then(dashboard => visitDashboard(dashboard.id));
 }
 
+function setup1stStageExplicitJoinFilter() {
+  editDashboard();
+
+  getFilter("Text").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Reviewer", 0).click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findByPlaceholderText("Search by Reviewer").type("abe.gorczany");
+    cy.button("Add filter").click();
+  });
+  cy.wait("@dashboardData");
+}
+
+function setup2ndStageExplicitJoinFilter() {
+  editDashboard();
+
+  getFilter("Text").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Reviewer", 1).click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findByPlaceholderText("Search by Reviewer").type("abe.gorczany");
+    cy.button("Add filter").click();
+  });
+  cy.wait("@dashboardData");
+}
+
 function setup1stStageAggregationFilter() {
   editDashboard();
 
@@ -1651,7 +1738,11 @@ function getPopoverItems() {
  * @param index if more than 1 item with the same name is visible, specify which one should be used
  */
 function getPopoverItem(name: string, index = 0) {
-  return cy.findAllByText(name).eq(index);
+  /**
+   * Without scrollIntoView() the popover may scroll automatically to a different
+   * place when clicking the item (unclear why).
+   */
+  return cy.findAllByText(name).eq(index).scrollIntoView();
 }
 
 function clickAway() {
