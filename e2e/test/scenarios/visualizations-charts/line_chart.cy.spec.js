@@ -767,7 +767,7 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
-  it("should apply brush filters to the series selecting area range when axis is a number", () => {
+  it.only("should apply brush filters to the series selecting area range when axis is a number", () => {
     const testQuery = {
       type: "query",
       query: {

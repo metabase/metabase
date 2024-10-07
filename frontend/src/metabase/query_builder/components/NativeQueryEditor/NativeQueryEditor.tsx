@@ -107,7 +107,6 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   readOnly?: boolean;
   enableRun?: boolean;
   canChangeDatabase?: boolean;
-  cancelQueryOnLeave?: boolean;
   hasTopBar?: boolean;
   hasParametersList?: boolean;
   hasEditingSidebar?: boolean;
@@ -208,7 +207,6 @@ export class NativeQueryEditor extends Component<
   static defaultProps = {
     isOpen: false,
     enableRun: true,
-    cancelQueryOnLeave: true,
     canChangeDatabase: true,
     resizable: true,
     sidebarFeatures: {
@@ -318,9 +316,6 @@ export class NativeQueryEditor extends Component<
   }
 
   componentWillUnmount() {
-    if (this.props.cancelQueryOnLeave) {
-      // this.props.cancelQuery?.();
-    }
     window.cancelAnimationFrame(this._focusFrame);
     this._editor?.destroy?.();
     document.removeEventListener("keydown", this.handleKeyDown);

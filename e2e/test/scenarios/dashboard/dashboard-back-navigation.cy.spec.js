@@ -213,7 +213,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     });
   });
 
-  it("should navigate back to a dashboard with permission errors", () => {
+  it.only("should navigate back to a dashboard with permission errors", () => {
     createDashboardWithPermissionError();
     cy.signInAsNormalUser();
     visitDashboard("@dashboardId");

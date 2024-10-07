@@ -14,7 +14,6 @@ const TIMESERIES_UNITS = new Set([
 ]);
 
 export function dimensionIsTimeseries({ cols, rows }, i = 0) {
-  // moment... returns true for numbers. It may be a bug. To be investigated later.
   return (
     dimensionIsExplicitTimeseries({ cols, rows }, i) ||
     moment(rows[0] && rows[0][i], moment.ISO_8601).isValid()

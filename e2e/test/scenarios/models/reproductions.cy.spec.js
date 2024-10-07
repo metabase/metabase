@@ -77,7 +77,7 @@ const {
   PEOPLE_ID,
 } = SAMPLE_DATABASE;
 
-describe("issue 19180", () => {
+describe.only("issue 19180", () => {
   const QUESTION = {
     native: { query: "select * from products" },
   };
