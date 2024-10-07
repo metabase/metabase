@@ -1,191 +1,135 @@
 import type { StoryFn } from "@storybook/react";
 
-import { color } from "metabase/lib/colors";
-import {
-  measureTextHeight,
-  measureTextWidth,
-} from "metabase/static-viz/lib/text";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
-import type { RenderingContext } from "metabase/visualizations/types";
+import { IsomorphicVisualizationStory } from "__support__/storybook";
 
-import {
-  type StaticChartProps,
-  StaticVisualization,
-} from "../StaticVisualization";
+import type { StaticChartProps } from "../StaticVisualization";
 
 import { data } from "./stories-data";
 
 export default {
   title: "static-viz/ScatterPlot",
-  component: StaticVisualization,
+  component: IsomorphicVisualizationStory,
 };
 
 const Template: StoryFn<StaticChartProps> = args => {
-  return (
-    <div style={{ border: "1px solid black", display: "inline-block" }}>
-      <StaticVisualization {...args} isStorybook />
-    </div>
-  );
-};
-
-const renderingContext: RenderingContext = {
-  getColor: color,
-  measureText: (text, style) =>
-    measureTextWidth(text, Number(style.size), Number(style.weight)),
-  measureTextHeight: (_, style) => measureTextHeight(Number(style.size)),
-  fontFamily: "Lato",
-  theme: DEFAULT_VISUALIZATION_THEME,
+  return <IsomorphicVisualizationStory {...args} />;
 };
 
 export const Default = {
   render: Template,
-
   args: {
-    rawSeries: data.default as any,
-    renderingContext,
+    rawSeries: data.default,
   },
 };
 
 export const CustomYAxisRangeWithColumnScaling = {
   render: Template,
-
   args: {
-    rawSeries: data.customYAxisRangeWithColumnScaling as any,
-    renderingContext,
+    rawSeries: data.customYAxisRangeWithColumnScaling,
   },
 };
 
 export const MultiMetricSeries = {
   render: Template,
-
   args: {
-    rawSeries: data.multiMetricSeries as any,
-    renderingContext,
+    rawSeries: data.multiMetricSeries,
   },
 };
 
 export const MultiDimensionBreakout = {
   render: Template,
-
   args: {
-    rawSeries: data.multiDimensionBreakout as any,
-    renderingContext,
+    rawSeries: data.multiDimensionBreakout,
   },
 };
 
 export const BubbleSize = {
   render: Template,
-
   args: {
-    rawSeries: data.bubbleSize as any,
-    renderingContext,
+    rawSeries: data.bubbleSize,
   },
 };
 
 export const MultiDimensionBreakoutBubbleSize = {
   render: Template,
-
   args: {
-    rawSeries: data.multiDimensionBreakoutBubbleSize as any,
-    renderingContext,
+    rawSeries: data.multiDimensionBreakoutBubbleSize,
   },
 };
 
 export const PowerXScale = {
   render: Template,
-
   args: {
-    rawSeries: data.powerXScale as any,
-    renderingContext,
+    rawSeries: data.powerXScale,
   },
 };
 
 export const PowerXScaleMultiSeries = {
   render: Template,
-
   args: {
-    rawSeries: data.powerXScaleMultiSeries as any,
-    renderingContext,
+    rawSeries: data.powerXScaleMultiSeries,
   },
 };
 
 export const LogXScale = {
   render: Template,
-
   args: {
-    rawSeries: data.logXScale as any,
-    renderingContext,
+    rawSeries: data.logXScale,
   },
 };
 
 export const LogXScaleAtOne = {
   render: Template,
-
   args: {
-    rawSeries: data.logXScaleAtOne as any,
-    renderingContext,
+    rawSeries: data.logXScaleAtOne,
   },
 };
 
 export const HistogramXScale = {
   render: Template,
-
   args: {
-    rawSeries: data.histogramXScale as any,
-    renderingContext,
+    rawSeries: data.histogramXScale,
   },
 };
 
 export const OrdinalXScale = {
   render: Template,
-
   args: {
-    rawSeries: data.ordinalXScale as any,
-    renderingContext,
+    rawSeries: data.ordinalXScale,
   },
 };
 
 export const TimeseriesXScale = {
   render: Template,
-
   args: {
-    rawSeries: data.timeseriesXScale as any,
-    renderingContext,
+    rawSeries: data.timeseriesXScale,
   },
 };
 
 export const CustomYAxisRange = {
   render: Template,
-
   args: {
-    rawSeries: data.customYAxisRange as any,
-    renderingContext,
+    rawSeries: data.customYAxisRange,
   },
 };
 
 export const AutoYAxisExcludeZeroWithGoal = {
   render: Template,
-
   args: {
-    rawSeries: data.autoYAxisExcludeZeroWithGoal as any,
-    renderingContext,
+    rawSeries: data.autoYAxisExcludeZeroWithGoal,
   },
 };
 
 export const GoalLine = {
   render: Template,
-
   args: {
-    rawSeries: data.goalLine as any,
-    renderingContext,
+    rawSeries: data.goalLine,
   },
 };
 
 export const PinToZero = {
   render: Template,
-
   args: {
-    rawSeries: data.pinToZero as any,
-    renderingContext,
+    rawSeries: data.pinToZero,
   },
 };

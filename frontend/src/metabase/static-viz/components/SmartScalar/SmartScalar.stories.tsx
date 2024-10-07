@@ -1,10 +1,4 @@
-import { colors } from "metabase/lib/colors";
-import { createColorGetter } from "metabase/static-viz/lib/colors";
-import {
-  measureTextHeight,
-  measureTextWidth,
-} from "metabase/static-viz/lib/text";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
+import { IsomorphicVisualizationStory } from "__support__/storybook";
 import type { RowValues, VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
@@ -129,21 +123,7 @@ const createTemplate = ({ rows, vizSettings }: SmartScalarSeriesOpts) =>
       },
     });
 
-    return (
-      <StaticVisualization
-        rawSeries={[series]}
-        renderingContext={{
-          fontFamily: "Lato",
-          getColor: createColorGetter(colors),
-          measureText: (text, style) =>
-            measureTextWidth(text, Number(style.size), Number(style.weight)),
-          measureTextHeight: (_, style) =>
-            measureTextHeight(Number(style.size)),
-
-          theme: DEFAULT_VISUALIZATION_THEME,
-        }}
-      />
-    );
+    return <IsomorphicVisualizationStory rawSeries={[series]} />;
   };
 
 export const Default = createTemplate({

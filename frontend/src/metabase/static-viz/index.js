@@ -6,7 +6,6 @@ import ReactDOMServer from "react-dom/server";
 
 import "metabase/lib/dayjs";
 
-import { formatValue } from "metabase/lib/formatting";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import {
@@ -52,7 +51,6 @@ export function RenderChart(rawSeries, dashcardSettings, colors) {
   const getColor = createColorGetter(colors);
   const renderingContext = {
     getColor,
-    formatValue,
     measureText: (text, style) =>
       measureTextWidth(text, style.size, style.weight),
     measureTextHeight: (_, style) => measureTextHeight(style.size),

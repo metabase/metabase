@@ -1,13 +1,7 @@
 import type { StoryFn } from "@storybook/react";
 
-import { color } from "metabase/lib/colors";
+import { IsomorphicVisualizationStory } from "__support__/storybook";
 import { data } from "metabase/static-viz/components/WaterfallChart/stories-data";
-import {
-  measureTextHeight,
-  measureTextWidth,
-} from "metabase/static-viz/lib/text";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
-import type { RenderingContext } from "metabase/visualizations/types";
 
 import type { StaticChartProps } from "../StaticVisualization";
 import { StaticVisualization } from "../StaticVisualization";
@@ -18,378 +12,285 @@ export default {
 };
 
 const Template: StoryFn<StaticChartProps> = args => {
-  return (
-    <div style={{ border: "1px solid black", display: "inline-block" }}>
-      <StaticVisualization {...args} isStorybook />
-    </div>
-  );
-};
-
-const renderingContext: RenderingContext = {
-  getColor: color,
-  measureText: (text, style) =>
-    measureTextWidth(text, Number(style.size), Number(style.weight)),
-  measureTextHeight: (_, style) => measureTextHeight(Number(style.size)),
-  fontFamily: "Lato",
-  theme: DEFAULT_VISUALIZATION_THEME,
+  return <IsomorphicVisualizationStory {...args} />;
 };
 
 export const YAxisCompactWithoutDataLabels = {
   render: Template,
-
   args: {
-    rawSeries: data.yAxisCompactWithoutDataLabels as any,
-    renderingContext,
+    rawSeries: data.yAxisCompactWithoutDataLabels,
   },
 };
 
 export const YAxisAutoCompactWithDataLabels = {
   render: Template,
-
   args: {
-    rawSeries: data.yAxisAutoCompactWithDataLabels as any,
-    renderingContext,
+    rawSeries: data.yAxisAutoCompactWithDataLabels,
   },
 };
 
 export const YAxisFullWithDataLabels = {
   render: Template,
-
   args: {
-    rawSeries: data.yAxisFullWithDataLabels as any,
-    renderingContext,
+    rawSeries: data.yAxisFullWithDataLabels,
   },
 };
 
 export const CustomYAxisRangeWithColumnScaling = {
   render: Template,
-
   args: {
-    rawSeries: data.customYAxisRangeWithColumnScaling as any,
-    renderingContext,
+    rawSeries: data.customYAxisRangeWithColumnScaling,
   },
 };
 
 export const TimeseriesXScale = {
   render: Template,
-
   args: {
-    rawSeries: data.timeseriesXScale as any,
-    renderingContext,
+    rawSeries: data.timeseriesXScale,
   },
 };
 
 export const TimeseriesXScaleUnsorted = {
   render: Template,
-
   args: {
-    rawSeries: data.timeseriesXScaleUnsorted as any,
-    renderingContext,
+    rawSeries: data.timeseriesXScaleUnsorted,
   },
 };
 
 export const OrdinalXScale = {
   render: Template,
-
   args: {
-    rawSeries: data.ordinalXScale as any,
-    renderingContext,
+    rawSeries: data.ordinalXScale,
   },
 };
 
 export const TimeSeriesDataAsOrdinalXScale = {
   render: Template,
-
   args: {
-    rawSeries: data.timeSeriesDataAsOrdinalXScale as any,
-    renderingContext,
+    rawSeries: data.timeSeriesDataAsOrdinalXScale,
   },
 };
 
 export const UnaggregatedOrdinal = {
   render: Template,
-
   args: {
-    rawSeries: data.unaggregatedOrdinal as any,
-    renderingContext,
+    rawSeries: data.unaggregatedOrdinal,
   },
 };
 
 export const UnaggregatedLinear = {
   render: Template,
-
   args: {
-    rawSeries: data.unaggregatedLinear as any,
-    renderingContext,
+    rawSeries: data.unaggregatedLinear,
   },
 };
 
 export const UnaggregatedTimeseries = {
   render: Template,
-
   args: {
-    rawSeries: data.unaggregatedTimeseries as any,
-    renderingContext,
+    rawSeries: data.unaggregatedTimeseries,
   },
 };
 
 export const MixedAboveZero = {
   render: Template,
-
   args: {
-    rawSeries: data.mixedAboveZero as any,
-    renderingContext,
+    rawSeries: data.mixedAboveZero,
   },
 };
 
 export const MixedBelowZero = {
   render: Template,
-
   args: {
-    rawSeries: data.mixedBelowZero as any,
-    renderingContext,
+    rawSeries: data.mixedBelowZero,
   },
 };
 
 export const NegativeOnly = {
   render: Template,
-
   args: {
-    rawSeries: data.negativeOnly as any,
-    renderingContext,
+    rawSeries: data.negativeOnly,
   },
 };
 
 export const StartsAboveZeroEndsBelow = {
   render: Template,
-
   args: {
-    rawSeries: data.startsAboveZeroEndsBelow as any,
-    renderingContext,
+    rawSeries: data.startsAboveZeroEndsBelow,
   },
 };
 
 export const StartsBelowZeroEndsAbove = {
   render: Template,
-
   args: {
-    rawSeries: data.startsBelowZeroEndsAbove as any,
-    renderingContext,
+    rawSeries: data.startsBelowZeroEndsAbove,
   },
 };
 
 export const StartsAboveZeroCrossesEndsAbove = {
   render: Template,
-
   args: {
-    rawSeries: data.startsAboveZeroCrossesEndsAbove as any,
-    renderingContext,
+    rawSeries: data.startsAboveZeroCrossesEndsAbove,
   },
 };
 
 export const StartsBelowZeroCrossesEndsBelow = {
   render: Template,
-
   args: {
-    rawSeries: data.startsBelowZeroCrossesEndsBelow as any,
-    renderingContext,
+    rawSeries: data.startsBelowZeroCrossesEndsBelow,
   },
 };
 
 export const CustomColors = {
   render: Template,
-
   args: {
-    rawSeries: data.customColors as any,
-    renderingContext,
+    rawSeries: data.customColors,
   },
 };
 
 export const NoTotalTimeseries = {
   render: Template,
-
   args: {
-    rawSeries: data.noTotalTimeseries as any,
-    renderingContext,
+    rawSeries: data.noTotalTimeseries,
   },
 };
 
 export const NoTotalOrdinal = {
   render: Template,
-
   args: {
-    rawSeries: data.noTotalOrdinal as any,
-    renderingContext,
+    rawSeries: data.noTotalOrdinal,
   },
 };
 
 export const DataLabels = {
   render: Template,
-
   args: {
-    rawSeries: data.dataLabels as any,
-    renderingContext,
+    rawSeries: data.dataLabels,
   },
 };
 
 export const DataLabelsColumnFormatting = {
   render: Template,
-
   args: {
-    rawSeries: data.dataLabelsColumnFormatting as any,
-    renderingContext,
+    rawSeries: data.dataLabelsColumnFormatting,
   },
 };
 
 export const DataLabelsTimeseries = {
   render: Template,
-
   args: {
-    rawSeries: data.dataLabelsTimeseries as any,
-    renderingContext,
+    rawSeries: data.dataLabelsTimeseries,
   },
 };
 
 export const DataLabelsMixed = {
   render: Template,
-
   args: {
-    rawSeries: data.dataLabelsMixed as any,
-    renderingContext,
+    rawSeries: data.dataLabelsMixed,
   },
 };
 
 export const PowYScale = {
   render: Template,
-
   args: {
-    rawSeries: data.powYScale as any,
-    renderingContext,
+    rawSeries: data.powYScale,
   },
 };
 
 export const PowYScaleNegativeOnly = {
   render: Template,
-
   args: {
-    rawSeries: data.powYScaleNegativeOnly as any,
-    renderingContext,
+    rawSeries: data.powYScaleNegativeOnly,
   },
 };
 
 export const PowYScaleMixed = {
   render: Template,
-
   args: {
-    rawSeries: data.powYScaleMixed as any,
-    renderingContext,
+    rawSeries: data.powYScaleMixed,
   },
 };
 
 export const LogYScale = {
   render: Template,
-
   args: {
-    rawSeries: data.logYScale as any,
-    renderingContext,
+    rawSeries: data.logYScale,
   },
 };
 
 export const LogYScaleNegative = {
   render: Template,
-
   args: {
-    rawSeries: data.logYScaleNegative as any,
-    renderingContext,
+    rawSeries: data.logYScaleNegative,
   },
 };
 
 export const NativeTimeSeriesQuarter = {
   render: Template,
-
   args: {
-    rawSeries: data.nativeTimeSeriesQuarter as any,
-    renderingContext,
+    rawSeries: data.nativeTimeSeriesQuarter,
   },
 };
 
 export const NativeTimeSeriesWithGaps = {
   render: Template,
-
   args: {
-    rawSeries: data.nativeTimeSeriesWithGaps as any,
-    renderingContext,
+    rawSeries: data.nativeTimeSeriesWithGaps,
   },
 };
 
 export const StructuredTimeSeriesYear = {
   render: Template,
-
   args: {
-    rawSeries: data.structuredTimeSeriesYear as any,
-    renderingContext,
+    rawSeries: data.structuredTimeSeriesYear,
   },
 };
 
 export const TimeXScaleTwoBarsWithoutTotal = {
   render: Template,
-
   args: {
-    rawSeries: data.timeXScaleTwoBarsWithoutTotal as any,
-    renderingContext,
+    rawSeries: data.timeXScaleTwoBarsWithoutTotal,
   },
 };
 
 export const EnourmousDataset = {
   render: Template,
-
   args: {
-    rawSeries: data.enormousDataset as any,
-    renderingContext,
+    rawSeries: data.enormousDataset,
   },
 };
 
 export const Nulls = {
   render: Template,
-
   args: {
-    rawSeries: data.nulls as any,
-    renderingContext,
+    rawSeries: data.nulls,
   },
 };
 
 export const NullXAxisValue = {
   render: Template,
-
   args: {
-    rawSeries: data.nullXAxisValue as any,
-    renderingContext,
+    rawSeries: data.nullXAxisValue,
   },
 };
 
 export const LinearNullDimension = {
   render: Template,
-
   args: {
-    rawSeries: data.linearNullDimension as any,
-    renderingContext,
+    rawSeries: data.linearNullDimension,
   },
 };
 
 export const OrdinalNullDimension = {
   render: Template,
-
   args: {
-    rawSeries: data.ordinalNullDimension as any,
-    renderingContext,
+    rawSeries: data.ordinalNullDimension,
   },
 };
 
 export const TwoBarsWithTotal = {
   render: Template,
-
   args: {
-    rawSeries: data.twoBarsWithTotal as any,
-    renderingContext,
+    rawSeries: data.twoBarsWithTotal,
   },
 };
