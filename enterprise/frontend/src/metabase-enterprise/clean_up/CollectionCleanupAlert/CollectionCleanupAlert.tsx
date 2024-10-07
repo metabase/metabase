@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c } from "ttag";
 
 import { skipToken } from "metabase/api";
 import Link from "metabase/core/components/Link";
@@ -9,6 +9,9 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { Alert, Box, Icon } from "metabase/ui";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import type { Collection } from "metabase-types/api";
+
+const translationContext =
+  "This is the heading of a banner that invites the user to clean up a collection.";
 
 export const CollectionCleanupAlert = ({
   collection,
@@ -30,7 +33,7 @@ export const CollectionCleanupAlert = ({
       : skipToken,
   );
 
-  const hasSomethingToCleanUp = (staleItems?.total ?? 0) > 0;
+  const hasSomethingToCleanUp = !!staleItems?.total;
 
   if (isLoading || error || !hasSomethingToCleanUp) {
     return null;
@@ -50,7 +53,7 @@ export const CollectionCleanupAlert = ({
       }}
     >
       <Box fz="md" c={"text-dark"}>
-        {t`Clean things up!`}{" "}
+        {c(translationContext).t`Clean things up!`}{" "}
         <Box
           component={Link}
           ml="2.5rem"
@@ -58,7 +61,7 @@ export const CollectionCleanupAlert = ({
           variant="brand"
           to={`${Urls.collection(collection)}/cleanup`}
         >
-          {t`Get rid of unused content`}
+          {c(translationContext).t`Get rid of unused content`}
         </Box>
       </Box>
     </Alert>
