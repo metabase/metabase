@@ -114,7 +114,7 @@ export const QuestionInfoSidebar = ({
             </SidesheetCard>
           </Tabs.Panel>
           <Tabs.Panel value="insights">
-            <InsightsUpsellTab model="question" />
+            <InsightsUpsellTab model={question.type()} />
           </Tabs.Panel>
         </SidesheetTabPanelContainer>
       </Tabs>

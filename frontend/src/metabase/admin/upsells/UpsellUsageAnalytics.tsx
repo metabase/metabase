@@ -28,7 +28,7 @@ export const UpsellUsageAnalytics = (
       title={t`See who’s doing what, when`}
       buttonText={t`Try for free`}
       buttonLink="https://www.metabase.com/upgrade"
-      campaign="usage-analytics"
+      campaign="usage_analytics"
       illustrationSrc={usageAnalyticsIllustrationSource}
       lh="1.5rem"
       {...props}
