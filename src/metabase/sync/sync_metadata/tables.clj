@@ -82,7 +82,6 @@
   [table-name]
   (some #(re-find % (u/lower-case-en table-name)) crufty-table-patterns))
 
-
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 
 (mu/defn- update-database-metadata!

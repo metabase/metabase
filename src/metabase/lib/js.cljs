@@ -182,11 +182,11 @@
    ;; (Except possibly for a few empty WeakMaps, if queries are cached and then GC'd.)
    ;; If the metadata changes, the metadata-provider is replaced, so all these caches are destroyed.
    (lib.cache/side-channel-cache-weak-refs
-     (str database-id) metadata-provider query-map
-     #(->> %
-           lib.convert/js-legacy-query->pMBQL
-           (lib.core/query metadata-provider))
-     {:force? true})))
+    (str database-id) metadata-provider query-map
+    #(->> %
+          lib.convert/js-legacy-query->pMBQL
+          (lib.core/query metadata-provider))
+    {:force? true})))
 
 ;; TODO: Lots of utilities and helpers in this file. It would be easier to consume the API if the helpers were moved to
 ;; a utility namespace. Better would be to "upstream" them into `metabase.util.*` if they're useful elsewhere.
@@ -250,8 +250,8 @@
   > **Code health:** Healthy"
   [a-query stage-number]
   (if (and
-        (empty? (lib.core/aggregations a-query stage-number))
-        (empty? (lib.core/breakouts a-query stage-number)))
+       (empty? (lib.core/aggregations a-query stage-number))
+       (empty? (lib.core/breakouts a-query stage-number)))
     ;; No extra stage needed with no aggregations.
     #js {:query      a-query
          :stageIndex stage-number}
@@ -277,9 +277,9 @@
   [a-query stage-number]
   ;; Attaches the cached columns directly to this query, in case it gets called again.
   (lib.cache/side-channel-cache
-    (keyword "orderable-columns" (str "stage-" stage-number)) a-query
-    (fn [_]
-      (to-array (lib.order-by/orderable-columns a-query stage-number)))))
+   (keyword "orderable-columns" (str "stage-" stage-number)) a-query
+   (fn [_]
+     (to-array (lib.order-by/orderable-columns a-query stage-number)))))
 
 ;; # Display Info
 ;;
@@ -406,8 +406,8 @@
   ;; TODO: Keying by stage is probably unnecessary - if we eg. fetched a column from different stages, it would be a
   ;; different object. Test that idea and remove the stage from the cache key.
   (lib.cache/side-channel-cache
-    (keyword "display-info-outer" (str "stage-" stage-number)) x
-    #(display-info* a-query stage-number %)))
+   (keyword "display-info-outer" (str "stage-" stage-number)) x
+   #(display-info* a-query stage-number %)))
 
 (defn ^:export order-by-clause
   "Create an `ORDER BY` clause and return it, independently of a query.
@@ -462,9 +462,9 @@
   [a-query stage-number]
   ;; Attaches the cached columns directly to this query, in case it gets called again.
   (lib.cache/side-channel-cache
-    (keyword "breakoutable-columns" (str "stage-" stage-number)) a-query
-    (fn [_]
-      (to-array (lib.core/breakoutable-columns a-query stage-number)))))
+   (keyword "breakoutable-columns" (str "stage-" stage-number)) a-query
+   (fn [_]
+     (to-array (lib.core/breakoutable-columns a-query stage-number)))))
 
 (defn ^:export breakouts
   "Get the list of breakout clauses in `a-query` at the given `stage-number`, as a JS array of opaque values.
@@ -768,7 +768,6 @@
 ;; expandable groups by source: source table/previous stage first, then explicitly joined tables, then implicitly
 ;; joinable by different FKs.
 
-
 (defn ^:export group-columns
   "Given the list of columns returned by a function like [[orderable-columns]], groups those columns by *source*,
   in the appropriate shape for rendering in the Query Builder.
@@ -936,12 +935,12 @@
   [a-query stage-number]
   ;; Attaches the cached columns directly to this query, in case it gets called again.
   (lib.cache/side-channel-cache
-    (keyword "filterable-columns" (str "stage-" stage-number)) a-query
-    (fn [_]
-      (to-array (lib.core/filterable-columns a-query stage-number)))))
+   (keyword "filterable-columns" (str "stage-" stage-number)) a-query
+   (fn [_]
+     (to-array (lib.core/filterable-columns a-query stage-number)))))
 
 (defn ^:export filterable-column-operators
-  "Returns the filteroperators which can be used in a filter for `filterable-column`.
+  "Returns the filter operators which can be used in a filter for `filterable-column`.
 
   `filterable-column` must be column coming from [[filterable-columns]]; this won't work with columns from other sources
   like [[visible-columns]].
@@ -1000,9 +999,9 @@
   "Returns a standalone expression clause for the given `operator`, `options`, and list of arguments."
   [an-operator args options]
   (-> (lib.core/expression-clause
-        (keyword an-operator)
-        args
-        (js->clj options :keywordize-keys true))
+       (keyword an-operator)
+       args
+       (js->clj options :keywordize-keys true))
       lib.core/normalize))
 
 (defn ^:export expression-parts
@@ -1072,9 +1071,9 @@
   [a-query stage-number]
   ;; Attaches the cached columns directly to this query, in case it gets called again.
   (lib.cache/side-channel-cache
-    (keyword "fieldable-columns" (str "stage-" stage-number)) a-query
-    (fn [_]
-      (to-array (lib.core/fieldable-columns a-query stage-number)))))
+   (keyword "fieldable-columns" (str "stage-" stage-number)) a-query
+   (fn [_]
+     (to-array (lib.core/fieldable-columns a-query stage-number)))))
 
 (defn ^:export add-field
   "Adds a given `column` (as returned by [[fieldable-columns]]) to the fields returned by `a-query`.
@@ -1152,9 +1151,9 @@
   [a-query stage-number]
   ;; Attaches the cached columns directly to this query, in case it gets called again.
   (lib.cache/side-channel-cache
-    (keyword "returned-columns" (str "stage-" stage-number)) a-query
-    (fn [_]
-      (returned-columns* a-query stage-number))))
+   (keyword "returned-columns" (str "stage-" stage-number)) a-query
+   (fn [_]
+     (returned-columns* a-query stage-number))))
 
 ;; ## Visible Columns
 
@@ -1174,13 +1173,28 @@
 ;; This interface contains several other sets of columns, like [[filterable-columns]] and [[expressionable-columns]];
 ;; these are subsets of [[visible-columns]] possibly with extra information added, such as the set of filter operators
 ;; which can be used with that column.
+;;
+;; Note: At the time of writing, `lib.ref/ref` would produce a broken ref for a column from [[returned-columns]] due to
+;; `:lib/source` differences compared to [[visible-columns]]. We cannot use such refs for for matching in
+;; [[find-matching-column]]. However, all other [[returned-columns]] properties are correct, and we can pass a column
+;; from [[visible-columns]] for the ref/needle and [[returned-columns]] for the haystack.
+;; Example - for a query with `source-card` and `:fields` clause, `:lib/source` for [[returned-columns]] would be
+;; `:source/fields` and `lib.ref/ref` would generate field id-based refs; while for [[visible-columns]] `:lib/source`
+;; would be `:source/card` and `lib.ref/ref` would generate `:lib/desired-column-alias`-based refs. As the card can
+;; contain multiple columns with the same ID (e.g. multiple breakouts of the same column, model metadata overrides) we
+;; could get exact dupliates with `lib.ref/ref` for [[returned-columns]].
+;; `(lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns)` cannot be used here because it
+;; would compute the refs for `ret-columns` and we want to do it the other way around.
 (defn- visible-columns*
   "Inner implementation for [[visible-columns]], which wraps this with caching."
   [a-query stage-number]
-  (let [stage          (lib.util/query-stage a-query stage-number)
-        vis-columns    (lib.metadata.calculation/visible-columns a-query stage-number stage)
-        ret-columns    (lib.metadata.calculation/returned-columns a-query stage-number stage)]
-    (to-array (lib.equality/mark-selected-columns a-query stage-number vis-columns ret-columns))))
+  (let [stage       (lib.util/query-stage a-query stage-number)
+        vis-columns (lib.metadata.calculation/visible-columns a-query stage-number stage)
+        ret-columns (lib.metadata.calculation/returned-columns a-query stage-number stage)]
+    (->> (for [col vis-columns
+               :let [match (lib.equality/find-matching-column a-query stage-number col ret-columns)]]
+           (assoc col :selected? (some? match)))
+         to-array)))
 
 (defn ^:export visible-columns
   "Returns a JS array of all columns \"visible\" at the given stage of `a-query`.
@@ -1196,9 +1210,9 @@
   [a-query stage-number]
   ;; Attaches the cached columns directly to this query, in case it gets called again.
   (lib.cache/side-channel-cache
-    (keyword "visible-columns" (str "stage-" stage-number)) a-query
-    (fn [_]
-      (visible-columns* a-query stage-number))))
+   (keyword "visible-columns" (str "stage-" stage-number)) a-query
+   (fn [_]
+     (visible-columns* a-query stage-number))))
 
 ;; ## Column keys
 (defn ^:export column-key
@@ -1241,6 +1255,7 @@
   (-> a-legacy-ref
       (js->clj :keywordize-keys true)
       (update 0 keyword)
+      (->> (mbql.normalize/normalize-fragment nil))
       lib.convert/->pMBQL))
 
 (defn- ->column-or-ref [column]
@@ -1437,9 +1452,9 @@
     ;; TODO: Since these caches are mainly here to avoid expensively recomputing things in rapid succession, it would
     ;; probably suffice to cache only the last position, and evict if it's different. But the lib.cache system doesn't
     ;; support that currently.
-    (keyword "expressionable-columns" (str "stage-" stage-number "-" expression-position)) a-query
-    (fn [_]
-      (to-array (lib.core/expressionable-columns a-query stage-number expression-position)))))
+   (keyword "expressionable-columns" (str "stage-" stage-number "-" expression-position)) a-query
+   (fn [_]
+     (to-array (lib.core/expressionable-columns a-query stage-number expression-position)))))
 
 (defn ^:export column-extractions
   "Column extractions are a set of transformations possible on a given `column`, based on its type.
@@ -1875,7 +1890,6 @@
 (def ^:private row-cell       (js-cells-by #(.-col ^js %)))
 (def ^:private dimension-cell (js-cells-by #(.-column ^js %)))
 
-
 ;; # Drill Thru
 ;; **drill-thru** is the somewhat opaque name given to the system which shows context menus when clicking on different
 ;; parts of visualizations.
@@ -2040,11 +2054,11 @@
   remove this."
   [n unit offset-n offset-unit options]
   (shared.ut/format-relative-date-range
-    n
-    (keyword unit)
-    offset-n
-    (some-> offset-unit keyword)
-    (js->clj options :keywordize-keys true)))
+   n
+   (keyword unit)
+   offset-n
+   (some-> offset-unit keyword)
+   (js->clj options :keywordize-keys true)))
 
 (defn ^:export find-matching-column
   "Given `a-ref-or-column` and a list of `columns`, finds the column that best matches this ref or column.
@@ -2176,7 +2190,6 @@
       ;; TODO: This should probably reuse `display-info->js` for caching and uniformity.
       (update-keys cljs-key->js-key)
       clj->js))
-
 
 ;; # Specialized Filtering
 ;; These specialized filter updates support the drag-and-drop "brush" filtering in the UI. Eg. dragging a box on a map
@@ -2320,3 +2333,14 @@
     (keyword "can-save" card-type) a-query
     (fn [_]
       (lib.core/can-save a-query (keyword card-type))))))
+
+(defn ^:export ensure-filter-stage
+  "Adds an empty stage to `query` if its last stage contains both breakouts and aggregations.
+
+  This is so that parameters can address both the stage before and after the aggregation.
+  Adding filters to the result at stage -1 will filter after the summary, filters added at
+  stage -2 filter before the summary.
+
+  > **Code health:** Healthy"
+  [a-query]
+  (lib.core/ensure-filter-stage a-query))

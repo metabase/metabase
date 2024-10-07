@@ -4,7 +4,7 @@ import type {
 } from "metabase/common/hooks/entity-framework/use-entity-query";
 import { useEntityQuery } from "metabase/common/hooks/entity-framework/use-entity-query";
 import Users from "metabase/entities/users";
-import type { UserId, User } from "metabase-types/api";
+import type { User, UserId } from "metabase-types/api";
 
 /**
  * @deprecated use "metabase/api" instead

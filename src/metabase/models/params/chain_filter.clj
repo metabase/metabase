@@ -195,10 +195,10 @@
                                            [:pk-field.table_id :t2]]
                                :from      [[:metabase_field :fk-field]]
                                :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
-                                                                                :fk-table.active]
+                                                                           :fk-table.active]
                                            [:metabase_database :database] [:= :fk-table.db_id :database.id]
                                            [:metabase_field :pk-field]    [:and [:= :fk-field.fk_target_field_id :pk-field.id]
-                                                                                :pk-field.active]]
+                                                                           :pk-field.active]]
                                :where     [:and
                                            [:= :database.id database-id]
                                            [:not= :fk-field.fk_target_field_id nil]
@@ -412,7 +412,7 @@
                            ;; return the lesser of limit (if set) or max results
                            :limit        ((fnil min Integer/MAX_VALUE) limit max-results)}
                           (when original-field-clause
-                            { ;; don't return rows that don't have values for the original Field. e.g. if
+                            {;; don't return rows that don't have values for the original Field. e.g. if
                              ;; venues.category_id is remapped to categories.name and we do a search with query 's',
                              ;; we only want to return [category_id name] tuples where [category_id] is not nil
                              ;;
@@ -525,8 +525,8 @@
   "Whether we should use cached `FieldValues` instead of running a query via the QP."
   [field-id]
   (and
-    field-id
-    (field-values/field-should-have-field-values? field-id)))
+   field-id
+   (field-values/field-should-have-field-values? field-id)))
 
 (defn- check-field-value-query-permissions
   "Check query permissions against the chain-filter-mbql-query (private #196)"
@@ -576,22 +576,22 @@
      ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
      ;; value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
      ;; database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`).
-     (some? v->human-readable)
-     (-> (unremapped-chain-filter field-id constraints options)
-         (update :values add-human-readable-values v->human-readable))
+      (some? v->human-readable)
+      (-> (unremapped-chain-filter field-id constraints options)
+          (update :values add-human-readable-values v->human-readable))
 
-     (and (use-cached-field-values? field-id) (nil? @the-remapped-field-id))
-     (do
-       (check-field-value-query-permissions field-id constraints options)
-       (cached-field-values field-id constraints options))
+      (and (use-cached-field-values? field-id) (nil? @the-remapped-field-id))
+      (do
+        (check-field-value-query-permissions field-id constraints options)
+        (cached-field-values field-id constraints options))
 
      ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
      ;; search by `category.name` but return tuples of `[venue.category_id category.name]`.
-     (some? @the-remapped-field-id)
-     (unremapped-chain-filter @the-remapped-field-id constraints (assoc options :original-field-id field-id))
+      (some? @the-remapped-field-id)
+      (unremapped-chain-filter @the-remapped-field-id constraints (assoc options :original-field-id field-id))
 
-     :else
-     (unremapped-chain-filter field-id constraints options))))
+      :else
+      (unremapped-chain-filter field-id constraints options))))
 
 ;;; ----------------- Chain filter search (powers GET /api/dashboard/:id/params/:key/search/:query) -----------------
 
@@ -654,19 +654,19 @@
   (and (use-cached-field-values? field-id)
        (isa? (t2/select-one-fn :base_type Field :id field-id) :type/Text)
        (apply t2/exists? FieldValues (mapcat
-                                       identity
-                                       (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
+                                      identity
+                                      (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
                                               ;; if we are doing a search, make sure we only use field values
                                               ;; when we're certain the fieldvalues we stored are all the possible values.
                                               ;; otherwise, we should search directly from DB
-                                              {:has_more_values false}
-                                              (if-not (empty? constraints)
-                                                {:type     "linked-filter"
-                                                 :hash_key (params.field-values/hash-key-for-advanced-field-values :linked-filter field-id constraints)}
-                                                (if-let [hash-key (params.field-values/hash-key-for-advanced-field-values :sandbox field-id nil)]
-                                                  {:type    "sandbox"
-                                                   :hash_key hash-key}
-                                                  {:type "full"})))))))
+                                             {:has_more_values false}
+                                             (if-not (empty? constraints)
+                                               {:type     "linked-filter"
+                                                :hash_key (params.field-values/hash-key-for-advanced-field-values :linked-filter field-id constraints)}
+                                               (if-let [hash-key (params.field-values/hash-key-for-advanced-field-values :sandbox field-id nil)]
+                                                 {:type    "sandbox"
+                                                  :hash_key hash-key}
+                                                 {:type "full"})))))))
 
 (defn- cached-field-values-search
   [field-id query constraints {:keys [limit]}]

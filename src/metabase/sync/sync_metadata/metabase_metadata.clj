@@ -47,18 +47,18 @@
    value]
   (boolean
     ;; ignore legacy entries that try to set field_type since it's no longer part of Field
-    (when-not (= k :field_type)
+   (when-not (= k :field_type)
       ;; fetch the corresponding Table, then set the Table or Field property
-      (if table-name
-        (when-let [table-id (t2/select-one-pk Table
+     (if table-name
+       (when-let [table-id (t2/select-one-pk Table
                                               ;; TODO: this needs to support schemas
-                                              :db_id  (u/the-id database)
-                                              :name   table-name
-                                              :active true)]
-          (if field-name
-            (pos? (t2/update! Field {:name field-name, :table_id table-id} {k value}))
-            (pos? (t2/update! Table table-id {k value}))))
-        (pos? (t2/update! Database (u/the-id database) {k value}))))))
+                                             :db_id  (u/the-id database)
+                                             :name   table-name
+                                             :active true)]
+         (if field-name
+           (pos? (t2/update! Field {:name field-name, :table_id table-id} {k value}))
+           (pos? (t2/update! Table table-id {k value}))))
+       (pos? (t2/update! Database (u/the-id database) {k value}))))))
 
 (mu/defn- sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insentive) which includes descriptions or other

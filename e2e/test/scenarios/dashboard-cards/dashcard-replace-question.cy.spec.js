@@ -5,19 +5,19 @@ import {
   ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  saveDashboard,
-  modal,
-  popover,
-  restore,
-  visitDashboard,
-  findDashCardAction,
-  resetSnowplow,
-  enableTracking,
   describeWithSnowplow,
+  enableTracking,
+  entityPickerModal,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
-  entityPickerModal,
+  findDashCardAction,
+  modal,
+  popover,
+  resetSnowplow,
+  restore,
+  saveDashboard,
   undoToastList,
+  visitDashboard,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -204,7 +204,7 @@ describeWithSnowplow("scenarios > dashboard cards > replace question", () => {
     });
     assertDashboardFilterMapping(findTargetDashcard(), {
       filterName: PARAMETER.UNUSED.name,
-      expectedColumName: "Order.Discount",
+      expectedColumName: "Orders.Discount",
     });
 
     // Ensure changes are persisted

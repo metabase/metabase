@@ -1,20 +1,20 @@
 import {
-  TYPE,
-  TEMPORAL,
+  BOOLEAN,
+  COORDINATE,
+  LOCATION,
+  NUMBER,
+  PRIMARY_KEY,
   STRING,
   STRING_LIKE,
-  NUMBER,
-  BOOLEAN,
-  LOCATION,
-  COORDINATE,
-  PRIMARY_KEY,
+  TEMPORAL,
+  TYPE,
 } from "metabase-lib/v1/types/constants";
 import {
   getFieldType,
-  isString,
-  isInteger,
   isDimension,
+  isInteger,
   isMetric,
+  isString,
 } from "metabase-lib/v1/types/utils/isa";
 import { createMockColumn } from "metabase-types/api/mocks";
 

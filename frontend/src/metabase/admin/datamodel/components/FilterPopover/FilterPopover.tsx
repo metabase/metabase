@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type * as React from "react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 

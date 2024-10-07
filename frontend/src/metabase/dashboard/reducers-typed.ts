@@ -11,23 +11,23 @@ import type {
 import type { DashboardSidebarName } from "metabase-types/store/dashboard";
 
 import {
-  INITIALIZE,
-  SET_EDITING_DASHBOARD,
-  SHOW_ADD_PARAMETER_POPOVER,
-  HIDE_ADD_PARAMETER_POPOVER,
-  RESET,
-  SHOW_AUTO_APPLY_FILTERS_TOAST,
-  fetchDashboard,
-  setDisplayTheme,
-  markCardAsSlow,
-  setDocumentTitle,
-  setShowLoadingCompleteFavicon,
-  REMOVE_PARAMETER,
   CLOSE_SIDEBAR,
-  SET_SIDEBAR,
+  HIDE_ADD_PARAMETER_POPOVER,
+  INITIALIZE,
+  REMOVE_PARAMETER,
+  RESET,
+  RESET_PARAMETERS,
+  SET_EDITING_DASHBOARD,
   SET_PARAMETER_VALUE,
   SET_PARAMETER_VALUES,
-  RESET_PARAMETERS,
+  SET_SIDEBAR,
+  SHOW_ADD_PARAMETER_POPOVER,
+  SHOW_AUTO_APPLY_FILTERS_TOAST,
+  fetchDashboard,
+  markCardAsSlow,
+  setDisplayTheme,
+  setDocumentTitle,
+  setShowLoadingCompleteFavicon,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 

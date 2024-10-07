@@ -26,7 +26,6 @@
    identity
    (fn [e] (throw e))))
 
-
 (defn- request-with-session-id
   "Creates a mock Ring request with the given session-id applied"
   [session-id]
@@ -61,7 +60,7 @@
           (t2/insert! Session {:id      session-id
                                :user_id (test.users/user->id :rasta)})
           (t2/update! (t2/table-name Session) {:id session-id}
-            {:created_at (t/instant 1000)})
+                      {:created_at (t/instant 1000)})
           (is (= req.util/response-unauthentic
                  (auth-enforced-handler (request-with-session-id session-id))))
           (finally (t2/delete! Session :id session-id)))))
@@ -78,7 +77,6 @@
                  (auth-enforced-handler
                   (request-with-session-id session-id))))
           (finally (t2/delete! Session :id session-id)))))))
-
 
 ;;; ------------------------------------------ TEST wrap-static-api-key middleware ------------------------------------------
 
@@ -103,7 +101,6 @@
            (:static-metabase-api-key
             (wrapped-api-key-handler
              (ring.mock/header (ring.mock/request :get "/anyurl") @#'mw.auth/static-metabase-api-key-header "foobar")))))))
-
 
 ;;; ---------------------------------------- TEST enforce-static-api-key middleware -----------------------------------------
 
@@ -140,7 +137,7 @@
   (testing "no apikey is set, expect 403"
     (doseq [api-key-value [nil ""]]
       (testing (str "when key is " ({nil "nil" "" "empty"} api-key-value))
-       (mt/with-temporary-setting-values [api-key api-key-value]
-         (is (= mw.auth/key-not-set-response
-                (api-key-enforced-handler
-                 (ring.mock/request :get "/anyurl")))))))))
+        (mt/with-temporary-setting-values [api-key api-key-value]
+          (is (= mw.auth/key-not-set-response
+                 (api-key-enforced-handler
+                  (ring.mock/request :get "/anyurl")))))))))

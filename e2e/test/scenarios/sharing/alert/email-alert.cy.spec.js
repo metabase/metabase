@@ -1,10 +1,14 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  modal,
+  openSharingMenu,
+  openTable,
+  popover,
   restore,
   setupSMTP,
+  updateSetting,
   visitQuestion,
-  openTable,
 } from "e2e/support/helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
@@ -16,6 +20,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     restore();
     cy.signInAsAdmin();
+    cy.setCookie("metabase.SEEN_ALERT_SPLASH", "true");
 
     setupSMTP();
   });
@@ -40,9 +45,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   });
 
   it("should respect email alerts toggled off (metabase#12349)", () => {
-    cy.request("PUT", "/api/setting/report-timezone", {
-      value: "America/New_York",
-    });
+    updateSetting("report-timezone", "America/New_York");
 
     openAlertForQuestion(ORDERS_QUESTION_ID);
 
@@ -108,9 +111,9 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       .findByText("Your alert is all set up.")
       .should("be.visible");
 
-    clickAlertBell();
+    openSharingMenu("Edit alerts");
 
-    cy.findByTestId("popover").within(() => {
+    popover().within(() => {
       cy.findByText("You set up an alert").should("be.visible");
       cy.findByText("Edit").click();
     });
@@ -138,30 +141,22 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
 function openAlertForQuestion(id) {
   visitQuestion(id);
-  cy.icon("bell").click();
-  cy.findByText("Set up an alert").click();
+  openSharingMenu("Create alert");
 }
 
 function toggleChannel(channel) {
-  cy.findByText(channel).parent().find("input").click();
-}
-
-function clickAlertBell() {
-  cy.findByTestId("view-footer").icon("bell").click();
+  cy.findByText(channel).parent().find("input").click({ force: true });
 }
 
 function saveAlert() {
-  clickAlertBell();
+  openSharingMenu();
 
-  cy.findByRole("dialog").within(() => {
+  modal().within(() => {
     cy.findByLabelText("Name").type(" alert");
     cy.button("Save").click();
   });
-
   cy.wait("@saveCard");
 
-  cy.findByTestId("alert-education-screen").within(() => {
-    cy.button("Set up an alert").click();
-  });
-  cy.button("Done").click();
+  openSharingMenu("Create alert");
+  modal().button("Done").click();
 }

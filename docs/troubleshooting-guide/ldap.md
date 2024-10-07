@@ -10,15 +10,15 @@ Metabase can use LDAP for authentication. [This article][ldap-learn] explains ho
 
 You can test Metabase with LDAP by using this `docker-compose` definition:
 
-```
-version: '3.7'
+```yml
+version: "3.7"
 services:
   metabase-ldap:
     image: metabase/metabase:latest
     container_name: metabase-ldap
     hostname: metabase-ldap
     volumes:
-    - /dev/urandom:/dev/random:ro
+      - /dev/urandom:/dev/random:ro
     ports:
       - 3000:3000
     networks:

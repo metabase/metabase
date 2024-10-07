@@ -1,14 +1,14 @@
 import {
-  restore,
-  describeWithSnowplow,
-  expectGoodSnowplowEvent,
-  resetSnowplow,
-  enableTracking,
-  uploadFile,
   CSV_FILES,
+  describeWithSnowplow,
+  enableTracking,
   enableUploads,
+  expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
   mockSessionPropertiesTokenFeatures,
+  resetSnowplow,
+  restore,
+  uploadFile,
 } from "e2e/support/helpers";
 
 describeWithSnowplow(
@@ -47,7 +47,7 @@ describeWithSnowplow(
         // Snowplow
         expectGoodSnowplowEvent({
           event: "csv_upload_clicked",
-          source: "left_nav",
+          triggered_from: "left_nav",
         });
         expectGoodSnowplowEvent({
           event: testFile.valid ? "csv_upload_successful" : "csv_upload_failed",

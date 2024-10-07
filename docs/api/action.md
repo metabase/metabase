@@ -10,9 +10,11 @@ summary: |
 
 ## `DELETE /api/action/:action-id`
 
+Delete an Action.
+
 ### PARAMS:
 
-*  **`action-id`** value must be an integer greater than zero.
+-  **`action-id`** value must be an integer greater than zero.
 
 ## `DELETE /api/action/:id/public_link`
 
@@ -20,7 +22,7 @@ Delete the publicly-accessible link to this Dashboard.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/action/`
 
@@ -29,13 +31,15 @@ Returns actions that can be used for QueryActions. By default lists all viewable
 
 ### PARAMS:
 
-*  **`model-id`** nullable value must be an integer greater than zero.
+-  **`model-id`** nullable value must be an integer greater than zero.
 
 ## `GET /api/action/:action-id`
 
+Fetch an Action.
+
 ### PARAMS:
 
-*  **`action-id`** value must be an integer greater than zero.
+-  **`action-id`** value must be an integer greater than zero.
 
 ## `GET /api/action/:action-id/execute`
 
@@ -43,9 +47,9 @@ Fetches the values for filling in execution parameters. Pass PK parameters and v
 
 ### PARAMS:
 
-*  **`action-id`** value must be an integer greater than zero.
+-  **`action-id`** value must be an integer greater than zero.
 
-*  **`parameters`** value must be a valid JSON string.
+-  **`parameters`** value must be a valid JSON string.
 
 ## `GET /api/action/public`
 
@@ -57,33 +61,33 @@ Create a new action.
 
 ### PARAMS:
 
-*  **`visualization_settings`** nullable map
+-  **`visualization_settings`** nullable map.
 
-*  **`parameters`** nullable sequence of map
+-  **`parameters`** nullable sequence of map.
 
-*  **`description`** nullable string
+-  **`description`** nullable string.
 
-*  **`error_handle`** nullable string, and must be a valid json-query, something like '.item.title'
+-  **`error_handle`** nullable string, and must be a valid json-query, something like '.item.title'.
 
-*  **`database_id`** nullable value must be an integer greater than zero.
+-  **`database_id`** nullable value must be an integer greater than zero.
 
-*  **`name`** string
+-  **`name`** string.
 
-*  **`response_handle`** nullable string, and must be a valid json-query, something like '.item.title'
+-  **`response_handle`** nullable string, and must be a valid json-query, something like '.item.title'.
 
-*  **`template`** nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length >= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys
+-  **`template`** nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length >= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys.
 
-*  **`type`** nullable Unsupported action type
+-  **`type`** nullable Unsupported action type.
 
-*  **`dataset_query`** nullable map
+-  **`dataset_query`** nullable map.
 
-*  **`model_id`** value must be an integer greater than zero.
+-  **`model_id`** value must be an integer greater than zero.
 
-*  **`kind`** nullable Unsupported implicit action kind
+-  **`kind`** nullable Unsupported implicit action kind.
 
-*  **`parameter_mappings`** nullable map
+-  **`parameter_mappings`** nullable map.
 
-*  **`action`**
+-  **`action`**
 
 ## `POST /api/action/:id/execute`
 
@@ -93,11 +97,11 @@ Execute the Action.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`parameters`** nullable map from <keyword> to <anything>
+-  **`parameters`** nullable map from <keyword> to <anything>.
 
-*  **`_body`**
+-  **`_body`**
 
 ## `POST /api/action/:id/public_link`
 
@@ -109,15 +113,17 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `PUT /api/action/:id`
 
+Update an Action.
+
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`action`** map where {:archived (optional) -> <nullable boolean>, :database_id (optional) -> <nullable value must be an integer greater than zero.>, :dataset_query (optional) -> <nullable map>, :description (optional) -> <nullable string>, :error_handle (optional) -> <nullable string, and must be a valid json-query, something like '.item.title'>, :kind (optional) -> <nullable Unsupported implicit action kind>, :model_id (optional) -> <nullable value must be an integer greater than zero.>, :name (optional) -> <nullable string>, :parameter_mappings (optional) -> <nullable map>, :parameters (optional) -> <nullable sequence of map>, :response_handle (optional) -> <nullable string, and must be a valid json-query, something like '.item.title'>, :template (optional) -> <nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length >= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys>, :type (optional) -> <nullable Unsupported action type>, :visualization_settings (optional) -> <nullable map>}
+-  **`action`** map where {:archived (optional) -> <nullable boolean>, :database_id (optional) -> <nullable value must be an integer greater than zero.>, :dataset_query (optional) -> <nullable map>, :description (optional) -> <nullable string>, :error_handle (optional) -> <nullable string, and must be a valid json-query, something like '.item.title'>, :kind (optional) -> <nullable Unsupported implicit action kind>, :model_id (optional) -> <nullable value must be an integer greater than zero.>, :name (optional) -> <nullable string>, :parameter_mappings (optional) -> <nullable map>, :parameters (optional) -> <nullable sequence of map>, :response_handle (optional) -> <nullable string, and must be a valid json-query, something like '.item.title'>, :template (optional) -> <nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length >= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys>, :type (optional) -> <nullable Unsupported action type>, :visualization_settings (optional) -> <nullable map>}.
 
 ---
 

@@ -1,31 +1,20 @@
-import {
-  createContext,
-  useContext,
-  type PropsWithChildren,
-  useMemo,
-  useEffect,
-} from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
-import {
-  useLoadQuestion,
-  type LoadQuestionHookResult,
-} from "embedding-sdk/hooks/private/use-load-question";
+import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
-import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
-import type { QueryParams } from "metabase/query_builder/actions";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import type { DataPickerValue } from "metabase/common/components/DataPicker";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
+import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
+import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import type Question from "metabase-lib/v1/Question";
 
-interface InteractiveQuestionContextType
-  extends Omit<LoadQuestionHookResult, "loadQuestion"> {
-  plugins: SdkPluginsConfig | null;
-  mode: Mode | null | undefined;
-  resetQuestion: () => void;
-  onReset?: () => void;
-  onNavigateBack?: () => void;
-}
+import type {
+  EntityTypeFilterKeys,
+  InteractiveQuestionContextType,
+  InteractiveQuestionProviderProps,
+} from "./types";
 
 /**
  * Note: This context should only be used as a wrapper for the InteractiveQuestionResult
@@ -37,27 +26,55 @@ export const InteractiveQuestionContext = createContext<
   InteractiveQuestionContextType | undefined
 >(undefined);
 
-type InteractiveQuestionProviderProps = PropsWithChildren<
-  {
-    componentPlugins?: SdkPluginsConfig;
-    onReset?: () => void;
-    onNavigateBack?: () => void;
-  } & LoadSdkQuestionParams
->;
-
 const DEFAULT_OPTIONS = {};
 
+const FILTER_MODEL_MAP: Record<EntityTypeFilterKeys, DataPickerValue["model"]> =
+  {
+    table: "table",
+    question: "card",
+    model: "dataset",
+    metric: "metric",
+  };
+const mapEntityTypeFilterToDataPickerModels = (
+  entityTypeFilter: InteractiveQuestionProviderProps["entityTypeFilter"],
+): InteractiveQuestionContextType["modelsFilterList"] => {
+  return entityTypeFilter?.map(entityType => FILTER_MODEL_MAP[entityType]);
+};
+
 export const InteractiveQuestionProvider = ({
-  cardId,
+  cardId: initId,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
-  onReset,
   onNavigateBack,
   children,
-}: Omit<InteractiveQuestionProviderProps, "options"> & {
-  options?: QueryParams;
-}) => {
+  onBeforeSave,
+  onSave,
+  isSaveEnabled = true,
+  entityTypeFilter,
+}: InteractiveQuestionProviderProps) => {
+  const { id: cardId, isLoading: isLoadingValidatedId } = useValidatedEntityId({
+    type: "card",
+    id: initId,
+  });
+
+  const handleCreateQuestion = useCreateQuestion();
+  const handleSaveQuestion = useSaveQuestion();
+
+  const handleSave = async (question: Question) => {
+    if (isSaveEnabled) {
+      await onBeforeSave?.(question);
+      await handleSaveQuestion(question);
+      onSave?.(question);
+      await loadQuestion();
+    }
+  };
+
+  const handleCreate = async (question: Question) => {
+    await handleCreateQuestion(question);
+    await loadQuestion();
+  };
+
   const {
     question,
     originalQuestion,
@@ -88,10 +105,10 @@ export const InteractiveQuestionProvider = ({
   }, [question, combinedPlugins]);
 
   const questionContext: InteractiveQuestionContextType = {
-    isQuestionLoading,
+    isQuestionLoading: isQuestionLoading || isLoadingValidatedId,
     isQueryRunning,
     resetQuestion: loadQuestion,
-    onReset: onReset || loadQuestion,
+    onReset: loadQuestion,
     onNavigateBack,
     runQuestion,
     updateQuestion,
@@ -101,6 +118,10 @@ export const InteractiveQuestionProvider = ({
     originalQuestion,
     queryResults,
     mode,
+    onSave: handleSave,
+    onCreate: handleCreate,
+    isSaveEnabled,
+    modelsFilterList: mapEntityTypeFilterToDataPickerModels(entityTypeFilter),
   };
 
   useEffect(() => {

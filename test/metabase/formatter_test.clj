@@ -7,8 +7,8 @@
 
 (defn format [value viz]
   (str ((formatter/number-formatter {:id 1}
-                                 {::mb.viz/column-settings
-                                  {{::mb.viz/field-id 1} viz}})
+                                    {::mb.viz/column-settings
+                                     {{::mb.viz/field-id 1} viz}})
         value)))
 
 (deftest number-formatting-test
@@ -115,8 +115,8 @@
                                                           {::mb.viz/column-settings
                                                            {{::mb.viz/field-id 1}
                                                             (merge
-                                                              {:effective_type type}
-                                                              (when decimals {::mb.viz/decimals decimals}))}})]
+                                                             {:effective_type type}
+                                                             (when decimals {::mb.viz/decimals decimals}))}})]
                    (str (fmt-fn value)))))]
         (is (= "3" (fmt-with-type :type/Integer 3)))
         (is (= "3" (fmt-with-type :type/Integer 3.0)))
@@ -134,18 +134,18 @@
                                                           {::mb.viz/column-settings
                                                            {{::mb.viz/field-id 1}
                                                             (merge
-                                                              {:effective_type type}
-                                                              (when decimals {::mb.viz/decimals decimals}))}})]
+                                                             {:effective_type type}
+                                                             (when decimals {::mb.viz/decimals decimals}))}})]
                    (str (fmt-fn value)))))]
         (is (= "1000" (fmt-with-type :type/PK 1000)))
         (is (= "1000" (fmt-with-type :type/FK 1000)))))
     (testing "Does not throw on nils"
       (is (nil?
-            ((formatter/number-formatter {:id 1}
-                                         {::mb.viz/column-settings
-                                          {{::mb.viz/column-id 1}
-                                           {::mb.viz/number-style "percent"}}})
-             nil))))
+           ((formatter/number-formatter {:id 1}
+                                        {::mb.viz/column-settings
+                                         {{::mb.viz/column-id 1}
+                                          {::mb.viz/number-style "percent"}}})
+            nil))))
     (testing "Does not throw on non-numeric types"
       (is (= "bob"
              ((formatter/number-formatter {:id 1}
@@ -175,3 +175,14 @@
     (testing "We handle missing values"
       (is (= ""
              (formatter/format-geographic-coordinates :type/Longitude nil))))))
+
+(deftest ambiguous-column-types-test
+  (testing "Ambiguous column types (eg. `:type/SnowflakeVariant` pass through the formatter without error (#46981)"
+    (let [format (fn [value viz]
+                   (str ((formatter/number-formatter {:id 1
+                                                      :base_type :type/SnowflakeVariant}
+                                                     {::mb.viz/column-settings
+                                                      {{::mb.viz/field-id 1} viz}})
+                         value)))]
+      (is (= "variant works"
+             (format "variant works" {}))))))

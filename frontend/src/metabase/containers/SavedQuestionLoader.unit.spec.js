@@ -2,10 +2,10 @@ import { screen } from "@testing-library/react";
 
 import {
   setupCardEndpoints,
-  setupUnauthorizedSchemaEndpoints,
-  setupUnauthorizedCardEndpoints,
-  setupDatabaseEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupDatabaseEndpoints,
+  setupUnauthorizedCardEndpoints,
+  setupUnauthorizedSchemaEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";

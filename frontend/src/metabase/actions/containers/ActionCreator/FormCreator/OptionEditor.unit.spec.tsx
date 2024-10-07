@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { render, screen, getIcon } from "__support__/ui";
+import { getIcon, render, screen } from "__support__/ui";
 import type { FieldType, FieldValueOptions } from "metabase-types/api";
 
 import type { OptionEditorProps } from "./OptionEditor";

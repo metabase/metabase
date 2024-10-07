@@ -10,8 +10,8 @@ import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepa
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
 import {
-  getCollectionIcon,
   PERSONAL_COLLECTIONS,
+  getCollectionIcon,
 } from "metabase/entities/collections";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";

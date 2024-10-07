@@ -1,5 +1,5 @@
 import type { MantineThemeOverride, SwitchStylesParams } from "@mantine/core";
-import { rem, getSize } from "@mantine/core";
+import { getSize, rem } from "@mantine/core";
 
 import { color } from "metabase/lib/colors";
 
@@ -73,7 +73,7 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
           lineHeight: getSize({ size, sizes: LABEL_LINE_HEIGHT }),
           color: theme.fn.themeColor("text-dark"),
           cursor: "pointer",
-          "&[data-disabled]": {
+          "&[data-disabled]:not([data-css-specificity-hack='😢'])": {
             color: theme.fn.themeColor("text-light"),
             cursor: "default",
           },

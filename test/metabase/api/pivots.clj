@@ -25,10 +25,10 @@
    (mt/dataset test-data
      (merge
       (mt/mbql-query orders
-                     {:aggregation [[:count] [:sum $orders.quantity]]
-                      :breakout    [$orders.user_id->people.state
-                                    $orders.user_id->people.source
-                                    $orders.product_id->products.category]})
+        {:aggregation [[:count] [:sum $orders.quantity]]
+         :breakout    [$orders.user_id->people.state
+                       $orders.user_id->people.source
+                       $orders.product_id->products.category]})
       (when include-pivot-options?
         pivot-query-options)))))
 
@@ -40,10 +40,10 @@
   ([include-pivot-options?]
    (merge
     (mt/mbql-query orders
-                   {:aggregation [[:count]]
-                    :breakout    [$orders.user_id->people.state
-                                  $orders.user_id->people.source]
-                    :filter      [:and [:= $orders.user_id->people.source "Google" "Organic"]]})
+      {:aggregation [[:count]]
+       :breakout    [$orders.user_id->people.state
+                     $orders.user_id->people.source]
+       :filter      [:and [:= $orders.user_id->people.source "Google" "Organic"]]})
     (when include-pivot-options?
       {:pivot_rows [0]
        :pivot_cols [1]}))))
@@ -56,13 +56,13 @@
   ([include-pivot-options?]
    (merge
     (mt/mbql-query orders
-       {:aggregation [[:count]]
-        :breakout    [$orders.user_id->people.state
-                      $orders.user_id->people.source]
-        :filter      [:and [:= $orders.user_id->people.source "Google" "Organic"]]
-        :parameters  [{:type   "category"
-                       :target [:dimension $orders.product_id->products.category]
-                       :value  "Gadget"}]})
+      {:aggregation [[:count]]
+       :breakout    [$orders.user_id->people.state
+                     $orders.user_id->people.source]
+       :filter      [:and [:= $orders.user_id->people.source "Google" "Organic"]]
+       :parameters  [{:type   "category"
+                      :target [:dimension $orders.product_id->products.category]
+                      :value  "Gadget"}]})
     (when include-pivot-options?
       {:pivot_rows [0]
        :pivot_cols [1]}))))

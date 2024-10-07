@@ -10,7 +10,6 @@ import { SmallGenericError } from "metabase/components/ErrorPages";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { formatNumber } from "metabase/lib/formatting";
 import { equals } from "metabase/lib/utils";
 import { getIsShowingRawTable } from "metabase/query_builder/selectors";
@@ -259,16 +258,6 @@ class Visualization extends PureComponent {
 
   handleVisualizationClick = clicked => {
     const { handleVisualizationClick } = this.props;
-
-    if (clicked) {
-      MetabaseAnalytics.trackStructEvent(
-        "Actions",
-        "Clicked",
-        `${clicked.column ? "column" : ""} ${clicked.value ? "value" : ""} ${
-          clicked.dimensions ? "dimensions=" + clicked.dimensions.length : ""
-        }`,
-      );
-    }
 
     if (typeof handleVisualizationClick === "function") {
       handleVisualizationClick(clicked);

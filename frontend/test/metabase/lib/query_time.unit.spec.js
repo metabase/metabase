@@ -1,11 +1,11 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import {
-  parseFieldBucketing,
-  expandTimeIntervalFilter,
-  computeFilterTimeRange,
   absolute,
+  computeFilterTimeRange,
+  expandTimeIntervalFilter,
   generateTimeFilterValuesDescriptions,
+  parseFieldBucketing,
 } from "metabase-lib/v1/queries/utils/query-time";
 
 describe("query_time", () => {

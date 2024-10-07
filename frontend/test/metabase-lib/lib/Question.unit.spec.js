@@ -1,4 +1,4 @@
-import { assoc, dissoc, assocIn } from "icepick";
+import { assoc, assocIn, dissoc } from "icepick";
 import { parse } from "url";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -12,25 +12,25 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 import {
-  createOrdersTable,
-  createPeopleTable,
-  createProductsTable,
-  createReviewsTable,
-  createSampleDatabase,
-  createOrdersIdField,
-  createOrdersUserIdField,
-  createOrdersProductIdField,
-  createOrdersSubtotalField,
-  createOrdersTaxField,
-  createOrdersTotalField,
-  createOrdersDiscountField,
-  createOrdersCreatedAtField,
-  createOrdersQuantityField,
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
+  createOrdersCreatedAtField,
+  createOrdersDiscountField,
+  createOrdersIdField,
+  createOrdersProductIdField,
+  createOrdersQuantityField,
+  createOrdersSubtotalField,
+  createOrdersTable,
+  createOrdersTaxField,
+  createOrdersTotalField,
+  createOrdersUserIdField,
+  createPeopleTable,
+  createProductsTable,
+  createReviewsTable,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 const metadata = createMockMetadata({

@@ -1,12 +1,12 @@
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  filterWidget,
+  checkFilterLabelAndValue,
   editDashboard,
+  filterWidget,
+  popover,
+  restore,
   saveDashboard,
   setFilter,
-  checkFilterLabelAndValue,
   visitDashboard,
 } from "e2e/support/helpers";
 

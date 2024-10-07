@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.snowflake :as driver.snowflake]
@@ -41,7 +42,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- query->native [query]
+(defn- query->native! [query]
   (let [check-sql-fn (fn [_ _ sql & _]
                        (throw (ex-info "done" {::native-query sql})))]
     (with-redefs [sql-jdbc.execute/prepared-statement check-sql-fn
@@ -271,18 +272,13 @@
                    (map (partial into {})
                         (t2/select [Table :name] :db_id (u/the-id database)))))))))))
 
-(def dynamic-db
-  (mt/dataset-definition "dynamic-db"
-    ["metabase_users"
-     [{:field-name "name" :base-type :type/Text}]
-     [["mb_qnkhuat"]]]))
-
 (defn- do-with-dynamic-table
   [thunk]
-  (mt/dataset (mt/dataset-definition "dynamic-db"
-                ["metabase_users"
-                 [{:field-name "name" :base-type :type/Text}]
-                 [["mb_qnkhuat"]]])
+  (mt/dataset (mt/dataset-definition
+               "dynamic-db"
+               ["metabase_users"
+                [{:field-name "name" :base-type :type/Text}]
+                [["mb_qnkhuat"]]])
     (let [details (:details (mt/db))]
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                      [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
@@ -401,124 +397,133 @@
 
         (when (and pk-key pk-user)
           (mt/with-temp-file [pk-path]
-            (testing "private key authentication"
-              (spit pk-path pk-key)
-              (doseq [to-merge [{:private-key-value pk-key} ;; uploaded string
-                                {:private-key-value (.getBytes pk-key "UTF-8")} ;; uploaded byte array
-                                {:private-key-path pk-path}]] ;; local file path
-                (let [details (-> (:details (mt/db))
-                                  (dissoc :password)
-                                  (merge {:db pk-db :user pk-user} to-merge))]
-                  (is (can-connect? details)))))))))))
+            (mt/with-temp [:model/Secret {secret-id :id} {:name   "Private key for Snowflake"
+                                                          :kind   :pem-cert
+                                                          :source "file-path"
+                                                          :value  pk-path}]
+              (testing "private key authentication via uploaded keys or local key with path stored in a secret"
+                (spit pk-path pk-key)
+                (doseq [to-merge [{:private-key-value pk-key                      ;; uploaded string
+                                   :private-key-options "uploaded"}
+                                  {:private-key-value (.getBytes pk-key "UTF-8")
+                                   :private-key-options "uploaded"}               ;; uploaded byte array
+                                  {:private-key-value (.getBytes pk-key "UTF-8")} ;; uploaded byte array without private-key-options
+                                  {:private-key-options "local"
+                                   :private-key-source "file-path"
+                                   :private-key-id secret-id}]]              ;; local file path
+                  (let [details (-> (:details (mt/db))
+                                    (dissoc :password)
+                                    (merge {:db pk-db :user pk-user} to-merge))]
+                    (is (can-connect? details))))))))))))
 
 (deftest ^:synchronized pk-auth-custom-role-e2e-test
   (mt/test-driver
-   :snowflake
-   (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
-         warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
+    :snowflake
+    (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
+          warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
          ;; User with default role PULIC. To access the db custom role has to be used.
-         user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-custom-user)
-         private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
-         db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
-         database          {:name    "Snowflake RSA test DB custom"
-                            :engine  :snowflake
+          user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-custom-user)
+          private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
+          db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
+          database          {:name    "Snowflake RSA test DB custom"
+                             :engine  :snowflake
                             ;; Details as collected from `api handler POST / database` are used.
-                            :details {:role                nil
-                                      :warehouse           warehouse
-                                      :db                  db
-                                      :password            nil
-                                      :private-key-options "uploaded"
-                                      :advanced-options    false
-                                      :schema-filters-type "all"
-                                      :account             account
-                                      :private-key-value   (str "data:application/octet-stream;base64,"
-                                                                (u/encode-base64 private-key-value))
-                                      :tunnel-enabled      false
-                                      :user                user}}]
+                             :details {:role                nil
+                                       :warehouse           warehouse
+                                       :db                  db
+                                       :password            nil
+                                       :private-key-options "uploaded"
+                                       :advanced-options    false
+                                       :schema-filters-type "all"
+                                       :account             account
+                                       :private-key-value   (str "data:application/octet-stream;base64,"
+                                                                 (u/encode-base64 private-key-value))
+                                       :tunnel-enabled      false
+                                       :user                user}}]
      ;; TODO: We should make those message returned when role is incorrect more descriptive!
-     (testing "Database can not be accessed with `nil` default role"
-       (is (= "Looks like the Database name is incorrect."
-              (:message (mt/user-http-request :crowberto :post 400 "database"
-                                              database)))))
-     (testing "Database can not be accessed with PUBLIC role (default)"
-       (is (= "Looks like the Database name is incorrect."
-              (:message (mt/user-http-request :crowberto :post 400 "database"
-                                              (assoc-in database [:details :role] "PUBLIC"))))))
-     (testing "Database can be created using specified role"
+      (testing "Database can not be accessed with `nil` default role"
+        (is (= "Looks like the Database name is incorrect."
+               (:message (mt/user-http-request :crowberto :post 400 "database"
+                                               database)))))
+      (testing "Database can not be accessed with PUBLIC role (default)"
+        (is (= "Looks like the Database name is incorrect."
+               (:message (mt/user-http-request :crowberto :post 400 "database"
+                                               (assoc-in database [:details :role] "PUBLIC"))))))
+      (testing "Database can be created using specified role"
        ;; Map containing :details is expected to be database, hence considering request successful.
-       (is (contains? (mt/user-http-request :crowberto :post 200 "database"
-                                            (assoc-in database [:details :role]
-                                                      (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-role)))
-                      :details))
+        (is (contains? (mt/user-http-request :crowberto :post 200 "database"
+                                             (assoc-in database [:details :role]
+                                                       (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-role)))
+                       :details))
         ;; As the request is asynchronous, wait for sync to complete.
-       (Thread/sleep 7000))
-     (let [[db :as dbs]       (t2/select :model/Database :name "Snowflake RSA test DB custom")
-           [table :as tables] (t2/select :model/Table :db_id (:id db))
-           fields             (t2/select :model/Field :table_id (:id table))]
-       (testing "Created database is correctly synced"
-         (testing "Application database contains one database, one table and one new field"
-           (is (= 1 (count dbs)))
-           (is (= 1 (count tables)))
-           (is (= 2 (count fields)))))
-       (testing "Querying the database returns expected results"
-         (is (= [[1 "John Toucan Smith"]]
-                (mt/rows (qp/process-query {:database (:id db)
-                                            :type :query
-                                            :query {:source-table (:id table)}})))))
+        (Thread/sleep 7000))
+      (let [[db :as dbs]       (t2/select :model/Database :name "Snowflake RSA test DB custom")
+            [table :as tables] (t2/select :model/Table :db_id (:id db))
+            fields             (t2/select :model/Field :table_id (:id table))]
+        (testing "Created database is correctly synced"
+          (testing "Application database contains one database, one table and one new field"
+            (is (= 1 (count dbs)))
+            (is (= 1 (count tables)))
+            (is (= 2 (count fields)))))
+        (testing "Querying the database returns expected results"
+          (is (= [[1 "John Toucan Smith"]]
+                 (mt/rows (qp/process-query {:database (:id db)
+                                             :type :query
+                                             :query {:source-table (:id table)}})))))
        ;; Cleanup
-       (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
-       (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
-       (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
-       (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
+        (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
+        (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
+        (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
+        (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
 
 (deftest ^:synchronized pk-auth-default-role-e2e-test
   (mt/test-driver
-   :snowflake
-   (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
-         warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
+    :snowflake
+    (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
+          warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
          ;; User with default role PULIC. To access the db custom role has to be used.
-         user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-default-user)
-         private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
-         db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
-         database          {:name    "Snowflake RSA test DB default"
-                            :engine  :snowflake
+          user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-default-user)
+          private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
+          db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
+          database          {:name    "Snowflake RSA test DB default"
+                             :engine  :snowflake
                             ;; Details as collected from `api handler POST / database` are used.
-                            :details {:role                nil
-                                      :warehouse           warehouse
-                                      :db                  db
-                                      :password            nil
-                                      :private-key-options "uploaded"
-                                      :advanced-options    false
-                                      :schema-filters-type "all"
-                                      :account             account
-                                      :private-key-value   (str "data:application/octet-stream;base64,"
-                                                                (u/encode-base64 private-key-value))
-                                      :tunnel-enabled      false
-                                      :user                user}}]
-     (testing "Database can be created using _default_ `nil` role"
+                             :details {:role                nil
+                                       :warehouse           warehouse
+                                       :db                  db
+                                       :password            nil
+                                       :private-key-options "uploaded"
+                                       :advanced-options    false
+                                       :schema-filters-type "all"
+                                       :account             account
+                                       :private-key-value   (str "data:application/octet-stream;base64,"
+                                                                 (u/encode-base64 private-key-value))
+                                       :tunnel-enabled      false
+                                       :user                user}}]
+      (testing "Database can be created using _default_ `nil` role"
        ;; Map containing :details is expected to be database, hence considering request successful.
-       (is (contains? (mt/user-http-request :crowberto :post 200 "database" database)
-                      :details))
+        (is (contains? (mt/user-http-request :crowberto :post 200 "database" database)
+                       :details))
         ;; As the request is asynchronous, wait for sync to complete.
-       (Thread/sleep 7000))
-     (let [[db :as dbs]       (t2/select :model/Database :name "Snowflake RSA test DB default")
-           [table :as tables] (t2/select :model/Table :db_id (:id db))
-           fields             (t2/select :model/Field :table_id (:id table))]
-       (testing "Created database is correctly synced"
-         (testing "Application database contains one database, one table and one new field"
-           (is (= 1 (count dbs)))
-           (is (= 1 (count tables)))
-           (is (= 2 (count fields)))))
-       (testing "Querying the database returns expected results"
-         (is (= [[1 "John Toucan Smith"]]
-                (mt/rows (qp/process-query {:database (:id db)
-                                            :type :query
-                                            :query {:source-table (:id table)}})))))
+        (Thread/sleep 7000))
+      (let [[db :as dbs]       (t2/select :model/Database :name "Snowflake RSA test DB default")
+            [table :as tables] (t2/select :model/Table :db_id (:id db))
+            fields             (t2/select :model/Field :table_id (:id table))]
+        (testing "Created database is correctly synced"
+          (testing "Application database contains one database, one table and one new field"
+            (is (= 1 (count dbs)))
+            (is (= 1 (count tables)))
+            (is (= 2 (count fields)))))
+        (testing "Querying the database returns expected results"
+          (is (= [[1 "John Toucan Smith"]]
+                 (mt/rows (qp/process-query {:database (:id db)
+                                             :type :query
+                                             :query {:source-table (:id table)}})))))
        ;; Cleanup
-       (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
-       (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
-       (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
-       (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
+        (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
+        (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
+        (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
+        (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
 
 (deftest ^:parallel replacement-snippet-date-param-test
   (mt/test-driver :snowflake
@@ -701,19 +706,20 @@
                           "context" "ad-hoc"
                           "userId" 1000
                           "databaseId" (mt/id)}
-            result-query (driver/prettify-native-form :snowflake
-                           (query->native
-                             (assoc
-                               (mt/mbql-query users {:limit 2000})
-                               :parameters [{:type   "id"
-                                             :target [:dimension [:field (mt/id :users :id) nil]]
-                                             :value  ["1" "2" "3"]}]
-                               :info {:executed-by  1000
-                                      :card-id      1234
-                                      :dashboard-id 5678
-                                      :context      :ad-hoc
-                                      :query-hash   (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
-                                                                 93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
+            result-query (driver/prettify-native-form
+                          :snowflake
+                          (query->native!
+                           (assoc
+                            (mt/mbql-query users {:limit 2000})
+                            :parameters [{:type   "id"
+                                          :target [:dimension [:field (mt/id :users :id) nil]]
+                                          :value  ["1" "2" "3"]}]
+                            :info {:executed-by  1000
+                                   :card-id      1234
+                                   :dashboard-id 5678
+                                   :context      :ad-hoc
+                                   :query-hash   (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
+                                                              93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
             result-comment (second (re-find #"-- (\{.*\})" result-query))
             result-map (json/read-str result-comment)]
         (is (= expected-map result-map))))))
@@ -806,3 +812,113 @@
           (mt/with-native-query-testing-context query
             (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 "Red"]]
                    (mt/rows (qp/process-query query))))))))))
+
+;;;;
+;;;; GOOD DATETIMES IN BELIZE
+;;;; Testing Snowflake timestamp types in relative date time filter.
+;;;; (In Belize they know no DST anymore.)
+;;;;
+
+(def ^:private belize-offset (t/zone-offset "-06:00"))
+
+(defn- rows-for-good-datetimes-in-belize
+  []
+  (let [number-of-points (* 4 3)
+        today-dt (t/truncate-to (t/offset-date-time belize-offset) :days)
+        first-dt-point (t/- today-dt (t/days 2))
+        dt-points (for [i (range number-of-points)]
+                    (t/+ first-dt-point (t/hours (* 6 i))))
+        various-offset-strs ["-10:00" "-04:00" "+02:00" "+09:00"]]
+    (mapv (fn [today-dt offset-str]
+            (vector (t/with-offset-same-instant today-dt (t/zone-offset "Z"))
+                    (t/with-offset-same-instant today-dt (t/zone-offset offset-str))
+                    (t/local-date-time today-dt)
+                    ;;;; Shift local date time for belize offset so timestamp_ltz has same instant as rest!
+                    ;;   Even though later in the test the user with America/Belize timezone does the data loading,
+                    ;;   the timestamps have to be adjusted.
+                    ;;   I believe that it is because of either (1) us hardcoding the :timestamp connection property
+                    ;;   to UTC (see the `connection-details->spec :snowflake`) or (2) the fact that the JVM timezone
+                    ;;   is set to UTC.
+                    (t/+ (t/local-date-time today-dt) (t/hours 6))))
+          dt-points
+          (cycle various-offset-strs))))
+
+;; BEWARE: No cleanup is done atm. It is expected that every CI run creates its own instance of this database.
+(mt/defdataset good-datetimes-in-belize
+  [["GOOD_DATETIMES" [{:field-name "IN_Z_OFFSET"
+                       :base-type {:native "timestamptz"}}
+                      {:field-name "IN_VARIOUS_OFFSETS"
+                       :base-type {:native "timestamptz"}}
+                      {:field-name "JUST_NTZ"
+                       :base-type {:native "timestampntz"}}
+                      {:field-name "JUST_LTZ"
+                       :base-type {:native "timestampltz"}}]
+    (rows-for-good-datetimes-in-belize)]])
+
+;; The test needs user with no report timezone set and database timezone other than UTC. That's the reason for redefs
+;; prior to dataset generation.
+(deftest ^:synchronized correct-timestamp-type-querying-test
+  (mt/test-driver
+    :snowflake
+    (let [original-set-current-user-timezone! @#'test.data.snowflake/set-current-user-timezone!
+          original-dbdef->connection-details (get-method tx/dbdef->connection-details :snowflake)]
+      (with-redefs [test.data.snowflake/set-current-user-timezone!
+                    (fn [_timezone]
+                      (original-set-current-user-timezone! "America/Belize"))
+                    tx/dbdef->connection-details
+                    (fn [driver connection-type database-definition]
+                      (-> (original-dbdef->connection-details driver connection-type database-definition)
+                          (assoc :user "BELIZE_PERSON")))]
+        (mt/with-temporary-setting-values [report-timezone "America/Belize"]
+          (mt/dataset
+            good-datetimes-in-belize
+            (testing "Expected data is returned using yesterday filter"
+              (let [yesterday-first     (t/- (t/truncate-to (t/offset-date-time belize-offset) :days) (t/days 1))
+                    yesterday-last      (t/+ yesterday-first (t/hours 18))
+                    yesterday-first-str (t/format :iso-offset-date-time yesterday-first)
+                    yesterday-last-str  (t/format :iso-offset-date-time yesterday-last)]
+                (doseq [[tested-field-kw base-type database-type]
+                        [[:IN_Z_OFFSET        :type/DateTimeWithLocalTZ "timestamptz"]
+                         [:IN_VARIOUS_OFFSETS :type/DateTimeWithLocalTZ "timestamptz"]
+                         [:JUST_NTZ           :type/DateTime            "timestampntz"]
+                         [:JUST_LTZ           :type/DateTimeWithTZ      "timestampltz"]]
+                        :let [tested-field [:field (mt/id :GOOD_DATETIMES tested-field-kw) {:base-type base-type}]]]
+                  (testing (str "on column type " database-type)
+                    (let [rows (mt/rows (qp/process-query
+                                         {:database (mt/id)
+                                          :type     :query
+                                          :query {:source-table (mt/id :GOOD_DATETIMES)
+                                                  :fields [tested-field]
+                                                  :filter [:time-interval tested-field -1 :day]
+                                                  :order-by [[tested-field :asc]]}}))]
+                      (testing "Correct rows count returned"
+                        (is (= 4 (count rows))))
+                      (testing "First row has expected values"
+                        (is (= yesterday-first-str
+                               (ffirst rows))))
+                      (testing "Last row has expected values"
+                        (is (= yesterday-last-str
+                               (ffirst (reverse rows)))))))
+
+                  (testing "Rows should be properly allocated to days"
+                    (let [tested-day (assoc-in tested-field [2 :temporal-unit] :day)
+                          tested-minute (assoc-in tested-field [2 :temporal-unit] :minute)]
+                      (is (=? [[string? 4] [string? 4] [string? 4]]
+                              (mt/rows
+                               (qp/process-query
+                                {:database (mt/id)
+                                 :type :query
+                                 :query {:source-table (mt/id :GOOD_DATETIMES)
+                                         :aggregation [[:count]]
+                                         :breakout [tested-day]}}))))
+                      (is (= [[yesterday-first-str 4 yesterday-first-str yesterday-last-str]]
+                             (mt/rows
+                              (qp/process-query
+                               {:database (mt/id)
+                                :type :query
+                                :query {:source-table (mt/id :GOOD_DATETIMES)
+                                        :aggregation [[:count]
+                                                      [:min tested-minute]
+                                                      [:max tested-minute]]
+                                        :breakout [tested-day]
+                                        :filter [:= tested-field (t/format :iso-local-date yesterday-last)]}})))))))))))))))

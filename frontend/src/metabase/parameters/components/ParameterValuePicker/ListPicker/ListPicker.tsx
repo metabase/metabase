@@ -3,7 +3,7 @@ import { useUnmount } from "react-use";
 import { t } from "ttag";
 import { useDebouncedCallback } from "use-debounce";
 
-import { Select, Loader, type SelectOption } from "metabase/ui";
+import { Loader, Select, type SelectOption } from "metabase/ui";
 
 import { PickerIcon } from "../ParameterValuePicker.styled";
 import { blurOnCommitKey } from "../utils";

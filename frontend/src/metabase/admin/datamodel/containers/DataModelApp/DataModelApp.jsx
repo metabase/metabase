@@ -8,7 +8,7 @@ import Radio from "metabase/core/components/Radio";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import { NavBar, ModelEducationButton } from "./DataModelApp.styled";
+import { ModelEducationButton, NavBar } from "./DataModelApp.styled";
 import { ModelEducationalModal } from "./ModelEducationalModal";
 
 const propTypes = {

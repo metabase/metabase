@@ -2,50 +2,53 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
-  getMaxMetricsSupported,
   getMaxDimensionsSupported,
+  getMaxMetricsSupported,
 } from "metabase/visualizations";
-import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
-  seriesSetting,
   keyForSingleSeries,
+  seriesSetting,
 } from "metabase/visualizations/lib/settings/series";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
-import { columnsAreValid, MAX_SERIES } from "metabase/visualizations/lib/utils";
+import { MAX_SERIES, columnsAreValid } from "metabase/visualizations/lib/utils";
 import {
+  STACKABLE_SERIES_DISPLAY_TYPES,
+  getAreDimensionsAndMetricsValid,
+  getAvailableAdditionalColumns,
   getAvailableXAxisScales,
+  getComputedAdditionalColumnsValue,
+  getDefaultColumns,
+  getDefaultDataLabelsFormatting,
+  getDefaultDataLabelsFrequency,
+  getDefaultDimensionFilter,
+  getDefaultDimensions,
+  getDefaultIsAutoSplitEnabled,
   getDefaultIsHistogram,
+  getDefaultLegendIsReversed,
+  getDefaultMetricFilter,
+  getDefaultMetrics,
+  getDefaultShowDataLabels,
+  getDefaultShowStackValues,
   getDefaultStackingValue,
   getDefaultXAxisScale,
   getDefaultXAxisTitle,
   getDefaultYAxisTitle,
   getIsXAxisLabelEnabledDefault,
   getIsYAxisLabelEnabledDefault,
+  getSeriesOrderDimensionSetting,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
   getYAxisUnpinFromZeroDefault,
-  isYAxisUnpinFromZeroValid,
+  isShowStackValuesValid,
   isStackingValueValid,
   isXAxisScaleValid,
-  getDefaultLegendIsReversed,
-  getDefaultShowDataLabels,
-  getDefaultDataLabelsFrequency,
-  getDefaultDataLabelsFormatting,
-  getDefaultIsAutoSplitEnabled,
-  getDefaultColumns,
-  getDefaultDimensionFilter,
-  getDefaultMetricFilter,
-  getAreDimensionsAndMetricsValid,
-  getDefaultDimensions,
-  getDefaultShowStackValues,
-  STACKABLE_SERIES_DISPLAY_TYPES,
-  getSeriesOrderDimensionSetting,
-  getDefaultMetrics,
-  isShowStackValuesValid,
+  isYAxisUnpinFromZeroValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 export const getSeriesDisplays = (transformedSeries, settings) => {
@@ -81,8 +84,15 @@ export const GRAPH_DATA_SETTINGS = {
       series.length <= MAX_SERIES
         ? "0.5rem"
         : "1rem",
-    isValid: (series, vizSettings) =>
-      getAreDimensionsAndMetricsValid(series, vizSettings),
+    isValid: (series, vizSettings) => {
+      const dimensions = vizSettings["graph.dimensions"] ?? [];
+      if (dimensions.length === 0) {
+        const defaultDimensions = getDefaultDimensions(series, vizSettings);
+        return defaultDimensions.length === 0;
+      } else {
+        return getAreDimensionsAndMetricsValid(series, vizSettings);
+      }
+    },
     getDefault: (series, vizSettings) =>
       getDefaultDimensions(series, vizSettings),
     persistDefault: true,
@@ -122,7 +132,7 @@ export const GRAPH_DATA_SETTINGS = {
   },
   "graph.series_order": {
     section: t`Data`,
-    widget: ChartSettingOrderedSimple,
+    widget: ChartSettingSeriesOrder,
     marginBottom: "1rem",
 
     getValue: (series, settings) => {
@@ -142,8 +152,15 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     title: t`Y-axis`,
     widget: "fields",
-    isValid: (series, vizSettings) =>
-      getAreDimensionsAndMetricsValid(series, vizSettings),
+    isValid: (series, vizSettings) => {
+      const metrics = vizSettings["graph.metrics"] ?? [];
+      if (metrics.length === 0) {
+        const defaultMetrics = getDefaultMetrics(series, vizSettings);
+        return defaultMetrics.length === 0;
+      } else {
+        return getAreDimensionsAndMetricsValid(series, vizSettings);
+      }
+    },
     getDefault: (series, vizSettings) => getDefaultMetrics(series, vizSettings),
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings, _onChange, extra) => {
@@ -262,13 +279,39 @@ export const LEGEND_SETTINGS = {
 
 export const TOOLTIP_SETTINGS = {
   "graph.tooltip_type": {
-    getDefault: ([{ card }]) => {
-      const shouldShowComparisonTooltip = !["waterfall", "scatter"].includes(
-        card.display,
-      );
-      return shouldShowComparisonTooltip ? "series_comparison" : "default";
-    },
+    getDefault: () => "series_comparison",
     hidden: true,
+  },
+  "graph.tooltip_columns": {
+    section: t`Display`,
+    title: t`Additional tooltip metrics`,
+    placeholder: t`Enter metric names`,
+    widget: "multiselect",
+    useRawSeries: true,
+    getValue: getComputedAdditionalColumnsValue,
+    getHidden: (rawSeries, vizSettings) => {
+      // Default tooltip shows all columns
+      if (vizSettings["graph.tooltip_type"] === "default") {
+        return true;
+      }
+      return getAvailableAdditionalColumns(rawSeries, vizSettings).length === 0;
+    },
+    getProps: (rawSeries, vizSettings) => {
+      const options = getAvailableAdditionalColumns(rawSeries, vizSettings).map(
+        col => ({
+          label: col.display_name,
+          value: getColumnKey(col),
+        }),
+      );
+      return {
+        options,
+      };
+    },
+    readDependencies: [
+      "graph.metrics",
+      "graph.dimensions",
+      "graph.tooltip_type",
+    ],
   },
 };
 

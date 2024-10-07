@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { UtilApi } from "metabase/services";
 
-import { Logs, DEFAULT_POLLING_DURATION_MS } from "./Logs";
+import { DEFAULT_POLLING_DURATION_MS, Logs } from "./Logs";
 import { maybeMergeLogs } from "./utils";
 
 const log = {

@@ -1,4 +1,4 @@
-import { restore, openNativeEditor } from "e2e/support/helpers";
+import { openNativeEditor, restore } from "e2e/support/helpers";
 
 import * as DateFilter from "./helpers/e2e-date-filter-helpers";
 import {
@@ -50,7 +50,7 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
         DateFilter.setRelativeDate(filterValue);
         break;
 
-      case "Date Filter":
+      case "All Options":
         DateFilter.setAdHocFilter(filterValue);
         break;
 

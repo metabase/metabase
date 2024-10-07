@@ -1,7 +1,7 @@
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import {
-  measureTextWidth,
   measureTextHeight,
+  measureTextWidth,
 } from "metabase/static-viz/lib/text";
 
 import type { FunnelDatum, FunnelSettings } from "../types";

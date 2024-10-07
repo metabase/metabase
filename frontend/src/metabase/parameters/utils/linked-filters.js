@@ -1,6 +1,6 @@
 import {
-  TYPE_SUPPORTS_LINKED_FILTERS,
   FIELD_FILTER_PARAMETER_TYPES,
+  TYPE_SUPPORTS_LINKED_FILTERS,
 } from "metabase-lib/v1/parameters/constants";
 import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 

@@ -126,7 +126,6 @@
           :let    [metadata-provider (table-id->warmed-metadata-provider (:table_id segment))]]
       (assoc segment :definition_description (definition-description metadata-provider segment)))))
 
-
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (defmethod revision/serialize-instance Segment
@@ -150,39 +149,31 @@
             (get-in base-diff [:before :definition])) (assoc :definition {:before (get segment1 :definition)
                                                                           :after  (get segment2 :definition)})))))
 
-
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
 (defmethod serdes/hash-fields Segment
   [_segment]
   [:name (serdes/hydrated-hash :table) :created_at])
 
-(defmethod serdes/extract-one "Segment"
-  [_model-name _opts segment]
-  (-> (serdes/extract-one-basics "Segment" segment)
-      (update :table_id   serdes/*export-table-fk*)
-      (update :creator_id serdes/*export-user*)
-      (update :definition serdes/export-mbql)))
-
-(defmethod serdes/load-xform "Segment" [segment]
-  (-> segment
-      serdes/load-xform-basics
-      (update :table_id   serdes/*import-table-fk*)
-      (update :creator_id serdes/*import-user*)
-      (update :definition serdes/import-mbql)))
-
 (defmethod serdes/dependencies "Segment" [{:keys [definition table_id]}]
-  (into [] (set/union #{(serdes/table->path table_id)}
-                      (serdes/mbql-deps definition))))
+  (set/union #{(serdes/table->path table_id)}
+             (serdes/mbql-deps definition)))
 
 (defmethod serdes/storage-path "Segment" [segment _ctx]
   (let [{:keys [id label]} (-> segment serdes/path last)]
     (-> segment
         :table_id
         serdes/table->path
-        serdes/storage-table-path-prefix
+        serdes/storage-path-prefixes
         (concat ["segments" (serdes/storage-leaf-file-name id label)]))))
 
+(defmethod serdes/make-spec "Segment" [_model-name _opts]
+  {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
+   :skip      []
+   :transform {:created_at (serdes/date)
+               :table_id   (serdes/fk :model/Table)
+               :creator_id (serdes/fk :model/User)
+               :definition {:export serdes/export-mbql :import serdes/import-mbql}}})
 
 ;;; ---------------------------------------------- Audit Log Table ----------------------------------------------------
 

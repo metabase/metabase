@@ -15,10 +15,10 @@
 (defn- get-jar-entry [^String jar-path ^String filename]
   (with-open [zip-file (ZipFile. jar-path)]
     (first
-      (filter
-        (fn [^ZipEntry zip-entry]
-          (= (str zip-entry) filename))
-        (enumeration-seq (.entries zip-file))))))
+     (filter
+      (fn [^ZipEntry zip-entry]
+        (= (str zip-entry) filename))
+      (enumeration-seq (.entries zip-file))))))
 
 (defn- jar-contains-file? [^String jar-path ^String filename]
   (some? (get-jar-entry jar-path filename)))

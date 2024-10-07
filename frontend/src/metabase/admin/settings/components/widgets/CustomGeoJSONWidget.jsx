@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { memo, Component } from "react";
+import { Component, memo } from "react";
 import { t } from "ttag";
 
 import Confirm from "metabase/components/Confirm";
@@ -13,7 +13,7 @@ import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { uuid } from "metabase/lib/uuid";
-import { SettingsApi, GeoJSONApi } from "metabase/services";
+import { GeoJSONApi, SettingsApi } from "metabase/services";
 import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
 import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
 

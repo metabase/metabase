@@ -5,8 +5,8 @@ import type {
   UnsavedCard,
 } from "metabase-types/api";
 import {
-  createMockStructuredCard,
   createMockNativeCard,
+  createMockStructuredCard,
 } from "metabase-types/api/mocks";
 
 import { ORDERS_ID, SAMPLE_DB_ID } from "./sample_database";

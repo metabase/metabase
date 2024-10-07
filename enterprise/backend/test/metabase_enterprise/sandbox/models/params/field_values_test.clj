@@ -53,7 +53,7 @@
 
           (testing "after changing the question, should create new FieldValues"
             (let [new-query (mt/mbql-query categories
-                                           {:filter [:and [:> $id 1] [:< $id 4]]})]
+                              {:filter [:and [:> $id 1] [:< $id 4]]})]
               (Thread/sleep 1)
               (t2/update! Card card-id {:dataset_query new-query
                                         :updated_at    (t/local-date-time)}))

@@ -16,11 +16,29 @@ export type CliState = Partial<{
   /** Metabase instance settings */
   settings: Settings;
 
-  /** Database tables selected by the user */
+  /** Database tables present in the instance */
   tables: Table[];
+
+  /** Database tables selected by the user */
+  chosenTables: Table[];
 
   /** IDs and names of auto-generated dashboards */
   dashboards: DashboardInfo[];
+
+  /** Tenancy column names for the selected tables (e.g. orders -> shop_id) */
+  tenancyColumnNames: Record<string, string>;
+
+  /** Sampled values of the tenancy columns from the selected tables (e.g. tenancy_id -> [1, 2, 3]) */
+  tenantIdsMap: Record<string, (string | number)[]>;
+
+  /** ID of the "Our models" collection */
+  modelCollectionId: number;
+
+  /** Directory where the Express.js mock server is saved to */
+  mockServerDir: string;
+
+  /** Directory where the React components are saved to */
+  reactComponentDir: string;
 }>;
 
 export type CliError = {
@@ -30,11 +48,17 @@ export type CliError = {
 
 export type CliSuccess = {
   type: "success";
-  nextStep?: typeof CLI_STEPS[number]["id"];
+  nextStep?: (typeof CLI_STEPS)[number]["id"];
 };
 
 export type CliDone = {
   type: "done";
+};
+
+export type CliStepConfig = {
+  id: string;
+  executeStep: CliStepMethod;
+  runIf?: (state: CliState) => boolean;
 };
 
 export type CliStepType = CliError | CliSuccess | CliDone;

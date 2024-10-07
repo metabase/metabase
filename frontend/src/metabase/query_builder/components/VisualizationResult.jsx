@@ -101,7 +101,7 @@ export default class VisualizationResult extends Component {
             }
           />
           {showCreateAlertModal && (
-            <Modal full onClose={this.onCloseCreateAlertModal}>
+            <Modal medium onClose={this.onCloseCreateAlertModal}>
               <CreateAlertModalContent
                 onCancel={this.onCloseCreateAlertModal}
                 onAlertCreated={this.onCloseCreateAlertModal}
@@ -130,6 +130,7 @@ export default class VisualizationResult extends Component {
             isQueryBuilder={true}
             queryBuilderMode={queryBuilderMode}
             showTitle={false}
+            canToggleSeriesVisibility
             metadata={question.metadata()}
             timelineEvents={timelineEvents}
             selectedTimelineEventIds={selectedTimelineEventIds}

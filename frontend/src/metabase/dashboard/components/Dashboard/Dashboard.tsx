@@ -7,15 +7,16 @@ import _ from "underscore";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import {
-  moveDashboardToCollection,
   type NewDashCardOpts,
-  setArchivedDashboard,
   type SetDashboardAttributesOpts,
+  moveDashboardToCollection,
+  setArchivedDashboard,
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { useHasDashboardScroll } from "metabase/dashboard/components/Dashboard/use-has-dashboard-scroll";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import type {
+  CancelledFetchDashboardResult,
   DashboardDisplayOptionControls,
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
@@ -25,12 +26,12 @@ import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
 import type {
   CardId,
-  Dashboard as IDashboard,
+  DashCardId,
+  DashCardVisualizationSettings,
   DashboardCard,
   DashboardId,
   DashboardTabId,
-  DashCardId,
-  DashCardVisualizationSettings,
+  Dashboard as IDashboard,
   ParameterId,
   ParameterValueOrArray,
   TemporalUnit,
@@ -38,6 +39,7 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 import type {
   DashboardSidebarName,
   SelectedTabId,
@@ -258,7 +260,9 @@ function Dashboard(props: DashboardProps) {
       });
 
       if (!isSuccessfulFetchDashboardResult(result)) {
-        setErrorPage(result.payload);
+        if (!isCancelledFetchDashboardResult(result)) {
+          setErrorPage(result.payload);
+        }
         return;
       }
 
@@ -513,6 +517,12 @@ function isSuccessfulFetchDashboardResult(
 ): result is SuccessfulFetchDashboardResult {
   const hasError = "error" in result;
   return !hasError;
+}
+
+export function isCancelledFetchDashboardResult(
+  result: FetchDashboardResult,
+): result is CancelledFetchDashboardResult {
+  return isObject(result.payload) && Boolean(result.payload.isCancelled);
 }
 
 export { Dashboard };

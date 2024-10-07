@@ -6,7 +6,7 @@ import Segments from "metabase/entities/segments";
 
 import RevisionHistory from "../components/revisions/RevisionHistory";
 import { fetchSegmentRevisions } from "../datamodel";
-import { getRevisions, getCurrentUser } from "../selectors";
+import { getCurrentUser, getRevisions } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
   id: props.params.id,

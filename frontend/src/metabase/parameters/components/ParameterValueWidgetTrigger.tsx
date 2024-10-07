@@ -1,5 +1,5 @@
 import classnames from "classnames";
-import { forwardRef, type ReactNode, type Ref } from "react";
+import { type ReactNode, type Ref, forwardRef } from "react";
 
 import styles from "./ParameterValueWidget.module.css";
 import { TriggerContainer } from "./ParameterValueWidgetTrigger.styled";

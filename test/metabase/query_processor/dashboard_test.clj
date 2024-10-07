@@ -2,7 +2,6 @@
   "There are more e2e tests in [[metabase.api.dashboard-test]]."
   (:require
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
@@ -17,14 +16,14 @@
 (defn- run-query-for-dashcard [dashboard-id card-id dashcard-id & options]
   ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
   ;; stuff doesn't belong in the Dashboard QP namespace
-  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+  (mt/as-admin
     (apply qp.dashboard/process-query-for-dashcard
            :dashboard-id dashboard-id
            :card-id      card-id
            :dashcard-id  dashcard-id
            :make-run     (constantly
-                           (fn run [query info]
-                             (qp/process-query (assoc query :info info))))
+                          (fn run [query info]
+                            (qp/process-query (assoc query :info info))))
            options)))
 
 (deftest resolve-parameters-validation-test
@@ -98,27 +97,27 @@
       (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-1))))))
 
     (testing "A 404 error should be thrown if the card-id is not valid for the dashboard"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Not found"
-                              (run-query-for-dashcard dashboard-id (* card-id-1 2) dashcard-id-1))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Not found"
+                            (run-query-for-dashcard dashboard-id (* card-id-1 2) dashcard-id-1))))
 
     (testing "A 404 error should be thrown if the dashcard-id is not valid for the dashboard"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Not found"
-                              (run-query-for-dashcard dashboard-id card-id-1 (* dashcard-id-1 2)))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Not found"
+                            (run-query-for-dashcard dashboard-id card-id-1 (* dashcard-id-1 2)))))
 
     (testing "A 404 error should be thrown if the dashcard-id is not valid for the card"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Not found"
-                              (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-2))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Not found"
+                            (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-2))))
 
     (testing "Sanity check that a card-id in a dashboard card series executes successfully"
       (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-3 dashcard-id-3))))))
 
     (testing "A 404 error should be thrown if the card-id is not valid for the dashcard series"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Not found"
-                              (run-query-for-dashcard dashboard-id card-id-2 dashcard-id-3))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Not found"
+                            (run-query-for-dashcard dashboard-id card-id-2 dashcard-id-3))))))
 
 (deftest ^:parallel default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
@@ -168,6 +167,55 @@
                            dashboard-id card-id dashcard-id
                            :parameters [{:id    "abc123"
                                          :value nil}])))))))))
+
+(deftest ^:parallel execute-card-with-filter-stage-test
+  (testing "GET /api/card/:id/query with parameters with default values"
+    (mt/with-temp
+      [Card {card-id :id} {:database_id   (mt/id)
+                           :table_id      (mt/id :venues)
+                           :dataset_query (mt/mbql-query venues
+                                            {:aggregation  [:count]
+                                             :breakout     [$category_id
+                                                            $price]})}
+       Dashboard {dashboard-id :id} {:parameters
+                                     [{:slug      "venue_id"
+                                       :id        "_VENUE_ID_"
+                                       :name      "venue_id"
+                                       :type      "id"}
+                                      {:slug      "count"
+                                       :id        "_COUNT_"
+                                       :name      "count"
+                                       :type      "number/>="}]}
+       DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
+                                        :card_id            card-id
+                                        :parameter_mappings [{:parameter_id "_VENUE_ID_"
+                                                              :card_id      card-id
+                                                              :target       [:dimension
+                                                                             [:field (mt/id :venues :id) {:base-type "type/BigInteger"}]
+                                                                             {:stage-number -2}]}
+                                                             {:parameter_id "_COUNT_"
+                                                              :card_id      card-id
+                                                              :target       [:dimension
+                                                                             [:field "count" {:base-type "type/Integer"}]
+                                                                             {:stage-number -1}]}]}]
+      (are [count-filter rows] (= rows
+                                  (mt/formatted-rows [str int int]
+                                                     (run-query-for-dashcard
+                                                      dashboard-id card-id dashcard-id
+                                                      :parameters [{:id    "_VENUE_ID_"
+                                                                    :target [:dimension
+                                                                             [:field "venue_id" {:base-type "type/BigInteger"}]
+                                                                             {:stage-number -2}]
+                                                                    :type  "id"
+                                                                    :value 2}
+                                                                   {:id    "_COUNT_"
+                                                                    :target [:dimension
+                                                                             [:field "count" {:base-type "type/Integer"}]
+                                                                             {:stage-number -1}]
+                                                                    :type  "number/>="
+                                                                    :value count-filter}])))
+        1 [["11" 2 1]]
+        2 []))))
 
 (deftest default-value-precedence-test-raw-values
   (testing "If both Dashboard and Card have default values for a raw value parameter, Card defaults should take precedence\n"
@@ -363,9 +411,9 @@
     (mt/dataset test-data
       (mt/with-temp [Card {card-id :id} {:name          "Orders"
                                          :dataset_query (mt/mbql-query products
-                                                                       {:fields   [$id $title $category]
-                                                                        :order-by [[:asc $id]]
-                                                                        :limit    2})}
+                                                          {:fields   [$id $title $category]
+                                                           :order-by [[:asc $id]]
+                                                           :limit    2})}
                      Dashboard {dashboard-id :id} {:name       "20516 Dashboard"
                                                    :parameters [{:name    "Category"
                                                                  :slug    "category"

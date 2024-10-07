@@ -28,7 +28,7 @@ Only the `#` and `ID` is required. Metabase just displays the model or question 
 
 The same syntax can be used in [Common Table Expressions (CTEs)](https://www.metabase.com/learn/sql-questions/sql-cte) (with SQL databases that support CTEs):
 
-```
+```sql
 WITH gizmo_orders AS {% raw %}{{#5-gizmo-orders-in-2019}}{% endraw %}
 SELECT count(*)
 FROM gizmo_orders
@@ -36,7 +36,7 @@ FROM gizmo_orders
 
 When this query is run, the `{% raw %}{{#5-gizmo-orders-in-2019}}{% endraw %}` tag will be substituted with the SQL query of the referenced question, surrounded by parentheses. So it'll look like this under the hood:
 
-```
+```sql
 WITH
   gizmo_orders AS (
     SELECT

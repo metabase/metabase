@@ -127,4 +127,24 @@
                 (comp (filter (fn [metric-card]
                                 (= 1 (lib.query/stage-count (lib.query/query query (:dataset-query metric-card))))))
                       (map maybe-add-aggregation-pos))
-                metrics)))))))
+                (sort-by (some-fn :display-name :name) metrics))))))))
+
+(defn- normalize-legacy-query
+  [query]
+  (cond-> query
+    (#{:query :native} (lib.util/normalized-query-type query))
+    mbql.normalize/normalize))
+
+(defmethod lib.metadata.calculation/metadata-method :metric
+  [query stage-number [_ _ metric-id]]
+  (let [metric-meta (lib.metadata/metric query metric-id)
+        metric-aggregation (some-> metric-meta
+                                   :dataset-query
+                                   normalize-legacy-query
+                                   lib.convert/->pMBQL
+                                   lib.aggregation/aggregations
+                                   first)
+        metric-name (:name metric-meta)]
+    (assoc (lib.metadata.calculation/metadata query stage-number metric-aggregation)
+           :name metric-name
+           :display-name metric-name)))

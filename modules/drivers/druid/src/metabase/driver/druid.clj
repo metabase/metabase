@@ -13,9 +13,10 @@
 
 (driver/register! :druid)
 
-(doseq [[feature supported?] {:expression-aggregations true
-                              :schemas                 false
-                              :set-timezone            true}]
+(doseq [[feature supported?] {:expression-aggregations        true
+                              :schemas                        false
+                              :set-timezone                   true
+                              :temporal/requires-default-unit true}]
   (defmethod driver/database-supports? [:druid feature] [_driver _feature _db] supported?))
 
 (defmethod driver/can-connect? :druid
@@ -52,9 +53,9 @@
 (defmethod driver/execute-reducible-query :druid
   [_driver query _context respond]
   (druid.execute/execute-reducible-query
-    (partial druid.client/do-query-with-cancellation qp.pipeline/*canceled-chan*)
-    (update-in query [:native :query] add-timeout-to-query qp.pipeline/*query-timeout-ms*)
-    respond))
+   (partial druid.client/do-query-with-cancellation qp.pipeline/*canceled-chan*)
+   (update-in query [:native :query] add-timeout-to-query qp.pipeline/*query-timeout-ms*)
+   respond))
 
 (defmethod driver/db-start-of-week :druid
   [_]

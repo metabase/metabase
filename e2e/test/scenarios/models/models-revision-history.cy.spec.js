@@ -1,9 +1,10 @@
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  questionInfoButton,
-  visitModel,
   echartsContainer,
+  questionInfoButton,
+  restore,
+  sidesheet,
+  visitModel,
 } from "e2e/support/helpers";
 
 describe("scenarios > models > revision history", () => {
@@ -25,6 +26,7 @@ describe("scenarios > models > revision history", () => {
     cy.location("pathname").should("match", /^\/question\/\d+/);
     echartsContainer();
 
+    sidesheet().findByRole("tab", { name: "History" }).click();
     revertTo("You edited this");
 
     cy.location("pathname").should("match", /^\/model\/\d+/);
@@ -35,9 +37,9 @@ describe("scenarios > models > revision history", () => {
 function openRevisionHistory() {
   cy.intercept("GET", "/api/user").as("user");
   questionInfoButton().click();
+  sidesheet().findByRole("tab", { name: "History" }).click();
   cy.wait("@user");
-
-  cy.findByText("History");
+  cy.findByTestId("saved-question-history-list").should("be.visible");
 }
 
 function revertTo(history) {

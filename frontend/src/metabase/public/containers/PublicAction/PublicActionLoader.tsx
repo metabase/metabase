@@ -11,8 +11,8 @@ import type { AppErrorDescriptor } from "metabase-types/store";
 
 import PublicAction from "./PublicAction";
 import {
-  LoadingAndErrorWrapper,
   ContentContainer,
+  LoadingAndErrorWrapper,
 } from "./PublicAction.styled";
 
 interface OwnProps {

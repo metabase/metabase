@@ -45,7 +45,7 @@ describe("time-series chrome filter widget", () => {
         .should("have.text", "All time")
         .click();
 
-      cy.findByTestId("datetime-filter-picker")
+      cy.findByTestId("date-filter-picker")
         .findByDisplayValue("All time")
         .click();
 
@@ -62,7 +62,7 @@ describe("time-series chrome filter widget", () => {
         });
       });
 
-      cy.findByTestId("datetime-filter-picker").within(() => {
+      cy.findByTestId("date-filter-picker").within(() => {
         cy.log("Include 'current' interval switch should not be displayed");
         cy.findByLabelText(/^Include/).should("not.exist");
         cy.button("Apply").should("not.be.disabled");
@@ -74,7 +74,7 @@ describe("time-series chrome filter widget", () => {
       updateOperator("All time", "Previous");
 
       cy.log("Check the state of the time-series chrome");
-      cy.findByTestId("datetime-filter-picker").within(() => {
+      cy.findByTestId("date-filter-picker").within(() => {
         // Top row
         cy.findByDisplayValue("Previous").should("be.visible");
         cy.findByDisplayValue("30").should("be.visible");
@@ -107,7 +107,7 @@ describe("time-series chrome filter widget", () => {
       cy.log(
         "Make sure the relative date picker reflects the state of the time-series chrome",
       );
-      cy.findByTestId("datetime-filter-picker").within(() => {
+      cy.findByTestId("date-filter-picker").within(() => {
         cy.findByRole("tab", { name: "Previous" }).should(
           "have.attr",
           "aria-selected",
@@ -174,7 +174,7 @@ describe("time-series chrome filter widget", () => {
     });
 
     it("should preserve the state of 'Include current' switch when changing direction or the interval", () => {
-      cy.findByTestId("datetime-filter-picker").within(() => {
+      cy.findByTestId("date-filter-picker").within(() => {
         cy.findByLabelText("Include this year").should(
           "have.attr",
           "aria-checked",
@@ -183,14 +183,12 @@ describe("time-series chrome filter widget", () => {
       });
 
       cy.log("Change the interval");
-      cy.findByTestId("datetime-filter-picker")
-        .findByDisplayValue("years")
-        .click();
+      cy.findByTestId("date-filter-picker").findByDisplayValue("years").click();
       cy.findByRole("listbox")
         .findByRole("option", { name: "quarters" })
         .click();
 
-      cy.findByTestId("datetime-filter-picker").within(() => {
+      cy.findByTestId("date-filter-picker").within(() => {
         cy.findByDisplayValue("quarters").should("be.visible");
         cy.findByLabelText("Include this quarter").should(
           "have.attr",
@@ -204,7 +202,7 @@ describe("time-series chrome filter widget", () => {
 
       cy.log("Change the direction");
       updateOperator("Next", "Previous");
-      cy.findByTestId("datetime-filter-picker").within(() => {
+      cy.findByTestId("date-filter-picker").within(() => {
         cy.findByDisplayValue("Previous").should("be.visible");
         cy.findByLabelText("Include this quarter").should(
           "have.attr",
@@ -215,7 +213,7 @@ describe("time-series chrome filter widget", () => {
     });
 
     it("should reset the 'Include current' switch state when navigating away from the relative interval date filter", () => {
-      cy.findByTestId("datetime-filter-picker").within(() => {
+      cy.findByTestId("date-filter-picker").within(() => {
         cy.findByLabelText("Include this year").should(
           "have.attr",
           "aria-checked",
@@ -224,12 +222,12 @@ describe("time-series chrome filter widget", () => {
       });
 
       updateOperator("Next", "Current");
-      cy.findByTestId("datetime-filter-picker")
+      cy.findByTestId("date-filter-picker")
         .findByLabelText("Include today")
         .should("not.exist");
 
       updateOperator("Current", "Previous");
-      cy.findByTestId("datetime-filter-picker").within(() => {
+      cy.findByTestId("date-filter-picker").within(() => {
         cy.findByDisplayValue("Previous").should("be.visible");
         cy.findByLabelText("Include this year").should(
           "have.attr",
@@ -242,6 +240,6 @@ describe("time-series chrome filter widget", () => {
 });
 
 function updateOperator(from: string, to: string) {
-  cy.findByTestId("datetime-filter-picker").findByDisplayValue(from).click();
+  cy.findByTestId("date-filter-picker").findByDisplayValue(from).click();
   cy.findByRole("listbox").findByRole("option", { name: to }).click();
 }

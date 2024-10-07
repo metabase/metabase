@@ -1,9 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
 import Aggregation from "metabase-lib/v1/queries/structured/Aggregation";
 import {
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 const metadata = createMockMetadata({

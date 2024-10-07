@@ -2,36 +2,24 @@ import PropTypes from "prop-types";
 import { Fragment } from "react";
 import { connect } from "react-redux";
 
-import {
-  verifyCard,
-  removeCardReview,
-} from "metabase-enterprise/moderation/actions";
+import { useEditItemVerificationMutation } from "metabase/api";
 import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 import { getLatestModerationReview } from "metabase-enterprise/moderation/service";
 
-import ModerationReviewBanner from "../ModerationReviewBanner/ModerationReviewBanner";
+import { ModerationReviewBanner } from "../ModerationReviewBanner/ModerationReviewBanner";
 
 import { VerifyButton as DefaultVerifyButton } from "./QuestionModerationSection.styled";
 
 const mapStateToProps = (state, props) => ({
   isModerator: getIsModerator(state, props),
 });
-const mapDispatchToProps = {
-  verifyCard,
-  removeCardReview,
-};
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(QuestionModerationSection);
+export default connect(mapStateToProps)(QuestionModerationSection);
 
 QuestionModerationSection.VerifyButton = DefaultVerifyButton;
 
 QuestionModerationSection.propTypes = {
   question: PropTypes.object.isRequired,
-  verifyCard: PropTypes.func.isRequired,
-  removeCardReview: PropTypes.func.isRequired,
   isModerator: PropTypes.bool.isRequired,
   reviewBannerClassName: PropTypes.string,
   VerifyButton: PropTypes.func,
@@ -39,17 +27,22 @@ QuestionModerationSection.propTypes = {
 
 function QuestionModerationSection({
   question,
-  removeCardReview,
   isModerator,
   reviewBannerClassName,
 }) {
+  const [editItemVerification] = useEditItemVerificationMutation();
+
   const latestModerationReview = getLatestModerationReview(
     question.getModerationReviews(),
   );
 
   const onRemoveModerationReview = () => {
     const id = question.id();
-    removeCardReview(id);
+    editItemVerification({
+      status: null,
+      moderated_item_id: id,
+      moderated_item_type: "card",
+    });
   };
 
   return (

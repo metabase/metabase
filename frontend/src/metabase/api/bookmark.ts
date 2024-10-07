@@ -7,10 +7,10 @@ import type {
 
 import { Api } from "./api";
 import {
-  provideBookmarkListTags,
   idTag,
   invalidateTags,
   listTag,
+  provideBookmarkListTags,
 } from "./tags";
 
 export const bookmarkApi = Api.injectEndpoints({
@@ -27,9 +27,10 @@ export const bookmarkApi = Api.injectEndpoints({
         method: "POST",
         url: `/api/bookmark/${type}/${id}`,
       }),
-      invalidatesTags: (bookmark, error) =>
+      invalidatesTags: (bookmark, error, { type, id }) =>
         invalidateTags(error, [
           listTag("bookmark"),
+          idTag(type, id),
           ...(bookmark ? [idTag("bookmark", bookmark.id)] : []),
         ]),
     }),
@@ -38,9 +39,10 @@ export const bookmarkApi = Api.injectEndpoints({
         method: "DELETE",
         url: `/api/bookmark/${type}/${id}`,
       }),
-      invalidatesTags: (bookmark, error) =>
+      invalidatesTags: (bookmark, error, { type, id }) =>
         invalidateTags(error, [
           listTag("bookmark"),
+          idTag(type, id),
           ...(bookmark ? [idTag("bookmark", bookmark.id)] : []),
         ]),
     }),

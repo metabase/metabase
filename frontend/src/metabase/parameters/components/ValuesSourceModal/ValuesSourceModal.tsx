@@ -63,7 +63,7 @@ const ValuesSourceModal = ({
       sourceConfig={sourceConfig}
       onChangeSourceConfig={setSourceConfig}
       onSubmit={handlePickerClose}
-      onClose={onClose}
+      onClose={handlePickerClose}
     />
   );
 };

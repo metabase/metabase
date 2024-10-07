@@ -89,8 +89,8 @@
                                                                               {:generous? true}))
                                          (range (count existing-breakouts)))]
          (mapv #(let [positions  (column->breakout-positions %)]
-                 (cond-> (assoc % :lib/hide-bin-bucket? true)
-                   positions (assoc :breakout-positions positions)))
+                  (cond-> (assoc % :lib/hide-bin-bucket? true)
+                    positions (assoc :breakout-positions positions)))
                columns))))))
 
 (mu/defn existing-breakouts :- [:maybe [:sequential {:min 1} ::lib.schema.ref/ref]]
@@ -139,18 +139,18 @@
   "Returns the input column used for this breakout."
   ([query        :- ::lib.schema/query
     breakout-ref  :- ::lib.schema.ref/ref]
-  (breakout-column query -1 breakout-ref))
+   (breakout-column query -1 breakout-ref))
   ([query       :- ::lib.schema/query
-   stage-number :- :int
-   breakout-ref :- ::lib.schema.ref/ref]
-  (when-let [column (lib.equality/find-matching-column breakout-ref
-                                                       (breakoutable-columns query stage-number)
-                                                       {:generous? true})]
-    (let [binning (lib.binning/binning breakout-ref)
-          bucket  (lib.temporal-bucket/temporal-bucket breakout-ref)]
-      (cond-> column
-        binning (lib.binning/with-binning binning)
-        bucket  (lib.temporal-bucket/with-temporal-bucket bucket))))))
+    stage-number :- :int
+    breakout-ref :- ::lib.schema.ref/ref]
+   (when-let [column (lib.equality/find-matching-column breakout-ref
+                                                        (breakoutable-columns query stage-number)
+                                                        {:generous? true})]
+     (let [binning (lib.binning/binning breakout-ref)
+           bucket  (lib.temporal-bucket/temporal-bucket breakout-ref)]
+       (cond-> column
+         binning (lib.binning/with-binning binning)
+         bucket  (lib.temporal-bucket/with-temporal-bucket bucket))))))
 
 (mu/defn remove-all-breakouts :- ::lib.schema/query
   "Remove all breakouts from a query stage."

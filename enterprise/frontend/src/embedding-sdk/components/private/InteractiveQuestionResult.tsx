@@ -1,35 +1,22 @@
 import cx from "classnames";
-import type { ReactElement, ReactNode } from "react";
-import { useState } from "react";
+import { type ReactElement, type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Group, Stack } from "metabase/ui";
 
-import {
-  BackButton,
-  FilterBar,
-  QuestionResetButton,
-  Title,
-  Filter,
-  FilterButton,
-  Summarize,
-  SummarizeButton,
-  Notebook,
-  NotebookButton,
-  QuestionVisualization,
-} from "./InteractiveQuestion/components";
+import { InteractiveQuestion } from "../public/InteractiveQuestion";
+
 import { useInteractiveQuestionContext } from "./InteractiveQuestion/context";
 
-interface InteractiveQuestionResultProps {
+export interface InteractiveQuestionResultProps {
   height?: string | number;
   withResetButton?: boolean;
-  withTitle: boolean;
+  withTitle?: boolean;
   customTitle?: ReactNode;
 }
 
@@ -47,18 +34,18 @@ const ResultView = ({
   };
 
   if (questionView === "filter") {
-    return <Filter onClose={returnToVisualization} />;
+    return <InteractiveQuestion.Filter onClose={returnToVisualization} />;
   }
 
   if (questionView === "summarize") {
-    return <Summarize onClose={returnToVisualization} />;
+    return <InteractiveQuestion.Summarize onClose={returnToVisualization} />;
   }
 
   if (questionView === "notebook") {
-    return <Notebook onApply={returnToVisualization} />;
+    return <InteractiveQuestion.Notebook onApply={returnToVisualization} />;
   }
 
-  return <QuestionVisualization />;
+  return <InteractiveQuestion.QuestionVisualization />;
 };
 
 export const InteractiveQuestionResult = ({
@@ -73,9 +60,6 @@ export const InteractiveQuestionResult = ({
   const { question, queryResults, isQuestionLoading } =
     useInteractiveQuestionContext();
 
-  const card = question?.card();
-  const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
-
   let content;
 
   if (isQuestionLoading) {
@@ -86,22 +70,22 @@ export const InteractiveQuestionResult = ({
     content = (
       <Stack h="100%">
         <Flex direction="row" gap="md" px="md" align="center">
-          <BackButton />
-          {withTitle && (customTitle ?? <Title />)}
-          {withResetButton && <QuestionResetButton />}
-          <FilterButton
+          <InteractiveQuestion.BackButton />
+          {withTitle && (customTitle ?? <InteractiveQuestion.Title />)}
+          {withResetButton && <InteractiveQuestion.ResetButton />}
+          <InteractiveQuestion.FilterButton
             onClick={() =>
               setQuestionView(
                 questionView === "filter" ? "visualization" : "filter",
               )
             }
           />
-          <SummarizeButton
+          <InteractiveQuestion.SummarizeButton
             isOpen={questionView === "summarize"}
             onOpen={() => setQuestionView("summarize")}
             onClose={() => setQuestionView("visualization")}
           />
-          <NotebookButton
+          <InteractiveQuestion.NotebookButton
             isOpen={questionView === "notebook"}
             onClick={() =>
               setQuestionView(
@@ -111,7 +95,7 @@ export const InteractiveQuestionResult = ({
           />
         </Flex>
 
-        <FilterBar />
+        <InteractiveQuestion.FilterBar />
 
         <Group
           h="100%"
@@ -131,7 +115,7 @@ export const InteractiveQuestionResult = ({
   return (
     <Box
       className={cx(CS.flexFull, CS.fullWidth)}
-      h={height ?? defaultHeight}
+      h={height ?? "100%"}
       bg="var(--mb-color-bg-question)"
     >
       {content}

@@ -51,7 +51,7 @@ const getInitialCollectionId = createSelector(
     byCollectionIdProp,
     byCollectionIdNavParam,
     byCollectionUrlId,
-    byCollectionQueryParameter,
+    byCollectionQueryParameter, // used by new model flow
   ],
   (collections, personalCollectionId, ...collectionIds) => {
     const rootCollectionId = ROOT_COLLECTION.id as CollectionId;

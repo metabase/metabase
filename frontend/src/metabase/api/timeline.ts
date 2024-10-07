@@ -13,9 +13,9 @@ import {
   idTag,
   invalidateTags,
   listTag,
-  tag,
   provideTimelineListTags,
   provideTimelineTags,
+  tag,
 } from "./tags";
 
 export const timelineApi = Api.injectEndpoints({

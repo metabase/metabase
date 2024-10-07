@@ -1,10 +1,10 @@
 (ns metabase.util.log.capture-test
   (:require
+   #?@(:cljs
+       [[metabase.test-runner.assert-exprs.approximately-equal]])
    [clojure.test :refer [deftest testing is are]]
    [metabase.util.log :as log]
-   [metabase.util.log.capture :as log.capture]
-   #?@(:cljs
-       [[metabase.test-runner.assert-exprs.approximately-equal]])))
+   [metabase.util.log.capture :as log.capture]))
 
 #?(:cljs
    (comment

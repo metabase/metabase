@@ -16,7 +16,7 @@
                         :params params})
       qp/process-query))
 
-(defn- getdate-vs-ss-ts-test-thunk-generator
+(defn- getdate-vs-ss-ts-test-thunk-generator!
   [unit value]
   (fn []
     ;; `with-redefs` forces use of `gettime()` in :relative-datetime transformation even for units gte or eq to :day.
@@ -45,7 +45,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature ::server-side-relative-datetime)
     (testing "Values of getdate() and server side generated timestamp are equal"
       (mt/with-metadata-provider (mt/id)
-        (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator :week -1)]
+        (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator! :week -1)]
           (doseq [tz-setter [qp.test-util/do-with-report-timezone-id!
                              test.tz/do-with-system-timezone-id!
                              qp.test-util/do-with-database-timezone-id
@@ -64,7 +64,7 @@
           (mt/with-database-timezone-id "America/Los_Angeles"
             (mt/with-report-timezone-id! "America/Los_Angeles"
               (mt/with-system-timezone-id! "Europe/Prague"
-                (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator :week -1)]
+                (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator! :week -1)]
                   (test-thunk))))))))))
 
 (deftest server-side-relative-datetime-various-units-test
@@ -73,7 +73,7 @@
       (testing "Value of server side generated timestamp matches the one from getdate() with multiple timezone settings"
         (doseq [unit [:day :week :month :quarter :year]
                 value [-30 0 7]
-                :let [test-thunk (getdate-vs-ss-ts-test-thunk-generator unit value)]]
+                :let [test-thunk (getdate-vs-ss-ts-test-thunk-generator! unit value)]]
           (test-thunk))))))
 
 (deftest server-side-relative-datetime-truncation-test
@@ -94,10 +94,10 @@
                     [7 "Conchúr Tihomir" "2014-08-02T09:30:00-04:00"]
                     [6 "Shad Ferdynand" "2014-08-02T12:30:00-04:00"]]
                    (->> (mt/run-mbql-query
-                         users
-                         {:fields [$id $name $last_login]
-                          :filter [:and
-                                   [:>= $last_login [:relative-datetime -1 :week]]
-                                   [:< $last_login [:relative-datetime 0 :week]]]
-                          :order-by [[:asc $last_login]]})
+                          users
+                          {:fields [$id $name $last_login]
+                           :filter [:and
+                                    [:>= $last_login [:relative-datetime -1 :week]]
+                                    [:< $last_login [:relative-datetime 0 :week]]]
+                           :order-by [[:asc $last_login]]})
                         (mt/formatted-rows [int str str]))))))))))

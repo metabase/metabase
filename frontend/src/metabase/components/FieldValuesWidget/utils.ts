@@ -19,8 +19,8 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   Dashboard,
-  Parameter,
   FieldValue,
+  Parameter,
   RowValue,
 } from "metabase-types/api";
 

@@ -17,8 +17,8 @@ import { getMetadata } from "metabase/selectors/metadata";
 import visualizations from "metabase/visualizations";
 
 import ReferenceHeader from "../components/ReferenceHeader";
-import { getTableBySegment, getSegment } from "../selectors";
-import { getQuestionUrl, getDescription } from "../utils";
+import { getSegment, getTableBySegment } from "../selectors";
+import { getDescription, getQuestionUrl } from "../utils";
 
 const emptyStateData = (table, segment, metadata) => {
   return {

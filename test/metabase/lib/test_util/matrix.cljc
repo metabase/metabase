@@ -1,13 +1,13 @@
 (ns metabase.lib.test-util.matrix
   (:require
-    [clojure.test :refer [deftest is]]
-    [medley.core :as m]
-    [metabase.lib.core :as lib]
-    [metabase.lib.metadata :as lib.metadata]
-    [metabase.lib.test-metadata :as meta]
-    [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
-    [metabase.lib.test-util :as lib.tu]
-    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
+   [clojure.test :refer [deftest is]]
+   [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-metadata.graph-provider :as meta.graph-provider]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
 
 (defn- metadata-with-column-of-type
   [column-type]
@@ -37,124 +37,124 @@
                      :has-field-values nil
                      :preview-display true
                      :database-position 1}]
-   (assoc (assoc (dissoc meta/metadata :tables) :id 1)
-         :tables
-         [{:description nil,
-           :schema "PUBLIC",
-           :lib/type :metadata/table,
-           :entity-type :entity/GenericTable,
-           :db-id 1,
-           :name "MATRIX",
-           :initial-sync-status "complete",
-           :caveats nil,
-           :field-order :database,
-           :show-in-getting-started false,
-           :active true,
-           :id 1 ,
-           :points-of-interest nil,
-           :visibility-type nil,
-           :display-name "Matrix"
-           :fields [{:description nil,
-                     :lib/type :metadata/column,
-                     :fingerprint-version 0,
-                     :base-type :type/BigInteger,
-                     :semantic-type :type/PK,
-                     :database-required false,
-                     :table-id 1,
-                     :name "ID",
-                     :coercion-strategy nil,
-                     :settings nil,
-                     :caveats nil,
-                     :nfc-path nil,
-                     :database-type "BIGINT",
-                     :effective-type :type/BigInteger,
-                     :fk-target-field-id nil,
-                     :custom-position 0,
-                     :active true,
-                     :id 1,
-                     :parent-id nil,
-                     :points-of-interest nil,
-                     :visibility-type :normal,
-                     :display-name "ID",
-                     :position 0,
-                     :has-field-values :none,
-                     :target nil,
-                     :preview-display true,
-                     :database-position 0,
-                     :fingerprint nil}
-                    test-column]}
-          {:description nil,
-           :schema "PUBLIC",
-           :lib/type :metadata/table,
-           :entity-type :entity/GenericTable,
-           :db-id 1,
-           :name "SUPPORT",
-           :initial-sync-status "complete",
-           :caveats nil,
-           :field-order :database,
-           :show-in-getting-started false,
-           :active true,
-           :id 10,
-           :points-of-interest nil,
-           :visibility-type nil,
-           :display-name "Support"
-           :fields [{:description nil,
-                     :lib/type :metadata/column,
-                     :fingerprint-version 0,
-                     :base-type :type/BigInteger,
-                     :semantic-type :type/PK,
-                     :database-required false,
-                     :table-id 10,
-                     :name "ID",
-                     :coercion-strategy nil,
-                     :settings nil,
-                     :caveats nil,
-                     :nfc-path nil,
-                     :database-type "BIGINT",
-                     :effective-type :type/BigInteger,
-                     :fk-target-field-id nil,
-                     :custom-position 0,
-                     :active true,
-                     :id 10,
-                     :parent-id nil,
-                     :points-of-interest nil,
-                     :visibility-type :normal,
-                     :display-name "ID",
-                     :position 0,
-                     :has-field-values :none,
-                     :target nil,
-                     :preview-display true,
-                     :database-position 0,
-                     :fingerprint nil}
-                    {:description nil
-                     :lib/type :metadata/column
-                     :database-is-auto-increment false
-                     :fingerprint-version 5
-                     :base-type :type/Integer
-                     :semantic-type :type/FK
-                     :database-required false
-                     :table-id 10
-                     :name "FK_ID"
-                     :coercion-strategy nil
-                     :settings nil
-                     :caveats nil
-                     :nfc-path nil
-                     :database-type "INTEGER"
-                     :effective-type :type/Integer
-                     :fk-target-field-id 1
-                     :custom-position 0
-                     :active true
-                     :id 20
-                     :parent-id nil
-                     :points-of-interest nil
-                     :visibility-type :normal
-                     :display-name "Foreign ID"
-                     :position 1
-                     :has-field-values nil
-                     :preview-display true
-                     :database-position 1
-                     :fingerprint {:global {:distinct-count 200
-                                            :nil% 0.0}}}]}])))
+    (assoc (assoc (dissoc meta/metadata :tables) :id 1)
+           :tables
+           [{:description nil,
+             :schema "PUBLIC",
+             :lib/type :metadata/table,
+             :entity-type :entity/GenericTable,
+             :db-id 1,
+             :name "MATRIX",
+             :initial-sync-status "complete",
+             :caveats nil,
+             :field-order :database,
+             :show-in-getting-started false,
+             :active true,
+             :id 1 ,
+             :points-of-interest nil,
+             :visibility-type nil,
+             :display-name "Matrix"
+             :fields [{:description nil,
+                       :lib/type :metadata/column,
+                       :fingerprint-version 0,
+                       :base-type :type/BigInteger,
+                       :semantic-type :type/PK,
+                       :database-required false,
+                       :table-id 1,
+                       :name "ID",
+                       :coercion-strategy nil,
+                       :settings nil,
+                       :caveats nil,
+                       :nfc-path nil,
+                       :database-type "BIGINT",
+                       :effective-type :type/BigInteger,
+                       :fk-target-field-id nil,
+                       :custom-position 0,
+                       :active true,
+                       :id 1,
+                       :parent-id nil,
+                       :points-of-interest nil,
+                       :visibility-type :normal,
+                       :display-name "ID",
+                       :position 0,
+                       :has-field-values :none,
+                       :target nil,
+                       :preview-display true,
+                       :database-position 0,
+                       :fingerprint nil}
+                      test-column]}
+            {:description nil,
+             :schema "PUBLIC",
+             :lib/type :metadata/table,
+             :entity-type :entity/GenericTable,
+             :db-id 1,
+             :name "SUPPORT",
+             :initial-sync-status "complete",
+             :caveats nil,
+             :field-order :database,
+             :show-in-getting-started false,
+             :active true,
+             :id 10,
+             :points-of-interest nil,
+             :visibility-type nil,
+             :display-name "Support"
+             :fields [{:description nil,
+                       :lib/type :metadata/column,
+                       :fingerprint-version 0,
+                       :base-type :type/BigInteger,
+                       :semantic-type :type/PK,
+                       :database-required false,
+                       :table-id 10,
+                       :name "ID",
+                       :coercion-strategy nil,
+                       :settings nil,
+                       :caveats nil,
+                       :nfc-path nil,
+                       :database-type "BIGINT",
+                       :effective-type :type/BigInteger,
+                       :fk-target-field-id nil,
+                       :custom-position 0,
+                       :active true,
+                       :id 10,
+                       :parent-id nil,
+                       :points-of-interest nil,
+                       :visibility-type :normal,
+                       :display-name "ID",
+                       :position 0,
+                       :has-field-values :none,
+                       :target nil,
+                       :preview-display true,
+                       :database-position 0,
+                       :fingerprint nil}
+                      {:description nil
+                       :lib/type :metadata/column
+                       :database-is-auto-increment false
+                       :fingerprint-version 5
+                       :base-type :type/Integer
+                       :semantic-type :type/FK
+                       :database-required false
+                       :table-id 10
+                       :name "FK_ID"
+                       :coercion-strategy nil
+                       :settings nil
+                       :caveats nil
+                       :nfc-path nil
+                       :database-type "INTEGER"
+                       :effective-type :type/Integer
+                       :fk-target-field-id 1
+                       :custom-position 0
+                       :active true
+                       :id 20
+                       :parent-id nil
+                       :points-of-interest nil
+                       :visibility-type :normal
+                       :display-name "Foreign ID"
+                       :position 1
+                       :has-field-values nil
+                       :preview-display true
+                       :database-position 1
+                       :fingerprint {:global {:distinct-count 200
+                                              :nil% 0.0}}}]}])))
 
 (defn test-queries
   "Produces test queries that will contain a column of the specified type.
@@ -164,9 +164,9 @@
   (let [mp (meta.graph-provider/->SimpleGraphMetadataProvider (metadata-with-column-of-type column-type))
         mock-cards (lib.tu/make-mock-cards mp [[:matrix 1]])
         mp (lib/composed-metadata-provider
-             mp
-             (providers.mock/mock-metadata-provider
-               {:cards (vals mock-cards)}))
+            mp
+            (providers.mock/mock-metadata-provider
+             {:cards (vals mock-cards)}))
         table-meta (lib.metadata/table mp 1)
         field-meta (lib.metadata/field mp 2)
         queries [[(lib/query mp table-meta)

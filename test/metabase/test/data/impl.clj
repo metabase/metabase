@@ -168,7 +168,6 @@
             *dbdef-used-to-create-db* nil]
     (thunk)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                       id                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -256,22 +255,22 @@
 
 (defn- copy-table-fields! [old-table-id new-table-id]
   (t2/insert! Field
-    (for [field (t2/select Field :table_id old-table-id, :active true, {:order-by [[:id :asc]]})]
-      (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
+              (for [field (t2/select Field :table_id old-table-id, :active true, {:order-by [[:id :asc]]})]
+                (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
   ;; now copy the FieldValues as well.
   (let [old-field-id->name (t2/select-pk->fn :name Field :table_id old-table-id :active true)
         new-field-name->id (t2/select-fn->pk :name Field :table_id new-table-id :active true)
         old-field-values   (t2/select FieldValues :field_id [:in (set (keys old-field-id->name))])]
     (t2/insert! FieldValues
-      (for [{old-field-id :field_id, :as field-values} old-field-values
-            :let                                       [field-name (get old-field-id->name old-field-id)]]
-        (-> field-values
-            (dissoc :id)
-            (assoc :field_id (get new-field-name->id field-name))
+                (for [{old-field-id :field_id, :as field-values} old-field-values
+                      :let                                       [field-name (get old-field-id->name old-field-id)]]
+                  (-> field-values
+                      (dissoc :id)
+                      (assoc :field_id (get new-field-name->id field-name))
             ;; Toucan after-select for FieldValues returns NULL human_readable_values as [] for FE-friendliness..
             ;; preserve NULL in the app DB copy so we don't end up changing things that rely on checking whether its
             ;; NULL like [[metabase.models.params.chain-filter/search-cached-field-values?]]
-            (update :human_readable_values not-empty))))))
+                      (update :human_readable_values not-empty))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
   (let [old-tables    (t2/select Table :db_id old-db-id, :active true, {:order-by [[:id :asc]]})
@@ -328,8 +327,8 @@
                :details
                (reduce (fn [details [id-prop old-id]]
                          (assoc details id-prop (get old-id->new-id old-id)))
-                 (:details database)
-                 prop->old-id)))
+                       (:details database)
+                       prop->old-id)))
       database)))
 
 (def ^:dynamic *db-is-temp-copy?*
@@ -351,7 +350,6 @@
         (do-with-db new-db f))
       (finally
         (t2/delete! Database :id new-db-id)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    dataset                                                     |

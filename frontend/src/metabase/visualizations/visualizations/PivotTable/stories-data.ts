@@ -85,7 +85,7 @@ const pivotSettings = {
   column_settings: {},
 };
 
-export const HORIZONTAL_SCROLL_43215 = {
+export const PIVOT_3_ROWS_NO_COLUMNS = {
   data: {
     cols,
     rows,

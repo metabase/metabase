@@ -2,17 +2,17 @@
 import cx from "classnames";
 import { Fragment, useEffect, useState } from "react";
 import { connect } from "react-redux";
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
 import CS from "metabase/css/core/index.css";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import {
-  isAdminGroup,
-  isDefaultGroup,
   canEditMembership,
   getGroupNameLocalized,
+  isAdminGroup,
+  isDefaultGroup,
 } from "metabase/lib/groups";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
@@ -20,8 +20,8 @@ import { getUser } from "metabase/selectors/user";
 import {
   createMembership,
   deleteMembership,
-  updateMembership,
   loadMemberships,
+  updateMembership,
 } from "../people";
 import { getGroupMemberships, getMembershipsByUser } from "../selectors";
 

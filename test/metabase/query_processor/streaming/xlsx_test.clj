@@ -26,8 +26,8 @@
 
   ([format-settings col]
    (let [viz-settings (common/viz-settings-for-col
-                        (assoc col :field_ref [:field 1])
-                        {::mb.viz/column-settings {{::mb.viz/field-id 1} format-settings}})
+                       (assoc col :field_ref [:field 1])
+                       {::mb.viz/column-settings {{::mb.viz/field-id 1} format-settings}})
          format-strings (@#'qp.xlsx/format-settings->format-strings viz-settings col)]
      ;; If only one format string is returned (for datetimes) or both format strings
      ;; are equal, just return a single value to make tests more readable.
@@ -710,6 +710,21 @@
                             :name           "CREATED_AT"
                             :effective_type :type/Integer
                             :base_type      :type/Integer}]
+                          {}
+                          [[1]
+                           [2]]))))))
+
+(deftest ambiguous-column-types-dont-error
+  (testing "Ambiguous column types (eg. `:type/SnowflakeVariant` will not throw an exception. (#46981)"
+    (mt/dataset test-data
+      (is (= [["CREATED_AT"]
+              [1.0]
+              [2.0]]
+             (xlsx-export [{:id             0
+                            :unit           :month-of-year
+                            :name           "CREATED_AT"
+                            :effective_type :type/SnowflakeVariant
+                            :base_type      :type/SnowflakeVariant}]
                           {}
                           [[1]
                            [2]]))))))

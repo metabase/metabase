@@ -14,7 +14,10 @@ export type AdminPathKey =
   | "troubleshooting"
   | "audit"
   | "tools"
-  | "performance";
+  | "performance"
+  | "performance-models"
+  | "performance-dashboards-and-questions"
+  | "performance-databases";
 
 export type AdminPath = {
   key: AdminPathKey;

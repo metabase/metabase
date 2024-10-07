@@ -1,4 +1,4 @@
-import { type ComponentType, type CSSProperties, useState } from "react";
+import { type CSSProperties, type ComponentType, useState } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
@@ -21,7 +21,7 @@ const USER_FACING_ENTITY_NAMES = [
   "model",
 ] as const;
 
-type UserFacingEntityName = typeof USER_FACING_ENTITY_NAMES[number];
+type UserFacingEntityName = (typeof USER_FACING_ENTITY_NAMES)[number];
 
 const ENTITY_NAME_MAP: Partial<
   Record<UserFacingEntityName, CollectionItemModel>

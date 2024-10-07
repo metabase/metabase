@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, type HTMLAttributes } from "react";
+import { type HTMLAttributes, type ReactNode, useCallback } from "react";
 import { c } from "ttag";
 
 import { removeNullAndUndefinedValues } from "metabase/lib/types";
@@ -7,17 +7,17 @@ import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
 import {
   SelectFrame,
+  SelectFrequency,
   SelectMinute,
   SelectTime,
   SelectWeekday,
   SelectWeekdayOfMonth,
-  SelectFrequency,
 } from "./components";
 import { defaultDay, defaultHour, getScheduleStrings } from "./constants";
 import type {
   ScheduleChangeProp,
-  UpdateSchedule,
   ScheduleDefaults,
+  UpdateSchedule,
 } from "./types";
 import { fillScheduleTemplate, getLongestSelectLabel } from "./utils";
 

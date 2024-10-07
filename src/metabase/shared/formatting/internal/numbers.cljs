@@ -51,21 +51,21 @@
   (let [default-fraction-digits (when (= (:number-style options) "currency")
                                   2)]
     (js/Intl.NumberFormat.
-      "en"
-      (clj->js (u/remove-nils
-                 {:style    (when-not (= (:number-style options) "scientific")
-                              (:number-style options "decimal"))
-                  :notation (when (= (:number-style options) "scientific")
-                              "scientific")
-                  :currency (:currency options)
-                  :currencyDisplay (:currency-style options)
+     "en"
+     (clj->js (u/remove-nils
+               {:style    (when-not (= (:number-style options) "scientific")
+                            (:number-style options "decimal"))
+                :notation (when (= (:number-style options) "scientific")
+                            "scientific")
+                :currency (:currency options)
+                :currencyDisplay (:currency-style options)
                   ;; Always use grouping separators, but we may remove them per number_separators.
-                  :useGrouping              true
-                  :minimumIntegerDigits     (:minimum-integer-digits     options)
-                  :minimumFractionDigits    (:minimum-fraction-digits    options default-fraction-digits)
-                  :maximumFractionDigits    (:maximum-fraction-digits    options default-fraction-digits)
-                  :minimumSignificantDigits (:minimum-significant-digits options)
-                  :maximumSignificantDigits (:maximum-significant-digits options)})))))
+                :useGrouping              true
+                :minimumIntegerDigits     (:minimum-integer-digits     options)
+                :minimumFractionDigits    (:minimum-fraction-digits    options default-fraction-digits)
+                :maximumFractionDigits    (:maximum-fraction-digits    options default-fraction-digits)
+                :minimumSignificantDigits (:minimum-significant-digits options)
+                :maximumSignificantDigits (:maximum-significant-digits options)})))))
 
 (defn- currency-symbols? [options]
   (let [style (:currency-style options)]

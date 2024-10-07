@@ -2,9 +2,9 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   chartPathWithFillColor,
   getNotebookStep,
+  openNotebook,
   popover,
   restore,
-  openNotebook,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

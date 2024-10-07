@@ -96,7 +96,6 @@
      mb-db-connection-uri mb-db-user mb-db-pass mb-db-azure-managed-identity-client-id)
     (mdb.data-source/broken-out-details->DataSource db-type (broken-out-details db-type env-vars))))
 
-
 ;;;; exports: [[db-type]], [[db-file]], and [[data-source]] created using environment variables.
 
 (defmulti ^:private env-defaults
@@ -119,21 +118,21 @@
 
 (defn- env* [db-type]
   (merge-with
-    (fn [env-value default-value]
-      (if (nil? env-value)
-        default-value
-        env-value))
-    {:mb-db-type                             db-type
-     :mb-db-in-memory                        (config/config-bool :mb-db-in-memory)
-     :mb-db-file                             (config/config-str :mb-db-file)
-     :mb-db-connection-uri                   (config/config-str :mb-db-connection-uri)
-     :mb-db-host                             (config/config-str :mb-db-host)
-     :mb-db-port                             (config/config-int :mb-db-port)
-     :mb-db-dbname                           (config/config-str :mb-db-dbname)
-     :mb-db-user                             (config/config-str :mb-db-user)
-     :mb-db-pass                             (config/config-str :mb-db-pass)
-     :mb-db-azure-managed-identity-client-id (config/config-str :mb-db-azure-managed-identity-client-id)}
-    (env-defaults db-type)))
+   (fn [env-value default-value]
+     (if (nil? env-value)
+       default-value
+       env-value))
+   {:mb-db-type                             db-type
+    :mb-db-in-memory                        (config/config-bool :mb-db-in-memory)
+    :mb-db-file                             (config/config-str :mb-db-file)
+    :mb-db-connection-uri                   (config/config-str :mb-db-connection-uri)
+    :mb-db-host                             (config/config-str :mb-db-host)
+    :mb-db-port                             (config/config-int :mb-db-port)
+    :mb-db-dbname                           (config/config-str :mb-db-dbname)
+    :mb-db-user                             (config/config-str :mb-db-user)
+    :mb-db-pass                             (config/config-str :mb-db-pass)
+    :mb-db-azure-managed-identity-client-id (config/config-str :mb-db-azure-managed-identity-client-id)}
+   (env-defaults db-type)))
 
 (def env
   "Metabase Datatbase environment. Used to setup *application-db* and audit-db for enterprise users."

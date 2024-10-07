@@ -2,18 +2,18 @@ import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  navigationSidebar,
-  undo,
-  main,
-  describeEE,
-  onlyOnOSS,
-  setTokenFeatures,
-  getCollectionActions,
-  modal,
-  restore,
-  visitCollection,
   createCollection,
+  describeEE,
+  getCollectionActions,
+  main,
+  modal,
+  navigationSidebar,
+  onlyOnOSS,
   popover,
+  restore,
+  setTokenFeatures,
+  undo,
+  visitCollection,
 } from "e2e/support/helpers";
 
 describe("scenarios > collections > clean up", () => {
@@ -44,7 +44,7 @@ describe("scenarios > collections > clean up", () => {
       cy.log("should not show in custom analytics collections");
       visitCollection("root");
       navigationSidebar().within(() => {
-        cy.findByText("Metabase analytics").click();
+        cy.findByText("Usage analytics").click();
         cy.findByText("Custom reports").click();
       });
       collectionMenu().click();
@@ -203,7 +203,7 @@ describe("scenarios > collections > clean up", () => {
 
     it("show empty and error states correctly", () => {
       cy.log("should handle empty state");
-      cy.intercept("GET", "/api/collection/**/stale?**").as("stale-items");
+      cy.intercept("GET", "/api/ee/stale/**?**").as("stale-items");
 
       // visit collection w/ items but no stale items
       createCollection({ name: "Not empty w/ not stale items" })
@@ -231,7 +231,7 @@ describe("scenarios > collections > clean up", () => {
       });
 
       cy.log("should handle error state");
-      cy.intercept("GET", "/api/collection/**/stale?**", {
+      cy.intercept("GET", "/api/ee/stale/**?**", {
         statusCode: 500,
       }).as("stale-items");
 

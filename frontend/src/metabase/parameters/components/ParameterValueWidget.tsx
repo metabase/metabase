@@ -14,8 +14,8 @@ import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
-  isStringParameter,
   isDateParameter,
+  isStringParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   areParameterValuesIdentical,

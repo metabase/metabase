@@ -1,12 +1,13 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   appBar,
+  changeSynchronousBatchUpdateSetting,
   clearFilterWidget,
   createNativeQuestion,
   createQuestion,
   dashboardHeader,
-  dashboardParametersDoneButton,
   dashboardParameterSidebar,
+  dashboardParametersDoneButton,
   editDashboard,
   filterWidget,
   getDashboardCard,
@@ -23,6 +24,7 @@ import {
   undoToast,
   undoToastList,
   updateDashboardCards,
+  updateSetting,
   visitDashboard,
   visitEmbeddedPage,
 } from "e2e/support/helpers";
@@ -114,7 +116,13 @@ const expressionBreakoutQuestionDetails = {
         "day",
       ],
     },
-    breakout: [["expression", "Date", { "base-type": "type/DateTime" }]],
+    breakout: [
+      [
+        "expression",
+        "Date",
+        { "base-type": "type/DateTime", "temporal-unit": "day" },
+      ],
+    ],
   },
 };
 
@@ -187,9 +195,25 @@ const nativeUnitQuestionDetails = {
   },
 };
 
+const nativeTimeQuestionDetails = {
+  name: "SQL time",
+  display: "table",
+  native: {
+    query: "SELECT CAST('10:00' AS TIME) AS TIME",
+  },
+};
+
+const getNativeTimeQuestionBasedQuestionDetails = card => ({
+  query: {
+    "source-table": `card__${card.id}`,
+    aggregation: [["count"]],
+    breakout: [["field", "TIME", { "base-type": "type/Time" }]],
+  },
+});
+
 const parameterDetails = {
   id: "1",
-  name: "Unit of Time",
+  name: "Time grouping",
   slug: "unit_of_time",
   type: "temporal-unit",
   sectionId: "temporal-unit",
@@ -214,7 +238,14 @@ const getParameterMapping = card => ({
 describe("scenarios > dashboard > temporal unit parameters", () => {
   beforeEach(() => {
     restore();
+    cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(true);
     cy.signInAsNormalUser();
+  });
+
+  afterEach(() => {
+    cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(false);
   });
 
   describe("mapping targets", () => {
@@ -297,8 +328,18 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       cy.log("breakout by expression");
       addQuestion(expressionBreakoutQuestionDetails.name);
       editParameter(parameterDetails.name);
-      getDashboardCard().findByText("No valid fields").should("be.visible");
-      dashboardParametersDoneButton().click();
+      getDashboardCard().findByText("Select…").click();
+      popover().findByText("Date").click();
+      saveDashboard();
+      filterWidget().click();
+      popover().findByText("Quarter").click();
+      getDashboardCard().within(() => {
+        cy.findByText("Date: Quarter").should("be.visible");
+        cy.findByText(expressionBreakoutQuestionDetails.name).click();
+      });
+      queryBuilderMain().findByText("Date: Quarter").should("be.visible");
+      backToDashboard();
+      editDashboard();
       removeQuestion();
 
       cy.log("breakout by a column with a binning strategy");
@@ -475,7 +516,10 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     it("should pass a temporal unit with 'update dashboard filter' click behavior", () => {
       createDashboardWithMappedQuestion({
         extraQuestions: [nativeUnitQuestionDetails],
-      }).then(dashboard => visitDashboard(dashboard.id));
+      }).then(dashboard => {
+        cy.wrap(dashboard.id).as("dashboardId");
+        visitDashboard(dashboard.id);
+      });
 
       cy.log("unsupported column types are ignored");
       editDashboard();
@@ -509,9 +553,18 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       saveDashboard();
 
       cy.log("verify click behavior with a valid temporal unit");
+
+      // this is done to bypass race condition problem, the root cause for it is
+      // described in `updateDashboardAndCards` from frontend/src/metabase/dashboard/actions/save.js
+      visitDashboard("@dashboardId");
+
       getDashboardCard(1).findByText("year").click();
+
+      getDashboardCard(0)
+        .findByText("Created At: Year", { timeout: 10000 })
+        .should("be.visible");
+
       filterWidget().findByText("Year").should("be.visible");
-      getDashboardCard(0).findByText("Created At: Year").should("be.visible");
 
       cy.log("verify that invalid temporal units are ignored");
       getDashboardCard(1).findByText("invalid").click();
@@ -787,6 +840,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByLabelText("Year").click();
         cy.findByLabelText("Minute").click();
       });
+      dashboardParametersDoneButton().click();
       saveDashboard();
 
       filterWidget().click();
@@ -857,6 +911,34 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       resetFilterWidgetToDefault();
       getDashboardCard().findByText("Created At: Year").should("be.visible");
     });
+
+    it("should show an error message when an incompatible temporal unit is used", () => {
+      cy.log("setup dashboard with a time column");
+      createNativeQuestion(nativeTimeQuestionDetails).then(({ body: card }) => {
+        cy.createDashboardWithQuestions({
+          questions: [getNativeTimeQuestionBasedQuestionDetails(card)],
+        }).then(({ dashboard }) => {
+          visitDashboard(dashboard.id);
+        });
+      });
+      editDashboard();
+      addTemporalUnitParameter();
+      selectDashboardFilter(getDashboardCard(), "TIME");
+      saveDashboard();
+
+      cy.log("use an invalid temporal unit");
+      filterWidget().click();
+      popover().findByText("Year").click();
+      getDashboardCard().should(
+        "contain.text",
+        "This chart can not be broken out by the selected unit of time: year.",
+      );
+
+      cy.log("use an valid temporal unit");
+      filterWidget().click();
+      popover().findByText("Minute").click();
+      getDashboardCard().findByText("TIME: Minute").should("be.visible");
+    });
   });
 
   describe("query string parameters", () => {
@@ -917,7 +999,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
   describe("embedding", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+      updateSetting("enable-public-sharing", true);
     });
 
     it("should be able to use temporal unit parameters in a public dashboard", () => {
@@ -962,9 +1044,7 @@ function backToDashboard() {
 }
 
 function addTemporalUnitParameter() {
-  cy.findByTestId("dashboard-header")
-    .findByLabelText("Add a Unit of Time widget")
-    .click();
+  setFilter("Time grouping");
 }
 
 function addQuestion(name) {

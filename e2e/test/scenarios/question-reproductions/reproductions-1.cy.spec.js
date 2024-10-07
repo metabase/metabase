@@ -1,44 +1,44 @@
-import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  POPOVER_ELEMENT,
+  adhocQuestionHash,
+  appBar,
   commandPalette,
   commandPaletteSearch,
   createQuestion,
-  restore,
-  visualize,
-  openTable,
-  openOrdersTable,
-  popover,
-  modal,
-  summarize,
-  openNativeEditor,
-  startNewQuestion,
-  openNavigationSidebar,
-  navigationSidebar,
+  editDashboard,
+  enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
-  withDatabase,
-  adhocQuestionHash,
   expressionEditorWidget,
-  enterCustomColumnDetails,
-  showDashboardCardActions,
   filterWidget,
-  saveDashboard,
-  editDashboard,
-  visitDashboard,
-  questionInfoButton,
-  rightSidebar,
   getNotebookStep,
   leftSidebar,
-  POPOVER_ELEMENT,
-  appBar,
-  visitQuestion,
-  openProductsTable,
-  openNotebook,
   mockSessionProperty,
-  visitQuestionAdhoc,
+  modal,
+  navigationSidebar,
+  openNativeEditor,
+  openNavigationSidebar,
+  openNotebook,
+  openOrdersTable,
+  openProductsTable,
+  openTable,
+  popover,
+  questionInfoButton,
+  restore,
+  saveDashboard,
+  showDashboardCardActions,
+  sidesheet,
+  startNewQuestion,
+  summarize,
   tableHeaderClick,
+  visitDashboard,
+  visitQuestion,
+  visitQuestionAdhoc,
+  visualize,
+  withDatabase,
 } from "e2e/support/helpers";
 
 import { setAdHocFilter } from "../native-filters/helpers/e2e-date-filter-helpers";
@@ -512,7 +512,7 @@ describe("issue 17514", () => {
   };
 
   const filter = {
-    name: "Date Filter",
+    name: "All Options",
     slug: "date_filter",
     id: "23ccbbf",
     type: "date/all-options",
@@ -708,11 +708,11 @@ describe("issue 17910", () => {
 
     questionInfoButton().click();
 
-    rightSidebar().within(() => {
+    sidesheet().within(() => {
       cy.findAllByPlaceholderText("Add description")
         .type("A description")
         .blur();
-      cy.findByText("History");
+      cy.findByRole("tab", { name: "History" }).click();
       cy.findByTestId("saved-question-history-list")
         .children()
         .should("have.length", 2);

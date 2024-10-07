@@ -21,13 +21,13 @@
                            :model/PulseCard _     {:pulse_id (:id pulse), :card_id (u/the-id card)}]
     (let [pulse-result       (atom nil)
           orig-execute-pulse @#'pulse/execute-pulse]
-     (with-redefs [channel/send!               (fn [& _args]
-                                                 :noop)
-                   pulse/execute-pulse          (fn [& args]
-                                                  (u/prog1 (apply orig-execute-pulse args)
-                                                    (reset! pulse-result <>)))]
-      (pulse/send-pulse! pulse)
-      (qp.test-util/rows (:result (first @pulse-result)))))))
+      (with-redefs [channel/send!               (fn [& _args]
+                                                  :noop)
+                    pulse/execute-pulse          (fn [& args]
+                                                   (u/prog1 (apply orig-execute-pulse args)
+                                                     (reset! pulse-result <>)))]
+        (pulse/send-pulse! pulse)
+        (qp.test-util/rows (:result (first @pulse-result)))))))
 
 (def card-name "Test card")
 
@@ -61,32 +61,29 @@
   [data]
   (walk/postwalk identity data))
 
-(defn do-with-site-url
+(defn do-with-site-url!
   [f]
   (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
     (f)))
 
-(defmacro email-test-setup
+(defmacro email-test-setup!
   "Macro that ensures test-data is present and will use a fake inbox for emails"
   [& body]
   `(mt/with-fake-inbox
-     (do-with-site-url (fn [] ~@body))))
+     (do-with-site-url! (fn [] ~@body))))
 
 (defmacro slack-test-setup!
   "Macro that ensures test-data is present and disables sending of all notifications"
   [& body]
-  `(with-redefs [channel/send!       (fn [& _args#]
-                                       :noop)
+  `(with-redefs [channel/send!       (constantly :noop)
                  slack/files-channel (constantly "FOO")]
-     (do-with-site-url (fn [] ~@body))))
-
-(def ^:dynamic *channel-messages* nil)
+     (do-with-site-url! (fn [] ~@body))))
 
 (defn do-with-captured-channel-send-messages!
   [thunk]
   (let [channel-messages (atom nil)]
-    (with-redefs [channel/send! (fn [channel-type message]
-                                  (swap! channel-messages update channel-type conj message))]
+    (with-redefs [channel/send! (fn [channel message]
+                                  (swap! channel-messages update (:type channel) conj message))]
       (thunk)
       @channel-messages)))
 
@@ -95,8 +92,8 @@
   Returns a map of channel-type -> messages sent to that channel."
   [& body]
   `(do-with-captured-channel-send-messages!
-      (fn []
-        ~@body)))
+    (fn []
+      ~@body)))
 
 (def png-attachment
   {:type         :inline

@@ -63,8 +63,8 @@
   [id body]
   (let [snippet     (t2/select-one NativeQuerySnippet :id id)
         body-fields (u/select-keys-when body
-                      :present #{:description :collection_id}
-                      :non-nil #{:archived :content :name})
+                                        :present #{:description :collection_id}
+                                        :non-nil #{:archived :content :name})
         [changes]   (data/diff body-fields snippet)]
     (when (seq changes)
       (api/update-check snippet changes)

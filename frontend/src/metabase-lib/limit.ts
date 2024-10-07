@@ -1,6 +1,6 @@
 import * as ML from "cljs/metabase.lib.limit";
 
-import type { Query, Limit } from "./types";
+import type { Limit, Query } from "./types";
 
 export function currentLimit(query: Query, stageIndex: number): Limit {
   return ML.current_limit(query, stageIndex);

@@ -33,11 +33,11 @@ Data sandboxes show specific data to each person based on their [user attributes
 - Restrict **columns** (as well as rows) for specific people with a [custom sandbox](#custom-data-sandboxes-use-a-saved-question-to-create-a-custom-view-of-a-table) (also known as an advanced sandbox).
 
 |                                                | Basic sandbox (filter by a column in the table) | Custom sandbox (use a saved SQL question) |
-|------------------------------------------------|-------------------------------------------------|-------------------------------------------|
-| Restrict rows by filtering on a single column  | ✅                                               | ✅                                         |
-| Restrict rows by filtering on multiple columns | ❌                                               | ✅                                         |
-| Restrict columns                               | ❌                                               | ✅                                         |
-| Edit columns                                   | ❌                                               | ✅                                         |
+| ---------------------------------------------- | ----------------------------------------------- | ----------------------------------------- |
+| Restrict rows by filtering on a single column  | ✅                                              | ✅                                        |
+| Restrict rows by filtering on multiple columns | ❌                                              | ✅                                        |
+| Restrict columns                               | ❌                                              | ✅                                        |
+| Edit columns                                   | ❌                                              | ✅                                        |
 
 ### Basic data sandboxes: filter by a column in the table
 
@@ -188,25 +188,25 @@ How user attributes, SQL parameters, and custom sandboxes work together to displ
 
 A standard `WHERE` clause filters a table by setting a column to a fixed value:
 
-```
+```sql
 WHERE column_name = column_value
 ```
 
 In step 2 of the [row restriction setup](#restricting-rows-in-an-custom-sandbox-with-user-attributes) above, you'll add a SQL variable so that the `WHERE` clause will accept a dynamic value. The [SQL variable type](../questions/native-editor/sql-parameters.md#sql-variable-types) must be text, number, or date:
 
-```
+```sql
 WHERE plan = {%raw%}{{ plan_variable }}{%endraw%}
 ```
 
 In steps 9-10 of the [row restriction setup](#restricting-rows-in-an-custom-sandbox-with-user-attributes) above, you're telling Metabase to map the SQL variable `plan_variable` to a **user attribute key** (such as "User's Plan"). Metabase will use the key to look up the specific **user attribute value** (such as "Basic") associated with a person's Metabase account. When that person logs into Metabase and uses the sandboxed table, they'll see the query result that is filtered on:
 
-```
+```sql
 WHERE plan = "Basic"
 ```
 
 Note that the parameters must be required for SQL questions used to create a custom sandbox. E.g., you cannot use an optional parameter; the following won't work:
 
-```
+```sql
 [[WHERE plan = {%raw%}{{ plan_variable }}{%endraw%}]]
 ```
 

@@ -12,7 +12,7 @@
 
 (def ^:private tag-definitions
   (delay
-    { ;; Normal variables
+    {;; Normal variables
      "source"        {:type         :text
                       :display-name "Source"
                       :name         "source"}
@@ -171,7 +171,7 @@
                                   :query         "SELECT * FROM orders WHERE {{num_between}}"})))))
 
 (deftest optional-field-filter-test
-    (is (= "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"TOTAL\" BETWEEN 1 AND 2 AND (\"PUBLIC\".\"ORDERS\".\"TOTAL\" = 1)"
+  (is (= "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"TOTAL\" BETWEEN 1 AND 2 AND (\"PUBLIC\".\"ORDERS\".\"TOTAL\" = 1)"
          (->sql (mt/native-query {:template-tags (tags "num_between" "num_eq")
                                   :query         "SELECT * FROM orders WHERE {{num_between}} [[AND {{num_eq}}]]"})))))
 

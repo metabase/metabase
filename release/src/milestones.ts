@@ -1,26 +1,27 @@
 import fs from "fs";
 
+import { graphql } from "@octokit/graphql";
 import _ from "underscore";
 
-import { nonUserFacingLabels } from "./constants";
+import { hiddenLabels, nonUserFacingLabels } from "./constants";
 import {
   findMilestone,
+  getIssueWithCache,
   getMilestoneIssues,
   getMilestones,
-  getIssueWithCache,
 } from "./github";
 import {
+  getBackportSourcePRNumber,
   getLinkedIssues,
   getPRsFromCommitMessage,
-  getBackportSourcePRNumber,
 } from "./linked-issues";
-import type { Issue, GithubProps, Milestone, Commit, ReleaseProps } from "./types";
+import type { Commit, GithubProps, Issue, Milestone, ReleaseProps } from "./types";
 import {
+  getLastReleaseTag,
   getMajorVersion,
   getVersionFromReleaseBranch,
-  versionSort,
   ignorePatches,
-  getLastReleaseTag,
+  versionSort,
 } from "./version-helpers";
 
 function isBackport(pullRequest: Issue) {
@@ -35,6 +36,7 @@ const isNotNull = <T>(value: T | null): value is T => value !== null;
 
 const excludedLabels = [
   ...nonUserFacingLabels,
+  ...hiddenLabels,
   '.Already Fixed',
 ];
 
@@ -147,7 +149,7 @@ async function getOriginalIssues({
   return [issue.number];
 }
 
-async function setMilestone({ github, owner, repo, issueNumber, milestone }: GithubProps & { issueNumber: number, milestone: Milestone }) {
+async function setMilestone({ github, owner, repo, issueNumber, milestone, ignoreExistingMilestones }: GithubProps & { issueNumber: number, milestone: Milestone, ignoreExistingMilestones?: boolean }) {
   // we can use this for both issues and PRs since they're the same for many purposes in github
   const issue = await getIssueWithCache({
     github,
@@ -157,12 +159,17 @@ async function setMilestone({ github, owner, repo, issueNumber, milestone }: Git
   });
 
   if (!issue?.milestone) {
+    console.log(`Setting milestone ${milestone.title} for issue # ${issueNumber}`);
     return github.rest.issues.update({
       owner,
       repo,
       issue_number: issueNumber,
       milestone: milestone.number,
     });
+  }
+
+  if (ignoreExistingMilestones) {
+    return;
   }
 
   const existingMilestone = issue.milestone;
@@ -221,7 +228,8 @@ export async function setMilestoneForCommits({
   repo,
   branchName,
   commitMessages,
-}: GithubProps & { commitMessages: string[], branchName: string}) {
+  ignoreExistingMilestones,
+}: GithubProps & { commitMessages: string[], branchName: string, ignoreExistingMilestones?: boolean }) {
   // figure out milestone
   const branchVersion = getVersionFromReleaseBranch(branchName);
   const majorVersion = getMajorVersion(branchVersion);
@@ -262,7 +270,14 @@ export async function setMilestoneForCommits({
   console.log(`Tagging ${uniqueIssuesToTag.length} issues with milestone ${nextMilestone.title}`)
 
   for (const issueNumber of uniqueIssuesToTag) { // for loop to avoid rate limiting
-    await setMilestone({ github, owner, repo, issueNumber, milestone: nextMilestone });
+    await setMilestone({
+      github,
+      owner,
+      repo,
+      issueNumber,
+      milestone: nextMilestone,
+      ignoreExistingMilestones,
+    });
   }
 }
 
@@ -296,6 +311,7 @@ export async function checkMilestoneForRelease({
     owner,
     repo,
     version,
+    ignorePatches: true, // ignore patch versions since we don't release notes for them
   });
 
   const compareResponse = await github.rest.repos.compareCommitsWithBasehead({
@@ -386,7 +402,7 @@ export async function checkMilestoneForRelease({
       issueNumber: issue.number,
       version,
       comment: 'Issue in milestone, cannot find commit',
-    });
+    }).catch((e) => console.error(`error adding issue ${issue.number} to project`, e));
   }
 
   for (const issueNumber of issuesInCommitsNotInMilestone) {
@@ -397,7 +413,7 @@ export async function checkMilestoneForRelease({
       issueNumber: issueNumber,
       version,
       comment: 'Issue in release branch, needs milestone',
-    });
+    }).catch((e) => console.error(`error adding issue ${issueNumber} to project`, e));
   }
 
   for (const issue of openMilestoneIssues) {
@@ -408,7 +424,7 @@ export async function checkMilestoneForRelease({
       issueNumber: issue.number,
       version,
       comment: 'Issue still open in milestone',
-    });
+    }).catch((e) => console.error(`error adding issue ${issue.number} to project`, e));
   }
 
   const logText = await generateLog({
@@ -529,7 +545,7 @@ async function addIssueToProject({
   comment,
   version,
 }: GithubProps & { issueNumber: number, comment: string, version: string }) {
-  console.log(`Adding issue #${issueNumber} to project`)
+  console.log(`Possible problem issue: #${issueNumber} - ${comment}`);
 
   const issue = await getIssueWithCache({
     github,
@@ -543,7 +559,13 @@ async function addIssueToProject({
     return;
   }
 
-  const response = await github.graphql(`mutation {
+  const graphqlWithAuth = graphql.defaults({
+    headers: {
+      authorization: `token ${process.env.GITHUB_TOKEN}`,
+    },
+  });
+
+  const response = await graphqlWithAuth(`mutation {
     addProjectV2ItemById(input: {
       projectId: "${releaseIssueProject.id}",
       contentId: "${issue?.node_id}"
@@ -558,7 +580,7 @@ async function addIssueToProject({
     return;
   }
 
-  await github.graphql(`
+  await graphqlWithAuth(`
     mutation {
       setComment: updateProjectV2ItemFieldValue( input: {
         projectId: "${releaseIssueProject.id}"

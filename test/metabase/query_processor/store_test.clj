@@ -11,8 +11,8 @@
     (let [eval-count   (atom 0)
           cached-value (fn []
                          (qp.store/cached :value
-                                          (swap! eval-count inc)
-                                          :ok))]
+                           (swap! eval-count inc)
+                           :ok))]
       (qp.store/with-metadata-provider meta/metadata-provider
         (cached-value)
         (cached-value)
@@ -25,8 +25,8 @@
     (let [eval-count   (atom 0)
           cached-value (fn []
                          (qp.store/cached :value
-                                          (swap! eval-count inc)
-                                          :ok))]
+                           (swap! eval-count inc)
+                           :ok))]
       (qp.store/with-metadata-provider meta/metadata-provider
         (cached-value)
         (qp.store/with-metadata-provider meta/metadata-provider
@@ -41,8 +41,8 @@
     (let [eval-count   (atom 0)
           cached-value (fn [x]
                          (qp.store/cached x
-                                          (swap! eval-count inc)
-                                          x))]
+                           (swap! eval-count inc)
+                           x))]
       (qp.store/with-metadata-provider meta/metadata-provider
         (cached-value :a)
         (cached-value :b)

@@ -12,8 +12,8 @@ import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
 import {
-  createMockDatabase,
   COMMON_DATABASE_FEATURES,
+  createMockDatabase,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 

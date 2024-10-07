@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Modal, Button, Text } from "metabase/ui";
+import { Button, Modal, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 interface Props {

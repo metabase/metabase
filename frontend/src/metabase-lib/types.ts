@@ -1,26 +1,26 @@
 import type {
   CardId,
-  DatasetColumn,
   DatabaseId,
+  DatasetColumn,
   FieldId,
   FieldValuesType,
   RowValue,
-  TableId,
   SchemaId,
+  TableId,
   TemporalUnit,
 } from "metabase-types/api";
 
 import type {
   BOOLEAN_FILTER_OPERATORS,
   COORDINATE_FILTER_OPERATORS,
-  NUMBER_FILTER_OPERATORS,
-  STRING_FILTER_OPERATORS,
+  DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
-  SPECIFIC_DATE_FILTER_OPERATORS,
+  NUMBER_FILTER_OPERATORS,
   RELATIVE_DATE_BUCKETS,
+  SPECIFIC_DATE_FILTER_OPERATORS,
+  STRING_FILTER_OPERATORS,
   TIME_FILTER_OPERATORS,
-  DEFAULT_FILTER_OPERATORS,
 } from "./constants";
 import type { ColumnExtractionTag } from "./extractions";
 
@@ -208,7 +208,7 @@ export type DateTimeFingerprintDisplayInfo = {
 };
 
 export type ColumnGroupDisplayInfo = TableDisplayInfo & {
-  fkReferenceName?: string;
+  isMainGroup?: boolean;
 };
 
 export type SegmentDisplayInfo = {
@@ -308,28 +308,30 @@ export type FilterOperatorName =
   | ExcludeDateFilterOperatorName
   | CoordinateFilterOperatorName;
 
-export type StringFilterOperatorName = typeof STRING_FILTER_OPERATORS[number];
+export type StringFilterOperatorName = (typeof STRING_FILTER_OPERATORS)[number];
 
-export type NumberFilterOperatorName = typeof NUMBER_FILTER_OPERATORS[number];
+export type NumberFilterOperatorName = (typeof NUMBER_FILTER_OPERATORS)[number];
 
 export type CoordinateFilterOperatorName =
-  typeof COORDINATE_FILTER_OPERATORS[number];
+  (typeof COORDINATE_FILTER_OPERATORS)[number];
 
-export type BooleanFilterOperatorName = typeof BOOLEAN_FILTER_OPERATORS[number];
+export type BooleanFilterOperatorName =
+  (typeof BOOLEAN_FILTER_OPERATORS)[number];
 
 export type SpecificDateFilterOperatorName =
-  typeof SPECIFIC_DATE_FILTER_OPERATORS[number];
+  (typeof SPECIFIC_DATE_FILTER_OPERATORS)[number];
 
 export type ExcludeDateFilterOperatorName =
-  typeof EXCLUDE_DATE_FILTER_OPERATORS[number];
+  (typeof EXCLUDE_DATE_FILTER_OPERATORS)[number];
 
-export type TimeFilterOperatorName = typeof TIME_FILTER_OPERATORS[number];
+export type TimeFilterOperatorName = (typeof TIME_FILTER_OPERATORS)[number];
 
-export type DefaultFilterOperatorName = typeof DEFAULT_FILTER_OPERATORS[number];
+export type DefaultFilterOperatorName =
+  (typeof DEFAULT_FILTER_OPERATORS)[number];
 
-export type RelativeDateBucketName = typeof RELATIVE_DATE_BUCKETS[number];
+export type RelativeDateBucketName = (typeof RELATIVE_DATE_BUCKETS)[number];
 
-export type ExcludeDateBucketName = typeof EXCLUDE_DATE_BUCKETS[number];
+export type ExcludeDateBucketName = (typeof EXCLUDE_DATE_BUCKETS)[number];
 
 export type FilterOperatorDisplayInfo = {
   shortName: FilterOperatorName;
@@ -629,7 +631,7 @@ export type DatabaseItem = {
 
 export type SchemaItem = {
   type: "schema";
-  id: DatabaseId;
+  id: SchemaId;
 };
 
 export type TableItem = {

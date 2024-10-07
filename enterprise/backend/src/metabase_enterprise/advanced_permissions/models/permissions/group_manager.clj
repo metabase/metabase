@@ -45,12 +45,12 @@
         (throw (ex-info (tru "Not allowed to edit group memberships")
                         {:status-code 403}))))
     (t2/with-transaction [_conn]
-     (when (seq to-remove-group-ids)
-       (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove-group-ids]))
-     (when (seq to-add-group-ids)
+      (when (seq to-remove-group-ids)
+        (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove-group-ids]))
+      (when (seq to-add-group-ids)
        ;; do multiple single inserts because insert-many! does not call post-insert! hook
-       (doseq [group-id to-add-group-ids]
-         (t2/insert! PermissionsGroupMembership
-                     {:user_id          user-id
-                      :group_id         group-id
-                      :is_group_manager (:is_group_manager (new-group-id->membership-info group-id))}))))))
+        (doseq [group-id to-add-group-ids]
+          (t2/insert! PermissionsGroupMembership
+                      {:user_id          user-id
+                       :group_id         group-id
+                       :is_group_manager (:is_group_manager (new-group-id->membership-info group-id))}))))))

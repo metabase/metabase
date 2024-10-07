@@ -4,8 +4,8 @@ import _ from "underscore";
 import { COLLAPSED_ROWS_SETTING } from "metabase/lib/data_grid";
 import { Icon } from "metabase/ui";
 import type {
-  VisualizationSettings,
   PivotTableCollapsedRowsSetting,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import { RowToggleIconRoot } from "./PivotTable.styled";
@@ -59,28 +59,28 @@ export function RowToggleIcon({
             }) // remove any already collapsed items in this column
             .concat(ref) // add column to list
       : !isColumn && isColumnCollapsed // single row in collapsed column
-      ? (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
-          settingValue
-            .filter(v => v !== columnRef) // remove column from list
-            .concat(
-              // add other rows in this columns so they stay closed
-              rowIndex
-                .filter(
-                  item =>
-                    // equal length means they're in the same column
-                    item.length === value.length &&
-                    // but not exactly this item
-                    !_.isEqual(item, value),
-                )
-                // serialize those paths
-                .map(item => JSON.stringify(item)),
-            )
-      : isCollapsed // closed row or column
-      ? (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
-          settingValue.filter(v => v !== ref)
-      : // open row or column
-        (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
-          settingValue.concat(ref);
+        ? (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
+            settingValue
+              .filter(v => v !== columnRef) // remove column from list
+              .concat(
+                // add other rows in this columns so they stay closed
+                rowIndex
+                  .filter(
+                    item =>
+                      // equal length means they're in the same column
+                      item.length === value.length &&
+                      // but not exactly this item
+                      !_.isEqual(item, value),
+                  )
+                  // serialize those paths
+                  .map(item => JSON.stringify(item)),
+              )
+        : isCollapsed // closed row or column
+          ? (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
+              settingValue.filter(v => v !== ref)
+          : // open row or column
+            (settingValue: PivotTableCollapsedRowsSetting["value"]) =>
+              settingValue.concat(ref);
 
   return (
     <RowToggleIconRoot

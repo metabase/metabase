@@ -8,7 +8,7 @@ import type { Filter as FilterExpression } from "metabase-types/api";
 
 import type { DateShortcutOptions } from "./DatePickerShortcutOptions";
 import { DATE_SHORTCUT_OPTIONS } from "./DatePickerShortcutOptions";
-import { ShortcutButton, Separator } from "./DatePickerShortcuts.styled";
+import { Separator, ShortcutButton } from "./DatePickerShortcuts.styled";
 
 type Props = {
   className?: string;

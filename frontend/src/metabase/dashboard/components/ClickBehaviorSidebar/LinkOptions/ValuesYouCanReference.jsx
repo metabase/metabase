@@ -4,8 +4,8 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import {
-  withUserAttributes,
   isMappableColumn,
+  withUserAttributes,
 } from "metabase/dashboard/components/ClickMappings";
 import { Icon } from "metabase/ui";
 

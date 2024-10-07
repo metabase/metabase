@@ -181,13 +181,13 @@
 
           ;; Setting block permissions for the database also sets :create-queries and :download-results to :no
           {group-id-1
-            {database-id-1
-             {:view-data :blocked}}}
+           {database-id-1
+            {:view-data :blocked}}}
           {group-id-1
-            {database-id-1
-             {:perms/create-queries :no
-              :perms/view-data :blocked
-              :perms/download-results :no}}})))))
+           {database-id-1
+            {:perms/create-queries :no
+             :perms/view-data :blocked
+             :perms/download-results :no}}})))))
 
 (deftest update-db-level-download-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
@@ -345,7 +345,6 @@
          {database-id-1
           {:perms/manage-database :no}}}))))
 
-
 ;; ------------------------------ API Graph Tests ------------------------------
 
 (deftest ellide?-test
@@ -378,6 +377,9 @@
       {:perms/view-data
        {"PUBLIC" {1 :unrestricted
                   2 :unrestricted}}}                    {:view-data {"PUBLIC" :unrestricted}}
+      {:perms/view-data
+       {"PUBLIC" {1 :blocked ;; table level blocked is removed:
+                  2 :unrestricted}}}                    {:view-data {"PUBLIC" {2 :unrestricted}}}
       {:perms/view-data
        {"PUBLIC" {1 :legacy-no-self-service
                   2 :legacy-no-self-service}}}          {:view-data {"PUBLIC" :legacy-no-self-service}}
@@ -426,6 +428,21 @@
         (data-perms/set-table-permission! group (mt/id :categories) :perms/create-queries :query-builder)
         (is (= {(mt/id :categories) :query-builder, (mt/id :venues) :query-builder}
                (test-query-graph group)))))))
+
+(deftest graph-set-blocked-permissions-for-table-test
+  (let [view-data (fn view-data [group]
+                    (get-in (data-perms.graph/api-graph)
+                            [:groups (u/the-id group) (mt/id) :view-data]))]
+    (testing "It is possible to set :blocked permissions for a table -- #46542"
+      (mt/with-temp [:model/PermissionsGroup group]
+        (data-perms/set-database-permission! group (mt/id) :perms/view-data :unrestricted)
+        (testing "before"
+          (data-perms/set-table-permission! group (mt/id :venues) :perms/create-queries :query-builder)
+          (is (= :unrestricted (view-data group))))
+        (testing "after"
+          (data-perms/set-table-permission! group (mt/id :categories) :perms/view-data :blocked)
+          (is (malli= [:sequential {:min 1} :int] (keys (get (view-data group) "PUBLIC"))))
+          (is (not (contains? (view-data group) (mt/id :categories)))))))))
 
 (deftest audit-db-update-test
   (testing "Throws exception when we attempt to change the audit db permission manually."

@@ -1,25 +1,33 @@
 import {
+  ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  WEBHOOK_TEST_DASHBOARD,
+  WEBHOOK_TEST_HOST,
+  WEBHOOK_TEST_SESSION_ID,
+  WEBHOOK_TEST_URL,
   addSummaryGroupingField,
-  restore,
-  popover,
-  modal,
-  openOrdersTable,
-  summarize,
-  visitQuestion,
-  openQuestionActions,
-  questionInfoButton,
-  rightSidebar,
   appBar,
-  queryBuilderHeader,
-  openNotebook,
-  selectFilterOperator,
-  entityPickerModal,
   collectionOnTheGoModal,
+  entityPickerModal,
+  entityPickerModalTab,
+  getAlertChannel,
+  modal,
+  openNotebook,
+  openOrdersTable,
+  openQuestionActions,
+  popover,
+  queryBuilderHeader,
+  questionInfoButton,
+  restore,
+  rightSidebar,
+  selectFilterOperator,
+  sidesheet,
+  summarize,
   tableHeaderClick,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > saved", () => {
@@ -187,24 +195,22 @@ describe("scenarios > question > saved", () => {
     visitQuestion(ORDERS_QUESTION_ID);
     questionInfoButton().click();
 
-    rightSidebar().within(() => {
-      cy.findByText("History");
-
+    sidesheet().within(() => {
       cy.findByPlaceholderText("Add description")
         .type("This is a question")
         .blur();
 
       cy.wait("@updateQuestion");
 
+      cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/added a description/i);
 
       cy.findByTestId("question-revert-button").click();
-    });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/reverted to an earlier version/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/This is a question/i).should("not.exist");
+      cy.findByRole("tab", { name: "History" }).click();
+      cy.findByText(/reverted to an earlier version/i);
+      cy.findByText(/This is a question/i).should("not.exist");
+    });
   });
 
   it("should show collection breadcrumbs for a saved question in the root collection", () => {
@@ -245,44 +251,31 @@ describe("scenarios > question > saved", () => {
     });
   });
 
-  it(
-    "'read-only' user should be able to resize column width (metabase#9772)",
-    { tags: "@flaky" },
-    () => {
-      cy.signIn("readonly");
-      visitQuestion(ORDERS_QUESTION_ID);
+  it("'read-only' user should be able to resize column width (metabase#9772)", () => {
+    cy.signIn("readonly");
+    visitQuestion(ORDERS_QUESTION_ID);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Tax")
-        .closest(".test-TableInteractive-headerCellData")
-        .as("headerCell")
-        .then($cell => {
-          const originalWidth = $cell[0].getBoundingClientRect().width;
+    cy.findAllByTestId("header-cell")
+      .filter(":contains(Tax)")
+      .as("headerCell")
+      .then($cell => {
+        const originalWidth = $cell[0].getBoundingClientRect().width;
+        cy.wrap(originalWidth).as("originalWidth");
+      });
 
-          // Retries the assertion a few times to ensure it waits for DOM changes
-          // More context: https://github.com/metabase/metabase/pull/21823#discussion_r855302036
-          function assertColumnResized(attempt = 0) {
-            cy.get("@headerCell").then($newCell => {
-              const newWidth = $newCell[0].getBoundingClientRect().width;
-              if (newWidth === originalWidth && attempt < 3) {
-                cy.wait(100);
-                assertColumnResized(++attempt);
-              } else {
-                expect(newWidth).to.be.gt(originalWidth);
-              }
-            });
-          }
+    cy.get("@headerCell")
+      .find(".react-draggable")
+      .trigger("mousedown", { which: 1 })
+      .trigger("mousemove", { clientX: 100, clientY: 0 })
+      .trigger("mouseup", { force: true });
 
-          cy.wrap($cell)
-            .find(".react-draggable")
-            .trigger("mousedown", 0, 0, { force: true })
-            .trigger("mousemove", 100, 0, { force: true })
-            .trigger("mouseup", 100, 0, { force: true });
-
-          assertColumnResized();
-        });
-    },
-  );
+    cy.get("@originalWidth").then(originalWidth => {
+      cy.get("@headerCell").should($newCell => {
+        const newWidth = $newCell[0].getBoundingClientRect().width;
+        expect(newWidth).to.be.gt(originalWidth);
+      });
+    });
+  });
 
   it("should always be possible to view the full title text of the saved question", () => {
     visitQuestion(ORDERS_QUESTION_ID);
@@ -300,4 +293,132 @@ describe("scenarios > question > saved", () => {
       expect(heightDifference).to.eq(0);
     });
   });
+
+  it("should not show '- Modified' suffix after we click 'Save' on a new model (metabase#42773)", () => {
+    cy.log("Use UI to create a model based on the Products table");
+    cy.visit("/model/new");
+    cy.findByTestId("new-model-options")
+      .findByText("Use the notebook editor")
+      .click();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.button("Save").click();
+      cy.wait("@cardCreate");
+      // It is important to have extremely short timeout in order to catch the issue
+      cy.findByDisplayValue("Products - Modified", { timeout: 10 }).should(
+        "not.exist",
+      );
+    });
+  });
 });
+
+//http://127.0.0.1:9080/api/session/00000000-0000-0000-0000-000000000000/requests
+
+// Ensure the webhook tester docker container is running
+// docker run -p 9080:8080/tcp tarampampam/webhook-tester serve --create-session 00000000-0000-0000-0000-000000000000
+describe(
+  "scenarios > question > saved > alerts",
+  { tags: ["@external"] },
+
+  () => {
+    const firstWebhookName = "E2E Test Webhook";
+    const secondWebhookName = "Toucan Hook";
+
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+
+      cy.request("POST", "/api/channel", {
+        name: firstWebhookName,
+        description: "All aboard the Metaboat",
+        type: "channel/http",
+        details: {
+          url: WEBHOOK_TEST_URL,
+          "auth-method": "none",
+          "fe-form-type": "none",
+        },
+      });
+
+      cy.request("POST", "/api/channel", {
+        name: secondWebhookName,
+        description: "Quack!",
+        type: "channel/http",
+        details: {
+          url: WEBHOOK_TEST_URL,
+          "auth-method": "none",
+          "fe-form-type": "none",
+        },
+      });
+
+      cy.request(
+        "DELETE",
+        `${WEBHOOK_TEST_HOST}/api/session/${WEBHOOK_TEST_SESSION_ID}/requests`,
+        { failOnStatusCode: false },
+      );
+    });
+
+    it("should allow you to enable a webhook alert", () => {
+      visitQuestion(ORDERS_COUNT_QUESTION_ID);
+      cy.findByTestId("sharing-menu-button").click();
+      popover().findByText("Create alert").click();
+      modal().button("Set up an alert").click();
+      modal().within(() => {
+        getAlertChannel(secondWebhookName).scrollIntoView();
+        getAlertChannel(secondWebhookName)
+          .findByRole("checkbox")
+          .click({ force: true });
+        cy.button("Done").click();
+      });
+      cy.findByTestId("sharing-menu-button").click();
+      popover().findByText("Edit alerts").click();
+      popover().within(() => {
+        cy.findByText("You set up an alert").should("exist");
+        cy.findByText("Edit").click();
+      });
+
+      modal().within(() => {
+        getAlertChannel(secondWebhookName).scrollIntoView();
+        getAlertChannel(secondWebhookName)
+          .findByRole("checkbox")
+          .should("be.checked");
+      });
+    });
+
+    it("should allow you to test a webhook", () => {
+      visitQuestion(ORDERS_COUNT_QUESTION_ID);
+      cy.findByTestId("sharing-menu-button").click();
+      popover().findByText("Create alert").click();
+      modal().button("Set up an alert").click();
+      modal().within(() => {
+        getAlertChannel(firstWebhookName).scrollIntoView();
+
+        getAlertChannel(firstWebhookName)
+          .findByRole("checkbox")
+          .click({ force: true });
+
+        getAlertChannel(firstWebhookName).button("Send a test").click();
+      });
+
+      cy.visit(WEBHOOK_TEST_DASHBOARD);
+
+      cy.findByRole("heading", { name: /Requests 1/ }).should("exist");
+
+      cy.request(
+        `${WEBHOOK_TEST_HOST}/api/session/${WEBHOOK_TEST_SESSION_ID}/requests`,
+      ).then(({ body }) => {
+        const payload = cy.wrap(atob(body[0].content_base64));
+
+        payload
+          .should("have.string", "alert_creator_name")
+          .and("have.string", "Bobby Tables");
+      });
+    });
+  },
+);

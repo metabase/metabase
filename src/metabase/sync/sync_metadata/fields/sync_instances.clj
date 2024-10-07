@@ -33,10 +33,10 @@
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
     (t2/select     Field
-      :table_id    (u/the-id table)
-      :%lower.name [:in (map common/canonical-name new-field-metadatas)]
-      :parent_id   parent-id
-      :active      false)))
+                   :table_id    (u/the-id table)
+                   :%lower.name [:in (map common/canonical-name new-field-metadatas)]
+                   :parent_id   parent-id
+                   :active      false)))
 
 (mu/defn- insert-new-fields! :- [:maybe [:sequential ::lib.schema.id/field]]
   "Insert new Field rows for for all the Fields described by `new-field-metadatas`. Returns IDs of newly inserted
@@ -46,40 +46,40 @@
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
     (t2/insert-returning-pks! Field
-      (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
-                    database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
-             field-name :name :as field} new-field-metadatas]
-        (do
-          (when (and effective-type
-                     base-type
-                     (not= effective-type base-type)
-                     (nil? coercion-strategy))
-            (log/warn (u/format-color 'red
-                                      (str
-                                       "WARNING: Field `%s`: effective type `%s` provided but no coercion strategy provided."
-                                       " Using base-type: `%s`")
-                                      field-name
-                                      effective-type
-                                      base-type)))
-          {:table_id                   (u/the-id table)
-           :name                       field-name
-           :display_name               (humanization/name->human-readable-name field-name)
-           :database_type              (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
-           :base_type                  base-type
+                              (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
+                                            database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
+                                     field-name :name :as field} new-field-metadatas]
+                                (do
+                                  (when (and effective-type
+                                             base-type
+                                             (not= effective-type base-type)
+                                             (nil? coercion-strategy))
+                                    (log/warn (u/format-color 'red
+                                                              (str
+                                                               "WARNING: Field `%s`: effective type `%s` provided but no coercion strategy provided."
+                                                               " Using base-type: `%s`")
+                                                              field-name
+                                                              effective-type
+                                                              base-type)))
+                                  {:table_id                   (u/the-id table)
+                                   :name                       field-name
+                                   :display_name               (humanization/name->human-readable-name field-name)
+                                   :database_type              (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
+                                   :base_type                  base-type
            ;; todo test this?
-           :effective_type             (if (and effective-type coercion-strategy) effective-type base-type)
-           :coercion_strategy          (when effective-type coercion-strategy)
-           :semantic_type              (common/semantic-type field)
-           :parent_id                  parent-id
-           :nfc_path                   nfc-path
-           :description                field-comment
-           :position                   database-position
-           :database_position          database-position
-           :json_unfolding             (or json-unfolding false)
-           :database_is_auto_increment (or database-is-auto-increment false)
-           :database_required          (or database-required false)
-           :database_partitioned       database-partitioned ;; nullable for database that doesn't support partitioned fields
-           :visibility_type            (or visibility-type :normal)})))))
+                                   :effective_type             (if (and effective-type coercion-strategy) effective-type base-type)
+                                   :coercion_strategy          (when effective-type coercion-strategy)
+                                   :semantic_type              (common/semantic-type field)
+                                   :parent_id                  parent-id
+                                   :nfc_path                   nfc-path
+                                   :description                field-comment
+                                   :position                   database-position
+                                   :database_position          database-position
+                                   :json_unfolding             (or json-unfolding false)
+                                   :database_is_auto_increment (or database-is-auto-increment false)
+                                   :database_required          (or database-required false)
+                                   :database_partitioned       database-partitioned ;; nullable for database that doesn't support partitioned fields
+                                   :visibility_type            (or visibility-type :normal)})))))
 
 (mu/defn- create-or-reactivate-fields! :- [:maybe [:sequential i/FieldInstance]]
   "Create (or reactivate) Metabase Field object(s) for any Fields in `new-field-metadatas`. Does *NOT* recursively
@@ -99,7 +99,6 @@
       ;; now return the newly created or reactivated Fields
       (when-let [new-and-updated-fields (seq (map u/the-id (concat fields-to-reactivate new-field-ids)))]
         (t2/select Field :id [:in new-and-updated-fields])))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                          SYNCING INSTANCES OF 'ACTIVE' FIELDS (FIELDS IN DB METADATA)                          |
@@ -140,7 +139,6 @@
      :our-metadata
      @our-metadata}))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           "RETIRING" INACTIVE FIELDS                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -167,7 +165,6 @@
     (sync-util/with-error-handling (format "Error retiring %s"
                                            (common/field-metadata-name-for-logging table metabase-field))
       (retire-field! table metabase-field))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                  HIGH-LEVEL INSTANCE SYNCING LOGIC (CREATING/REACTIVATING/RETIRING/UPDATING)                   |

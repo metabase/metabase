@@ -1,7 +1,7 @@
 import type {
-  TimelineEvent,
   Timeline,
   TimelineData,
+  TimelineEvent,
   TimelineEventData,
 } from "../timeline";
 

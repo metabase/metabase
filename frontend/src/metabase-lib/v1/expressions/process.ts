@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-import { parse, adjustBooleans } from "./recursive-parser";
+import { adjustBooleans, parse } from "./recursive-parser";
 import { resolve } from "./resolver";
 
 import { parseDimension, parseMetric, parseSegment } from "./index";

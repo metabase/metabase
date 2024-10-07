@@ -3,8 +3,8 @@ import _ from "underscore";
 import { useToggle } from "metabase/hooks/use-toggle";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
 
-import { RadioContainer, Toggle, FilterRadio } from "./BooleanPicker.styled";
-import { OPTIONS, EXPANDED_OPTIONS } from "./constants";
+import { FilterRadio, RadioContainer, Toggle } from "./BooleanPicker.styled";
+import { EXPANDED_OPTIONS, OPTIONS } from "./constants";
 import { getValue } from "./utils";
 
 interface BooleanPickerProps {

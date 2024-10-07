@@ -24,13 +24,15 @@
 
 (defsetting ldap-host
   (deferred-tru "Server hostname.")
+  :encryption :when-encryption-key-set
   :audit :getter)
 
 (defsetting ldap-port
   (deferred-tru "Server port, usually 389 or 636 if SSL is used.")
-  :type    :integer
-  :default 389
-  :audit   :getter)
+  :encryption :when-encryption-key-set
+  :type       :integer
+  :default    389
+  :audit      :getter)
 
 (defsetting ldap-security
   (deferred-tru "Use SSL, TLS or plain text.")
@@ -44,39 +46,46 @@
 
 (defsetting ldap-bind-dn
   (deferred-tru "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users.")
+  :encryption :when-encryption-key-set
   :audit :getter)
 
 (defsetting ldap-password
   (deferred-tru "The password to bind with for the lookup user.")
+  :encryption :when-encryption-key-set
   :sensitive? true
   :audit     :getter)
 
 (defsetting ldap-user-base
   (deferred-tru "Search base for users. (Will be searched recursively)")
-  :audit :getter)
+  :encryption :no
+  :audit      :getter)
 
 (defsetting ldap-user-filter
   (deferred-tru "User lookup filter. The placeholder '{login'} will be replaced by the user supplied login.")
-  :default "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))"
-  :audit   :getter)
+  :default    "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))"
+  :encryption :no
+  :audit      :getter)
 
 (defsetting ldap-attribute-email
   (deferred-tru "Attribute to use for the user''s email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
-  :default "mail"
-  :getter  (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-email)))
-  :audit   :getter)
+  :default    "mail"
+  :encryption :no
+  :getter     (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-email)))
+  :audit      :getter)
 
 (defsetting ldap-attribute-firstname
   (deferred-tru "Attribute to use for the user''s first name. (usually ''givenName'')")
-  :default "givenName"
-  :getter  (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-firstname)))
-  :audit   :getter)
+  :default    "givenName"
+  :getter     (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-firstname)))
+  :encryption :no
+  :audit      :getter)
 
 (defsetting ldap-attribute-lastname
   (deferred-tru "Attribute to use for the user''s last name. (usually ''sn'')")
-  :default "sn"
-  :getter  (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-lastname)))
-  :audit   :getter)
+  :encryption :no
+  :default    "sn"
+  :getter     (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-lastname)))
+  :audit      :getter)
 
 (defsetting ldap-group-sync
   (deferred-tru "Enable group membership synchronization with LDAP.")
@@ -86,28 +95,30 @@
 
 (defsetting ldap-group-base
   (deferred-tru "Search base for groups. Not required for LDAP directories that provide a ''memberOf'' overlay, such as Active Directory. (Will be searched recursively)")
-  :audit   :getter)
+  :audit      :getter
+  :encryption :no)
 
 (defsetting ldap-group-mappings
   ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP group DNs and values are lists of
   ;; MB groups IDs
   (deferred-tru "JSON containing LDAP to Metabase group mappings.")
-  :type    :json
-  :cache?  false
-  :default {}
-  :audit   :getter
-  :getter  (fn []
-             (json/parse-string (setting/get-value-of-type :string :ldap-group-mappings) #(DN. (str %))))
-  :setter  (fn [new-value]
-             (cond
-               (string? new-value)
-               (recur (json/parse-string new-value))
+  :encryption :no
+  :type       :json
+  :cache?     false
+  :default    {}
+  :audit      :getter
+  :getter     (fn []
+                (json/parse-string (setting/get-value-of-type :string :ldap-group-mappings) #(DN. (str %))))
+  :setter     (fn [new-value]
+                (cond
+                  (string? new-value)
+                  (recur (json/parse-string new-value))
 
-               (map? new-value)
-               (do (doseq [k (keys new-value)]
-                     (when-not (DN/isValidDN (u/qualified-name k))
-                       (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (u/qualified-name k))))))
-                   (setting/set-value-of-type! :json :ldap-group-mappings new-value)))))
+                  (map? new-value)
+                  (do (doseq [k (keys new-value)]
+                        (when-not (DN/isValidDN (u/qualified-name k))
+                          (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (u/qualified-name k))))))
+                      (setting/set-value-of-type! :json :ldap-group-mappings new-value)))))
 
 (defsetting ldap-configured?
   (deferred-tru "Have the mandatory LDAP settings (host and user search base) been validated and saved?")
@@ -213,7 +224,7 @@
        (log/debug "LDAP connection test successful")
        {:status :SUCCESS}))
     (catch LDAPException e
-       (log/debug "LDAP connection test failed: " (.getMessage e))
+      (log/debug "LDAP connection test failed: " (.getMessage e))
       {:status :ERROR, :message (.getMessage e), :code (.getResultCode e)})
     (catch Exception e
       (log/debug "LDAP connection test failed: " (.getMessage e))

@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import type { DatabaseXray, DatabaseId } from "metabase-types/api";
+import type { DatabaseId, DatabaseXray } from "metabase-types/api";
 
 export function setupDatabaseCandidatesEndpoint(
   id: DatabaseId,

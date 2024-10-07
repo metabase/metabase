@@ -23,41 +23,46 @@
               [8 "25°" 11 34.1015 -118.342 2]
               [9 "Krua Siri" 71 34.1018 -118.301 1]
               [10 "Fred 62" 20 34.1046 -118.292 2]]
-             (mt/formatted-rows :venues
-               (mt/run-mbql-query venues
-                 {:limit 10, :order-by [[:asc $id]]})))))))
+             (mt/formatted-rows
+              :venues
+              (mt/run-mbql-query venues
+                {:limit 10, :order-by [[:asc $id]]})))))))
 
 (deftest ^:parallel count-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "count aggregation"
       (is (= [[100]]
-             (mt/formatted-rows [int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:count]]})))))))
+             (mt/formatted-rows
+              [int]
+              (mt/run-mbql-query venues
+                {:aggregation [[:count]]})))))))
 
 (deftest ^:parallel sum-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "sum aggregation"
       (is (= [[203]]
-             (mt/formatted-rows [int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:sum $price]]})))))))
+             (mt/formatted-rows
+              [int]
+              (mt/run-mbql-query venues
+                {:aggregation [[:sum $price]]})))))))
 
 (deftest ^:parallel avg-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "avg aggregation"
       (is (= [[35.5059]]
-             (mt/formatted-rows [4.0]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:avg $latitude]]})))))))
+             (mt/formatted-rows
+              [4.0]
+              (mt/run-mbql-query venues
+                {:aggregation [[:avg $latitude]]})))))))
 
 (deftest ^:parallel distinct-count-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "distinct count aggregation"
       (is (= [[15]]
-             (mt/formatted-rows [int]
-               (mt/run-mbql-query checkins
-                 {:aggregation [[:distinct $user_id]]})))))))
+             (mt/formatted-rows
+              [int]
+              (mt/run-mbql-query checkins
+                {:aggregation [[:distinct $user_id]]})))))))
 
 (deftest ^:parallel standard-deviation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
@@ -67,8 +72,9 @@
           (is (=? {:cols [(qp.test-util/aggregate-col :stddev :venues :latitude)]
                    :rows [[3.4]]}
                   (qp.test-util/rows-and-cols
-                   (mt/format-rows-by [1.0]
-                     (mt/process-query query))))))))))
+                   (mt/format-rows-by
+                    [1.0]
+                    (mt/process-query query))))))))))
 
 (deftest ^:parallel standard-deviation-unsupported-test
   (mt/test-drivers (mt/normal-drivers-without-feature :standard-deviation-aggregations)
@@ -81,7 +87,6 @@
 
 ;;; other advanced aggregation types are tested in [[metabase.query-processor-test.advanced-math-test]]
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   MIN & MAX                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -90,49 +95,55 @@
   (mt/test-drivers (mt/normal-drivers)
     (is (= [1]
            (mt/first-row
-            (mt/format-rows-by [int]
-              (mt/run-mbql-query venues
-                {:aggregation [[:min $price]]})))))))
+            (mt/format-rows-by
+             [int]
+             (mt/run-mbql-query venues
+               {:aggregation [[:min $price]]})))))))
 
 (deftest ^:parallel min-test-2
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[1 34.0071] [2 33.7701] [3 10.0646] [4 33.983]]
-           (mt/formatted-rows [int 4.0]
-             (mt/run-mbql-query venues
-               {:aggregation [[:min $latitude]]
-                :breakout    [$price]}))))))
+           (mt/formatted-rows
+            [int 4.0]
+            (mt/run-mbql-query venues
+              {:aggregation [[:min $latitude]]
+               :breakout    [$price]}))))))
 
 (deftest ^:parallel max-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [4]
            (mt/first-row
-             (mt/format-rows-by [int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:max $price]]})))))))
+            (mt/format-rows-by
+             [int]
+             (mt/run-mbql-query venues
+               {:aggregation [[:max $price]]})))))))
 
 (deftest ^:parallel max-test-2
   (mt/test-drivers (mt/normal-drivers)
     (is (= [[1 37.8078] [2 40.7794] [3 40.7262] [4 40.7677]]
-           (mt/formatted-rows [int 4.0]
-             (mt/run-mbql-query venues
-               {:aggregation [[:max $latitude]]
-                :breakout    [$price]}))))))
+           (mt/formatted-rows
+            [int 4.0]
+            (mt/run-mbql-query venues
+              {:aggregation [[:max $latitude]]
+               :breakout    [$price]}))))))
 
 (deftest ^:parallel multiple-aggregations-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "two aggregations"
       (is (= [[100 203]]
-             (mt/formatted-rows [int int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:count] [:sum $price]]})))))))
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query venues
+                {:aggregation [[:count] [:sum $price]]})))))))
 
 (deftest ^:parallel multiple-aggregations-test-2
   (mt/test-drivers (mt/normal-drivers)
     (testing "three aggregations"
       (is (= [[2 100 203]]
-             (mt/formatted-rows [int int int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:avg $price] [:count] [:sum $price]]})))))))
+             (mt/formatted-rows
+              [int int int]
+              (mt/run-mbql-query venues
+                {:aggregation [[:avg $price] [:count] [:sum $price]]})))))))
 
 (deftest ^:parallel multiple-aggregations-metadata-test
   (mt/test-drivers (mt/normal-drivers)
@@ -190,18 +201,20 @@
   (mt/test-drivers (mt/normal-drivers)
     (testing "Do we properly handle queries that have more than one of the same aggregation? (#5393)"
       (is (= [[5050 203]]
-             (mt/formatted-rows [int int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:sum $id] [:sum $price]]})))))))
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query venues
+                {:aggregation [[:sum $id] [:sum $price]]})))))))
 
 (deftest ^:parallel multiple-distinct-aggregations-test
   (testing "Multiple `:distinct` aggregations should work correctly (#13097)"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[100 4]]
-             (mt/formatted-rows [int int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:distinct $name]
-                                [:distinct $price]]})))))))
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query venues
+                {:aggregation [[:distinct $name]
+                               [:distinct $price]]})))))))
 
 ;;; TODO: This test was added in PR #44442 fixing issue #35425. Enable this test for other drivers _while_ fixing the
 ;;;       issue #14523.
@@ -215,49 +228,51 @@
 
 (deftest ^:synchronized complex-distinct-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature ::complex-distinct-aggregation-test)
-   (testing "Aggregation as `Count / Distinct([SOME_FIELD])` returns expected results (#35425)"
-     (every?
-      (fn [[_id c d c-div-d more-complex]]
-        (testing "Simple division"
-          (is (= (u/round-to-decimals 2 (double (/ c d)))
-                 (u/round-to-decimals 2 (double c-div-d)))))
-        (testing "More complex expression"
-          (is (= (u/round-to-decimals 2 (double (/
-                                                 (- c (* d 10))
-                                                 (+ d (- c (- d 7))))))
-                 (u/round-to-decimals 2 (double more-complex))))))
-      (mt/rows
-       (mt/run-mbql-query
-        venues
-        {:aggregation [[:aggregation-options [:count] {:name "A"}]
-                       [:aggregation-options [:distinct $price] {:name "B"}]
-                       [:aggregation-options [:/ [:count] [:distinct $price]] {:name "C"}]
-                       [:aggregation-options [:/
-                                              [:- [:count] [:* [:distinct $price] 10]]
-                                              [:+
-                                               [:distinct $price]
-                                               [:- [:count] [:- [:distinct $price] 7]]]] {:name "D"}]]
-         :breakout [$category_id]
-         :order-by [[:asc $id]]
-         :limit 5}))))))
+    (testing "Aggregation as `Count / Distinct([SOME_FIELD])` returns expected results (#35425)"
+      (every?
+       (fn [[_id c d c-div-d more-complex]]
+         (testing "Simple division"
+           (is (= (u/round-to-decimals 2 (double (/ c d)))
+                  (u/round-to-decimals 2 (double c-div-d)))))
+         (testing "More complex expression"
+           (is (= (u/round-to-decimals 2 (double (/
+                                                  (- c (* d 10))
+                                                  (+ d (- c (- d 7))))))
+                  (u/round-to-decimals 2 (double more-complex))))))
+       (mt/rows
+        (mt/run-mbql-query
+          venues
+          {:aggregation [[:aggregation-options [:count] {:name "A"}]
+                         [:aggregation-options [:distinct $price] {:name "B"}]
+                         [:aggregation-options [:/ [:count] [:distinct $price]] {:name "C"}]
+                         [:aggregation-options [:/
+                                                [:- [:count] [:* [:distinct $price] 10]]
+                                                [:+
+                                                 [:distinct $price]
+                                                 [:- [:count] [:- [:distinct $price] 7]]]] {:name "D"}]]
+           :breakout [$category_id]
+           :order-by [[:asc $id]]
+           :limit 5}))))))
 
 (deftest ^:parallel aggregate-boolean-without-type-test
   (testing "Legacy breakout on boolean field should work correctly (#34286)"
     (mt/dataset places-cam-likes
       (is (= {false 1, true 2}
              (into {}
-                   (mt/formatted-rows [boolean int]
-                     (mt/run-mbql-query places
-                       {:breakout     [[:field %liked nil]]
-                        :aggregation  [["count"]]})))))))
+                   (mt/formatted-rows
+                    [boolean int]
+                    (mt/run-mbql-query places
+                      {:breakout     [[:field %liked nil]]
+                       :aggregation  [["count"]]})))))))
   (testing "Legacy breakout on boolean field with explicit type should work correctly (#34286)"
     (mt/dataset places-cam-likes
       (is (= {false 1, true 2}
              (into {}
-                   (mt/formatted-rows [boolean int]
-                     (mt/run-mbql-query places
-                       {:breakout     [[:field %liked {:base-type :type/Boolean}]]
-                        :aggregation  [["count"]]}))))))))
+                   (mt/formatted-rows
+                    [boolean int]
+                    (mt/run-mbql-query places
+                      {:breakout     [[:field %liked {:base-type :type/Boolean}]]
+                       :aggregation  [["count"]]}))))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !                                                                                                                   !

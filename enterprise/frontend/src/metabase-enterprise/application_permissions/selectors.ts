@@ -15,8 +15,8 @@ import type { Group } from "metabase-types/api";
 import { APPLICATION_PERMISSIONS_OPTIONS } from "./constants";
 import type {
   ApplicationPermissionKey,
-  ApplicationPermissions,
   ApplicationPermissionValue,
+  ApplicationPermissions,
 } from "./types/permissions";
 import type { ApplicationPermissionsState } from "./types/state";
 

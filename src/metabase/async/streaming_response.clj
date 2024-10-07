@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.async :as a]
+   [clojure.walk :as walk]
    [compojure.response]
    [metabase.async.streaming-response.thread-pool :as thread-pool]
    [metabase.async.util :as async.u]
@@ -13,13 +14,13 @@
    [ring.util.jakarta.servlet :as servlet]
    [ring.util.response :as response])
   (:import
+   (jakarta.servlet AsyncContext)
+   (jakarta.servlet.http HttpServletResponse)
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio ByteBuffer)
    (java.nio.channels ClosedChannelException SocketChannel)
    (java.nio.charset StandardCharsets)
    (java.util.zip GZIPOutputStream)
-   (jakarta.servlet AsyncContext)
-   (jakarta.servlet.http HttpServletResponse)
    (org.eclipse.jetty.io EofException SocketChannelEndPoint)
    (org.eclipse.jetty.server Request)))
 
@@ -44,21 +45,30 @@
 
 (defn write-error!
   "Write an error to the output stream, formatting it nicely. Closes output stream afterwards."
-  [^OutputStream os obj]
+  [^OutputStream os obj export-format]
   (cond
     (some #(instance? % obj)
           [InterruptedException EofException])
     (log/trace "Error is an InterruptedException or EofException, not writing to output stream")
 
     (instance? Throwable obj)
-    (recur os (format-exception obj))
+    (recur os (format-exception obj) export-format)
 
     :else
     (with-open [os os]
       (log/trace (u/pprint-to-str (list 'write-error! obj)))
       (try
-        (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
-          (json/generate-stream obj writer))
+        (let [obj (-> (if (not= :api export-format)
+                        (walk/prewalk
+                         (fn [x]
+                           (if (map? x)
+                             (apply dissoc x [:json_query :preprocessed])
+                             x))
+                         obj)
+                        obj)
+                      (dissoc :export-format))]
+          (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
+            (json/generate-stream obj writer)))
         (catch EofException _)
         (catch Throwable e
           (log/error e "Error writing error to output stream" obj))))))
@@ -74,7 +84,7 @@
       nil)
     (catch Throwable e
       (log/error e "Caught unexpected Exception in streaming response body")
-      (write-error! os e)
+      (write-error! os e nil)
       nil)))
 
 (defn- do-f-async
@@ -129,7 +139,6 @@
 (def ^:private async-cancellation-poll-interval-ms
   "How often to check whether the request was canceled by the client."
   1000)
-
 
 (p.types/defprotocol+ ^:private ChannelProvider
   "Protocol to get a SocketChannel from various types of transports."

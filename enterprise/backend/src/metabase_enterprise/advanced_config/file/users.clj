@@ -31,7 +31,6 @@
   [_section]
   (s/spec (s/* ::config-file-spec)))
 
-
 (defn- init-from-config-file!
   [user]
   (if-let [existing-user-id (t2/select-one-pk User :email (:email user))]

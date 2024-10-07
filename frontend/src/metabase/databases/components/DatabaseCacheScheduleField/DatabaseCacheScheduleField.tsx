@@ -12,14 +12,14 @@ import type {
 } from "metabase-types/api";
 
 import {
-  ScheduleOptionList,
   ScheduleOptionBody,
   ScheduleOptionContent,
   ScheduleOptionIndicator,
   ScheduleOptionIndicatorBackground,
+  ScheduleOptionList,
   ScheduleOptionRoot,
-  ScheduleOptionTitle,
   ScheduleOptionText,
+  ScheduleOptionTitle,
 } from "./DatabaseCacheScheduleField.styled";
 
 const DEFAULT_SCHEDULE: ScheduleSettings = {

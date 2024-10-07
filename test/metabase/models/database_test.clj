@@ -41,7 +41,7 @@
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
-    (mt/with-temp-scheduler
+    (mt/with-temp-scheduler!
       (task/init! ::task.sync-databases/SyncDatabases)
       (t2.with-temp/with-temp [Database {db-id :id}]
         (is (=? {:description         (format "sync-and-analyze Database %d" db-id)
@@ -328,7 +328,7 @@
           "REVIEWS"
           "USERS"
           "VENUES"]
-       (-> (mt/db)
-           (t2/hydrate :tables)
-           :tables
-           (#(map :name %))))))
+         (-> (mt/db)
+             (t2/hydrate :tables)
+             :tables
+             (#(map :name %))))))

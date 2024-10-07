@@ -1,7 +1,6 @@
 import fs from "fs/promises";
 
 import { input, number, password, select } from "@inquirer/prompts";
-import chalk from "chalk";
 import { EventEmitter } from "events";
 import fileSelector from "inquirer-file-selector";
 import toggle from "inquirer-toggle";
@@ -10,6 +9,8 @@ import { match } from "ts-pattern";
 import type { Engine, EngineField } from "metabase-types/api";
 
 import { CLI_SHOWN_DB_FIELDS } from "../constants/database";
+
+import { printHelperText } from "./print";
 
 interface Options {
   engine: Engine;
@@ -33,13 +34,26 @@ export async function askForDatabaseConnectionInfo(options: Options) {
       continue;
     }
 
+    const visibleIf = field["visible-if"];
+
+    const shouldShowField =
+      !visibleIf ||
+      Object.entries(visibleIf).every(
+        ([key, expected]) => connection[key] === expected,
+      );
+
+    // Skip fields that should be hidden
+    if (!shouldShowField) {
+      continue;
+    }
+
     const name = field["display-name"];
     const helperText = field["helper-text"];
 
     const message = `${name}:`;
 
     if (helperText) {
-      console.log(`  ${chalk.gray(helperText)}`);
+      printHelperText(helperText);
     }
 
     const value = await askForConnectionValue(field, message, engineKey);
@@ -72,6 +86,13 @@ const askForConnectionValue = (
 
       return fs.readFile(path, "utf-8");
     })
+    .with("select", () => {
+      return select({
+        message,
+        choices: field.options ?? [],
+        default: field.default,
+      });
+    })
     .with("section", () => askSectionChoice(field))
     .otherwise(() =>
       input({
@@ -94,29 +115,42 @@ const getIntegerFieldDefault = (field: EngineField, engine: string) => {
 };
 
 const askSectionChoice = async (field: EngineField) => {
-  // Snowflake allows to connect with either hostname or account name.
-  if (field.name === "use-hostname") {
+  // Postgres allows connecting with either password or an authentication provider.
+  if (field.name === "use-auth-provider") {
     const choice = await select({
-      message: "Do you want to connect with hostname or account name?",
+      message:
+        "Do you want to connect with password or an authentication provider?",
       choices: [
-        { name: "Hostname", value: "hostname" },
-        { name: "Account name", value: "account" },
+        { name: "Password", value: "password" },
+        { name: "Auth Provider", value: "auth-provider" },
       ],
+      default: "password",
     });
 
-    return choice === "hostname";
+    return choice === "auth-provider";
   }
 
-  // MongoDB allows to connect with either hostname or connection string.
+  // Snowflake allows connecting with either hostname or account name.
+  if (field.name === "use-hostname") {
+    return select({
+      message: "Do you want to connect with hostname or account name?",
+      choices: [
+        { name: "Hostname", value: true },
+        { name: "Account name", value: false },
+      ],
+      default: field.default,
+    });
+  }
+
+  // MongoDB allows connecting with either hostname or connection string.
   if (field.name === "use-conn-uri") {
-    const choice = await select({
+    return select({
       message: "Do you want to connect with hostname or connection string?",
       choices: [
-        { name: "Hostname", value: "hostname" },
-        { name: "Connection String", value: "conn-uri" },
+        { name: "Hostname", value: false },
+        { name: "Connection String", value: true },
       ],
+      default: field.default,
     });
-
-    return choice === "conn-uri";
   }
 };

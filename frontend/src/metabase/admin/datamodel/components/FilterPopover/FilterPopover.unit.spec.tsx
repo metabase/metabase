@@ -9,11 +9,11 @@ import Question from "metabase-lib/v1/Question";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
-  createSampleDatabase,
-  SAMPLE_DB_ID,
-  ORDERS_ID,
   ORDERS,
+  ORDERS_ID,
   PRODUCTS,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { FilterPopover } from "./FilterPopover";

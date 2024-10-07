@@ -1,4 +1,4 @@
-import { createAction, type UnknownAction } from "@reduxjs/toolkit";
+import { type UnknownAction, createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { push } from "react-router-redux";
 
@@ -15,12 +15,6 @@ import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import { SessionApi, UtilApi } from "metabase/services";
 
-import {
-  trackLogin,
-  trackLoginGoogle,
-  trackLogout,
-  trackPasswordReset,
-} from "./analytics";
 import type { LoginData } from "./types";
 
 export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
@@ -66,7 +60,6 @@ export const login = createAsyncThunk(
     try {
       await SessionApi.create(data);
       await dispatch(refreshSession()).unwrap();
-      trackLogin();
       if (!isSmallScreen()) {
         dispatch(openNavbar());
       }
@@ -88,7 +81,6 @@ export const loginGoogle = createAsyncThunk(
     try {
       await SessionApi.createWithGoogleAuth({ token: credential });
       await dispatch(refreshSession()).unwrap();
-      trackLoginGoogle();
       if (!isSmallScreen()) {
         dispatch(openNavbar());
       }
@@ -114,7 +106,6 @@ export const logout = createAsyncThunk(
 
         dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
-        trackLogout();
 
         if (samlLogoutUrl) {
           window.location.href = samlLogoutUrl;
@@ -123,7 +114,6 @@ export const logout = createAsyncThunk(
         await deleteSession();
         dispatch(clearCurrentUser());
         await dispatch(refreshLocale()).unwrap();
-        trackLogout();
 
         // We use old react-router-redux which references old redux, which does not require
         // action type to be a string - unlike RTK v2+
@@ -163,7 +153,6 @@ export const resetPassword = createAsyncThunk(
     try {
       await SessionApi.reset_password({ token, password });
       await dispatch(refreshSession()).unwrap();
-      trackPasswordReset();
     } catch (error) {
       return rejectWithValue(error);
     }

@@ -63,27 +63,27 @@
         (actions/check-actions-enabled-for-database!
          (t2/select-one Database :id (:database_id action)))))
     (try
-     (case action-type
-       :query
-       (execute-query-action! action request-parameters)
+      (case action-type
+        :query
+        (execute-query-action! action request-parameters)
 
-       :http
-       (http-action/execute-http-action! action request-parameters))
-     (catch Exception e
-       (log/error e "Error executing action.")
-       (if-let [ed (ex-data e)]
-         (let [ed (cond-> ed
-                    (and (nil? (:status-code ed))
-                         (= (:type ed) :missing-required-permissions))
-                    (assoc :status-code 403)
+        :http
+        (http-action/execute-http-action! action request-parameters))
+      (catch Exception e
+        (log/error e "Error executing action.")
+        (if-let [ed (ex-data e)]
+          (let [ed (cond-> ed
+                     (and (nil? (:status-code ed))
+                          (= (:type ed) :missing-required-permissions))
+                     (assoc :status-code 403)
 
-                    (nil? (:message ed))
-                    (assoc :message (ex-message e)))]
-           (if (= (ex-data e) ed)
-             (throw e)
-             (throw (ex-info (ex-message e) ed e))))
-         {:body {:message (or (ex-message e) (tru "Error executing action."))}
-          :status 500})))))
+                     (nil? (:message ed))
+                     (assoc :message (ex-message e)))]
+            (if (= (ex-data e) ed)
+              (throw e)
+              (throw (ex-info (ex-message e) ed e))))
+          {:body {:message (or (ex-message e) (tru "Error executing action."))}
+           :status 500})))))
 
 (defn- check-no-extra-parameters
   "Check that the given request parameters do not contain any parameters that are not in the given set of destination parameter ids"
@@ -101,12 +101,12 @@
                 :destination-parameters destination-param-ids})))
 
 (mu/defn- build-implicit-query :- [:map
-                                            [:query          ::mbql.s/Query]
-                                            [:row-parameters ::lib.schema.actions/row]
-                                            ;; TODO -- the schema for these should probably be
-                                            ;; `:metabase.lib.schema.parameter/parameter` instead of `:any`, but I'm not
-                                            ;; 100% sure about that.
-                                            [:prefetch-parameters {:optional true} [:tuple :any]]]
+                                   [:query          ::mbql.s/Query]
+                                   [:row-parameters ::lib.schema.actions/row]
+                                   ;; TODO -- the schema for these should probably be
+                                   ;; `:metabase.lib.schema.parameter/parameter` instead of `:any`, but I'm not
+                                   ;; 100% sure about that.
+                                   [:prefetch-parameters {:optional true} [:tuple :any]]]
   [{:keys [model_id parameters] :as _action} implicit-action request-parameters]
   (let [{database-id :db_id
          table-id :id :as table} (implicit-action-table model_id)
@@ -205,9 +205,11 @@
                                                :id dashcard-id
                                                :dashboard_id dashboard-id))
         action (api/check-404 (action/select-action :id (:action_id dashcard)))]
-    (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :dashboard
-                                                                             :type      (:type action)
-                                                                             :action_id (:id action)})
+    (snowplow/track-event! ::snowplow/action
+                           {:event     :action-executed
+                            :source    :dashboard
+                            :type      (:type action)
+                            :action_id (:id action)})
     (execute-action! action request-parameters)))
 
 (defn- fetch-implicit-action-values
@@ -233,10 +235,10 @@
         exposed-param-ids (-> (set (map :id (:parameters action)))
                               (set/difference (set hidden-param-ids)))]
     (m/filter-keys
-      #(contains? exposed-param-ids %)
-      (zipmap
-        (map (comp u/slugify :name) (get-in result [:data :cols]))
-        (first (get-in result [:data :rows]))))))
+     #(contains? exposed-param-ids %)
+     (zipmap
+      (map (comp u/slugify :name) (get-in result [:data :cols]))
+      (first (get-in result [:data :rows]))))))
 
 (defn fetch-values
   "Fetch values to pre-fill implicit action execution - custom actions will return no values.

@@ -7,9 +7,9 @@ import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/setting
 import registerVisualizations from "metabase/visualizations/register";
 
 import {
-  mockSeries as series,
   PREVIOUS_VALUE_COMPARISON,
   getPeriodsAgoComparison,
+  mockSeries as series,
 } from "./test-mocks";
 
 registerVisualizations();

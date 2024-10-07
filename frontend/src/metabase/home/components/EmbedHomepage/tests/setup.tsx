@@ -6,12 +6,12 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
-import { screen, renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { Settings, TokenFeatures } from "metabase-types/api";
 import {
+  createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
-  createMockSettingDefinition,
 } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,

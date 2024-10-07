@@ -121,21 +121,21 @@
                "#123-card-1"           c1
                "snippet:first snippet" (dissoc s1 :snippet-id)}
               (lib.native/extract-template-tags
-                "SELECT * FROM {{#123-card-1}} WHERE {{foo}} AND {{  snippet:first snippet}}")))
+               "SELECT * FROM {{#123-card-1}} WHERE {{foo}} AND {{  snippet:first snippet}}")))
       (is (=? {"bar"                     v2
                "baz"                     v3
                "snippet:another snippet" s2
                "#321"                    c2}
               (lib.native/extract-template-tags
-                "SELECT * FROM {{#321}} WHERE {{baz}} AND {{bar}} AND {{snippet:another snippet}}"
-                {"foo"                   (assoc v1 :id (str (random-uuid)))
-                 "#123-card-1"           (assoc c1 :id (str (random-uuid)))
-                 "snippet:first snippet" (assoc s1 :id (str (random-uuid)))})))
+               "SELECT * FROM {{#321}} WHERE {{baz}} AND {{bar}} AND {{snippet:another snippet}}"
+               {"foo"                   (assoc v1 :id (str (random-uuid)))
+                "#123-card-1"           (assoc c1 :id (str (random-uuid)))
+                "snippet:first snippet" (assoc s1 :id (str (random-uuid)))})))
       (let [s1-uuid (str (random-uuid))]
         (is (= {"snippet:another snippet" (assoc (dissoc s2 :snippet-id) :id s1-uuid)}
                (lib.native/extract-template-tags
-                 "SELECT * FROM {{snippet:another snippet}}"
-                 {"snippet:first snippet" (assoc s1 :id s1-uuid)})))))))
+                "SELECT * FROM {{snippet:another snippet}}"
+                {"snippet:first snippet" (assoc s1 :id s1-uuid)})))))))
 
 (def ^:private qp-results-metadata
   "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query
@@ -183,14 +183,14 @@
                   (lib/with-native-query "select * from venues where id = {{myrenamedid}}")
                   ((juxt lib/raw-native-query lib/template-tags)))))
       (is (empty?
-            (-> query
-                (lib/with-native-query "select * from venues")
-                lib/template-tags))))
+           (-> query
+               (lib/with-native-query "select * from venues")
+               lib/template-tags))))
     (is (thrown-with-msg?
-          #?(:clj Throwable :cljs :default)
-          #"Must be a native query"
-          (-> lib.tu/venues-query
-              (lib/with-native-query "foobar"))))))
+         #?(:clj Throwable :cljs :default)
+         #"Must be a native query"
+         (-> lib.tu/venues-query
+             (lib/with-native-query "foobar"))))))
 
 (deftest ^:parallel with-template-tags-test
   (let [query (lib/native-query meta/metadata-provider "select * from venues where id = {{myid}}")
@@ -211,10 +211,10 @@
                  (lib/with-template-tags {"garbage" (assoc (get original-tags "myid") :name "garbage" :display-name "Foobar")})
                  lib/template-tags))))
     (is (thrown-with-msg?
-          #?(:clj Throwable :cljs :default)
-          #"Must be a native query"
-          (-> lib.tu/venues-query
-              (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")}))))))
+         #?(:clj Throwable :cljs :default)
+         #"Must be a native query"
+         (-> lib.tu/venues-query
+             (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")}))))))
 
 (defn ^:private metadata-provider-requiring-collection []
   (meta.graph-provider/->SimpleGraphMetadataProvider (-> meta/metadata
@@ -230,9 +230,9 @@
     (is (=? {:stages [{:collection "mycollection"}]}
             (lib/native-query (metadata-provider-requiring-collection) "myquery" nil {:collection "mycollection"})))
     (is (thrown-with-msg?
-          #?(:clj Throwable :cljs :default)
-          #"Missing extra, required keys for native query: .*:collection.*"
-          (lib/native-query (metadata-provider-requiring-collection) "myquery")))))
+         #?(:clj Throwable :cljs :default)
+         #"Missing extra, required keys for native query: .*:collection.*"
+         (lib/native-query (metadata-provider-requiring-collection) "myquery")))))
 
 (deftest ^:parallel with-different-database-test
   (let [query (lib/native-query meta/metadata-provider "myquery")]
@@ -241,56 +241,56 @@
               (-> query
                   (lib/with-different-database
                     (meta.graph-provider/->SimpleGraphMetadataProvider
-                      (assoc meta/metadata :id 9999)))))))
+                     (assoc meta/metadata :id 9999)))))))
     (testing "Checks collection requirement"
       (is (=? {:stages [(complement :collection)]}
               (-> query
                   (lib/with-different-database meta/metadata-provider {:collection "mycollection"}))))
       (is (thrown-with-msg?
-            #?(:clj Throwable :cljs :default)
-            #"Missing extra, required keys for native query: .*:collection.*"
-            (-> query
-                (lib/with-different-database (metadata-provider-requiring-collection))))))
+           #?(:clj Throwable :cljs :default)
+           #"Missing extra, required keys for native query: .*:collection.*"
+           (-> query
+               (lib/with-different-database (metadata-provider-requiring-collection))))))
     (is (thrown-with-msg?
-          #?(:clj Throwable :cljs :default)
-          #"Must be a native query"
-          (-> lib.tu/venues-query
-              (lib/with-different-database meta/metadata-provider))))))
+         #?(:clj Throwable :cljs :default)
+         #"Must be a native query"
+         (-> lib.tu/venues-query
+             (lib/with-different-database meta/metadata-provider))))))
 
 (deftest ^:parallel with-native-collection-test
   (is (=? {:stages [{:collection "mynewcollection"}]}
           (-> (lib/native-query (metadata-provider-requiring-collection) "myquery" nil {:collection "mycollection"})
               (lib/with-native-extras {:collection "mynewcollection"}))))
   (is (=? {:stages [(complement :collection)]}
-        (-> (lib/native-query meta/metadata-provider "myquery")
-            (lib/with-native-extras {:collection "mycollection"}))))
+          (-> (lib/native-query meta/metadata-provider "myquery")
+              (lib/with-native-extras {:collection "mycollection"}))))
   (is (thrown-with-msg?
-        #?(:clj Throwable :cljs :default)
-        #"Must be a native query"
-        (-> (lib/query (metadata-provider-requiring-collection) (meta/table-metadata :venues))
-            (lib/with-native-extras {:collection "mycollection"})))))
+       #?(:clj Throwable :cljs :default)
+       #"Must be a native query"
+       (-> (lib/query (metadata-provider-requiring-collection) (meta/table-metadata :venues))
+           (lib/with-native-extras {:collection "mycollection"})))))
 
 (deftest ^:parallel has-write-permission-test
   (testing ":native-permissions in database"
     (is (lib/has-write-permission
-          (lib/native-query (lib.tu/mock-metadata-provider
-                              meta/metadata-provider
-                              {:database (merge (lib.metadata/database meta/metadata-provider) {:native-permissions :write})})
-                            "select * from x;")))
+         (lib/native-query (lib.tu/mock-metadata-provider
+                            meta/metadata-provider
+                            {:database (merge (lib.metadata/database meta/metadata-provider) {:native-permissions :write})})
+                           "select * from x;")))
     (is (not (lib/has-write-permission
-               (lib/native-query (lib.tu/mock-metadata-provider
-                                   meta/metadata-provider
-                                   {:database (merge (lib.metadata/database meta/metadata-provider) {:native-permissions :none})})
-                                 "select * from x;"))))
+              (lib/native-query (lib.tu/mock-metadata-provider
+                                 meta/metadata-provider
+                                 {:database (merge (lib.metadata/database meta/metadata-provider) {:native-permissions :none})})
+                                "select * from x;"))))
     (is (not (lib/has-write-permission
-               (lib/native-query (lib.tu/mock-metadata-provider
-                                   meta/metadata-provider
-                                   {:database (dissoc (lib.metadata/database meta/metadata-provider) :native-permissions)})
-                                 "select * from x;"))))
+              (lib/native-query (lib.tu/mock-metadata-provider
+                                 meta/metadata-provider
+                                 {:database (dissoc (lib.metadata/database meta/metadata-provider) :native-permissions)})
+                                "select * from x;"))))
     (is (thrown-with-msg?
-          #?(:clj Throwable :cljs :default)
-          #"Must be a native query"
-          (lib/has-write-permission lib.tu/venues-query)))))
+         #?(:clj Throwable :cljs :default)
+         #"Must be a native query"
+         (lib/has-write-permission lib.tu/venues-query)))))
 
 (deftest ^:parallel can-run-native-test
   (is (lib/can-run (lib/with-template-tags
@@ -337,15 +337,15 @@
 (deftest ^:parallel template-tags-referenced-cards-test
   (testing "returns Card instances from raw query"
     (let [query (lib/query lib.tu/metadata-provider-with-mock-cards
-                  {:database (meta/id)
-                   :type     :native
-                   :native   {:query         {}
-                              :template-tags {"tag-name-not-important1" {:type         :card
-                                                                         :display-name "X"
-                                                                         :card-id      1}
-                                              "tag-name-not-important2" {:type         :card
-                                                                         :display-name "Y"
-                                                                         :card-id      2}}}})]
+                           {:database (meta/id)
+                            :type     :native
+                            :native   {:query         {}
+                                       :template-tags {"tag-name-not-important1" {:type         :card
+                                                                                  :display-name "X"
+                                                                                  :card-id      1}
+                                                       "tag-name-not-important2" {:type         :card
+                                                                                  :display-name "Y"
+                                                                                  :card-id      2}}}})]
       (is (=? [{:id            1
                 :dataset-query {}}
                {:id            2

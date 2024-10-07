@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
@@ -17,17 +17,17 @@ import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
 
 import {
   EntityDisplay,
-  UrlLinkDisplay,
   RestrictedEntityDisplay,
+  UrlLinkDisplay,
 } from "./EntityDisplay";
 import {
-  EditLinkCardWrapper,
-  DisplayLinkCardWrapper,
   CardLink,
-  SearchResultsContainer,
-  StyledRecentsList,
+  DisplayLinkCardWrapper,
+  EditLinkCardWrapper,
   ExternalLink,
+  SearchResultsContainer,
   StyledInput,
+  StyledRecentsList,
 } from "./LinkViz.styled";
 import { settings } from "./LinkVizSettings";
 import type { WrappedUnrestrictedLinkEntity } from "./types";

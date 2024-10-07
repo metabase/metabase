@@ -1,8 +1,8 @@
 (ns metabase.xrays.domain-entities.queries.util
   "Utility functions used by the Queries in metabase-lib."
   (:require
-   [metabase.util.malli :as mu]
-   #?@(:cljs ([metabase.xrays.domain-entities.converters :as converters]))))
+   #?@(:cljs ([metabase.xrays.domain-entities.converters :as converters]))
+   [metabase.util.malli :as mu]))
 
 (def Expression
   "Schema for an Expression that's part of a query filter."

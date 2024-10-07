@@ -112,7 +112,6 @@
              :max-value   max-value
              :new-binning (update binning :bin-width #(double (/ % 10.0)))}))))))
 
-
 ;;;
 ;;; application
 ;;;

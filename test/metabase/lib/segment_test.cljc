@@ -1,12 +1,12 @@
 (ns metabase.lib.segment-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-util :as lib.tu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -127,7 +127,7 @@
              (count segments)))
       ;; test with both `:metadata/segment` and with a `:segment` ref clause
       (doseq [segment [(first segments)
-                      [:segment {:lib/uuid (str (random-uuid))} segment-id]]]
+                       [:segment {:lib/uuid (str (random-uuid))} segment-id]]]
         (testing (pr-str (list 'lib/filter 'query segment))
           (let [query' (lib/filter query segment)]
             (is (lib/uses-segment? query' segment-id))

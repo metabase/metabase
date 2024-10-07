@@ -26,4 +26,4 @@ You can pass parameters between Metabase and your website via the embedding URL 
 
 ## [Public embeds](../questions/sharing/public-links.md)
 
-You can also create unsecured public links or embeds of questions and dashboards.
+Admins can also create unsecured public links or embeds of questions and dashboards.

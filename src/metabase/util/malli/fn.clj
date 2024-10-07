@@ -52,10 +52,21 @@
 (defn- arity-schema
   "Given a `fn` arity as parsed by [[SchematizedParams]] an `return-schema`, return an appropriate `:=>` schema for
   the arity."
-  [{:keys [args], :as _arity} return-schema]
-  [:=>
-   (:schema (md/parse (add-default-schemas args)))
-   return-schema])
+  [{:keys [args], :as _arity} return-schema {:keys [target], :as _options}]
+  (let [parsed       (md/parse (add-default-schemas args))
+        varargs-info (get-in parsed [:parsed :rest :arg :arg])
+        varargs-type (cond
+                       (= (first varargs-info) :map) :varargs/map
+                       (seq varargs-info)            :varargs/sequential)
+        schema       (case target
+                       :target/metadata        (if (= varargs-type :varargs/map)
+                                                 (vec (concat (butlast (:schema parsed)) [[:* :any]]))
+                                                 (:schema parsed))
+                       :target/instrumentation (:schema parsed))]
+    [:=>
+     (cond-> schema
+       varargs-type (vary-meta assoc :varargs/type varargs-type))
+     return-schema]))
 
 (def ^:private SchematizedParams
   "This is exactly the same as [[malli.experimental/SchematizedParams]], but it preserves metadata from the arglists."
@@ -105,16 +116,29 @@
 
 (defn fn-schema
   "Implementation for [[fn]] and [[metabase.util.malli.defn/defn]]. Given an unparsed parametered fn tail, extract the
-  annotations and return a `:=>` or `:function` schema."
-  [parsed]
-  (let [{:keys [return arities]}     parsed
-        return-schema                (:schema return :any)
-        [arities-type arities-value] arities]
-    (case arities-type
-      :single   (arity-schema arities-value return-schema)
-      :multiple (into [:function]
-                      (for [arity (:arities arities-value)]
-                        (arity-schema arity return-schema))))))
+  annotations and return a `:=>` or `:function` schema.
+
+  `options` can contain `:target` which is either
+
+  * `:target/metadata`: generate the schema to attach to the metadata for a [[metabase.util.malli.defn/defn]]. For
+    key-value varargs like `& {:as kvs}` get a schema like `[:* :any]` in this case since the args aren't parsed to a
+    map yet
+
+  * `:target/instrumentation`: generate a schema for use in generating the instrumented `fn` form. `& {:as kvs}` can
+    have a real map schema here."
+
+  ([parsed]
+   (fn-schema parsed {:target :target/instrumentation}))
+
+  ([parsed options]
+   (let [{:keys [return arities]}     parsed
+         return-schema                (:schema return :any)
+         [arities-type arities-value] arities]
+     (case arities-type
+       :single   (arity-schema arities-value return-schema options)
+       :multiple (into [:function]
+                       (for [arity (:arities arities-value)]
+                         (arity-schema arity return-schema options)))))))
 
 (defn- deparameterized-arity [{:keys [body args prepost], :as _arity}]
   (concat
@@ -154,14 +178,14 @@
                                                   [{:keys [value message]}]
                                                   (str message ", got: " (pr-str value)))})
             details   (merge
-                        {:type      error-type
-                         :error     error
-                         :humanized humanized
-                         :schema    schema
-                         :value     value}
-                        error-context)]
+                       {:type      error-type
+                        :error     error
+                        :humanized humanized
+                        :schema    schema
+                        :value     value}
+                       error-context)]
         (if (or config/is-dev?
-              config/is-test?)
+                config/is-test?)
           ;; In dev and test, throw an exception.
           (throw (ex-info (case error-type
                             ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
@@ -169,12 +193,12 @@
                           details))
           ;; In prod, log a warning.
           (log/warn
-            (case error-type
-              ::invalid-input  (i18n/tru "Invalid input - Please report this as an issue on Github: {0}"
-                                         (pr-str humanized))
-              ::invalid-output (i18n/tru "Invalid output - Please report this as an issue on Github: {0}"
-                                         (pr-str humanized)))
-            details))))))
+           (case error-type
+             ::invalid-input  (i18n/tru "Invalid input - Please report this as an issue on Github: {0}"
+                                        (pr-str humanized))
+             ::invalid-output (i18n/tru "Invalid output - Please report this as an issue on Github: {0}"
+                                        (pr-str humanized)))
+           details))))))
 
 (defn validate-input
   "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
@@ -189,41 +213,43 @@
   (validate error-context schema value ::invalid-output)
   value)
 
-(defn- varargs-schema? [[_cat & args :as _input-schema]]
-  (letfn [(star-schema? [schema]
-            (and (sequential? schema)
-                 (= (first schema) :*)))]
-    (star-schema? (last args))))
+(defn- varargs-type [input-schema]
+  (-> input-schema meta :varargs/type))
 
 (defn- input-schema-arg-names [[_cat & args :as input-schema]]
-  (let [varargs?    (varargs-schema? input-schema)
-        normal-args (if varargs?
-                      (butlast args)
-                      args)]
+  (let [varargs-type (varargs-type input-schema)
+        normal-args  (if varargs-type
+                       (butlast args)
+                       args)]
     (concat
      (for [n (range (count normal-args))]
        (symbol (str (char (+ (int \a) n)))))
-     (when varargs?
-       ['more]))))
+     (case varargs-type
+       :varargs/sequential ['more]
+       :varargs/map        ['kvs]
+       nil))))
 
 (defn- input-schema->arglist [input-schema]
   (let [arg-names (input-schema-arg-names input-schema)]
-    (vec (if (varargs-schema? input-schema)
-           (concat (butlast arg-names) ['& (last arg-names)])
+    (vec (if-let [varargs-type (varargs-type input-schema)]
+           (concat (butlast arg-names) ['& (case varargs-type
+                                             :varargs/sequential (last arg-names)
+                                             :varargs/map        {:as (last arg-names)})])
            arg-names))))
 
 (defn- input-schema->validation-forms [error-context [_cat & schemas :as input-schema]]
   (let [arg-names (input-schema-arg-names input-schema)
-        schemas   (if (varargs-schema? input-schema)
+        schemas   (if (= (varargs-type input-schema) :varargs/sequential)
                     (concat (butlast schemas) [[:maybe (last schemas)]])
                     schemas)]
     (->> (map (core/fn [arg-name schema]
                 ;; 1. Skip checks against `:any` schema, there is no situation where it would fail.
                 ;;
-                ;; 2. Skip checks against the default varargs schema, there is no situation where [:maybe [:* :any]] is
+                ;; 2. Skip checks against the default varargs schemas, there is no situation where [:maybe [:* :any]] is
                 ;; going to fail.
-                (when-not (= schema (if (= arg-name 'more)
-                                      [:maybe [:* :any]]
+                (when-not (= schema (condp = arg-name
+                                      'more [:maybe [:* :any]]
+                                      'kvs  [:* :any]
                                       :any))
                   `(validate-input ~error-context ~schema ~arg-name)))
               arg-names
@@ -232,7 +258,7 @@
 
 (defn- input-schema->application-form [input-schema]
   (let [arg-names (input-schema-arg-names input-schema)]
-    (if (varargs-schema? input-schema)
+    (if (= (varargs-type input-schema) :varargs/sequential)
       (list* `apply '&f arg-names)
       (list* '&f arg-names))))
 
@@ -329,7 +355,8 @@
 
     {:fn-name 'whatever/my-multimethod, :dispatch-value :field}
 
-  If compiled in a namespace in [[namespaces-toskip]], during `config/is-prod?`, it will be emitted as a vanilla clojure.core/fn form.
+  If compiled in a namespace in [[namespaces-toskip]], during `config/is-prod?`, it will be emitted as a vanilla
+  clojure.core/fn form.
 
   Known issue: this version of `fn` does not capture the optional function name and make it available, e.g. you can't
   do

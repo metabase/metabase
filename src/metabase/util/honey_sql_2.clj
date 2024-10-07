@@ -284,8 +284,8 @@
 
 (defn type-info->db-type
   "For a given type-info, returns the `database-type`."
-  [type-info]
   {:added "0.39.0"}
+  [type-info]
   (:database-type type-info))
 
 (defn database-type

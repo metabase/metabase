@@ -191,28 +191,34 @@ export const getLegendClickData = (
   };
 };
 
-const getBreakoutsTooltipRows = <TDatum>(
+export const getStackedTooltipRows = <TDatum>(
   bar: BarData<TDatum>,
   settings: VisualizationSettings,
   multipleSeries: Series<TDatum, SeriesInfo>[],
   seriesColors: Record<string, string>,
 ): TooltipRowModel[] =>
-  multipleSeries.map(series => {
-    const value = series.xAccessor(bar.datum);
-    return {
-      name: series.seriesName,
-      color: seriesColors[series.seriesKey],
-      value,
-      formatter: value =>
-        String(
-          formatValueForTooltip({
-            value,
-            settings,
-            column: series.seriesInfo?.metricColumn,
-          }),
-        ),
-    };
-  });
+  multipleSeries
+    .map(series => {
+      const value = series.xAccessor(bar.datum);
+      if (value == null) {
+        return null;
+      }
+
+      return {
+        name: series.seriesName,
+        color: seriesColors[series.seriesKey],
+        value,
+        formatter: (value: unknown) =>
+          String(
+            formatValueForTooltip({
+              value,
+              settings,
+              column: series.seriesInfo?.metricColumn,
+            }),
+          ),
+      };
+    })
+    .filter(isNotNull);
 
 export const getTooltipModel = <TDatum>(
   bar: BarData<TDatum>,
@@ -233,7 +239,7 @@ export const getTooltipModel = <TDatum>(
   );
 
   const hasBreakout = "breakout" in chartColumns;
-  const rows = getBreakoutsTooltipRows(
+  const rows = getStackedTooltipRows(
     bar,
     settings,
     multipleSeries,

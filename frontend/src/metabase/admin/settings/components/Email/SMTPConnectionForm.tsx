@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -10,24 +10,23 @@ import { UpsellHosting } from "metabase/admin/upsells";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
 import {
-  FormProvider,
   Form,
-  FormTextInput,
+  FormProvider,
   FormRadioGroup,
   FormSubmitButton,
+  FormTextInput,
 } from "metabase/forms";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import * as Errors from "metabase/lib/errors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
-import { Group, Radio, Stack, Button, Text, Flex, Box } from "metabase/ui";
+import { Box, Button, Flex, Group, Radio, Stack, Text } from "metabase/ui";
 import type { Settings } from "metabase-types/api";
 
 import {
+  clearEmailSettings,
   sendTestEmail,
   updateEmailSettings,
-  clearEmailSettings,
 } from "../../settings";
 import { SetByEnvVarWrapper } from "../SettingsSetting";
 
@@ -128,20 +127,10 @@ export const SMTPConnectionForm = ({
     try {
       await dispatch(sendTestEmail());
       setSendingEmail("success");
-      MetabaseAnalytics.trackStructEvent(
-        "Email Settings",
-        "Test Email",
-        "success",
-      );
 
       // show a confirmation for 3 seconds, then return to normal
       setTimeout(() => setSendingEmail("default"), 3000);
     } catch (error: any) {
-      MetabaseAnalytics.trackStructEvent(
-        "Email Settings",
-        "Test Email",
-        "error",
-      );
       setSendingEmail("default");
       setTestEmailError(error?.data?.message);
     }

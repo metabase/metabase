@@ -11,12 +11,12 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import type { IconName } from "metabase/ui";
 
 import {
+  AdminTreeNode,
   EmptyStateContainer,
+  FilterInputContainer,
   FilterableTreeContainer,
   FilterableTreeRoot,
-  FilterInputContainer,
   ItemGroupsDivider,
-  AdminTreeNode,
 } from "./FilterableTree.styled";
 import { searchItems } from "./utils";
 

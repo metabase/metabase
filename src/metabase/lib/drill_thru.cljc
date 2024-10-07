@@ -73,8 +73,8 @@
   them. Why? Who knows."
   [{:keys [dimensions], :as context} :- ::lib.schema.drill-thru/context]
   (not-empty
-    (for [dimension dimensions]
-      (merge context dimension))))
+   (for [dimension dimensions]
+     (merge context dimension))))
 
 (mu/defn available-drill-thrus :- [:sequential [:ref ::lib.schema.drill-thru/drill-thru]]
   "Get a list (possibly empty) of available drill-thrus for a column, or a column + value pair.

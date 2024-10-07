@@ -1,16 +1,20 @@
+import { useCallback } from "react";
+
+import { setSidebar } from "metabase/dashboard/actions";
 import { dashboardActionButtons } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/action-buttons";
 import type {
   DashboardActionKey,
   DashboardHeaderButtonRowProps,
   HeaderButtonProps,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   getDashboardComplete,
   getHasModelActionsEnabled,
   getIsEditing,
 } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/env";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getPulseFormInput } from "metabase/pulse/selectors";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
@@ -18,7 +22,7 @@ import {
 } from "metabase/selectors/user";
 import { Box } from "metabase/ui";
 
-import { DASHBOARD_VIEW_ACTIONS, DASHBOARD_EDITING_ACTIONS } from "./constants";
+import { DASHBOARD_EDITING_ACTIONS, DASHBOARD_VIEW_ACTIONS } from "./constants";
 
 export const DashboardHeaderButtonRow = ({
   dashboardActionKeys = null,
@@ -47,6 +51,12 @@ export const DashboardHeaderButtonRow = ({
     ? buttonOptions.filter(key => dashboardActionKeys.includes(key))
     : buttonOptions;
 
+  const dispatch = useDispatch();
+
+  const openSettingsSidebar = useCallback(() => {
+    dispatch(setSidebar({ name: SIDEBAR_NAME.settings }));
+  }, [dispatch]);
+
   return (
     <>
       {visibleDashboardActionKeys.map(dashboardActionKey => {
@@ -63,6 +73,7 @@ export const DashboardHeaderButtonRow = ({
             isAdmin,
             isPublic,
             isEmbeddingSdk,
+            openSettingsSidebar,
             ...props,
           };
 

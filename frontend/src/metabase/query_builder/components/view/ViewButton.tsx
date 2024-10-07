@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color, alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 
 type Props = {
   active?: boolean;
@@ -17,7 +17,9 @@ const ViewButton = styled(Button)<Props>`
     active ? "var(--mb-color-text-white)" : color};
 
   border: none;
-  transition: background 300ms linear, border 300ms linear;
+  transition:
+    background 300ms linear,
+    border 300ms linear;
 
   &:hover {
     background-color: ${({ active, color = getDefaultColor() }) =>

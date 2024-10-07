@@ -94,7 +94,7 @@ By default, the plugins directory is called `plugins`, and lives in the same dir
 
 For example, if you're running Metabase from a directory called `/app/`, you should move the Oracle JDBC driver JAR to `/app/plugins/`:
 
-```bash
+```txt
 # example directory structure for running Metabase with Oracle support
 /app/metabase.jar
 /app/plugins/ojdbc8.jar

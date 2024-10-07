@@ -9,12 +9,12 @@ import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import {
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 const metadata = createMockMetadata({

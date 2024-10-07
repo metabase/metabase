@@ -1,8 +1,8 @@
 import type { DragEndEvent } from "@dnd-kit/core";
-import { DndContext, useSensor, PointerSensor } from "@dnd-kit/core";
+import { DndContext, PointerSensor, useSensor } from "@dnd-kit/core";
 import {
-  restrictToVerticalAxis,
   restrictToParentElement,
+  restrictToVerticalAxis,
 } from "@dnd-kit/modifiers";
 import {
   SortableContext,

@@ -1,4 +1,4 @@
-import { t, c } from "ttag";
+import { c, t } from "ttag";
 
 const GET_LEFT_TERM_CONVERSIONS = (): Record<string, string> => ({
   ISO8601: t`ISO 8601`,

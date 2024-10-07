@@ -1,7 +1,7 @@
 import type { ThunkDispatch } from "@reduxjs/toolkit";
 import { createAsyncThunk as createAsyncThunkOriginal } from "@reduxjs/toolkit";
 
-import type { State, GetState } from "metabase-types/store";
+import type { GetState, State } from "metabase-types/store";
 
 import { withAction } from "./utils";
 

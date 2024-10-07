@@ -18,7 +18,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.ssh :as ssh]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 DataSources)
@@ -41,7 +41,6 @@
   {:added "0.32.0" :arglists '([driver details-map])}
   driver/dispatch-on-initialized-driver-safe-keys
   :hierarchy #'driver/hierarchy)
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Creating Connection Pools                                            |
@@ -106,7 +105,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
 
 (defmethod data-warehouse-connection-pool-properties :default
   [driver database]
-  { ;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
+  {;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
    ;; interest of minimizing memory consumption
    "acquireIncrement"             1
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.

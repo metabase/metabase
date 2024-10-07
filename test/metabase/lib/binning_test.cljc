@@ -1,7 +1,7 @@
 (ns metabase.lib.binning-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
@@ -42,26 +42,47 @@
           bucket-created (lib/with-temporal-bucket created-col (first (lib/available-temporal-buckets query created-col)))
           query (lib/breakout query bucket-created)]
       (is (=?
-            (complement :metabase.lib.field/binning)
-            (m/find-first (comp #{"TOTAL"} :name) (lib/visible-columns query))))
+           (complement :metabase.lib.field/binning)
+           (m/find-first (comp #{"TOTAL"} :name) (lib/visible-columns query))))
       (is (=?
-            (complement :metabase.lib.field/binning)
-            (m/find-first (comp #{"TOTAL"} :name) (lib/breakoutable-columns query))))
+           (complement :metabase.lib.field/binning)
+           (m/find-first (comp #{"TOTAL"} :name) (lib/breakoutable-columns query))))
       (is (=?
-            {:metabase.lib.field/binning {:strategy :default}}
-            (lib/breakout-column query -1 (first (lib/breakouts query)))))
+           {:metabase.lib.field/binning {:strategy :default}}
+           (lib/breakout-column query -1 (first (lib/breakouts query)))))
       (is (=?
-            {:metabase.lib.field/binning {:strategy :default}}
-            (m/find-first (comp #{"TOTAL"} :name) (lib/returned-columns query))))
+           {:metabase.lib.field/binning {:strategy :default}}
+           (m/find-first (comp #{"TOTAL"} :name) (lib/returned-columns query))))
       (is (=?
-            (complement :metabase.lib.field/temporal-unit)
-            (m/find-first (comp #{"CREATED_AT"} :name) (lib/visible-columns query))))
+           (complement :metabase.lib.field/temporal-unit)
+           (m/find-first (comp #{"CREATED_AT"} :name) (lib/visible-columns query))))
       (is (=?
-            (complement :metabase.lib.field/temporal-unit)
-            (m/find-first (comp #{"CREATED_AT"} :name) (lib/breakoutable-columns query))))
+           (complement :metabase.lib.field/temporal-unit)
+           (m/find-first (comp #{"CREATED_AT"} :name) (lib/breakoutable-columns query))))
       (is (=?
-            {:metabase.lib.field/temporal-unit :minute}
-            (lib/breakout-column query -1 (second (lib/breakouts query)))))
+           {:metabase.lib.field/temporal-unit :minute}
+           (lib/breakout-column query -1 (second (lib/breakouts query)))))
       (is (=?
-            {:metabase.lib.field/temporal-unit :minute}
-            (m/find-first (comp #{"CREATED_AT"} :name) (lib/returned-columns query)))))))
+           {:metabase.lib.field/temporal-unit :minute}
+           (m/find-first (comp #{"CREATED_AT"} :name) (lib/returned-columns query)))))))
+
+(deftest ^:parallel binning-equality-test
+  (testing "should compare 'default' binning values"
+    (are [expected x y] (= expected (lib.binning/binning= x y) (lib.binning/binning= y x))
+      true  {:strategy :default} {:strategy :default}
+      false {:strategy :default} {:strategy :num-bins, :num-bins 10}
+      false {:strategy :default} {:strategy :bin-width, :bin-width 10}))
+  (testing "should compare 'num-bins' binning values"
+    (are [expected x y] (= expected (lib.binning/binning= x y) (lib.binning/binning= y x))
+      true  {:strategy :num-bins, :num-bins 10}               {:strategy :num-bins, :num-bins 10}
+      true  {:strategy :num-bins, :num-bins 10, :bin-width 3} {:strategy :num-bins, :num-bins 10}
+      true  {:strategy :num-bins, :num-bins 10, :bin-width 3} {:strategy :num-bins, :num-bins 10, :bin-width 4}
+      true  {:strategy :num-bins, :num-bins 10}               {:strategy :num-bins, :num-bins 10, :metadata-fn (fn [] nil)}
+      false {:strategy :num-bins, :num-bins 10}               {:strategy :num-bins, :num-bins 20}))
+  (testing "should compare 'bin-width' binning values"
+    (are [expected x y] (= expected (lib.binning/binning= x y) (lib.binning/binning= y x))
+      true  {:strategy :bin-width, :bin-width 10}              {:strategy :bin-width, :bin-width 10}
+      true  {:strategy :bin-width, :bin-width 10, :num-bins 3} {:strategy :bin-width, :bin-width 10}
+      true  {:strategy :bin-width, :bin-width 10, :num-bins 3} {:strategy :bin-width, :bin-width 10, :num-bins 4}
+      true  {:strategy :bin-width, :bin-width 10}              {:strategy :bin-width, :bin-width 10, :metadata-fn (fn [] nil)}
+      false {:strategy :bin-width, :bin-width 10}              {:strategy :bin-width, :bin-width 20})))

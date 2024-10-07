@@ -19,13 +19,13 @@ import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeXrayCard } from "../HomeXrayCard";
 
 import {
-  DatabaseLinkIcon,
   DatabaseLink,
+  DatabaseLinkIcon,
   DatabaseLinkText,
-  SectionBody,
   SchemaTrigger,
-  SchemaTriggerText,
   SchemaTriggerIcon,
+  SchemaTriggerText,
+  SectionBody,
 } from "./HomeXraySection.styled";
 
 export const HomeXraySection = () => {

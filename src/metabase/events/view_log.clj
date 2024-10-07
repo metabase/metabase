@@ -153,9 +153,9 @@
     ;; Only log permission check failures for Cards and Dashboards. This set can be expanded if we add view logging of
     ;; other models.
     (when (#{:model/Card :model/Dashboard} (t2/model object))
-     (-> event
-         generate-view
-         record-views!))
+      (-> event
+          generate-view
+          record-views!))
     (catch Throwable e
       (log/warnf e "Failed to process view event. %s" topic))))
 

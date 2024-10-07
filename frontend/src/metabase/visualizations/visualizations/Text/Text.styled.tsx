@@ -4,8 +4,8 @@ import styled from "@emotion/styled";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { alpha } from "metabase/lib/colors";
 import {
-  breakpointMinExtraLarge,
   breakpointMaxExtraLarge,
+  breakpointMinExtraLarge,
 } from "metabase/styled-components/theme";
 
 const DEFAULT_CONTAINER_PADDING_SIZE = "0.75rem";

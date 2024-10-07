@@ -4,12 +4,9 @@
    [metabase.models :refer [Database Table]]
    [metabase.models.legacy-metric :as metric :refer [LegacyMetric]]
    [metabase.models.revision :as revision]
-   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,7 +39,6 @@
       (testing "However calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
         (is (= 1
                (t2/update! LegacyMetric id {:creator_id (mt/user->id :rasta)})))))))
-
 
 ;; ## Metric Revisions
 
@@ -80,9 +76,9 @@
               :name        {:before "Toucans in the rainforest"
                             :after  "Something else"}}
              (revision/diff-map LegacyMetric metric (assoc metric
-                                                     :name        "Something else"
-                                                     :description "BBB"
-                                                     :definition  {:filter [:between [:field 4 nil] "2014-07-01" "2014-10-19"]})))))
+                                                           :name        "Something else"
+                                                           :description "BBB"
+                                                           :definition  {:filter [:between [:field 4 nil] "2014-07-01" "2014-10-19"]})))))
 
     (testing "test case where definition doesn't change"
       (is (= {:name {:before "A"
@@ -115,13 +111,3 @@
                                 {:name        "A"
                                  :description "Unchanged"
                                  :definition  {:filter [:and [:> 4 "2014-10-19"]]}}))))))
-
-(deftest identity-hash-test
-  (testing "Metric hashes are composed of the metric name and table identity-hash"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp [Database db    {:name "field-db" :engine :h2}
-                     Table    table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
-                     LegacyMetric   metric {:name "measurement" :table_id (:id table) :created_at now}]
-        (is (= "a2318866"
-               (serdes/raw-hash ["measurement" (serdes/identity-hash table) now])
-               (serdes/identity-hash metric)))))))

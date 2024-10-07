@@ -12,7 +12,7 @@
   []
   (collection/children-location
    (t2/select-one [Collection :location :id]
-     :id (get-or-create-root-container-collection!))))
+                  :id (get-or-create-root-container-collection!))))
 
 (defn get-collection
   "Get collection named `collection-name`. If no location is given root collection for automatically
@@ -21,8 +21,8 @@
    (get-collection collection-name (root-container-location)))
   ([collection-name location]
    (t2/select-one-pk Collection
-     :name     collection-name
-     :location location)))
+                     :name     collection-name
+                     :location location)))
 
 (defn- create-collection!
   ([collection-name description]

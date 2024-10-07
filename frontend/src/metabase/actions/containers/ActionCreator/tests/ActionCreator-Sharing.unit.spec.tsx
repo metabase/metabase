@@ -7,7 +7,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./common";
-import { setup as baseSetup, SITE_URL } from "./common";
+import { SITE_URL, setup as baseSetup } from "./common";
 
 async function setup({
   action = createMockImplicitQueryAction(),

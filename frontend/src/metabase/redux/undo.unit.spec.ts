@@ -4,13 +4,13 @@ import { act } from "@testing-library/react";
 import type { Dispatch } from "metabase-types/store";
 
 import {
-  undoReducer,
   addUndo,
   dismissAllUndo,
   dismissUndo,
   pauseUndo,
   performUndo,
   resumeUndo,
+  undoReducer,
 } from "./undo";
 
 const MOCK_ID = "123";

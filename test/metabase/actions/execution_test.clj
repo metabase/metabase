@@ -27,7 +27,7 @@
                      :cache-strategy nil)]
           (mt/with-actions [_                   {:type :model :dataset_query dataset-query}
                             {:keys [action-id]} {:type :implicit :kind "row/update"}]
-            (process-userland-query-test/with-query-execution [qe query]
+            (process-userland-query-test/with-query-execution! [qe query]
               (is (= {"id" 1 "name" "Red Medicine"}
                      (actions.execution/fetch-values (action/select-action :id action-id) {"id" 1})))
               (is (=? {:action_id action-id}

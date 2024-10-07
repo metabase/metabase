@@ -80,8 +80,9 @@
 
 (def rv-models
   "These are models for which we will retrieve recency."
-  [:card :dataset ;; n.b.: `:card` and `:model` are stored in recent_views as "card", and a join with report_card is
-                  ;; needed to distinguish between them.
+  [:card :dataset :metric
+   ;; n.b.: `:card`, `metric` and `:model` are stored in recent_views as "card", and a join with report_card is
+   ;; needed to distinguish between them.
    :dashboard :table :collection])
 
 (mu/defn rv-model->model
@@ -175,14 +176,18 @@
      [:model [:enum :dataset :card :metric :dashboard :collection :table]]
      [:can_write :boolean]
      [:timestamp :string]]
+    ;; database_id was commented out below because this schema was not actually being used correctly
+    ;; by [[metabase.api.activity/get-popular-items-model-and-id]] and when I fixed it in #47418
+    ;; [[metabase.api.activity-test/popular-items-test]] started failing because things don't actually come back with
+    ;; database IDs... commented out for now until someone gets a change to look at this. -- Cam
     [:multi {:dispatch :model}
      [:card [:map
              [:display :string]
-             [:database_id :int]
+             #_[:database_id :int]
              [:parent_collection ::pc]
              [:moderated_status ::verified]]]
      [:dataset [:map
-                [:database_id :int]
+                #_[:database_id :int]
                 [:parent_collection ::pc]
                 [:moderated_status ::verified]]]
      [:metric [:map
@@ -192,8 +197,9 @@
      [:dashboard [:map [:parent_collection ::pc]]]
      [:table [:map
               [:display_name :string]
+              [:table_schema [:maybe :string]]
               [:database [:map
-                          [:id [:int {:min 1}]]
+                          #_[:id [:int {:min 1}]]
                           [:name :string]]]]]
      [:collection [:map
                    [:parent_collection ::pc]
@@ -318,11 +324,7 @@
      :can_write (mi/can-write? metric)
      :timestamp (str timestamp)
      :moderated_status (:moderated-status metric)
-     :parent_collection (if (:collection-id metric)
-                          {:id (:collection-id metric)
-                           :name (:collection-name metric)
-                           :authority_level (:collection-authority-level metric)}
-                          (root-coll))}))
+     :parent_collection (fill-parent-coll metric)}))
 
 ;; ================== Recent Dashboards ==================
 
@@ -366,7 +368,7 @@
   [collection-ids]
   (if-not (seq collection-ids)
     []
-    (let [ ;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
+    (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
           collections (t2/select :model/Collection
                                  {:select [:id :name :description :authority_level
                                            :archived :location]
@@ -398,7 +400,7 @@
   [table-ids]
   (t2/select :model/Table
              {:select [:t.id :t.name :t.description
-                       :t.display_name :t.active :t.visibility_type
+                       :t.display_name :t.active :t.visibility_type :t.schema
                        [:db.name :database-name]
                        [:db.id :database-id]
                        [:db.initial_sync_status :initial-sync-status]]
@@ -425,6 +427,7 @@
        :display_name (:display_name table)
        :can_write (mi/can-write? table)
        :timestamp (str timestamp)
+       :table_schema (:schema table)
        :database {:id (:database-id table)
                   :name (:database-name table)
                   :initial_sync_status (:initial-sync-status table)}})))

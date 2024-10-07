@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, getIcon, queryIcon, within } from "__support__/ui";
+import { getIcon, queryIcon, screen, waitFor, within } from "__support__/ui";
 import {
   createMockActionParameter,
   createMockCard,
@@ -83,16 +83,20 @@ describe("ActionCreator > Query Actions", () => {
         await userEvent.click(within(view).getByRole("textbox"));
         await userEvent.paste("select * from orders where {{paramNane}}");
 
-        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        await userEvent.click(
+          await screen.findByRole("button", { name: "Save" }),
+        );
 
         // form is rendered
         expect(
-          screen.getByPlaceholderText("My new fantastic action"),
+          await screen.findByPlaceholderText("My new fantastic action"),
         ).toBeInTheDocument();
         // model is preselected
-        expect(
-          screen.getByTestId("collection-picker-button"),
-        ).toHaveTextContent(MODEL_NAME);
+        await waitFor(() =>
+          expect(
+            screen.getByTestId("collection-picker-button"),
+          ).toHaveTextContent(MODEL_NAME),
+        );
       });
     });
   });

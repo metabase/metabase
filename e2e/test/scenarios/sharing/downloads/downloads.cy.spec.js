@@ -20,6 +20,7 @@ import {
   getDashboardCard,
   getDashboardCardMenu,
   multiAutocompleteInput,
+  openSharingMenu,
   popover,
   queryBuilderMain,
   resetSnowplow,
@@ -144,6 +145,95 @@ describe("scenarios > question > download", () => {
           expect(sheet["A2"].w).to.eq("39.718145389078366");
         },
       );
+    });
+  });
+
+  it("respects renamed columns in self-joins", () => {
+    const idLeftRef = [
+      "field",
+      ORDERS.ID,
+      {
+        "base-type": "type/BigInteger",
+      },
+    ];
+    const idRightRef = [
+      "field",
+      ORDERS.ID,
+      {
+        "base-type": "type/BigInteger",
+        "join-alias": "Orders",
+      },
+    ];
+    const totalLeftRef = [
+      "field",
+      ORDERS.TOTAL,
+      {
+        "base-type": "type/Float",
+      },
+    ];
+    const totalRightRef = [
+      "field",
+      ORDERS.TOTAL,
+      {
+        "base-type": "type/Float",
+        "join-alias": "Orders",
+      },
+    ];
+
+    const totalLeftColumnKey = '["name","TOTAL"]';
+    const totalRightColumnKey = '["name","TOTAL_2"]';
+
+    createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          fields: [totalLeftRef],
+          joins: [
+            {
+              fields: [totalRightRef],
+              strategy: "left-join",
+              alias: "Orders",
+              condition: ["=", idLeftRef, idRightRef],
+              "source-table": ORDERS_ID,
+            },
+          ],
+          "order-by": [["desc", totalLeftRef]],
+          limit: 1,
+        },
+        visualization_settings: {
+          column_settings: {
+            [totalLeftColumnKey]: {
+              column_title: "Left Total",
+            },
+            [totalRightColumnKey]: {
+              column_title: "Right Total",
+            },
+          },
+        },
+      },
+      { visitQuestion: true, wrapId: true },
+    );
+
+    queryBuilderMain().findByText("Left Total").should("exist");
+    queryBuilderMain().findByText("Right Total").should("exist");
+
+    cy.get("@questionId").then(questionId => {
+      testCases.forEach(fileType => {
+        const opts = { questionId, fileType };
+
+        downloadAndAssert(
+          {
+            ...opts,
+            enableFormatting: true,
+          },
+          sheet => {
+            expect(sheet["A1"].v).to.eq("Left Total");
+            expect(sheet["A2"].v).to.closeTo(159.35, 0.01);
+            expect(sheet["B1"].v).to.eq("Right Total");
+            expect(sheet["B2"].v).to.closeTo(159.35, 0.01);
+          },
+        );
+      });
     });
   });
 
@@ -328,11 +418,7 @@ describe("scenarios > dashboard > download pdf", () => {
       visitDashboard(dashboard.id);
     });
 
-    cy.findByLabelText("Move, trash, and more…").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Export as PDF").click();
-
+    openSharingMenu("Export as PDF");
     cy.verifyDownload(`saving pdf dashboard - ${date}.pdf`);
   });
 });
@@ -355,9 +441,7 @@ describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
       visitDashboard(dashboard.id);
-      cy.findByLabelText("Move, trash, and more…").click();
-
-      popover().findByText("Export as PDF").click();
+      openSharingMenu("Export as PDF");
 
       expectGoodSnowplowEvent({
         event: "dashboard_pdf_exported",

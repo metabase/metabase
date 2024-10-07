@@ -7,19 +7,18 @@ import {
   getEditingParameter,
   getParameters,
 } from "metabase/dashboard/selectors";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import type {
   CardId,
-  Dashboard as IDashboard,
+  DashCardId,
+  DashCardVisualizationSettings,
   DashboardCard,
   DashboardId,
   DashboardTabId,
-  DashCardId,
-  DashCardVisualizationSettings,
+  Dashboard as IDashboard,
   ParameterId,
   TemporalUnit,
   ValuesQueryType,
@@ -33,6 +32,7 @@ import { ActionSidebarConnected } from "./ActionSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
+import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
 
 interface DashboardSidebarsProps {
   dashboard: IDashboard;
@@ -126,7 +126,6 @@ export function DashboardSidebars({
         cardId: cardId,
         tabId: selectedTabId,
       });
-      MetabaseAnalytics.trackStructEvent("Dashboard", "Add Card");
     },
     [addCardToDashboard, dashboard.id, selectedTabId],
   );
@@ -209,6 +208,13 @@ export function DashboardSidebars({
         />
       );
     }
+    case SIDEBAR_NAME.settings:
+      return (
+        <DashboardSettingsSidebar
+          dashboard={dashboard}
+          onClose={closeSidebar}
+        />
+      );
     case SIDEBAR_NAME.sharing:
       return <SharingSidebar dashboard={dashboard} onCancel={onCancel} />;
     case SIDEBAR_NAME.info:
@@ -216,6 +222,7 @@ export function DashboardSidebars({
         <DashboardInfoSidebar
           dashboard={dashboard}
           setDashboardAttribute={setDashboardAttribute}
+          onClose={closeSidebar}
         />
       );
     default:

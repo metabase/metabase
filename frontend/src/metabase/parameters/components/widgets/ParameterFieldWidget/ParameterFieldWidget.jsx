@@ -8,8 +8,8 @@ import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
-  WidgetRoot,
   Footer,
+  WidgetRoot,
 } from "metabase/parameters/components/widgets/Widget.styled";
 import {
   getFilterArgumentFormatOptions,

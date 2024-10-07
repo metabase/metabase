@@ -21,9 +21,9 @@ import { getCardsSeriesModels, getDimensionModel } from "../../model/series";
 import { getAxisTransforms } from "../../model/transforms";
 import { getTrendLines } from "../../model/trend-line";
 import type {
-  ScatterPlotModel,
   ChartDataset,
   Extent,
+  ScatterPlotModel,
   SeriesModel,
 } from "../../model/types";
 
@@ -57,6 +57,7 @@ const getBubbleSizeDomain = (
 export function getScatterPlotModel(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
+  hiddenSeries: string[],
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): ScatterPlotModel {
@@ -68,6 +69,7 @@ export function getScatterPlotModel(
   const unsortedSeriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,
+    hiddenSeries,
     settings,
     renderingContext,
   );

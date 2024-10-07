@@ -2,8 +2,8 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createQuestion,
   getNotebookStep,
-  openNotebook,
   modal,
+  openNotebook,
   popover,
   restore,
   tableHeaderClick,

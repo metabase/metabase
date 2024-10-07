@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
-import { Flex, Icon, Text, Button, Box } from "metabase/ui";
+import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import { LargeIconContainer, MigrationCard } from "./CloudPanel.styled";

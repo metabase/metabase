@@ -103,21 +103,21 @@
   (log/debug "Checking whether settings cache is out of date (requires DB call)...")
   (let [current-cache (cache)]
     (boolean
-      (or
+     (or
         ;; is the cache empty?
-        (not current-cache)
+      (not current-cache)
         ;; if not, get the cached value of `settings-last-updated`, and if it exists...
-        (when-let [last-known-update (core/get current-cache settings-last-updated-key)]
+      (when-let [last-known-update (core/get current-cache settings-last-updated-key)]
           ;; compare it to the value in the DB. This is done be seeing whether a row exists
           ;; WHERE value > <local-value>
-          (u/prog1 (t2/select-one-fn :value 'Setting
-                     {:where [:and
-                              [:= :key settings-last-updated-key]
-                              [:> :value last-known-update]]})
-            (log/trace "last known Settings update: " (pr-str last-known-update))
-            (log/trace "actual last Settings update:" (pr-str <>))
-            (when <>
-              (log/info (u/format-color :red "Settings have been changed on another instance, and will be reloaded here.")))))))))
+        (u/prog1 (t2/select-one-fn :value 'Setting
+                                   {:where [:and
+                                            [:= :key settings-last-updated-key]
+                                            [:> :value last-known-update]]})
+          (log/trace "last known Settings update: " (pr-str last-known-update))
+          (log/trace "actual last Settings update:" (pr-str <>))
+          (when <>
+            (log/info (u/format-color :red "Settings have been changed on another instance, and will be reloaded here.")))))))))
 
 (def ^:const cache-update-check-interval-ms
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"

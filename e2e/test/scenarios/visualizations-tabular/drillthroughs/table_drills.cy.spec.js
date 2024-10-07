@@ -1,10 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   openReviewsTable,
+  openTable,
   popover,
   restore,
   tableHeaderClick,
-  openTable,
 } from "e2e/support/helpers";
 
 const { REVIEWS, REVIEWS_ID, ACCOUNTS_ID } = SAMPLE_DATABASE;

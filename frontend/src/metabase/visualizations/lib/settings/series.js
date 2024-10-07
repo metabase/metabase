@@ -4,15 +4,15 @@ import { t } from "ttag";
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import {
   SERIES_COLORS_SETTING_KEY,
-  getSeriesDefaultLinearInterpolate,
-  getSeriesDefaultLineMarker,
-  getSeriesDefaultLineMissing,
+  SERIES_SETTING_KEY,
   getSeriesColors,
   getSeriesDefaultDisplay,
-  SERIES_SETTING_KEY,
-  getSeriesDefaultShowSeriesValues,
-  getSeriesDefaultLineStyle,
+  getSeriesDefaultLineMarker,
+  getSeriesDefaultLineMissing,
   getSeriesDefaultLineSize,
+  getSeriesDefaultLineStyle,
+  getSeriesDefaultLinearInterpolate,
+  getSeriesDefaultShowSeriesValues,
 } from "metabase/visualizations/shared/settings/series";
 
 import { getNameForCard } from "../series";
@@ -26,11 +26,7 @@ export function keyForSingleSeries(single) {
 
 const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
 
-export function seriesSetting({
-  readDependencies = [],
-  noPadding,
-  ...def
-} = {}) {
+export function seriesSetting({ readDependencies = [], def } = {}) {
   const COMMON_SETTINGS = {
     // title, and color don't need widgets because they're handled directly in ChartNestedSettingSeries
     title: {

@@ -61,7 +61,7 @@
                 "normalized")
     (is (= {:model "Card", :object {:dataset_query {:type :query}}}
            (mt/derecordize
-             (mi/do-after-select Revision {:model "Card", :object {:dataset_query {:type "query"}}}))))))
+            (mi/do-after-select Revision {:model "Card", :object {:dataset_query {:type "query"}}}))))))
 
 ;;; # Default diff-* implementations
 
@@ -70,34 +70,34 @@
                 "changed")
     (is (= "renamed this Card from \"Tips by State\" to \"Spots by State\"."
            (u/build-sentence
-             ((get-method revision/diff-strings :default)
-              Card
-              {:name "Tips by State", :private false}
-              {:name "Spots by State", :private false}))))
+            ((get-method revision/diff-strings :default)
+             Card
+             {:name "Tips by State", :private false}
+             {:name "Spots by State", :private false}))))
 
     (is (= "made this Card private."
            (u/build-sentence
-             ((get-method revision/diff-strings :default)
-              Card
-              {:name "Spots by State", :private false}
-              {:name "Spots by State", :private true}))))))
+            ((get-method revision/diff-strings :default)
+             Card
+             {:name "Spots by State", :private false}
+             {:name "Spots by State", :private true}))))))
 
 (deftest ^:parallel multiple-changes-test
   (testing "Check that 2 changes are handled nicely"
     (is (= "made this Card private and renamed it from \"Tips by State\" to \"Spots by State\"."
            (u/build-sentence
-             ((get-method revision/diff-strings :default)
-              Card
-              {:name "Tips by State", :private false}
-              {:name "Spots by State", :private true})))))
+            ((get-method revision/diff-strings :default)
+             Card
+             {:name "Tips by State", :private false}
+             {:name "Spots by State", :private true})))))
 
   (testing "Check that several changes are handled nicely"
     (is (= "turned this to a model, made it private and renamed it from \"Tips by State\" to \"Spots by State\"."
            (u/build-sentence
-             ((get-method revision/diff-strings :default)
-              Card
-              {:name "Tips by State", :private false, :type "question"}
-              {:name "Spots by State", :private true, :type "model"}))))))
+            ((get-method revision/diff-strings :default)
+             Card
+             {:name "Tips by State", :private false, :type "question"}
+             {:name "Spots by State", :private true, :type "model"}))))))
 
 (deftest ^:parallel revision-contains-changes-that-has-havent-been-specced-test
   (testing "When revision object contains key that we don't know how to generate diff-string
@@ -139,16 +139,16 @@
       (t2.with-temp/with-temp [Card {card-id :id}]
         (doseq [i (range 3)]
           (push-fake-revision! card-id :name (format "%d Tips Created by Day" i) :message "yay!"))
-       (is (=? [{:model       "FakedCard"
-                 :model_id    card-id
-                 :most_recent true}
-                {:model       "FakedCard"
-                 :model_id    card-id
-                 :most_recent false}
-                {:model       "FakedCard"
-                 :model_id    card-id
-                 :most_recent false}]
-               (t2/select :model/Revision :model "FakedCard" :model_id card-id {:order-by [[:timestamp :desc] [:id :desc]]})))))))
+        (is (=? [{:model       "FakedCard"
+                  :model_id    card-id
+                  :most_recent true}
+                 {:model       "FakedCard"
+                  :model_id    card-id
+                  :most_recent false}
+                 {:model       "FakedCard"
+                  :model_id    card-id
+                  :most_recent false}]
+                (t2/select :model/Revision :model "FakedCard" :model_id card-id {:order-by [[:timestamp :desc] [:id :desc]]})))))))
 
 (deftest update-revision-does-not-update-timestamp-test
   ;; Realistically this only happens on mysql and mariadb for some reasons

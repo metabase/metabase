@@ -69,7 +69,7 @@
          ;; TODO mt/with-empty-h2-app-db also rebinds some perms-group/* - do we want to do that too?
          ;;   redefs not great for parallelism
          (testing (format "\nApp DB = %s" (pr-str (-data-source-url ~data-source)))
-           ~@body)))) )
+           ~@body)))))
 
 (defn- do-with-in-memory-h2-db [db-name-prefix f]
   (let [db-name           (str db-name-prefix "-" (mt/random-name))
@@ -88,9 +88,9 @@
     (recur (dec arity)
            (fn [& args]
              (do-with-in-memory-h2-db
-               (str "db-" arity)
-               (fn [data-source]
-                 (apply f data-source args)))))))
+              (str "db-" arity)
+              (fn [data-source]
+                (apply f data-source args)))))))
 
 (defmacro with-dbs
   "Create and set up in-memory H2 application databases for each symbol in the bindings vector, each of which is then
@@ -111,7 +111,7 @@
 
 (defn do-with-random-dump-dir [prefix f]
   (let [dump-dir (random-dump-dir (or prefix ""))]
-    (testing (format "\nDump dir = %s" (pr-str dump-dir))
+    (testing (format "\nDump dir = %s\n" (pr-str dump-dir))
       (try
         (f dump-dir)
         (finally

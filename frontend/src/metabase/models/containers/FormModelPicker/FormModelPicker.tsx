@@ -1,12 +1,12 @@
 import { useField } from "formik";
 import type { HTMLAttributes } from "react";
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
 import {
-  getQuestionPickerValue,
   QuestionPickerModal,
+  getQuestionPickerValue,
 } from "metabase/common/components/QuestionPicker";
 import FormField from "metabase/core/components/FormField";
 import { useUniqueId } from "metabase/hooks/use-unique-id";

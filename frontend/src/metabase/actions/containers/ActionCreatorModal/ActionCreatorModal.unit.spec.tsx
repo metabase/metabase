@@ -8,11 +8,11 @@ import {
   setupModelActionsEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
-  act,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import type { Card, WritebackAction } from "metabase-types/api";

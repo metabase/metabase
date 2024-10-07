@@ -1,7 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
-import type { ComponentStory, Story } from "@storybook/react";
-import { useEffect, type ComponentProps } from "react";
+import type { StoryFn } from "@storybook/react";
+import { type ComponentProps, useEffect } from "react";
 import { Provider } from "react-redux";
 
 import { getStore } from "__support__/entities-store";
@@ -12,8 +12,11 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 import { waitTimeContext } from "metabase/context/wait-time";
 import LegacyTooltip from "metabase/core/components/Tooltip";
 import { publicReducers } from "metabase/reducers-public";
-import { Box, Card, Text, Tooltip, Popover } from "metabase/ui";
+import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
+import { registerVisualization } from "metabase/visualizations";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
+import ObjectDetail from "metabase/visualizations/visualizations/ObjectDetail";
+import type { DashboardCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -29,7 +32,10 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
+import {
+  PublicOrEmbeddedDashboardView,
+  type PublicOrEmbeddedDashboardViewProps,
+} from "./PublicOrEmbeddedDashboardView";
 
 export default {
   title: "embed/PublicOrEmbeddedDashboardView",
@@ -45,7 +51,7 @@ export default {
   },
 };
 
-function ReduxDecorator(Story: Story) {
+function ReduxDecorator(Story: StoryFn) {
   return (
     <Provider store={store}>
       <Story />
@@ -53,7 +59,7 @@ function ReduxDecorator(Story: Story) {
   );
 }
 
-function FasterExplicitSizeUpdateDecorator(Story: Story) {
+function FasterExplicitSizeUpdateDecorator(Story: StoryFn) {
   return (
     <waitTimeContext.Provider value={0}>
       <Story />
@@ -67,7 +73,7 @@ function FasterExplicitSizeUpdateDecorator(Story: Story) {
  * make sure we finish resizing any ExplicitSize components the fastest.
  */
 const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
-function WaitForResizeToStopDecorator(Story: Story) {
+function WaitForResizeToStopDecorator(Story: StoryFn) {
   const asyncCallback = createAsyncCallback();
   useEffect(() => {
     setTimeout(asyncCallback, TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING);
@@ -81,7 +87,7 @@ declare global {
     overrideIsWithinIframe?: boolean;
   }
 }
-function MockIsEmbeddingDecorator(Story: Story) {
+function MockIsEmbeddingDecorator(Story: StoryFn) {
   window.overrideIsWithinIframe = true;
   return <Story />;
 }
@@ -94,6 +100,7 @@ const CARD_TABLE_ID = getNextId();
 const TAB_ID = getNextId();
 const PARAMETER_ID = "param-hex";
 const initialState = createMockState({
+  currentUser: null,
   settings: createMockSettingsState({
     "hide-embed-branding?": false,
   }),
@@ -125,13 +132,14 @@ const store = getStore(publicReducers, initialState);
 
 interface CreateDashboardOpts {
   hasScroll?: boolean;
+  dashcards?: DashboardCard[];
 }
-function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
+function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
   return createMockDashboard({
     id: DASHBOARD_ID,
     name: "My dashboard",
     width: "full",
-    dashcards: [
+    dashcards: dashcards ?? [
       createMockDashboardCard({
         id: DASHCARD_BAR_ID,
         dashboard_tab_id: TAB_ID,
@@ -162,7 +170,7 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
+const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = args => {
   return <PublicOrEmbeddedDashboardView {...args} />;
 };
 
@@ -183,102 +191,138 @@ const defaultArgs: Partial<
   ],
 };
 
-// Light theme
-export const LightThemeDefault = Template.bind({});
-LightThemeDefault.args = defaultArgs;
-
-export const LightThemeScroll = Template.bind({});
-LightThemeScroll.args = {
-  ...defaultArgs,
-  dashboard: createDashboard({ hasScroll: true }),
-};
-LightThemeScroll.decorators = [ScrollDecorator];
-
-export const LightThemeNoBackgroundDefault = Template.bind({});
-LightThemeNoBackgroundDefault.args = {
-  ...defaultArgs,
-  background: false,
+export const LightThemeDefault = {
+  render: Template,
+  args: defaultArgs,
 };
 
-export const LightThemeNoBackgroundScroll = Template.bind({});
-LightThemeNoBackgroundScroll.args = {
-  ...defaultArgs,
-  background: false,
-  dashboard: createDashboard({ hasScroll: true }),
-};
-LightThemeNoBackgroundScroll.decorators = [ScrollDecorator];
+export const LightThemeScroll = {
+  render: Template,
 
-// Dark theme
-export const DarkThemeDefault = Template.bind({});
-DarkThemeDefault.args = {
-  ...defaultArgs,
-  theme: "night",
-};
-DarkThemeDefault.decorators = [DarkBackgroundDecorator];
+  args: {
+    ...defaultArgs,
+    dashboard: createDashboard({ hasScroll: true }),
+  },
 
-export const DarkThemeScroll = Template.bind({});
-DarkThemeScroll.args = {
-  ...defaultArgs,
-  theme: "night",
-  dashboard: createDashboard({ hasScroll: true }),
+  decorators: [ScrollDecorator],
 };
-DarkThemeScroll.decorators = [DarkBackgroundDecorator, ScrollDecorator];
 
-export const DarkThemeNoBackgroundDefault = Template.bind({});
-DarkThemeNoBackgroundDefault.args = {
-  ...defaultArgs,
-  theme: "night",
-  background: false,
-};
-DarkThemeNoBackgroundDefault.decorators = [DarkBackgroundDecorator];
+export const LightThemeNoBackgroundDefault = {
+  render: Template,
 
-export const DarkThemeNoBackgroundScroll = Template.bind({});
-DarkThemeNoBackgroundScroll.args = {
-  ...defaultArgs,
-  theme: "night",
-  background: false,
-  dashboard: createDashboard({ hasScroll: true }),
+  args: {
+    ...defaultArgs,
+    background: false,
+  },
 };
-DarkThemeNoBackgroundScroll.decorators = [
-  DarkBackgroundDecorator,
-  ScrollDecorator,
-];
 
-// Transparent theme
-export const TransparentThemeDefault = Template.bind({});
-TransparentThemeDefault.args = {
-  ...defaultArgs,
-  theme: "transparent",
-};
-TransparentThemeDefault.decorators = [LightBackgroundDecorator];
+export const LightThemeNoBackgroundScroll = {
+  render: Template,
 
-export const TransparentThemeScroll = Template.bind({});
-TransparentThemeScroll.args = {
-  ...defaultArgs,
-  theme: "transparent",
-  dashboard: createDashboard({ hasScroll: true }),
-};
-TransparentThemeScroll.decorators = [LightBackgroundDecorator, ScrollDecorator];
+  args: {
+    ...defaultArgs,
+    background: false,
+    dashboard: createDashboard({ hasScroll: true }),
+  },
 
-export const TransparentThemeNoBackgroundDefault = Template.bind({});
-TransparentThemeNoBackgroundDefault.args = {
-  ...defaultArgs,
-  theme: "transparent",
-  background: false,
+  decorators: [ScrollDecorator],
 };
-TransparentThemeNoBackgroundDefault.decorators = [LightBackgroundDecorator];
 
-export const TransparentThemeNoBackgroundScroll = Template.bind({});
-TransparentThemeNoBackgroundScroll.args = {
-  ...defaultArgs,
-  theme: "transparent",
-  background: false,
-  dashboard: createDashboard({ hasScroll: true }),
+export const DarkThemeDefault = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "night",
+  },
+
+  decorators: [DarkBackgroundDecorator],
 };
-TransparentThemeNoBackgroundScroll.decorators = [
-  LightBackgroundDecorator,
-  ScrollDecorator,
-];
+
+export const DarkThemeScroll = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "night",
+    dashboard: createDashboard({ hasScroll: true }),
+  },
+
+  decorators: [DarkBackgroundDecorator, ScrollDecorator],
+};
+
+export const DarkThemeNoBackgroundDefault = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "night",
+    background: false,
+  },
+
+  decorators: [DarkBackgroundDecorator],
+};
+
+export const DarkThemeNoBackgroundScroll = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "night",
+    background: false,
+    dashboard: createDashboard({ hasScroll: true }),
+  },
+
+  decorators: [DarkBackgroundDecorator, ScrollDecorator],
+};
+
+export const TransparentThemeDefault = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "transparent",
+  },
+
+  decorators: [LightBackgroundDecorator],
+};
+
+export const TransparentThemeScroll = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "transparent",
+    dashboard: createDashboard({ hasScroll: true }),
+  },
+
+  decorators: [LightBackgroundDecorator, ScrollDecorator],
+};
+
+export const TransparentThemeNoBackgroundDefault = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "transparent",
+    background: false,
+  },
+
+  decorators: [LightBackgroundDecorator],
+};
+
+export const TransparentThemeNoBackgroundScroll = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    theme: "transparent",
+    background: false,
+    dashboard: createDashboard({ hasScroll: true }),
+  },
+
+  decorators: [LightBackgroundDecorator, ScrollDecorator],
+};
 
 // Other components compatibility test
 export function ComponentCompatibility() {
@@ -357,8 +401,45 @@ export function ComponentCompatibility() {
   );
 }
 
+// Card visualizations
+
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(ObjectDetail);
+
+export const CardVisualizationsLightTheme = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    dashboard: createDashboard({
+      dashcards: [
+        createMockDashboardCard({
+          id: DASHCARD_TABLE_ID,
+          dashboard_tab_id: TAB_ID,
+          card: createMockCard({
+            id: CARD_TABLE_ID,
+            name: "Table detail",
+            display: "object",
+          }),
+          size_x: 12,
+          size_y: 8,
+        }),
+      ],
+    }),
+  },
+};
+
+export const CardVisualizationsDarkTheme = {
+  render: Template,
+
+  args: {
+    ...CardVisualizationsLightTheme.args,
+    theme: "night",
+  },
+};
+
 const EXPLICIT_SIZE_WAIT_TIME = 300;
-function ScrollDecorator(Story: Story) {
+function ScrollDecorator(Story: StoryFn) {
   useEffect(() => {
     setTimeout(() => {
       document.querySelector("[data-testid=embed-frame]")?.scrollBy(0, 9999);
@@ -367,7 +448,7 @@ function ScrollDecorator(Story: Story) {
   return <Story />;
 }
 
-function DarkBackgroundDecorator(Story: Story) {
+function DarkBackgroundDecorator(Story: StoryFn) {
   return (
     <Box bg="#434e56" mih="100vh">
       <Story />
@@ -375,7 +456,7 @@ function DarkBackgroundDecorator(Story: Story) {
   );
 }
 
-function LightBackgroundDecorator(Story: Story) {
+function LightBackgroundDecorator(Story: StoryFn) {
   return (
     <Box bg="#ddd" mih="100vh">
       <Story />

@@ -1,23 +1,26 @@
 import type {
-  ModerationReview,
   Card,
-  UnsavedCard,
-  VisualizationSettings,
-  SeriesOrderSetting,
-  StructuredDatasetQuery,
+  CardQueryMetadata,
+  ModerationReview,
   NativeDatasetQuery,
   PublicCard,
+  SeriesOrderSetting,
+  StructuredDatasetQuery,
   TableColumnOrderSetting,
-  CardQueryMetadata,
+  UnsavedCard,
+  VisualizationSettings,
 } from "metabase-types/api";
 
+import { createMockEntityId } from "./entity-id";
 import {
   createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
 } from "./query";
 
+const MOCK_CARD_ENTITY_ID = createMockEntityId();
 export const createMockCard = (opts?: Partial<Card>): Card => ({
   id: 1,
+  entity_id: MOCK_CARD_ENTITY_ID,
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
   name: "Question",

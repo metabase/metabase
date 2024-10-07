@@ -41,7 +41,7 @@
             :max-queued    (config/config-int :mb-jetty-maxqueued)
             :max-idle-time (config/config-int :mb-jetty-maxidletime)})
     (config/config-int :mb-jetty-request-header-size) (assoc :request-header-size (config/config-int
-                                                                                    :mb-jetty-request-header-size))
+                                                                                   :mb-jetty-request-header-size))
     (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))
     (config/config-str :mb-jetty-ssl)    (-> (assoc :ssl? true)
                                              (merge (jetty-ssl-config)))))

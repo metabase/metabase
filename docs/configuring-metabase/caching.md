@@ -68,7 +68,7 @@ On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.meta
 
 ### Don’t cache results
 
-Metabase will never cache results. It will always run the query against the database to refresh results.
+If you select "Don't cache results" for a question, dashboard, or database, Metabase won't cache its results; it'll always run the query against the database to refresh results.
 
 ## Set caching policies for dashboards, questions, and databases
 
@@ -83,7 +83,7 @@ _* Denotes [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://
 
 ### Default caching policy
 
-To set a default caching policy for your Metabase: Hit Cmd/Ctrl + k to bring up the command palette and search for **Performance**. Or, click through **Gear** settings icon > **Admin settings** > **Performance** > **Database caching settings**.
+To set a default caching policy for your Metabase: Hit Cmd/Ctrl + k to bring up the command palette and search for **Performance**. Or, click through **Gear** settings icon > **Admin settings** > **Performance** > **Database caching**.
 
 Click on the button next to **Default policy**, and select a [cache invalidation policy](#cache-invalidation-policies).
 
@@ -137,7 +137,7 @@ A question policy overrides a dashboard policy, which overrides a database polic
 To clear the cache and refresh the results:
 
 - **Questions and dashboards**: Visit the item and click through the **Info > Caching policy > Clear cache** (the "Clear cache" button is at the bottom of the sidebar).
-- **Database**: Click the **Gear** icon and click through **Admin settings** > **Performance** > **Database caching settings**. Select your database and click the **Clear cache** button (at the bottom of the page).
+- **Database**: Click the **Gear** icon and click through **Admin settings** > **Performance** > **Database caching**. Select your database and click the **Clear cache** button (at the bottom of the page).
 
 ## Caching location
 

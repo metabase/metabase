@@ -12,7 +12,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
 import ModelDetailLink from "metabase/models/components/ModelDetailLink";
-import { Skeleton, type IconName } from "metabase/ui";
+import { type IconName, Skeleton } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -45,7 +45,7 @@ type ItemOrSkeleton =
       iconForSkeleton: IconName;
     };
 
-type Props = {
+export type PinnedItemCardProps = {
   databases?: Database[];
   bookmarks?: Bookmark[];
   createBookmark?: CreateBookmark;
@@ -84,7 +84,7 @@ function PinnedItemCard({
   onMove,
   onClick,
   iconForSkeleton,
-}: Props) {
+}: PinnedItemCardProps) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
   const icon =
     iconForSkeleton ??
@@ -112,7 +112,7 @@ function PinnedItemCard({
   return (
     <ItemLink
       className={className}
-      to={item ? modelToUrl(item) ?? "/" : undefined}
+      to={item ? (modelToUrl(item) ?? "/") : undefined}
       onClick={onClick}
     >
       <ItemCard flat>

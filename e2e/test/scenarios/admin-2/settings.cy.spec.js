@@ -6,31 +6,38 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  openOrdersTable,
-  popover,
+  WEBHOOK_TEST_URL,
   describeEE,
-  setupMetabaseCloud,
-  onlyOnOSS,
-  isEE,
-  isOSS,
-  setTokenFeatures,
-  undoToast,
   describeWithSnowplow,
+  echartsContainer,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
-  resetSnowplow,
-  openNativeEditor,
-  runNativeQuery,
-  modal,
-  setupSMTP,
+  isEE,
+  isOSS,
   main,
-  echartsContainer,
+  modal,
+  onlyOnOSS,
+  openNativeEditor,
+  openOrdersTable,
+  popover,
+  resetSnowplow,
+  restore,
+  runNativeQuery,
+  setTokenFeatures,
+  setupMetabaseCloud,
+  setupSMTP,
+  tableHeaderClick,
+  undoToast,
+  updateSetting,
   visitQuestion,
   visitQuestionAdhoc,
-  tableHeaderClick,
-  mockSessionPropertiesTokenFeatures,
 } from "e2e/support/helpers";
+
+import {
+  WEBHOOK_TEST_DASHBOARD,
+  WEBHOOK_TEST_HOST,
+  WEBHOOK_TEST_SESSION_ID,
+} from "../../../support/helpers/e2e-notification-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const { SMTP_PORT, WEB_PORT } = WEBMAIL_CONFIG;
@@ -343,7 +350,7 @@ describeWithSnowplow("scenarios > admin > settings", () => {
 
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
-      cy.visit("/admin/settings/slack");
+      cy.visit("/admin/settings/notifications/slack");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Metabase on Slack");
@@ -788,9 +795,7 @@ describe("scenarios > admin > license and billing", () => {
 
 describe("scenarios > admin > localization", () => {
   function setFirstWeekDayTo(day) {
-    cy.request("PUT", "/api/setting/start-of-week", {
-      value: day.toLowerCase(),
-    });
+    updateSetting("start-of-week", day.toLowerCase());
   }
 
   beforeEach(() => {
@@ -1135,47 +1140,238 @@ describe("scenarios > admin > settings > map settings", () => {
   });
 });
 
-describe("admin > upload settings", () => {
-  describe("scenarios > admin > uploads (OSS)", { tags: "@OSS" }, () => {
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
+// Ensure the webhook tester docker container is running
+// docker run -p 9080:8080/tcp tarampampam/webhook-tester serve --create-session 00000000-0000-0000-0000-000000000000
+describe("notifications", { tags: "@external" }, () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  describe("Auth", () => {
+    afterEach(() => {
+      cy.request(
+        "DELETE",
+        `${WEBHOOK_TEST_HOST}/api/session/${WEBHOOK_TEST_SESSION_ID}/requests`,
+        { failOnStatusCode: false },
+      );
     });
 
-    it("should show the uploads settings page", () => {
-      cy.visit("/admin/settings/uploads");
-      cy.findByTestId("admin-list-settings-items").findByText("Uploads");
-      cy.findByLabelText("Upload Settings Form").findByText(
-        "Database to use for uploads",
-      );
+    const COMMON_FIELDS = [
+      {
+        label: "Webhook URL",
+        value: WEBHOOK_TEST_URL,
+      },
+      {
+        label: "Give it a name",
+        value: "Awesome Hook",
+      },
+      {
+        label: "Description",
+        value: "The best hook ever",
+      },
+    ];
+
+    // 3 Auth methods that add to the request. Unfortunately the webhook tester docker image doesn't support
+    // query params at the moment. https://github.com/tarampampam/webhook-tester/issues/389
+    const AUTH_METHODS = [
+      {
+        display: "Basic",
+        name: "Basic",
+        populateFields: () => {
+          cy.findByLabelText("Username").type("test@metabase.com");
+          cy.findByLabelText("Password").type("password");
+        },
+        validate: () => {
+          cy.findByText("Authorization").should("exist");
+          cy.findByText("Basic dGVzdEBtZXRhYmFzZS5jb206cGFzc3dvcmQ=").should(
+            "exist",
+          );
+        },
+      },
+      {
+        display: "Bearer",
+        name: "Bearer",
+        populateFields: () => {
+          cy.findByLabelText("Bearer token").type("my-secret-token");
+        },
+        validate: () => {
+          cy.findByText("Authorization").should("exist");
+          cy.findByText("Bearer my-secret-token").should("exist");
+        },
+      },
+      {
+        display: "API Key - Header",
+        name: "API Key",
+        populateFields: () => {
+          cy.findByLabelText("Key").type("Mb_foo");
+          cy.findByLabelText("Value").type("mb-bar");
+        },
+        validate: () => {
+          cy.findByText("Mb_foo").should("exist");
+          cy.findByText("mb-bar").should("exist");
+        },
+      },
+    ];
+
+    AUTH_METHODS.forEach(auth => {
+      it(`${auth.display} Auth`, () => {
+        cy.visit("/admin/settings/notifications");
+        cy.findByRole("heading", { name: "Add a webhook" }).click();
+
+        modal().within(() => {
+          COMMON_FIELDS.forEach(field => {
+            cy.findByLabelText(field.label).type(field.value);
+          });
+
+          cy.findByRole("radio", { name: auth.name }).click({ force: true });
+
+          auth.populateFields();
+
+          cy.button("Create destination").click();
+        });
+
+        cy.visit(WEBHOOK_TEST_DASHBOARD);
+        cy.findByRole("heading", { name: /Requests 1/ }).should("exist");
+
+        auth.validate();
+      });
     });
   });
-  describeEE("scenarios > admin > uploads (EE)", () => {
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
-      setTokenFeatures("all");
+
+  it("Should allow you to create and edit Notifications", () => {
+    cy.visit("/admin/settings/notifications");
+
+    cy.findByRole("heading", { name: "Add a webhook" }).click();
+
+    modal().within(() => {
+      cy.findByRole("heading", { name: "New webhook destination" }).should(
+        "exist",
+      );
+
+      cy.findByLabelText("Webhook URL").type(`${WEBHOOK_TEST_URL}/404`);
+      cy.findByLabelText("Give it a name").type("Awesome Hook");
+      cy.findByLabelText("Description").type("The best hook ever");
+      cy.button("Create destination").click();
+
+      cy.findByText("Unable to connect channel").should("exist");
+      cy.findByLabelText("Webhook URL").clear().type(WEBHOOK_TEST_URL);
+      cy.button("Create destination").click();
     });
 
-    it("without attached-dwh should show the uploads settings page", () => {
-      mockSessionPropertiesTokenFeatures({ attached_dwh: false });
-      cy.visit("/admin/settings/uploads");
-      cy.findByTestId("admin-list-settings-items").findByText("Uploads");
-      cy.findByLabelText("Upload Settings Form").findByText(
-        "Database to use for uploads",
-      );
+    cy.findByRole("button", { name: /Add another/ }).should("exist");
+
+    cy.findByRole("heading", { name: "Awesome Hook" }).click();
+
+    modal().within(() => {
+      cy.findByRole("heading", { name: "Edit this webhook" }).should("exist");
+      cy.findByLabelText("Give it a name").clear().type("Updated Hook");
+      cy.button("Save changes").click();
     });
 
-    it("with attached-dwh should not show the uploads settings page", () => {
-      mockSessionPropertiesTokenFeatures({ attached_dwh: true });
-      cy.visit("/admin/settings/uploads");
-      cy.findByTestId("admin-list-settings-items")
-        .findByText("Uploads")
-        .should("not.exist");
+    cy.findByRole("heading", { name: "Updated Hook" }).click();
 
-      cy.findAllByLabelText("error page").findByText(
-        "The page you asked for couldn't be found.",
+    modal()
+      .button(/Delete this destination/)
+      .click();
+
+    cy.findByRole("heading", { name: "Add a webhook" }).should("exist");
+  });
+});
+
+describe("admin > settings > updates", () => {
+  // we're mocking this so it can be stable for tests
+  const versionInfo = {
+    latest: {
+      version: "v1.86.76",
+      released: "2022-10-14",
+      rollout: 60,
+      highlights: ["New latest feature", "Another new feature"],
+    },
+    beta: {
+      version: "v1.86.75.309",
+      released: "2022-10-15",
+      rollout: 70,
+      highlights: ["New beta feature", "Another new feature"],
+    },
+    nightly: {
+      version: "v1.86.75.311",
+      released: "2022-10-16",
+      rollout: 80,
+      highlights: ["New nightly feature", "Another new feature"],
+    },
+    older: [
+      {
+        version: "v1.86.75",
+        released: "2022-10-10",
+        rollout: 100,
+        highlights: ["Some old feature", "Another old feature"],
+      },
+    ],
+  };
+
+  const currentVersion = "v1.86.70";
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.visit("/admin/settings/updates");
+
+    cy.intercept("GET", "/api/session/properties", (req, res) => {
+      req.continue(res => {
+        res.body["version-info"] = versionInfo;
+        res.body.version.tag = currentVersion;
+        return res.body;
+      });
+    });
+  });
+
+  it("should show the updates page", () => {
+    cy.findByLabelText("Check for updates").should("be.visible");
+    cy.findByTestId("update-channel-setting")
+      .findByText("Update Channel")
+      .should("be.visible");
+
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText("Metabase 1.86.76 is available. You're running 1.86.70");
+      cy.findByText("Some old feature").should("be.visible");
+    });
+
+    cy.log("hide most things if updates are turned off");
+
+    cy.findByLabelText("Check for updates").click();
+
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText("Update Channel").should("not.exist");
+      cy.findByText("Some old feature").should("not.exist");
+    });
+  });
+
+  it("should change release notes based on the selected update channel", () => {
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText(/Metabase 1\.86\.76 is available/).should("be.visible");
+      cy.findByText("Some old feature").should("be.visible");
+      cy.findByText("New latest feature").should("be.visible");
+      cy.findByText("Stable").click();
+    });
+
+    popover().findByText("Beta").click();
+
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText(/Metabase 1\.86\.75\.309 is available/).should(
+        "be.visible",
       );
+      cy.findByText("New beta feature").should("be.visible");
+      cy.findByText("Beta").click();
+    });
+
+    popover().findByText("Nightly").click();
+
+    cy.findByTestId("settings-updates").within(() => {
+      cy.findByText(/Metabase 1\.86\.75\.311 is available/).should(
+        "be.visible",
+      );
+      cy.findByText("New nightly feature").should("be.visible");
     });
   });
 });

@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import type { PublicCard, EmbedDataset } from "metabase-types/api";
+import type { EmbedDataset, PublicCard } from "metabase-types/api";
 
 export function setupPublicQuestionEndpoints(
   uuid: string,

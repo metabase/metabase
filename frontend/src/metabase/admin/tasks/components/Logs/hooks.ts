@@ -1,5 +1,5 @@
 import { useInterval } from "@mantine/hooks";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";

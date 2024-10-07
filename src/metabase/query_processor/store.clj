@@ -25,7 +25,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-
 (set! *warn-on-reflection* true)
 
 (def ^:private uninitialized-store

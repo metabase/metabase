@@ -28,7 +28,7 @@
 (methodical/defmethod t2.model/primary-keys :model/Query [_model] [:query_hash])
 
 (t2/deftransforms :model/Query
- {:query mi/transform-json})
+  {:query mi/transform-json})
 
 (derive :model/Query :metabase/model)
 

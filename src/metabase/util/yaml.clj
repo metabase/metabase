@@ -2,7 +2,7 @@
   "Convenience functions for parsing and generating YAML."
   (:refer-clojure :exclude [load])
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
    [clojure.string :as str]

@@ -66,7 +66,7 @@ To get a URL for a [Google Font](https://fonts.google.com/), visit the Google Fo
 
 We'd paste the URL [https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap](https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap) into our browser's address bar. This URL will return a response like:
 
-```
+```css
 * cyrillic-ext */
 @font-face {
   font-family: 'Roboto Mono';
@@ -109,7 +109,7 @@ Then the link you'll need is:
 
 Which follows the pattern:
 
-```
+```txt
 raw.githubusercontent.com/${user}/${repo}/${branch}/${path}
 ```
 

@@ -16,38 +16,50 @@ export function getDashboardParameterSections(): ParameterSection[] {
   return [
     {
       id: "date",
-      name: t`Time`,
-      description: t`Date range, relative date, time of day, etc.`,
+      name: t`Date picker`,
+      description: t`Date range, specific date…`,
       options: buildTypedOperatorOptions("date", "date", t`Date`),
+    },
+    {
+      id: "temporal-unit",
+      name: t`Time grouping`,
+      description: t`Day, week, month, year…`,
+      options: [
+        {
+          name: t`Time grouping`,
+          type: "temporal-unit",
+          sectionId: "temporal-unit",
+        },
+      ],
     },
     {
       id: "location",
       name: t`Location`,
-      description: t`City, State, Country, ZIP code.`,
+      description: t`Country, State, Postal Code…`,
       options: buildTypedOperatorOptions("string", "location", t`Location`),
+    },
+    {
+      id: "string",
+      name: t`Text or Category`,
+      description: t`Contains, is, starts with…`,
+      options: buildTypedOperatorOptions("string", "string", t`Text`),
+    },
+    {
+      id: "number",
+      name: t`Number`,
+      description: t`Between, greater than…`,
+      options: buildTypedOperatorOptions("number", "number", t`Number`),
     },
     {
       id: "id",
       name: t`ID`,
-      description: t`User ID, Product ID, Event ID, etc.`,
+      description: t`Primary key, User ID…`,
       options: [
         {
           ...ID_OPTION,
           sectionId: "id",
         },
       ],
-    },
-    {
-      id: "number",
-      name: t`Number`,
-      description: t`Subtotal, Age, Price, Quantity, etc.`,
-      options: buildTypedOperatorOptions("number", "number", t`Number`),
-    },
-    {
-      id: "string",
-      name: t`Text or Category`,
-      description: t`Name, Rating, Description, etc.`,
-      options: buildTypedOperatorOptions("string", "string", t`Text`),
     },
   ];
 }
@@ -69,7 +81,7 @@ export function getDefaultOptionForParameterSectionMap(): Record<
   for (const section of sections) {
     const { id: sectionId, options } = section;
 
-    if (sectionId === "id") {
+    if (sectionId === "id" || sectionId === "temporal-unit") {
       map[sectionId] = options[0];
       continue;
     }

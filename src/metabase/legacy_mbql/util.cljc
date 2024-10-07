@@ -2,6 +2,10 @@
   "Utilitiy functions for working with MBQL queries."
   (:refer-clojure :exclude [replace])
   (:require
+   #?@(:clj
+       [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
+        [metabase.models.dispatch :as models.dispatch]
+        [metabase.util.i18n]])
    [clojure.string :as str]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -12,11 +16,7 @@
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   #?@(:clj
-       [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
-        [metabase.models.dispatch :as models.dispatch]
-        [metabase.util.i18n]])))
+   [metabase.util.malli :as mu]))
 
 (mu/defn normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
@@ -126,19 +126,49 @@
   [filter-clause & more-filter-clauses]
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
+(defn- legacy-last-stage-number
+  "Returns the canonical stage number of the last stage of the legacy `inner-query`."
+  [inner-query]
+  (loop [{:keys [source-query]} inner-query, n 0]
+    (if-not source-query
+      n
+      (recur source-query (inc n)))))
+
+(defn- stage-path
+  "Returns a vector consisting of :source-query elements that address the stage of `inner-query`
+  specified by `stage-number`.
+
+  Stage numbers are used as described in [[add-filter-clause]]."
+  [inner-query stage-number]
+  (let [elements (if (neg? stage-number)
+                   (dec (- stage-number))
+                   (- (legacy-last-stage-number inner-query) stage-number))]
+    (into [] (repeat elements :source-query))))
+
 (mu/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
   "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
-  needed."
-  [inner-query :- mbql.s/MBQLQuery
-   new-clause  :- [:maybe mbql.s/Filter]]
-  (if-not new-clause
+  needed.
+
+  Stage numbers work as in [[add-filter-clause]]."
+  [inner-query  :- mbql.s/MBQLQuery
+   stage-number :- [:maybe number?]
+   new-clause   :- [:maybe mbql.s/Filter]]
+  (if (not new-clause)
     inner-query
-    (update inner-query :filter combine-filter-clauses new-clause)))
+    (let [path (if-not stage-number
+                 []
+                 (stage-path inner-query stage-number))]
+      (update-in inner-query (conj path :filter) combine-filter-clauses new-clause))))
 
 (mu/defn add-filter-clause :- mbql.s/Query
-  "Add an additional filter clause to an `outer-query`. If `new-clause` is `nil` this is a no-op."
-  [outer-query :- mbql.s/Query new-clause :- [:maybe mbql.s/Filter]]
-  (update outer-query :query add-filter-clause-to-inner-query new-clause))
+  "Add an additional filter clause to an `outer-query` at stage `stage-number`
+  or at the last stage if `stage-number` is `nil`. If `new-clause` is `nil` this is a no-op.
+
+  Stage numbers can be negative: `-1` refers to the last stage, `-2` to the penultimate stage, etc."
+  [outer-query  :- mbql.s/Query
+   stage-number :- [:maybe number?]
+   new-clause   :- [:maybe mbql.s/Filter]]
+  (update outer-query :query add-filter-clause-to-inner-query stage-number new-clause))
 
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
@@ -238,22 +268,22 @@
   "Transform `:relative-time-interval` to `:and` expression."
   [m]
   (lib.util.match/replace
-   m
-   [:relative-time-interval col value bucket offset-value offset-bucket]
-   (let [col-default-bucket (cond-> col (and (vector? col) (= 3 (count col)))
-                              (update 2 assoc :temporal-unit :default))
-         offset [:interval offset-value offset-bucket]
-         lower-bound (if (neg? value)
-                       [:relative-datetime value bucket]
-                       [:relative-datetime 1 bucket])
-         upper-bound (if (neg? value)
-                       [:relative-datetime 0 bucket]
-                       [:relative-datetime (inc value) bucket])
-         lower-with-offset [:+ lower-bound offset]
-         upper-with-offset [:+ upper-bound offset]]
-     [:and
-      [:>= col-default-bucket lower-with-offset]
-      [:<  col-default-bucket upper-with-offset]])))
+    m
+    [:relative-time-interval col value bucket offset-value offset-bucket]
+    (let [col-default-bucket (cond-> col (and (vector? col) (= 3 (count col)))
+                                     (update 2 assoc :temporal-unit :default))
+          offset [:interval offset-value offset-bucket]
+          lower-bound (if (neg? value)
+                        [:relative-datetime value bucket]
+                        [:relative-datetime 1 bucket])
+          upper-bound (if (neg? value)
+                        [:relative-datetime 0 bucket]
+                        [:relative-datetime (inc value) bucket])
+          lower-with-offset [:+ lower-bound offset]
+          upper-with-offset [:+ upper-bound offset]]
+      [:and
+       [:>= col-default-bucket lower-with-offset]
+       [:<  col-default-bucket upper-with-offset]])))
 
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
@@ -293,9 +323,9 @@
      field x y & more]
     (let [tail (when (seq opts) [opts])]
       (apply vector
-           (if (= op :does-not-contain) :and :or)
-           (for [x (concat [x y] more)]
-             (into [op field x] tail))))))
+             (if (= op :does-not-contain) :and :or)
+             (for [x (concat [x y] more)]
+               (into [op field x] tail))))))
 
 (defn desugar-current-relative-datetime
   "Replace `relative-datetime` clauses like `[:relative-datetime :current]` with `[:relative-datetime 0 <unit>]`.
@@ -818,6 +848,16 @@
          (lib.util.match/match coll
            [:field (id :guard integer?) opts]
            [id (:source-field opts)]))))
+
+(defn pred-matches-form?
+  "Check if `form` or any of its children forms match `pred`. This function is used for validation; during normal
+  operation it will never match, so calling this function before `matching-locations` is more efficient."
+  [form pred]
+  (cond
+    (pred form)        true
+    (map? form)        (reduce-kv (fn [b _ v] (or b (pred-matches-form? v pred))) false form)
+    (sequential? form) (reduce (fn [b x] (or b (pred-matches-form? x pred))) false form)
+    :else              false))
 
 (defn matching-locations
   "Find the forms matching pred, returns a list of tuples of location (as used in get-in) and the match."

@@ -39,27 +39,27 @@
 ;;
 ;; We have a number of special "abstract" nodes in this graph:
 ;;
-;; - `*boolean-int*` is an ambiguous node, that could either be parsed as a boolean or as an integer.
+;; - `*boolean-int*` is an ambiguous node that could either be parsed as a boolean or as an integer.
 ;; - `*float-or-int*` is any integer, whether it has an explicit decimal point or not.
 ;;
 ;; While a `*boolean-int*` is a genuinely ambiguous value, `*float-or-int*` exist to power our desired value-type
-;; coercion and column-type promotion behaviour.
+;; coercion and column-type promotion behavior.
 ;;
 ;; - If we encounter a `*float-or-int*` inside an `int` column, then we can safely coerce it down to an integer.
-;; - If we encounter a `float` (i.e. a non-zero fraction component), then we need to promote the column to a `float.`
+;; - If we encounter a `float` (i.e., a non-zero fraction component), then we need to promote the column to a `float.`
 ;;
-;; Columns can not have an abstract type, which has no meaning outside of inference and reconciliation.
+;; Columns cannot have an abstract type, which has no meaning outside inference and reconciliation.
 ;; If we are left with an abstract type after having processed all the values, we first check whether we can coerce
-;; the type to the existing column type, and otherwise traverse further up the graph until we reach a concrete type.
+;; the type to the existing column type; if not, we traverse further up the graph until we reach a concrete type.
 ;;
-;; For ease of reference and explicitness these corresponding values are given in the `abstract->concrete` map.
+;; For ease of reference and explicitness, these corresponding values are given in the `abstract->concrete` map.
 ;; One can figure out these mappings by simply looking up through the ancestors. For now, we require that it is always
 ;; a direct ancestor, and lay out or graph so that it is the left-most one.
 
 (def h
   "This hierarchy defines a relationship between value types and their specializations.
   We use an [[metabase.util.ordered-hierarchy]] for its topological sorting, which simplify writing efficient and
-  consistent implementations for of our type inference, parsing, and relaxation."
+  consistent implementations for our type inference, parsing, and relaxation."
   (make-hierarchy
    [::text
     [::varchar-255
@@ -84,7 +84,7 @@
 ;; types e.g. redshift does not allow coercions except between text types
 (def ^:private allowed-promotions
   "A mapping of which types a column can be implicitly relaxed to, based on the content of appended values.
-  If we require a relaxation which is not allow-listed here, we will reject the corresponding file."
+  If we require a relaxation which is not allowlisted here, we will reject the corresponding file."
   {::int #{::float}})
 
 (def ^:private column-type->coercible-value-types
@@ -128,11 +128,13 @@
 
 (defn- with-parens
   "Returns a regex that matches the argument, with or without surrounding parentheses."
+  {:style/indent [:form]}
   [number-regex]
   (re-pattern (str "(" number-regex ")|(\\(" number-regex "\\))")))
 
 (defn- with-currency
   "Returns a regex that matches a positive or negative number, including currency symbols"
+  {:style/indent [:form]}
   [number-regex]
   ;; currency signs can be all over: $2, -$2, $-2, 2€
   (re-pattern (str upload-parsing/currency-regex "?\\s*-?"
@@ -152,7 +154,7 @@
       ".’" #"\d[\d’]*"))))
 
 (defn- float-or-int-regex
-  "Matches integral numbers, even if they have a decimal separator - e.g. 2 or 2.0"
+  "Matches integral numbers, even if they have a decimal separator - e.g., 2 or 2.0"
   [number-separators]
   (with-parens
    (with-currency
@@ -163,7 +165,7 @@
       ".’" #"\d[\d’]*(\.[0.]+)?"))))
 
 (defn- float-regex
-  "Matches numbers, regardless of whether they have a decimal separator - e.g. 2, 2.0, or 2.2"
+  "Matches numbers, regardless of whether they have a decimal separator - e.g., 2, 2.0, or 2.2"
   [number-separators]
   (with-parens
    (with-currency

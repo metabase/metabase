@@ -36,8 +36,8 @@
           (fn [api-key-id]
             (let [{name :group-name
                    id   :group-id} (->> (api-key-id->permissions-groups api-key-id)
-                                      (sort-by #(= (:group-id %) (u/the-id (perms-group/all-users))))
-                                      first)]
+                                        (sort-by #(= (:group-id %) (u/the-id (perms-group/all-users))))
+                                        first)]
               {:name name :id id}))]
       (for [api-key api-keys]
         (assoc api-key :group (api-key-id->group (u/the-id api-key)))))))

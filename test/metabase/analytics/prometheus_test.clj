@@ -95,7 +95,7 @@
        str/split-lines
        (remove #(str/starts-with? % "#"))))
 
-(defmacro with-prometheus-system
+(defmacro with-prometheus-system!
   "Run tests with a prometheus web server and registry. Provide binding symbols in a tuple of [port system]. Port will
   be bound to the random port used for the metrics endpoint and system will be a [[PrometheusSystem]] which has a
   registry and web-server."
@@ -110,27 +110,27 @@
 
 (deftest web-server-test
   (testing "Can get metrics from the web-server"
-    (with-prometheus-system [port _]
+    (with-prometheus-system! [port _]
       (let [metrics-in-registry (metric-tags port)]
         (is (seq (set/intersection common-metrics metrics-in-registry))
             "Did not get metrics from the port"))))
   (testing "Throws helpful message if cannot start server"
     ;; start another system on the same port
-    (with-prometheus-system [port _]
+    (with-prometheus-system! [port _]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Failed to initialize Prometheus on port"
                             (#'prometheus/make-prometheus-system port "test-failure"))))))
 
 (deftest c3p0-collector-test
   (testing "Registry has c3p0 registered"
-    (with-prometheus-system [_ system]
+    (with-prometheus-system! [_ system]
       (let [registry       (.registry system)
             c3p0-collector (registry/get registry {:name      "c3p0-stats"
                                                    :namespace "metabase_database"}
                                          nil)]
         (is c3p0-collector "c3p0 stats not found"))))
   (testing "Registry has an entry for each database in [[prometheus/connection-pool-info]]"
-    (with-prometheus-system [_ system]
+    (with-prometheus-system! [_ system]
       (let [registry       (.registry system)
             c3p0-collector (registry/get registry {:name      "c3p0_stats"
                                                    :namespace "metabase_database"}
@@ -143,7 +143,7 @@
                (count (.samples ^GaugeMetricFamily (first measurements))))
             "Expected one entry per database for each measurement"))))
   (testing "Registry includes c3p0 stats"
-    (with-prometheus-system [port _]
+    (with-prometheus-system! [port _]
       (let [[db-name values] (first (prometheus/connection-pool-info))
             tag-name         (comp :label #'prometheus/label-translation)
             expected-lines   (set (for [[tag value] values]
@@ -156,7 +156,7 @@
 
 (deftest email-collector-test
   (testing "Registry has email metrics registered"
-    (with-prometheus-system [port _]
+    (with-prometheus-system! [port _]
       (is (= #{"metabase_email_messages_total" "metabase_email_messages_created" "metabase_email_message_errors_total" "metabase_email_message_errors_created"}
              (->> (metric-lines port)
                   (map #(str/split % #"\s+"))
@@ -168,9 +168,9 @@
   (testing "inc has no effect if system is not setup"
     (prometheus/inc :metabase-email/messages)) ; << Does not throw.
   (testing "inc has no effect when called with unknown metric"
-    (with-prometheus-system [_ _system]
+    (with-prometheus-system! [_ _system]
       (prometheus/inc :metabase-email/unknown-metric))) ; << Does not throw.
   (testing "inc is recorded for known metrics"
-    (with-prometheus-system [_ system]
+    (with-prometheus-system! [_ system]
       (prometheus/inc :metabase-email/messages)
       (is (< 0 (-> system :registry :metabase-email/messages ops/read-value))))))

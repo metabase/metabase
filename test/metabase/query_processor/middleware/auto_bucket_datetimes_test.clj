@@ -267,13 +267,13 @@
     (qp.store/with-metadata-provider meta/metadata-provider
       (is (= {:source-table (meta/id :orders)
               :filter       [:between [:+ [:field (meta/id :orders :created-at) nil] [:interval 1 :minute]]
-                               [:relative-datetime -10 :minute]
-                               [:relative-datetime 0 :minute]]}
+                             [:relative-datetime -10 :minute]
+                             [:relative-datetime 0 :minute]]}
              (auto-bucket-mbql
-               {:source-table (meta/id :orders)
-                :filter       [:between [:+ [:field (meta/id :orders :created-at) nil] [:interval 1 :minute]]
-                               [:relative-datetime -10 :minute]
-                               [:relative-datetime 0 :minute]]}))))))
+              {:source-table (meta/id :orders)
+               :filter       [:between [:+ [:field (meta/id :orders :created-at) nil] [:interval 1 :minute]]
+                              [:relative-datetime -10 :minute]
+                              [:relative-datetime 0 :minute]]}))))))
 
 (deftest ^:parallel auto-bucket-unix-timestamp-fields-test
   (testing "do UNIX TIMESTAMP fields get auto-bucketed?"

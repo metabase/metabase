@@ -1,26 +1,26 @@
 import _ from "underscore";
 
 import {
-  updateDataPermission,
-  SAVE_DATA_PERMISSIONS,
   LOAD_DATA_PERMISSIONS,
+  SAVE_DATA_PERMISSIONS,
   UPDATE_DATA_PERMISSION,
+  updateDataPermission,
 } from "metabase/admin/permissions/permissions";
 import {
   DataPermission,
-  DataPermissionValue,
   DataPermissionType,
+  DataPermissionValue,
 } from "metabase/admin/permissions/types";
 import {
-  createThunkAction,
-  createAction,
-  handleActions,
   combineReducers,
+  createAction,
+  createThunkAction,
+  handleActions,
   withRequestState,
 } from "metabase/lib/redux";
 import { GTAPApi } from "metabase/services";
 
-import { getPolicyKeyFromParams, getPolicyKey } from "./utils";
+import { getPolicyKey, getPolicyKeyFromParams } from "./utils";
 
 export const FETCH_POLICY = "metabase-enterprise/sandboxes/FETCH_POLICY";
 export const fetchPolicy = withRequestState(params => [

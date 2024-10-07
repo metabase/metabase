@@ -1,4 +1,4 @@
-import { popover, interceptIfNotPreviouslyDefined } from "e2e/support/helpers";
+import { interceptIfNotPreviouslyDefined, popover } from "e2e/support/helpers";
 
 export function saveMetadataChanges() {
   interceptIfNotPreviouslyDefined({

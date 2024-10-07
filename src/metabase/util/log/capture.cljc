@@ -16,11 +16,11 @@
 
   The impl can store the logs in an atom or whatever that you can get later."
   (:require
+   #?@(:cljs
+       [[goog.string :as gstring]])
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]
-   #?@(:cljs
-       [[goog.string :as gstring]])))
+   [clojure.string :as str]))
 
 (def ^:dynamic *capture-logs-fn*
   "Function with the signature that given a namespace string and log level (as an int), returns a function that should

@@ -10,16 +10,16 @@ import type { SettingElement } from "metabase/admin/settings/types";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
 import {
-  FormSection,
   Form,
   FormErrorMessage,
   FormProvider,
   FormSecretKey,
+  FormSection,
   FormSubmitButton,
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
-import { rem, Flex, Stack } from "metabase/ui";
+import { Flex, Stack, rem } from "metabase/ui";
 import type { SettingValue } from "metabase-types/api";
 
 type SettingValues = { [key: string]: SettingValue };
@@ -166,7 +166,7 @@ const getAttributeValues = (
     JWT_ATTRS.map(key => [
       key,
       DEFAULTABLE_JWT_ATTRS.has(key)
-        ? values[key] ?? settings[key]?.default
+        ? (values[key] ?? settings[key]?.default)
         : values[key],
     ]),
   );

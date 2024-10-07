@@ -4,8 +4,8 @@ import { createMockMetadata } from "__support__/metadata";
 import * as dom from "metabase/lib/dom";
 import Question from "metabase-lib/v1/Question";
 import {
-  createSampleDatabase,
   createEmptyAdHocNativeCard,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { NativeQueryClickFallback } from "./NativeQueryClickFallback";

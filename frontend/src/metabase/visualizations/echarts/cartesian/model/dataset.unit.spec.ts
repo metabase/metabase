@@ -13,9 +13,9 @@ import type {
 } from "metabase/visualizations/lib/graph/columns";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
-  numericScale,
   type RowValue,
   type SingleSeries,
+  numericScale,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -25,13 +25,13 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
+  NO_X_AXIS_VALUES_ERROR_MESSAGE,
+  applyVisualizationSettingsDataTransformations,
+  getDatasetExtents,
   getDatasetKey,
   getJoinedCardsDataset,
   replaceValues,
-  getDatasetExtents,
-  applyVisualizationSettingsDataTransformations,
   sortDataset,
-  NO_X_AXIS_VALUES_ERROR_MESSAGE,
 } from "./dataset";
 import type {
   ChartDataset,

@@ -1,8 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { useUnmount } from "react-use";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-
 import type { DashboardRefreshPeriodControls } from "../types";
 
 import { useInterval } from "./use-interval";
@@ -43,14 +41,13 @@ export const useDashboardRefreshPeriod = ({
         setPeriod(newPeriod);
         elapsedHook.current?.(0);
         start();
-        MetabaseAnalytics.trackStructEvent("Dashboard", "Set Refresh", period);
       } else {
         elapsed.current = 0;
         setPeriod(null);
         elapsedHook.current?.(null);
       }
     },
-    [period, start, stop],
+    [start, stop],
   );
 
   useUnmount(() => {

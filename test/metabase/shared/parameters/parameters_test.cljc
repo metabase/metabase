@@ -123,20 +123,20 @@
       {"foo" {:type :string/= :value "*bar*"}}
       "_*\\*bar\\**_"))
 
-    (t/testing "Special characters (with semantic meaning in Markdown) are not escaped in formatted values when escape-markdown is set to true"
-      (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param "en" false))
-        "{{foo}}"
-        {"foo" {:type :string/= :value "*bar*"}}
-        "*bar*"
+  (t/testing "Special characters (with semantic meaning in Markdown) are not escaped in formatted values when escape-markdown is set to true"
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param "en" false))
+      "{{foo}}"
+      {"foo" {:type :string/= :value "*bar*"}}
+      "*bar*"
 
-        "{{foo}}"
-        {"foo" {:type :string/= :value "<script>alert(1)</script>"}}
-        "<script>alert(1)</script>"
+      "{{foo}}"
+      {"foo" {:type :string/= :value "<script>alert(1)</script>"}}
+      "<script>alert(1)</script>"
 
         ;; Characters in the original text are not escaped
-        "_*{{foo}}*_"
-        {"foo" {:type :string/= :value "*bar*"}}
-        "_**bar**_"))
+      "_*{{foo}}*_"
+      {"foo" {:type :string/= :value "*bar*"}}
+      "_**bar**_"))
 
   (t/testing "No substitution is done when no parameter is provided, or the parameter is invalid"
     (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))

@@ -9,10 +9,10 @@ import CS from "metabase/css/core/index.css";
 import { turnQuestionIntoDataset } from "metabase/query_builder/actions";
 
 import {
-  FeatureOverviewContainer,
   DatasetImg,
   DatasetTitle,
   DatasetValueProp,
+  FeatureOverviewContainer,
 } from "./NewDatasetModal.styled";
 
 const propTypes = {

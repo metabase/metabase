@@ -1,12 +1,12 @@
 (ns metabase.lib.types.isa-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.constants :as lib.types.constants]
-   [metabase.lib.types.isa :as lib.types.isa]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.types.isa :as lib.types.isa]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -36,60 +36,60 @@
                   (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))
         orderable-columns (lib/orderable-columns query)
         columns-of-type (fn [typ] (filter #(lib.types.isa/isa? % typ)
-                                         orderable-columns))]
-      (testing "effective type"
-        (is (=? [{:name "NAME"
-                  :lib/desired-column-alias "NAME"
-                  :semantic-type :type/Name
-                  :effective-type :type/Text}
-                 {:name "NAME"
-                  :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__NAME"
-                  :semantic-type :type/Name
-                  :effective-type :type/Text}]
-                (columns-of-type :type/Text))))
-      (testing "semantic type"
-        (is (=? [{:name "ID"
-                  :lib/desired-column-alias "ID"
-                  :semantic-type :type/PK
-                  :effective-type :type/BigInteger}
-                 {:name "CATEGORY_ID"
-                  :lib/desired-column-alias "CATEGORY_ID"
-                  :semantic-type :type/FK
-                  :effective-type :type/Integer}
-                 {:name "ID"
-                  :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
-                  :semantic-type :type/PK
-                  :effective-type :type/BigInteger}]
-                (columns-of-type :Relation/*))))
-      (testing "experssions"
-        (is (=? [{:name "ID"
-                  :lib/desired-column-alias "ID"
-                  :semantic-type :type/PK
-                  :effective-type :type/BigInteger}
-                 {:name "CATEGORY_ID"
-                  :lib/desired-column-alias "CATEGORY_ID"
-                  :semantic-type :type/FK
-                  :effective-type :type/Integer}
-                 {:name "LATITUDE"
-                  :lib/desired-column-alias "LATITUDE"
-                  :semantic-type :type/Latitude
-                  :effective-type :type/Float}
-                 {:name "LONGITUDE"
-                  :lib/desired-column-alias "LONGITUDE"
-                  :semantic-type :type/Longitude
-                  :effective-type :type/Float}
-                 {:name "PRICE"
-                  :lib/desired-column-alias "PRICE"
-                  :semantic-type :type/Category
-                  :effective-type :type/Integer}
-                 {:name "myadd"
-                  :lib/desired-column-alias "myadd"
-                  :effective-type :type/Integer}
-                 {:name "ID"
-                  :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
-                  :semantic-type :type/PK
-                  :effective-type :type/BigInteger}]
-                (filter lib.types.isa/numeric? orderable-columns))))))
+                                          orderable-columns))]
+    (testing "effective type"
+      (is (=? [{:name "NAME"
+                :lib/desired-column-alias "NAME"
+                :semantic-type :type/Name
+                :effective-type :type/Text}
+               {:name "NAME"
+                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__NAME"
+                :semantic-type :type/Name
+                :effective-type :type/Text}]
+              (columns-of-type :type/Text))))
+    (testing "semantic type"
+      (is (=? [{:name "ID"
+                :lib/desired-column-alias "ID"
+                :semantic-type :type/PK
+                :effective-type :type/BigInteger}
+               {:name "CATEGORY_ID"
+                :lib/desired-column-alias "CATEGORY_ID"
+                :semantic-type :type/FK
+                :effective-type :type/Integer}
+               {:name "ID"
+                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
+                :semantic-type :type/PK
+                :effective-type :type/BigInteger}]
+              (columns-of-type :Relation/*))))
+    (testing "experssions"
+      (is (=? [{:name "ID"
+                :lib/desired-column-alias "ID"
+                :semantic-type :type/PK
+                :effective-type :type/BigInteger}
+               {:name "CATEGORY_ID"
+                :lib/desired-column-alias "CATEGORY_ID"
+                :semantic-type :type/FK
+                :effective-type :type/Integer}
+               {:name "LATITUDE"
+                :lib/desired-column-alias "LATITUDE"
+                :semantic-type :type/Latitude
+                :effective-type :type/Float}
+               {:name "LONGITUDE"
+                :lib/desired-column-alias "LONGITUDE"
+                :semantic-type :type/Longitude
+                :effective-type :type/Float}
+               {:name "PRICE"
+                :lib/desired-column-alias "PRICE"
+                :semantic-type :type/Category
+                :effective-type :type/Integer}
+               {:name "myadd"
+                :lib/desired-column-alias "myadd"
+                :effective-type :type/Integer}
+               {:name "ID"
+                :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"
+                :semantic-type :type/PK
+                :effective-type :type/BigInteger}]
+              (filter lib.types.isa/numeric? orderable-columns))))))
 
 (deftest ^:parallel field-type-test
   ;; should fall back to `:base-type` if `:effective-type` isn't present.
@@ -166,6 +166,8 @@
              {:pred #'lib.types.isa/title?,              :positive :type/Title,             :negative :type/Name}
              {:pred #'lib.types.isa/any?,                :positive :type/*}
              {:pred #'lib.types.isa/numeric-base-type?,  :positive :type/Integer,           :negative :type/String}
+             {:pred #'lib.types.isa/date-or-datetime?,   :positive :type/Date,              :negative :type/Time}
+             {:pred #'lib.types.isa/date-or-datetime?,   :positive :type/DateTime,          :negative :type/Interval}
              {:pred #'lib.types.isa/date-without-time?,  :positive :type/Date,              :negative :type/Time}
              {:pred #'lib.types.isa/creation-timestamp?, :positive :type/CreationTimestamp, :negative :type/CreationDate}
              {:pred #'lib.types.isa/creation-date?,      :positive :type/CreationDate,      :negative :type/CreationTimestamp}
@@ -197,8 +199,8 @@
 
 (deftest ^:parallel string?-test
   (are [exp column] (= exp (lib.types.isa/string? column))
-       true  {:base-type :type/Text :semantic-type :type/SerializedJSON}
-       false {:base-type :type/JSON :semantic-type :type/SerializedJSON}))
+    true  {:base-type :type/Text :semantic-type :type/SerializedJSON}
+    false {:base-type :type/JSON :semantic-type :type/SerializedJSON}))
 
 (deftest ^:parallel has-latitude-and-longitude?-test
   (is (true? (lib.types.isa/has-latitude-and-longitude?
@@ -228,10 +230,10 @@
 
 (deftest ^:parallel valid-filter-for?-test
   (are [exp base-lhs eff-lhs base-rhs eff-rhs] (= exp (lib.types.isa/valid-filter-for?
-                                                        {:base-type      base-lhs
-                                                         :effective-type eff-lhs}
-                                                        {:base-type      base-rhs
-                                                         :effective-type eff-rhs}))
+                                                       {:base-type      base-lhs
+                                                        :effective-type eff-lhs}
+                                                       {:base-type      base-rhs
+                                                        :effective-type eff-rhs}))
     true  :type/String :type/Text    :type/String :type/Text
     true  :type/String :type/Text    :type/String :type/TextLike
     true  :type/String :type/Text    :type/String :type/Category

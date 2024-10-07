@@ -20,20 +20,20 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
   AxisFormatter,
-  DataKey,
-  Extent,
   ChartDataset,
+  DataKey,
+  DateRange,
+  DimensionModel,
+  Extent,
+  NumericAxisScaleTransforms,
+  NumericXAxisModel,
   SeriesExtents,
   SeriesModel,
+  StackModel,
+  TimeSeriesInterval,
+  TimeSeriesXAxisModel,
   XAxisModel,
   YAxisModel,
-  DimensionModel,
-  TimeSeriesInterval,
-  DateRange,
-  TimeSeriesXAxisModel,
-  NumericXAxisModel,
-  NumericAxisScaleTransforms,
-  StackModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   computeTimeseriesDataInverval,
@@ -47,13 +47,13 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type {
+  DatasetColumn,
   DateTimeAbsoluteUnit,
+  NumericScale,
+  RawSeries,
+  RowValue,
   SeriesSettings,
   StackType,
-  DatasetColumn,
-  RowValue,
-  RawSeries,
-  NumericScale,
 } from "metabase-types/api";
 import { numericScale } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
@@ -284,19 +284,22 @@ const getYAxisSplit = (
       : [nonStackedKeys, stackedKeys];
   }
 
-  const axisBySeriesKey = seriesModels.reduce((acc, seriesModel) => {
-    const seriesSettings: SeriesSettings = settings.series(
-      seriesModel.legacySeriesSettingsObjectKey,
-    );
+  const axisBySeriesKey = seriesModels.reduce(
+    (acc, seriesModel) => {
+      const seriesSettings: SeriesSettings = settings.series(
+        seriesModel.legacySeriesSettingsObjectKey,
+      );
 
-    const seriesStack = stackModels.find(stackModel =>
-      stackModel.seriesKeys.includes(seriesModel.dataKey),
-    );
+      const seriesStack = stackModels.find(stackModel =>
+        stackModel.seriesKeys.includes(seriesModel.dataKey),
+      );
 
-    acc[seriesModel.dataKey] =
-      seriesStack != null ? seriesStack.axis : seriesSettings?.["axis"];
-    return acc;
-  }, {} as Record<DataKey, string | undefined>);
+      acc[seriesModel.dataKey] =
+        seriesStack != null ? seriesStack.axis : seriesSettings?.["axis"];
+      return acc;
+    },
+    {} as Record<DataKey, string | undefined>,
+  );
 
   const left: DataKey[] = [];
   const right: DataKey[] = [];
@@ -576,14 +579,16 @@ export function getYAxesModels(
   const rightAxisSeriesKeys: string[] = [];
   const rightAxisSeriesNames: string[] = [];
 
-  seriesModels.forEach(({ dataKey, name }) => {
-    if (leftAxisSeriesKeysSet.has(dataKey)) {
-      leftAxisSeriesKeys.push(dataKey);
-      leftAxisSeriesNames.push(name);
-    }
-    if (rightAxisSeriesKeysSet.has(dataKey)) {
-      rightAxisSeriesKeys.push(dataKey);
-      rightAxisSeriesNames.push(name);
+  seriesModels.forEach(({ dataKey, visible, name }) => {
+    if (visible) {
+      if (leftAxisSeriesKeysSet.has(dataKey)) {
+        leftAxisSeriesKeys.push(dataKey);
+        leftAxisSeriesNames.push(name);
+      }
+      if (rightAxisSeriesKeysSet.has(dataKey)) {
+        rightAxisSeriesKeys.push(dataKey);
+        rightAxisSeriesNames.push(name);
+      }
     }
   });
 
@@ -613,7 +618,7 @@ export function getYAxesModels(
       columnByDataKey,
       settings["stackable.stack_type"] === "normalized"
         ? null
-        : settings["stackable.stack_type"] ?? null,
+        : (settings["stackable.stack_type"] ?? null),
       renderingContext,
       { compact: isCompactFormatting },
     ),
@@ -696,12 +701,12 @@ export function getTimeSeriesXAxisModel(
       return null;
     }
 
-    const dateInTimezone =
-      offsetMinutes != null
-        ? date.add(offsetMinutes, "minute")
-        : date.tz(timezone);
-
-    return dateInTimezone.format("YYYY-MM-DDTHH:mm:ss[Z]");
+    // Safari doesn't support offset-based timezones (e.g., "+07:00") in the Date object,
+    // which Day.js relies on. To avoid runtime exceptions, we manually adjust the time
+    // when an offset is provided. Otherwise, we use Day.js timezone conversion.
+    return offsetMinutes != null
+      ? date.add(offsetMinutes, "minute").format()
+      : date.tz(timezone).format("YYYY-MM-DDTHH:mm:ss[Z]");
   };
   const fromEChartsAxisValue = (rawValue: number) => {
     return dayjs.utc(rawValue);
@@ -824,8 +829,8 @@ export function getXAxisModel(
   };
 
   const histogramInterval = isHistogram
-    ? dimensionColumn.binning_info?.bin_width ??
-      computeNumericDataInverval(dataset.map(datum => datum[X_AXIS_DATA_KEY]))
+    ? (dimensionColumn.binning_info?.bin_width ??
+      computeNumericDataInverval(dataset.map(datum => datum[X_AXIS_DATA_KEY])))
     : undefined;
 
   const valuesCount = isScatter

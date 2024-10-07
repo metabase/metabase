@@ -4,17 +4,17 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardsEndpoints,
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupErrorParameterValuesEndpoints,
   setupParameterValuesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
+  setupTableQueryMetadataEndpoint,
   setupUnauthorizedCardsEndpoints,
   setupUnauthorizedCollectionsEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupTableQueryMetadataEndpoint,
-  setupCollectionByIdEndpoint,
-  setupCollectionItemsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {

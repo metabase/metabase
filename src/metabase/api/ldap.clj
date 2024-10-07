@@ -113,8 +113,8 @@
     (if (= :SUCCESS (:status results))
       (t2/with-transaction [_conn]
        ;; We need to update the ldap settings before we update ldap-enabled, as the ldap-enabled setter tests the ldap settings
-       (setting/set-many! ldap-settings)
-       (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
+        (setting/set-many! ldap-settings)
+        (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
       ;; test failed, return result message
       {:status 500
        :body   (humanize-error-messages results)})))

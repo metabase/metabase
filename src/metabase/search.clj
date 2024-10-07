@@ -1,22 +1,47 @@
 (ns metabase.search
-  "API namespace for the `metabase.search` module.
-
-  TODO: a lot of this stuff wouldn't need to be exposed if we moved more of the search stuff
-  from [[metabase.api.search]] into the `metabase.search` module."
+  "API namespace for the `metabase.search` module"
   (:require
-   [metabase.search.config]
-   [metabase.search.impl]
+   [metabase.db :as mdb]
+   [metabase.search.api :as search.api]
+   [metabase.search.config :as search.config]
+   [metabase.search.fulltext :as search.fulltext]
+   [metabase.search.impl :as search.impl]
+   [metabase.search.postgres.core :as search.postgres]
    [potemkin :as p]))
 
+(set! *warn-on-reflection* true)
+
 (comment
-  metabase.search.config/keep-me
-  metabase.search.impl/keep-me)
+  search.api/keep-me
+  search.config/keep-me
+  search.impl/keep-me)
 
 (p/import-vars
-  [metabase.search.config
-   SearchableModel
-   all-models]
-  [metabase.search.impl
-   query-model-set
-   search-context
-   search])
+ [search.config
+  SearchableModel
+  all-models]
+ [search.api
+  model-set]
+ [search.impl
+  search
+  ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
+  search-context])
+
+;; TODO The following need to be cleaned up to use multimethods.
+
+(defn supports-index?
+  "Does this instance support a search index?"
+  []
+  (search.fulltext/supported-db? (mdb/db-type)))
+
+(defn init-index!
+  "Ensure there is an index ready to be populated."
+  [& {:keys [force-reset?]}]
+  (when (supports-index?)
+    (search.postgres/init! force-reset?)))
+
+(defn reindex!
+  "Populate a new index, and make it active. Simultaneously updates the current index."
+  []
+  (when (supports-index?)
+    (search.postgres/reindex!)))

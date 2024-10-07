@@ -112,6 +112,8 @@ export interface VersionInfoRecord {
 }
 
 export interface VersionInfo {
+  nightly?: VersionInfoRecord;
+  beta?: VersionInfoRecord;
   latest?: VersionInfoRecord;
   older?: VersionInfoRecord[];
 }
@@ -150,6 +152,7 @@ export const tokenFeatures = [
   "disable_password_login",
   "content_verification",
   "embedding",
+  "embedding_sdk",
   "hosting",
   "llm_autodescription",
   "official_collections",
@@ -161,15 +164,17 @@ export const tokenFeatures = [
   "sso_saml",
   "session_timeout_config",
   "whitelabel",
+  "serialization",
   "dashboard_subscription_filters",
   "snippet_collections",
   "email_allow_list",
   "email_restrict_recipients",
   "upload_management",
   "collection_cleanup",
+  "query_reference_validation",
 ] as const;
 
-export type TokenFeature = typeof tokenFeatures[number];
+export type TokenFeature = (typeof tokenFeatures)[number];
 export type TokenFeatures = Record<TokenFeature, boolean>;
 
 export type PasswordComplexity = {
@@ -179,12 +184,15 @@ export type PasswordComplexity = {
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
 
+export type UpdateChannel = "latest" | "beta" | "nightly";
+
 export interface SettingDefinition {
   key: string;
   env_name?: string;
   is_env_setting: boolean;
   value?: unknown;
   default?: unknown;
+  description?: string;
 }
 
 export interface OpenAiModel {
@@ -221,6 +229,7 @@ interface InstanceSettings {
   "subscription-allowed-domains": string | null;
   "uploads-settings": UploadsSettings;
   "user-visibility": string | null;
+  "query-analysis-enabled": boolean;
 }
 
 export type EmbeddingHomepageDismissReason =
@@ -245,6 +254,7 @@ interface AdminSettings {
   "premium-embedding-token": string | null;
   "saml-configured"?: boolean;
   "saml-enabled"?: boolean;
+  "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
   "version-info": VersionInfo | null;
@@ -255,7 +265,6 @@ interface AdminSettings {
   "setup-license-active-at-setup": boolean;
   "store-url": string;
 }
-
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
   "ee-openai-api-key"?: string;
@@ -279,6 +288,7 @@ interface PublicSettings {
   "application-name": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-homepage": boolean;
@@ -319,6 +329,7 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
+  "update-channel": UpdateChannel;
   version: Version;
   "version-info-last-checked": string | null;
 }
@@ -332,6 +343,7 @@ export type UserSettings = {
   "expand-browse-in-nav"?: boolean;
   "expand-bookmarks-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
+  "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
 };

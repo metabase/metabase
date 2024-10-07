@@ -1,4 +1,4 @@
-import { FixedSizeIcon, Text, Flex, Box } from "metabase/ui";
+import { Box, FixedSizeIcon, Flex, Text } from "metabase/ui";
 
 export const ScimTextWarning = ({
   children,

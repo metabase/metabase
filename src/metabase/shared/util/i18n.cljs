@@ -41,6 +41,6 @@
         has-n?            (re-find #".*\{0\}.*" format-string-esc)]
     (ttag/ngettext (ttag/msgid (clj->js strings) (if has-n? n ""))
                    (-> format-string-pl
-                      escape-format-string
-                      (str/replace re-param-zero (str n)))
+                       escape-format-string
+                       (str/replace re-param-zero (str n)))
                    n)))

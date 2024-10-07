@@ -19,8 +19,8 @@ import { SidebarItem } from "../SidebarItem";
 
 import { CustomLinkText } from "./CustomLinkText";
 import {
-  FormDescription,
   DoneButton,
+  FormDescription,
   PickerIcon,
   PickerItemName,
 } from "./CustomURLPicker.styled";

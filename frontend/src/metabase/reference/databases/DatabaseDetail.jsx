@@ -17,14 +17,14 @@ import * as actions from "metabase/reference/reference";
 
 import {
   getDatabase,
-  getTable,
-  getFields,
   getError,
-  getLoading,
-  getUser,
+  getFields,
+  getForeignKeys,
   getIsEditing,
   getIsFormulaExpanded,
-  getForeignKeys,
+  getLoading,
+  getTable,
+  getUser,
 } from "../selectors";
 
 const mapStateToProps = (state, props) => {

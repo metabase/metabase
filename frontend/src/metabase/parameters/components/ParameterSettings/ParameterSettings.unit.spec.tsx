@@ -206,7 +206,7 @@ describe("ParameterSidebar", () => {
     });
 
     it("should render type", () => {
-      expect(screen.getByDisplayValue("Time")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("Date picker")).toBeInTheDocument();
     });
 
     it("should render operator", () => {

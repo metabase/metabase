@@ -10,13 +10,13 @@
    [metabase.shared.util.internal.time-common :as shared.ut.common]
    [metabase.util.malli.registry :as mr])
   #?@
-  (:clj
-   [(:import
-     (java.time ZoneId))]
-   :cljs
-   [(:require
-     ["moment" :as moment]
-     ["moment-timezone" :as mtz])]))
+   (:clj
+    [(:import
+      (java.time ZoneId))]
+    :cljs
+    [(:require
+      ["moment" :as moment]
+      ["moment-timezone" :as mtz])]))
 
 #?(:cljs
    ;; so the moment-timezone stuff gets loaded
@@ -84,7 +84,7 @@
             :error/fn      (fn [{:keys [value]} _]
                              (str "invalid timezone ID: " (pr-str value)))}]
           (sort
-           #?( ;; 600 timezones on java 17
+           #?(;; 600 timezones on java 17
               :clj (ZoneId/getAvailableZoneIds)
               ;; 596 timezones on moment-timezone 0.5.38
               :cljs (.names (.-tz moment)))))

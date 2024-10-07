@@ -10,7 +10,7 @@ import IconBorder from "metabase/components/IconBorder";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
-import { Icon, Popover, Box } from "metabase/ui";
+import { Box, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { FilterPopover } from "../FilterPopover";

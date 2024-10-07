@@ -6,14 +6,14 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import {
   capitalize,
-  formatNumber,
-  formatValue,
-  formatUrl,
   formatDateTimeWithUnit,
+  formatNumber,
   formatTime,
   formatTimeWithUnit,
-  slugify,
+  formatUrl,
+  formatValue,
   getCurrencySymbol,
+  slugify,
 } from "metabase/lib/formatting";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockColumn } from "metabase-types/api/mocks";

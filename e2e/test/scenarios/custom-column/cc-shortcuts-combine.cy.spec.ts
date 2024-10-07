@@ -1,14 +1,14 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   addCustomColumn,
-  restore,
-  popover,
-  openOrdersTable,
-  expressionEditorWidget,
   describeWithSnowplow,
-  expectNoBadSnowplowEvents,
   expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  expressionEditorWidget,
+  openOrdersTable,
+  popover,
   resetSnowplow,
+  restore,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > custom column > expression shortcuts > combine", () => {

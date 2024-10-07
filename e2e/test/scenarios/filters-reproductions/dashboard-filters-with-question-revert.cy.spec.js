@@ -1,19 +1,21 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  snapshot,
   editDashboard,
   filterWidget,
   getDashboardCard,
+  getIframeBody,
+  modal,
+  openSharingMenu,
   popover,
+  questionInfoButton,
   restore,
   saveDashboard,
   setFilter,
+  snapshot,
+  updateSetting,
   visitDashboard,
   visitEmbeddedPage,
-  questionInfoButton,
-  modal,
-  getIframeBody,
   visitQuestion,
 } from "e2e/support/helpers";
 
@@ -112,6 +114,8 @@ describe("issue 35954", () => {
           cy.log("Revert the question to its original (GUI) version");
           cy.intercept("POST", "/api/revision/revert").as("revertQuestion");
           questionInfoButton().click();
+          cy.findByRole("tab", { name: "History" }).click();
+
           cy.findByTestId("saved-question-history-list")
             .find("li")
             .filter(":contains(You created this)")
@@ -119,6 +123,7 @@ describe("issue 35954", () => {
             .click();
           cy.wait("@revertQuestion");
           // Mid-test assertions to root out the flakiness
+          cy.findByRole("tab", { name: "History" }).click();
           cy.findByTestId("saved-question-history-list").should(
             "contain",
             "You edited this",
@@ -126,6 +131,8 @@ describe("issue 35954", () => {
           cy.findByTestId("saved-question-history-list")
             .findAllByTestId("question-revert-button")
             .should("have.length", 2);
+
+          cy.findByLabelText("Close").click();
 
           cy.findByLabelText(`Back to ${dashboardDetails.name}`).click();
 
@@ -178,6 +185,7 @@ describe("issue 35954", () => {
         visitQuestion(this.questionId);
 
         questionInfoButton().click();
+        cy.findByRole("tab", { name: "History" }).click();
         cy.findByTestId("saved-question-history-list")
           .find("li")
           .filter(":contains(You edited this)")
@@ -214,13 +222,10 @@ describe("issue 35954", () => {
         });
 
         // Discard the legalese modal so we don't need to do an extra click in the UI
-        cy.request("PUT", "/api/setting/show-static-embed-terms", {
-          value: false,
-        });
+        updateSetting("show-static-embed-terms", false);
 
         visitDashboard(id);
-        cy.findByTestId("resource-embed-button").click();
-        cy.findByTestId("embed-menu-embed-modal-item").click();
+        openSharingMenu("Embed");
         modal().findByText("Static embed").click();
 
         cy.findByTestId("embedding-preview").within(() => {

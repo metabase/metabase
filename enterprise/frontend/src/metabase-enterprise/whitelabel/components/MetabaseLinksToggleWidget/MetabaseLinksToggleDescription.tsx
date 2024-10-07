@@ -1,4 +1,4 @@
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { Anchor, Popover, Stack, Text } from "metabase/ui";
 

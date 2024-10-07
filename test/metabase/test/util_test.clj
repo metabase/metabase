@@ -26,8 +26,8 @@
 
   (testing "if an Exception is thrown, original value should be restored"
     (u/ignore-exceptions
-     (mt/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
-       (throw (Exception.))))
+      (mt/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
+        (throw (Exception.))))
     (is (= 5
            (t2/select-one-fn :position Field :id (data/id :venues :price))))))
 
@@ -35,7 +35,8 @@
   "Another internal test setting"
   :visibility :internal
   :default    ["A" "B" "C"]
-  :type       :csv)
+  :type       :csv
+  :encryption :no)
 
 (deftest with-temporary-setting-values-test
   (testing "`with-temporary-setting-values` should do its thing"
@@ -73,7 +74,7 @@
         (is (= "original" (clump "o" "riginal"))))
 
       (future
-       (testing "A thread that minds its own business"
+        (testing "A thread that minds its own business"
           (log/debug "Starting no-op thread, thread-id:" (thread-id))
           (is (= "123" (clump 12 3)))
           (take-latch)
@@ -129,6 +130,6 @@
   (is (mt/ordered-subset? [] []))
   (is (mt/ordered-subset? [] [1]))
   (is (not (mt/ordered-subset? [1] [])))
-  (is (mt/ordered-subset? [            "foo"   "bar"              "baz"]
+  (is (mt/ordered-subset? ["foo"   "bar"              "baz"]
                           ["elephants" "foxes" "badgers" "zebras" "beavers" "platypi"]
                           (fn [x y] (= (first x) (first y))))))

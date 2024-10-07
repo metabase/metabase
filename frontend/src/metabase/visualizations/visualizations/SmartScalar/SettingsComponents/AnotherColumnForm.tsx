@@ -6,9 +6,9 @@ import {
   Box,
   Flex,
   PopoverBackButton,
-  TextInput,
   Select,
   Stack,
+  TextInput,
 } from "metabase/ui";
 import type {
   DatasetColumn,

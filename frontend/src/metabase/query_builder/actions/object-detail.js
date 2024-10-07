@@ -7,12 +7,12 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 
 import {
+  getCanZoomNextRow,
+  getCanZoomPreviousRow,
   getCard,
   getFirstQueryResult,
-  getPKColumnIndex,
-  getCanZoomPreviousRow,
-  getCanZoomNextRow,
   getNextRowPKValue,
+  getPKColumnIndex,
   getPreviousRowPKValue,
   getTableForeignKeys,
 } from "../selectors";

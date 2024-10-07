@@ -13,7 +13,7 @@ import {
   UserPickerInput,
 } from "metabase/search/components/SearchUserPicker/SearchUserPicker.styled";
 import { UserListElement } from "metabase/search/components/UserListElement";
-import { Center, Text, Icon } from "metabase/ui";
+import { Center, Icon, Text } from "metabase/ui";
 import type { UserId, UserListResult } from "metabase-types/api";
 
 export const SearchUserPicker = ({

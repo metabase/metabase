@@ -7,18 +7,18 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  createAdHocCard,
-  createAdHocNativeCard,
-  SAMPLE_DB_ID,
-  ORDERS_ID,
   ORDERS,
-  REVIEWS_ID,
-  REVIEWS,
+  ORDERS_ID,
+  PEOPLE,
   PRODUCTS,
   PRODUCTS_ID,
-  PEOPLE,
+  REVIEWS,
+  REVIEWS_ID,
+  SAMPLE_DB_ID,
+  createAdHocCard,
+  createAdHocNativeCard,
   createOrdersTable,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { getParameterMappingOptions } from "./mapping-options";
@@ -94,7 +94,7 @@ describe("parameters/utils/mapping-options", () => {
             icon: "calendar",
             isForeign: false,
             name: "~*~Created At~*~",
-            sectionName: "Order",
+            sectionName: "Orders",
             target: [
               "dimension",
               ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
@@ -148,7 +148,7 @@ describe("parameters/utils/mapping-options", () => {
         );
         expect(options).toEqual([
           {
-            sectionName: "Review",
+            sectionName: "Reviews",
             icon: "calendar",
             name: "Created At",
             target: [
@@ -203,7 +203,7 @@ describe("parameters/utils/mapping-options", () => {
         );
         expect(options).toEqual([
           {
-            sectionName: "Order",
+            sectionName: "Orders",
             name: "Created At",
             icon: "calendar",
             target: [
@@ -213,7 +213,7 @@ describe("parameters/utils/mapping-options", () => {
             isForeign: false,
           },
           {
-            sectionName: "Product",
+            sectionName: "Products",
             name: "Created At",
             icon: "calendar",
             target: [
@@ -275,8 +275,7 @@ describe("parameters/utils/mapping-options", () => {
         );
         expect(options).toEqual([
           {
-            // this is a source query, and tables for source queries do not have a display_name
-            sectionName: "",
+            sectionName: "Summaries",
             name: "Created At",
             icon: "calendar",
             target: [

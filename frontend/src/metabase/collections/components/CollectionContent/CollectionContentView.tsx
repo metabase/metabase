@@ -16,8 +16,8 @@ import type {
   UploadFile,
 } from "metabase/collections/types";
 import {
-  isRootTrashCollection,
   isPersonalCollectionChild,
+  isRootTrashCollection,
   isTrashedCollection,
 } from "metabase/collections/utils";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";

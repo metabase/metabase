@@ -1,29 +1,29 @@
 import type {
-  Database,
   CreateDatabaseRequest,
+  Database,
   DatabaseId,
-  ListDatabaseIdFieldsRequest,
-  ListDatabasesRequest,
-  ListDatabasesResponse,
+  Field,
   GetDatabaseMetadataRequest,
   GetDatabaseRequest,
-  UpdateDatabaseRequest,
-  Field,
-  Table,
+  ListDatabaseIdFieldsRequest,
   ListDatabaseSchemaTablesRequest,
   ListDatabaseSchemasRequest,
+  ListDatabasesRequest,
+  ListDatabasesResponse,
   ListVirtualDatabaseTablesRequest,
   SchemaName,
+  Table,
+  UpdateDatabaseRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
 import {
-  tag,
   idTag,
-  listTag,
   invalidateTags,
+  listTag,
   provideDatabaseListTags,
   provideDatabaseTags,
+  tag,
 } from "./tags";
 
 export const databaseApi = Api.injectEndpoints({

@@ -26,9 +26,9 @@
   (is (not (driver/database-supports? ::test-driver :metadata/key-constraints "not-dummy")))
   (is (not (driver/database-supports? ::test-driver :expressions "dummy")))
   (is (thrown-with-msg?
-        java.lang.Exception
-        #"Invalid driver feature: .*"
-        (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
+       java.lang.Exception
+       #"Invalid driver feature: .*"
+       (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
 
 (deftest the-driver-test
   (testing (str "calling `the-driver` should set the context classloader, important because driver plugin code exists "
@@ -83,7 +83,7 @@
 
 (deftest can-connect-with-destroy-db-test
   (testing "driver/can-connect? should fail or throw after destroying a database"
-    (mt/test-drivers (mt/normal-drivers-without-feature :connection/multiple-databases)
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -115,7 +115,7 @@
 
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
-    (mt/test-drivers (mt/normal-drivers-without-feature :connection/multiple-databases)
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef

@@ -211,7 +211,7 @@
                        [:device_description ms/NonBlankString]
                        [:ip_address         ms/NonBlankString]
                        [:active             [:= false]]]
-                (t2/select-one LoginHistory :id login-history-id))))))))
+                      (t2/select-one LoginHistory :id login-history-id))))))))
 
 (deftest forgot-password-test
   (reset-throttlers!)
@@ -436,14 +436,14 @@
 
     (testing "Authenticated normal user"
       (mt/with-test-user :lucky
-       (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated})))
-              (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
+        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated})))
+               (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
 
     (testing "Authenticated settings manager"
       (mt/with-test-user :lucky
-       (with-redefs [setting/has-advanced-setting-access? (constantly true)]
-         (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
-                (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
+        (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+          (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
+                 (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
 
     (testing "Authenticated super user"
       (mt/with-test-user :crowberto
@@ -453,6 +453,7 @@
     (testing "Includes user-local settings"
       (defsetting test-session-api-setting
         "test setting"
+        :encryption :no
         :user-local :only
         :type       :string
         :default    "FOO")
@@ -466,7 +467,7 @@
   (reset-throttlers!)
   (testing "GET /session/properties"
     (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
-      (mt/with-mock-i18n-bundles {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
+      (mt/with-mock-i18n-bundles! {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
         (is (= "Cadena de conexión !"
                (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"x-metabase-locale" "es"}}})
                    :engines :h2 :details-fields first :display-name)))))))
@@ -516,7 +517,7 @@
 
 (deftest ldap-login-test
   (reset-throttlers!)
-  (ldap.test/with-ldap-server
+  (ldap.test/with-ldap-server!
     (testing "Test that we can login with LDAP"
       (t2.with-temp/with-temp [User _ {:email    "ngoc@metabase.com"
                                        :password "securedpassword"}]

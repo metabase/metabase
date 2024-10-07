@@ -106,7 +106,6 @@
    :body    object
    :headers {"Content-Type" "application/scim+json"}})
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               User operations                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -194,7 +193,7 @@
         offset         (if start-index (dec start-index) default-pagination-offset)
         filter-param   (when filter-param (codec/url-decode filter-param))
         where-clause   [:and [:= :type "personal"]
-                             (when filter-param (user-filter-clause filter-param))]
+                        (when filter-param (user-filter-clause filter-param))]
         users          (t2/select (cons :model/User user-cols)
                                   {:where    where-clause
                                    :limit    limit
@@ -243,19 +242,19 @@
     (if (not= email (:email current-user))
       (throw-scim-error 400 "You may not update the email of an existing user.")
       (try
-       (t2/with-transaction [_conn]
-         (t2/update! :model/User (u/the-id current-user) updates)
-         (let [user (-> (t2/select-one (cons :model/User user-cols)
-                                       :entity_id id)
-                        mb-user->scim)]
-          (scim-response user)))
-       (catch Exception e
-         (let [message (format "Error updating user: %s" (ex-message e))]
-           (throw (ex-info message
-                           {:schemas     [error-schema-uri]
-                            :detail      message
-                            :status      400
-                            :status-code 400}))))))))
+        (t2/with-transaction [_conn]
+          (t2/update! :model/User (u/the-id current-user) updates)
+          (let [user (-> (t2/select-one (cons :model/User user-cols)
+                                        :entity_id id)
+                         mb-user->scim)]
+            (scim-response user)))
+        (catch Exception e
+          (let [message (format "Error updating user: %s" (ex-message e))]
+            (throw (ex-info message
+                            {:schemas     [error-schema-uri]
+                             :detail      message
+                             :status      400
+                             :status-code 400}))))))))
 
 (defendpoint PATCH "/Users/:id"
   "Activate or deactivate a user. Supports specific replace operations, but not arbitrary patches."
@@ -265,18 +264,18 @@
   (t2/with-transaction [_conn]
     (let [user    (get-user-by-entity-id id)
           updates (reduce
-                    (fn [acc operation]
-                      (let [{:keys [op path value]} operation]
-                        (if (= (u/lower-case-en op) "replace")
-                          (case path
-                            "active"          (assoc acc :is_active (Boolean/valueOf (u/lower-case-en value)))
-                            "userName"        (assoc acc :email value)
-                            "name.givenName"  (assoc acc :first_name value)
-                            "name.familyName" (assoc acc :last_name value)
-                            (throw-scim-error 400 (format "Unsupported path: %s" path)))
-                          acc)))
-                    {}
-                    (:Operations patch-ops))]
+                   (fn [acc operation]
+                     (let [{:keys [op path value]} operation]
+                       (if (= (u/lower-case-en op) "replace")
+                         (case path
+                           "active"          (assoc acc :is_active (Boolean/valueOf (u/lower-case-en value)))
+                           "userName"        (assoc acc :email value)
+                           "name.givenName"  (assoc acc :first_name value)
+                           "name.familyName" (assoc acc :last_name value)
+                           (throw-scim-error 400 (format "Unsupported path: %s" path)))
+                         acc)))
+                   {}
+                   (:Operations patch-ops))]
       (t2/update! :model/User (u/the-id user) updates)
       (-> (get-user-by-entity-id id)
           mb-user->scim
@@ -399,9 +398,9 @@
         (when (seq entity-ids)
           (update-group-membership (:id new-group) entity-ids))
         (-> new-group
-          (t2/hydrate :scim_group_members)
-          mb-group->scim
-          (scim-response 201))))))
+            (t2/hydrate :scim_group_members)
+            mb-group->scim
+            (scim-response 201))))))
 
 (defendpoint PUT "/Groups/:id"
   "Update a group."
@@ -413,10 +412,18 @@
       (let [group (get-group-by-entity-id id)]
         (t2/update! :model/PermissionsGroup (u/the-id group) {:name group-name})
         (when (seq entity-ids)
-         (update-group-membership (u/the-id group) entity-ids))
+          (update-group-membership (u/the-id group) entity-ids))
         (-> (get-group-by-entity-id id)
             (t2/hydrate :scim_group_members)
             mb-group->scim
             scim-response)))))
+
+(defendpoint DELETE "/Groups/:id"
+  "Delete a group."
+  [id]
+  {id ms/NonBlankString}
+  (let [group (get-group-by-entity-id id)]
+    (t2/delete! :model/PermissionsGroup (u/the-id group))
+    (scim-response nil 204)))
 
 (api/define-routes)

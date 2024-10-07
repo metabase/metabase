@@ -2,8 +2,8 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import {
-  HoverParent,
   PopoverHoverTarget as BasePopoverHoverTarget,
+  HoverParent,
 } from "metabase/components/MetadataInfo/InfoIcon";
 
 export const ExpressionList = styled.ul`

@@ -11,11 +11,11 @@ import type { SettingElement } from "metabase/admin/settings/types";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
 import {
-  FormSection,
   Form,
   FormErrorMessage,
   FormProvider,
   FormRadioGroup,
+  FormSection,
   FormSubmitButton,
   FormSwitch,
   FormTextInput,
@@ -234,7 +234,7 @@ const getAttributeValues = (
     ldapAttributes.map(key => [
       key,
       defaultableAttrs.has(key)
-        ? values[key] ?? settings[key]?.default
+        ? (values[key] ?? settings[key]?.default)
         : values[key],
     ]),
   );

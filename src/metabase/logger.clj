@@ -6,7 +6,7 @@
    [amalloy.ring-buffer :refer [ring-buffer]]
    [clj-time.coerce :as time.coerce]
    [clj-time.format :as time.format]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
    [metabase.config :as config]
@@ -45,7 +45,7 @@
         ^org.apache.logging.log4j.core.Layout layout                   nil
         ^"[Lorg.apache.logging.log4j.core.config.Property;" properties nil]
     (proxy [org.apache.logging.log4j.core.appender.AbstractAppender]
-        ["metabase-appender" filter layout false properties]
+           ["metabase-appender" filter layout false properties]
       (append [event]
         (swap! messages* conj (event->log-data event))
         nil))))

@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { useField } from "formik";
-import { useCallback, useRef, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { useGetFieldQuery } from "metabase/api";

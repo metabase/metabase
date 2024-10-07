@@ -1,10 +1,10 @@
 import type {
+  CardId,
   DatabaseId,
   FieldId,
-  TableId,
   SegmentId,
+  TableId,
   TemplateTags,
-  CardId,
 } from "metabase-types/api";
 
 export interface NativeQuery {
@@ -73,8 +73,8 @@ export const dateTimeUnits = [
   ...dateTimeRelativeUnits,
 ] as const;
 
-export type DateTimeAbsoluteUnit = typeof dateTimeAbsoluteUnits[number];
-export type DateTimeRelativeUnit = typeof dateTimeRelativeUnits[number];
+export type DateTimeAbsoluteUnit = (typeof dateTimeAbsoluteUnits)[number];
+export type DateTimeRelativeUnit = (typeof dateTimeRelativeUnits)[number];
 export type DatetimeUnit =
   | "default"
   | DateTimeAbsoluteUnit

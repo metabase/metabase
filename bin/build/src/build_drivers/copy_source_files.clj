@@ -3,7 +3,8 @@
    [build-drivers.common :as c]
    [clojure.java.io :as io]
    [metabuild-common.core :as u])
-  (:import (java.nio.file Files)))
+  (:import
+   (java.nio.file Files)))
 
 (set! *warn-on-reflection* true)
 
@@ -13,12 +14,12 @@
           target (io/file target-dir)]
       (when (.exists src)
         (u/announce "Copying files from %s to %s" src target)
-        (doseq [file (file-seq src)]
+        (doseq [^java.io.File file (file-seq src)]
           (when (.isFile file)
             (let [relative-path (.relativize (.toPath src) (.toPath file))
                   target-file (io/file target (str relative-path))]
               (.mkdirs (.getParentFile target-file))
-              (Files/copy (.toPath file) (.toPath target-file) (into-array java.nio.file.CopyOption [])))))))))
+              (Files/copy (.toPath file) (.toPath target-file) ^"[Ljava.nio.file.CopyOption;" (into-array java.nio.file.CopyOption [])))))))))
 
 (defn copy-source-files!
   "Copy source files into the build driver JAR."

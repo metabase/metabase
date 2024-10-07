@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import {
   GRAPH_AXIS_SETTINGS,
-  GRAPH_DISPLAY_VALUES_SETTINGS,
   GRAPH_DATA_SETTINGS,
+  GRAPH_DISPLAY_VALUES_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "metabase/visualizations/lib/settings/graph";
 import {

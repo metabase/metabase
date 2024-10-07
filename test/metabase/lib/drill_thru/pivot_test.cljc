@@ -1,12 +1,12 @@
 (ns metabase.lib.drill-thru.pivot-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
-   [metabase.util.malli :as mu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util.malli :as mu]))
 
 ;; Case analysis:
 ;; 1. No pivot drill:
@@ -20,14 +20,14 @@
 (deftest ^:parallel pivot-availability-test
   (testing "pivot drill is available only for cell clicks"
     (canned/canned-test
-      :drill-thru/pivot
-      (fn [_test-case _context {:keys [click]}]
-        (if (= click :cell)
+     :drill-thru/pivot
+     (fn [_test-case _context {:keys [click]}]
+       (if (= click :cell)
           ;; The pivot conditions are too complex to capture here; other tests check them.
           ;; Just skip the canned cases for cell clicks.
-          ::canned/skip
+         ::canned/skip
           ;; Non-cell clicks are false though.
-          false)))))
+         false)))))
 
 (def ^:private orders-date-only-test-case
   {:drill-type   :drill-thru/pivot
@@ -50,23 +50,23 @@
           context {:column {:name "count"}
                    :column-ref [:field {} "count"]}]
       (is (empty? (filter #(= (:type %) :drill-thru/pivot)
-                            (lib/available-drill-thrus query -1 context)))))))
+                          (lib/available-drill-thrus query -1 context)))))))
 
 (deftest ^:parallel returns-pivot-test-1b-no-pivots-without-aggregation
   (lib.drill-thru.tu/test-drill-not-returned
-    {:drill-type   :drill-thru/pivot
-     :click-type   :cell
-     :query-type   :unaggregated
-     :query-table  "ORDERS"
-     :column-name  "CREATED_AT"}))
+   {:drill-type   :drill-thru/pivot
+    :click-type   :cell
+    :query-type   :unaggregated
+    :query-table  "ORDERS"
+    :column-name  "CREATED_AT"}))
 
 (deftest ^:parallel returns-pivot-test-1c-no-pivots-for-column-click
   (lib.drill-thru.tu/test-drill-not-returned
-    {:drill-type   :drill-thru/pivot
-     :click-type   :header
-     :query-type   :aggregated
-     :query-table  "ORDERS"
-     :column-name  "count"}))
+   {:drill-type   :drill-thru/pivot
+    :click-type   :header
+    :query-type   :aggregated
+    :query-table  "ORDERS"
+    :column-name  "count"}))
 
 (defn- orders-count-with-breakouts [breakout-values]
   {:drill-type   :drill-thru/pivot
@@ -109,31 +109,31 @@
 
 (deftest ^:parallel returns-pivot-test-1d-no-pivots-date+address
   (lib.drill-thru.tu/test-drill-not-returned
-    (orders-count-with-breakouts [bv-date bv-address])))
+   (orders-count-with-breakouts [bv-date bv-address])))
 
 (deftest ^:parallel returns-pivot-test-1e-no-pivots-address+category
   (lib.drill-thru.tu/test-drill-not-returned
-    (orders-count-with-breakouts [bv-address bv-category1])))
+   (orders-count-with-breakouts [bv-address bv-category1])))
 
 (deftest ^:parallel returns-pivot-test-1f-no-pivots-triple-category
   (lib.drill-thru.tu/test-drill-not-returned
-    (orders-count-with-breakouts [bv-category1 bv-category2 bv-category3])))
+   (orders-count-with-breakouts [bv-category1 bv-category2 bv-category3])))
 
 (deftest ^:parallel returns-pivot-test-1g-no-pivots-unknown-type
   (lib.drill-thru.tu/test-drill-not-returned
-    (orders-count-with-breakouts [bv-unknown])))
+   (orders-count-with-breakouts [bv-unknown])))
 
 (deftest ^:parallel returns-pivot-test-1h-no-pivots-unknown+date
   (lib.drill-thru.tu/test-drill-not-returned
-    (orders-count-with-breakouts [bv-unknown bv-date])))
+   (orders-count-with-breakouts [bv-unknown bv-date])))
 
 (deftest ^:parallel returns-pivot-test-1i-no-pivots-unknown+category
   (lib.drill-thru.tu/test-drill-not-returned
-    (orders-count-with-breakouts [bv-unknown bv-category2])))
+   (orders-count-with-breakouts [bv-unknown bv-category2])))
 
 (deftest ^:parallel returns-pivot-test-1j-no-pivots-unknown+address
   (lib.drill-thru.tu/test-drill-not-returned
-    (orders-count-with-breakouts [bv-unknown bv-address])))
+   (orders-count-with-breakouts [bv-unknown bv-address])))
 
 (defn- expecting [dim-names pivot-types]
   {:expected {:type       :drill-thru/pivot
@@ -147,43 +147,43 @@
 
 (deftest ^:parallel returns-pivot-test-2a-cat+loc-with-date
   (lib.drill-thru.tu/test-returns-drill
-    (merge (orders-count-with-breakouts [bv-date])
-           (expecting ["CREATED_AT"] [:category :location]))))
+   (merge (orders-count-with-breakouts [bv-date])
+          (expecting ["CREATED_AT"] [:category :location]))))
 
 (deftest ^:parallel returns-pivot-test-2b-cat+loc-with-date+category
   (lib.drill-thru.tu/test-returns-drill
-    (merge (orders-count-with-breakouts [bv-date bv-category1])
-           (expecting ["CREATED_AT" "CATEGORY"] [:category :location]))))
+   (merge (orders-count-with-breakouts [bv-date bv-category1])
+          (expecting ["CREATED_AT" "CATEGORY"] [:category :location]))))
 
 (deftest ^:parallel returns-pivot-test-3a-cat+time-with-address
   (lib.drill-thru.tu/test-returns-drill
-    (merge (orders-count-with-breakouts [bv-address])
-           (expecting ["STATE"] [:category :time]))))
+   (merge (orders-count-with-breakouts [bv-address])
+          (expecting ["STATE"] [:category :time]))))
 
 (deftest ^:parallel returns-pivot-test-3b-cat+time-with-category
   (lib.drill-thru.tu/test-returns-drill
-    (merge (orders-count-with-breakouts [bv-category2])
-           (expecting ["SOURCE"] [:category :time]))))
+   (merge (orders-count-with-breakouts [bv-category2])
+          (expecting ["SOURCE"] [:category :time]))))
 
 (deftest ^:parallel returns-pivot-test-3c-cat+time-with-category+category
   (lib.drill-thru.tu/test-returns-drill
-    (merge (orders-count-with-breakouts [bv-category2 bv-category1])
-           (expecting ["SOURCE" "CATEGORY"] [:category :time]))))
+   (merge (orders-count-with-breakouts [bv-category2 bv-category1])
+          (expecting ["SOURCE" "CATEGORY"] [:category :time]))))
 
 (deftest ^:parallel returns-pivot-test-4a-none-with-no-breakouts
   (lib.drill-thru.tu/test-returns-drill
-    (merge (orders-count-with-breakouts [])
-           (expecting [] [:category :location :time]))))
+   (merge (orders-count-with-breakouts [])
+          (expecting [] [:category :location :time]))))
 
 (deftest ^:parallel pivot-application-test-1
   (lib.drill-thru.tu/test-drill-application
-    (merge orders-date-only-test-case
-           {:expected       {:type :drill-thru/pivot}
+   (merge orders-date-only-test-case
+          {:expected       {:type :drill-thru/pivot}
             ;; Expecting the original query with filters for the old breakouts, and one new breakout by CATEGORY.
-            :drill-args     [(meta/field-metadata :products :category)]
-            :expected-query (-> (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
-                                (update-in [:stages 0] dissoc :breakout)
-                                (lib/filter (lib/= (meta/field-metadata :orders :created-at)
-                                                   (get-in lib.drill-thru.tu/test-queries
-                                                           ["ORDERS" :aggregated :row "CREATED_AT"])))
-                                (lib/breakout (meta/field-metadata :products :category)))})))
+           :drill-args     [(meta/field-metadata :products :category)]
+           :expected-query (-> (get-in lib.drill-thru.tu/test-queries ["ORDERS" :aggregated :query])
+                               (update-in [:stages 0] dissoc :breakout)
+                               (lib/filter (lib/= (meta/field-metadata :orders :created-at)
+                                                  (get-in lib.drill-thru.tu/test-queries
+                                                          ["ORDERS" :aggregated :row "CREATED_AT"])))
+                               (lib/breakout (meta/field-metadata :products :category)))})))

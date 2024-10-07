@@ -222,13 +222,13 @@
       (letfn [(run-query-with-report-timezone [report-timezone]
                 (mt/with-temporary-setting-values [report-timezone report-timezone]
                   (mt/first-row
-                    (qp/process-query
-                     {:database   (mt/id)
-                      :type       :native
-                      :settings   {:report-timezone "UTC"}
-                      :native     {:query         "SELECT cast({{date}} as date)"
-                                   :template-tags {:date {:name "date" :display_name "Date" :type "date"}}}
-                      :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))]
+                   (qp/process-query
+                    {:database   (mt/id)
+                     :type       :native
+                     :settings   {:report-timezone "UTC"}
+                     :native     {:query         "SELECT cast({{date}} as date)"
+                                  :template-tags {:date {:name "date" :display_name "Date" :type "date"}}}
+                     :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))]
         (testing "date formatting when system-timezone == report-timezone"
           (is (= ["2018-04-18T00:00:00+08:00"]
                  (run-query-with-report-timezone "Asia/Hong_Kong"))))
@@ -321,20 +321,20 @@
       (let [details (tx/dbdef->connection-details :mysql :db {:database-name "versioned_tables"})
             spec    (sql-jdbc.conn/connection-details->spec :mysql details)
             compat  (try
-                     (doseq [sql ["CREATE TABLE IF NOT EXISTS src1 (id INTEGER, t TEXT);"
-                                  "CREATE TABLE IF NOT EXISTS src2 (id INTEGER, t TEXT);"
-                                  "ALTER TABLE src2 ADD SYSTEM VERSIONING;"
-                                  "INSERT INTO src1 VALUES (1, '2020-03-01 12:20:35');"
-                                  "INSERT INTO src2 VALUES (1, '2020-03-01 12:20:35');"]]
-                       (jdbc/execute! spec [sql]))
-                     true
-                     (catch java.sql.SQLSyntaxErrorException se
+                      (doseq [sql ["CREATE TABLE IF NOT EXISTS src1 (id INTEGER, t TEXT);"
+                                   "CREATE TABLE IF NOT EXISTS src2 (id INTEGER, t TEXT);"
+                                   "ALTER TABLE src2 ADD SYSTEM VERSIONING;"
+                                   "INSERT INTO src1 VALUES (1, '2020-03-01 12:20:35');"
+                                   "INSERT INTO src2 VALUES (1, '2020-03-01 12:20:35');"]]
+                        (jdbc/execute! spec [sql]))
+                      true
+                      (catch java.sql.SQLSyntaxErrorException se
                        ;; if an error is received with SYSTEM VERSIONING mentioned, the version
                        ;; of mysql or mariadb being tested against does not support system versioning,
                        ;; so do not continue
-                       (if (re-matches #".*VERSIONING'.*" (.getMessage se))
-                         false
-                         (throw se))))]
+                        (if (re-matches #".*VERSIONING'.*" (.getMessage se))
+                          false
+                          (throw se))))]
         (when compat
           (t2.with-temp/with-temp [Database database {:engine "mysql", :details details}]
             (sync/sync-database! database)
@@ -565,9 +565,9 @@
       (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
         (testing "When the query takes longer that the timeout, it is killed."
           (is (thrown-with-msg?
-                Exception
-                #"Killed MySQL process id [\d,]+ due to timeout."
-                (#'mysql.ddl/execute-with-timeout! :mysql db-spec db-spec 10 ["select sleep(5)"]))))
+               Exception
+               #"Killed MySQL process id [\d,]+ due to timeout."
+               (#'mysql.ddl/execute-with-timeout! :mysql db-spec db-spec 10 ["select sleep(5)"]))))
         (testing "When the query takes less time than the timeout, it is successful."
           (is (some? (#'mysql.ddl/execute-with-timeout! :mysql db-spec db-spec 5000 ["select sleep(0.1) as val"]))))))))
 
@@ -740,7 +740,7 @@
                                                                              :ssl true
                                                                              :additional-options "trustServerCertificate=true"))]
                                    (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                                     [spec [:mysql new-connection-details]]
+                                    [spec [:mysql new-connection-details]]
                                      (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                        (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec {})))))]
           (try

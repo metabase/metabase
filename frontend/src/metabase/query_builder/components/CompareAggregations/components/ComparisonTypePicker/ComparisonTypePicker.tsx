@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Input, Button, Flex, Stack } from "metabase/ui";
+import { Button, Flex, Input, Stack } from "metabase/ui";
 
 import type { ComparisonType } from "../../types";
 

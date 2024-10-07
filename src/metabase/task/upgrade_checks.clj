@@ -49,5 +49,5 @@
                  (triggers/start-now)
                  (triggers/with-schedule
                    ;; run twice a day
-                   (cron/cron-schedule "0 15 6,18 * * ? *")))]
+                  (cron/cron-schedule "0 15 6,18 * * ? *")))]
     (task/schedule-task! job trigger)))

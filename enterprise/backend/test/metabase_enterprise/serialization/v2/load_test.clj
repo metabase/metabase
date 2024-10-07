@@ -8,17 +8,14 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.models
-    :refer [Action Card Collection Dashboard DashboardCard Database Field
+    :refer [Card Collection Dashboard DashboardCard Database Field
             FieldValues NativeQuerySnippet Segment Table Timeline
             TimelineEvent User]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (java.time OffsetDateTime)))
+   [toucan2.core :as t2]))
 
 (defn- no-labels [path]
   (mapv #(dissoc % :label) path))
@@ -294,7 +291,6 @@
           table2d    (atom nil)
           field2d    (atom nil)]
 
-
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the original database, table, field and card"
           (ts/with-db source-db
@@ -380,7 +376,6 @@
           db2d       (atom nil)
           table2d    (atom nil)
           field3d    (atom nil)]
-
 
       (ts/with-dbs [source-db dest-db]
         (testing "serializing the original database, table, field and card"
@@ -524,7 +519,6 @@
                   (is (= exp-dashcard
                          (-> dash :dashcards first :visualization_settings))))))))
 
-
         (testing "deserializing adjusts the IDs properly"
           (ts/with-db dest-db
             ;; A different database and tables, so the IDs don't match.
@@ -621,7 +615,7 @@
                              [:collection_id               [:= (:entity_id @coll1s)]]
                              [:name                        [:= "Some events"]]
                              [:creator_id                  [:= "tom@bost.on"]]
-                             [:created_at                  (ms/InstanceOfClass OffsetDateTime)]
+                             [:created_at                  :string]
                              [:entity_id                   [:= (:entity_id timeline1)]]
                              [:description                 [:maybe :string]]
                              [:events                      [:sequential
@@ -632,11 +626,9 @@
                                                              [:archived                    :boolean]
                                                              [:description                 [:maybe :string]]
                                                              [:creator_id                  :string]
-                                                             [:created_at                  (ms/InstanceOfClass OffsetDateTime)]
+                                                             [:created_at                  :string]
                                                              [:timestamp                   :string]
-                                                             [:icon {:optional true}       [:maybe :string]]
-                                                             [:updated_at {:optional true} (ms/InstanceOfClass OffsetDateTime)]]]]
-                             [:updated_at {:optional true} (ms/InstanceOfClass OffsetDateTime)]
+                                                             [:icon {:optional true}       [:maybe :string]]]]]
                              [:icon {:optional true}       [:maybe :string]]
                              [:default {:optional true}    :boolean]]
                             timeline1))
@@ -967,13 +959,13 @@
                                      :type :model
                                      :database_id (:id db)
                                      :dataset_query {:database (:id db)
-                                                     :native {:type   :native
-                                                              :native {:query "wow"}}})
+                                                     :type   :native
+                                                     :native {:query "select 1"}})
                 _action-id (action/insert! {:entity_id     eid
                                             :name          "the action"
                                             :model_id      (:id card)
                                             :type          :query
-                                            :dataset_query "wow"
+                                            :dataset_query (mt/mbql-query users {:limit 1})
                                             :database_id   (:id db)})]
             (reset! serialized (into [] (serdes.extract/extract {})))
             (let [action-serialized (first (filter (fn [{[{:keys [model id]}] :serdes/meta}]
@@ -985,8 +977,9 @@
       (testing "loading succeeds"
         (ts/with-db dest-db
           (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-          (let [action (t2/select-one Action :entity_id eid)]
+          (let [action (action/select-action :entity_id eid)]
             (is (some? action))
+            (is (some? (:dataset_query action)))
             (testing ":type should be a keyword again"
               (is (keyword? (:type action))))))))))
 
@@ -1040,51 +1033,51 @@
 (deftest dashcard-series-test
   (ts/with-dbs [source-db dest-db]
     (testing "Dashcard series are updated and deleted correctly"
-     (ts/with-db source-db
-       (let [dash1s        (ts/create! :model/Dashboard :name "My Dashboard")
-             tab1s         (ts/create! :model/DashboardTab :name "Tab 1" :dashboard_id (:id dash1s))
-             card1s        (ts/create! Card :name "The Card")
-             series-card1s (ts/create! Card :name "The Series Card 1")
-             series-card2s (ts/create! Card :name "The Series Card 2")
-             series-card3s (ts/create! Card :name "The Series Card 3")
-             dashcard1s    (ts/create! :model/DashboardCard :card_id (:id card1s) :dashboard_id (:id dash1s) :dashboard_tab_id (:id tab1s))
-             series1s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card1s) :position 0)
-             series2s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card2s) :position 1)
-             series3s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card3s) :position 2)
-             extract1      (into [] (serdes.extract/extract {:no-settings true}))]
-         (ts/with-db dest-db
-           (serdes.load/load-metabase! (ingestion-in-memory extract1))
-           (ts/with-db source-db
+      (ts/with-db source-db
+        (let [dash1s        (ts/create! :model/Dashboard :name "My Dashboard")
+              tab1s         (ts/create! :model/DashboardTab :name "Tab 1" :dashboard_id (:id dash1s))
+              card1s        (ts/create! Card :name "The Card")
+              series-card1s (ts/create! Card :name "The Series Card 1")
+              series-card2s (ts/create! Card :name "The Series Card 2")
+              series-card3s (ts/create! Card :name "The Series Card 3")
+              dashcard1s    (ts/create! :model/DashboardCard :card_id (:id card1s) :dashboard_id (:id dash1s) :dashboard_tab_id (:id tab1s))
+              series1s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card1s) :position 0)
+              series2s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card2s) :position 1)
+              series3s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card3s) :position 2)
+              extract1      (into [] (serdes.extract/extract {:no-settings true}))]
+          (ts/with-db dest-db
+            (serdes.load/load-metabase! (ingestion-in-memory extract1))
+            (ts/with-db source-db
              ;; delete the 1st series and update the 3rd series to have position 0, and the 2nd series to have position 1
-             (t2/delete! :model/DashboardCardSeries (:id series1s))
-             (t2/update! :model/DashboardCardSeries (:id series3s) {:position 0})
-             (t2/update! :model/DashboardCardSeries (:id series2s) {:position 1})
-             (let [extract2 (into [] (serdes.extract/extract {:no-settings true :no-data-model true}))]
-               (ts/with-db dest-db
-                 (let [series-card2d        (t2/select-one :model/Card :entity_id (:entity_id series-card2s))
-                       series-card3d        (t2/select-one :model/Card :entity_id (:entity_id series-card3s))
+              (t2/delete! :model/DashboardCardSeries (:id series1s))
+              (t2/update! :model/DashboardCardSeries (:id series3s) {:position 0})
+              (t2/update! :model/DashboardCardSeries (:id series2s) {:position 1})
+              (let [extract2 (into [] (serdes.extract/extract {:no-settings true :no-data-model true}))]
+                (ts/with-db dest-db
+                  (let [series-card2d        (t2/select-one :model/Card :entity_id (:entity_id series-card2s))
+                        series-card3d        (t2/select-one :model/Card :entity_id (:entity_id series-card3s))
                        ;; we deleted the card that corresponds to `series1s`, so a shortcut is to get the one with position=0
-                       series-to-be-deleted (t2/select-one :model/DashboardCardSeries :position 0)]
-                   (testing "Sense check: there are 3 series for the dashboard card initially"
-                     (is (= 3
-                            (t2/count :model/DashboardCardSeries :dashboardcard_id (:dashboardcard_id series-to-be-deleted)))))
-                   (serdes.load/load-metabase! (ingestion-in-memory extract2))
-                   (let [dash1d (-> (t2/select-one :model/Dashboard :name "My Dashboard")
-                                    (t2/hydrate [:dashcards :series]))]
-                     (testing "Dashboard cards have the same entity ID"
-                       (is (= (:entity_id dashcard1s)
-                              (get-in dash1d [:dashcards 0 :entity_id]))))
-                     (testing "The dashboard's series is updated"
-                       (is (=? [{:id (:id series-card3d)}
-                                {:id (:id series-card2d)}]
-                               (get-in dash1d [:dashcards 0 :series]))))
-                     (testing "Dashboard card series are correctly updated/deleted in the database"
-                       (is (=? [{:position 0
-                                 :card_id  (:id series-card3d)}
-                                {:position 1
-                                 :card_id  (:id series-card2d)}]
-                               (->> (t2/select :model/DashboardCardSeries :dashboardcard_id (:dashboardcard_id series-to-be-deleted))
-                                    (sort-by :position))))))))))))))))
+                        series-to-be-deleted (t2/select-one :model/DashboardCardSeries :position 0)]
+                    (testing "Sense check: there are 3 series for the dashboard card initially"
+                      (is (= 3
+                             (t2/count :model/DashboardCardSeries :dashboardcard_id (:dashboardcard_id series-to-be-deleted)))))
+                    (serdes.load/load-metabase! (ingestion-in-memory extract2))
+                    (let [dash1d (-> (t2/select-one :model/Dashboard :name "My Dashboard")
+                                     (t2/hydrate [:dashcards :series]))]
+                      (testing "Dashboard cards have the same entity ID"
+                        (is (= (:entity_id dashcard1s)
+                               (get-in dash1d [:dashcards 0 :entity_id]))))
+                      (testing "The dashboard's series is updated"
+                        (is (=? [{:id (:id series-card3d)}
+                                 {:id (:id series-card2d)}]
+                                (get-in dash1d [:dashcards 0 :series]))))
+                      (testing "Dashboard card series are correctly updated/deleted in the database"
+                        (is (=? [{:position 0
+                                  :card_id  (:id series-card3d)}
+                                 {:position 1
+                                  :card_id  (:id series-card2d)}]
+                                (->> (t2/select :model/DashboardCardSeries :dashboardcard_id (:dashboardcard_id series-to-be-deleted))
+                                     (sort-by :position))))))))))))))))
 
 (deftest dashcard-series-multi-test
   (ts/with-dbs [source-db dest-db]
@@ -1113,13 +1106,13 @@
         (ts/with-db source-db
           (let [db         (ts/create! Database :name "my-db")
                 card       (ts/create! Card
-                                 :name "the query"
-                                 :query_type :native
-                                 :type :model
-                                 :database_id (:id db)
-                                 :dataset_query {:database (:id db)
-                                                 :native   {:type   :native
-                                                            :native {:query "wow"}}})
+                                       :name "the query"
+                                       :query_type :native
+                                       :type :model
+                                       :database_id (:id db)
+                                       :dataset_query {:database (:id db)
+                                                       :native   {:type   :native
+                                                                  :native {:query "wow"}}})
                 parent     (ts/create! Collection :name "Parent Collection" :location "/")
                 _child     (ts/create! Collection
                                        :name "Child Collection"
@@ -1249,7 +1242,7 @@
           (is (some? (t2/select-one :model/Card :name "MY CARD"))))
         (ts/with-db dest-db
           (testing "card should not be available in the dest db"
-           (is (nil? (t2/select-one :model/Card :name "MY CARD")))))))))
+            (is (nil? (t2/select-one :model/Card :name "MY CARD")))))))))
 
 (deftest database-test
   (ts/with-dbs [source-db dest-db]
@@ -1343,3 +1336,37 @@
                     (testing (format "%s has identity hash in the db" model)
                       (is (= (serdes/identity-hash e)
                              (serdes/entity-id (name model) e))))))))))))))
+
+(deftest identically-named-fields-test
+  (mt/with-empty-h2-app-db
+    (let [db (ts/create! Database :name "mydb")
+          t  (ts/create! Table :name "table" :db_id (:id db))
+          f1 (ts/create! Field :name "field" :table_id (:id t))
+          ;; name is the same, but parent_id is different
+          f2 (ts/create! Field :name "field" :table_id (:id t) :parent_id (:id f1))
+          f3 (ts/create! Field :name "field" :table_id (:id t) :parent_id (:id f2)
+                         :description "desc")
+
+          ser (into [] (serdes.extract/extract {}))]
+
+      (is (=? {:parent_id   ["mydb" nil "table" "field"]
+               :serdes/meta [{:model "Database" :id "mydb"}
+                             {:model "Table" :id "table"}
+                             {:model "Field" :id "field"}
+                             {:model "Field" :id "field"}]}
+              (ts/extract-one "Field" (:id f2))))
+
+      (is (=? {:parent_id   ["mydb" nil "table" "field" "field"],
+               :serdes/meta [{:model "Database" :id "mydb"}
+                             {:model "Table" :id "table"}
+                             {:model "Field" :id "field"}
+                             {:model "Field" :id "field"}
+                             {:model "Field" :id "field"}]}
+              (ts/extract-one "Field" (:id f3))))
+
+      (t2/update! :model/Field (:id f3) {:description "some new one"})
+
+      (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+
+      (is (= "desc"
+             (t2/select-one-fn :description :model/Field (:id f3)))))))

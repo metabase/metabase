@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import type { MetabotVariant } from "metabase/core/components/MetabotLogo/MetabotLogo";
 
 import {
-  MetabotText,
   MetabotIcon,
   MetabotMessageRoot,
+  MetabotText,
 } from "./MetabotMessage.styled";
 
 interface MetabotMessageProps {

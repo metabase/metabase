@@ -1,29 +1,33 @@
-import { SAMPLE_DB_ID, USER_GROUPS, USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
   NODATA_USER_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  withDatabase,
-  startNewQuestion,
+  assertDatasetReqIsSandboxed,
+  assertQueryBuilderRowCount,
+  blockUserGroupPermissions,
+  commandPaletteSearch,
   describeEE,
-  visitQuestion,
-  setTokenFeatures,
-  popover,
+  entityPickerModal,
+  filterWidget,
+  getFullName,
+  modal,
   onlyOnEE,
+  openQuestionActions,
+  openSharingMenu,
+  popover,
+  restore,
+  setTokenFeatures,
   setupSMTP,
   sidebar,
-  modal,
-  commandPaletteSearch,
-  openQuestionActions,
-  entityPickerModal,
-  getFullName,
-  visitQuestionAdhoc,
+  startNewQuestion,
   visitDashboard,
-  filterWidget,
+  visitQuestion,
+  visitQuestionAdhoc,
+  withDatabase,
 } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
@@ -159,46 +163,11 @@ describeEE("postgres > user > query", { tags: "@external" }, () => {
 
         cy.findByText(CC_NAME);
         cy.findByText(/^Hudson$/);
+        assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
+        assertDatasetReqIsSandboxed({
+          requestAlias: `@cardQuery${QUESTION_ID}`,
+        });
       });
-    });
-  });
-});
-
-describeEE("issue 17763", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-    setTokenFeatures("all");
-
-    cy.updatePermissionsGraph({
-      [ALL_USERS_GROUP]: {
-        1: {
-          "view-data": "blocked",
-          "create-queries": "no",
-        },
-      },
-    });
-  });
-
-  it('should be able to edit tables permissions in granular view after "block" permissions (metabase#17763)', () => {
-    cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Blocked").click();
-
-    popover().contains("Granular").click();
-
-    cy.location("pathname").should(
-      "eq",
-      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
-    );
-
-    cy.findByTestId("permission-table").within(() => {
-      cy.findAllByText("Can view").first().click();
-    });
-
-    popover().within(() => {
-      cy.findByText("Sandboxed");
     });
   });
 });
@@ -343,7 +312,7 @@ describe("UI elements that make no sense for users without data permissions (met
     cy.findByTestId("display-options-sensible");
     cy.icon("line").click();
     cy.findByTestId("Line-button").realHover();
-    cy.findByTestId("Line-button").within(() => {
+    cy.findByTestId("Line-container").within(() => {
       cy.icon("gear").click();
     });
 
@@ -417,7 +386,7 @@ describe("issue 22473", () => {
 
   it("nocollection user should be able to view and unsubscribe themselves from a subscription", () => {
     cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
-    cy.icon("subscription").click();
+    openSharingMenu("Subscriptions");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
     cy.findByPlaceholderText("Enter user names or email addresses")
@@ -640,6 +609,7 @@ describeEE("issue 24966", () => {
     restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
+    blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
 
     // Add user attribute to existing user
     cy.request("PUT", `/api/user/${NODATA_USER_ID}`, {
@@ -669,6 +639,7 @@ describeEE("issue 24966", () => {
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
       cy.wrap(dashboard_id).as("dashboardId");
+      cy.wrap(id).as("dashcardId");
 
       // Connect the filter to the card
       cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
@@ -707,5 +678,8 @@ describeEE("issue 24966", () => {
     cy.findByLabelText("Widget").click();
     cy.button("Add filter").click();
     cy.location("search").should("eq", "?text=Widget");
+    cy.get("@dashcardId").then(id => {
+      assertDatasetReqIsSandboxed({ requestAlias: `@dashcardQuery${id}` });
+    });
   });
 });

@@ -99,7 +99,7 @@
                 (u.date.common/temporal-field x)
                 x)]
     (assert (instance? TemporalField field)
-      (format "Invalid TemporalField: %s" (pr-str field)))
+            (format "Invalid TemporalField: %s" (pr-str field)))
     field))
 
 (defn value

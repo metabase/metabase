@@ -1,4 +1,4 @@
-import type { LocalFieldReference } from "metabase-types/api";
+import type { CacheStrategy, LocalFieldReference } from "metabase-types/api";
 
 import type { Card } from "./card";
 import type { DatabaseId } from "./database";
@@ -66,6 +66,12 @@ export interface DatasetData {
 
 export type JsonQuery = DatasetQuery & {
   parameters?: unknown[];
+  "cache-strategy"?: CacheStrategy & {
+    /** An ISO 8601 date */
+    "invalidated-at"?: string;
+    /** In milliseconds */
+    "avg-execution-ms"?: number;
+  };
 };
 
 export interface Dataset {
@@ -74,13 +80,22 @@ export interface Dataset {
   row_count: number;
   running_time: number;
   json_query?: JsonQuery;
+  error?:
+    | string
+    | {
+        status: number; // HTTP status code
+        data?: string;
+      };
   error_type?: string;
-  error?: {
-    status: number; // HTTP status code
-    data?: string;
-  };
+  error_is_curated?: boolean;
   context?: string;
   status?: string;
+  /** In milliseconds */
+  average_execution_time?: number;
+  /** A date in ISO 8601 format */
+  cached?: string;
+  /** A date in ISO 8601 format */
+  started_at?: string;
 }
 
 export interface EmbedDatasetData {

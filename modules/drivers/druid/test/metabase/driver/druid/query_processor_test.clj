@@ -15,13 +15,12 @@
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util.date-2 :as u.date]
-   [toucan2.core :as t2]
-   #_[toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (defn- str->absolute-dt [s]
   [:absolute-datetime (u.date/parse s "UTC") :default])
 
-(deftest filter-intervals-test
+(deftest ^:parallel filter-intervals-test
   (let [dt-field                 [:field 1 {:temporal-unit :default}]
         filter-clause->intervals (comp @#'druid.qp/compile-intervals @#'druid.qp/filter-clause->intervals)]
     (testing :=
@@ -89,14 +88,14 @@
                [:= [:field 2 nil] "threecan"]]))
           ":or filters with no temporal filters should return nil"))))
 
-(defn- do-query->native [query]
+(defn- do-query->native! [query]
   (driver/with-driver :druid
     (tqpt/with-flattened-dbdef
       (with-redefs [druid.qp/random-query-id (constantly "<Query ID>")]
         (qp.compile/compile query)))))
 
-(defmacro ^:private query->native [query]
-  `(do-query->native
+(defmacro ^:private query->native! [query]
+  `(do-query->native!
     (mt/mbql-query ~'checkins
       ~query)))
 
@@ -124,7 +123,7 @@
                               :aggregator {:type :count, :name "__count_0"}}]}
               :query-type  ::druid.qp/topN
               :mbql?       true}
-             (query->native
+             (query->native!
               #_:clj-kondo/ignore
               {:aggregation [[:* [:count $id] 10]]
                :breakout    [$venue_price]}))))))
@@ -148,7 +147,7 @@
                                             :round      true}]}
               :query-type  ::druid.qp/topN
               :mbql?       true}
-             (query->native
+             (query->native!
               #_:clj-kondo/ignore
               {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
                :breakout    [$venue_category_name]
@@ -175,7 +174,7 @@
                                                      {:dimension "user_name", :direction :ascending}]}}
               :query-type  ::druid.qp/groupBy
               :mbql?       true}
-             (query->native
+             (query->native!
               #_:clj-kondo/ignore
               {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
                :breakout    [$venue_category_name $user_name]
@@ -203,7 +202,7 @@
                                            :limit   5}}
               :query-type  ::druid.qp/groupBy
               :mbql?       true}
-             (query->native
+             (query->native!
               {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
                :breakout    [$venue_category_name $user_name]
                :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
@@ -232,15 +231,15 @@
                                                    {:type :finalizingFieldAccess, :fieldName "__distinct_0"}]}]}
                 :query-type  ::druid.qp/total
                 :mbql?       true}
-               (query->native
+               (query->native!
                 {:aggregation [[:+ 1 [:aggregation-options [:distinct $checkins.venue_name] {:name "__distinct_0"}]]]})))))))
 
 (defn- table-rows-sample []
   (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :checkins))
-         [(t2/select-one Field :id (mt/id :checkins :id))
-          (t2/select-one Field :id (mt/id :checkins :venue_name))
-          (t2/select-one Field :id (mt/id :checkins :timestamp))]
-         (constantly conj))
+                                           [(t2/select-one Field :id (mt/id :checkins :id))
+                                            (t2/select-one Field :id (mt/id :checkins :venue_name))
+                                            (t2/select-one Field :id (mt/id :checkins :timestamp))]
+                                           (constantly conj))
        (sort-by first)
        (take 5)))
 
@@ -517,9 +516,9 @@
               ["3"  460.0]
               ["4"  245.0]]
              (mt/rows
-               (druid-query
-                 {:aggregation [[:aggregation-options [:sum [:+ $venue_price 1]] {:name "New Price"}]]
-                  :breakout    [$venue_price]})))))))
+              (druid-query
+                {:aggregation [[:aggregation-options [:sum [:+ $venue_price 1]] {:name "New Price"}]]
+                 :breakout    [$venue_price]})))))))
 
 (deftest named-expression-aggregations-test
   (mt/test-driver :druid

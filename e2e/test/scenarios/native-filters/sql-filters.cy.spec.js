@@ -1,8 +1,8 @@
 import {
-  restore,
-  openNativeEditor,
   filterWidget,
+  openNativeEditor,
   popover,
+  restore,
 } from "e2e/support/helpers";
 
 import * as DateFilter from "./helpers/e2e-date-filter-helpers";

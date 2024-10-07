@@ -9,24 +9,24 @@ import FormS from "metabase/css/components/form.module.css";
 import CS from "metabase/css/core/index.css";
 import { isObscured } from "metabase/lib/dom";
 import {
-  KEYCODE_ESCAPE,
+  KEYCODE_BACKSPACE,
+  KEYCODE_DOWN,
   KEYCODE_ENTER,
+  KEYCODE_ESCAPE,
   KEYCODE_TAB,
   KEYCODE_UP,
-  KEYCODE_DOWN,
-  KEYCODE_BACKSPACE,
+  KEY_BACKSPACE,
   KEY_COMMA,
   KEY_ENTER,
-  KEY_BACKSPACE,
 } from "metabase/lib/keyboard";
 import { Icon } from "metabase/ui";
 
 import { TokenFieldAddon, TokenFieldItem } from "../TokenFieldItem";
 
 import {
-  TokenInputItem,
-  TokenFieldContainer,
   PrefixContainer,
+  TokenFieldContainer,
+  TokenInputItem,
 } from "./TokenField.styled";
 
 export type LayoutRendererArgs = {

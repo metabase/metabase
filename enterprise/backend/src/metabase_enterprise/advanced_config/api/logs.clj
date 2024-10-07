@@ -37,7 +37,7 @@
   Must be a superuser."
   [yyyy-mm]
   {yyyy-mm (mu/with-api-error-message [:re #"\d{4}-\d{2}"]
-             (deferred-tru "Must be a string like 2020-04 or 2222-11."))}
+                                      (deferred-tru "Must be a string like 2020-04 or 2222-11."))}
   (let [[year month] (mc/coerce [:tuple
                                  [:int {:title "year" :min 0 :max 9999}]
                                  [:int {:title "month" :min 0 :max 12}]] ; month 0 ???

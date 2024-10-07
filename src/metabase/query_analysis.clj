@@ -62,7 +62,9 @@
   `(with-execution* ::disabled ~@body))
 
 (defn- execution
-  "The execution strategy for analysis, which can be overridden in dev and tests. In production, it is always async."
+  "The execution strategy for analysis. It can be overridden by a dynamic variable in dev and tests.
+
+  By default, it is async in production for the backfill."
   []
   (case config/run-mode
     :prod ::queued
@@ -74,8 +76,8 @@
   [query-type]
   (and (public-settings/query-analysis-enabled)
        (case query-type
-         :native (public-settings/sql-parsing-enabled)
-         :query true
+         :native     (public-settings/sql-parsing-enabled)
+         :query      true
          :mbql/query true
          false)))
 
@@ -106,7 +108,7 @@
      :native     (try
                    (nqa/references-for-native query)
                    (catch Exception e
-                     (log/error e "Error parsing SQL" query)))
+                     (log/debug e "Failed to analyze native query" query)))
      ;; For now, all model references are resolved transitively to the ultimate field ids.
      ;; We may want to change to record model references directly rather than resolving them.
      ;; This would remove the need to invalidate consuming cards when a given model changes.
@@ -122,7 +124,7 @@
   (let [query-type (lib/normalized-query-type query)]
     (when (enabled-type? query-type)
       (t2/with-transaction [_conn]
-        (let [analysis-id      (t2/insert-returning-pk! :model/QueryAnalysis {:card_id card-id})
+        (let [analysis-id      (t2/insert-returning-pk! :model/QueryAnalysis {:card_id card-id :status "running"})
               references       (query-references query query-type)
               table->row       (fn [{:keys [schema table table-id]}]
                                  {:card_id     card-id
@@ -139,10 +141,17 @@
                                   :table_id           table-id
                                   :field_id           field-id
                                   :explicit_reference explicit-reference})
-              query-field-rows (map field->row (:fields references))
-              query-table-rows (map table->row (:tables references))]
-          (t2/insert! :model/QueryField query-field-rows)
-          (t2/insert! :model/QueryTable query-table-rows)
+              success?         (some? references)]
+
+          (if-not success?
+            (do
+              (log/errorf "Failed to analyze query for card %s" card-id)
+              (t2/update! :model/QueryAnalysis analysis-id {:status "failed"}))
+            (do
+              (t2/insert! :model/QueryField (map field->row (:fields references)))
+              (t2/insert! :model/QueryTable (map table->row (:tables references)))
+              (t2/update! :model/QueryAnalysis analysis-id {:status "complete"})))
+
           (t2/delete! :model/QueryAnalysis
                       {:where [:and
                                [:= :card_id card-id]
@@ -208,17 +217,18 @@
     ;; If we need to query the database though, find out for sure.
     (t2/select-one [:model/Card :id :archived :dataset_query] (u/the-id card-or-id))))
 
-(defn analyze-card!
-  "Update the analysis for a given card if it is active. Should only be called from [[metabase.task.analyze-queries]]."
+(defn analyze!*
+  "Update the analysis for a given card if it is active. Should only be called from [[metabase.task.analyze-queries]];
+  otherwise favor [[analyze!]]"
   [card-or-id]
   (let [card    (->analyzable card-or-id)
         card-id (:id card)]
-      (cond
-        (not card)       (log/warnf "Card not found: %s" card-id)
-        (:archived card) (log/warnf "Skipping archived card: %s" card-id)
-        :else            (log/infof "Performing query analysis for card %s" card-id))
-      (when (and card (not (:archived card)))
-        (update-query-analysis-for-card! card))))
+    (cond
+      (not card)       (log/warnf "Card not found: %s" card-id)
+      (:archived card) (log/warnf "Skipping archived card: %s" card-id)
+      :else            (do
+                         (log/debugf "Performing query analysis for card %s" card-id)
+                         (update-query-analysis-for-card! card)))))
 
 (defn next-card-or-id!
   "Get the id of the next card id to be analyzed. May block indefinitely, relies on producer.
@@ -234,22 +244,26 @@
   "Indirection used to modify the execution strategy for analysis in dev and tests."
   [offer-fn! card-or-id]
   (case (execution)
-    ::immediate (analyze-card! card-or-id)
+    ::immediate (analyze!* card-or-id)
     ::queued    (offer-fn! card-or-id)
     ::disabled  nil))
 
-(defn analyze-async!
-  "Asynchronously hand-off the given card for analysis, at a high priority. This is typically the method you want."
-  ([card-or-id]
-   (analyze-async! worker-queue card-or-id))
-  ([queue card-or-id]
-   (queue-or-analyze! (partial queue/maybe-put! queue) card-or-id)))
+(defn- blocking-put! [queue timeout card-or-id]
+  (let [id (u/the-id card-or-id)]
+    (log/debugf "Synchronously analyzing Card %s" id)
+    (queue/blocking-put! queue timeout card-or-id)))
 
-(defn analyze-sync!
-  "Synchronously hand-off the given card for analysis, at a low priority. May block indefinitely, relies on consumer."
+(defn analyze!
+  "Assuming analysis is enabled, analyze the card immediately (and in the current thread)."
+  [card-or-id]
+  (when-not (= ::disabled (execution))
+    (analyze!* card-or-id)))
+
+(defn queue-analysis!
+  "Synchronously hand off the given card for analysis, at a low priority. May block indefinitely, relies on consumer.
+
+  Note that only the *hand-off* is sync; if we're using the queue the processing could happen asynchronously."
   ([card-or-id]
-   (analyze-sync! card-or-id worker-queue))
+   (queue-analysis! card-or-id worker-queue))
   ([card-or-id queue]
-   (analyze-sync! card-or-id queue Long/MAX_VALUE))
-  ([card-or-id queue timeout]
-   (queue-or-analyze! (partial queue/blocking-put! queue timeout) card-or-id)))
+   (queue-or-analyze! (partial queue/blocking-put! queue Long/MAX_VALUE) card-or-id)))

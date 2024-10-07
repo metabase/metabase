@@ -1,9 +1,9 @@
 import {
   getDashboardComplete,
-  getTabHiddenParameterSlugs,
   getIsEditing,
   getIsNightMode,
   getParameters,
+  getTabHiddenParameterSlugs,
 } from "metabase/dashboard/selectors";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";

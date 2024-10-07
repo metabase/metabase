@@ -33,8 +33,8 @@
                                             :moderated_item_id   card-id
                                             :moderated_item_type "card"})))
                   (review-count [] (t2/count ModerationReview
-                                     :moderated_item_id card-id
-                                     :moderated_item_type "card"))]
+                                             :moderated_item_id card-id
+                                             :moderated_item_type "card"))]
             (testing "Non admin cannot create a moderation review"
               (is (= 0 (review-count)))
               (is (= "You don't have permissions to do that."
@@ -62,8 +62,8 @@
                        (into #{}
                              (map #(select-keys % [:text :status :most_recent]))
                              (t2/select ModerationReview
-                               :moderated_item_id card-id
-                               :moderated_item_type "card"))))))
+                                        :moderated_item_id card-id
+                                        :moderated_item_type "card"))))))
             (testing "Ensures we never have more than `modreview/max-moderation-reviews`"
               (t2/insert! ModerationReview (repeat (* 2 moderation-review/max-moderation-reviews)
                                                    {:moderated_item_id   card-id

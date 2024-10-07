@@ -20,11 +20,12 @@
               [3 "The Apple Pan"                11 34.0406 -118.428 2 4.0]
               [4 "Wurstküche"                   29 33.9997 -118.465 2 4.0]
               [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2 4.0]]
-             (mt/formatted-rows [int str int 4.0 4.0 int float]
-               (mt/run-mbql-query venues
-                 {:expressions {:my_cool_new_field [:+ $price 2]}
-                  :limit       5
-                  :order-by    [[:asc $id]]})))))))
+             (mt/formatted-rows
+              [int str int 4.0 4.0 int float]
+              (mt/run-mbql-query venues
+                {:expressions {:my_cool_new_field [:+ $price 2]}
+                 :limit       5
+                 :order-by    [[:asc $id]]})))))))
 
 (deftest ^:parallel floating-point-division-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -32,11 +33,12 @@
       (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 1.5] ; 3 / 2 SHOULD BE 1.5, NOT 1 (!)
               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 1.0]
               [3 "The Apple Pan"         11 34.0406 -118.428 2 1.0]]
-             (mt/formatted-rows [int str int 4.0 4.0 int float]
-               (mt/run-mbql-query venues
-                 {:expressions {:my_cool_new_field [:/ $price 2]}
-                  :limit       3
-                  :order-by    [[:asc $id]]})))))))
+             (mt/formatted-rows
+              [int str int 4.0 4.0 int float]
+              (mt/run-mbql-query venues
+                {:expressions {:my_cool_new_field [:/ $price 2]}
+                 :limit       3
+                 :order-by    [[:asc $id]]})))))))
 
 (deftest ^:parallel floating-point-division-for-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -44,13 +46,14 @@
       (is (= [[0.6]
               [0.5]
               [0.5]]
-             (mt/formatted-rows [1.0]
-               (mt/run-mbql-query venues
-                 {:expressions {:big_price         [:+ $price 2]
-                                :my_cool_new_field [:/ $price [:expression "big_price"]]}
-                  :fields      [[:expression "my_cool_new_field"]]
-                  :limit       3
-                  :order-by    [[:asc $id]]})))))))
+             (mt/formatted-rows
+              [1.0]
+              (mt/run-mbql-query venues
+                {:expressions {:big_price         [:+ $price 2]
+                               :my_cool_new_field [:/ $price [:expression "big_price"]]}
+                 :fields      [[:expression "my_cool_new_field"]]
+                 :limit       3
+                 :order-by    [[:asc $id]]})))))))
 
 (deftest ^:parallel nested-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -58,11 +61,12 @@
       (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 3.0]
               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 2.0]
               [3 "The Apple Pan"         11 34.0406 -118.428 2 2.0]]
-             (mt/formatted-rows [int str int 4.0 4.0 int float]
-               (mt/run-mbql-query venues
-                 {:expressions {:wow [:- [:* $price 2] [:+ $price 0]]}
-                  :limit       3
-                  :order-by    [[:asc $id]]})))))))
+             (mt/formatted-rows
+              [int str int 4.0 4.0 int float]
+              (mt/run-mbql-query venues
+                {:expressions {:wow [:- [:* $price 2] [:+ $price 0]]}
+                 :limit       3
+                 :order-by    [[:asc $id]]})))))))
 
 (deftest ^:parallel multiple-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -70,23 +74,25 @@
       (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 2.0 4.0]
               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 1.0 3.0]
               [3 "The Apple Pan"         11 34.0406 -118.428 2 1.0 3.0]]
-             (mt/formatted-rows [int str int 4.0 4.0 int float float]
-               (mt/run-mbql-query venues
-                 {:expressions {:x [:- $price 1]
-                                :y [:+ $price 1]}
-                  :limit       3
-                  :order-by    [[:asc $id]]})))))))
+             (mt/formatted-rows
+              [int str int 4.0 4.0 int float float]
+              (mt/run-mbql-query venues
+                {:expressions {:x [:- $price 1]
+                               :y [:+ $price 1]}
+                 :limit       3
+                 :order-by    [[:asc $id]]})))))))
 
 (deftest ^:parallel expressions-in-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we refer to expressions inside a FIELDS clause?"
       (is (= [[4] [4] [5]]
-             (mt/formatted-rows [int]
-               (mt/run-mbql-query venues
-                 {:expressions {:x [:+ $price $id]}
-                  :fields      [[:expression :x]]
-                  :limit       3
-                  :order-by    [[:asc $id]]})))))))
+             (mt/formatted-rows
+              [int]
+              (mt/run-mbql-query venues
+                {:expressions {:x [:+ $price $id]}
+                 :fields      [[:expression :x]]
+                 :limit       3
+                 :order-by    [[:asc $id]]})))))))
 
 (defn- dont-return-expressions-if-fields-is-explicit-query []
   ;; bigquery doesn't let you have hypthens in field, table, etc names
@@ -107,8 +113,9 @@
     (let [{:keys [query]} (dont-return-expressions-if-fields-is-explicit-query)]
       (testing "If an explicit `:fields` clause is present, expressions *not* in that clause should not come back"
         (is (= [[3 2] [2 2] [2 2]]
-               (mt/formatted-rows [int int]
-                 (qp/process-query query))))))))
+               (mt/formatted-rows
+                [int int]
+                (qp/process-query query))))))))
 
 (deftest ^:parallel dont-return-expressions-if-fields-is-explicit-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -118,8 +125,9 @@
         (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 4 2]
                 [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 3 2]
                 [3 "The Apple Pan"         11 34.0406 -118.428 2 3 2]]
-               (mt/formatted-rows [int str int 4.0 4.0 int int int]
-                 (qp/process-query (m/dissoc-in query [:query :fields])))))))))
+               (mt/formatted-rows
+                [int str int 4.0 4.0 int int int]
+                (qp/process-query (m/dissoc-in query [:query :fields])))))))))
 
 (deftest ^:parallel dont-return-expressions-if-fields-is-explicit-test-3
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -127,14 +135,15 @@
     (let [{:keys [priceplusone oneplusone]} (dont-return-expressions-if-fields-is-explicit-query)]
       (testing "When aggregating, expressions that aren't used shouldn't come back"
         (is (= [[2 22] [3 59] [4 13]]
-               (mt/formatted-rows [int int]
-                 (mt/run-mbql-query venues
-                   {:expressions {priceplusone [:+ $price 1]
-                                  oneplusone   [:+ 1 1]}
-                    :aggregation [:count]
-                    :breakout    [[:expression priceplusone]]
-                    :order-by    [[:asc [:expression priceplusone]]]
-                    :limit       3}))))))))
+               (mt/formatted-rows
+                [int int]
+                (mt/run-mbql-query venues
+                  {:expressions {priceplusone [:+ $price 1]
+                                 oneplusone   [:+ 1 1]}
+                   :aggregation [:count]
+                   :breakout    [[:expression priceplusone]]
+                   :order-by    [[:asc [:expression priceplusone]]]
+                   :limit       3}))))))))
 
 (deftest ^:parallel expressions-in-order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -142,11 +151,12 @@
       (is (= [[100 "Mohawk Bend"         46 34.0777 -118.265 2 102.0]
               [99  "Golden Road Brewing" 10 34.1505 -118.274 2 101.0]
               [98  "Lucky Baldwin's Pub"  7 34.1454 -118.149 2 100.0]]
-             (mt/formatted-rows [int str int 4.0 4.0 int float]
-               (mt/run-mbql-query venues
-                 {:expressions {:x [:+ $price $id]}
-                  :limit       3
-                  :order-by    [[:desc [:expression :x]]]})))))))
+             (mt/formatted-rows
+              [int str int 4.0 4.0 int float]
+              (mt/run-mbql-query venues
+                {:expressions {:x [:+ $price $id]}
+                 :limit       3
+                 :order-by    [[:desc [:expression :x]]]})))))))
 
 (deftest ^:parallel expressions-in-order-by-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -154,21 +164,23 @@
       (is (= [[81 "Tanoshi Sushi & Sake Bar" 40 40.7677 -73.9533 4 85.0]
               [79 "Sushi Yasuda" 40 40.7514 -73.9736 4 83.0]
               [77 "Sushi Nakazawa" 40 40.7318 -74.0045 4 81.0]]
-             (mt/formatted-rows [int str int 4.0 4.0 int float]
-               (mt/run-mbql-query venues
-                 {:expressions {:x [:+ $price $id]}
-                  :limit       3
-                  :order-by    [[:desc $price] [:desc [:expression :x]]]})))))))
+             (mt/formatted-rows
+              [int str int 4.0 4.0 int float]
+              (mt/run-mbql-query venues
+                {:expressions {:x [:+ $price $id]}
+                 :limit       3
+                 :order-by    [[:desc $price] [:desc [:expression :x]]]})))))))
 
 (deftest ^:parallel aggregate-breakout-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we AGGREGATE + BREAKOUT by an EXPRESSION?"
       (is (= [[2 22] [4 59] [6 13] [8 6]]
-             (mt/formatted-rows [int int]
-               (mt/run-mbql-query venues
-                 {:expressions {:x [:* $price 2.0]}
-                  :aggregation [[:count]]
-                  :breakout    [[:expression :x]]})))))))
+             (mt/formatted-rows
+              [int int]
+              (mt/run-mbql-query venues
+                {:expressions {:x [:* $price 2.0]}
+                 :aggregation [[:count]]
+                 :breakout    [[:expression :x]]})))))))
 
 (deftest ^:parallel expressions-should-include-type-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -196,14 +208,15 @@
 
     scarcity = 100.0 / num-birds"
   [formula filter-clause]
-  (mt/formatted-rows [2.0]
-    (mt/dataset daily-bird-counts
-      (mt/run-mbql-query bird-count
-        {:expressions {"bird-scarcity" formula}
-         :fields      [[:expression "bird-scarcity"]]
-         :filter      filter-clause
-         :order-by    [[:asc $date]]
-         :limit       10}))))
+  (mt/formatted-rows
+   [2.0]
+   (mt/dataset daily-bird-counts
+     (mt/run-mbql-query bird-count
+       {:expressions {"bird-scarcity" formula}
+        :fields      [[:expression "bird-scarcity"]]
+        :filter      filter-clause
+        :order-by    [[:asc $date]]
+        :limit       10}))))
 
 (defmacro ^:private calculate-bird-scarcity [formula & [filter-clause]]
   `(mt/dataset ~'daily-bird-counts
@@ -378,19 +391,19 @@
             [user-locale exp-names] [;; US uses Sunday=1 in both English and Spanish.
                                      ["en_US" weekdays-english]
                                      ["es_US" weekdays-spanish]
-                                                    ;; Europe uses Monday=1 in both English and Spanish.
+                                     ;; Europe uses Monday=1 in both English and Spanish.
                                      ["en_UK" weekdays-english]
                                      ["es_ES" weekdays-spanish]]]
       ;; Metabase queries should return weekday numbers based on the *setting*, not the locales.
       ;; This fixed set of dates from checkins runs Monday to Sunday when sorted ascending by date.
-      (let [known-week  ["2013-02-18"  ; Monday
-                         "2013-02-19"  ; Tuesday
-                         "2013-02-20"  ; Wednesday
-                         "2013-02-21"  ; Thursday
-                         "2013-02-22"  ; Friday
-                         "2013-03-16"  ; Saturday
-                         "2013-03-16"  ; Saturday
-                         "2013-04-28"] ; Sunday
+      (let [known-week  ["2013-02-18"   ; Monday
+                         "2013-02-19"   ; Tuesday
+                         "2013-02-20"   ; Wednesday
+                         "2013-02-21"   ; Thursday
+                         "2013-02-22"   ; Friday
+                         "2013-03-16"   ; Saturday
+                         "2013-03-16"   ; Saturday
+                         "2013-04-28"]  ; Sunday
             ;; The absolute weekdays are fixed above, but the numbering depends on the `start-of-week` setting.
             exp-numbers (case first-day
                           :saturday [3 4 5 6 7 1 2]
@@ -400,13 +413,14 @@
                                            site-locale   site-locale]
           (mt/with-user-locale user-locale
             ;; Fetching [number name date].
-            (let [results (mt/formatted-rows [int str]
-                            (mt/run-mbql-query checkins
-                              {:fields      [[:expression "weekday"] [:expression "name"]]
-                               :expressions {:weekday [:get-day-of-week $date]
-                                             :name    [:day-name [:expression "weekday"]]}
-                               :filter      (into [:= $date] known-week)
-                               :order-by    [[:asc $date]]}))]
+            (let [results (mt/formatted-rows
+                           [int str]
+                           (mt/run-mbql-query checkins
+                             {:fields      [[:expression "weekday"] [:expression "name"]]
+                              :expressions {:weekday [:get-day-of-week $date]
+                                            :name    [:day-name [:expression "weekday"]]}
+                              :filter      (into [:= $date] known-week)
+                              :order-by    [[:asc $date]]}))]
               (testing "weekday numbers disregard site and user locales, and respect `start-of-week` setting"
                 (is (=? exp-numbers (map first results))))
               (testing "weekday names are correctly translated by *user* locale, though weekday differs across locales"
@@ -504,11 +518,12 @@
       (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 4.0]
               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 3.0]
               [3 "The Apple Pan"         11 34.0406 -118.428 2 3.0]]
-             (mt/formatted-rows [int str int 4.0 4.0 int float]
-               (mt/run-mbql-query venues
-                 {:expressions {:TEST/my-cool-new-field [:+ $price 1]}
-                  :limit       3
-                  :order-by    [[:asc $id]]})))))))
+             (mt/formatted-rows
+              [int str int 4.0 4.0 int float]
+              (mt/run-mbql-query venues
+                {:expressions {:TEST/my-cool-new-field [:+ $price 1]}
+                 :limit       3
+                 :order-by    [[:asc $id]]})))))))
 
 (deftest ^:parallel expression-using-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -516,16 +531,17 @@
       (is (= [["20th Century Cafe" 2 2 0]
               ["25°" 2 2 0]
               ["33 Taps" 2 2 0]]
-             (mt/formatted-rows [str int int int]
-               (mt/run-mbql-query venues
-                 {:source-query {:source-table (mt/id :venues)
-                                 :aggregation  [[:min (mt/id :venues :price)]
-                                                [:max (mt/id :venues :price)]]
-                                 :breakout     [[:field (mt/id :venues :name) nil]]
-                                 :limit        3}
-                  :expressions  {:price_range [:-
-                                               [:field "max" {:base-type :type/Number}]
-                                               [:field "min" {:base-type :type/Number}]]}})))))))
+             (mt/formatted-rows
+              [str int int int]
+              (mt/run-mbql-query venues
+                {:source-query {:source-table (mt/id :venues)
+                                :aggregation  [[:min (mt/id :venues :price)]
+                                               [:max (mt/id :venues :price)]]
+                                :breakout     [[:field (mt/id :venues :name) nil]]
+                                :limit        3}
+                 :expressions  {:price_range [:-
+                                              [:field "max" {:base-type :type/Number}]
+                                              [:field "min" {:base-type :type/Number}]]}})))))))
 
 (deftest ^:parallel expression-with-duplicate-column-name
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -566,9 +582,10 @@
                  (map :display_name (mt/cols results))))
           (is (= [[1 1  14  37.7  2.1  39.7 nil "2019-02-11T21:40:27Z" 2 "2017-12-31T14:41:56Z"]
                   [2 1 123 110.9  6.1 117.0 nil "2018-05-15T08:04:04Z"  3 "2017-11-16T13:53:14Z"]]
-                 (mt/formatted-rows [int int int 1.0 1.0
-                                     1.0 identity u.date/temporal-str->iso8601-str int u.date/temporal-str->iso8601-str]
-                   results))))))))
+                 (mt/formatted-rows
+                  [int int int 1.0 1.0
+                   1.0 identity u.date/temporal-str->iso8601-str int u.date/temporal-str->iso8601-str]
+                  results))))))))
 
 (deftest ^:parallel string-operations-from-subquery
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
@@ -587,7 +604,8 @@
                  (map :display_name (mt/cols results))))
           (is (= [["Red Medicine" "Red" "RedMedicine"]
                   ["Rush Street" "Rush" "RushStreet"]]
-                 (mt/formatted-rows [str str str] results))))))))
+                 (mt/formatted-rows
+                  [str str str] results))))))))
 
 (deftest ^:parallel expression-name-weird-characters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -598,8 +616,9 @@
                      :order-by    [[:asc $id]]})]
         (mt/with-native-query-testing-context query
           (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 -3]]
-                 (mt/formatted-rows [int str int 4.0 4.0 int int]
-                   (qp/process-query query)))))))))
+                 (mt/formatted-rows
+                  [int str int 4.0 4.0 int int]
+                  (qp/process-query query)))))))))
 
 (deftest ^:parallel join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"
@@ -626,8 +645,9 @@
           (mt/with-native-query-testing-context query
             ;; source.category, source.count, source.CC, Q1.category, Q1.count, Q1.CC
             (is (= [["Doohickey" 42 2 "Doohickey" 42 2]]
-                   (mt/formatted-rows [str int int str int int]
-                     (qp/process-query query))))))))))
+                   (mt/formatted-rows
+                    [str int int str int int]
+                    (qp/process-query query))))))))))
 
 (deftest ^:parallel nested-expressions-with-existing-names-test
   (testing "Expressions with the same name as existing columns should work correctly in nested queries (#21131)"
@@ -643,8 +663,9 @@
                                           :limit        2}})]
               (mt/with-native-query-testing-context query
                 (is (= [[1 29.46 31.46] [2 70.08 72.08]]
-                       (mt/formatted-rows [int 2.0 2.0]
-                         (qp/process-query query))))))))))))
+                       (mt/formatted-rows
+                        [int 2.0 2.0]
+                        (qp/process-query query))))))))))))
 
 (deftest ^:parallel question-mark-in-expression-name-test
   (testing "Custom column names containing a question mark should work correctly (#32543, #44915)"
@@ -656,4 +677,5 @@
                      :order-by    [[:asc $id]]})]
         (mt/with-native-query-testing-context query
           (is (= [[5] [4] [4]]
-                 (mt/formatted-rows [int] (qp/process-query query)))))))))
+                 (mt/formatted-rows
+                  [int] (qp/process-query query)))))))))

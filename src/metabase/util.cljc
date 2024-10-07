@@ -35,7 +35,7 @@
 #?(:clj (set! *warn-on-reflection* true))
 
 (u.ns/import-fns
-  [u.format colorize format-bytes format-color format-milliseconds format-nanoseconds format-seconds])
+ [u.format colorize format-bytes format-color format-milliseconds format-nanoseconds format-seconds])
 
 #?(:clj (p/import-vars [u.jvm
                         all-ex-data
@@ -147,15 +147,16 @@
 
 (defn add-period
   "Fixes strings that don't terminate in a period; also accounts for strings
-  that end in `:`. Used for formatting docs."
+  that end in `:` and triple backticks (e.g., if a string ends in codeblock).
+   Used for formatting docs."
   [s]
   (let [text (str s)]
-    (if (or (str/blank? text)
-            (#{\. \? \!} (last text)))
-      text
-      (if (str/ends-with? text ":")
-        (str (subs text 0 (- (count text) 1)) ".")
-        (str text ".")))))
+    (cond
+      (str/blank? text) text
+      (#{\. \? \!} (last text)) text
+      (str/ends-with? text "```") text
+      (str/ends-with? text ":") (str (subs text 0 (- (count text) 1)) ".")
+      :else (str text "."))))
 
 (defn lower-case-en
   "Locale-agnostic version of [[clojure.string/lower-case]]. [[clojure.string/lower-case]] uses the default locale in
@@ -183,6 +184,11 @@
       (upper-case-en s)
       (str (upper-case-en (subs s 0 1))
            (lower-case-en (subs s 1))))))
+
+(defn truncate
+  "Truncate a string to `n` characters."
+  [s n]
+  (subs s 0 (min (count s) n)))
 
 (defn regex->str
   "Returns the contents of a regex as a string.
@@ -233,7 +239,6 @@
   with namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
   (memoize/fast-bounded (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->camelCaseEn*)
                         :bounded/threshold 10000))
-
 
 (def ^{:arglists '([x])} ->SCREAMING_SNAKE_CASE_EN
   "Like [[camel-snake-kebab.core/->SCREAMING_SNAKE_CASE]], but always uses English for upper- and lower-casing, supports
@@ -536,7 +541,6 @@
        :present #{:a :b :c}
        :non-nil #{:d :e :f})
      ;; -> {:a 100, :b nil, :d 200}"
-  {:style/indent 1}
   [m & {:keys [present non-nil], :as options}]
   {:pre [(every? #{:present :non-nil} (keys options))]}
   (merge (select-keys m present)
@@ -639,18 +643,18 @@
      (pprint-to-str 'green some-obj)"
   (^String [x]
    (#?@
-    (:clj
-     (with-out-str
-       #_{:clj-kondo/ignore [:discouraged-var]}
-       (pp/pprint x {:max-width 120}))
+     (:clj
+      (with-out-str
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (pp/pprint x {:max-width 120}))
 
-     :cljs
+      :cljs
      ;; we try to set this permanently above, but it doesn't seem to work in Cljs, so just bind it every time. The
      ;; default value wastes too much space, 120 is a little easier to read actually.
-     (binding [pprint/*print-right-margin* 120]
-       (with-out-str
-         #_{:clj-kondo/ignore [:discouraged-var]}
-         (pprint/pprint x))))))
+      (binding [pprint/*print-right-margin* 120]
+        (with-out-str
+          #_{:clj-kondo/ignore [:discouraged-var]}
+          (pprint/pprint x))))))
 
   (^String [color-symb x]
    (u.format/colorize color-symb (pprint-to-str x))))
@@ -835,17 +839,16 @@
   return a map of 3 keys: `:to-create`, `:to-update`, `:to-delete`.
 
   Where:
-  - `:to-create` is a list of maps that ids in `new-rows`
+  - `:to-create` is a list of maps that has ids only in `new-rows`
   - `:to-delete` is a list of maps that has ids only in `current-rows`
   - `:to-skip`   is a list of identical maps that has ids in both lists
   - `:to-update` is a list of different maps that has ids in both lists
 
   Optional arguments:
   - `id-fn` - function to get row-matching identifiers
-  - `to-compare` - function to get rows into a comparable state
-  "
+  - `to-compare` - function to get rows into a comparable state"
   [current-rows new-rows & {:keys [id-fn to-compare]
-                            :or   {id-fn   :id
+                            :or   {id-fn      :id
                                    to-compare identity}}]
   (let [[delete-ids
          create-ids
@@ -955,9 +958,9 @@
 
 #?(:clj
    (let [sym->enum (fn ^Enum [sym]
-                    (Reflector/invokeStaticMethod ^Class (resolve (symbol (namespace sym)))
-                                                  "valueOf"
-                                                  (to-array [(name sym)])))
+                     (Reflector/invokeStaticMethod ^Class (resolve (symbol (namespace sym)))
+                                                   "valueOf"
+                                                   (to-array [(name sym)])))
          ordinal (fn [^Enum e] (.ordinal e))]
      (defmacro case-enum
        "Like `case`, but explicitly dispatch on Java enum ordinals.
@@ -1037,10 +1040,10 @@
 
 (defn index-by
   "(index-by first second [[1 3] [1 4] [2 5]]) => {1 4, 2 5}"
- ([kf coll]
-  (reduce (fn [acc v] (assoc acc (kf v) v)) {} coll))
- ([kf vf coll]
-  (reduce (fn [acc v] (assoc acc (kf v) (vf v))) {} coll)))
+  ([kf coll]
+   (reduce (fn [acc v] (assoc acc (kf v) v)) {} coll))
+  ([kf vf coll]
+   (reduce (fn [acc v] (assoc acc (kf v) (vf v))) {} coll)))
 
 (defn rfirst
   "Return first item from Reducible"

@@ -1,9 +1,9 @@
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import { Icon, Select, Flex, Text, Switch } from "metabase/ui";
+import { Flex, Icon, Select, Switch, Text } from "metabase/ui";
 
-import { dateFilterOptions, isDateFilter, type DateFilter } from "./utils";
+import { type DateFilter, dateFilterOptions, isDateFilter } from "./utils";
 
 interface CleanupCollectionModalFiltersProps {
   dateFilter: DateFilter;

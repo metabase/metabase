@@ -1,5 +1,6 @@
 (ns metabase.lib.drill-thru.automatic-insights-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -8,8 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.util :as u]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -50,36 +50,36 @@
   (testing "automatic-insights is"
     (testing "available for cell clicks subject to at least one breakout; and any pivot or legend click"
       (canned/canned-test
-        :drill-thru/automatic-insights
-        (fn [test-case context {:keys [click]}]
-          (and (not (:native? test-case))
-               (or ;; Any pivot or legend click is good.
-                   (#{:pivot :legend} click)
+       :drill-thru/automatic-insights
+       (fn [test-case context {:keys [click]}]
+         (and (not (:native? test-case))
+              (or ;; Any pivot or legend click is good.
+               (#{:pivot :legend} click)
                    ;; As are cell clicks with at least 1 breakout.
-                   (and (= click :cell)
-                        (seq (:dimensions context))))))))
+               (and (= click :cell)
+                    (seq (:dimensions context))))))))
     (testing "not available at all with xrays disabled"
       (canned/canned-test
-        :drill-thru/automatic-insights
-        (constantly false)
-        (canned/canned-clicks metadata-no-xrays)))))
+       :drill-thru/automatic-insights
+       (constantly false)
+       (canned/canned-clicks metadata-no-xrays)))))
 
 (defn- auto-insights [query exp-filters]
   (let [[created-at sum] (lib/returned-columns query)
         drills           (lib/available-drill-thrus
-                           query -1 {:column     sum
-                                     :column-ref (lib/ref sum)
-                                     :value      124.5
-                                     :dimensions [{:column     created-at
-                                                   :column-ref (lib/ref created-at)
-                                                   :value      "2023-12-01"}]})
+                          query -1 {:column     sum
+                                    :column-ref (lib/ref sum)
+                                    :value      124.5
+                                    :dimensions [{:column     created-at
+                                                  :column-ref (lib/ref created-at)
+                                                  :value      "2023-12-01"}]})
         drill            (m/find-first #(= (:type %) :drill-thru/automatic-insights) drills)]
     (is (=? {:lib/type :mbql/query
              :stages [{:filters     exp-filters
                        :aggregation (symbol "nil #_\"key is not present.\"")
                        :breakout    (symbol "nil #_\"key is not present.\"")
                        :fields      (symbol "nil #_\"key is not present.\"")}]}
-            (lib/drill-thru query -1 drill)))) )
+            (lib/drill-thru query -1 drill)))))
 
 (deftest ^:parallel automatic-insights-apply-test
   (let [filters [[:= {} [:field {} (meta/id :orders :created-at)] "2023-12-01"]]]

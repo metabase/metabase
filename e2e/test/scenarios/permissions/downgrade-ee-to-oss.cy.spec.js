@@ -1,13 +1,13 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import {
   assertPermissionTable,
-  modifyPermission,
-  modal,
-  restore,
-  popover,
   describeEE,
-  setTokenFeatures,
   isPermissionDisabled,
+  modal,
+  modifyPermission,
+  popover,
+  restore,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;

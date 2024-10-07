@@ -30,8 +30,8 @@
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
     (throw (ex-info (tru
-                      (str "Looks like someone else edited the permissions and your data is out of date. "
-                           "Please fetch new data and try again."))
+                     (str "Looks like someone else edited the permissions and your data is out of date. "
+                          "Please fetch new data and try again."))
                     {:status-code 409}))))
 
 (defn save-perms-revision!
@@ -51,7 +51,6 @@
                                            :after   changes
                                            :user_id api/*current-user-id*))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    PATH CLASSIFICATION + VALIDATION                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -65,7 +64,7 @@
   (u.regex/rx [:or #"[^\\/]" #"\\/" #"\\\\"]))
 
 (def ^:private data-rx->data-kind
-  {      #"db/\d+/"                                                                     :dk/db
+  {#"db/\d+/"                                                                     :dk/db
    [:and #"db/\d+/" "native" "/"]                                                       :dk/db-native
    [:and #"db/\d+/" "schema" "/"]                                                       :dk/db-schema
    [:and #"db/\d+/" "schema" "/" path-char-rx "*" "/"]                                  :dk/db-schema-name
@@ -240,7 +239,6 @@
   added."
     ^Boolean [^String path]
     (path-format-validator path)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               PATH UTILS                                                       |

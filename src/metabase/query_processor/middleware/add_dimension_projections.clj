@@ -40,6 +40,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.query-processor.middleware.large-int-id :as-alias large-int-id]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -194,7 +195,7 @@
     ;; fetch remapping column pairs if any exist...
     (if-let [infos (not-empty (remap-column-infos (concat fields breakout)))]
       ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
-      (let [ ;; make a map of field-id-clause -> fk-clause from the tuples
+      (let [;; make a map of field-id-clause -> fk-clause from the tuples
             original->remapped             (into {} (map (juxt :original-field-clause :new-field-clause)) infos)
             existing-fields                (add-fk-remaps-rewrite-existing-fields infos fields)
             ;; don't add any new entries for fields that already exist. Use [[mbql.u/remove-namespaced-options]] here so
@@ -246,7 +247,6 @@
       (cond-> query
         ;; convert the remappings to plain maps so we don't have to look at record type nonsense everywhere
         (seq remaps) (assoc ::external-remaps (mapv (partial into {}) remaps))))))
-
 
 ;;;; Post-processing
 
@@ -377,7 +377,6 @@
       (merge-metadata-for-internal-remaps internal-cols-info)
       (merge-metadata-for-external-remaps remapping-dimensions)))
 
-
 ;;;; Transform to add additional cols to results
 
 (defn- create-remapped-col [col-name remapped-from base-type]
@@ -394,15 +393,20 @@
 
 (defn- transform-values-for-col
   "Converts `values` to a type compatible with the `base-type` found for `col`. These values should be directly
-  comparable with the values returned from the database for the given `col`."
-  [{:keys [base-type], :as _column-metadata} values]
+  comparable with the values returned from the database for the given `col`.
+
+  When `large-int-id` has converted a would-be `BigInteger` column to strings, `stringified?` is truthy; in that case
+  the values are further transformed to strings."
+  [{:keys [base-type]} values stringified?]
   (let [transform (condp #(isa? %2 %1) base-type
                     :type/Decimal    bigdec
                     :type/Float      double
                     :type/BigInteger bigint
                     :type/Integer    int
                     :type/Text       str
-                    identity)]
+                    identity)
+        transform (cond->> transform
+                    stringified? (comp str))]
     (map #(some-> % transform) values)))
 
 (defn- infer-human-readable-values-type
@@ -433,11 +437,13 @@
    {{:keys [values human-readable-values], remap-to :name} :lib/internal-remap
     :as                                                    col} :- ColumnMetadataWithOptionalBaseType]
   (when (seq values)
-    (let [remap-from (:name col)]
+    (let [remap-from       (:name col)
+          stringified-mask (qp.store/miscellaneous-value [::large-int-id/field-index-mask])]
       {:col-index       idx
        :from            remap-from
        :to              remap-to
-       :value->readable (zipmap (transform-values-for-col col values)
+       :value->readable (zipmap (transform-values-for-col col values
+                                                          (and stringified-mask (nth stringified-mask idx)))
                                 human-readable-values)
        :new-column      (create-remapped-col remap-to
                                              remap-from

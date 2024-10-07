@@ -6,7 +6,7 @@ import {
   setupCollectionByIdEndpoint,
   setupDashboardCreateEndpoint,
 } from "__support__/server-mocks";
-import { screen, renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";

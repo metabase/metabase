@@ -75,8 +75,8 @@
     (into projected-vec (remove (conj projected-set "_id")) first-row-col-names)))
 
 (mu/defn- result-col-names :- [:map
-                                        [:row [:maybe [:sequential :string]]]
-                                        [:unescaped [:maybe [:sequential :string]]]]
+                               [:row [:maybe [:sequential :string]]]
+                               [:unescaped [:maybe [:sequential :string]]]]
   "Return column names we can expect in each `:row` of the results, and the `:unescaped` versions we should return in
   thr query result metadata."
   [{:keys [mbql? projections]} :- :map
@@ -104,7 +104,6 @@
                  {:name col-name})
                unescaped-col-names)})
 
-
 ;;; ------------------------------------------------------ Rows ------------------------------------------------------
 
 (defn- row->vec [row-col-names]
@@ -123,7 +122,6 @@
 (defn- post-process-row [row-col-names]
   ;; if we formed the query using MBQL then we apply a couple post processing functions
   (row->vec row-col-names))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      Run                                                       |

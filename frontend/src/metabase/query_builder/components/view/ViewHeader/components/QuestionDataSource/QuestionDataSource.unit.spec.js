@@ -13,13 +13,13 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
-  ORDERS_ID,
   ORDERS,
-  SAMPLE_DB_ID,
-  PRODUCTS,
+  ORDERS_ID,
   PEOPLE,
-  PRODUCTS_ID,
   PEOPLE_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 

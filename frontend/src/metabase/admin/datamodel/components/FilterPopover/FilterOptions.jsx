@@ -1,11 +1,10 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import CheckBox from "metabase/core/components/CheckBox";
 import CS from "metabase/css/core/index.css";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getFilterOptions,
   setFilterOptions,
@@ -72,7 +71,7 @@ export default class FilterOptions extends Component {
     return false;
   }
 
-  setOptionValue(name, value) {
+  setOptionValue(name) {
     const { filter } = this.props;
     const options = getFilterOptions(filter);
     this.props.onFilterChange(
@@ -80,12 +79,6 @@ export default class FilterOptions extends Component {
         ...options,
         [name]: !options[name],
       }),
-    );
-    MetabaseAnalytics.trackStructEvent(
-      "QueryBuilder",
-      "Filter",
-      "SetOption",
-      name,
     );
   }
 
@@ -100,7 +93,7 @@ export default class FilterOptions extends Component {
     }
     return (
       <div className={cx(CS.flex, CS.alignCenter)}>
-        {options.map(([name, option]) => (
+        {options.map(([name]) => (
           <div key={name} className={cx(CS.flex, CS.alignCenter)}>
             <CheckBox
               label={this.getOptionName(name)}

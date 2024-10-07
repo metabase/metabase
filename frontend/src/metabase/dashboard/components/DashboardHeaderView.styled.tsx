@@ -5,9 +5,9 @@ import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import EditableText from "metabase/core/components/EditableText";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
+  breakpointMaxMedium,
   breakpointMaxSmall,
   breakpointMinSmall,
-  breakpointMaxMedium,
 } from "metabase/styled-components/theme";
 
 import { FixedWidthContainer } from "./Dashboard/Dashboard.styled";
@@ -40,12 +40,12 @@ export const HeaderFixedWidthContainer = styled(
 `;
 
 export const HeaderContainer = styled.div<{
-  isSidebarOpen: boolean;
+  offsetSidebar: boolean;
   isFixedWidth: boolean;
 }>`
   ${props =>
     props.isFixedWidth &&
-    props.isSidebarOpen &&
+    props.offsetSidebar &&
     css`
       margin-right: ${SIDEBAR_WIDTH}px;
     `}

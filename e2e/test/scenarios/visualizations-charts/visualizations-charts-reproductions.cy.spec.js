@@ -1,36 +1,37 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  cartesianChartCircle,
-  withDatabase,
-  openSeriesSettings,
-  echartsContainer,
-  testPairedTooltipValues,
-  filter,
-  filterWidget,
-  filterField,
-  visitAlias,
-  queryBuilderMain,
-  queryBuilderHeader,
-  visitQuestionAdhoc,
-  sidebar,
-  chartPathWithFillColor,
-  summarize,
-  saveDashboard,
-  visitDashboard,
-  editDashboard,
-  createQuestion,
-  visualize,
-  openNotebook,
-  removeSummaryGroupingField,
   addSummaryField,
   addSummaryGroupingField,
-  selectFilterOperator,
-  saveSavedQuestion,
-  runNativeQuery,
   assertEChartsTooltip,
+  cartesianChartCircle,
+  chartPathWithFillColor,
+  createQuestion,
+  echartsContainer,
+  editDashboard,
+  filter,
+  filterField,
+  filterWidget,
+  leftSidebar,
+  openNotebook,
+  openSeriesSettings,
+  popover,
+  queryBuilderHeader,
+  queryBuilderMain,
+  removeSummaryGroupingField,
+  restore,
+  runNativeQuery,
+  saveDashboard,
+  saveSavedQuestion,
+  selectFilterOperator,
+  sidebar,
+  summarize,
+  testPairedTooltipValues,
+  visitAlias,
+  visitDashboard,
+  visitQuestionAdhoc,
+  visualize,
+  withDatabase,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -603,10 +604,10 @@ describe("issue 21504", () => {
     });
 
     cy.findByTestId("viz-settings-button").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Display").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("April 2022").should("be.visible");
+
+    leftSidebar().within(() => {
+      cy.findByText("January 2025").should("be.visible");
+    });
   });
 });
 

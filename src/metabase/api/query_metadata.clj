@@ -63,8 +63,7 @@
      ;; since they tend to query only a handful of databases at most.
      :databases (sort-by :id (get-databases database-ids))
      :tables    (sort-by (comp str :id) tables)
-     :fields    (or (sort-by :id (api.field/get-fields template-tag-field-ids))
-                    [])}))
+     :fields    (sort-by :id (api.field/get-fields template-tag-field-ids))}))
 
 (defn batch-fetch-query-metadata
   "Fetch dependent metadata for ad-hoc queries."
@@ -140,8 +139,8 @@
         card-ids  (into #{} (map :id) cards)
         links     (batch-fetch-dashboard-links dashcards)]
     (merge
-      (->> (remove (comp card-ids :id) (:cards links))
-           (concat cards)
-           batch-fetch-card-metadata)
-      {:cards      (or (:cards links)      [])
-       :dashboards (or (:dashboards links) [])})))
+     (->> (remove (comp card-ids :id) (:cards links))
+          (concat cards)
+          batch-fetch-card-metadata)
+     {:cards      (or (:cards links)      [])
+      :dashboards (or (:dashboards links) [])})))

@@ -15,6 +15,11 @@ import {
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
+const filterButton = () =>
+  cy
+    .findByTestId("browse-models-header")
+    .findByRole("button", { name: /Filters/i });
+
 describeWithSnowplow("scenarios > browse", () => {
   beforeEach(() => {
     resetSnowplow();
@@ -34,6 +39,26 @@ describeWithSnowplow("scenarios > browse", () => {
       event: "browse_data_model_clicked",
       model_id: ORDERS_MODEL_ID,
     });
+  });
+
+  it("can browse to a model in a new tab by meta-clicking", () => {
+    cy.on("window:before:load", win => {
+      // prevent Cypress opening in a new window/tab and spy on this method
+      cy.stub(win, "open").as("open");
+    });
+    cy.visit("/browse/models");
+    const macOSX = Cypress.platform === "darwin";
+    cy.findByRole("heading", { name: "Orders Model" }).click({
+      metaKey: macOSX,
+      ctrlKey: !macOSX,
+    });
+
+    cy.get("@open").should("have.been.calledOnce");
+    cy.get("@open").should(
+      "have.been.calledOnceWithExactly",
+      `/question/${ORDERS_MODEL_ID}-orders-model`,
+      "_blank",
+    );
   });
 
   it("can browse to a table in a database", () => {
@@ -80,7 +105,7 @@ describeWithSnowplow("scenarios > browse", () => {
   it("on an open-source instance, the Browse models page has no controls for setting filters", () => {
     cy.visit("/");
     navigationSidebar().findByLabelText("Browse models").click();
-    cy.findByRole("button", { name: /filter icon/i }).should("not.exist");
+    filterButton().should("not.exist");
     cy.findByRole("switch", { name: /Show verified models only/ }).should(
       "not.exist",
     );
@@ -99,8 +124,7 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
     );
     cy.intercept("POST", "/api/moderation-review").as("updateVerification");
   });
-  const openFilterPopover = () =>
-    cy.findByRole("button", { name: /filter icon/i }).click();
+  const openFilterPopover = () => filterButton().click();
   const toggle = () =>
     cy.findByRole("switch", { name: /Show verified models only/ });
 
@@ -112,10 +136,6 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
   const recentModel2 = () => recentsGrid().findByText("Model 2");
   const model1Row = () => modelsTable().findByRole("row", { name: /Model 1/i });
   const model2Row = () => modelsTable().findByRole("row", { name: /Model 2/i });
-  const filterButton = () =>
-    cy
-      .findByTestId("browse-models-header")
-      .findByRole("button", { name: /filter icon/i });
 
   const setVerification = (linkSelector: RegExp | string) => {
     cy.findByLabelText("Move, trash, and more...").click();

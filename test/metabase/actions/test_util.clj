@@ -237,6 +237,8 @@
                                        options-map))]
         {:action-id action-id :model-id model-id}))))
 
+;;; TODO FIXME -- rename this to [[with-actions!]] and then remove the Kondo ignore comment below
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-actions
   "Execute `body` with newly created Actions.
   `binding-forms-and-options-maps` is a vector of even number of elements, binding and options-map,
@@ -310,6 +312,8 @@
   [& body]
   `(do-with-actions-set! false (fn [] ~@body)))
 
+;;; TODO FIXME -- rename this to [[with-actions!]] and then remove the Kondo ignore comment below
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-actions-test-data-and-actions-enabled
   "Combines [[with-actions-test-data]] and [[with-actions-enabled]]."
   {:style/indent 0}

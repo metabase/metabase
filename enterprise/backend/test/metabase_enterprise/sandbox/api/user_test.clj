@@ -61,7 +61,6 @@
         (is (= ["foo" "miz"]
                (mt/user-http-request :crowberto :get 200 "mt/user/attributes")))))))
 
-
 (deftest update-user-attributes-test
   (mt/with-premium-features #{}
     (testing "requires sandbox enabled"

@@ -4,8 +4,9 @@ import { renderToString } from "react-dom/server";
 import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getTooltipModel } from "metabase/visualizations/visualizations/CartesianChart/events";
+import type { CardDisplayType } from "metabase-types/api";
 
-import { TOOLTIP_BASE_OPTION } from "../../tooltip";
+import { getTooltipBaseOption } from "../../tooltip";
 import {
   GOAL_LINE_SERIES_ID,
   TIMELINE_EVENT_SERIES_ID,
@@ -14,6 +15,7 @@ import type { BaseCartesianChartModel, DataKey } from "../model/types";
 
 interface ChartItemTooltip {
   dataIndex: number;
+  display: CardDisplayType;
   seriesId?: DataKey | null;
   settings: ComputedVisualizationSettings;
   chartModel: BaseCartesianChartModel;
@@ -23,6 +25,7 @@ const ChartItemTooltip = ({
   chartModel,
   settings,
   dataIndex,
+  display,
   seriesId,
 }: ChartItemTooltip) => {
   if (dataIndex == null || seriesId == null) {
@@ -33,6 +36,7 @@ const ChartItemTooltip = ({
     chartModel,
     settings,
     dataIndex,
+    display,
     seriesId,
   );
 
@@ -46,10 +50,12 @@ const ChartItemTooltip = ({
 export const getTooltipOption = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
+  display: CardDisplayType,
+  containerRef: React.RefObject<HTMLDivElement>,
 ): TooltipOption => {
   return {
+    ...getTooltipBaseOption(containerRef),
     trigger: "item",
-    ...TOOLTIP_BASE_OPTION,
     formatter: params => {
       if (Array.isArray(params)) {
         return "";
@@ -69,6 +75,7 @@ export const getTooltipOption = (
           settings={settings}
           chartModel={chartModel}
           dataIndex={dataIndex}
+          display={display}
           seriesId={seriesId}
         />,
       );

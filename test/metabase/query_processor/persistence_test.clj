@@ -70,14 +70,14 @@
     (with-redefs [qp.i/absolute-max-results 3]
       (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
         (mt/dataset daily-bird-counts
-          (mt/with-persistence-enabled [persist-models!]
+          (mt/with-persistence-enabled! [persist-models!]
             (mt/with-temp [Card model {:type          :model
                                        :database_id   (mt/id)
                                        :query_type    :query
                                        :dataset_query {:database (mt/id)
                                                        :type     :query
                                                        :query    {:source-table (mt/id :bird-count)}}}]
-              (let [ ;; Get the number of rows before the model is persisted
+              (let [;; Get the number of rows before the model is persisted
                     query-on-top       {:database (mt/id)
                                         :type     :query
                                         :query    {:aggregation  [[:count]]
@@ -109,9 +109,9 @@
       (mt/dataset test-data
         (doseq [[query-type query] [[:query (mt/mbql-query products)]
                                     [:native (mt/native-query
-                                              (qp.compile/compile
-                                               (mt/mbql-query products)))]]]
-          (mt/with-persistence-enabled [persist-models!]
+                                               (qp.compile/compile
+                                                (mt/mbql-query products)))]]]
+          (mt/with-persistence-enabled! [persist-models!]
             (mt/with-temp [Card model {:type          :model
                                        :database_id   (mt/id)
                                        :query_type    query-type
@@ -153,17 +153,17 @@
   (testing "Can use joins with persisted models (#28902)"
     (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
       (mt/dataset test-data
-        (mt/with-persistence-enabled [persist-models!]
+        (mt/with-persistence-enabled! [persist-models!]
           (mt/with-temp [Card model {:type        :model
                                      :database_id (mt/id)
                                      :query_type  :query
                                      :dataset_query
                                      (mt/mbql-query orders
-                                                    {:fields [$total &products.products.category]
-                                                     :joins [{:source-table $$products
-                                                              :condition [:= $product_id &products.products.id]
-                                                              :strategy :left-join
-                                                              :alias "products"}]})}]
+                                       {:fields [$total &products.products.category]
+                                        :joins [{:source-table $$products
+                                                 :condition [:= $product_id &products.products.id]
+                                                 :strategy :left-join
+                                                 :alias "products"}]})}]
             (persist-models!)
             (let [query   {:type :query
                            :database (mt/id)

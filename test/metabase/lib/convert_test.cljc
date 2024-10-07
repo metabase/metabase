@@ -1,5 +1,6 @@
 (ns metabase.lib.convert-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [metabase.lib.convert :as lib.convert]
@@ -7,8 +8,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.util :as u]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -200,6 +200,7 @@
                                         :aggregation  [[:aggregation-options
                                                         [:sum [:field 1 nil]]
                                                         {:display-name "Revenue"}]]}}))))
+
 (deftest ^:parallel effective-type-drop-test
   (testing ":effective_type values should be dropped in ->legacy-MBQL"
     (is (=? {:type  :query
@@ -233,7 +234,7 @@
                   (lib.convert/->legacy-MBQL [tag {} [:field {} 12] "ABC"])))
           (is (=? [tag [:field 12 nil] "ABC" {:case-sensitive false}]
                   (lib.convert/->legacy-MBQL
-                    (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC"]))))))
+                   (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC"]))))))
 
       (testing "with multiple arguments (pMBQL style)"
         (testing "->pMBQL"
@@ -249,7 +250,7 @@
                   (lib.convert/->legacy-MBQL [tag {} [:field {} 12] "ABC" "HJK" "XYZ"])))
           (is (=? [tag {:case-sensitive false} [:field 12 nil] "ABC" "HJK" "XYZ"]
                   (lib.convert/->legacy-MBQL
-                    (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC" "HJK" "XYZ"])))))))))
+                   (lib.options/ensure-uuid [tag {:case-sensitive false} [:field {} 12] "ABC" "HJK" "XYZ"])))))))))
 
 (deftest ^:parallel source-card-test
   (let [original {:database 1
@@ -665,7 +666,6 @@
             converted (lib.convert/->pMBQL query)]
         (is (empty? (get-in converted [:stages 0 :breakout])))
         (is (empty? (get-in converted [:stages 0 :group-by])))))))
-
 
 (deftest ^:parallel remove-namespaced-lib-keys-from-legacy-refs-test
   (testing "namespaced lib keys should be removed when converting to legacy (#33012)"

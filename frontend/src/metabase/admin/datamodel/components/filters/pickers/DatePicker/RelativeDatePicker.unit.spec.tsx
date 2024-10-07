@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import Filter from "metabase-lib/v1/queries/structured/Filter";
 
-import { PastPicker, NextPicker } from "./RelativeDatePicker";
+import { NextPicker, PastPicker } from "./RelativeDatePicker";
 
 describe("PastPicker", () => {
   it("should change a filter", async () => {

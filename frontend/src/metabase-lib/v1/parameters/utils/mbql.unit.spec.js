@@ -3,10 +3,10 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 import {
-  dateParameterValueToMBQL,
-  stringParameterValueToMBQL,
-  numberParameterValueToMBQL,
   applyFilterParameter,
+  dateParameterValueToMBQL,
+  numberParameterValueToMBQL,
+  stringParameterValueToMBQL,
 } from "metabase-lib/v1/parameters/utils/mbql";
 import { PRODUCTS, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 

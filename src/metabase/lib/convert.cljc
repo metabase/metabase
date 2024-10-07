@@ -1,5 +1,6 @@
 (ns metabase.lib.convert
   (:require
+   #?@(:clj ([metabase.util.log :as log]))
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -16,8 +17,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   #?@(:clj ([metabase.util.log :as log])))
+   [metabase.util.malli.registry :as mr])
   #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
 
 (def ^:private ^:dynamic *pMBQL-uuid->legacy-index*
@@ -75,7 +75,7 @@
 
 (defn- clean-stage-ref-errors [almost-stage]
   (reduce (fn [almost-stage [loc _]]
-              (clean-location almost-stage ::lib.schema/invalid-ref loc))
+            (clean-location almost-stage ::lib.schema/invalid-ref loc))
           almost-stage
           (lib.schema/ref-errors-for-stage almost-stage)))
 

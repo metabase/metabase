@@ -96,10 +96,6 @@ export const startLocalMetabaseContainer: CliStepMethod = async state => {
       ...METABASE_INSTANCE_DEFAULT_ENVS,
     };
 
-    if (state.token) {
-      envVars.MB_PREMIUM_EMBEDDING_TOKEN = state.token;
-    }
-
     // Pass default configuration as environment variables
     const envFlags = Object.entries(envVars)
       .map(([key, value]) => `-e ${key}='${value}'`)

@@ -7,7 +7,7 @@ import type {
   ReactNode,
   RefObject,
 } from "react";
-import { createRef, Children, Component } from "react";
+import { Children, Component, createRef } from "react";
 import _ from "underscore";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -277,13 +277,13 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
               {this.props.buttonText
                 ? this.props.buttonText
                 : selectedNames.length > 0
-                ? selectedNames.map((name, index) => (
-                    <span key={index}>
-                      {name}
-                      {index < selectedNames.length - 1 ? ", " : ""}
-                    </span>
-                  ))
-                : placeholder}
+                  ? selectedNames.map((name, index) => (
+                      <span key={index}>
+                        {name}
+                        {index < selectedNames.length - 1 ? ", " : ""}
+                      </span>
+                    ))
+                  : placeholder}
             </SelectButton>
           )
         }

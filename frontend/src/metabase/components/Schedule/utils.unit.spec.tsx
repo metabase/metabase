@@ -3,9 +3,9 @@ import { render, screen } from "@testing-library/react";
 import type { SelectProps } from "metabase/ui";
 
 import {
+  combineConsecutiveStrings,
   fillScheduleTemplate,
   getLongestSelectLabel,
-  combineConsecutiveStrings,
 } from "./utils";
 
 const allowAnyAmountOfWhitespace = (str: string) =>

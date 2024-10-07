@@ -2,41 +2,41 @@ import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addCustomColumn,
-  enterCustomColumnDetails,
-  getNotebookStep,
-  entityPickerModal,
-  popover,
-  visualize,
-  restore,
-  startNewQuestion,
-  queryBuilderMain,
-  selectFilterOperator,
-  entityPickerModalTab,
-  withDatabase,
-  summarize,
+  addOrUpdateDashboardCard,
   cartesianChartCircle,
+  createNativeQuestion,
+  createSegment,
+  editDashboard,
+  enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
+  filter,
+  filterWidget,
+  getDashboardCard,
+  getNotebookStep,
+  main,
+  modal,
+  multiAutocompleteInput,
+  openNotebook,
   openOrdersTable,
   openProductsTable,
-  openNotebook,
-  filter,
-  visitDashboard,
-  editDashboard,
-  setFilter,
-  filterWidget,
-  visitQuestionAdhoc,
-  addOrUpdateDashboardCard,
-  modal,
+  popover,
+  queryBuilderMain,
+  resetTestTable,
+  restore,
   saveDashboard,
   selectDashboardFilter,
-  getDashboardCard,
-  visitQuestion,
+  selectFilterOperator,
+  setFilter,
+  startNewQuestion,
+  summarize,
   tableHeaderClick,
-  resetTestTable,
-  main,
-  multiAutocompleteInput,
-  createNativeQuestion,
+  visitDashboard,
+  visitQuestion,
+  visitQuestionAdhoc,
+  visualize,
+  withDatabase,
 } from "e2e/support/helpers";
-import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } =
   SAMPLE_DATABASE;
@@ -318,8 +318,7 @@ describe("issue 18747", () => {
   function addValueToParameterFilter() {
     filterWidget().click();
     popover().within(() => {
-      cy.findByRole("textbox").type("14");
-      cy.findByText("14").click();
+      cy.findByRole("searchbox").type("14");
       cy.button("Add filter").click();
     });
   }
@@ -476,7 +475,7 @@ describe.skip("issue 19744", () => {
   it("custom column after aggregation shouldn't limit or change the behavior of dashboard filters (metabase#19744)", () => {
     editDashboard();
 
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     cy.findByTestId("dashcard-container").contains("Select…").click();
     popover().contains("Created At");

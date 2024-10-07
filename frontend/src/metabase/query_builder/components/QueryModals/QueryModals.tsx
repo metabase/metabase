@@ -2,13 +2,13 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import Modal from "metabase/components/Modal";
 import QuestionSavedModal from "metabase/components/QuestionSavedModal";
 import { AddToDashSelectDashModal } from "metabase/containers/AddToDashSelectDashModal";
 import { MoveModal } from "metabase/containers/MoveModal";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
-import getInitialCollectionId from "metabase/entities/collections/getInitialCollectionId";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import Questions from "metabase/entities/questions";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -16,12 +16,11 @@ import type { UpdateQuestionOpts } from "metabase/query_builder/actions/core/upd
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
-import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithParameters } from "metabase/query_builder/selectors";
-import { FilterModal } from "metabase/querying";
+import { FilterModal } from "metabase/querying/filters/components/FilterModal";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
@@ -74,9 +73,7 @@ export function QueryModals({
 }: QueryModalsProps) {
   const dispatch = useDispatch();
 
-  const initialCollectionId = useSelector(state =>
-    getInitialCollectionId(state, {}),
-  );
+  const initialCollectionId = useGetDefaultCollectionId();
   const questionWithParameters = useSelector(getQuestionWithParameters);
 
   const showAlertsAfterQuestionSaved = useCallback(() => {
@@ -143,7 +140,8 @@ export function QueryModals({
           initialCollectionId={initialCollectionId}
           onSave={handleSaveAndClose}
           onCreate={handleSaveModalCreate}
-          onCancel={onCloseModal}
+          onClose={onCloseModal}
+          opened={true}
         />
       );
     case MODAL_TYPES.SAVED:
@@ -171,7 +169,8 @@ export function QueryModals({
             await onCreate(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
-          onCancel={onCloseModal}
+          onClose={onCloseModal}
+          opened={true}
           multiStep
         />
       );
@@ -185,7 +184,7 @@ export function QueryModals({
       );
     case MODAL_TYPES.CREATE_ALERT:
       return (
-        <Modal full onClose={onCloseModal}>
+        <Modal medium onClose={onCloseModal}>
           <CreateAlertModalContent
             onCancel={onCloseModal}
             onAlertCreated={onCloseModal}
@@ -205,7 +204,8 @@ export function QueryModals({
             await onCreate(question);
             showAlertsAfterQuestionSaved();
           }}
-          onCancel={onCloseModal}
+          onClose={onCloseModal}
+          opened={true}
           multiStep
           initialCollectionId={initialCollectionId}
         />
@@ -217,7 +217,8 @@ export function QueryModals({
           originalQuestion={originalQuestion}
           onSave={handleSaveAndClose}
           onCreate={handleCreateAndClose}
-          onCancel={onCloseModal}
+          onClose={onCloseModal}
+          opened={true}
           multiStep
           initialCollectionId={initialCollectionId}
         />
@@ -264,8 +265,6 @@ export function QueryModals({
           <ArchiveQuestionModal question={question} onClose={onCloseModal} />
         </Modal>
       );
-    case MODAL_TYPES.EMBED:
-      return <QuestionEmbedWidget card={card} onClose={onCloseModal} />;
     case MODAL_TYPES.CLONE:
       return (
         <Modal onClose={onCloseModal}>

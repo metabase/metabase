@@ -1,21 +1,21 @@
 import fetchMock from "fetch-mock";
 import { useKBar } from "kbar";
 import { useEffect } from "react";
-import { Route, withRouter, type WithRouterProps } from "react-router";
+import { Route, type WithRouterProps, withRouter } from "react-router";
 import _ from "underscore";
 
 import {
   setupDatabasesEndpoints,
-  setupSearchEndpoints,
   setupRecentViewsEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
+  mockScrollIntoView,
+  mockScrollTo,
   renderWithProviders,
   screen,
-  within,
   waitFor,
-  mockScrollTo,
-  mockScrollIntoView,
+  within,
 } from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
 import type { RecentItem, Settings } from "metabase-types/api";
@@ -86,7 +86,7 @@ const recents_1 = createMockRecentCollectionItem({
   model: "dataset",
   moderated_status: "verified",
   parent_collection: {
-    id: null,
+    id: "root",
     name: "Our analytics",
   },
 });

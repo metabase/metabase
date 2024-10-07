@@ -38,10 +38,10 @@
    {:keys [fields result-metadata] :as card-metadata}
    {:keys [include-implicitly-joinable? unique-name-fn] :as options}]
   (concat
-    (lib.metadata.calculation/returned-columns query stage-number card-metadata options)
-    (when include-implicitly-joinable?
-      (lib.metadata.calculation/implicitly-joinable-columns
-        query stage-number (concat fields result-metadata) unique-name-fn))))
+   (lib.metadata.calculation/returned-columns query stage-number card-metadata options)
+   (when include-implicitly-joinable?
+     (lib.metadata.calculation/implicitly-joinable-columns
+      query stage-number (concat fields result-metadata) unique-name-fn))))
 
 (mu/defn fallback-display-name :- ::lib.schema.common/non-blank-string
   "If for some reason the metadata is unavailable. This is better than returning nothing I guess."
@@ -81,32 +81,35 @@
    card-id
    card
    field]
-   (let [col (-> col
-                 (update-keys u/->kebab-case-en))]
-     (cond-> (merge
-              {:base-type :type/*, :lib/type :metadata/column}
-              field
-              col
-              {:lib/type                :metadata/column
-               :lib/source              :source/card
-               :lib/source-column-alias ((some-fn :lib/source-column-alias :name) col)})
-       card-id
-       (assoc :lib/card-id card-id)
+  (let [col (-> col
+                (update-keys u/->kebab-case-en))
+        col-meta (cond-> (merge
+                          {:base-type :type/*, :lib/type :metadata/column}
+                          field
+                          col
+                          {:lib/type                :metadata/column
+                           :lib/source              :source/card
+                           :lib/source-column-alias ((some-fn :lib/source-column-alias :name) col)})
+                   card-id
+                   (assoc :lib/card-id card-id)
 
-       (and *force-broken-card-refs*
-            ;; never force broken refs for Models, because Models can have give columns with completely
-            ;; different names the Field ID of a different column, somehow. See #22715
-            (or
-             ;; we can only do this check if `card-id` is passed in.
-             (not card-id)
-             (not= (:type card) :model)))
-       (assoc ::force-broken-id-refs true)
+                   (and *force-broken-card-refs*
+                        ;; never force broken refs for Models, because Models can have give columns with completely
+                        ;; different names the Field ID of a different column, somehow. See #22715
+                        (or
+                         ;; we can only do this check if `card-id` is passed in.
+                         (not card-id)
+                         (not= (:type card) :model)))
+                   (assoc ::force-broken-id-refs true)
 
-       ;; If the incoming col doesn't have `:semantic-type :type/FK`, drop `:fk-target-field-id`.
-       ;; This comes up with metadata on SQL cards, which might be linked to their original DB field but should not be
-       ;; treated as FKs unless the metadata is configured accordingly.
-       (not= (:semantic-type col) :type/FK)
-       (assoc :fk-target-field-id nil))))
+                   ;; If the incoming col doesn't have `:semantic-type :type/FK`, drop `:fk-target-field-id`.
+                   ;; This comes up with metadata on SQL cards, which might be linked to their original DB field but should not be
+                   ;; treated as FKs unless the metadata is configured accordingly.
+                   (not= (:semantic-type col) :type/FK)
+                   (assoc :fk-target-field-id nil))]
+    ;; :effective-type is required, but not always set, see e.g.,
+    ;; metabase.api.table/card-result-metadata->virtual-fields
+    (u/assoc-default col-meta :effective-type (:base-type col-meta))))
 
 (mu/defn ->card-metadata-columns :- [:sequential ::lib.schema.metadata/column]
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata."

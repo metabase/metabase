@@ -57,8 +57,8 @@
 
 (defn- has-segmented-perms-when-segmented-db-exists?! [user-kw]
   (testing "User is sandboxed when they are not in any other groups that provide unrestricted access"
-      (met/with-gtaps-for-user! user-kw {:gtaps {:venues {}}}
-        (mt.api.u/sandboxed-user?))))
+    (met/with-gtaps-for-user! user-kw {:gtaps {:venues {}}}
+      (mt.api.u/sandboxed-user?))))
 
 (deftest never-segment-admins-test
   (testing "Admins should not be classified as segmented users -- enterprise #147"

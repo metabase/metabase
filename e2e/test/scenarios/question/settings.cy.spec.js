@@ -2,16 +2,16 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   browseDatabases,
-  restore,
-  openOrdersTable,
-  openNavigationSidebar,
-  visitQuestionAdhoc,
-  popover,
-  modal,
-  sidebar,
-  moveDnDKitElement,
   entityPickerModal,
+  modal,
+  moveDnDKitElement,
+  openNavigationSidebar,
+  openOrdersTable,
+  popover,
+  restore,
+  sidebar,
   tableHeaderClick,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;

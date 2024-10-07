@@ -21,6 +21,13 @@ export const CLI_SHOWN_DB_FIELDS = [
   "password",
   "ssl",
 
+  // PostgreSQL fields - support authentication providers
+  "use-auth-provider",
+  "auth-provider",
+  "azure-managed-identity-client-id",
+  "oauth-token-url",
+  "oauth-token-headers",
+
   // Snowflake fields
   "use-hostname",
   "account",

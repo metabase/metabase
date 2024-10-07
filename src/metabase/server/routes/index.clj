@@ -96,17 +96,17 @@
 
 (defn- load-init-template []
   (load-template
-    "frontend_client/init.html"
-    {:initJS (load-inline-js "init")}))
+   "frontend_client/init.html"
+   {:initJS (load-inline-js "init")}))
 
 (defn- entrypoint
   "Response that serves up an entrypoint into the Metabase application, e.g. `index.html`."
   [entrypoint-name embeddable? request respond _raise]
   (respond
-    (-> (response/response (if (init-status/complete?)
-                             (load-entrypoint-template entrypoint-name embeddable? request)
-                             (load-init-template)))
-        (response/content-type "text/html; charset=utf-8"))))
+   (-> (response/response (if (init-status/complete?)
+                            (load-entrypoint-template entrypoint-name embeddable? request)
+                            (load-init-template)))
+       (response/content-type "text/html; charset=utf-8"))))
 
 (def index  "main index.html entrypoint."    (partial entrypoint "index"  (not :embeddable)))
 (def public "/public index.html entrypoint." (partial entrypoint "public" :embeddable))

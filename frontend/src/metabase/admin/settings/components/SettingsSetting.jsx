@@ -8,7 +8,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { alpha } from "metabase/lib/colors";
 import { Box } from "metabase/ui";
 
-import { settingToFormFieldId, getEnvVarDocsUrl } from "../utils";
+import { settingToFormFieldId, useGetEnvVarDocsUrl } from "../utils";
 
 import SettingHeader from "./SettingHeader";
 import {
@@ -111,15 +111,17 @@ export const SettingsSetting = props => {
   );
 };
 
-export const SetByEnvVar = ({ setting }) => (
-  <SettingEnvVarMessage>
-    {jt`This has been set by the ${(
-      <ExternalLink href={getEnvVarDocsUrl(setting.env_name)}>
-        {setting.env_name}
-      </ExternalLink>
-    )} environment variable.`}
-  </SettingEnvVarMessage>
-);
+export const SetByEnvVar = ({ setting }) => {
+  const { url: docsUrl } = useGetEnvVarDocsUrl(setting.env_name);
+
+  return (
+    <SettingEnvVarMessage>
+      {jt`This has been set by the ${(
+        <ExternalLink href={docsUrl}>{setting.env_name}</ExternalLink>
+      )} environment variable.`}
+    </SettingEnvVarMessage>
+  );
+};
 
 export const SetByEnvVarWrapper = ({ setting, children }) => {
   if (setting.is_env_setting) {

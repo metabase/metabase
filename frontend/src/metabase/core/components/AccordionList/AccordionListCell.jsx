@@ -9,15 +9,15 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
-import { Icon, Box } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 
 import styles from "./AccordionListCell.module.css";
 import {
-  ListCellItem,
-  FilterContainer,
   Content,
-  IconWrapper,
   EmptyStateContainer,
+  FilterContainer,
+  IconWrapper,
+  ListCellItem,
 } from "./AccordionListCell.styled";
 
 export const AccordionListCell = ({

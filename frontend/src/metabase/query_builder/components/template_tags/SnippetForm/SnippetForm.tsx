@@ -22,8 +22,8 @@ import type {
 
 import {
   FormSnippetTextArea,
-  SnippetFormFooterContent,
   SnippetFormFooter,
+  SnippetFormFooterContent,
 } from "./SnippetForm.styled";
 
 const SNIPPET_SCHEMA = Yup.object({

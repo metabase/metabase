@@ -27,13 +27,14 @@ There are two ways to run these `export` and `import` commands:
 
 - **Staging environments**. Enable a staging-to-production workflow for important dashboards by exporting from a staging instance of Metabase and then importing them into your production instance(s).
 - **Version control**. Check the exported files into version control and audit changes to them, as the YAML files contained within the export are pretty readable.
+- **Duplicating assets to other Metabase instances**. Export the "template" data from a source Metabase and import them to one or more target instances.
 
 Check out our guides for:
 
 - [Running multiple environments](https://www.metabase.com/learn/administration/multi-env)
 - [Setting up git-based workflow](https://www.metabase.com/learn/administration/git-based-workflow)
 
-> Serialization isn't intended for use cases like duplicating assets or swapping data sources within the same Metabase instance. If you're using serialization for duplicating entities, check out [How export works](#how-export-works), [How import works](#how-import-works), and the directions for your use case in [Other uses of serialization](#other-uses-of-serialization)
+> Serialization isn't intended for use cases like duplicating assets or swapping data sources _within_ the same Metabase instance. If you're using serialization for duplicating assets within the same instance, check out [How export works](#how-export-works), [How import works](#how-import-works), and the directions for your use case in [Other uses of serialization](#other-uses-of-serialization)
 
 ## How export works
 
@@ -141,7 +142,9 @@ See [export parameters in CLI commands](#export-options) or [export parameters i
 
 ### Example of a serialized question
 
-Questions can be found in the `cards` directory of a collection directory. Here's an example card YAML file for a question written with SQL that uses a field filter and has an area chart visualization:
+Questions can be found in the `cards` directory of a collection directory. Here's an example card YAML file for a question written with SQL that uses a field filter and has an area chart visualization.
+
+> To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality). 
 
 ```yml
 name: Products by week
@@ -658,9 +661,9 @@ The `-o -` option will output logs in the terminal.
 
 ## Other uses of serialization
 
-Serialization is intended for version control and staging-to-production workflows. While it is possible to use serialization for other use cases like duplicating assets within a single instance, these use cases are not currently officially supported.
+Serialization is intended for version control, staging-to-production workflows, and duplicating assets to other Metabase instances. While it's possible to use serialization for other use cases (like duplicating assets _within_ a single instance), we don't officially support these use cases.
 
-We're providing some directions on how to approach alternative use cases, but you should use them at your own risk. We strongly recommend that you test any process involving serialization on a non-production instance first, and reach out to [help@metabase.com](mailto:help@metabase.com) if you have any questions.
+We're providing some directions on how to approach these unsupported use cases, but you should use them at your own risk. We strongly recommend that you test any process involving serialization on a non-production instance first, and reach out to [help@metabase.com](mailto:help@metabase.com) if you have any questions.
 
 ### Using serialization for duplicating content within the same Metabase
 

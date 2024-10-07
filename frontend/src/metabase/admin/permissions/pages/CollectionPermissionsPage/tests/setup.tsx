@@ -9,8 +9,8 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type {
-  CollectionPermissionsGraph,
   Collection,
+  CollectionPermissionsGraph,
   Group,
   TokenFeatures,
 } from "metabase-types/api";

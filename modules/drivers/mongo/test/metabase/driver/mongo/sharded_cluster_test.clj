@@ -9,8 +9,8 @@
 
 (deftest ^:synchronized can-connect-test
   (mt/test-driver
-   :mongo
-   (testing "Mongo driver can connect to a sharded cluster"
-     (is (true? (driver/can-connect? :mongo (mt/db)))))
-   (testing "Mongo can sync"
-     (sync/sync-database! (mt/db)))))
+    :mongo
+    (testing "Mongo driver can connect to a sharded cluster"
+      (is (true? (driver/can-connect? :mongo (mt/db)))))
+    (testing "Mongo can sync"
+      (sync/sync-database! (mt/db)))))

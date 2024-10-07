@@ -84,15 +84,15 @@
     (t2.with-temp/with-temp [Database db    {}
                              Table    table {:db_id (u/the-id db)}
                              Field    field {:table_id            (u/the-id table)
-                                              :name                "Income"
-                                              :base_type           :type/Float
-                                              :semantic_type       nil
-                                              :fingerprint_version i/*latest-fingerprint-version*
-                                              :fingerprint         {:type   {:type/Number {:min "-Infinity"
-                                                                                           :max "Infinity"
-                                                                                           :avg "Infinity"}}
-                                                                    :global {:distinct-count 3}}
-                                              :last_analyzed       nil}]
+                                             :name                "Income"
+                                             :base_type           :type/Float
+                                             :semantic_type       nil
+                                             :fingerprint_version i/*latest-fingerprint-version*
+                                             :fingerprint         {:type   {:type/Number {:min "-Infinity"
+                                                                                          :max "Infinity"
+                                                                                          :avg "Infinity"}}
+                                                                   :global {:distinct-count 3}}
+                                             :last_analyzed       nil}]
       (is (nil? (:semantic_type (t2/select-one Field :id (u/the-id field)))))
       (classify/classify-fields-for-db! db (constantly nil))
       (is (= :type/Income (:semantic_type (t2/select-one Field :id (u/the-id field))))))))

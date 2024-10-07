@@ -2,10 +2,10 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import type { Card, DatasetQuery, NativeQuery } from "metabase-types/api";
 
 import {
-  logAction,
-  question,
   type Options,
   type QuestionDetails,
+  logAction,
+  question,
 } from "./createQuestion";
 
 export type NativeQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {

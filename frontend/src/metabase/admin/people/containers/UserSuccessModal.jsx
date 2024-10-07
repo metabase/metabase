@@ -3,7 +3,7 @@ import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import ModalContent from "metabase/components/ModalContent";
@@ -12,7 +12,7 @@ import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import Users from "metabase/entities/users";
-import MetabaseSettings from "metabase/lib/settings";
+import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
 
 import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
@@ -25,10 +25,14 @@ class UserSuccessModal extends Component {
   }
 
   render() {
-    const { onClose, user, temporaryPassword } = this.props;
-    const isSsoEnabled =
-      MetabaseSettings.isSsoEnabled() &&
-      !MetabaseSettings.isPasswordLoginEnabled();
+    const {
+      onClose,
+      user,
+      temporaryPassword,
+      isSsoEnabled,
+      isPasswordLoginEnabled,
+    } = this.props;
+    const ssoEnabled = isSsoEnabled && !isPasswordLoginEnabled;
     return (
       <ModalContent
         title={t`${user.common_name} has been added`}
@@ -38,7 +42,7 @@ class UserSuccessModal extends Component {
         {temporaryPassword ? (
           <PasswordSuccess user={user} temporaryPassword={temporaryPassword} />
         ) : (
-          <EmailSuccess isSsoEnabled={isSsoEnabled} user={user} />
+          <EmailSuccess isSsoEnabled={ssoEnabled} user={user} />
         )}
       </ModalContent>
     );
@@ -86,7 +90,6 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
     </div>
   </div>
 );
-
 export default _.compose(
   Users.load({
     id: (state, props) => props.params.userId,
@@ -96,6 +99,8 @@ export default _.compose(
       temporaryPassword: getUserTemporaryPassword(state, {
         userId: props.params.userId,
       }),
+      isSsoEnabled: isSsoEnabled(state),
+      isPasswordLoginEnabled: getSetting(state, "enable-password-login"),
     }),
     {
       onClose: () => push("/admin/people"),

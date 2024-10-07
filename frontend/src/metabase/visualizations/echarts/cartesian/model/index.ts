@@ -3,12 +3,12 @@ import {
   getYAxesModels,
 } from "metabase/visualizations/echarts/cartesian/model/axis";
 import {
+  applyVisualizationSettingsDataTransformations,
   getCardsColumnByDataKeyMap,
   getJoinedCardsDataset,
   getSortedSeriesModels,
-  applyVisualizationSettingsDataTransformations,
-  sortDataset,
   scaleDataset,
+  sortDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   getCardsSeriesModels,
@@ -77,6 +77,7 @@ export const getCardsColumns = (
 export const getCartesianChartModel = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
+  hiddenSeries: string[],
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): CartesianChartModel => {
@@ -88,6 +89,7 @@ export const getCartesianChartModel = (
   const unsortedSeriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,
+    hiddenSeries,
     settings,
     renderingContext,
   );

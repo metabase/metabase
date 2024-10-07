@@ -73,7 +73,7 @@
         (events/publish-event! :event/user-joined event)))
     (record-login-history! session-uuid (u/the-id user) device-info)
     (when-not (:last_login user)
-      (snowplow/track-event! ::snowplow/new-user-created (u/the-id user)))
+      (snowplow/track-event! ::snowplow/account {:event :new-user-created} (u/the-id user)))
     (assoc session :id session-uuid)))
 
 (mu/defmethod create-session! :password :- SessionSchema
@@ -84,7 +84,6 @@
   (when-not (public-settings/enable-password-login)
     (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
   ((get-method create-session! :sso) session-type user device-info))
-
 
 ;;; ## API Endpoints
 
@@ -176,6 +175,7 @@
 
 (defmacro http-401-on-error
   "Add `{:status-code 401}` to exception data thrown by `body`."
+  {:style/indent 0}
   [& body]
   `(do-http-401-on-error (fn [] ~@body)))
 
@@ -193,9 +193,9 @@
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
-       (throttle/with-throttling [(login-throttlers :ip-address) ip-address
-                                  (login-throttlers :username)   username]
-           (do-login))))))
+        (throttle/with-throttling [(login-throttlers :ip-address) ip-address
+                                   (login-throttlers :username)   username]
+          (do-login))))))
 
 (api/defendpoint DELETE "/"
   "Logout."
@@ -264,7 +264,7 @@
     (let [user-id (Integer/parseInt user-id)]
       (when-let [{:keys [reset_token reset_triggered], :as user} (t2/select-one [User :id :last_login :reset_triggered
                                                                                  :reset_token]
-                                                                   :id user-id, :is_active true)]
+                                                                                :id user-id, :is_active true)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
         (when (u/ignore-exceptions
                 (u.password/bcrypt-verify token reset_token))
@@ -322,19 +322,19 @@
   (if throttling-disabled?
     (google/do-google-auth request)
     (http-401-on-error
-     (throttle/with-throttling [(login-throttlers :ip-address) (req.util/ip-address request)]
-       (let [user (google/do-google-auth request)
-             {session-uuid :id, :as session} (create-session! :sso user (req.util/device-info request))
-             response {:id (str session-uuid)}
-             user (t2/select-one [User :id :is_active], :email (:email user))]
-         (if (and user (:is_active user))
-           (mw.session/set-session-cookies request
-                                           response
-                                           session
-                                           (t/zoned-date-time (t/zone-id "GMT")))
-           (throw (ex-info (str disabled-account-message)
-                           {:status-code 401
-                            :errors      {:account disabled-account-snippet}}))))))))
+      (throttle/with-throttling [(login-throttlers :ip-address) (req.util/ip-address request)]
+        (let [user (google/do-google-auth request)
+              {session-uuid :id, :as session} (create-session! :sso user (req.util/device-info request))
+              response {:id (str session-uuid)}
+              user (t2/select-one [User :id :is_active], :email (:email user))]
+          (if (and user (:is_active user))
+            (mw.session/set-session-cookies request
+                                            response
+                                            session
+                                            (t/zoned-date-time (t/zone-id "GMT")))
+            (throw (ex-info (str disabled-account-message)
+                            {:status-code 401
+                             :errors      {:account disabled-account-snippet}}))))))))
 
 (defn- +log-all-request-failures [handler]
   (fn [request respond raise]

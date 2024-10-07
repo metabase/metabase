@@ -191,8 +191,8 @@
                 {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
                  :from   [[(t2/table-name :model/Table) :t]]
                  :where  [:and
-                         [:= :t.db_id db-id]
-                         (into [:or] (map table-query tables))]}))))
+                          [:= :t.db_id db-id]
+                          (into [:or] (map table-query tables))]}))))
 
 (defn- fill-missing-table-ids-hack
   "See if we can qualify the schema and table-id for any explicit field refs which couldn't resolve their field"
@@ -220,9 +220,8 @@
 
 (defn- explicit-field-refs-for-query
   "Given the results of query analysis, return references to the corresponding fields and model outputs."
-  [{column-maps :columns table-maps :tables} db-id table-refs]
-  (let [columns (map :component column-maps)
-        tables  (map :component table-maps)]
+  [{columns :source-columns table-maps :tables} db-id table-refs]
+  (let [tables (map :component table-maps)]
     (fill-missing-table-ids-hack
      table-refs
      (consolidate-columns
@@ -260,6 +259,11 @@
 (defn- mark-reference [refs explicit?]
   (map #(assoc % :explicit-reference explicit?) refs))
 
+(defn- strip-model-refs [refs]
+  (remove (fn [{s :schema}]
+            (and s (str/starts-with? s "metabase_cache_")))
+          refs))
+
 (defn- references-for-sql
   "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's
   query. Errs on the side of optimism: i.e., it may return fields that are *not* in the query, and is unlikely to fail
@@ -278,8 +282,8 @@
                           (set/difference explicit-refs))
         field-refs    (concat (mark-reference explicit-refs true)
                               (mark-reference implicit-refs false))]
-    {:tables table-refs
-     :fields field-refs}))
+    {:tables (strip-model-refs table-refs)
+     :fields (strip-model-refs field-refs)}))
 
 (defn references-for-native
   "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's

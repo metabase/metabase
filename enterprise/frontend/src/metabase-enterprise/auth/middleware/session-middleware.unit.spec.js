@@ -5,9 +5,9 @@ import { replace } from "react-router-redux";
 import { logout, refreshSession } from "metabase/auth/actions";
 
 import {
-  createSessionMiddleware,
-  SESSION_KEY,
   COOKIE_POOLING_TIMEOUT,
+  SESSION_KEY,
+  createSessionMiddleware,
 } from "./session-middleware";
 
 jest.mock("js-cookie", () => jest.fn());

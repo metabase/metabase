@@ -114,20 +114,20 @@
          ([x :- :int y] (+ x y)))
     '(let* [&f (fn* ([x]
                      (inc x))
-                    ([x y]
-                     (+ x y)))]
+                 ([x y]
+                  (+ x y)))]
        (fn*
-        ([a]
-         (try
-           (metabase.util.malli.fn/validate-output {} :int (&f a))
-           (catch java.lang.Exception error
-             (throw (metabase.util.malli.fn/fixup-stacktrace error)))))
-        ([a b]
-         (try
-           (metabase.util.malli.fn/validate-input {} :int a)
-           (metabase.util.malli.fn/validate-output {} :int (&f a b))
-           (catch java.lang.Exception error
-             (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))))
+         ([a]
+          (try
+            (metabase.util.malli.fn/validate-output {} :int (&f a))
+            (catch java.lang.Exception error
+              (throw (metabase.util.malli.fn/fixup-stacktrace error)))))
+         ([a b]
+          (try
+            (metabase.util.malli.fn/validate-input {} :int a)
+            (metabase.util.malli.fn/validate-output {} :int (&f a b))
+            (catch java.lang.Exception error
+              (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))))
 
 (deftest ^:parallel fn-test
   (let [f (mu.fn/fn :- :int [y] y)]
@@ -168,10 +168,10 @@
                         [path opts & {:keys [token-check?], :or {token-check? true}}]
                         (merge {:path path, :token-check? token-check?} opts))]
               (clojure.core/fn
-                ([a b & more]
+                ([a b & {:as kvs}]
                  (try
                    (metabase.util.malli.fn/validate-input {:fn-name 'my-fn} :map b)
-                   (clojure.core/apply &f a b more)
+                   (&f a b kvs)
                    (catch java.lang.Exception error
                      (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
            (macroexpand form)))
@@ -189,6 +189,86 @@
            (f "path" {:opts true})))
     (is (= {:path "path", :token-check? false, :opts true}
            (f "path" {:opts true} :token-check? false)))))
+
+(deftest ^:parallel varargs-schema-test
+  (testing "Schemas on the varargs should work (#46864)"
+    (let [form '(metabase.util.malli.fn/fn my-plus :- :int
+                  [x :- :int
+                   y :- :int
+                   & more :- [:* :int]]
+                  (reduce + (list* x y more)))]
+      (is (= '(let* [&f (clojure.core/fn [x y & more]
+                          (reduce + (list* x y more)))]
+                (clojure.core/fn
+                  ([a b & more]
+                   (try
+                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int a)
+                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int b)
+                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} [:maybe [:* :int]] more)
+                     (clojure.core/->>
+                      (clojure.core/apply &f a b more)
+                      (metabase.util.malli.fn/validate-output {:fn-name 'my-plus} :int))
+                     (catch java.lang.Exception error
+                       (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+
+             (macroexpand form)))
+      (is (= [:=>
+              [:cat :int :int [:* :int]]
+              :int]
+             (mu.fn/fn-schema (mu.fn/parse-fn-tail (rest form))))))
+    (let [f (mu.fn/fn my-plus :- :int
+              [x :- :int
+               y :- :int
+               & more :- [:* :int]]
+              (reduce + (list* x y more)))]
+      (is (= 3
+             (f 1 2)))
+      (is (= 6
+             (f 1 2 3)))
+      (is (= 10
+             (f 1 2 3 4))))))
+
+(deftest ^:parallel varargs-map-schema-test
+  (testing "Schemas on the varargs map should work (#46864)"
+    (let [form '(metabase.util.malli.fn/fn my-plus :- :map
+                  [x :- :int
+                   y :- :int
+                   & {:as options} :- [:map [:integer? :boolean]]]
+                  {:options options, :output (+ x y)})]
+      (is (= '(let* [&f (clojure.core/fn [x y & {:as options}]
+                          {:options options, :output (+ x y)})]
+                (clojure.core/fn
+                  ([a b & {:as kvs}]
+                   (try
+                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int a)
+                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} :int b)
+                     (metabase.util.malli.fn/validate-input {:fn-name 'my-plus} [:map [:integer? :boolean]] kvs)
+                     (clojure.core/->>
+                      (&f a b kvs)
+                      (metabase.util.malli.fn/validate-output {:fn-name 'my-plus} :map))
+                     (catch java.lang.Exception error
+                       (throw (metabase.util.malli.fn/fixup-stacktrace error)))))))
+
+             (macroexpand form)))
+      (is (= [:=>
+              [:cat :int :int [:* :any]]
+              :map]
+             (mu.fn/fn-schema (mu.fn/parse-fn-tail (rest form)) {:target :target/metadata}))))
+    (let [f (mu.fn/fn my-plus :- :map
+              [x :- :int
+               y :- :int
+               & {:as options} :- [:map [:integer? :boolean]]]
+              {:options options, :output (+ x y)})]
+      (is (= {:options {:integer? true}, :output 3}
+             (f 1 2 :integer? true)))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid input:"
+           (f 1 2 :integer? 1)))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid input:"
+           (f 1 2))))))
 
 (deftest ^:parallel parse-fn-tail-preserve-metadata-test
   (is (= 'Integer
@@ -262,8 +342,7 @@
       (mt/with-dynamic-redefs [mu.fn/instrument-ns? (constantly true)]
         (let [expansion (macroexpand `(mu.fn/fn :- :int [] "foo"))]
           (is (= (take 2 expansion)
-                 '(let* [&f (clojure.core/fn [] "foo")]
-                    ,,,)))))))
+                 '(let* [&f (clojure.core/fn [] "foo")])))))))
   (testing "by default, instrumented forms are emitted"
     (let [f (mu.fn/fn :- :int [] "schemas aren't checked if this is returned")]
       (try (f)

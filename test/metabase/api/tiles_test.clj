@@ -88,8 +88,8 @@
                     api.tiles/tile->byte-array identity]
         (let [result (mt/user-http-request
                       :crowberto :get 200 (format "tiles/7/30/49/%d/%d"
-                                              (mt/id :people :latitude)
-                                              (mt/id :people :longitude))
+                                                  (mt/id :people :latitude)
+                                                  (mt/id :people :longitude))
                       :query (json/generate-string
                               {:database (mt/id)
                                :type :query

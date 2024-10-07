@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { t, jt, ngettext, msgid } from "ttag";
+import { jt, msgid, ngettext, t } from "ttag";
 
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";

@@ -12,10 +12,10 @@ import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 import { ViewHeaderContainer } from "./ViewTitleHeader.styled";
 import {
   AdHocQuestionLeftSide,
+  DashboardBackButton,
   QuestionFiltersHeader,
   SavedQuestionLeftSide,
   ViewTitleHeaderRightSide,
-  DashboardBackButton,
 } from "./components";
 
 interface ViewTitleHeaderProps {

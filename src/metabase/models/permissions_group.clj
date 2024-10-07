@@ -66,7 +66,6 @@
   "Fetch the `Administrators` permissions group"
   (magic-group admin-group-name))
 
-
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
 (defn exists-with-name?
@@ -74,7 +73,7 @@
   ^Boolean [group-name]
   {:pre [((some-fn keyword? string?) group-name)]}
   (t2/exists? PermissionsGroup
-    :%lower.name (u/lower-case-en (name group-name))))
+              :%lower.name (u/lower-case-en (name group-name))))
 
 (defn- check-name-not-already-taken
   [group-name]
@@ -89,15 +88,14 @@
                        (admin)]]
     (when (= id (:id magic-group))
       (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
-               {:status-code 400})))))
-
+                      {:status-code 400})))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (t2/define-before-insert :model/PermissionsGroup
- [{group-name :name, :as group}]
- (u/prog1 group
-   (check-name-not-already-taken group-name)))
+  [{group-name :name, :as group}]
+  (u/prog1 group
+    (check-name-not-already-taken group-name)))
 
 (defn- set-default-permission-values!
   [group]
@@ -116,11 +114,11 @@
   ;; Remove from LDAP mappings
   (classloader/require 'metabase.integrations.ldap)
   (setting/set-value-of-type!
-    :json :ldap-group-mappings
-    (when-let [mappings (setting/get-value-of-type :json :ldap-group-mappings)]
-      (zipmap (keys mappings)
-              (for [val (vals mappings)]
-                (remove (partial = id) val))))))
+   :json :ldap-group-mappings
+   (when-let [mappings (setting/get-value-of-type :json :ldap-group-mappings)]
+     (zipmap (keys mappings)
+             (for [val (vals mappings)]
+               (remove (partial = id) val))))))
 
 (t2/define-before-update :model/PermissionsGroup
   [group]
@@ -133,7 +131,6 @@
         (check-name-not-already-taken group-name)))))
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
-
 
 (mi/define-simple-hydration-method members
   :members
@@ -163,4 +160,4 @@
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group and the All Users group."
   []
   (t2/select PermissionsGroup {:where [:and [:not= :name admin-group-name]
-                                            [:not= :name all-users-group-name]]}))
+                                       [:not= :name all-users-group-name]]}))

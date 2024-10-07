@@ -77,10 +77,10 @@
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
     (doseq [[perm-type _] data-perms/Permissions
             db-id         (t2/select-pks-set :model/Database)]
-       (data-perms/set-database-permission! (perms-group/all-users)
-                                            db-id
-                                            perm-type
-                                            (data-perms/least-permissive-value perm-type)))
+      (data-perms/set-database-permission! (perms-group/all-users)
+                                           db-id
+                                           perm-type
+                                           (data-perms/least-permissive-value perm-type)))
     (thunk)))
 
 (defmacro with-no-data-perms-for-all-users!
@@ -96,10 +96,10 @@
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
     (doseq [[perm-type _] data-perms/Permissions
             db-id         (t2/select-pks-set :model/Database)]
-       (data-perms/set-database-permission! (perms-group/all-users)
-                                            db-id
-                                            perm-type
-                                            (data-perms/most-permissive-value perm-type)))
+      (data-perms/set-database-permission! (perms-group/all-users)
+                                           db-id
+                                           perm-type
+                                           (data-perms/most-permissive-value perm-type)))
     (thunk)))
 
 (defmacro with-full-data-perms-for-all-users!
@@ -113,8 +113,8 @@
   for the given permission group for the duration of the test."
   [group-or-id perm-type value thunk]
   (with-restored-data-perms-for-group! (u/the-id group-or-id)
-   (data-perms/set-database-permission! group-or-id (data/db) perm-type value)
-   (thunk)))
+    (data-perms/set-database-permission! group-or-id (data/db) perm-type value)
+    (thunk)))
 
 (defn do-with-perm-for-group-and-table!
   "Implementation of `with-perm-for-group-and-table`. Sets the data permission for the test dataset/table to the given

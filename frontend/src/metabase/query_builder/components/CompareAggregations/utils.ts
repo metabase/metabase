@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
+import type { TemporalUnit } from "metabase-types/api";
 
 import type { ColumnType } from "./types";
 
@@ -122,23 +123,26 @@ export const getAggregations = (
 type BreakoutColumnAndBucket = {
   breakoutIndex: number | null;
   column: Lib.ColumnMetadata;
-  bucket: Lib.Bucket | null;
+  bucket: TemporalUnit | null;
 };
 
 export function getBreakout(
   query: Lib.Query,
   stageIndex: number,
-): BreakoutColumnAndBucket | null {
+): BreakoutColumnAndBucket {
   const breakouts = Lib.breakouts(query, stageIndex);
   const breakoutIndex = breakouts.findIndex(breakout =>
     isTemporal(query, stageIndex, breakout),
   );
   if (breakoutIndex >= 0) {
     const breakout = breakouts[breakoutIndex];
+    const bucket = Lib.temporalBucket(breakout);
+    const info = bucket && Lib.displayInfo(query, stageIndex, bucket);
+
     return {
       breakoutIndex,
       column: Lib.breakoutColumn(query, stageIndex, breakout),
-      bucket: Lib.temporalBucket(breakout),
+      bucket: info?.shortName ?? null,
     };
   }
 
@@ -146,14 +150,17 @@ export function getBreakout(
   const temporalColumn = columns.find(column => Lib.isTemporal(column));
 
   if (temporalColumn) {
+    const bucket = Lib.defaultTemporalBucket(query, stageIndex, temporalColumn);
+    const info = bucket && Lib.displayInfo(query, stageIndex, bucket);
+
     return {
       breakoutIndex: null,
       column: temporalColumn,
-      bucket: Lib.defaultTemporalBucket(query, stageIndex, temporalColumn),
+      bucket: info?.shortName ?? null,
     };
   }
 
-  return null;
+  throw new Error("Could not find suitable breakout");
 }
 
 function isTemporal(
@@ -162,7 +169,7 @@ function isTemporal(
   breakout: Lib.BreakoutClause,
 ) {
   const column = Lib.breakoutColumn(query, stageIndex, breakout);
-  return Lib.isTemporal(column);
+  return Lib.isTemporalBucketable(query, stageIndex, column);
 }
 
 export const canSubmit = (
@@ -185,7 +192,8 @@ export function updateQueryWithCompareOffsetAggregations(
   aggregation: Lib.AggregationClause | Lib.ExpressionClause,
   offset: "" | number,
   columns: ColumnType[],
-  columnAndBucket: BreakoutColumnAndBucket,
+  matchedBreakout: BreakoutColumnAndBucket,
+  bucket: TemporalUnit | null,
   includeCurrentPeriod: boolean,
 ): UpdatedQuery | null {
   if (!aggregation || offset === "") {
@@ -193,12 +201,21 @@ export function updateQueryWithCompareOffsetAggregations(
   }
 
   let nextQuery = query;
-  const column = Lib.withTemporalBucket(
-    columnAndBucket.column,
-    columnAndBucket.bucket,
-  );
 
-  let { breakoutIndex } = columnAndBucket;
+  const matchedBucket =
+    Lib.availableTemporalBuckets(
+      query,
+      stageIndex,
+      matchedBreakout.column,
+    ).find(
+      availableBucket =>
+        Lib.displayInfo(query, stageIndex, availableBucket).shortName ===
+        bucket,
+    ) ?? null;
+
+  const column = Lib.withTemporalBucket(matchedBreakout.column, matchedBucket);
+
+  let { breakoutIndex } = matchedBreakout;
   if (breakoutIndex !== null) {
     // replace the breakout
     const breakout = Lib.breakouts(nextQuery, stageIndex)[breakoutIndex];
@@ -241,10 +258,17 @@ export function updateQueryWithCompareOffsetAggregations(
   };
 }
 
+const DISABLED_TEMPORAL_COMPARISON_MESSAGE = true;
+
 export function canAddTemporalCompareAggregation(
   query: Lib.Query,
   stageIndex: number,
 ): boolean {
+  if (DISABLED_TEMPORAL_COMPARISON_MESSAGE) {
+    // TODO: reenable temporal comparisons once we fix offset issues
+    return false;
+  }
+
   const aggregations = Lib.aggregations(query, stageIndex);
   if (aggregations.length === 0) {
     // Hide the "Compare to the past" option if there are no aggregations
@@ -253,7 +277,7 @@ export function canAddTemporalCompareAggregation(
 
   const breakoutableColumns = Lib.breakoutableColumns(query, stageIndex);
   const hasAtLeastOneTemporalBreakoutColumn = breakoutableColumns.some(column =>
-    Lib.isTemporal(column),
+    Lib.isTemporalBucketable(query, stageIndex, column),
   );
 
   if (!hasAtLeastOneTemporalBreakoutColumn) {

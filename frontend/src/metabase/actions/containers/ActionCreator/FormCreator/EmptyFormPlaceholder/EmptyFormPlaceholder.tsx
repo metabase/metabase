@@ -1,22 +1,20 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { useDocsUrl } from "metabase/common/hooks";
 import { Icon } from "metabase/ui";
 
 import {
   EmptyFormPlaceholderWrapper,
-  ExplainerTitle,
-  ExplainerText,
-  ExplainerList,
   ExplainerLink,
+  ExplainerList,
+  ExplainerText,
+  ExplainerTitle,
   IconContainer,
   TopRightIcon,
 } from "./EmptyFormPlaceholder.styled";
 
 export const EmptyFormPlaceholder = () => {
-  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const { url, showMetabaseLinks } = useDocsUrl("actions/custom");
 
   return (
     <EmptyFormPlaceholderWrapper>
@@ -37,9 +35,7 @@ export const EmptyFormPlaceholder = () => {
         </ExplainerList>
       </ExplainerText>
       {showMetabaseLinks && (
-        <ExplainerLink
-          href={MetabaseSettings.docsUrl("actions/custom")}
-        >{t`See an example`}</ExplainerLink>
+        <ExplainerLink href={url}>{t`See an example`}</ExplainerLink>
       )}
     </EmptyFormPlaceholderWrapper>
   );

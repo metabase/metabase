@@ -3,9 +3,9 @@ import { t } from "ttag";
 import type { IconName } from "metabase/ui";
 
 import {
-  PopoverHoverTarget,
   HoverParent,
   PopoverDefaultIcon,
+  PopoverHoverTarget,
 } from "../InfoIcon";
 import type { TableInfoPopoverProps } from "../TableInfoPopover";
 import { TableInfoPopover } from "../TableInfoPopover";

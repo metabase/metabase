@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { connect } from "react-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
@@ -17,7 +17,7 @@ import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 import { useDispatch } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { Stack, Group, Text } from "metabase/ui";
+import { Group, Stack, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { UploadsSettings } from "metabase-types/api/settings";
@@ -25,8 +25,8 @@ import type { State } from "metabase-types/store";
 
 import SettingHeader from "../SettingHeader";
 
-import { SectionTitle, ColorText, PaddedForm } from "./UploadSetting.styled";
-import { getDatabaseOptions, getSchemaOptions, dbHasSchema } from "./utils";
+import { ColorText, PaddedForm, SectionTitle } from "./UploadSetting.styled";
+import { dbHasSchema, getDatabaseOptions, getSchemaOptions } from "./utils";
 
 const FEEDBACK_TIMEOUT = 5000;
 const enableErrorMessage = t`There was a problem enabling uploads. Please try again shortly.`;

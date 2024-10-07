@@ -9,6 +9,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-dimension-projections
     :as qp.add-dimension-projections]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -33,11 +34,12 @@
                        (mt/format-name "category_id")
                        :type/Text)]}
               (qp.test-util/rows-and-cols
-               (mt/format-rows-by [str int str]
-                 (mt/run-mbql-query venues
-                   {:fields   [$name $category_id]
-                    :order-by [[:asc $name]]
-                    :limit    4}))))))))
+               (mt/format-rows-by
+                [str int str]
+                (mt/run-mbql-query venues
+                  {:fields   [$name $category_id]
+                   :order-by [[:asc $name]]
+                   :limit    4}))))))))
 
 (deftest ^:parallel basic-external-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -66,11 +68,12 @@
                        :name          "count"
                        :semantic_type :type/Quantity}]}
               (qp.test-util/rows-and-cols
-               (mt/format-rows-by [str int int]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:count]]
-                    :breakout    [$category_id]
-                    :limit       3}))))))))
+               (mt/format-rows-by
+                [str int int]
+                (mt/run-mbql-query venues
+                  {:aggregation [[:count]]
+                   :breakout    [$category_id]
+                   :limit       3}))))))))
 
 (deftest ^:parallel nested-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -95,14 +98,14 @@
                                                     [:field (mt/id :venues :category_id) nil]]
                                      :order-by     [[:asc [:field (mt/id :venues :name) nil]]]
                                      :limit        4}})
-                   (mt/format-rows-by [str int str])
+                   (mt/format-rows-by
+                    [str int str])
                    qp.test-util/rows-and-cols))))))
 
 (defn- select-columns
   "Focuses the given resultset to columns that return true when passed to `columns-pred`. Typically this would be done
   as part of the query, however there's a bug currently preventing that from working when remapped. This allows the
   data compared to be smaller and avoid that bug."
-  {:style/indent 1}
   [columns-pred results]
   (let [results-data (qp.test-util/data results)
         col-indexes  (keep-indexed (fn [idx col]
@@ -140,7 +143,9 @@
                 ["25°"                             11 "Burger"]
                 ["33 Taps"                          7 "Bar"]
                 ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
-               (mt/formatted-rows [str int str] results)))))))
+               (mt/formatted-rows
+                [str int str]
+                results)))))))
 
 (deftest ^:parallel remappings-with-field-clause-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -164,11 +169,12 @@
                                  :remapped_from (mt/format-name "category_id")
                                  :field_ref     $category_id->categories.name))]}
                 (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
-                      (mt/format-rows-by [str int str str]
-                        (mt/run-mbql-query venues
-                          {:fields   [$name $price $category_id]
-                           :order-by [[:asc $name]]
-                           :limit    4})))
+                                    (mt/format-rows-by
+                                     [str int str str]
+                                     (mt/run-mbql-query venues
+                                       {:fields   [$name $price $category_id]
+                                        :order-by [[:asc $name]]
+                                        :limit    4})))
                     (update :cols (fn [[c1 c2 c3]]
                                     [c1 c2 (dissoc c3 :source_alias)])))))))))
 
@@ -266,8 +272,9 @@
                            :limit        1})]
               (mt/with-native-query-testing-context query
                 (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50Z" 3 "Rustic Paper Car"]]
-                       (mt/formatted-rows [int int int 2.0 2.0 2.0 identity u.date/temporal-str->iso8601-str int str]
-                         (qp/process-query query))))))))))))
+                       (mt/formatted-rows
+                        [int int int 2.0 2.0 2.0 identity u.date/temporal-str->iso8601-str int str]
+                        (qp/process-query query))))))))))))
 
 (deftest ^:parallel multiple-fk-remaps-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B (#9236)"
@@ -313,16 +320,16 @@
                                              qp.test-util/mock-fks-application-database-metadata-provider
                                              (lib.tu/remap-metadata-provider (mt/id :orders :product_id) (mt/id :products :title)))
           (let [query (mt/mbql-query products
-                                     {:joins    [{:source-query {:source-table $$orders
-                                                                 :breakout     [$orders.product_id]
-                                                                 :aggregation  [[:sum $orders.quantity]]}
-                                                  :alias        "Orders"
-                                                  :condition    [:= $id &Orders.orders.product_id]
-                                                  :fields       [&Orders.title
-                                                                 &Orders.*sum/Integer]}]
-                                      :fields   [$title $category]
-                                      :order-by [[:asc $id]]
-                                      :limit    3})]
+                        {:joins    [{:source-query {:source-table $$orders
+                                                    :breakout     [$orders.product_id]
+                                                    :aggregation  [[:sum $orders.quantity]]}
+                                     :alias        "Orders"
+                                     :condition    [:= $id &Orders.orders.product_id]
+                                     :fields       [&Orders.title
+                                                    &Orders.*sum/Integer]}]
+                         :fields   [$title $category]
+                         :order-by [[:asc $id]]
+                         :limit    3})]
             (mt/with-native-query-testing-context query
               (let [results (qp/process-query query)]
                 (when (= driver/*driver* :h2)
@@ -335,8 +342,9 @@
                 (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
                         ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
                         ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
-                       (mt/formatted-rows [str str str int]
-                                          results)))))))))))
+                       (mt/formatted-rows
+                        [str str str int]
+                        results)))))))))))
 
 (deftest ^:parallel inception-style-nested-query-with-joins-test
   (testing "source query > source query > query with join (with remappings) should work (#14724)"
@@ -364,3 +372,26 @@
                     [2 123 "Mediocre Wooden Bench"  "Mediocre Wooden Bench"]
                     [3 105 "Fantastic Wool Shirt"   "Fantastic Wool Shirt"]]
                    (mt/rows (qp/process-query q3))))))))))
+
+(deftest ^:parallel pivot-with-remapped-breakout
+  (testing "remapped columns should be accounted for in the result rows (#46919)"
+    (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                         (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                                         (mt/id :products :title)))
+      (let [query (mt/$ids orders
+                    {:database   (mt/id)
+                     :type       :query
+                     :query      {:source-table $$orders
+                                  :aggregation  [[:sum [:field (mt/id :orders :total)]]]
+                                  :breakout     [[:field
+                                                  (mt/id :orders :product_id)
+                                                  {:base-type    :type/Integer}]]
+                                  :limit 3}
+                     :pivot_rows [0]
+                     :pivot_cols []})]
+        (is (= [["Aerodynamic Bronze Hat"     144 0    5753.63]
+                ["Aerodynamic Concrete Bench" 116 0   10035.81]
+                ["Aerodynamic Concrete Lamp"  197 0    6478.65]
+                [nil                          nil 1 1510617.7]]
+               (mt/formatted-rows [str int int 2.0]
+                                  (qp.pivot/run-pivot-query query))))))))

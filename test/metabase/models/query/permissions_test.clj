@@ -241,12 +241,12 @@
                                      (mt/id :checkins) :unrestricted}
               :perms/create-queries {(mt/id :users) :query-builder
                                      (mt/id :checkins) :query-builder}}
-           (query-perms/required-perms-for-query
-            (mt/mbql-query users
-              {:joins [{:alias        "c"
-                        :source-table $$checkins
-                        :condition    [:= $id &c.*USER_ID/Integer]}]})
-            :throw-exceptions? true))))))
+             (query-perms/required-perms-for-query
+              (mt/mbql-query users
+                {:joins [{:alias        "c"
+                          :source-table $$checkins
+                          :condition    [:= $id &c.*USER_ID/Integer]}]})
+              :throw-exceptions? true))))))
 
 (deftest ^:parallel pmbql-query-test
   (testing "Should be able to calculate permissions for a pMBQL query (#39024)"

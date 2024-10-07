@@ -1,7 +1,7 @@
 (ns metabase.util.random
   (:require
-    [clojure.string :as str]
-    [metabase.util :as u]))
+   [clojure.string :as str]
+   [metabase.util :as u]))
 
 (defn- random-uppercase-letter []
   (char (+ (int \A) (rand-int 26))))

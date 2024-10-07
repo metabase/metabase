@@ -5,9 +5,9 @@ import { Route } from "react-router";
 
 import {
   setupDatabaseEndpoints,
-  setupUserAttributesEndpoint,
   setupExistingImpersonationEndpoint,
   setupMissingImpersonationEndpoint,
+  setupUserAttributesEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,

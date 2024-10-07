@@ -18,7 +18,6 @@ import {
 import {
   compose,
   withAction,
-  withAnalytics,
   withNormalize,
   withRequestState,
 } from "metabase/lib/redux";
@@ -129,7 +128,6 @@ const Dashboards = createEntity({
         dashboard.id,
         "copy",
       ]),
-      withAnalytics("entities", "dashboard", "copy"),
     )(
       (entityObject, overrides, { notify } = {}) =>
         async (dispatch, getState) => {

@@ -3,31 +3,30 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
-  withPublicComponentWrapper,
   SdkError,
   SdkLoader,
+  withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import { loadStaticQuestion } from "embedding-sdk/lib/load-static-question";
 import CS from "metabase/css/core/index.css";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import type { GenericErrorResponse } from "metabase/lib/errors";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
-import {
-  onCloseChartType,
-  onOpenChartSettings,
-  setUIControls,
-} from "metabase/query_builder/actions";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import ChartTypeSidebar from "metabase/query_builder/components/view/sidebars/ChartTypeSidebar";
+import {
+  ChartTypeSettings,
+  useChartTypeVisualizations,
+} from "metabase/query_builder/components/chart-type-selector";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Group } from "metabase/ui";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Question from "metabase-lib/v1/Question";
-import type { Card, CardId, Dataset } from "metabase-types/api";
+import type { Card, CardEntityId, CardId, Dataset } from "metabase-types/api";
 
 export type StaticQuestionProps = {
-  questionId: CardId;
+  questionId: CardId | CardEntityId;
   showVisualizationSelector?: boolean;
   height?: string | number;
   parameterValues?: Record<string, string | number>;
@@ -40,12 +39,52 @@ type State = {
   error: GenericErrorResponse | null;
 };
 
-const _StaticQuestion = ({
-  questionId,
+type StaticQuestionVisualizationSelectorProps = {
+  question: Question;
+  result: Dataset | null;
+  onUpdateQuestion: (question: Question) => void;
+};
+
+const StaticQuestionVisualizationSelector = ({
+  question,
+  result,
+  onUpdateQuestion,
+}: StaticQuestionVisualizationSelectorProps) => {
+  const {
+    selectedVisualization,
+    updateQuestionVisualization,
+    sensibleVisualizations,
+    nonSensibleVisualizations,
+  } = useChartTypeVisualizations({
+    question,
+    result,
+    onUpdateQuestion,
+  });
+
+  return (
+    <Box w="355px">
+      <ChartTypeSettings
+        selectedVisualization={selectedVisualization}
+        onSelectVisualization={updateQuestionVisualization}
+        sensibleVisualizations={sensibleVisualizations}
+        nonSensibleVisualizations={nonSensibleVisualizations}
+      />
+    </Box>
+  );
+};
+
+const StaticQuestionInner = ({
+  questionId: initId,
   showVisualizationSelector,
   height,
   parameterValues,
 }: StaticQuestionProps): JSX.Element | null => {
+  const { isLoading: isValidatingEntityId, id: questionId } =
+    useValidatedEntityId({
+      type: "card",
+      id: initId,
+    });
+
   const metadata = useSelector(getMetadata);
 
   const [{ loading, card, result, error }, setState] = useState<State>({
@@ -61,6 +100,10 @@ const _StaticQuestion = ({
         ...prevState,
         loading: true,
       }));
+
+      if (!questionId) {
+        return;
+      }
 
       try {
         const { card, result } = await loadStaticQuestion({
@@ -102,7 +145,7 @@ const _StaticQuestion = ({
     });
   };
 
-  const isLoading = loading || (!result && !error);
+  const isLoading = loading || (!result && !error) || isValidatingEntityId;
 
   if (error) {
     return (
@@ -119,10 +162,6 @@ const _StaticQuestion = ({
   const question = new Question(card, metadata);
   const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
 
-  const legacyQuery = question.legacyQuery({
-    useStructuredQuery: true,
-  });
-
   return (
     <Box
       className={cx(CS.flexFull, CS.fullWidth)}
@@ -131,17 +170,11 @@ const _StaticQuestion = ({
     >
       <Group h="100%" pos="relative" align="flex-start">
         {showVisualizationSelector && (
-          <Box w="355px">
-            <ChartTypeSidebar
-              question={question}
-              result={result}
-              onOpenChartSettings={onOpenChartSettings}
-              onCloseChartType={onCloseChartType}
-              query={legacyQuery}
-              setUIControls={setUIControls}
-              updateQuestion={changeVisualization}
-            />
-          </Box>
+          <StaticQuestionVisualizationSelector
+            question={question}
+            result={result}
+            onUpdateQuestion={changeVisualization}
+          />
         )}
         <QueryVisualization
           className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
@@ -160,4 +193,4 @@ const _StaticQuestion = ({
   );
 };
 
-export const StaticQuestion = withPublicComponentWrapper(_StaticQuestion);
+export const StaticQuestion = withPublicComponentWrapper(StaticQuestionInner);

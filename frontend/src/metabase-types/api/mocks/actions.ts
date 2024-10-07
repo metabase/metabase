@@ -1,13 +1,14 @@
 import type {
+  ActionFormSettings,
   CardId,
+  FieldSettings,
   PublicWritebackAction,
+  WritebackImplicitQueryAction,
   WritebackParameter,
   WritebackQueryAction,
-  WritebackImplicitQueryAction,
-  ActionFormSettings,
-  FieldSettings,
 } from "metabase-types/api";
 
+import { createMockEntityId } from "./entity-id";
 import { createMockParameter } from "./parameters";
 import { createMockNativeDatasetQuery } from "./query";
 import { createMockUserInfo } from "./user";
@@ -34,6 +35,7 @@ export const createMockQueryAction = ({
 }: Partial<WritebackQueryAction> = {}): WritebackQueryAction => {
   return {
     id: 1,
+    entity_id: createMockEntityId(),
     dataset_query,
     name: "Query Action Mock",
     description: null,
@@ -58,6 +60,7 @@ export const createMockImplicitQueryAction = ({
   ...opts
 }: Partial<WritebackImplicitQueryAction> = {}): WritebackImplicitQueryAction => ({
   id: 1,
+  entity_id: createMockEntityId(),
   kind: "row/create",
   name: "Create",
   description: "",
@@ -138,4 +141,4 @@ export const createMockImplicitActionFieldSettings = (
     id: "",
     hidden: false,
     ...opts,
-  } as FieldSettings);
+  }) as FieldSettings;

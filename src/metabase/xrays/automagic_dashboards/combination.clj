@@ -39,7 +39,7 @@
    breakout-fields
    filter-clauses]
   (cond->
-    (assoc query :breakout (mapv (partial interesting/->reference :mbql) breakout-fields))
+   (assoc query :breakout (mapv (partial interesting/->reference :mbql) breakout-fields))
     (seq filter-clauses)
     (assoc :filter (into [:and] filter-clauses))))
 
@@ -48,14 +48,14 @@
   types are satisfied by some permutation of the parent types."
   [parent-types child-types]
   (true?
-    (when (= (count parent-types)
-             (count child-types))
-      (some
-        (fn [parent-types-permutation]
-          (when (->> (map isa? child-types parent-types-permutation)
-                     (every? true?))
-            true))
-        (math.combo/permutations parent-types)))))
+   (when (= (count parent-types)
+            (count child-types))
+     (some
+      (fn [parent-types-permutation]
+        (when (->> (map isa? child-types parent-types-permutation)
+                   (every? true?))
+          true))
+      (math.combo/permutations parent-types)))))
 
 (defn filter-to-matching-types
   "Take a map with keys as sets of types and collection of types and return the map with only
@@ -65,12 +65,11 @@
 
 (comment
   (filter-to-matching-types
-    {#{} :fail
-     #{:type/Number} :pass
-     #{:type/Integer} :pass
-     #{:type/CreationTimestamp} :fail}
-    #{:type/Integer})
-  )
+   {#{} :fail
+    #{:type/Number} :pass
+    #{:type/Integer} :pass
+    #{:type/CreationTimestamp} :fail}
+   #{:type/Integer}))
 
 (defn add-dataset-query
   "Add the `:dataset_query` key to this metric. Requires both the current metric-definition (from the grounded metric)
@@ -125,15 +124,15 @@
 (defn- instantiate-metadata
   [x context available-metrics bindings]
   (-> (walk/postwalk
-        (fn [form]
-          (if (i18n/localized-string? form)
-            (let [s     (str form)
-                  new-s (fill-templates :string context bindings s)]
-              (if (not= new-s s)
-                (capitalize-first new-s)
-                s))
-            form))
-        x)
+       (fn [form]
+         (if (i18n/localized-string? form)
+           (let [s     (str form)
+                 new-s (fill-templates :string context bindings s)]
+             (if (not= new-s s)
+               (capitalize-first new-s)
+               s))
+           form))
+       x)
       (m/update-existing :visualization #(instantiate-visualization % bindings available-metrics))))
 
 (defn- combine-dimensions
@@ -192,13 +191,13 @@
    ground-filters
    grounded-metrics :- [:sequential ads/grounded-metric]]
   (let [metric-name->metric (zipmap
-                              (map :metric-name grounded-metrics)
-                              (map-indexed
-                                (fn [idx grounded-metric] (assoc grounded-metric :position idx))
-                                grounded-metrics))
+                             (map :metric-name grounded-metrics)
+                             (map-indexed
+                              (fn [idx grounded-metric] (assoc grounded-metric :position idx))
+                              grounded-metrics))
         simple-grounded-filters (update-vals
-                                  (group-by :filter-name ground-filters)
-                                  (fn [vs] (apply max-key :score vs)))]
+                                 (group-by :filter-name ground-filters)
+                                 (fn [vs] (apply max-key :score vs)))]
     (for [{card-name       :card-name
            card-metrics    :metrics
            card-score      :card-score
@@ -223,8 +222,8 @@
                 all-names->field (into dimension-name->field bound-metric-dimension-name->field)
                 card             (-> card-template
                                      (visualization/expand-visualization
-                                       (vals dimension-name->field)
-                                       nil)
+                                      (vals dimension-name->field)
+                                      nil)
                                      (instantiate-metadata base-context
                                                            {}
                                                            all-names->field))
@@ -232,21 +231,21 @@
                                         (:metric-score grounded-metric)
                                         dim-score)]]
       (merge
-        card
-        (-> grounded-metric
-            (assoc
-              :id (gensym)
-              :affinity-name card-name
-              :card-score card-score
-              :total-score (long (/ (apply + score-components) (count score-components)))
+       card
+       (-> grounded-metric
+           (assoc
+            :id (gensym)
+            :affinity-name card-name
+            :card-score card-score
+            :total-score (long (/ (apply + score-components) (count score-components)))
               ;; Update dimension-name->field to include named contributions from both metrics and dimensions
-              :dimension-name->field all-names->field
-              :score-components score-components)
-            (assoc-in [:metric-definition :aggregation] final-aggregate)
-            (update :metric-definition add-breakouts-and-filter
-                    (vals merged-dims)
-                    (mapv (comp :filter simple-grounded-filters) card-filters))
-            (add-dataset-query base-context))))))
+            :dimension-name->field all-names->field
+            :score-components score-components)
+           (assoc-in [:metric-definition :aggregation] final-aggregate)
+           (update :metric-definition add-breakouts-and-filter
+                   (vals merged-dims)
+                   (mapv (comp :filter simple-grounded-filters) card-filters))
+           (add-dataset-query base-context))))))
 
 (defn items->str
   "Convert a seq of items to a string. If more than two items are present, they are separated by commas, including the

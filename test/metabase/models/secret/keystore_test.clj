@@ -29,7 +29,7 @@
   (let [pw                  (.toCharArray ks-password)
         protection          (KeyStore$PasswordProtection. pw)
         ^KeyStore key-store (doto (KeyStore/getInstance "PKCS12")
-                                  (.load nil pw))]
+                              (.load nil pw))]
     (doseq [[^String alias ^String value] entries]
       (.setEntry key-store
                  alias

@@ -4,11 +4,16 @@ import { render, screen } from "__support__/ui";
 import Search from "metabase/entities/search";
 import { Text } from "metabase/ui";
 import {
-  createMockSearchResult,
   createMockCollection,
+  createMockRecentCollectionItem,
+  createMockRecentTableItem,
+  createMockSearchResult,
 } from "metabase-types/api/mocks";
 
-import { getSearchResultSubtext } from "./useCommandPalette";
+import {
+  getRecentItemSubtext,
+  getSearchResultSubtext,
+} from "./useCommandPalette";
 
 const setup = (child: React.ReactNode) => {
   render(<Text>{child}</Text>);
@@ -58,6 +63,34 @@ describe("useCommandPalette", () => {
       setup(getSearchResultSubtext(mockSearchResult));
 
       expect(await screen.findByText("Bar Database")).toBeInTheDocument();
+    });
+
+    it("should should include the schema name in table search results when provided", async () => {
+      const mockSearchResult = Search.wrapEntity(
+        createMockSearchResult({
+          model: "table",
+          collection: createMockCollection({ id: undefined, name: undefined }),
+          database_name: "Bar Database",
+          table_schema: "My Schema",
+        }),
+      );
+      setup(getSearchResultSubtext(mockSearchResult));
+
+      expect(
+        await screen.findByText("Bar Database (My Schema)"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("getRecentItemSubtext", () => {
+    it("should work for cards", async () => {
+      const mockRecentItem = createMockRecentCollectionItem();
+      const mockRecentTableItem = createMockRecentTableItem();
+
+      expect(getRecentItemSubtext(mockRecentItem)).toBe("My Cool Collection");
+      expect(getRecentItemSubtext(mockRecentTableItem)).toBe(
+        "My Cool Database (PUBLIC)",
+      );
     });
   });
 });

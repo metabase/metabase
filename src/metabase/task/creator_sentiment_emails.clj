@@ -16,8 +16,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.util Locale)
-   (java.time.temporal WeekFields)))
+   (java.time.temporal WeekFields)
+   (java.util Locale)))
 
 (set! *warn-on-reflection* true)
 
@@ -118,5 +118,5 @@
                  (triggers/start-now)
                  (triggers/with-schedule
                    ;; Fire at 2am every saturday
-                   (cron/cron-schedule "0 0 2 ? * 7")))]
+                  (cron/cron-schedule "0 0 2 ? * 7")))]
     (task/schedule-task! job trigger)))

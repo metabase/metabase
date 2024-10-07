@@ -1,30 +1,32 @@
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  editDashboard,
-  popover,
-  restore,
-  saveDashboard,
-  setFilter,
-  visitDashboard,
-  openQuestionActions,
-  visitQuestion,
-  setFilterQuestionSource,
-  setFilterListSource,
-  visitEmbeddedPage,
-  visitPublicDashboard,
+  assertDatasetReqIsSandboxed,
+  blockUserGroupPermissions,
   describeEE,
-  setSearchBoxFilterType,
-  setTokenFeatures,
-  setDropdownFilterType,
-  getDashboardCard,
+  editDashboard,
   filterWidget,
+  getDashboardCard,
+  getTable,
   multiAutocompleteInput,
   multiAutocompleteValue,
-  sidebar,
+  openQuestionActions,
+  popover,
   resetTestTable,
+  restore,
   resyncDatabase,
-  getTable,
+  saveDashboard,
+  setDropdownFilterType,
+  setFilter,
+  setFilterListSource,
+  setFilterQuestionSource,
+  setSearchBoxFilterType,
+  setTokenFeatures,
+  sidebar,
+  visitDashboard,
+  visitEmbeddedPage,
+  visitPublicDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -392,9 +394,10 @@ describe(
 
 describeEE("scenarios > dashboard > filters", () => {
   beforeEach(() => {
-    restore("default-ee");
+    restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
+    blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
   });
 
   it("should sandbox parameter values in dashboards", () => {
@@ -415,6 +418,9 @@ describeEE("scenarios > dashboard > filters", () => {
           cy.signOut();
           cy.signInAsSandboxedUser();
           visitDashboard(card.dashboard_id);
+          assertDatasetReqIsSandboxed({
+            requestAlias: `@dashcardQuery${card.id}`,
+          });
         });
       },
     );

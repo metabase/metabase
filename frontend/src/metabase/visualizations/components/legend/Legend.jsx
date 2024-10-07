@@ -24,8 +24,10 @@ const propTypes = {
   visibleIndex: PropTypes.number,
   visibleLength: PropTypes.number,
   isVertical: PropTypes.bool,
+  isInsidePopover: PropTypes.bool,
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
+  onToggleSeriesVisibility: PropTypes.func,
   onRemoveSeries: PropTypes.func,
   isReversed: PropTypes.bool,
   canRemoveSeries: PropTypes.func,
@@ -40,8 +42,10 @@ const Legend = ({
   visibleIndex = 0,
   visibleLength = originalItems.length,
   isVertical,
+  isInsidePopover,
   onHoverChange,
   onSelectSeries,
+  onToggleSeriesVisibility,
   onRemoveSeries,
   isReversed,
   canRemoveSeries = alwaysTrue,
@@ -85,9 +89,11 @@ const Legend = ({
             index={itemIndex}
             isMuted={hovered && itemIndex !== hovered.index}
             isVertical={isVertical}
+            isInsidePopover={isInsidePopover}
             isReversed={isReversed}
             onHoverChange={onHoverChange}
             onSelectSeries={onSelectSeries}
+            onToggleSeriesVisibility={onToggleSeriesVisibility}
             onRemoveSeries={
               canRemoveSeries(itemIndex) ? onRemoveSeries : undefined
             }
@@ -117,8 +123,10 @@ const Legend = ({
               visibleIndex={overflowIndex}
               visibleLength={overflowLength}
               isVertical={isVertical}
+              isInsidePopover
               onHoverChange={onHoverChange}
               onSelectSeries={onSelectSeries}
+              onToggleSeriesVisibility={onToggleSeriesVisibility}
               onRemoveSeries={onRemoveSeries}
               isReversed={isReversed}
             />

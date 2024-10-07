@@ -4,23 +4,23 @@ import type { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
 
 import {
+  setupAdhocQueryMetadataEndpoint,
   setupAlertsEndpoints,
   setupBookmarksEndpoints,
   setupCardDataset,
   setupCardQueryEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupFieldValuesEndpoints,
   setupModelIndexEndpoints,
+  setupPropertiesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
+  setupRecentViewsEndpoints,
   setupSearchEndpoints,
   setupTimelinesEndpoints,
-  setupPropertiesEndpoints,
-  setupRecentViewsEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupCardQueryMetadataEndpoint,
-  setupAdhocQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -390,9 +390,8 @@ export const triggerNotebookQueryChange = async () => {
  */
 export const revertNotebookQueryChange = async () => {
   const limitStep = screen.getByTestId("step-limit-0-0");
-  const limitInput = await within(limitStep).findByPlaceholderText(
-    "Enter a limit",
-  );
+  const limitInput =
+    await within(limitStep).findByPlaceholderText("Enter a limit");
 
   await userEvent.click(limitInput);
   await userEvent.type(limitInput, "{backspace}");

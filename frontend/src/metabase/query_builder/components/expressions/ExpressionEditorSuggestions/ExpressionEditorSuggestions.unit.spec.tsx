@@ -1,9 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
 import {
+  fireEvent,
   renderWithProviders,
   screen,
   waitFor,
-  fireEvent,
 } from "__support__/ui";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import type * as Lib from "metabase-lib";

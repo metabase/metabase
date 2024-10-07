@@ -126,7 +126,7 @@
 
 (defn- check-saml-enabled []
   (api/check (sso-settings/saml-enabled)
-    [400 (tru "SAML has not been enabled and/or configured")]))
+             [400 (tru "SAML has not been enabled and/or configured")]))
 
 (defmethod sso.i/sso-get :saml
   ;; Initial call that will result in a redirect to the IDP along with information about how the IDP can authenticate
@@ -146,18 +146,18 @@
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
             saml-request (saml/request
-                           {:request-id (str "id-" (random-uuid))
-                            :sp-name    (sso-settings/saml-application-name)
-                            :issuer     (sso-settings/saml-application-name)
-                            :acs-url    (acs-url)
-                            :idp-url    idp-url
-                            :credential (sp-cert-keystore-details)})
+                          {:request-id (str "id-" (random-uuid))
+                           :sp-name    (sso-settings/saml-application-name)
+                           :issuer     (sso-settings/saml-application-name)
+                           :acs-url    (acs-url)
+                           :idp-url    idp-url
+                           :credential (sp-cert-keystore-details)})
             relay-state  (saml/str->base64 redirect-url)]
         (saml/idp-redirect-response saml-request idp-url relay-state))
-     (catch Throwable e
-       (let [msg (trs "Error generating SAML request")]
-         (log/error e msg)
-         (throw (ex-info msg {:status-code 500} e)))))))
+      (catch Throwable e
+        (let [msg (trs "Error generating SAML request")]
+          (log/error e msg)
+          (throw (ex-info msg {:status-code 500} e)))))))
 
 (defn- validate-response [response]
   (let [idp-cert (or (sso-settings/saml-identity-provider-certificate)
@@ -197,7 +197,7 @@
 (defn- base64-decode [^String s]
   (when (u/base64-string? s)
     (codecs/bytes->str
-      (.decode (Base64/getMimeDecoder) s))))
+     (.decode (Base64/getMimeDecoder) s))))
 
 (defmethod sso.i/sso-post :saml
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
@@ -218,12 +218,12 @@
           last-name     (get attrs (sso-settings/saml-attribute-lastname))
           groups        (get attrs (sso-settings/saml-attribute-group))
           session       (fetch-or-create-user!
-                          {:first-name      first-name
-                           :last-name       last-name
-                           :email           email
-                           :group-names     groups
-                           :user-attributes attrs
-                           :device-info     (req.util/device-info request)})
+                         {:first-name      first-name
+                          :last-name       last-name
+                          :email           email
+                          :group-names     groups
+                          :user-attributes attrs
+                          :device-info     (req.util/device-info request)})
           response      (response/redirect (or continue-url (public-settings/site-url)))]
       (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
 

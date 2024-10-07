@@ -6,8 +6,8 @@ import type { Group } from "metabase-types/api";
 
 import type { DataRouteParams, GroupRouteParams } from "../../types";
 import {
-  getSchemaEntityId,
   getDatabaseEntityId,
+  getSchemaEntityId,
 } from "../../utils/data-entity-id";
 import { getDatabase } from "../../utils/metadata";
 import {

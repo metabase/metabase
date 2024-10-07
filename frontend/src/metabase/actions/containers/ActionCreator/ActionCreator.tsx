@@ -21,8 +21,8 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CardId,
   DatabaseId,
-  WritebackActionId,
   WritebackAction,
+  WritebackActionId,
   WritebackQueryAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -212,7 +212,7 @@ function ActionCreator({
 
 function ensureAceEditorClosed() {
   // @ts-expect-error — `ace` isn't typed yet
-  const editor = window.ace?.edit(ACE_ELEMENT_ID);
+  const editor = window.ace?.edit?.(ACE_ELEMENT_ID);
   editor?.completer?.popup?.hide();
 }
 

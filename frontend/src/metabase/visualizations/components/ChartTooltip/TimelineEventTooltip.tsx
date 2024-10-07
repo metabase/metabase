@@ -6,9 +6,9 @@ import {
   TimelineEventDate,
   TimelineEventIconContainer,
   TimelineEventInfoContainer,
+  TimelineEventList,
   TimelineEventName,
   TimelineEventRow,
-  TimelineEventList,
 } from "./TimelineEventTooltip.styled";
 
 export interface TimelineEventTooltipProps {

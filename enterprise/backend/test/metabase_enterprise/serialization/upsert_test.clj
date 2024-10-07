@@ -17,7 +17,7 @@
   (let [identity-constituent? (set (#'upsert/identity-condition model))]
     (into {} (for [[k v] e]
                [k (if (or (not (string? v))
-                         (identity-constituent? k))
+                          (identity-constituent? k))
                     v
                     (str (gensym)))]))))
 
@@ -77,8 +77,8 @@
     ;; hack to make sure that :visualization_settings are slightly different between the two dummy instances
     ;; this is necessary because DashboardCards have that as part of their identity-condition
     (assoc entity :dashboard_id (u/the-id dummy-dashboard)
-                  :visualization_settings (if (= 1 instance-num) {:column_settings {}}
-                                                                 {:click_behavior {}}))
+           :visualization_settings (if (= 1 instance-num) {:column_settings {}}
+                                       {:click_behavior {}}))
 
     :else
     entity))

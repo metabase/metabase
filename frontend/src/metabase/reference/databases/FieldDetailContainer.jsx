@@ -13,10 +13,10 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import {
   getDatabase,
-  getTable,
-  getField,
   getDatabaseId,
+  getField,
   getIsEditing,
+  getTable,
 } from "../selectors";
 
 import FieldSidebar from "./FieldSidebar";

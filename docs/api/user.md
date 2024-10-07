@@ -16,7 +16,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/user/`
 
@@ -38,13 +38,13 @@ Fetch a list of `Users` for admins or group managers.
 
 ### PARAMS:
 
-*  **`status`** nullable string
+-  **`status`** nullable string.
 
-*  **`query`** nullable string
+-  **`query`** nullable string.
 
-*  **`group_id`** nullable value must be an integer greater than zero.
+-  **`group_id`** nullable value must be an integer greater than zero.
 
-*  **`include_deactivated`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`include_deactivated`** nullable value must be a valid boolean string ('true' or 'false').
 
 ## `GET /api/user/:id`
 
@@ -52,7 +52,7 @@ Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group M
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/user/current`
 
@@ -74,15 +74,15 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`first_name`** nullable value must be a non-blank string.
+-  **`first_name`** nullable value must be a non-blank string.
 
-*  **`last_name`** nullable value must be a non-blank string.
+-  **`last_name`** nullable value must be a non-blank string.
 
-*  **`email`** value must be a valid email address.
+-  **`email`** value must be a valid email address.
 
-*  **`user_group_memberships`** nullable sequence of map where {:id -> <value must be an integer greater than zero.>, :is_group_manager (optional) -> <boolean>}
+-  **`user_group_memberships`** nullable sequence of map where {:id -> <value must be an integer greater than zero.>, :is_group_manager (optional) -> <boolean>}.
 
-*  **`login_attributes`** nullable login attribute keys must be a keyword or string
+-  **`login_attributes`** nullable login attribute keys must be a keyword or string.
 
 ## `POST /api/user/:id/send_invite`
 
@@ -92,7 +92,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `PUT /api/user/:id`
 
@@ -102,23 +102,23 @@ Update an existing, active `User`.
 
 ### PARAMS:
 
-*  **`email`** nullable value must be a valid email address.
+-  **`email`** nullable value must be a valid email address.
 
-*  **`first_name`** nullable value must be a non-blank string.
+-  **`first_name`** nullable value must be a non-blank string.
 
-*  **`is_group_manager`** nullable boolean
+-  **`is_group_manager`** nullable boolean.
 
-*  **`locale`** nullable String must be a valid two-letter ISO language or language-country code e.g. en or en_US.
+-  **`locale`** nullable String must be a valid two-letter ISO language or language-country code e.g. en or en_US.
 
-*  **`user_group_memberships`** nullable sequence of map where {:id -> <value must be an integer greater than zero.>, :is_group_manager (optional) -> <boolean>}
+-  **`user_group_memberships`** nullable sequence of map where {:id -> <value must be an integer greater than zero.>, :is_group_manager (optional) -> <boolean>}.
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`is_superuser`** nullable boolean
+-  **`is_superuser`** nullable boolean.
 
-*  **`login_attributes`** nullable login attribute keys must be a keyword or string
+-  **`login_attributes`** nullable login attribute keys must be a keyword or string.
 
-*  **`last_name`** nullable value must be a non-blank string.
+-  **`last_name`** nullable value must be a non-blank string.
 
 ## `PUT /api/user/:id/modal/:modal`
 
@@ -126,9 +126,9 @@ Indicate that a user has been informed about the vast intricacies of 'the' Query
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`modal`**
+-  **`modal`**
 
 ## `PUT /api/user/:id/password`
 
@@ -136,13 +136,13 @@ Update a user's password.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`password`** password is too common.
+-  **`password`** password is too common.
 
-*  **`old_password`** 
+-  **`old_password`** 
 
-*  **`request`**
+-  **`request`**
 
 ## `PUT /api/user/:id/reactivate`
 
@@ -152,7 +152,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ---
 

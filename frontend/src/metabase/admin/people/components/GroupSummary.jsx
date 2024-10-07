@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";

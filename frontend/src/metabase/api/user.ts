@@ -3,18 +3,18 @@ import type {
   ListUsersRequest,
   ListUsersResponse,
   UpdatePasswordRequest,
-  UserId,
-  User,
   UpdateUserRequest,
+  User,
+  UserId,
 } from "metabase-types/api";
 
 import { Api } from "./api";
 import {
   idTag,
-  listTag,
   invalidateTags,
-  provideUserTags,
+  listTag,
   provideUserListTags,
+  provideUserTags,
 } from "./tags";
 
 export const userApi = Api.injectEndpoints({

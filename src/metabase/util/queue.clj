@@ -16,11 +16,10 @@
     "Discard all messages on the given queue."))
 
 ;; Similar to java.util.concurrent.LinkedTransferQueue, but bounded.
-(deftype ^:private ArrayTransferQueue
-  [^ArrayBlockingQueue async-queue
-   ^SynchronousQueue sync-queue
-   ^long block-ms
-   ^long sleep-ms]
+(deftype ^:private ArrayTransferQueue [^ArrayBlockingQueue async-queue
+                                       ^SynchronousQueue sync-queue
+                                       ^long block-ms
+                                       ^long sleep-ms]
   BoundedTransferQueue
   (maybe-put! [_ msg]
     (.offer async-queue msg))
@@ -45,6 +44,6 @@
                :or   {block-ms 100
                       sleep-ms 100}}]
   (->ArrayTransferQueue (ArrayBlockingQueue. capacity)
-                          (SynchronousQueue.)
-                          block-ms
-                          sleep-ms))
+                        (SynchronousQueue.)
+                        block-ms
+                        sleep-ms))

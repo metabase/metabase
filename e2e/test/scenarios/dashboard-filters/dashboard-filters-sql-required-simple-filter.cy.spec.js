@@ -1,9 +1,9 @@
 import {
   clearFilterWidget,
-  restore,
-  sidebar,
   editDashboard,
+  restore,
   saveDashboard,
+  sidebar,
   visitDashboard,
 } from "e2e/support/helpers";
 
@@ -113,8 +113,8 @@ describe("scenarios > dashboard > filters > SQL > simple filter > required ", ()
 
     saveDashboard();
 
-    // The URL query params should include the last used parameter value
-    cy.location("search").should("eq", "?text=Bar");
+    // The URL query params should include the value from the dashboard filter default
+    cy.location("search").should("eq", "?text=");
   });
 });
 

@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { isWithinIframe } from "metabase/lib/dom";
 import { getEngineNativeType } from "metabase/lib/engine";
 import type {
-  RegularClickAction,
   LegacyDrill,
+  RegularClickAction,
 } from "metabase/visualizations/types";
 import { nativeDrillFallback } from "metabase-lib/v1/queries/drills/native-drill-fallback";
 

@@ -39,7 +39,7 @@
 
 (def ^:private PositiveInt
   [:schema
-   {:doc/message "Must be a positive integer."}
+   {:description "Must be a positive integer."}
    pos-int?])
 
 ;; `:day-of-week` depends on the [[metabase.public-settings/start-of-week]] Setting, by default Sunday.
@@ -185,12 +185,11 @@
   `relative-datetime` form."
   (one-of absolute-datetime relative-datetime time))
 
-
 ;;; -------------------------------------------------- Other Values --------------------------------------------------
 
 (mr/def ::ValueTypeInfo
   [:map
-   {:doc/message (str "Type info about a value in a `:value` clause. Added automatically by `wrap-value-literals`"
+   {:description (str "Type info about a value in a `:value` clause. Added automatically by `wrap-value-literals`"
                       " middleware to values in filter clauses based on the Field in the clause.")}
    [:database_type {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:base_type     {:optional true} [:maybe ::lib.schema.common/base-type]]
@@ -207,7 +206,6 @@
 (defclause ^:internal value
   value    :any
   type-info [:maybe ::ValueTypeInfo])
-
 
 ;;; ----------------------------------------------------- Fields -----------------------------------------------------
 
@@ -256,7 +254,7 @@
 
     [:source-field
      {:optional true
-      :doc/message
+      :description
       "Replaces `fk->`.
 
   `:source-field` is used to refer to a FieldOrExpression from a different Table you would like IMPLICITLY JOINED to
@@ -267,7 +265,7 @@
 
     [:temporal-unit
      {:optional true
-      :doc/message
+      :description
       "`:temporal-unit` is used to specify DATE BUCKETING for a FieldOrExpression that represents a moment in time of
   some sort.
 
@@ -281,7 +279,7 @@
 
     [:join-alias
      {:optional true
-      :doc/message
+      :description
       "Replaces `joined-field`.
 
   `:join-alias` is used to refer to a FieldOrExpression from a different Table/nested query that you are EXPLICITLY
@@ -290,7 +288,7 @@
 
     [:binning
      {:optional true
-      :doc/message
+      :description
       "Replaces `binning-strategy`.
 
   Using binning requires the driver to support the `:binning` feature."}
@@ -298,12 +296,12 @@
 
    ;; additional validation
    [:ref
-    {:doc/message "If `:base-type` is specified, the `:temporal-unit` must make sense, e.g. no bucketing by `:year`for
+    {:description "If `:base-type` is specified, the `:temporal-unit` must make sense, e.g. no bucketing by `:year`for
   a `:type/Time` column."}
     ::validate-temporal-unit]
 
    [:ref
-    {:doc/message "You cannot use `:binning` keys like `:strategy` in the top level."}
+    {:description "You cannot use `:binning` keys like `:strategy` in the top level."}
     ::no-binning-options-at-top-level]])
 
 (mr/def ::require-base-type-for-field-name
@@ -322,7 +320,7 @@
     "id-or-name" [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string]
     "options"    [:maybe [:ref ::FieldOptions]])
    [:ref
-    {:doc/message "Fields using names rather than integer IDs are required to specify `:base-type`."}
+    {:description "Fields using names rather than integer IDs are required to specify `:base-type`."}
     ::require-base-type-for-field-name]])
 
 (def ^{:clause-name :field, :added "0.39.0"} field
@@ -376,7 +374,7 @@
 
 (defclause ^{:added "0.50.0"} offset
   opts [:ref ::lib.schema.common/options]
-  expr [:or [:ref ::FieldOrExpressionDef] [:ref ::UnnamedAggregation]]
+  expr [:or [:ref ::FieldOrExpressionDef] [:ref ::Aggregation]]
   n    ::lib.schema.expression.window/offset.n)
 
 ;;; -------------------------------------------------- Expressions ---------------------------------------------------
@@ -990,7 +988,6 @@
 (defclause ^{:requires-features #{:percentile-aggregations}} percentile
   field-or-expression [:ref ::FieldOrExpressionDef], percentile NumericExpressionArg)
 
-
 ;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
 ;; expanded to other aggregations/etc. in the expand-macros middleware
 (defclause metric
@@ -1037,7 +1034,6 @@
    [:aggregation-options aggregation-options]
    [:unnamed-aggregation UnnamedAggregation]])
 
-
 ;;; ---------------------------------------------------- Order-By ----------------------------------------------------
 
 ;; order-by is just a series of `[<direction> <field>]` clauses like
@@ -1052,7 +1048,6 @@
 (mr/def ::OrderBy
   "Schema for an `order-by` clause subclause."
   (one-of asc desc))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Queries                                                     |
@@ -1136,14 +1131,14 @@
 
     [:widget-type
      [:ref
-      {:doc/message
+      {:description
        "which type of widget the frontend should show for this Field Filter; this also affects which parameter types
   are allowed to be specified for it."}
       ::WidgetType]]
 
     [:options
      {:optional    true
-      :doc/message "optional map to be appended to filter clause"}
+      :description "optional map to be appended to filter clause"}
      [:maybe [:map-of :keyword :any]]]]])
 
 ;; Example:
@@ -1161,7 +1156,7 @@
    [:map
     [:type
      [:ref
-      {:doc/message
+      {:description
        "`:type` is used be the FE to determine which type of widget to display for the template tag, and to determine
   which types of parameters are allowed to be passed in for this template tag."}]
      ::lib.schema.template-tag/raw-value.type]]])
@@ -1242,7 +1237,6 @@
    [:map
     [:native :any]]])
 
-
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
 
 (def MBQLQuery
@@ -1294,7 +1288,7 @@
    ::lib.schema.id/table
    [:re
     {:error/message "'card__<id>' string Table ID"
-     :doc/message   "`card__<id>` string Table ID"}
+     :description   "`card__<id>` string Table ID"}
     source-table-card-id-regex]])
 
 (def join-strategies
@@ -1334,14 +1328,14 @@
    [:map
     [:source-table
      {:optional true
-      :doc/message "*What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where
+      :description "*What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where
   this is specified. YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!"}
      SourceTable]
 
     [:source-query {:optional true} SourceQuery]
 
     [:condition
-     {:doc/message
+     {:description
       "The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
   JOINs this is usually something like
 
@@ -1350,14 +1344,14 @@
 
     [:strategy
      {:optional true
-      :doc/message "Defaults to `:left-join`; used for all automatically-generated JOINs
+      :description "Defaults to `:left-join`; used for all automatically-generated JOINs
 
   Driver implementations: this is guaranteed to be present after pre-processing."}
      JoinStrategy]
 
     [:fields
      {:optional true
-      :doc/message
+      :description
       "The Fields from this join to include in parent-level results. This can be either `:none`, `:all`, or a sequence
   of `:field` clauses.
 
@@ -1376,7 +1370,7 @@
 
     [:alias
      {:optional true
-      :doc/message
+      :description
       "The name used to alias the joined table or query. This is usually generated automatically and generally looks
   like `table__via__field`. You can specify this yourself if you need to reference a joined field with a `:join-alias`
   in the options.
@@ -1386,7 +1380,7 @@
 
     [:fk-field-id
      {:optional true
-      :doc/message "Mostly used only internally. When a join is implicitly generated via a `:field` clause with
+      :description "Mostly used only internally. When a join is implicitly generated via a `:field` clause with
   `:source-field`, the ID of the foreign key field in the source Table will be recorded here. This information is used
   to add `fk_field_id` information to the `:cols` in the query results, and also for drill-thru. When generating
   explicit joins by hand you can usually omit this information, altho it doesn't hurt to include it if you know it.
@@ -1396,7 +1390,7 @@
 
     [:source-metadata
      {:optional true
-      :doc/message "Metadata about the source query being used, if pulled in from a Card via the
+      :description "Metadata about the source query being used, if pulled in from a Card via the
   `:source-table \"card__id\"` syntax. added automatically by the `resolve-card-id-source-tables` middleware."}
      [:maybe [:sequential SourceQueryMetadata]]]]
    ;; additional constraints
@@ -1450,7 +1444,7 @@
 
     [:source-metadata
      {:optional true
-      :doc/message "Info about the columns of the source query. Added in automatically by middleware. This metadata is
+      :description "Info about the columns of the source query. Added in automatically by middleware. This metadata is
   primarily used to let power things like binning when used with Field Literals instead of normal Fields."}
      [:maybe [:sequential SourceQueryMetadata]]]]
    ;;
@@ -1464,7 +1458,6 @@
     {:error/message "Fields specified in `:breakout` should not be specified in `:fields`; this is implied."}
     (fn [{:keys [breakout fields]}]
       (empty? (set/intersection (set breakout) (set fields))))]])
-
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
 
@@ -1480,8 +1473,18 @@
             [:map
              [:id ::lib.schema.common/non-blank-string]]])
 
-(defclause dimension
-  target [:or Field template-tag])
+(mr/def ::dimension
+  [:and
+   {:doc/title [:span [:code ":dimension"] " clause"]}
+   [:fn {:error/message "must be a `:dimension` clause"} (partial helpers/is-clause? :dimension)]
+   [:catn
+    [:tag [:= :dimension]]
+    [:target [:schema [:or [:ref ::Field] [:ref ::template-tag]]]]
+    [:options [:? [:maybe [:map {:error/message "dimension options"} [:stage-number {:optional true} :int]]]]]]])
+
+(def ^{:clause-name :dimension} dimension
+  "Schema for a valid dimension clause."
+  [:ref ::dimension])
 
 (defclause variable
   target template-tag)
@@ -1520,7 +1523,7 @@
   [:map
    [:report-timezone
     {:optional    true
-     :doc/message "The timezone the query should be ran in, overriding the default report timezone for the instance."}
+     :description "The timezone the query should be ran in, overriding the default report timezone for the instance."}
     TimezoneId]])
 
 (mr/def ::Constraints
@@ -1531,14 +1534,14 @@
    [:map
     [:max-results
      {:optional true
-      :doc/message
+      :description
       "Maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this
   applies to all queries"}
      ::lib.schema.common/int-greater-than-or-equal-to-zero]
 
     [:max-results-bare-rows
      {:optional true
-      :doc/message
+      :description
       "Maximum number of results to allow for a query with no aggregations. If set, this should be LOWER than
   `:max-results`."}
      ::lib.schema.common/int-greater-than-or-equal-to-zero]]
@@ -1555,7 +1558,7 @@
   [:map
    [:skip-results-metadata?
     {:optional true
-     :doc/message
+     :description
      "Should we skip adding `results_metadata` to query results after running the query? Used by
      `metabase.query-processor.middleware.results-metadata`; default `false`. (Note: we may change the name of this
      column in the near future, to `result_metadata`, to fix inconsistencies in how we name things.)"}
@@ -1563,14 +1566,14 @@
 
    [:format-rows?
     {:optional true
-     :doc/message
+     :description
      "Should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing
      results? Used by `metabase.query-processor.middleware.format-rows`default `false`."}
     :boolean]
 
    [:disable-mbql->native?
     {:optional true
-     :doc/message
+     :description
      "Disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where
   you should set this yourself. This is only used by the `metabase.query-processor.preprocess/preprocess` function to
   get the fully pre-processed query without attempting to convert it to native."}
@@ -1578,14 +1581,14 @@
 
    [:disable-max-results?
     {:optional true
-     :doc/message
+     :description
      "Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware. If true,
   this will override the `:max-results` and `:max-results-bare-rows` values in `Constraints`."}
     :boolean]
 
    [:userland-query?
     {:optional true
-     :doc/message
+     :description
      "Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in
   certain userland-only middleware for such queries -- results are returned in a slightly different format, and
   QueryExecution entries are normally saved, unless you pass `:no-save` as the option."}
@@ -1593,7 +1596,7 @@
 
    [:add-default-userland-constraints?
     {:optional true
-     :doc/message
+     :description
      "Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,
   although the functions that ultimately power most API endpoints tend to set this to `true`. See
   `add-constraints` middleware for more details."}
@@ -1601,12 +1604,11 @@
 
    [:process-viz-settings?
     {:optional true
-     :doc/message
+     :description
      "Whether to process a question's visualization settings and include them in the result metadata so that they can
   incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default
   `false`."}
     [:maybe :boolean]]])
-
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
 
@@ -1665,7 +1667,7 @@
 
     [:type
      [:enum
-      {:doc/message "Type of query. `:query` = MBQL; `:native` = native."}
+      {:description "Type of query. `:query` = MBQL; `:native` = native."}
       :query :native]]
 
     [:native     {:optional true} NativeQuery]
@@ -1684,7 +1686,7 @@
     ;;
     [:info
      {:optional true
-      :doc/message "Used when recording info about this run in the QueryExecution log; things like context query was
+      :description "Used when recording info about this run in the QueryExecution log; things like context query was
   ran in and User who ran it."}
      [:maybe [:ref ::lib.schema.info/info]]]
     ;;

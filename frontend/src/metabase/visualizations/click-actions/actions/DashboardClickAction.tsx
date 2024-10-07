@@ -4,10 +4,10 @@ import {
   setParameterValue,
 } from "metabase/dashboard/actions";
 import type {
-  ClickObject,
-  LegacyDrill,
   AlwaysDefaultClickAction,
   AlwaysDefaultClickActionSubAction,
+  ClickObject,
+  LegacyDrill,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import {

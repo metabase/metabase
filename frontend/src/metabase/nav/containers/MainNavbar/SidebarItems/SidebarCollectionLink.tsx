@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from "react";
-import { forwardRef, useEffect, useCallback, useRef } from "react";
+import { forwardRef, useCallback, useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";

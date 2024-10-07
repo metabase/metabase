@@ -1,18 +1,20 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  visitDashboard,
-  visitPublicDashboard,
-  filterWidget,
-  popover,
-  openNewPublicLinkDropdown,
-  createPublicDashboardLink,
-  dashboardParametersContainer,
-  goToTab,
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
+  createPublicDashboardLink,
+  dashboardParametersContainer,
   describeEE,
+  filterWidget,
+  goToTab,
+  openNewPublicLinkDropdown,
+  openSharingMenu,
+  popover,
+  restore,
   setTokenFeatures,
+  updateSetting,
+  visitDashboard,
+  visitPublicDashboard,
 } from "e2e/support/helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -80,7 +82,7 @@ const USERS = {
 };
 
 const prepareDashboard = () => {
-  cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+  updateSetting("enable-public-sharing", true);
 
   cy.intercept("/api/dashboard/*/public_link").as("publicLink");
 
@@ -150,8 +152,7 @@ describe("scenarios > public > dashboard", () => {
 
     cy.signInAsNormalUser().then(() => {
       visitDashboard("@dashboardId");
-
-      cy.icon("share").click();
+      openSharingMenu("Public link");
 
       cy.findByTestId("public-link-popover-content").within(() => {
         cy.findByText("Public link").should("be.visible");
@@ -263,6 +264,18 @@ describe("scenarios > public > dashboard", () => {
 
     filterWidget().findByText("002").should("be.visible");
   });
+
+  it("should allow to set locale from the `locale` query parameter", () => {
+    cy.get("@dashboardId").then(id => {
+      visitPublicDashboard(id, {
+        params: { locale: "de" },
+      });
+    });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is
+    cy.findByText("Registerkarte als PDF exportieren").should("be.visible");
+    cy.url().should("include", "locale=de");
+  });
 });
 
 describeEE("scenarios [EE] > public > dashboard", () => {
@@ -276,9 +289,7 @@ describeEE("scenarios [EE] > public > dashboard", () => {
   });
 
   it("should set the window title to `{dashboard name} · {application name}`", () => {
-    cy.request("PUT", "/api/setting/application-name", {
-      value: "Custom Application Name",
-    });
+    updateSetting("application-name", "Custom Application Name");
 
     cy.get("@dashboardId").then(id => {
       visitPublicDashboard(id);

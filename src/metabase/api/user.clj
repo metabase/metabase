@@ -61,7 +61,7 @@
   [user-id]
   {:pre [(integer? user-id)]}
   (api/check (not= user-id config/internal-mb-user-id)
-           [400 (tru "Not able to modify the internal user")]))
+             [400 (tru "Not able to modify the internal user")]))
 
 (defn- fetch-user [& query-criteria]
   (apply t2/select-one (vec (cons :model/User user/admin-or-self-visible-columns)) query-criteria))
@@ -133,14 +133,14 @@
   "Columns of user table visible to current caller of API."
   []
   (cond
-   api/*is-superuser?*
-   user/admin-or-self-visible-columns
+    api/*is-superuser?*
+    user/admin-or-self-visible-columns
 
-   api/*is-group-manager?*
-   user/group-manager-visible-columns
+    api/*is-group-manager?*
+    user/group-manager-visible-columns
 
-   :else
-   user/non-admin-or-self-visible-columns))
+    :else
+    user/non-admin-or-self-visible-columns))
 
 (defn- user-clauses
   "Honeysql clauses for filtering on users
@@ -299,16 +299,18 @@
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard, excluding
   internal/automatically-loaded content."
   [user]
-  (let [coll-ids-filter (collection/visible-collection-ids->honeysql-filter-clause
-                          :collection_id
-                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
-        entity-exists? (fn [model] (t2/exists? model
-                                    {:where [:and
-                                             [:= :archived false]
-                                             coll-ids-filter
-                                             (mi/exclude-internal-content-hsql model)]}))]
-    (assoc user :has_question_and_dashboard (and (entity-exists? :model/Card)
-                                                 (entity-exists? :model/Dashboard)))))
+  (let [collection-filter (collection/visible-collection-filter-clause)
+        entity-exists? (fn [model & additional-clauses] (t2/exists? model
+                                                                    {:where (into [:and
+                                                                                   [:= :archived false]
+                                                                                   collection-filter
+                                                                                   (mi/exclude-internal-content-hsql model)]
+                                                                                  additional-clauses)}))]
+    (-> user
+        (assoc :has_question_and_dashboard
+               (and (entity-exists? :model/Card)
+                    (entity-exists? :model/Dashboard)))
+        (assoc :has_model (entity-exists? :model/Card [:= :type "model"])))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
@@ -345,9 +347,9 @@
   [id]
   {id ms/PositiveInt}
   (try
-   (check-self-or-superuser id)
-   (catch clojure.lang.ExceptionInfo _e
-     (validation/check-group-manager)))
+    (check-self-or-superuser id)
+    (catch clojure.lang.ExceptionInfo _e
+      (validation/check-group-manager)))
   (-> (api/check-404 (fetch-user :id id))
       (t2/hydrate :user_group_memberships)))
 
@@ -365,19 +367,20 @@
    login_attributes       [:maybe user/LoginAttributes]}
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
-    "email" (tru "Email address already in use."))
+              "email" (tru "Email address already in use."))
   (t2/with-transaction [_conn]
     (let [new-user-id (u/the-id (user/create-and-invite-user!
                                  (u/select-keys-when body
-                                   :non-nil [:first_name :last_name :email :password :login_attributes])
+                                                     :non-nil [:first_name :last_name :email :password :login_attributes])
                                  @api/*current-user*
                                  false))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
-      (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id new-user-id
-                                                                           :source          "admin"})
+      (snowplow/track-event! ::snowplow/invite
+                             {:event           :invite-sent
+                              :invited-user-id new-user-id
+                              :source          "admin"})
       (-> (fetch-user :id new-user-id)
           (t2/hydrate :user_group_memberships)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
@@ -431,13 +434,13 @@
     ;; SSO users (JWT, SAML, LDAP, Google) can't change their first/last names
     (when (contains? body :first_name)
       (api/checkp (valid-name-update? user-before-update :first_name first_name)
-        "first_name" (tru "Editing first name is not allowed for SSO users.")))
+                  "first_name" (tru "Editing first name is not allowed for SSO users.")))
     (when (contains? body :last_name)
       (api/checkp (valid-name-update? user-before-update :last_name last_name)
-        "last_name" (tru "Editing last name is not allowed for SSO users.")))
+                  "last_name" (tru "Editing last name is not allowed for SSO users.")))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
     (api/checkp (not (t2/exists? :model/User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
-      "email" (tru "Email address already associated to another user."))
+                "email" (tru "Email address already associated to another user."))
     (t2/with-transaction [_conn]
       ;; only superuser or self can update user info
       ;; implicitly prevent group manager from updating users' info
@@ -445,10 +448,10 @@
                 api/*is-superuser?*)
         (when-let [changes (not-empty
                             (u/select-keys-when body
-                              :present (cond-> #{:first_name :last_name :locale}
-                                         api/*is-superuser?* (conj :login_attributes))
-                              :non-nil (cond-> #{:email}
-                                         api/*is-superuser?* (conj :is_superuser))))]
+                                                :present (cond-> #{:first_name :last_name :locale}
+                                                           api/*is-superuser?* (conj :login_attributes))
+                                                :non-nil (cond-> #{:email}
+                                                           api/*is-superuser?* (conj :is_superuser))))]
           (t2/update! :model/User id changes)
           (events/publish-event! :event/user-update {:object (t2/select-one :model/User :id id)
                                                      :previous-object user-before-update
@@ -487,7 +490,7 @@
     (api/check-404 user)
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))
-      [400 {:message (tru "Not able to reactivate an active user")}])
+               [400 {:message (tru "Not able to reactivate an active user")}])
     (events/publish-event! :event/user-reactivated {:object user :user-id api/*current-user-id*})
     (reactivate-user! (dissoc user [:email :first_name :last_name]))))
 

@@ -1,12 +1,12 @@
 (ns metabase.shared.formatting.date-test
   (:require
+   #?@(:cljs
+       [[metabase.test-runner.assert-exprs.approximately-equal]])
    [clojure.test :refer [are deftest is testing]]
    [metabase.shared.formatting.date :as date]
    [metabase.shared.formatting.internal.date-formatters :as formatters]
    [metabase.shared.util.time :as shared.ut]
-   [metabase.util.log.capture :as log.capture]
-   #?@(:cljs
-       [[metabase.test-runner.assert-exprs.approximately-equal]]))
+   [metabase.util.log.capture :as log.capture])
   #?(:clj (:import
            java.util.Locale)))
 

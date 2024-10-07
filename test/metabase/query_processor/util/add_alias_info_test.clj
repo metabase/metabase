@@ -197,16 +197,14 @@
                                  ::add/desired-alias "count"
                                  ::add/position      0}]]
                  :filter      [:!=
-                               [:field %date {:temporal-unit     :default
-                                              ::add/source-table $$checkins
+                               [:field %date {::add/source-table $$checkins
                                               ::add/source-alias "DATE"}]
                                [:value nil {:base_type         :type/Date
                                             :effective_type    :type/Date
                                             :coercion_strategy nil
                                             :semantic_type     nil
                                             :database_type     "DATE"
-                                            :name              "DATE"
-                                            :unit              :default}]]})
+                                            :name              "DATE"}]]})
               (add-alias-info
                (lib.tu.macros/mbql-query checkins
                  {:aggregation [[:count]]
@@ -786,42 +784,42 @@
                                {:global {:distinct-count 1, :nil% 0}
                                 :type   #:type{:Number {:min 1, :q1 1, :q3 1, :max 1, :sd nil, :avg 1}}}})]
     (lib/composed-metadata-provider
-      meta/metadata-provider
-      (providers.mock/mock-metadata-provider
-        {:cards [{:name            "Model A"
-                  :id              1
-                  :database-id     (meta/id)
-                  :type            :model
-                  :dataset-query   {:database (mt/id)
-                                    :type     :native
-                                    :native   {:template-tags {} :query "select 1 as a1, 2 as a2;"}}
-                  :result-metadata [(result-metadata-for "A1")
-                                    (result-metadata-for "A2")]}
-                 {:name            "Model B"
-                  :id              2
-                  :database-id     (meta/id)
-                  :type            :model
-                  :dataset-query   {:database (mt/id)
-                                    :type     :native
-                                    :native   {:template-tags {} :query "select 1 as b1, 2 as b2;"}}
-                  :result-metadata [(result-metadata-for "B1")
-                                    (result-metadata-for "B2")]}
-                 {:name            "Joined"
-                  :id              3
-                  :database-id     (meta/id)
-                  :type            :model
-                  :dataset-query   {:database (meta/id)
-                                    :type     :query
-                                    :query    {:joins
-                                               [{:fields :all,
-                                                 :alias "Model B - A1",
-                                                 :strategy :inner-join,
-                                                 :condition
-                                                 [:=
-                                                  [:field "A1" {:base-type :type/Integer}]
-                                                  [:field "B1" {:base-type :type/Integer, :join-alias "Model B - A1"}]],
-                                                 :source-table "card__2"}],
-                                               :source-table "card__1"}}}]}))))
+     meta/metadata-provider
+     (providers.mock/mock-metadata-provider
+      {:cards [{:name            "Model A"
+                :id              1
+                :database-id     (meta/id)
+                :type            :model
+                :dataset-query   {:database (mt/id)
+                                  :type     :native
+                                  :native   {:template-tags {} :query "select 1 as a1, 2 as a2;"}}
+                :result-metadata [(result-metadata-for "A1")
+                                  (result-metadata-for "A2")]}
+               {:name            "Model B"
+                :id              2
+                :database-id     (meta/id)
+                :type            :model
+                :dataset-query   {:database (mt/id)
+                                  :type     :native
+                                  :native   {:template-tags {} :query "select 1 as b1, 2 as b2;"}}
+                :result-metadata [(result-metadata-for "B1")
+                                  (result-metadata-for "B2")]}
+               {:name            "Joined"
+                :id              3
+                :database-id     (meta/id)
+                :type            :model
+                :dataset-query   {:database (meta/id)
+                                  :type     :query
+                                  :query    {:joins
+                                             [{:fields :all,
+                                               :alias "Model B - A1",
+                                               :strategy :inner-join,
+                                               :condition
+                                               [:=
+                                                [:field "A1" {:base-type :type/Integer}]
+                                                [:field "B1" {:base-type :type/Integer, :join-alias "Model B - A1"}]],
+                                               :source-table "card__2"}],
+                                             :source-table "card__1"}}}]}))))
 
 (deftest ^:parallel models-with-joins-and-renamed-columns-test
   (testing "an MBQL model with an explicit join and customized field names generate correct SQL (#40252)"

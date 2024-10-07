@@ -1,25 +1,24 @@
-import { t } from "ttag";
-
 import {
   doesOperatorExist,
   getOperatorByTypeAndName,
 } from "metabase-lib/v1/operators/utils";
 import { PARAMETER_OPERATOR_TYPES } from "metabase-lib/v1/parameters/constants";
 import {
-  getParameterType,
   getParameterSubType,
+  getParameterType,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
-import { NUMBER, STRING, PRIMARY_KEY } from "metabase-lib/v1/types/constants";
+import { NUMBER, PRIMARY_KEY, STRING } from "metabase-lib/v1/types/constants";
 import type { Parameter, ParameterMappingOptions } from "metabase-types/api";
 
 import { getIsMultiSelect } from "./parameter-values";
 
 type OperatorType = "date" | "number" | "string";
 export type ParameterSectionId =
-  | "number"
-  | "string"
   | "date"
+  | "temporal-unit"
   | "location"
+  | "string"
+  | "number"
   | "id";
 
 export function getOperatorDisplayName(
@@ -86,14 +85,6 @@ export function buildTypedOperatorOptions(
       ),
     };
   });
-}
-
-export function buildTemporalUnitOption(): ParameterMappingOptions {
-  return {
-    name: t`Unit of Time`,
-    type: "temporal-unit",
-    sectionId: "temporal-unit",
-  };
 }
 
 export function getNumberParameterArity(parameter: Parameter) {

@@ -64,23 +64,22 @@
      #(u/ignore-exceptions (driver/the-driver %))]]
    (deferred-tru "value must be a valid database engine.")))
 
-
 ;;; ----------------------------------------------- GET /api/database ------------------------------------------------
 
 (defn- add-tables [dbs]
   (let [db-id->tables (group-by :db_id (filter mi/can-read? (t2/select Table
-                                                              :active          true
-                                                              :db_id           [:in (map :id dbs)]
-                                                              :visibility_type nil
-                                                              {:order-by [[:%lower.schema :asc]
-                                                                          [:%lower.display_name :asc]]})))]
+                                                                       :active          true
+                                                                       :db_id           [:in (map :id dbs)]
+                                                                       :visibility_type nil
+                                                                       {:order-by [[:%lower.schema :asc]
+                                                                                   [:%lower.display_name :asc]]})))]
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
 
 (mu/defn- add-native-perms-info :- [:maybe
-                                             [:sequential
-                                              [:map
-                                               [:native_permissions [:enum :write :none]]]]]
+                                    [:sequential
+                                     [:map
+                                      [:native_permissions [:enum :write :none]]]]]
   "For each database in DBS add a `:native_permissions` field describing the current user's permissions for running
   native (e.g. SQL) queries. Will be either `:write` or `:none`. `:write` means you can run ad-hoc native queries,
   and save new Cards with native queries; `:none` means you can do neither.
@@ -178,9 +177,7 @@
                                            ;; always return metrics for now
                                            [:in :type [(u/qualified-name card-type) "metric"]]
                                            [:in :database_id ids-of-dbs-that-support-source-queries]
-                                           (collection/visible-collection-ids->honeysql-filter-clause
-                                            (collection/permissions-set->visible-collection-ids
-                                             @api/*current-user-permissions-set*))]
+                                           (collection/visible-collection-filter-clause)]
                                           additional-constraints)
                           :order-by [[:%lower.name :asc]]}))))
 
@@ -272,7 +269,7 @@
       include-tables?              add-tables
       true                         add-can-upload-to-dbs
       include-editable-data-model? filter-databases-by-data-model-perms
-      exclude-uneditable-details?  (#(filter mi/can-write? %))
+      exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
       filter-by-data-access?       (#(filter mi/can-read? %))
       include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
@@ -292,11 +289,16 @@
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.
 
-  * `include_only_uploadable` will only include DBs into which Metabase can insert new data."
+  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.
+
+  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
+  [[metabase.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
+  in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
+  database details."
   [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics]
   {include                       (mu/with-api-error-message
-                                   [:maybe [:= "tables"]]
-                                   (deferred-tru "include must be either empty or the value 'tables'"))
+                                  [:maybe [:= "tables"]]
+                                  (deferred-tru "include must be either empty or the value 'tables'"))
    include_analytics             [:maybe :boolean]
    saved                         [:maybe :boolean]
    include_editable_data_model   [:maybe :boolean]
@@ -313,8 +315,8 @@
                                                       :include-analytics?              include_analytics
                                                       :include-only-uploadable?        include_only_uploadable)
                                             [])]
-   {:data  db-list-res
-    :total (count db-list-res)}))
+    {:data  db-list-res
+     :total (count db-list-res)}))
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
@@ -361,8 +363,8 @@
       true                         add-can-upload
       include-editable-data-model? check-db-data-model-perms
       (mi/can-write? database)     (->
-                                     secret/expand-db-details-inferred-secret-values
-                                     (assoc :can-manage true)))))
+                                    secret/expand-db-details-inferred-secret-values
+                                    (assoc :can-manage true)))))
 
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
@@ -373,7 +375,12 @@
    Passing include_editable_data_model will only return tables for which the current user has data model editing
    permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
    In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
-   and tables, with no additional metadata."
+   and tables, with no additional metadata.
+
+   Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
+   [[metabase.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
+   in [[metabase.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
+   database details."
   [id include include_editable_data_model exclude_uneditable_details]
   {id      ms/PositiveInt
    include [:maybe [:enum "tables" "tables.fields"]]}
@@ -434,12 +441,11 @@
   (api/check-404 (t2/exists? Database :id id))
   (let [table-ids (t2/select-pks-set Table :db_id id)]
     (first (mdb.query/query
-             {:select [:*]
-              :from   (for [model database-usage-models
-                            :let [query (database-usage-query model id table-ids)]
-                            :when query]
-                        [query model])}))))
-
+            {:select [:*]
+             :from   (for [model database-usage-models
+                           :let [query (database-usage-query model id table-ids)]
+                           :when query]
+                       [query model])}))))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
@@ -481,9 +487,7 @@
                             tables)))
         (update :tables (fn [tables]
                           (for [table tables]
-                            (-> table
-                                (update :segments (partial filter mi/can-read?))
-                                (update :metrics  (partial filter mi/can-read?))))))
+                            (update table :segments (partial filter mi/can-read?)))))
         (update :tables (if remove_inactive?
                           (fn [tables]
                             (filter :active tables))
@@ -509,17 +513,16 @@
                remove_inactive
                skip_fields))
 
-
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
 (defn- autocomplete-tables [db-id search-string limit]
   (t2/select [Table :id :db_id :schema :name]
-    {:where    [:and [:= :db_id db-id]
-                     [:= :active true]
-                     [:like :%lower.name (u/lower-case-en search-string)]
-                     [:= :visibility_type nil]]
-     :order-by [[:%lower.name :asc]]
-     :limit    limit}))
+             {:where    [:and [:= :db_id db-id]
+                         [:= :active true]
+                         [:like :%lower.name (u/lower-case-en search-string)]
+                         [:= :visibility_type nil]]
+              :order-by [[:%lower.name :asc]]
+              :limit    limit}))
 
 (defn- autocomplete-cards
   "Returns cards that match the search string in the given database, ordered by id.
@@ -611,9 +614,9 @@
 
 (defsetting native-query-autocomplete-match-style
   (deferred-tru
-    (str "Matching style for native query editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
-         "Larger instances can have performance issues matching using substring, so can use prefix matching, "
-         " or turn autocompletions off."))
+   (str "Matching style for native query editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
+        "Larger instances can have performance issues matching using substring, so can use prefix matching, "
+        " or turn autocompletions off."))
   :visibility :public
   :export?    true
   :type       :keyword
@@ -673,7 +676,6 @@
     (catch Throwable e
       (log/warnf e "Error with autocomplete: %s" (ex-message e)))))
 
-
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
 
 (api/defendpoint GET "/:id/fields"
@@ -682,8 +684,8 @@
   {id ms/PositiveInt}
   (api/read-check Database id)
   (let [fields (filter mi/can-read? (-> (t2/select [Field :id :name :display_name :table_id :base_type :semantic_type]
-                                          :table_id        [:in (t2/select-fn-set :id Table, :db_id id)]
-                                          :visibility_type [:not-in ["sensitive" "retired"]])
+                                                   :table_id        [:in (t2/select-fn-set :id Table, :db_id id)]
+                                                   :visibility_type [:not-in ["sensitive" "retired"]])
                                         (t2/hydrate :table)))]
     (for [{:keys [id name display_name table base_type semantic_type]} fields]
       {:id            id
@@ -693,7 +695,6 @@
        :semantic_type semantic_type
        :table_name    (:name table)
        :schema        (:schema table "")})))
-
 
 ;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
 
@@ -708,7 +709,6 @@
     (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
                                           (t2/hydrate :table))))))
-
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 
@@ -774,11 +774,11 @@
                            details-with-ssl)]
     (or
       ;; Opportunistic SSL
-      details-with-ssl
+     details-with-ssl
       ;; Try with original parameters
-      (some-> (test-database-connection engine details)
-              (assoc :valid false))
-      details)))
+     (some-> (test-database-connection engine details)
+             (assoc :valid false))
+     details)))
 
 (api/defendpoint POST "/"
   "Add a new `Database`."
@@ -817,17 +817,18 @@
                                        (when (some? auto_run_queries)
                                          {:auto_run_queries auto_run_queries})))))
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
-        (snowplow/track-event! ::snowplow/database-connection-successful
-                               api/*current-user-id*
-                               {:database     engine
+        (snowplow/track-event! ::snowplow/database
+                               {:event        :database-connection-successful
+                                :database     engine
                                 :database-id  (u/the-id <>)
                                 :source       connection_source
                                 :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
       ;; failed to connect, return error
       (do
-        (snowplow/track-event! ::snowplow/database-connection-failed
-                               api/*current-user-id*
-                               {:database engine :source connection_source})
+        (snowplow/track-event! ::snowplow/database
+                               {:event    :database-connection-failed
+                                :database engine
+                                :source   connection_source})
         {:status 400
          :body   (dissoc details-or-error :valid)}))))
 
@@ -850,7 +851,6 @@
   (api/check-superuser)
   (sample-data/extract-and-sync-sample-database!)
   (t2/select-one Database :is_sample true))
-
 
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
@@ -885,8 +885,8 @@
           ;; do secrets require special handling to not clobber them or mess up encryption?
           (do (t2/update! Database id {:settings (assoc (:settings database) :persist-models-enabled true)})
               (task.persist-refresh/schedule-persistence-for-database!
-                database
-                (public-settings/persisted-model-refresh-cron-schedule))
+               database
+               (public-settings/persisted-model-refresh-cron-schedule))
               api/generic-204-no-content)
           (throw (ex-info (ddl.i/error->message error schema)
                           {:error error
@@ -944,41 +944,40 @@
        ;; TODO - is there really a reason to let someone change the engine on an existing database?
        ;;       that seems like the kind of thing that will almost never work in any practical way
        ;; TODO - this means one cannot unset the description. Does that matter?
-       (t2/update! Database id
-                   (merge
-                    (m/remove-vals
-                     nil?
-                     (merge
-                      {:name               name
-                       :engine             engine
-                       :details            details
-                       :refingerprint      refingerprint
-                       :is_full_sync       full-sync?
-                       :is_on_demand       on-demand?
-                       :description        description
-                       :caveats            caveats
-                       :points_of_interest points_of_interest
-                       :auto_run_queries   auto_run_queries}
+        (t2/update! Database id
+                    (merge
+                     (m/remove-vals
+                      nil?
+                      (merge
+                       {:name               name
+                        :engine             engine
+                        :details            details
+                        :refingerprint      refingerprint
+                        :is_full_sync       full-sync?
+                        :is_on_demand       on-demand?
+                        :description        description
+                        :caveats            caveats
+                        :points_of_interest points_of_interest
+                        :auto_run_queries   auto_run_queries}
                       ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
-                      (when (seq settings)
-                        {:settings (into {}
-                                         (remove (fn [[_k v]] (nil? v)))
-                                         (merge (:settings existing-database) settings))})))
+                       (when (seq settings)
+                         {:settings (into {}
+                                          (remove (fn [[_k v]] (nil? v)))
+                                          (merge (:settings existing-database) settings))})))
                     ;; cache_field_values_schedule can be nil
-                    (when schedules
-                      (sync.schedules/schedule-map->cron-strings schedules))))
+                     (when schedules
+                       (sync.schedules/schedule-map->cron-strings schedules))))
        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
        ;; with the advanced-config feature enabled.
-       (when (premium-features/enable-cache-granular-controls?)
-         (t2/update! Database id {:cache_ttl cache_ttl}))
+        (when (premium-features/enable-cache-granular-controls?)
+          (t2/update! Database id {:cache_ttl cache_ttl}))
 
-       (let [db (t2/select-one Database :id id)]
-         (events/publish-event! :event/database-update {:object db
-                                                        :user-id api/*current-user-id*
-                                                        :previous-object existing-database})
+        (let [db (t2/select-one Database :id id)]
+          (events/publish-event! :event/database-update {:object db
+                                                         :user-id api/*current-user-id*
+                                                         :previous-object existing-database})
          ;; return the DB with the expanded schedules back in place
-         (add-expanded-schedules db))))))
-
+          (add-expanded-schedules db))))))
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
@@ -1071,7 +1070,6 @@
     (t2/query-one {:delete-from :metabase_fieldvalues
                    :where       [:in :id field-values-ids]})))
 
-
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
 (api/defendpoint POST "/:id/discard_values"
   "Discards all saved field values for this `Database`."
@@ -1081,7 +1079,6 @@
     (events/publish-event! :event/database-discard-field-values {:object db :user-id api/*current-user-id*})
     (delete-all-field-values-for-database! db))
   {:status :ok})
-
 
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
 
@@ -1132,10 +1129,10 @@
     (->> (t2/select-fn-set :schema Table
                            :db_id id :active true
                            (merge
-                             {:order-by [[:%lower.schema :asc]]}
-                             (when-not include-hidden?
+                            {:order-by [[:%lower.schema :asc]]}
+                            (when-not include-hidden?
                                ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
-                               {:where [:= :visibility_type nil]})))
+                              {:where [:= :visibility_type nil]})))
          filter-schemas
          ;; for `nil` schemas return the empty string
          (map #(if (nil? %) "" %))
@@ -1170,7 +1167,6 @@
          (map :schema)
          distinct
          (sort-by u/lower-case-en))))
-
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
 

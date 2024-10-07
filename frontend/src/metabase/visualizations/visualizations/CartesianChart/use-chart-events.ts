@@ -12,6 +12,7 @@ import type {
   ChartDataset,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import { useClickedStateTooltipSync } from "metabase/visualizations/echarts/tooltip";
 import type {
   EChartsSeriesBrushEndEvent,
   EChartsSeriesMouseEvent,
@@ -53,6 +54,7 @@ export const useChartEvents = (
     onSelectTimelineEvents,
     onDeselectTimelineEvents,
     hovered,
+    clicked,
     metadata,
     isDashboard,
   }: VisualizationProps,
@@ -193,7 +195,10 @@ export const useChartEvents = (
       {
         eventName: "brush",
         handler: () => {
-          isBrushing.current = true;
+          if (!isBrushing.current) {
+            chartRef.current?.setOption({ tooltip: { show: false } }, false);
+            isBrushing.current = true;
+          }
         },
       },
       {
@@ -213,6 +218,7 @@ export const useChartEvents = (
       },
     ],
     [
+      chartRef,
       onHoverChange,
       timelineEventsModel,
       chartModel,
@@ -302,11 +308,15 @@ export const useChartEvents = (
     ],
   );
 
+  useClickedStateTooltipSync(chartRef.current, clicked);
+
   // In order to keep brushing always enabled we have to re-enable it on every model change
   useEffect(
-    function enableBrushing() {
+    function toggleBrushing() {
       const shouldEnableBrushing =
-        canBrush(rawSeries, settings, onChangeCardAndRun) && !hovered;
+        canBrush(rawSeries, settings, onChangeCardAndRun) &&
+        !hovered &&
+        !clicked;
 
       setTimeout(() => {
         if (shouldEnableBrushing) {
@@ -325,7 +335,15 @@ export const useChartEvents = (
         }
       }, 0);
     },
-    [chartRef, hovered, onChangeCardAndRun, option, rawSeries, settings],
+    [
+      chartRef,
+      hovered,
+      onChangeCardAndRun,
+      option,
+      rawSeries,
+      settings,
+      clicked,
+    ],
   );
 
   const onSelectSeries = useCallback(

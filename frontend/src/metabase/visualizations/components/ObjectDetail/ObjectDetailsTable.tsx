@@ -7,23 +7,23 @@ import EmptyState from "metabase/components/EmptyState";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { formatValue, formatColumn } from "metabase/lib/formatting";
+import { formatColumn, formatValue } from "metabase/lib/formatting";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
-  isa,
+  isAvatarURL,
   isID,
   isImageURL,
-  isAvatarURL,
+  isa,
 } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {
-  ObjectDetailsTable,
-  GridContainer,
-  GridCell,
   FitImage,
+  GridCell,
+  GridContainer,
+  ObjectDetailsTable,
 } from "./ObjectDetailsTable.styled";
 import type { OnVisualizationClickType } from "./types";
 
@@ -61,7 +61,7 @@ export function DetailsTableCell({
     isLink = false;
   } else {
     if (value === null || value === undefined || value === "") {
-      cellValue = <span className={CS.textLight}>{t`Empty`}</span>;
+      cellValue = <span className={CS.textTertiary}>{t`Empty`}</span>;
     } else if (isa(column.semantic_type, TYPE.SerializedJSON)) {
       let formattedJson;
       try {
@@ -186,7 +186,7 @@ export function DetailsTable({
                   value={row[columnIndex] ?? t`Empty`}
                   isColumnName
                   settings={settings}
-                  className={cx(CS.textBold, CS.textMedium)}
+                  className={cx(CS.textBold, CS.textSecondary)}
                   onVisualizationClick={onVisualizationClick}
                   visualizationIsClickable={visualizationIsClickable}
                 />
@@ -199,7 +199,7 @@ export function DetailsTable({
                   settings={settings}
                   className={cx(
                     CS.textBold,
-                    CS.textDark,
+                    CS.textPrimary,
                     CS.textSpaced,
                     CS.textWrap,
                   )}

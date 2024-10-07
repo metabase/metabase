@@ -1,18 +1,18 @@
-import { ngettext, msgid } from "ttag";
+import { msgid, ngettext } from "ttag";
 
 import type { IconName } from "metabase/ui";
 import { DelayGroup } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 
 import {
+  NodeListContainer,
+  NodeListIcon,
+  NodeListInfoIcon,
   NodeListItem,
   NodeListItemLink,
   NodeListItemName,
   NodeListTitle,
-  NodeListContainer,
-  NodeListIcon,
   NodeListTitleText,
-  NodeListInfoIcon,
 } from "./NodeList.styled";
 
 interface FieldListProps {

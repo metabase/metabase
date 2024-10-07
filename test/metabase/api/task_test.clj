@@ -18,10 +18,10 @@
   (let [task-names (repeatedly n mt/random-name)]
     (map-indexed (fn [idx task-name]
                    (let [now (t/zoned-date-time)]
-                    {:status     :success
-                     :task       task-name
-                     :started_at now
-                     :ended_at   (t/plus now (t/seconds idx))}))
+                     {:status     :success
+                      :task       task-name
+                      :started_at now
+                      :ended_at   (t/plus now (t/seconds idx))}))
                  task-names)))
 
 (deftest list-perms-test
@@ -86,7 +86,7 @@
         (is (= {:total 4, :limit 2, :offset 0
                 :data  (map (fn [{:keys [task]}]
                               (assoc default-task-history :task task))
-                        [task-hist-4 task-hist-3])}
+                            [task-hist-4 task-hist-3])}
                (mt/boolean-ids-and-timestamps
                 (mt/user-http-request :crowberto :get 200 "task/" :limit 2 :offset 0))))
         (is (= {:total 4, :limit 2, :offset 2

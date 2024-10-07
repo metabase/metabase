@@ -2,13 +2,13 @@ import { createMockEntitiesState } from "__support__/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createMockField } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  createOrdersTable,
-  createProductsTable,
-  createPeopleTable,
-  createReviewsTable,
   REVIEWS_ID,
+  createOrdersTable,
   createPeoplePasswordField,
+  createPeopleTable,
+  createProductsTable,
+  createReviewsTable,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 

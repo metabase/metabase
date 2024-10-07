@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, fireEvent, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 import type { DashboardCard, Series } from "metabase-types/api";

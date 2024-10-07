@@ -102,10 +102,10 @@
 (def ^:private CronSchedule
   "Schema representing valid cron schedule for refreshing persisted models."
   (mu/with-api-error-message
-    [:and
-     ms/NonBlankString
-     [:fn {:error/message (deferred-tru "String representing a cron schedule")} #(= 7 (count (str/split % #" ")))]]
-    (deferred-tru "Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>")))
+   [:and
+    ms/NonBlankString
+    [:fn {:error/message (deferred-tru "String representing a cron schedule")} #(= 7 (count (str/split % #" ")))]]
+   (deferred-tru "Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>")))
 
 (api/defendpoint POST "/set-refresh-schedule"
   "Set the cron schedule to refresh persisted models.

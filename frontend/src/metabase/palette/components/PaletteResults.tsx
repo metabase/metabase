@@ -1,15 +1,15 @@
 import type { Location } from "history";
 import { useKBar, useMatches } from "kbar";
-import { useMemo, useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { withRouter } from "react-router";
 import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
-import { Flex, Box } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
 import type { PaletteActionImpl } from "../types";
-import { processResults, navigateActionIndex } from "../utils";
+import { navigateActionIndex, processResults } from "../utils";
 
 import { PaletteResultItem } from "./PaletteResultItem";
 import { PaletteResultList } from "./PaletteResultsList";

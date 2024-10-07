@@ -3,11 +3,11 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
-import { createQuery, columnFinder } from "metabase-lib/test-helpers";
+import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import {
-  createSampleDatabase,
-  PRODUCT_CATEGORY_VALUES,
   PRODUCTS,
+  PRODUCT_CATEGORY_VALUES,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 

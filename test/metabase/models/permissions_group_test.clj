@@ -122,13 +122,14 @@
         (is (false? (t2/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))
 
 (deftest data-graph-for-group-check-all-groups-test
-  (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup)]
-    (testing (str "testing data-graph-for-group with group-id: [" group-id "].")
-      (let [graph (data-perms.graph/api-graph {:group-id group-id})]
-        (is (=? {:revision pos-int?}
-                graph))
-        (is (perm-test-util/validate-graph-api-groups (:groups graph)))
-        (is (= #{group-id} (set (keys (:groups graph)))))))))
+  (t2.with-temp/with-temp [:model/PermissionsGroup {} {}
+                           :model/Database         {} {}]
+    (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup)]
+      (testing (str "testing data-graph-for-group with group-id: [" group-id "].")
+        (let [graph (data-perms.graph/api-graph {:group-id group-id})]
+          (is (malli= [:map [:revision :int] [:groups :map]] graph))
+          (is (perm-test-util/validate-graph-api-groups (:groups graph)))
+          (is (= #{group-id} (set (keys (:groups graph))))))))))
 
 (defn- perm-object->db [perm-obj]
   (some-> (re-find #"/db/(\d+)/" perm-obj) second parse-long))

@@ -1,5 +1,10 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import type { Card, DatasetQuery, StructuredQuery } from "metabase-types/api";
+import type {
+  Card,
+  DatasetQuery,
+  NativeQuery,
+  StructuredQuery,
+} from "metabase-types/api";
 
 export type QuestionDetails = {
   dataset_query: DatasetQuery;
@@ -43,6 +48,14 @@ export type StructuredQuestionDetails = Omit<
    */
   database?: DatasetQuery["database"];
   query: StructuredQuery;
+};
+
+export type NativeQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {
+  /**
+   * Defaults to SAMPLE_DB_ID.
+   */
+  database?: DatasetQuery["database"];
+  native: NativeQuery;
 };
 
 export type Options = {

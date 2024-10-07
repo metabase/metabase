@@ -5,10 +5,10 @@ import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Das
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
-  breakpointMinSmall,
-  breakpointMinLarge,
-  space,
   breakpointMaxSmall,
+  breakpointMinLarge,
+  breakpointMinSmall,
+  space,
 } from "metabase/styled-components/theme";
 
 export const Root = styled.div<{

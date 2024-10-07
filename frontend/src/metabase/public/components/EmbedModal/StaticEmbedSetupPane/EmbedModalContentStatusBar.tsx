@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import type { EmbedResourceType } from "metabase/public/lib/types";
-import { Button, Group, Flex, Paper, Text } from "metabase/ui";
+import { Button, Flex, Group, Paper, Text } from "metabase/ui";
 
 interface EmbedModalContentStatusBarProps {
   isPublished: boolean;
@@ -38,8 +38,8 @@ export const EmbedModalContentStatusBar = ({
           {!isPublished
             ? t`You will need to publish this ${resourceType} before you can embed it in another application.`
             : hasSettingsChanges
-            ? t`You’ve made changes that need to be published before they will be reflected in your application embed.`
-            : t`This ${resourceType} is published and ready to be embedded.`}
+              ? t`You’ve made changes that need to be published before they will be reflected in your application embed.`
+              : t`This ${resourceType} is published and ready to be embedded.`}
         </Text>
 
         <Group spacing="1rem" className={CS.flexNoShrink}>

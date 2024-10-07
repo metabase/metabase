@@ -97,73 +97,73 @@
   `last_login_time` instead of `last_login`."}
   time-test-data
   (tx/transformed-dataset-definition "time-test-data" test-data
-    (tx/transform-dataset-only-tables "users")
-    (tx/transform-dataset-update-table "users"
-      :table
-      (fn [tabledef]
-        (update
-         tabledef
-         :field-definitions
-         (fn [[name-field-def _ password-field-def]]
-           [name-field-def
-            (tx/map->FieldDefinition {:field-name "last_login_date", :base-type :type/Date})
-            (tx/map->FieldDefinition {:field-name "last_login_time", :base-type :type/Time})
-            password-field-def])))
-      :rows
-      (fn [rows]
-        (for [[username last-login password-text] rows]
-          [username (date-only last-login) (time-only last-login) password-text])))))
+                                     (tx/transform-dataset-only-tables "users")
+                                     (tx/transform-dataset-update-table "users"
+                                                                        :table
+                                                                        (fn [tabledef]
+                                                                          (update
+                                                                           tabledef
+                                                                           :field-definitions
+                                                                           (fn [[name-field-def _ password-field-def]]
+                                                                             [name-field-def
+                                                                              (tx/map->FieldDefinition {:field-name "last_login_date", :base-type :type/Date})
+                                                                              (tx/map->FieldDefinition {:field-name "last_login_time", :base-type :type/Time})
+                                                                              password-field-def])))
+                                                                        :rows
+                                                                        (fn [rows]
+                                                                          (for [[username last-login password-text] rows]
+                                                                            [username (date-only last-login) (time-only last-login) password-text])))))
 
 (defonce ^{:doc "The main `test-data` dataset, with an additional (all-null) `null_only_date` Field."}
   test-data-null-date
   (tx/transformed-dataset-definition "test-data-null-date" test-data
-    (tx/transform-dataset-update-table "checkins"
-      :table
-      (fn [tabledef]
-        (update
-         tabledef
-         :field-definitions
-         (fn [[date-field-def user-id-field-def venue-id-field-def]]
-           [date-field-def
-            (tx/map->FieldDefinition {:field-name "null_only_date", :base-type :type/Date})
-            user-id-field-def
-            venue-id-field-def])))
-      :rows
-      (fn [rows]
-        (for [[date user-id venue-id] rows]
-          [date nil user-id venue-id])))))
+                                     (tx/transform-dataset-update-table "checkins"
+                                                                        :table
+                                                                        (fn [tabledef]
+                                                                          (update
+                                                                           tabledef
+                                                                           :field-definitions
+                                                                           (fn [[date-field-def user-id-field-def venue-id-field-def]]
+                                                                             [date-field-def
+                                                                              (tx/map->FieldDefinition {:field-name "null_only_date", :base-type :type/Date})
+                                                                              user-id-field-def
+                                                                              venue-id-field-def])))
+                                                                        :rows
+                                                                        (fn [rows]
+                                                                          (for [[date user-id venue-id] rows]
+                                                                            [date nil user-id venue-id])))))
 
 (defonce ^{:doc "The main `test-data` dataset, but `last_login` has a base type of `:type/DateTimeWithTZ`."}
   tz-test-data
   (tx/transformed-dataset-definition "tz-test-data" test-data
-    (tx/transform-dataset-update-table "users"
-      :table
-      (fn [tabledef]
-        (update
-         tabledef
-         :field-definitions
-         (fn [[name-field-def _ password-field-def]]
-           [name-field-def
-            (tx/map->FieldDefinition {:field-name "last_login", :base-type :type/DateTimeWithTZ})
-            password-field-def]))))))
+                                     (tx/transform-dataset-update-table "users"
+                                                                        :table
+                                                                        (fn [tabledef]
+                                                                          (update
+                                                                           tabledef
+                                                                           :field-definitions
+                                                                           (fn [[name-field-def _ password-field-def]]
+                                                                             [name-field-def
+                                                                              (tx/map->FieldDefinition {:field-name "last_login", :base-type :type/DateTimeWithTZ})
+                                                                              password-field-def]))))))
 
 (defonce ^{:doc "The usual `test-data` dataset, but only the `users` table; adds a `created_by` column to the users
   table that is self referencing."}
   test-data-self-referencing-user
   (tx/transformed-dataset-definition "test-data-self-referencing-user" test-data
-    (tx/transform-dataset-only-tables "users")
-    (tx/transform-dataset-update-table "users"
-      :table
-      (fn [tabledef]
-        (update tabledef :field-definitions concat [(tx/map->FieldDefinition
-                                                     {:field-name "created_by", :base-type :type/Integer, :fk :users})]))
+                                     (tx/transform-dataset-only-tables "users")
+                                     (tx/transform-dataset-update-table "users"
+                                                                        :table
+                                                                        (fn [tabledef]
+                                                                          (update tabledef :field-definitions concat [(tx/map->FieldDefinition
+                                                                                                                       {:field-name "created_by", :base-type :type/Integer, :fk :users})]))
       ;; created_by = user.id - 1, except for User 1, who was created by himself (?)
-      :rows
-      (fn [rows]
-        (for [[idx [username last-login password-text]] (m/indexed rows)]
-          [username last-login password-text (if (zero? idx)
-                                               1
-                                               idx)])))))
+                                                                        :rows
+                                                                        (fn [rows]
+                                                                          (for [[idx [username last-login password-text]] (m/indexed rows)]
+                                                                            [username last-login password-text (if (zero? idx)
+                                                                                                                 1
+                                                                                                                 idx)])))))
 
 (tx/defdataset attempted-murders
   "A dataset for testing temporal values with and without timezones. Records of number of crow counts spoted and the

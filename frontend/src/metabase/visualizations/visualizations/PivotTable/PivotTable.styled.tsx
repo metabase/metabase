@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color, alpha, adjustBrightness } from "metabase/lib/colors";
+import { adjustBrightness, alpha, color } from "metabase/lib/colors";
 import type { MantineTheme } from "metabase/ui";
 
 import { CELL_HEIGHT, RESIZE_HANDLE_WIDTH } from "./constants";
@@ -146,17 +146,40 @@ export const PivotTableTopLeftCellsContainer = styled.div<PivotTableTopLeftCells
 interface PivotTableRootProps {
   isDashboard?: boolean;
   isNightMode?: boolean;
+  shouldOverflow?: boolean;
+  shouldHideScrollbars?: boolean;
 }
 
 export const PivotTableRoot = styled.div<PivotTableRootProps>`
   height: 100%;
-  overflow: auto;
+  overflow-y: hidden;
+  overflow-x: ${props => (props.shouldOverflow ? "auto" : "hidden")};
   font-size: ${({ theme }) => theme.other.pivotTable.cell.fontSize};
 
   ${props =>
     props.isDashboard
       ? css`
           border-top: 1px solid var(--mb-color-border) (props);
+        `
+      : null}
+
+  ${props =>
+    props.shouldHideScrollbars
+      ? css`
+          & {
+            user-select: none;
+          }
+
+          &::-webkit-scrollbar,
+          & *::-webkit-scrollbar {
+            display: none;
+          }
+
+          &,
+          & * {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+          }
         `
       : null}
 `;

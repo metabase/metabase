@@ -112,14 +112,15 @@
 
 (defsetting custom-geojson
   (deferred-tru "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.")
-  :type    :json
-  :getter  (fn [] (merge (setting/get-value-of-type :json :custom-geojson) (builtin-geojson)))
-  :setter  (fn [new-value]
-             ;; remove the built-in keys you can't override them and we don't want those to be subject to validation.
-             (let [new-value (not-empty (reduce dissoc new-value (keys (builtin-geojson))))]
-               (when new-value
-                 (validate-geojson new-value))
-               (setting/set-value-of-type! :json :custom-geojson new-value)))
+  :encryption :no
+  :type       :json
+  :getter     (fn [] (merge (setting/get-value-of-type :json :custom-geojson) (builtin-geojson)))
+  :setter     (fn [new-value]
+                ;; remove the built-in keys you can't override them and we don't want those to be subject to validation.
+                (let [new-value (not-empty (reduce dissoc new-value (keys (builtin-geojson))))]
+                  (when new-value
+                    (validate-geojson new-value))
+                  (setting/set-value-of-type! :json :custom-geojson new-value)))
   :visibility :public
   :export?    true
   :audit      :raw-value)
@@ -140,7 +141,9 @@
                                 "application/vnd.geo+json"
                                 "application/json"
                                 "text/plain"}
-        ok-content-type? (some #(str/starts-with? (get-in resp [:headers :content-type]) %)
+        ;; if the content-type header is missing, just pretend it's `text/plain` and let it through
+        content-type (get-in resp [:headers :content-type] "text/plain")
+        ok-content-type? (some #(str/starts-with? content-type %)
                                allowed-content-types)]
     (cond
       (not success?)

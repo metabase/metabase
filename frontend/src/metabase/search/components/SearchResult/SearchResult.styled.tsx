@@ -4,14 +4,14 @@ import styled from "@emotion/styled";
 import type {
   AnchorHTMLAttributes,
   HTMLAttributes,
-  RefObject,
   PropsWithChildren,
+  RefObject,
 } from "react";
 
 import Markdown from "metabase/core/components/Markdown";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { AnchorProps, BoxProps, ButtonProps } from "metabase/ui";
-import { Box, Divider, Stack, Anchor, Button } from "metabase/ui";
+import { Anchor, Box, Button, Divider, Stack } from "metabase/ui";
 
 const isBoxPropValid = (propName: string) => {
   return (

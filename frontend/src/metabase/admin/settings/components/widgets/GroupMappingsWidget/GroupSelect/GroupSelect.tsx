@@ -11,11 +11,11 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import {
-  isDefaultGroup,
-  isAdminGroup,
   canEditMembership,
   getGroupColor,
   getGroupNameLocalized,
+  isAdminGroup,
+  isDefaultGroup,
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { Icon } from "metabase/ui";

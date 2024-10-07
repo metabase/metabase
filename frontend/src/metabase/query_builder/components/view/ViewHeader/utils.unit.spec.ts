@@ -9,8 +9,8 @@ import {
 import {
   createAdHocNativeCard,
   createSampleDatabase,
-  createSavedStructuredCard,
   createSavedNativeCard,
+  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 
 import { canExploreResults } from "./utils";

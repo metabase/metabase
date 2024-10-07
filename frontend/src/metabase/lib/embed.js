@@ -2,7 +2,7 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { isFitViewportMode } from "metabase/hoc/FitViewPort";
-import { isWithinIframe, IFRAMED_IN_SELF } from "metabase/lib/dom";
+import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/lib/dom";
 import { setInitialUrlOptions } from "metabase/redux/embed";
 
 // detect if this page is embedded in itself, i.e. it's a embed preview

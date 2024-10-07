@@ -7,6 +7,7 @@
    [compojure.core :refer [POST]]
    [java-time.api :as t]
    [java-time.clock]
+   [metabase.analytics.stats :as stats]
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.db :as mdb]
@@ -55,9 +56,9 @@
   "Immediately destroy all open connections in the app DB connection pool."
   []
   (let [data-source (mdb/data-source)]
-     (when (instance? PoolBackedDataSource data-source)
-       (log/info "Destroying application database connection pool")
-       (.hardReset ^PoolBackedDataSource data-source))))
+    (when (instance? PoolBackedDataSource data-source)
+      (log/info "Destroying application database connection pool")
+      (.hardReset ^PoolBackedDataSource data-source))))
 
 (defn- restore-app-db-from-snapshot!
   "Drop all objects in the application DB, then reload everything from the SQL dump at `snapshot-path`."
@@ -173,5 +174,11 @@
     (case model
       "card"      (t2/update! :model/Card :id id {:last_used_at date})
       "dashboard" (t2/update! :model/Dashboard :id id {:last_viewed_at date}))))
+
+(api/defendpoint POST "/stats"
+  "Triggers a send of instance usage stats"
+  []
+  (stats/phone-home-stats!)
+  {:success true})
 
 (api/define-routes)

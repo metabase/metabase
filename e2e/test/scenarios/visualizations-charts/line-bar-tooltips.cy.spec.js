@@ -1,21 +1,25 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  visitDashboard,
-  saveDashboard,
   addOrUpdateDashboardCard,
-  modal,
-  cartesianChartCircle,
-  chartPathWithFillColor,
-  cartesianChartCircleWithColor,
-  echartsTriggerBlur,
-  echartsTooltip,
-  tooltipHeader,
-  assertTooltipRow,
   assertEChartsTooltip,
+  assertEChartsTooltipNotContain,
+  assertTooltipRow,
+  cartesianChartCircle,
+  cartesianChartCircleWithColor,
+  chartPathWithFillColor,
+  echartsTooltip,
+  echartsTriggerBlur,
+  leftSidebar,
+  modal,
+  restore,
+  saveDashboard,
+  tooltipHeader,
+  visitDashboard,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const SUM_OF_TOTAL = {
   name: "Q1",
@@ -231,6 +235,107 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     cy.signInAsAdmin();
   });
 
+  describe("> additional columns setting", () => {
+    const COUNT = "Count";
+    const SUM_OF_TOTAL = "Sum of Total";
+    const AVG_OF_QUANTITY = "Average of Quantity";
+
+    const COUNT_COLOR = "#509EE3";
+    const DOOHICKEY_COLOR = "#88BF4D";
+
+    const testQuestion = {
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            ["count"],
+            ["sum", ["field", ORDERS.TOTAL, null]],
+            ["avg", ["field", ORDERS.QUANTITY, null]],
+          ],
+          breakout: [
+            ["field", PRODUCTS.RATING, { "source-field": ORDERS.PRODUCT_ID }],
+            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.CATEGORY }],
+          ],
+        },
+        type: "query",
+      },
+      display: "bar",
+      visualization_settings: {
+        "graph.x_axis.scale": "ordinal",
+        "graph.dimensions": ["RATING"],
+        "graph.metrics": ["count"],
+      },
+    };
+
+    it("should allow adding non-series columns from data to the tooltip", () => {
+      visitQuestionAdhoc(testQuestion);
+
+      // Tooltip by default shows only visible series data
+      showTooltipForBarInSeries(COUNT_COLOR);
+      assertEChartsTooltipNotContain([SUM_OF_TOTAL, AVG_OF_QUANTITY]);
+
+      // Go to the additional tooltip columns setting
+      cy.findByTestId("viz-settings-button").click();
+      leftSidebar().within(() => {
+        cy.findByText("Display").click();
+        cy.findByPlaceholderText("Enter metric names").click();
+      });
+
+      // Select two additional metric columns to show in the tooltip
+      cy.findByRole("option", { name: SUM_OF_TOTAL }).click();
+      cy.findByRole("option", { name: AVG_OF_QUANTITY }).click();
+      // It should not suggest categorical columns
+      cy.findByRole("option", { name: "Product → Category" }).should(
+        "not.exist",
+      );
+
+      // Ensure the tooltip shows additional columns
+      showTooltipForBarInSeries(COUNT_COLOR);
+      assertEChartsTooltip({
+        header: "0",
+        rows: [
+          { name: COUNT, value: "2,308" },
+          { name: SUM_OF_TOTAL, value: "179,762.63" },
+          { name: AVG_OF_QUANTITY, value: "15.32" },
+        ],
+      });
+
+      // Add a breakout to the chart
+      leftSidebar().within(() => {
+        cy.findByText("Data").click();
+        cy.findByText("Add series breakout").click();
+      });
+
+      // Ensure the tooltip still shows additional columns
+      showTooltipForBarInSeries(DOOHICKEY_COLOR);
+      const assertBreakoutTooltip = () => {
+        assertEChartsTooltip({
+          header: "0",
+          rows: [
+            { name: "Doohickey", value: "192" },
+            { name: SUM_OF_TOTAL, value: "20,345.44" },
+            { name: AVG_OF_QUANTITY, value: "3.76" },
+            { name: "Gadget", value: "653" },
+            { name: "Gizmo", value: "370" },
+            { name: "Widget", value: "1,093" },
+          ],
+        });
+      };
+      assertBreakoutTooltip();
+
+      // Make the chart stacked
+      leftSidebar().within(() => {
+        cy.findByText("Display").click();
+        cy.findByText("Stack").click();
+      });
+
+      // Ensure the tooltip still shows additional columns
+      showTooltipForBarInSeries(DOOHICKEY_COLOR);
+      assertBreakoutTooltip();
+    });
+  });
+
   describe("> single series question on dashboard", () => {
     beforeEach(() => {
       setup({
@@ -403,6 +508,62 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       testAvgTotalChange();
       testCumSumChange();
     });
+  });
+
+  it("tooltips should not fully cover small dashcards", () => {
+    setup({
+      question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
+      addedSeriesQuestion: AVG_DISCOUNT_SUM_DISCOUNT,
+      cardSize: {
+        x: 4,
+        y: 4,
+      },
+    }).then(dashboardId => {
+      visitDashboard(dashboardId);
+    });
+    cartesianChartCircleWithColor("#A989C5")
+      .first()
+      .as("firstCircle")
+      .realHover();
+
+    // Ensure the tooltip is visible
+    assertEChartsTooltip({ header: "2022" });
+
+    // Ensuring the circle is not covered by the tooltip element
+    cy.get("@firstCircle").then($circle => {
+      const circleRect = $circle[0].getBoundingClientRect();
+
+      echartsTooltip().then($tooltip => {
+        const tooltipRect = $tooltip[0].getBoundingClientRect();
+        const isCovered =
+          circleRect.top < tooltipRect.bottom &&
+          circleRect.bottom > tooltipRect.top &&
+          circleRect.left < tooltipRect.right &&
+          circleRect.right > tooltipRect.left;
+
+        expect(isCovered).to.be.false;
+      });
+    });
+  });
+
+  it("tooltips should be hidden when click popover is visible", () => {
+    setup({
+      question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
+    }).then(dashboardId => {
+      visitDashboard(dashboardId);
+    });
+
+    cartesianChartCircleWithColor("#A989C5")
+      .first()
+      .as("firstCircle")
+      .realHover();
+
+    // Ensure the tooltip is visible
+    assertEChartsTooltip({ header: "2022" });
+
+    cy.get("@firstCircle").click();
+
+    echartsTooltip().should("not.be.visible");
   });
 
   describe("> multi series question on dashboard with added question", () => {
@@ -896,28 +1057,32 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
   });
 });
 
-function setup({ question, addedSeriesQuestion }) {
+function setup({ question, addedSeriesQuestion, cardSize }) {
   return cy.createQuestion(question).then(({ body: { id: card1Id } }) => {
     if (addedSeriesQuestion) {
       cy.createQuestion(addedSeriesQuestion).then(
         ({ body: { id: card2Id } }) => {
-          return setupDashboard(card1Id, card2Id);
+          return setupDashboard(card1Id, card2Id, cardSize);
         },
       );
     } else {
-      return setupDashboard(card1Id);
+      return setupDashboard(card1Id, null, cardSize);
     }
   });
 }
 
-function setupDashboard(cardId, addedSeriesCardId) {
+function setupDashboard(
+  cardId,
+  addedSeriesCardId,
+  cardSize = { x: 24, y: 12 },
+) {
   return cy.createDashboard().then(({ body: { id: dashboardId } }) => {
     return addOrUpdateDashboardCard({
       dashboard_id: dashboardId,
       card_id: cardId,
       card: {
-        size_x: 24,
-        size_y: 12,
+        size_x: cardSize.x,
+        size_y: cardSize.y,
         series: addedSeriesCardId ? [{ id: addedSeriesCardId }] : [],
       },
     }).then(() => {

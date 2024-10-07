@@ -113,8 +113,8 @@
                                              :collection_id (u/the-id collection)}
                    ;; the temp defaults set {:time_matters true}
                    TimelineEvent _          {:name        "event-a"
-                                                      :timeline_id (u/the-id tl-a)
-                                                      :timestamp   #t "2020-01-01T10:00:00.0Z"}
+                                             :timeline_id (u/the-id tl-a)
+                                             :timestamp   #t "2020-01-01T10:00:00.0Z"}
                    TimelineEvent _          {:name        "event-b"
                                              :timeline_id (u/the-id tl-a)
                                              :timestamp   #t "2021-01-01T10:00:00.0Z"}

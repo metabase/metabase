@@ -31,7 +31,11 @@ describe("CompletedStep", () => {
   it("should show a newsletter form and a link to the app", () => {
     setup({ step: "completed" });
 
-    expect(screen.getByText("Metabase Newsletter")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Get infrequent emails about new releases and feature updates.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("Take me to Metabase")).toBeInTheDocument();
   });
 });

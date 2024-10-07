@@ -20,10 +20,10 @@ import type { DatabaseData, DatabaseId } from "metabase-types/api";
 import ModelActionsSection from "./ModelActionsSection";
 import ModelCachingControl from "./ModelCachingControl";
 import {
-  SidebarRoot,
+  ModelActionsSidebarContent,
   SidebarContent,
   SidebarGroup,
-  ModelActionsSidebarContent,
+  SidebarRoot,
 } from "./Sidebar.styled";
 
 interface DatabaseEditAppSidebarProps {

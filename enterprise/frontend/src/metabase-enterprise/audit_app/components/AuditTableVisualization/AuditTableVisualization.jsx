@@ -15,7 +15,7 @@ import { registerVisualization } from "metabase/visualizations/index";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
 import Table from "metabase/visualizations/visualizations/Table";
 
-import { getRowValuesByColumns, getColumnName } from "../../lib/mode";
+import { getColumnName, getRowValuesByColumns } from "../../lib/mode";
 
 import {
   HeaderCell,

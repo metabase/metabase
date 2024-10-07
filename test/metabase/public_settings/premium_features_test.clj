@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]
+   [diehard.circuit-breaker :as dh.cb]
    [mb.hawk.parallel]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
@@ -15,6 +16,24 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(set! *warn-on-reflection* true)
+
+(defn- open-circuit-breaker! [cb]
+  (.open ^dev.failsafe.CircuitBreaker cb))
+
+(defmacro with-open-circuit-breaker! [& body]
+  `(binding [premium-features/*store-circuit-breaker* (dh.cb/circuit-breaker
+                                                       @#'premium-features/store-circuit-breaker-config)]
+     (open-circuit-breaker! premium-features/*store-circuit-breaker*)
+     (do ~@body)))
+
+(defn reset-circuit-breaker-fixture [f]
+  (binding [premium-features/*store-circuit-breaker* (dh.cb/circuit-breaker
+                                                      @#'premium-features/store-circuit-breaker-config)]
+    (f)))
+
+(use-fixtures :each reset-circuit-breaker-fixture)
 
 (defn- token-status-response
   [token premium-features-response]
@@ -32,25 +51,25 @@
                 :features ["test" "fixture"]
                 :trial    false}))
 
-(def random-fake-token
-  "d7ad0b5f9ddfd1953b1b427b75d620e4ba91d38e7bcbc09d8982480863dbc611")
-
-(defn- random-token []
+(defn random-token
+  "A random token-like string"
+  []
   (let [alphabet (into [] (concat (range 0 10) (map char (range (int \a) (int \g)))))]
     (apply str (repeatedly 64 #(rand-nth alphabet)))))
 
 (deftest ^:parallel fetch-token-status-test
-  (let [print-token "d7ad...c611"]
+  (let [token (random-token)
+        print-token (apply str (concat (take 4 token) "..." (take-last 4 token)))]
     (testing "Do not log the token (#18249)"
       (mt/with-log-messages-for-level [messages :info]
-        (#'premium-features/fetch-token-status* random-fake-token)
+        (#'premium-features/fetch-token-status* token)
         (let [logs (mapv :message (messages))]
-          (is (every? (complement #(re-find (re-pattern random-fake-token) %)) logs))
+          (is (every? (complement #(re-find (re-pattern token) %)) logs))
           (is (= 1 (count (filter #(re-find (re-pattern print-token) %) logs)))))))))
 
 (deftest ^:parallel fetch-token-status-test-2
   (testing "With the backend unavailable"
-    (let [result (token-status-response random-fake-token {:status 500})]
+    (let [result (token-status-response (random-token) {:status 500})]
       (is (false? (:valid result))))))
 
 (deftest ^:parallel fetch-token-status-test-3
@@ -64,33 +83,63 @@
               :error-details "network issues"}
              (premium-features/fetch-token-status (apply str (repeat 64 "b"))))))))
 
-(deftest fetch-token-status-test-4
-  (testing "Only attempt the token twice (default and fallback URLs)"
+(deftest fetch-token-caches-successful-responses
+  (testing "For successful responses, the result is cached"
     (let [call-count (atom 0)
           token      (random-token)]
       (binding [http/request (fn [& _]
                                (swap! call-count inc)
-                               (throw (Exception. "no internet")))]
-        (mt/with-temporary-raw-setting-values [:premium-embedding-token token]
-          (testing "Sanity check"
-            (is (= token
-                   (premium-features/premium-embedding-token)))
-            (is (= #{}
-                   (premium-features/*token-features*))))
-          (doseq [has-feature? [#'premium-features/hide-embed-branding?
-                                #'premium-features/enable-whitelabeling?
-                                #'premium-features/enable-audit-app?
-                                #'premium-features/enable-sandboxes?
-                                #'premium-features/enable-serialization?]]
-            (testing (format "\n%s is false" (:name (meta has-feature?)))
-              (is (not (has-feature?)))))
-          (is (= 2
-                 @call-count)))))))
+                               {:status 200 :body "{\"valid\": true, \"status\": \"fake\"}"})]
+        (dotimes [_ 10] (premium-features/fetch-token-status token))
+        (is (= 1 @call-count))))))
 
-(deftest ^:parallel fetch-token-status-test-5
+(deftest fetch-token-caches-invalid-responses
+  (testing "For 4XX responses, the result is cached"
+    (let [call-count (atom 0)
+          token      (random-token)]
+      (binding [http/request (fn [& _]
+                               (swap! call-count inc)
+                               {:status 400 :body "{\"valid\": false, \"status\": \"fake\"}"})]
+        (dotimes [_ 10] (premium-features/fetch-token-status token))
+        (is (= 1 @call-count))))))
+
+(deftest fetch-token-does-not-cache-exceptions
+  (testing "For timeouts, 5XX errors, etc. we don't cache the result"
+    (let [call-count (atom 0)
+          token      (random-token)]
+      (binding [http/request (fn [& _]
+                               (swap! call-count inc)
+                               (throw (ex-info "oh, fiddlesticks" {})))]
+        (dotimes [_ 5] (premium-features/fetch-token-status token))
+        ;; Note that we have a fallback URL that gets hit in this case (see
+        ;; https://github.com/metabase/metabase/issues/27036) and 2x5=10
+        (is (= 10 @call-count))))))
+
+(deftest fetch-token-does-not-cache-5XX-responses
+  (let [call-count (atom 0)
+        token      (random-token)]
+    (binding [http/request (fn [& _]
+                             (swap! call-count inc)
+                             {:status 500})]
+      (dotimes [_ 10] (premium-features/fetch-token-status token))
+      ;; Same as above, we have a fallback URL that gets hit in this case (see
+      ;; https://github.com/metabase/metabase/issues/27036) and 2x10=20
+      (is (= 10 @call-count)))))
+
+(deftest fetch-token-is-circuit-broken
+  (let [call-count (atom 0)]
+    (with-open-circuit-breaker!
+      (binding [http/request (fn [& _] (swap! call-count inc))]
+        (is (= {:valid false
+                :status "Unable to validate token"
+                :error-details "Token validation is currently unavailable."}
+               (premium-features/fetch-token-status (random-token))))
+        (is (= 0 @call-count))))))
+
+(deftest ^:parallel fetch-token-status-test-4
   (testing "With a valid token"
-    (let [result (token-status-response random-fake-token {:status 200
-                                                           :body   token-response-fixture})]
+    (let [result (token-status-response (random-token) {:status 200
+                                                        :body   token-response-fixture})]
       (is (:valid result))
       (is (contains? (set (:features result)) "test")))))
 
@@ -100,8 +149,7 @@
     ;; upstream in Cloud could break this. We probably want to catch that stuff anyway tho in tests rather than waiting
     ;; for bug reports to come in
     (is (partial= {:valid false, :status "Token does not exist."}
-                  (#'premium-features/fetch-token-status* random-fake-token)))))
-
+                  (#'premium-features/fetch-token-status* (random-token))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Defenterprise Macro Tests                                             |
@@ -127,9 +175,9 @@
 
 (deftest defenterprise-test
   (when-not config/ee-available?
-   (testing "When EE code is not available, a call to a defenterprise function calls the OSS version"
-     (is (= "Hi rasta, you're an OSS customer!"
-            (greeting :rasta)))))
+    (testing "When EE code is not available, a call to a defenterprise function calls the OSS version"
+      (is (= "Hi rasta, you're an OSS customer!"
+             (greeting :rasta)))))
 
   (when config/ee-available?
     (testing "When EE code is available"
@@ -188,7 +236,7 @@
                             #"Invalid input: \[\"should be a keyword, got: \\\"rasta\\\".*"
                             (greeting-with-schema "rasta"))))
 
-   (testing "Return schemas are validated for OSS implementations"
+    (testing "Return schemas are validated for OSS implementations"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Invalid output: \[\"should be a keyword, got: \\\"Hi rasta.*"
                             (greeting-with-invalid-oss-return-schema :rasta)))))

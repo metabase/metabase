@@ -20,14 +20,14 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import S from "../components/Detail.module.css";
 import {
-  getSegment,
-  getTable,
-  getFields,
   getError,
-  getLoading,
-  getUser,
+  getFields,
   getIsEditing,
   getIsFormulaExpanded,
+  getLoading,
+  getSegment,
+  getTable,
+  getUser,
 } from "../selectors";
 import { getQuestionUrl } from "../utils";
 

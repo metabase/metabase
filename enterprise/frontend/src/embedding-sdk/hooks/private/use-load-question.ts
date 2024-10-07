@@ -3,8 +3,8 @@ import { useAsyncFn, useUnmount } from "react-use";
 
 import {
   runQuestionOnLoadSdk,
-  updateQuestionSdk,
   runQuestionOnNavigateSdk,
+  updateQuestionSdk,
 } from "embedding-sdk/lib/interactive-question";
 import { runQuestionQuerySdk } from "embedding-sdk/lib/interactive-question/run-question-query";
 import { useSdkDispatch } from "embedding-sdk/store";
@@ -13,7 +13,7 @@ import type {
   NavigateToNewCardParams,
   SdkQuestionState,
 } from "embedding-sdk/types/question";
-import { defer, type Deferred } from "metabase/lib/promise";
+import { type Deferred, defer } from "metabase/lib/promise";
 import type Question from "metabase-lib/v1/Question";
 
 type LoadQuestionResult = Promise<

@@ -1,49 +1,49 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  modal,
-  popover,
-  openNativeEditor,
-  visualize,
-  mockSessionProperty,
-  sidebar,
-  summarize,
+  closeQuestionActions,
+  echartsContainer,
+  editDashboard,
+  entityPickerModal,
+  entityPickerModalTab,
   filter,
   filterField,
-  visitQuestion,
-  visitDashboard,
-  startNewQuestion,
-  openQuestionActions,
-  closeQuestionActions,
-  visitCollection,
-  undo,
-  openQuestionsSidebar,
-  editDashboard,
-  getDashboardCard,
-  saveDashboard,
-  getNotebookStep,
-  selectFilterOperator,
   focusNativeEditor,
-  echartsContainer,
-  entityPickerModal,
+  getDashboardCard,
+  getNotebookStep,
+  mockSessionProperty,
+  modal,
+  openNativeEditor,
+  openQuestionActions,
+  openQuestionsSidebar,
+  popover,
   questionInfoButton,
-  entityPickerModalTab,
+  restore,
+  saveDashboard,
+  selectFilterOperator,
+  sidebar,
+  startNewQuestion,
+  summarize,
   tableHeaderClick,
+  undo,
+  visitCollection,
+  visitDashboard,
+  visitQuestion,
+  visualize,
 } from "e2e/support/helpers";
 
 import {
-  turnIntoModel,
   assertIsModel,
-  assertQuestionIsBasedOnModel,
-  selectFromDropdown,
-  selectDimensionOptionFromSidebar,
-  saveQuestionBasedOnModel,
   assertIsQuestion,
+  assertQuestionIsBasedOnModel,
+  saveQuestionBasedOnModel,
+  selectDimensionOptionFromSidebar,
+  selectFromDropdown,
+  turnIntoModel,
 } from "./helpers/e2e-models-helpers";
 
 const { PRODUCTS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -155,6 +155,91 @@ describe("scenarios > models", () => {
 
     cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
     getCollectionItemCard("Product Model").within(() => {
+      cy.icon("model");
+    });
+    getCollectionItemRow("Q1").icon("table2");
+
+    cy.location("pathname").should("eq", "/collection/root");
+  });
+
+  it("allows to turn a native question with a long alias into a model (metabase#47584)", () => {
+    const nativeQuery = `
+    SELECT
+      count(*) AS coun,
+      state AS Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count
+    FROM people
+    GROUP BY
+      Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count`;
+    cy.createNativeQuestion(
+      {
+        name: "People Model with long alias",
+        native: {
+          query: nativeQuery,
+        },
+      },
+      { visitQuestion: true, wrapId: true },
+    );
+
+    turnIntoModel();
+    openQuestionActions();
+    assertIsModel();
+
+    cy.get("@questionId").then(questionId => {
+      cy.wait("@dataset").then(({ response }) => {
+        expect(response.body.json_query.query["source-table"]).to.equal(
+          `card__${questionId}`,
+        );
+        expect(response.body.error).to.not.exist;
+      });
+    });
+
+    // Filtering on the long column is currently broken in master (metabase#47863),
+    // but this works in the release-x.50.x branch.
+    //
+    // filter();
+    // filterField(
+    //   "TOTAL_NUMBER_OF_PEOPLE_FROM_EACH_STATE_SEPARATED_BY_STATE_AND_THEN_WE_DO_A_COUNT",
+    //   {
+    //     operator: "Contains",
+    //     value: "A",
+    //   },
+    // );
+
+    // cy.findByTestId("apply-filters").click();
+    // cy.wait("@dataset").then(({ response }) => {
+    //   expect(response.body.error).to.not.exist;
+    // });
+
+    filter();
+    filterField("COUN", {
+      operator: "Greater than",
+      value: 30,
+    });
+
+    cy.findByTestId("apply-filters").click();
+    cy.wait("@dataset").then(({ response }) => {
+      expect(response.body.error).to.not.exist;
+    });
+
+    assertQuestionIsBasedOnModel({
+      model: "People Model with long alias",
+      collection: "Our analytics",
+      table: "People",
+    });
+
+    cy.get("@questionId").then(questionId => {
+      saveQuestionBasedOnModel({ modelId: questionId, name: "Q1" });
+    });
+
+    assertQuestionIsBasedOnModel({
+      questionName: "Q1",
+      model: "People Model with long alias",
+      collection: "Our analytics",
+      table: "People",
+    });
+
+    cy.findByTestId("qb-header").findAllByText("Our analytics").first().click();
+    getCollectionItemCard("People Model with long alias").within(() => {
       cy.icon("model");
     });
     getCollectionItemRow("Q1").icon("table2");
@@ -295,7 +380,7 @@ describe("scenarios > models", () => {
         .findByText("Add filters to narrow your answer")
         .click();
       popover().within(() => {
-        cy.findByText("Product").click();
+        cy.findByText("Products").click();
         cy.findByText("Price").click();
       });
       selectFilterOperator("Less than");
@@ -520,11 +605,7 @@ describe("scenarios > models", () => {
 
   it("should automatically pin newly created models", () => {
     visitQuestion(ORDERS_QUESTION_ID);
-
-    cy.intercept("PUT", "/api/card/*").as("cardUpdate");
     turnIntoModel();
-    cy.wait("@cardUpdate");
-
     visitCollection("root");
     cy.findByTestId("pinned-items").within(() => {
       cy.findByText("Models");

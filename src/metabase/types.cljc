@@ -50,11 +50,11 @@
 
   These are used to record the semantic purpose of a Table."
   (:require
+   #?@(:cljs
+       [[metabase.util :as u]])
    [clojure.set :as set]
    [metabase.types.coercion-hierarchies :as coercion-hierarchies]
-   [metabase.util.malli :as mu]
-   #?@(:cljs
-       [[metabase.util :as u]])))
+   [metabase.util.malli :as mu]))
 
 ;;; Table (entity) Types
 
@@ -211,7 +211,6 @@
 ;; different from `java.time.OffsetDateTime`;
 (derive :type/Instant :type/DateTimeWithLocalTZ)
 
-
 ;; TODO -- shouldn't we have a `:type/LocalDateTime` as well?
 
 (derive :type/CreationTemporal :Semantic/*)
@@ -265,15 +264,10 @@
 (derive :type/DruidHyperUnique :type/*)
 (derive :type/DruidHyperUnique :type/field-values-unsupported)
 
-;;; The Snowflake `VARIANT` type is allowed to be anything, so just mark it as deriving from the core root types so
-;;; we're allowed to use any sort of filter with it (whether it makes sense or not). See
+;;; The Snowflake `VARIANT` type is allowed to be anything. See
 ;;; https://docs.snowflake.com/en/sql-reference/data-types-semistructured
-(doseq [t [:type/Number
-           :type/Text
-           :type/Temporal
-           :type/Boolean
-           :type/Collection]]
-  (derive :type/SnowflakeVariant t))
+(derive :type/SnowflakeVariant :type/*)
+(derive :type/SnowflakeVariant :type/Large)
 
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
 ;;; filter options like starts with / contains
@@ -501,11 +495,11 @@
 (defn ^:export coercions_for_type
   "Coercions available for a type. In cljs will return a js array of strings like [\"Coercion/ISO8601->Time\" ...]. In
   clojure will return a sequence of keywords."
-   [base-type]
+  [base-type]
   (let [applicable (into () (comp (distinct) cat)
                          (vals (coercion-possibilities (keyword base-type))))]
-     #?(:cljs
-        (clj->js (map (fn [kw] (str (namespace kw) "/" (name kw)))
-                      applicable))
-        :clj
-        applicable)))
+    #?(:cljs
+       (clj->js (map (fn [kw] (str (namespace kw) "/" (name kw)))
+                     applicable))
+       :clj
+       applicable)))

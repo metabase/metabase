@@ -12,10 +12,10 @@ import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/mod
 import {
   getCard,
   getDatasetEditorTab,
-  getZoomedObjectId,
   getOriginalQuestion,
   getQueryBuilderMode,
   getQuestion,
+  getZoomedObjectId,
 } from "../selectors";
 import { getQueryBuilderModeFromLocation } from "../typed-utils";
 import {
@@ -25,7 +25,7 @@ import {
 } from "../utils";
 
 import { initializeQB, setCardAndRun } from "./core";
-import { zoomInRow, resetRowZoom } from "./object-detail";
+import { resetRowZoom, zoomInRow } from "./object-detail";
 import { cancelQuery } from "./querying";
 import { resetUIControls, setQueryBuilderMode } from "./ui";
 
@@ -125,16 +125,16 @@ export const UPDATE_URL = "metabase/qb/UPDATE_URL";
 export const updateUrl = createThunkAction(
   UPDATE_URL,
   (
-      question,
-      {
-        dirty,
-        replaceState,
-        preserveParameters = true,
-        queryBuilderMode,
-        datasetEditorTab,
-        objectId,
-      } = {},
-    ) =>
+    question,
+    {
+      dirty,
+      replaceState,
+      preserveParameters = true,
+      queryBuilderMode,
+      datasetEditorTab,
+      objectId,
+    } = {},
+  ) =>
     (dispatch, getState) => {
       if (!question) {
         question = getQuestion(getState());

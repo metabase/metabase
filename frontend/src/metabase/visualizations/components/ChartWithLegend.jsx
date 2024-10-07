@@ -25,6 +25,7 @@ class ChartWithLegend extends Component {
     let {
       children,
       legendTitles,
+      legendHiddenIndices,
       legendColors,
       hovered,
       onHoverChange,
@@ -36,6 +37,7 @@ class ChartWithLegend extends Component {
       width,
       showLegend,
       isDashboard,
+      onToggleSeriesVisibility,
     } = this.props;
 
     // padding
@@ -101,9 +103,11 @@ class ChartWithLegend extends Component {
       <LegendComponent
         className={styles.Legend}
         titles={legendTitles}
+        hiddenIndices={legendHiddenIndices}
         colors={legendColors}
         hovered={hovered}
         onHoverChange={onHoverChange}
+        onToggleSeriesVisibility={onToggleSeriesVisibility}
       />
     ) : null;
 
@@ -142,6 +146,7 @@ class ChartWithLegend extends Component {
             className={cx(styles.LegendSpacer)}
             // don't center the chart on dashboards
             style={isDashboard ? { flexBasis: 0 } : {}}
+            data-testid="chart-legend-spacer"
           >
             {legend}
           </div>

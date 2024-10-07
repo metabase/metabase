@@ -8,10 +8,10 @@ import _ from "underscore";
 import { useSelector } from "metabase/lib/redux";
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
 import type {
-  EmbeddingDisplayOptions,
-  EmbeddingParametersValues,
   EmbedResource,
   EmbedResourceType,
+  EmbeddingDisplayOptions,
+  EmbeddingParametersValues,
   ServerCodeSampleConfig,
 } from "metabase/public/lib/types";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";

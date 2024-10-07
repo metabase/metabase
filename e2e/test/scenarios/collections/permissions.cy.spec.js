@@ -3,17 +3,17 @@ import { onlyOn } from "@cypress/skip-test";
 import { USERS } from "e2e/support/cypress_data";
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data.js";
 import {
-  restore,
-  popover,
   appBar,
-  navigationSidebar,
-  openNativeEditor,
-  openCollectionMenu,
-  openCollectionItemMenu,
+  entityPickerModal,
   modal,
+  navigationSidebar,
+  openCollectionItemMenu,
+  openCollectionMenu,
+  openNativeEditor,
+  popover,
+  restore,
   setTokenFeatures,
   sidebar,
-  entityPickerModal,
 } from "e2e/support/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -417,9 +417,9 @@ describe("collection permissions", () => {
     );
     cy.findByTestId("permission-table");
 
-    sidebar().findByText("Metabase analytics").click();
+    sidebar().findByText("Usage analytics").click();
     cy.findByTestId("permissions-editor").findByText(
-      "Permissions for Metabase analytics",
+      "Permissions for Usage analytics",
     );
     cy.findByTestId("permission-table");
   });

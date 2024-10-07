@@ -7,9 +7,13 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util.temporal-bucket :as qp.u.temporal-bucket]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -90,13 +94,25 @@
 
 (defn- update-breakout-unit
   [query
-   {[_dimension [_field target-field-id {:keys [temporal-unit]}]] :target
+   {[_dimension [_field target-field-id {:keys [base-type temporal-unit]}]] :target
     :keys [value] :as _param}]
-  (let [new-unit (keyword value)]
+  (let [new-unit (keyword value)
+        base-type (or base-type
+                      (when (integer? target-field-id)
+                        (:base-type (lib.metadata/field (qp.store/metadata-provider) target-field-id))))]
+    (assert (some? base-type) "`base-type` is not set.")
+    (when-not (qp.u.temporal-bucket/compatible-temporal-unit? base-type new-unit)
+      (throw (ex-info (tru "This chart can not be broken out by the selected unit of time: {0}." value)
+                      {:type       qp.error-type/invalid-query
+                       :is-curated true
+                       :base-type  base-type
+                       :unit       new-unit})))
     (lib.util.match/replace-in
       query [:query :breakout]
-      [:field (_ :guard #(= target-field-id %)) (opts :guard #(= temporal-unit (:temporal-unit %)))]
-      [:field target-field-id (assoc opts :temporal-unit new-unit)])))
+      [(tag :guard #{:field :expression})
+       (_ :guard #(= target-field-id %))
+       (opts :guard #(= temporal-unit (:temporal-unit %)))]
+      [tag target-field-id (assoc opts :temporal-unit new-unit)])))
 
 (defn expand
   "Expand parameters for MBQL queries in `query` (replacing Dashboard or Card-supplied params with the appropriate
@@ -117,5 +133,6 @@
 
       :else
       (let [filter-clause (build-filter-clause query (assoc param :value param-value))
-            query         (mbql.u/add-filter-clause query filter-clause)]
+            [_ _ opts]    target
+            query         (mbql.u/add-filter-clause query (:stage-number opts) filter-clause)]
         (recur query rest)))))

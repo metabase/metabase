@@ -110,7 +110,7 @@
 
 (defprotocol ^:private ToBSON
   (^:private to-bson [this]
-   "Utility method for converting normal Clojure objects to string-serialized 'BSON'."))
+    "Utility method for converting normal Clojure objects to string-serialized 'BSON'."))
 
 (extend-protocol ToBSON
   nil
@@ -268,79 +268,79 @@
               [642 "2014-03-02T00:00:00Z" 8 9]
               [775 "2014-03-01T00:00:00Z" 4 13]]
              (mt/rows
-               (qp/process-query
-                 (mt/query checkins
-                   {:type       :native
-                    :native     {:query         (json/generate-string
-                                                 [{:$match (json-raw "{{date}}")}
-                                                  {:$sort {:_id 1}}])
-                                 :collection    "checkins"
-                                 :template-tags {"date" {:name         "date"
-                                                         :display-name "Date"
-                                                         :type         :dimension
-                                                         :widget-type  :date/all-options
-                                                         :dimension    $date}}}
-                    :parameters [{:type   :date/range
-                                  :target [:dimension [:template-tag "date"]]
-                                  :value  "2014-03-01~2014-03-02"}]}))))))
+              (qp/process-query
+               (mt/query checkins
+                 {:type       :native
+                  :native     {:query         (json/generate-string
+                                               [{:$match (json-raw "{{date}}")}
+                                                {:$sort {:_id 1}}])
+                               :collection    "checkins"
+                               :template-tags {"date" {:name         "date"
+                                                       :display-name "Date"
+                                                       :type         :dimension
+                                                       :widget-type  :date/all-options
+                                                       :dimension    $date}}}
+                  :parameters [{:type   :date/range
+                                :target [:dimension [:template-tag "date"]]
+                                :value  "2014-03-01~2014-03-02"}]}))))))
     (testing "multiple values"
       (is (= [[1 "African"]
               [2 "American"]
               [3 "Artisan"]]
              (mt/rows
-               (qp/process-query
-                 (mt/query categories
-                   {:type       :native
-                    :native     {:query         (json/generate-string [{:$match (json-raw "{{id}}")}
-                                                                       {:$sort {:_id 1}}])
-                                 :collection    "categories"
-                                 :template-tags {"id" {:name         "id"
-                                                       :display-name "ID"
-                                                       :type         :dimension
-                                                       :widget-type  :number
-                                                       :dimension    $id}}}
-                    :parameters [{:type   :number
-                                  :target [:dimension [:template-tag "id"]]
-                                  :value  "1,2,3"}]}))))))
+              (qp/process-query
+               (mt/query categories
+                 {:type       :native
+                  :native     {:query         (json/generate-string [{:$match (json-raw "{{id}}")}
+                                                                     {:$sort {:_id 1}}])
+                               :collection    "categories"
+                               :template-tags {"id" {:name         "id"
+                                                     :display-name "ID"
+                                                     :type         :dimension
+                                                     :widget-type  :number
+                                                     :dimension    $id}}}
+                  :parameters [{:type   :number
+                                :target [:dimension [:template-tag "id"]]
+                                :value  "1,2,3"}]}))))))
     (testing "param not supplied"
       (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
              (mt/rows
-               (qp/process-query
-                 (mt/query checkins
-                   {:type   :native
-                    :native {:query         (json/generate-string
-                                             [{:$match (json-raw "{{date}}")}
-                                              {:$sort {:_id 1}}
-                                              {:$limit 1}])
-                             :collection    "checkins"
-                             :template-tags {"date" {:name         "date"
-                                                     :display-name "Date"
-                                                     :type         :dimension
-                                                     :widget-type  :date/all-options
-                                                     :dimension    $date}}}}))))))
+              (qp/process-query
+               (mt/query checkins
+                 {:type   :native
+                  :native {:query         (json/generate-string
+                                           [{:$match (json-raw "{{date}}")}
+                                            {:$sort {:_id 1}}
+                                            {:$limit 1}])
+                           :collection    "checkins"
+                           :template-tags {"date" {:name         "date"
+                                                   :display-name "Date"
+                                                   :type         :dimension
+                                                   :widget-type  :date/all-options
+                                                   :dimension    $date}}}}))))))
     (testing "text params"
       (testing "using nested fields as parameters (#11597)"
         (mt/dataset geographical-tips
           (is (= [["tupac" 5]]
                  (mt/rows
-                   (qp/process-query
-                     (mt/query tips
-                       {:type       :native
-                        :native     {:query         (json/generate-string
-                                                     [{:$match (json-raw "{{username}}")}
-                                                      {:$sort {:_id 1}}
-                                                      {:$project {"username" "$source.username"
-                                                                  "_id" 1}}
-                                                      {:$limit 1}])
-                                     :collection    "tips"
-                                     :template-tags {"username" {:name         "username"
-                                                                 :display-name "Username"
-                                                                 :type         :dimension
-                                                                 :widget-type  :text
-                                                                 :dimension    $tips.source.username}}}
-                        :parameters [{:type   :text
-                                      :target [:dimension [:template-tag "username"]]
-                                      :value  "tupac"}]})))))))
+                  (qp/process-query
+                   (mt/query tips
+                     {:type       :native
+                      :native     {:query         (json/generate-string
+                                                   [{:$match (json-raw "{{username}}")}
+                                                    {:$sort {:_id 1}}
+                                                    {:$project {"username" "$source.username"
+                                                                "_id" 1}}
+                                                    {:$limit 1}])
+                                   :collection    "tips"
+                                   :template-tags {"username" {:name         "username"
+                                                               :display-name "Username"
+                                                               :type         :dimension
+                                                               :widget-type  :text
+                                                               :dimension    $tips.source.username}}}
+                      :parameters [{:type   :text
+                                    :target [:dimension [:template-tag "username"]]
+                                    :value  "tupac"}]})))))))
       (testing "operators"
         (testing "string"
           (doseq [[regex operator] [["tu" :string/starts-with]
@@ -350,23 +350,23 @@
             (mt/dataset geographical-tips
               (is (= [[5 "tupac"]]
                      (mt/rows
-                       (qp/process-query
-                         (mt/query tips
-                           {:type       :native
-                            :native     {:query         (json/generate-string
-                                                         [{:$match (json-raw "{{username}}")}
-                                                          {:$sort {:_id 1}}
-                                                          {:$project {"username" "$source.username"}}
-                                                          {:$limit 1}])
-                                         :collection    "tips"
-                                         :template-tags {"username" {:name         "username"
-                                                                     :display-name "Username"
-                                                                     :type         :dimension
-                                                                     :widget-type  :text
-                                                                     :dimension    $tips.source.username}}}
-                            :parameters [{:type   operator
-                                          :target [:dimension [:template-tag "username"]]
-                                          :value  [regex]}]}))))))))
+                      (qp/process-query
+                       (mt/query tips
+                         {:type       :native
+                          :native     {:query         (json/generate-string
+                                                       [{:$match (json-raw "{{username}}")}
+                                                        {:$sort {:_id 1}}
+                                                        {:$project {"username" "$source.username"}}
+                                                        {:$limit 1}])
+                                       :collection    "tips"
+                                       :template-tags {"username" {:name         "username"
+                                                                   :display-name "Username"
+                                                                   :type         :dimension
+                                                                   :widget-type  :text
+                                                                   :dimension    $tips.source.username}}}
+                          :parameters [{:type   operator
+                                        :target [:dimension [:template-tag "username"]]
+                                        :value  [regex]}]}))))))))
         (testing "numeric"
           (doseq [[input operator pred] [[[1] :number/<= #(<= % 1)]
                                          [[2] :number/>= #(>= % 2)]
@@ -375,54 +375,54 @@
                                          [[1 3] :number/between #(<= 1 % 3)]]]
             (is (every? (comp pred second) ;; [id price]
                         (mt/rows
-                          (qp/process-query
-                            (mt/query venues
-                              {:type       :native
-                               :native     {:query         (json/generate-string
-                                                            [{:$match (json-raw "{{price}}")}
-                                                             {:$project {"price" "$price"}}
-                                                             {:$sort {:_id 1}}
-                                                             {:$limit 10}])
-                                            :collection    "venues"
-                                            :template-tags {"price" {:name "price"
-                                                                     :display-name "Price"
-                                                                     :type         :dimension
-                                                                     :widget-type  :number
-                                                                     :dimension    $price}}}
-                               :parameters [{:type   operator
-                                             :target [:dimension [:template-tag "price"]]
-                                             :value  input}]})))))))
+                         (qp/process-query
+                          (mt/query venues
+                            {:type       :native
+                             :native     {:query         (json/generate-string
+                                                          [{:$match (json-raw "{{price}}")}
+                                                           {:$project {"price" "$price"}}
+                                                           {:$sort {:_id 1}}
+                                                           {:$limit 10}])
+                                          :collection    "venues"
+                                          :template-tags {"price" {:name "price"
+                                                                   :display-name "Price"
+                                                                   :type         :dimension
+                                                                   :widget-type  :number
+                                                                   :dimension    $price}}}
+                             :parameters [{:type   operator
+                                           :target [:dimension [:template-tag "price"]]
+                                           :value  input}]})))))))
         (testing "variadic operators"
           (let [run-query (fn [operator]
-                             (mt/dataset geographical-tips
-                               (mt/rows
-                                 (qp/process-query
-                                   (mt/query tips
-                                     {:type       :native
-                                      :native     {:query         (json/generate-string
-                                                                   [{:$match (json-raw "{{username}}")}
-                                                                    {:$sort {:_id 1}}
-                                                                    {:$project {"username" "$source.username"}}
-                                                                    {:$limit 20}])
-                                                   :collection    "tips"
-                                                   :template-tags {"username" {:name         "username"
-                                                                               :display-name "Username"
-                                                                               :type         :dimension
-                                                                               :widget-type  :text
-                                                                               :dimension    $tips.source.username}}}
-                                      :parameters [{:type   operator
-                                                    :target [:dimension [:template-tag "username"]]
-                                                    :value  ["bob" "tupac"]}]})))))]
+                            (mt/dataset geographical-tips
+                              (mt/rows
+                               (qp/process-query
+                                (mt/query tips
+                                  {:type       :native
+                                   :native     {:query         (json/generate-string
+                                                                [{:$match (json-raw "{{username}}")}
+                                                                 {:$sort {:_id 1}}
+                                                                 {:$project {"username" "$source.username"}}
+                                                                 {:$limit 20}])
+                                                :collection    "tips"
+                                                :template-tags {"username" {:name         "username"
+                                                                            :display-name "Username"
+                                                                            :type         :dimension
+                                                                            :widget-type  :text
+                                                                            :dimension    $tips.source.username}}}
+                                   :parameters [{:type   operator
+                                                 :target [:dimension [:template-tag "username"]]
+                                                 :value  ["bob" "tupac"]}]})))))]
             (is (= #{"bob" "tupac"}
                    (into #{} (map second)
                          (run-query :string/=))))
             (is (= #{}
-                    (set/intersection
-                     #{"bob" "tupac"}
+                   (set/intersection
+                    #{"bob" "tupac"}
                      ;; most of these are nil as most records don't have a username. not equal is a bit ambiguous in
                      ;; mongo. maybe they might want present but not equal semantics
-                     (into #{} (map second)
-                           (run-query :string/!=)))))))))))
+                    (into #{} (map second)
+                          (run-query :string/!=)))))))))))
 
 (deftest e2e-snippet-test
   (mt/test-driver :mongo

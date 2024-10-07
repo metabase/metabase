@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
 import {
-  getQuestionPickerValue,
   QuestionPickerModal,
+  getQuestionPickerValue,
 } from "metabase/common/components/QuestionPicker";
 import { useQuestionQuery } from "metabase/common/hooks";
 import type { Parameter, ValuesSourceConfig } from "metabase-types/api";

@@ -3,6 +3,8 @@ import _ from "underscore";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  createDashboard,
+  createQuestion,
   editDashboard,
   getDashboardCard,
   popover,
@@ -10,8 +12,6 @@ import {
   restore,
   saveDashboard,
   visitDashboard,
-  createQuestion,
-  createDashboard,
 } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 
@@ -333,7 +333,8 @@ describe("issue 31701", () => {
     editDashboard();
 
     cy.log("Add first link card (connected to an entity");
-    cy.findByLabelText("Add link card").click();
+    cy.findByLabelText("Add a link or iframe").click();
+    popover().findByText("Link").click();
     getDashboardCard(0).as("entityCard").click().type(TEST_QUESTION_NAME);
     popover()
       .findAllByTestId("search-result-item-name")
@@ -341,7 +342,8 @@ describe("issue 31701", () => {
       .trigger("click");
 
     cy.log("Add second link card (text only)");
-    cy.findByLabelText("Add link card").click();
+    cy.findByLabelText("Add a link or iframe").click();
+    popover().findByText("Link").click();
     getDashboardCard(1)
       .as("customCard")
       .click()

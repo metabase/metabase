@@ -74,17 +74,17 @@
     pc-ids       :- [:set pos-int?]
     timezone     :- :string]
    (send-pulse-trigger pulse-id schedule-map pc-ids timezone 6))
- ([pulse-id     :- pos-int?
-   schedule-map :- u.cron/ScheduleMap
-   pc-ids       :- [:set pos-int?]
-   timezone     :- :string
-   priority     :- pos-int?]
-  (triggers/build
-   (triggers/with-identity (send-pulse-trigger-key pulse-id schedule-map))
-   (triggers/for-job send-pulse-job-key)
-   (triggers/using-job-data {"pulse-id"    pulse-id
-                             "channel-ids" pc-ids})
-   (triggers/with-schedule
+  ([pulse-id     :- pos-int?
+    schedule-map :- u.cron/ScheduleMap
+    pc-ids       :- [:set pos-int?]
+    timezone     :- :string
+    priority     :- pos-int?]
+   (triggers/build
+    (triggers/with-identity (send-pulse-trigger-key pulse-id schedule-map))
+    (triggers/for-job send-pulse-job-key)
+    (triggers/using-job-data {"pulse-id"    pulse-id
+                              "channel-ids" pc-ids})
+    (triggers/with-schedule
      (cron/schedule
       (cron/cron-schedule (u.cron/schedule-map->cron-string schedule-map))
       (cron/in-time-zone (TimeZone/getTimeZone ^String timezone))
@@ -93,21 +93,26 @@
       ;;
       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
       (cron/with-misfire-handling-instruction-fire-and-proceed)))
-   (triggers/with-priority priority))))
+    (triggers/with-priority priority))))
 
 ; Clearing pulse channels is not done synchronously in order to support undoing feature.
 (defn- clear-pulse-channels-no-recipients!
   "Delete PulseChannels that have no recipients and no channel set for a pulse, returns the channel ids that were deleted."
   [pulse-id]
   (when-let [ids-to-delete (seq
-                            (for [channel (t2/select [:model/PulseChannel :id :details]
+                            (for [channel (t2/select [:model/PulseChannel :id :details :channel_id :channel_type]
                                                      :pulse_id pulse-id
                                                      :id [:not-in {:select   [[:pulse_channel_id :id]]
                                                                    :from     :pulse_channel_recipient
                                                                    :group-by [:pulse_channel_id]
                                                                    :having   [:>= :%count.* [:raw 1]]}])
-                                  :when (and (empty? (get-in channel [:details :emails]))
-                                             (not (get-in channel [:details :channel])))]
+                                  :when  (case (:channel_type channel)
+                                           :email
+                                           (empty? (get-in channel [:details :emails]))
+                                           :slack
+                                           (empty? (get-in channel [:details :channel]))
+                                           :http
+                                           (nil? (:channel_id channel)))]
                               (:id channel)))]
     (log/infof "Deleting %d PulseChannels with id: %s due to having no recipients" (count ids-to-delete) (str/join ", " ids-to-delete))
     (t2/delete! :model/PulseChannel :id [:in ids-to-delete])
@@ -222,22 +227,22 @@
                           (set add-pc-ids))]
     (cond
      ;; no op when new-pc-ids doesnt't change
-     (= new-pc-ids existing-pc-ids) nil
+      (= new-pc-ids existing-pc-ids) nil
 
      ;; delete if no new pc-ids and there is an existing trigger
-     (and (empty? new-pc-ids)
-          (some? existing-pc-ids))
-     (do
-      (log/infof "Deleting trigger %s for pulse %d" trigger-key pulse-id)
-      (task/delete-trigger! trigger-key))
+      (and (empty? new-pc-ids)
+           (some? existing-pc-ids))
+      (do
+        (log/infof "Deleting trigger %s for pulse %d" trigger-key pulse-id)
+        (task/delete-trigger! trigger-key))
 
      ;; delete then create if pc ids changes
-     (and (seq new-pc-ids)
-          (not= new-pc-ids existing-pc-ids))
-     (do
-      (log/infof "Updating Send Pulse trigger %s for pulse %d with new pc-ids: %s, was: %s " trigger-key pulse-id new-pc-ids existing-pc-ids)
-      (task/delete-trigger! trigger-key)
-      (task/add-trigger! (send-pulse-trigger pulse-id schedule-map new-pc-ids (send-trigger-timezone)))))))
+      (and (seq new-pc-ids)
+           (not= new-pc-ids existing-pc-ids))
+      (do
+        (log/infof "Updating Send Pulse trigger %s for pulse %d with new pc-ids: %s, was: %s " trigger-key pulse-id new-pc-ids existing-pc-ids)
+        (task/delete-trigger! trigger-key)
+        (task/add-trigger! (send-pulse-trigger pulse-id schedule-map new-pc-ids (send-trigger-timezone)))))))
 
 ;;; -------------------------------------------------- Task init ------------------------------------------------
 

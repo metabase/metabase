@@ -37,5 +37,4 @@
   :test
   {:target    :node-test
    :output-to "target/node-tests.js"
-   :ns-regexp "-test$"
-   :autorun   true}}}
+   :ns-regexp "-test$"}}}

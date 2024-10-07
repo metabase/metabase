@@ -163,7 +163,7 @@
     ;; TODO - we should also check that the Field is within the same database as our field
     (when fk-target-field-id
       (api/checkp (t2/exists? Field :id fk-target-field-id)
-        :fk_target_field_id "Invalid target field"))
+                  :fk_target_field_id "Invalid target field"))
     (when (and display_name
                (not removed-fk?)
                (not= (:display_name field) display_name))
@@ -202,7 +202,6 @@
     [[:count     (metadata-queries/field-count field)]
      [:distincts (metadata-queries/field-distinct-count field)]]))
 
-
 ;;; --------------------------------------------------- Dimensions ---------------------------------------------------
 
 (api/defendpoint POST "/:id/dimension"
@@ -236,7 +235,6 @@
   (api/write-check Field id)
   (t2/delete! Dimension :field_id id)
   api/generic-204-no-content)
-
 
 ;;; -------------------------------------------------- FieldValues ---------------------------------------------------
 
@@ -284,7 +282,7 @@
         has-human-readable-values? (not-any? human-readable-missing? value-pairs)]
     (api/check (or has-human-readable-values?
                    (every? human-readable-missing? value-pairs))
-      [400 "If remapped values are specified, they must be specified for all field values"])
+               [400 "If remapped values are specified, they must be specified for all field values"])
     has-human-readable-values?))
 
 (api/defendpoint POST "/:id/values"
@@ -295,14 +293,14 @@
    value-pairs [:sequential [:or [:tuple :any] [:tuple :any ms/NonBlankString]]]}
   (let [field (api/write-check Field id)]
     (api/check (field-values/field-should-have-field-values? field)
-      [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
-                "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
+               [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
+                         "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
     (let [human-readable-values? (validate-human-readable-pairs value-pairs)
           update-map             {:values                (map first value-pairs)
                                   :human_readable_values (when human-readable-values?
                                                            (map second value-pairs))}
           updated-pk             (mdb.query/update-or-insert! FieldValues {:field_id (u/the-id field), :type :full}
-                                   (constantly update-map))]
+                                                              (constantly update-map))]
       (api/check-500 (pos? updated-pk))))
   {:status :success})
 
@@ -316,7 +314,7 @@
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
     (mw.session/as-admin
-     (field-values/create-or-update-full-field-values! field)))
+      (field-values/create-or-update-full-field-values! field)))
   {:status :success})
 
 (api/defendpoint POST "/:id/discard_values"
@@ -375,13 +373,13 @@
     value        :- [:maybe ms/NonBlankString]
     maybe-limit  :- [:maybe ms/PositiveInt]]
    (try
-    (let [field        (follow-fks field)
-          search-field (follow-fks search-field)
-          limit        (or maybe-limit default-max-field-search-limit)]
-      (metadata-queries/search-values-query field search-field value limit))
-    (catch Throwable e
-      (log/error e "Error searching field values")
-      []))))
+     (let [field        (follow-fks field)
+           search-field (follow-fks search-field)
+           limit        (or maybe-limit default-max-field-search-limit)]
+       (metadata-queries/search-values-query field search-field value limit))
+     (catch Throwable e
+       (log/error e "Error searching field values")
+       []))))
 
 (api/defendpoint GET "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for

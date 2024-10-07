@@ -1,4 +1,4 @@
-import { colors, color } from "metabase/lib/colors/palette";
+import { color, colors } from "metabase/lib/colors/palette";
 import type { ColorPalette } from "metabase/lib/colors/types";
 import type { ColorGetter } from "metabase/visualizations/types";
 

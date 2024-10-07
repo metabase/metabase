@@ -1,23 +1,23 @@
 import {
-  restore,
-  visitEmbeddedPage,
-  filterWidget,
-  popover,
-  getDashboardCard,
+  assertEChartsTooltip,
   chartPathWithFillColor,
   echartsContainer,
+  filterWidget,
+  getDashboardCard,
   multiAutocompleteInput,
+  popover,
   removeMultiAutocompleteValue,
-  assertEChartsTooltip,
+  restore,
+  visitEmbeddedPage,
 } from "e2e/support/helpers";
 
 import {
-  nativeQuestionDetails,
-  nativeDashboardDetails,
-  mapNativeDashboardParameters,
-  guiQuestion,
   guiDashboard,
+  guiQuestion,
   mapGUIDashboardParameters,
+  mapNativeDashboardParameters,
+  nativeDashboardDetails,
+  nativeQuestionDetails,
 } from "./shared/embedding-linked-filters";
 
 describe("scenarios > embedding > dashboard > linked filters (metabase#13639, metabase#13868)", () => {

@@ -7,12 +7,12 @@ import {
   RadioContainerBubble,
   RadioContainerNormal,
   RadioContainerUnderlined,
+  RadioGroupBubble,
+  RadioGroupNormal,
   RadioInput,
   RadioLabelBubble,
   RadioLabelNormal,
   RadioLabelText,
-  RadioGroupBubble,
-  RadioGroupNormal,
 } from "./Radio.styled";
 import type { RadioColorScheme, RadioVariant } from "./types";
 

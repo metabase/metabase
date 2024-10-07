@@ -102,7 +102,6 @@
     (testing "GET /api/automagic-dashboards/segment/:id/rule/example/indepth"
       (is (some? (api-call! "segment/%s/rule/example/indepth" [segment-id]))))))
 
-
 (deftest field-xray-test
   (testing "GET /api/automagic-dashboards/field/:id"
     (is (some? (api-call! "field/%s" [(mt/id :venues :price)])))))
@@ -137,7 +136,6 @@
                                                                                   {:filter [:> $price 10]})}]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-fn collection-id card-id))))))
-
 
 (deftest model-xray-test
   (testing "The API surface of a model (dataset = true) is very much like that of a question,
@@ -184,7 +182,6 @@
     (testing "GET /api/automagic-dashboards/adhoc/:query/cell/:cell-query/rule/example/indepth"
       (is (some? (api-call! "adhoc/%s/cell/%s/rule/example/indepth" [query cell-query]))))))
 
-
 ;;; ------------------- Comparisons -------------------
 
 (def ^:private segment
@@ -208,7 +205,7 @@
       (is (some?
            (api-call! "adhoc/%s/cell/%s/compare/segment/%s"
                       [(->> (mt/mbql-query venues
-                                           {:filter [:> $price 10]})
+                              {:filter [:> $price 10]})
                             (magic.util/encode-base64-json))
                        (->> [:= [:field (mt/id :venues :price) nil] 15]
                             (magic.util/encode-base64-json))
@@ -241,7 +238,6 @@
                                             [(format "card__%d" card-id)])
                                     #(revoke-collection-permissions! collection-id)))))))))))
 
-
 ;;; ------------------- Transforms -------------------
 
 (deftest transforms-test
@@ -254,18 +250,19 @@
             (is (= [[1 "Red Medicine" 4 10.065 -165.374 3 1.5 4 3 2 1]
                     [2 "Stout Burgers & Beers" 11 34.1 -118.329 2 1.1 11 2 1 1]
                     [3 "The Apple Pan" 11 34.041 -118.428 2 1.1 11 2 1 1]]
-                   (mt/formatted-rows [int str int 3.0 3.0 int 1.0 int int int int]
-                     (api-call! "transform/%s" ["Test transform"]
-                                #(revoke-collection-permissions!
-                                  (tf.materialize/get-collection "Test transform"))
-                                (fn [dashboard]
-                                  (->> dashboard
-                                       :dashcards
-                                       (sort-by (juxt :row :col))
-                                       last
-                                       :card
-                                       :dataset_query
-                                       qp/process-query))))))))))))
+                   (mt/formatted-rows
+                    [int str int 3.0 3.0 int 1.0 int int int int]
+                    (api-call! "transform/%s" ["Test transform"]
+                               #(revoke-collection-permissions!
+                                 (tf.materialize/get-collection "Test transform"))
+                               (fn [dashboard]
+                                 (->> dashboard
+                                      :dashcards
+                                      (sort-by (juxt :row :col))
+                                      last
+                                      :card
+                                      :dataset_query
+                                      qp/process-query))))))))))))
 
 (deftest cards-have-can-run-adhoc-query-test
   (api-call! "table/%s" [(mt/id :venues)]
@@ -288,7 +285,7 @@
                                                                     {:col 10 :size_x 10}])]
       (is (= 20 size_x)))))
 
-(defn- do-with-testing-model
+(defn- do-with-indexed-model!
   [{:keys [query pk-ref value-ref]} f]
   (t2.with-temp/with-temp [Card model {:type          :model
                                        :dataset_query query}]
@@ -304,7 +301,7 @@
                                               :model_index_id (:id model-index)
                                               :model_pk 1)})))))
 
-(defmacro with-indexed-model
+(defmacro with-indexed-model!
   "Creates a model based on `query-info`, which is indexed.
 
   `query-info` is a map with keys:
@@ -312,8 +309,8 @@
   - pk-ref: a field_ref for the model's pk
   - value-ref: a field_ref for the model's label."
   [[bindings query-info] & body]
-  `(do-with-testing-model ~query-info
-                          (fn [~bindings] ~@body)))
+  `(do-with-indexed-model! ~query-info
+                           (fn [~bindings] ~@body)))
 
 (def Tab-Id-Schema
   "Schema for tab-ids. Must be integers for the front-end, but negative so we know they do not (yet) exist in the db."
@@ -356,10 +353,10 @@
 (deftest create-linked-dashboard-test-regular-queries
   (mt/dataset test-data
     (testing "x-ray an mbql model"
-      (with-indexed-model [{:keys [model model-index model-index-value]}
-                           {:query     (mt/mbql-query products)
-                            :pk-ref    (mt/$ids :products $id)
-                            :value-ref (mt/$ids :products $title)}]
+      (with-indexed-model! [{:keys [model model-index model-index-value]}
+                            {:query     (mt/mbql-query products)
+                             :pk-ref    (mt/$ids :products $id)
+                             :value-ref (mt/$ids :products $title)}]
         (let [dash (#'api.magic/create-linked-dashboard
                     {:model             model
                      :model-index       model-index
@@ -416,10 +413,10 @@
               id-field-ref    (:field_ref (by-id results-meta "id"))
               title-field-ref (:field_ref (by-id results-meta "title"))
               id-field-id     (mt/id :products :id)]
-          (with-indexed-model [{:keys [model model-index model-index-value]}
-                               {:query     (mt/native-query {:query "select * from products"})
-                                :pk-ref    id-field-ref
-                                :value-ref title-field-ref}]
+          (with-indexed-model! [{:keys [model model-index model-index-value]}
+                                {:query     (mt/native-query {:query "select * from products"})
+                                 :pk-ref    id-field-ref
+                                 :value-ref title-field-ref}]
             ;; need user metadata edits to find linked tables to an otherwise opaque native query
             (t2/update! :model/Card (:id model)
                         {:result_metadata (annotating results-meta id-field-ref
@@ -452,10 +449,10 @@
 (deftest create-linked-dashboard-test-single-link
   (mt/dataset test-data
     (testing "with only single linked table"
-      (with-indexed-model [{:keys [model model-index model-index-value]}
-                           {:query     (mt/mbql-query people)
-                            :pk-ref    (mt/$ids :people $id)
-                            :value-ref (mt/$ids :people $email)}]
+      (with-indexed-model! [{:keys [model model-index model-index-value]}
+                            {:query     (mt/mbql-query people)
+                             :pk-ref    (mt/$ids :people $id)
+                             :value-ref (mt/$ids :people $email)}]
         (let [dash (#'api.magic/create-linked-dashboard
                     {:model             model
                      :model-index       model-index
@@ -559,24 +556,23 @@
     (t2.with-temp/with-temp [Segment {segment-id :id} @segment]
       (let [show-limit 1
             {:keys [base-count show-count]} (card-count-check! show-limit
-                                                              "adhoc/%s/cell/%s/compare/segment/%s"
-                                                              [(->> (mt/mbql-query venues
-                                                                      {:filter [:> $price 10]})
-                                                                    (magic.util/encode-base64-json))
-                                                               (->> [:= [:field (mt/id :venues :price) nil] 15]
-                                                                    (magic.util/encode-base64-json))
-                                                               segment-id])]
+                                                               "adhoc/%s/cell/%s/compare/segment/%s"
+                                                               [(->> (mt/mbql-query venues
+                                                                       {:filter [:> $price 10]})
+                                                                     (magic.util/encode-base64-json))
+                                                                (->> [:= [:field (mt/id :venues :price) nil] 15]
+                                                                     (magic.util/encode-base64-json))
+                                                                segment-id])]
         (testing "The slimmed dashboard produces less than the base dashboard"
           ;;NOTE - Comparisons produce multiple dashboards and merge the results, so you don't get exactly `show-limit` cards
           (is (< show-count base-count)))))))
 
 (deftest query-metadata-test
   (is (=?
-        {:tables (sort-by :id [{:id (mt/id :venues)}
-                               {:id (mt/id :categories)}])}
-        (-> (mt/user-http-request :crowberto :get 200 (str "automagic-dashboards/table/" (mt/id :venues) "/query_metadata"))
+       {:tables (sort-by :id [{:id (mt/id :venues)}
+                              {:id (mt/id :categories)}])}
+       (-> (mt/user-http-request :crowberto :get 200 (str "automagic-dashboards/table/" (mt/id :venues) "/query_metadata"))
             ;; The output is so large, these help debugging
-            #_#_#_
-            (update :fields #(map (fn [x] (select-keys x [:id])) %))
-            (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
-            (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))
+           #_#_#_(update :fields #(map (fn [x] (select-keys x [:id])) %))
+               (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
+             (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))

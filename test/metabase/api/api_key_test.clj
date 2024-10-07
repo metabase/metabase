@@ -164,9 +164,9 @@
       (let [name-1      (str "My First Name" (random-uuid))
             name-2      (str "My Second Name" (random-uuid))
             {id :id}    (mt/user-http-request :crowberto
-                                           :post 200 "api-key"
-                                           {:group_id group-id-1
-                                            :name     name-1})
+                                              :post 200 "api-key"
+                                              {:group_id group-id-1
+                                               :name     name-1})
             api-user-id (-> (t2/select-one :model/ApiKey :id id) (t2/hydrate :user) :user :id)]
 
         (testing "before the change..."

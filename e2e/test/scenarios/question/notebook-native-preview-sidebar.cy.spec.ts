@@ -3,30 +3,30 @@ import { onlyOn } from "@cypress/skip-test";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  openReviewsTable,
-  visualize,
-  openNotebook,
-  startNewQuestion,
-  popover,
-  visitQuestionAdhoc,
-  saveQuestion,
-  visitQuestion,
   createQuestion,
-  saveSavedQuestion,
-  withDatabase,
   describeWithSnowplow,
-  resetSnowplow,
   enableTracking,
+  entityPickerModal,
+  entityPickerModalTab,
   expectGoodSnowplowEvent,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
-  entityPickerModal,
-  entityPickerModalTab,
+  openNotebook,
+  openReviewsTable,
+  popover,
+  resetSnowplow,
+  restore,
+  saveQuestion,
+  saveSavedQuestion,
+  startNewQuestion,
+  visitQuestion,
+  visitQuestionAdhoc,
+  visualize,
+  withDatabase,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

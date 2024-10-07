@@ -1,18 +1,20 @@
-import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  openNativeEditor,
-  moveDnDKitElement,
   filterWidget,
-  popover,
-  visitQuestionAdhoc,
-  visitQuestion,
-  openPublicLinkPopoverFromMenu,
-  queryBuilderMain,
-  visitDashboard,
   getDashboardCard,
+  moveDnDKitElement,
+  openNativeEditor,
+  openSharingMenu,
+  popover,
+  queryBuilderMain,
   removeMultiAutocompleteValue,
+  restore,
+  sidesheet,
+  tableInteractive,
+  visitDashboard,
+  visitQuestion,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -195,10 +197,12 @@ describe("issue 12581", () => {
 
   it("should correctly display a revision state after a restore (metabase#12581)", () => {
     // Start with the original version of the question made with API
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Open Editor/i).click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Open Editor/i).should("not.exist");
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .click();
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .should("not.exist");
 
     // Both delay and a repeated sequence of `{selectall}{backspace}` are there to prevent typing flakes
     // Without them at least 1 in 10 test runs locally didn't fully clear the field or type correctly
@@ -219,23 +223,28 @@ describe("issue 12581", () => {
     cy.wait("@cardQuery");
 
     cy.findByTestId("revision-history-button").click();
-    // Make sure sidebar opened and the history loaded
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/You created this/i);
+    sidesheet().within(() => {
+      cy.findByRole("tab", { name: "History" }).click();
+      // Make sure sidebar opened and the history loaded
+      cy.findByText(/You created this/i);
 
-    cy.findByTestId("question-revert-button").click(); // Revert to the first revision
-    cy.wait("@dataset");
+      cy.findByTestId("question-revert-button").click(); // Revert to the first revision
+      cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/You reverted to an earlier version/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Open Editor/i).click();
+      cy.findByRole("tab", { name: "History" }).click();
+      cy.findByText(/You reverted to an earlier version/i);
+    });
+
+    cy.findByLabelText("Close").click();
+
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .click();
 
     cy.log("Reported failing on v0.35.3");
     cy.get("@editor").should("be.visible").and("contain", ORIGINAL_QUERY);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("37.65");
+    tableInteractive().findByText("37.65");
 
     // Filter dropdown field
     filterWidget().contains("Filter");
@@ -730,7 +739,7 @@ describe("issue 17019", () => {
   });
 
   it("question filters should work for embedding/public sharing scenario (metabase#17019)", () => {
-    openPublicLinkPopoverFromMenu();
+    openSharingMenu(/public link/i);
 
     cy.findByTestId("public-link-popover-content")
       .findByTestId("public-link-input")

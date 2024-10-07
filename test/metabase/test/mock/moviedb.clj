@@ -70,7 +70,6 @@
               {:name      "value"
                :base-type :type/Text}}}})
 
-
 (driver/register! ::moviedb, :abstract? true)
 
 (defmethod driver/describe-database ::moviedb [_ {:keys [exclude-tables]}]

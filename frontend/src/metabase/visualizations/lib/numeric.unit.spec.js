@@ -1,8 +1,8 @@
 import {
-  precision,
+  computeChange,
   computeNumericDataInverval,
   isMultipleOf,
-  computeChange,
+  precision,
 } from "metabase/visualizations/lib/numeric";
 
 describe("visualization.lib.numeric", () => {

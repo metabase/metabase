@@ -50,7 +50,7 @@
       (is (some (fn [an-endpoint]
                     ;; this is just a random EE endpoint namespace; if it gets moved or removed just pick a different
                     ;; namespace here I guess
-                    (when (= (the-ns 'metabase-enterprise.advanced-permissions.api.application)
-                             (:ns an-endpoint))
-                      an-endpoint))
+                  (when (= (the-ns 'metabase-enterprise.advanced-permissions.api.application)
+                           (:ns an-endpoint))
+                    an-endpoint))
                 (#'endpoint-dox/collect-endpoints))))))

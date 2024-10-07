@@ -19,4 +19,4 @@
   (derive ::mi/write-policy.superuser))
 
 (t2/deftransforms :model/LegacyMetricImportantField
- {:definition mi/transform-json})
+  {:definition mi/transform-json})

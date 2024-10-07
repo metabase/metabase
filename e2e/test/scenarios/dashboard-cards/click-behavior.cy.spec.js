@@ -6,30 +6,32 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
+  cartesianChartCircle,
   chartPathWithFillColor,
   createDashboardWithTabs,
   dashboardHeader,
   editDashboard,
+  entityPickerModal,
+  filterWidget,
   getActionCardDetails,
   getDashboardCard,
   getHeadingCardDetails,
   getLinkCardDetails,
   getTextCardDetails,
-  cartesianChartCircle,
   modal,
+  multiAutocompleteInput,
   openStaticEmbeddingModal,
   popover,
+  queryBuilderHeader,
+  removeMultiAutocompleteValue,
   restore,
   saveDashboard,
   setTokenFeatures,
   updateDashboardCards,
+  updateSetting,
   visitDashboard,
   visitEmbeddedPage,
   visitIframe,
-  entityPickerModal,
-  filterWidget,
-  queryBuilderHeader,
-  removeMultiAutocompleteValue,
 } from "e2e/support/helpers";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import {
@@ -131,6 +133,15 @@ const DASHBOARD_FILTER_NUMBER = createMockActionParameter({
   slug: "filter-number",
   type: "number/>=",
   sectionId: "number",
+});
+
+const DASHBOARD_FILTER_TEXT_WITH_DEFAULT = createMockActionParameter({
+  id: "4",
+  name: "Text filter with default",
+  slug: "filter-with-default",
+  type: "string/=",
+  sectionId: "string",
+  default: "Hello",
 });
 
 const QUERY_FILTER_CREATED_AT = [
@@ -632,6 +643,171 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
           expect(search).to.equal(`?tab=${TAB_SLUG_MAP[FIRST_TAB.name]}`);
+        });
+      });
+    });
+
+    it("sets non-specified parameters to default values when accessed from a click action", () => {
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          parameters: [
+            DASHBOARD_FILTER_TEXT,
+            DASHBOARD_FILTER_TEXT_WITH_DEFAULT,
+          ],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      )
+        .then(dashboardId => {
+          return cy
+            .request("PUT", `/api/dashboard/${dashboardId}`, {
+              dashcards: [
+                createMockDashboardCard({
+                  card_id: ORDERS_QUESTION_ID,
+                  parameter_mappings: [
+                    createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+                    createTextFilterWithDefaultMapping({
+                      card_id: ORDERS_QUESTION_ID,
+                    }),
+                  ],
+                }),
+              ],
+            })
+            .then(() => dashboardId);
+        })
+        .then(dashboardId => {
+          visitDashboard(dashboardId);
+        });
+
+      filterWidget().contains("Hello").click();
+      popover().within(() => {
+        multiAutocompleteInput().type("{backspace}World{enter}");
+        cy.button("Update filter").click();
+      });
+
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        },
+      );
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+      addDashboardDestination();
+      cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
+      cy.get("aside").findByText("No available targets").should("not.exist");
+      addTextParameter();
+      cy.get("aside").button("Done").click();
+
+      saveDashboard({ waitMs: 250 });
+
+      clickLineChartPoint();
+
+      cy.findAllByTestId("field-set")
+        .contains(DASHBOARD_FILTER_TEXT.name)
+        .parent()
+        .should("contain.text", POINT_COUNT);
+      cy.findAllByTestId("field-set")
+        .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
+        .parent()
+        .should("contain.text", DASHBOARD_FILTER_TEXT_WITH_DEFAULT.default);
+
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          expect(search).to.equal(
+            `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TEXT_WITH_DEFAULT.slug}=Hello`,
+          );
+        });
+      });
+    });
+
+    it("sets parameters with default values to the correct value when accessed via click action", () => {
+      cy.createDashboard(
+        {
+          ...TARGET_DASHBOARD,
+          parameters: [
+            DASHBOARD_FILTER_TEXT,
+            DASHBOARD_FILTER_TEXT_WITH_DEFAULT,
+          ],
+        },
+        {
+          wrapId: true,
+          idAlias: "targetDashboardId",
+        },
+      )
+        .then(dashboardId => {
+          return cy
+            .request("PUT", `/api/dashboard/${dashboardId}`, {
+              dashcards: [
+                createMockDashboardCard({
+                  card_id: ORDERS_QUESTION_ID,
+                  parameter_mappings: [
+                    createTextFilterMapping({ card_id: ORDERS_QUESTION_ID }),
+                    createTextFilterWithDefaultMapping({
+                      card_id: ORDERS_QUESTION_ID,
+                    }),
+                  ],
+                }),
+              ],
+            })
+            .then(() => dashboardId);
+        })
+        .then(dashboardId => {
+          visitDashboard(dashboardId);
+        });
+
+      cy.findAllByTestId("field-set")
+        .contains(DASHBOARD_FILTER_TEXT.name)
+        .parent()
+        .click();
+      popover().within(() => {
+        multiAutocompleteInput().type("John Doe{enter}");
+        cy.button("Add filter").click();
+      });
+
+      cy.findAllByTestId("field-set")
+        .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
+        .parent()
+        .click();
+      popover().within(() => {
+        multiAutocompleteInput().type("{backspace}World{enter}");
+        cy.button("Update filter").click();
+      });
+
+      cy.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: card }) => {
+          visitDashboard(card.dashboard_id);
+        },
+      );
+
+      editDashboard();
+
+      getDashboardCard().realHover().icon("click").click();
+      addDashboardDestination();
+      cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
+      cy.get("aside").findByText("No available targets").should("not.exist");
+      addTextWithDefaultParameter();
+      cy.get("aside").button("Done").click();
+
+      saveDashboard({ waitMs: 250 });
+
+      clickLineChartPoint();
+      cy.findAllByTestId("field-set")
+        .contains(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name)
+        .parent()
+        .should("contain.text", POINT_COUNT);
+
+      cy.get("@targetDashboardId").then(targetDashboardId => {
+        cy.location().should(({ pathname, search }) => {
+          expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          expect(search).to.equal(
+            `?${DASHBOARD_FILTER_TEXT.slug}=&${DASHBOARD_FILTER_TEXT_WITH_DEFAULT.slug}=${POINT_COUNT}`,
+          );
         });
       });
     });
@@ -1632,9 +1808,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     it("allows opening custom URL destination that is not a Metabase instance URL using link (metabase#33379)", () => {
-      cy.request("PUT", "/api/setting/site-url", {
-        value: "https://localhost:4000/subpath",
-      });
+      updateSetting("site-url", "https://localhost:4000/subpath");
       const dashboardDetails = {
         enable_embedding: true,
       };
@@ -2280,6 +2454,14 @@ const addTextParameter = () => {
   });
 };
 
+const addTextWithDefaultParameter = () => {
+  cy.get("aside").findByText(DASHBOARD_FILTER_TEXT_WITH_DEFAULT.name).click();
+  popover().within(() => {
+    cy.findByText(CREATED_AT_COLUMN_NAME).should("exist");
+    cy.findByText(COUNT_COLUMN_NAME).should("exist").click();
+  });
+};
+
 const addTimeParameter = () => {
   cy.get("aside").findByText(DASHBOARD_FILTER_TIME.name).click();
   popover().within(() => {
@@ -2309,6 +2491,23 @@ const createTextFilterMapping = ({ card_id }) => {
   return {
     card_id,
     parameter_id: DASHBOARD_FILTER_TEXT.id,
+    target: ["dimension", fieldRef],
+  };
+};
+
+const createTextFilterWithDefaultMapping = ({ card_id }) => {
+  const fieldRef = [
+    "field",
+    PEOPLE.NAME,
+    {
+      "base-type": "type/Text",
+      "source-field": ORDERS.USER_ID,
+    },
+  ];
+
+  return {
+    card_id,
+    parameter_id: DASHBOARD_FILTER_TEXT_WITH_DEFAULT.id,
     target: ["dimension", fieldRef],
   };
 };

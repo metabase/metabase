@@ -1,10 +1,11 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
   changeBinningForDimension,
-  visualize,
+  popover,
+  restore,
   summarize,
   visitQuestion,
+  visualize,
 } from "e2e/support/helpers";
 
 /**
@@ -85,8 +86,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
       // Click "Order" accordion to collapse it and expose the other tables
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Order").click();
+      popover().findByText("Orders").click();
     });
 
     it("should work for time series", () => {

@@ -1,13 +1,13 @@
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  Dashboard,
   ClickBehavior,
+  Dashboard,
   DashboardCard,
 } from "metabase-types/api";
 
 import {
-  SidebarContentBordered,
   SelectedClickBehaviorItemIcon,
+  SidebarContentBordered,
 } from "../ClickBehaviorSidebar.styled";
 import { CrossfilterOptions } from "../CrossfilterOptions";
 import { LinkOptions } from "../LinkOptions/LinkOptions";

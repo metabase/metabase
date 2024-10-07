@@ -4,8 +4,8 @@ import GoogleAuthCard from "metabase/admin/settings/auth/containers/GoogleAuthCa
 import GoogleSettingsForm from "metabase/admin/settings/auth/containers/GoogleAuthForm";
 import MetabaseSettings from "metabase/lib/settings";
 import {
-  PLUGIN_AUTH_PROVIDERS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_AUTH_PROVIDERS,
   PLUGIN_IS_PASSWORD_USER,
 } from "metabase/plugins";
 

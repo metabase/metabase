@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { EmptyBanner, ColoredIcon } from "./EmptyPinnedItemsBanner.styled";
+import { ColoredIcon, EmptyBanner } from "./EmptyPinnedItemsBanner.styled";
 
 function EmptyPinnedItemsBanner() {
   return (

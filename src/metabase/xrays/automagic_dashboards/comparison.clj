@@ -28,10 +28,10 @@
        :dashcards
        (map (fn [{:keys [size_y card col row series] :as dashcard}]
               (assoc card
-                :text     (-> dashcard :visualization_settings :text)
-                :series   series
-                :height   size_y
-                :position (+ (* row populate/grid-width) col))))
+                     :text     (-> dashcard :visualization_settings :text)
+                     :series   series
+                     :height   size_y
+                     :position (+ (* row populate/grid-width) col))))
        (sort-by :position)))
 
 (defn- clone-card
@@ -122,13 +122,13 @@
                                               :visualization_settings {}}))
               (update :dashcards conj (merge (populate/card-defaults)
                                              {:col                    width
-                                               :row                    row
-                                               :size_x                 width
-                                               :size_y                 height
-                                               :card                   card-right
-                                               :card_id                (:id card-right)
-                                               :series                 series-right
-                                               :visualization_settings {}}))))))
+                                              :row                    row
+                                              :size_x                 width
+                                              :size_y                 height
+                                              :card                   card-right
+                                              :card_id                (:id card-right)
+                                              :series                 series-right
+                                              :visualization_settings {}}))))))
 
     (populate/add-text-card dashboard {:text                   (:text card)
                                        :width                  (/ populate/grid-width 2)
@@ -219,9 +219,9 @@
                            :title       (tru "Compare with entire dataset")
                            :description ""}])))
       (as-> related
-          (if (-> related :compare empty?)
-            (dissoc related :compare)
-            related))))
+            (if (-> related :compare empty?)
+              (dissoc related :compare)
+              related))))
 
 (defn- part-vs-whole-comparison?
   [left right]

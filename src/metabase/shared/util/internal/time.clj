@@ -70,15 +70,15 @@
 (defn- apply-offset
   [value offset-n offset-unit]
   (t/plus
-    value
-    (case offset-unit
-      :minute (t/minutes offset-n)
-      :hour (t/hours offset-n)
-      :day (t/days offset-n)
-      :week (t/weeks offset-n)
-      :month (t/months offset-n)
-      :year (t/years offset-n)
-      (t/minutes 0))))
+   value
+   (case offset-unit
+     :minute (t/minutes offset-n)
+     :hour (t/hours offset-n)
+     :day (t/days offset-n)
+     :week (t/weeks offset-n)
+     :month (t/months offset-n)
+     :year (t/years offset-n)
+     (t/minutes 0))))
 
 (defmethod common/to-range :default [value _]
   ;; Fallback: Just return a zero-width at the input time.
@@ -252,7 +252,7 @@
       (let [diff-months (- (u.date/extract after :month-of-year)
                            (u.date/extract before :month-of-year))
             diff-years  (- (u.date/extract after :year)
-                          (u.date/extract before :year))]
+                           (u.date/extract before :year))]
         (+ diff-months (* diff-years 12)))
 
       :quarter
@@ -307,17 +307,17 @@
                date-time? (coerce-local-date-time input))]
        (if t
          (or
-           (format-extraction-unit t unit locale)
-           (cond
-             time? (t/format "h:mm a" t)
-             date? (t/format "MMM d, yyyy" t)
-             :else (t/format "MMM d, yyyy, h:mm a" t)))
+          (format-extraction-unit t unit locale)
+          (cond
+            time? (t/format "h:mm a" t)
+            date? (t/format "MMM d, yyyy" t)
+            :else (t/format "MMM d, yyyy, h:mm a" t)))
          input))
      (if (= unit :hour-of-day)
        (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
        (or
-         (format-extraction-unit (common/number->timestamp input {:unit unit}) unit locale)
-         (str input))))))
+        (format-extraction-unit (common/number->timestamp input {:unit unit}) unit locale)
+        (str input))))))
 
 (defn format-diff
   "Formats a time difference between two temporal values.

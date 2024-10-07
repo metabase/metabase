@@ -3,8 +3,8 @@ import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
-  ModelUploadModal,
   type CollectionOrTableIdProps,
+  ModelUploadModal,
 } from "metabase/collections/components/ModelUploadModal";
 import type { OnFileUpload } from "metabase/collections/types";
 import { UploadInput, UploadTooltip } from "metabase/components/upload";

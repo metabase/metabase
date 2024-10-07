@@ -6,8 +6,8 @@ import { PLUGIN_CACHING } from "metabase/plugins";
 import { CacheConfigApi } from "metabase/services";
 import type {
   CacheConfig,
-  CacheableModel,
   CacheStrategy,
+  CacheableModel,
 } from "metabase-types/api";
 
 import { rootId } from "../constants/simple";
@@ -22,11 +22,11 @@ export const useSaveStrategy = (
   targetId: number | null,
   configs: CacheConfig[],
   setConfigs: Dispatch<SetStateAction<CacheConfig[]>>,
-  model: CacheableModel,
+  model: CacheableModel | null,
 ) => {
   const saveStrategy = useCallback(
     async (values: CacheStrategy) => {
-      if (targetId === null) {
+      if (targetId === null || model === null) {
         return;
       }
       const { strategies } = PLUGIN_CACHING;

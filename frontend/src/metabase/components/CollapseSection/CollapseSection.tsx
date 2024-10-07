@@ -1,8 +1,8 @@
 import {
-  useCallback,
-  useState,
   type HTMLAttributes,
   type KeyboardEvent,
+  useCallback,
+  useState,
 } from "react";
 
 import { Header, HeaderContainer, ToggleIcon } from "./CollapseSection.styled";

@@ -199,7 +199,6 @@
   [task-info :- TaskInfo]
   (format "%s for all databases" (name (:key task-info))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            DELETING TASKS FOR A DB                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -210,7 +209,7 @@
    task-info :- TaskInfo]
   (let [trigger-key (trigger-key database task-info)]
     (log/debug (u/format-color 'red
-                   (format "Unscheduling task for Database %d: trigger: %s" (u/the-id database) (.getName trigger-key))))
+                               (format "Unscheduling task for Database %d: trigger: %s" (u/the-id database) (.getName trigger-key))))
     (task/delete-trigger! trigger-key)))
 
 (mu/defn unschedule-tasks-for-db!
@@ -248,13 +247,13 @@
      (triggers/for-job (job-key task-info))
      (triggers/start-now)
      (triggers/with-schedule
-       (cron/schedule
-        (cron/cron-schedule task-schedule)
+      (cron/schedule
+       (cron/cron-schedule task-schedule)
         ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
         ;; Just wait until the next sync cycle.
         ;;
         ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
-        (cron/with-misfire-handling-instruction-do-nothing))))))
+       (cron/with-misfire-handling-instruction-do-nothing))))))
 
 (defn- update-db-trigger-if-needed!
   "Replace or remove the existing trigger if the schedule changes, do nothing if schedule is the same."
@@ -272,31 +271,31 @@
     (cond
      ;; no new schedule
      ;; delete the existing trigger
-     (nil? new-trigger)
-     (do
-      (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed. It will no longer run on a schedule."
-                 (:name task-info)
-                 (:name database))
-      (delete-trigger! database task-info))
+      (nil? new-trigger)
+      (do
+        (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed. It will no longer run on a schedule."
+                   (:name task-info)
+                   (:name database))
+        (delete-trigger! database task-info))
 
      ;; need to recreate the new trigger
-     (and (some? new-trigger)
-          (nil? existing-trigger-with-same-schedule))
-     (do
-      (if (delete-trigger! database task-info)
-        (log/infof "Trigger for \"%s\" of Database \"%s\" has been updated. The new schedule is: \"%s\""
-                   (:name task-info)
-                   (:name database)
-                   (cron-schedule database task-info))
-        (log/infof "A trigger for \"%s\" of Database \"%s\" has been enabled with schedule: \"%s\""
-                   (:name task-info)
-                   (:name database)
-                   (cron-schedule database task-info)))
-      (task/add-trigger! new-trigger))
+      (and (some? new-trigger)
+           (nil? existing-trigger-with-same-schedule))
+      (do
+        (if (delete-trigger! database task-info)
+          (log/infof "Trigger for \"%s\" of Database \"%s\" has been updated. The new schedule is: \"%s\""
+                     (:name task-info)
+                     (:name database)
+                     (cron-schedule database task-info))
+          (log/infof "A trigger for \"%s\" of Database \"%s\" has been enabled with schedule: \"%s\""
+                     (:name task-info)
+                     (:name database)
+                     (cron-schedule database task-info)))
+        (task/add-trigger! new-trigger))
 
      ;; don't need to do anything as the existing trigger matches the new schedule
-     :else
-     nil)))
+      :else
+      nil)))
 
 ;; called [[from metabase.models.database/schedule-tasks!]] from the post-insert and the pre-update
 (mu/defn check-and-schedule-tasks-for-db!

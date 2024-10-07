@@ -1,54 +1,56 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
-  ORDERS_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_BY_YEAR_QUESTION_ID,
   ADMIN_PERSONAL_COLLECTION_ID,
   NORMAL_PERSONAL_COLLECTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  saveDashboard,
-  openQuestionsSidebar,
-  undo,
-  dashboardCards,
-  sidebar,
-  visitDashboardAndCreateTab,
-  describeWithSnowplow,
-  resetSnowplow,
-  expectNoBadSnowplowEvents,
-  visitDashboard,
-  editDashboard,
+  addHeadingWhileEditing,
+  addLinkWhileEditing,
+  changeSynchronousBatchUpdateSetting,
+  createDashboardWithTabs,
   createNewTab,
-  expectGoodSnowplowEvents,
-  enableTracking,
+  dashboardCards,
+  dashboardGrid,
   deleteTab,
-  visitCollection,
-  main,
+  describeWithSnowplow,
+  duplicateTab,
+  editDashboard,
+  enableTracking,
+  expectGoodSnowplowEvent,
+  expectGoodSnowplowEvents,
+  expectNoBadSnowplowEvents,
+  filterWidget,
   getDashboardCard,
   getDashboardCards,
-  getTextCardDetails,
   getHeadingCardDetails,
   getLinkCardDetails,
-  updateDashboardCards,
+  getTextCardDetails,
   goToTab,
-  moveDashCardToTab,
-  addLinkWhileEditing,
-  expectGoodSnowplowEvent,
-  selectDashboardFilter,
-  filterWidget,
-  popover,
-  createDashboardWithTabs,
-  dashboardGrid,
+  main,
   modal,
-  addHeadingWhileEditing,
-  setFilter,
+  moveDashCardToTab,
+  openQuestionsSidebar,
   openStaticEmbeddingModal,
+  popover,
   publishChanges,
+  resetSnowplow,
+  restore,
+  saveDashboard,
+  selectDashboardFilter,
+  setFilter,
+  sidebar,
+  undo,
+  updateDashboardCards,
+  updateSetting,
+  visitCollection,
+  visitDashboard,
+  visitDashboardAndCreateTab,
   visitIframe,
-  duplicateTab,
 } from "e2e/support/helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
@@ -90,12 +92,6 @@ const TAB_1 = {
 const TAB_2 = {
   id: 2,
   name: "Tab 2",
-};
-
-const changeSynchronousBatchUpdateSetting = value => {
-  cy.request("PUT", "/api/setting/synchronous-batch-updates", {
-    value: value,
-  });
 };
 
 describe("scenarios > dashboard > tabs", () => {
@@ -515,7 +511,7 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Go to public dashboard
-    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    updateSetting("enable-public-sharing", true);
     cy.request(
       "POST",
       `/api/dashboard/${ORDERS_DASHBOARD_ID}/public_link`,
@@ -683,7 +679,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findByText("Orders, Count").click();
     });
 
-    setFilter("Time", "Relative Date");
+    setFilter("Date picker", "Relative Date");
 
     selectDashboardFilter(getDashboardCard(0), "Created At");
     saveDashboard();

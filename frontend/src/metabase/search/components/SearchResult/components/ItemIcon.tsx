@@ -1,6 +1,6 @@
 import type { WrappedResult } from "metabase/search/types";
 import { Icon } from "metabase/ui";
-import type { SearchModel, RecentItem } from "metabase-types/api";
+import type { RecentItem, SearchModel } from "metabase-types/api";
 
 import { CollectionIcon } from "./CollectionIcon";
 import { DefaultIcon } from "./DefaultIcon";

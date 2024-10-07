@@ -1,18 +1,18 @@
 import type { Location } from "history";
 import { useState } from "react";
 import { useAsync } from "react-use";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { NotFound } from "metabase/components/ErrorPages";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import LogoIcon from "metabase/components/LogoIcon";
 import {
-  StyledMetabotLogo,
+  CheckmarkIcon,
   LayoutBody,
   LayoutCard,
   LayoutIllustration,
   LayoutRoot,
-  CheckmarkIcon,
+  StyledMetabotLogo,
 } from "metabase/containers/Unsubscribe.styled";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -32,7 +32,7 @@ const SUBSCRIPTION = {
   RESUBSCRIBE: "resubscribe",
 } as const;
 
-type Subscription = typeof SUBSCRIPTION[keyof typeof SUBSCRIPTION];
+type Subscription = (typeof SUBSCRIPTION)[keyof typeof SUBSCRIPTION];
 
 export const UnsubscribePage = ({
   location,

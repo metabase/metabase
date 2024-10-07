@@ -74,7 +74,6 @@
     (or (when-not (str/blank? env-val) env-val)
         (k app-defaults))))
 
-
 ;; These are convenience functions for accessing config values that ensures a specific return type
 ;;
 ;; TODO - These names are bad. They should be something like `int`, `boolean`, and `keyword`, respectively. See
@@ -125,11 +124,24 @@
    Looks something like `Metabase v0.25.0.RC1`."
   (str "Metabase " (mb-version-info :tag)))
 
+(defn major-version
+  "Detect major version from a version string.
+  ex: (major-version \"v1.50.25\") -> 50"
+  [version-string]
+  (some-> (second (re-find #"\d+\.(\d+)" version-string))
+          parse-long))
+
 (defn current-major-version
   "Returns the major version of the running Metabase JAR.
   When the version.properties file is missing (e.g., running in local dev), returns nil."
   []
-  (some-> (second (re-find #"\d+\.(\d+)" (:tag mb-version-info)))
+  (major-version (:tag mb-version-info)))
+
+(defn current-minor-version
+  "Returns the minor version of the running Metabase JAR.
+  When the version.properties file is missing (e.g., running in local dev), returns nil."
+  []
+  (some-> (second (re-find #"\d+\.\d+\.(\d+)" (:tag mb-version-info)))
           parse-long))
 
 (defonce ^{:doc "This UUID is randomly-generated upon launch and used to identify this specific Metabase instance during
@@ -152,7 +164,7 @@
 (def ^:const internal-mb-user-id
   "The user-id of the internal metabase user.
    This is needed in the OSS edition to filter out users for setup/has-user-setup."
-   13371338)
+  13371338)
 
 (def ^:dynamic *disable-setting-cache*
   "Whether to disable database cache. Here for loading circularity reasons."

@@ -144,8 +144,8 @@
 ;; TODO - more tests!
 (deftest ^:parallel format-test
   (are
-    [expected input]
-    (= expected (u.date/format input))
+   [expected input]
+   (= expected (u.date/format input))
     "2019-06-05T18:39:00-07:00" (t/zoned-date-time "2019-06-05T18:39:00-07:00[US/Pacific]")
     "2019-11-05T18:39:00-08:00" (t/zoned-date-time "2019-11-05T18:39:00-08:00[US/Pacific]")
     "2019-06-05T18:39:00-07:00" (t/offset-date-time "2019-06-05T18:39:00-07:00")
@@ -159,8 +159,8 @@
 
 (deftest ^:parallel format-rfc3339-test
   (are
-    [expected input]
-    (= expected (u.date/format-rfc3339 input))
+   [expected input]
+   (= expected (u.date/format-rfc3339 input))
     "2019-06-05T18:39:00.00-07:00" (t/zoned-date-time "2019-06-05T18:39:00-07:00[US/Pacific]")
     "2019-11-05T18:39:00.00-08:00" (t/zoned-date-time "2019-11-05T18:39:00-08:00[US/Pacific]")
     "2019-06-05T18:39:00.00-07:00" (t/offset-date-time "2019-06-05T18:39:00-07:00")

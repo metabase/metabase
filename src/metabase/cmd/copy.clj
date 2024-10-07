@@ -46,7 +46,8 @@
   "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load
   instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
   (concat
-   [:model/Database
+   [:model/Channel
+    :model/Database
     :model/User
     :model/Setting
     :model/Table
@@ -364,7 +365,6 @@
             (throw (ex-info (format "Error updating sequence values for %s: %s" model (ex-message e))
                             {:model model}
                             e))))))))
-
 
 (defmethod update-sequence-values! :h2
   [_db-type data-source]

@@ -1,8 +1,8 @@
 import {
-  ORDERS_COUNT_QUESTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { visitDashboard, updateDashboardCards } from "e2e/support/helpers";
+import { updateDashboardCards, visitDashboard } from "e2e/support/helpers";
 
 const cards = [
   {

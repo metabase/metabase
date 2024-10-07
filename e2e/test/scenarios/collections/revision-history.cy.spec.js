@@ -1,19 +1,19 @@
 import { onlyOn } from "@cypress/skip-test";
 
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  visitDashboard,
-  saveDashboard,
-  visitQuestion,
-  questionInfoButton,
-  rightSidebar,
-  openQuestionsSidebar,
   editDashboard,
+  openQuestionsSidebar,
+  questionInfoButton,
+  restore,
+  saveDashboard,
   sidebar,
+  sidesheet,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -94,7 +94,8 @@ describe("revision history", () => {
               cy.wait(100);
 
               openRevisionHistory();
-              rightSidebar().within(() => {
+              sidesheet().within(() => {
+                cy.findByRole("tab", { name: "History" }).click();
                 cy.findByText(/added a card/)
                   .siblings("button")
                   .should("not.exist");
@@ -137,6 +138,7 @@ describe("revision history", () => {
               visitQuestion(ORDERS_QUESTION_ID);
 
               cy.findByTestId("revision-history-button").click();
+              cy.findByRole("tab", { name: "History" }).click();
 
               cy.findByTestId("question-revert-button").click();
 
@@ -155,8 +157,8 @@ describe("revision history", () => {
               visitQuestion(ORDERS_QUESTION_ID);
 
               questionInfoButton().click();
-              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-              cy.findByText("History").click();
+              cy.findByRole("tab", { name: "History" }).click();
+
               // Last revert is the original state
               cy.findAllByTestId("question-revert-button").last().click();
 
@@ -205,9 +207,10 @@ function openRevisionHistory() {
   cy.get("main header").within(() => {
     cy.icon("info").click();
   });
+  cy.findByRole("tab", { name: "History" }).click();
   cy.wait("@revisionHistory");
 
-  rightSidebar().within(() => {
+  sidesheet().within(() => {
     cy.findByText("History");
     cy.findByTestId("dashboard-history-list").should("be.visible");
   });

@@ -271,10 +271,10 @@ Here is an example `docker-compose.yml` file to start a Metabase Docker containe
 
 In addition to this example yml file, you'll need to create two files:
 
-- db_user.txt
-- db_password.txt
+- `db_user.txt`
+- `db_password.txt`
 
-These files should be in the same directory as the `docker-compose.yml`. Put the db_user in the db_user.txt file, and db_password in the db_password.txt file.
+These files should be in the same directory as the `docker-compose.yml`. Put the `db_user` in the `db_user.txt` file, and db_password in the `db_password.txt` file.
 
 Notice the "\_FILE" on the environment variables that have a secret:
 
@@ -331,13 +331,13 @@ secrets:
 
 We currently support the following [environment variables](../configuring-metabase/environment-variables.md) to be used as secrets:
 
-- MB_DB_USER
-- MB_DB_PASS
-- MB_DB_CONNECTION_URI
-- MB_EMAIL_SMTP_PASSWORD
-- MB_EMAIL_SMTP_USERNAME
-- MB_LDAP_PASSWORD
-- MB_LDAP_BIND_DN
+- `MB_DB_USER`
+- `MB_DB_PASS`
+- `MB_DB_CONNECTION_URI`
+- `MB_EMAIL_SMTP_PASSWORD`
+- `MB_EMAIL_SMTP_USERNAME`
+- `MB_LDAP_PASSWORD`
+- `MB_LDAP_BIND_DN`
 
 In order for the Metabase container to read the files and use the contents as a secret, the environment variable name needs to be appended with a "\_FILE" as explained above.
 

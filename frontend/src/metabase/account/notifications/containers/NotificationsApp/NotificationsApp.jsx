@@ -4,9 +4,9 @@ import _ from "underscore";
 import Alerts from "metabase/entities/alerts";
 import Pulses from "metabase/entities/pulses";
 import {
+  canManageSubscriptions,
   getUser,
   getUserId,
-  canManageSubscriptions,
 } from "metabase/selectors/user";
 
 import {

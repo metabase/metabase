@@ -1,2 +1,2 @@
+export * from "./ClientSortableTable";
 export * from "./Table";
-export * from "./Table.styled";

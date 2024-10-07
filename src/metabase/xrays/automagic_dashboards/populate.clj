@@ -31,20 +31,20 @@
   "Create and return a new collection."
   [title description parent-collection-id]
   (first (t2/insert-returning-instances!
-           'Collection
-           (merge
-             {:name        title
-              :description description}
-             (when parent-collection-id
-               {:location (collection/children-location (t2/select-one ['Collection :location :id]
-                                                                       :id parent-collection-id))})))))
+          'Collection
+          (merge
+           {:name        title
+            :description description}
+           (when parent-collection-id
+             {:location (collection/children-location (t2/select-one ['Collection :location :id]
+                                                                     :id parent-collection-id))})))))
 
 (defn get-or-create-root-container-collection
   "Get or create container collection for automagic dashboards in the root collection."
   []
   (or (t2/select-one 'Collection
-        :name     "Automatically Generated Dashboards"
-        :location "/")
+                     :name     "Automatically Generated Dashboards"
+                     :location "/")
       (create-collection! "Automatically Generated Dashboards" nil nil)))
 
 (defn colors
@@ -116,8 +116,8 @@
   (let [{:keys [aggregation]} metric-definition
         [display visualization-settings] visualization
         viz-dims (mapv
-                   (comp :name dimension-name->field ffirst)
-                   dimensions)]
+                  (comp :name dimension-name->field ffirst)
+                  dimensions)]
     {:display                display
      :visualization_settings (-> visualization-settings
                                  (assoc :graph.series_labels (map :name metrics)
@@ -125,12 +125,11 @@
                                         :graph.dimensions (seq viz-dims))
                                  (merge (colorize card))
                                  (cond->
-                                   series_labels (assoc :graph.series_labels series_labels)
+                                  series_labels (assoc :graph.series_labels series_labels)
 
-                                   x_label (assoc :graph.x_axis.title_text x_label)
+                                  x_label (assoc :graph.x_axis.title_text x_label)
 
-                                   y_label (assoc :graph.y_axis.title_text y_label)))}))
-
+                                  y_label (assoc :graph.y_axis.title_text y_label)))}))
 
 (defn card-defaults
   "Default properties for a dashcard on magic dashboard."
@@ -152,13 +151,13 @@
                  card/populate-query-fields)]
     (update dashboard :dashcards conj
             (merge (card-defaults)
-             {:col                    y
-              :row                    x
-              :size_x                 width
-              :size_y                 height
-              :card                   card
-              :card_id                (:id card)
-              :visualization_settings {}}))))
+                   {:col                    y
+                    :row                    x
+                    :size_x                 width
+                    :size_y                 height
+                    :card                   card
+                    :card_id                (:id card)
+                    :visualization_settings {}}))))
 
 (defn add-text-card
   "Add a text card to dashboard `dashboard` at position [`x`, `y`]."
@@ -167,12 +166,12 @@
           (merge (card-defaults)
                  {:creator_id             api/*current-user-id*
                   :visualization_settings (merge
-                                            {:text         text
-                                             :virtual_card {:name                   nil
-                                                            :display                :text
-                                                            :dataset_query          {}
-                                                            :visualization_settings {}}}
-                                            visualization-settings)
+                                           {:text         text
+                                            :virtual_card {:name                   nil
+                                                           :display                :text
+                                                           :dataset_query          {}
+                                                           :visualization_settings {}}}
+                                           visualization-settings)
                   :col                    y
                   :row                    x
                   :size_x                 width
@@ -355,12 +354,12 @@
              distinct
              count
              (= 1))
-   [(->> ds (mapcat :parameters) distinct)
-    (->> ds
-         (mapcat :dashcards)
-         (mapcat :parameter_mappings)
-         (map #(dissoc % :card_id))
-         distinct)]))
+    [(->> ds (mapcat :parameters) distinct)
+     (->> ds
+          (mapcat :dashcards)
+          (mapcat :parameter_mappings)
+          (map #(dissoc % :card_id))
+          distinct)]))
 
 (defn merge-dashboards
   "Merge dashboards `dashboard` into dashboard `target`."
@@ -382,13 +381,13 @@
                                                      (m/update-existing-in [:visualization_settings :text]
                                                                            downsize-titles)
                                                      (assoc :parameter_mappings
-                                                       (when-let [card-id (:card_id %)]
-                                                         (for [mapping parameter-mappings]
-                                                           (assoc mapping :card_id card-id)))))))]
+                                                            (when-let [card-id (:card_id %)]
+                                                              (for [mapping parameter-mappings]
+                                                                (assoc mapping :card_id card-id)))))))]
      (-> target
          (assoc :parameters parameters)
          (cond->
-           (not skip-titles?)
+          (not skip-titles?)
            (add-text-card {:width                  grid-width
                            :height                 group-heading-height
                            :text                   (format "# %s" (:name dashboard))

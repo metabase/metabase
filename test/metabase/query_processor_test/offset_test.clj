@@ -167,8 +167,9 @@
                   [#t "2018-01-01" 510043.47 1.48]   ; 248% growth!
                   [#t "2019-01-01" 577064.96 0.13]   ; 13% growth doesn't look like a hockey stick to me!
                   [#t "2020-01-01" 176095.93 -0.69]] ; sales down by 69%, oops!
-                 (mt/formatted-rows [->local-date 2.0 2.0]
-                                    (qp/process-query query)))))))))
+                 (mt/formatted-rows
+                  [->local-date 2.0 2.0]
+                  (qp/process-query query)))))))))
 
 (deftest ^:parallel offset-aggregation-two-breakouts-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)

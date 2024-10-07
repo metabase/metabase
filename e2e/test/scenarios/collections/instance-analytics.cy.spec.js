@@ -3,22 +3,22 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  setTokenFeatures,
-  popover,
   describeEE,
   modal,
+  newButton,
+  onlyOnEE,
+  onlyOnOSS,
+  popover,
+  restore,
+  setTokenFeatures,
+  sidebar,
+  tableHeaderClick,
   visitDashboard,
   visitModel,
   visitQuestion,
-  tableHeaderClick,
-  onlyOnOSS,
-  onlyOnEE,
-  newButton,
-  sidebar,
 } from "e2e/support/helpers";
 
-const ANALYTICS_COLLECTION_NAME = "Metabase analytics";
+const ANALYTICS_COLLECTION_NAME = "Usage analytics";
 const CUSTOM_REPORTS_COLLECTION_NAME = "Custom reports";
 const PEOPLE_MODEL_NAME = "People";
 const METRICS_DASHBOARD_NAME = "Metabase metrics";

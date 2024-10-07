@@ -1,10 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  visitQuestion,
-  visitDashboard,
   addOrUpdateDashboardCard,
+  popover,
+  restore,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;

@@ -166,7 +166,7 @@
         (let [new-email-settings (email-settings)]
           (is (nil? (mt/user-http-request :crowberto :delete 204 "email")))
           (is (= default-email-settings
-                new-email-settings))
+                 new-email-settings))
           (is (= {:email-smtp-host     nil
                   :email-smtp-port     nil
                   :email-smtp-security :none

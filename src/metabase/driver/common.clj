@@ -5,6 +5,7 @@
    [metabase.driver :as driver]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -127,8 +128,8 @@
    :default      true
    :display-name (deferred-tru "Rerun queries for simple explorations")
    :description  (deferred-tru
-                   (str "We execute the underlying query when you explore data using Summarize or Filter. "
-                        "This is on by default but you can turn it off if performance is slow."))
+                  (str "We execute the underlying query when you explore data using Summarize or Filter. "
+                       "This is on by default but you can turn it off if performance is slow."))
    :visible-if   {"advanced-options" true}})
 
 (def let-user-control-scheduling
@@ -145,8 +146,8 @@
   {:name "schedules.metadata_sync"
    :display-name (deferred-tru "Database syncing")
    :description  (deferred-tru
-                   (str "This is a lightweight process that checks for updates to this database’s schema. "
-                        "In most cases, you should be fine leaving this set to sync hourly."))
+                  (str "This is a lightweight process that checks for updates to this database’s schema. "
+                       "In most cases, you should be fine leaving this set to sync hourly."))
    :visible-if   {"let-user-control-scheduling" true}})
 
 (def cache-field-values-schedule
@@ -155,10 +156,10 @@
   {:name "schedules.cache_field_values"
    :display-name (deferred-tru "Scanning for Filter Values")
    :description  (deferred-tru
-                   (str "Metabase can scan the values present in each field in this database to enable checkbox "
-                        "filters in dashboards and questions. This can be a somewhat resource-intensive process, "
-                        "particularly if you have a very large database. When should Metabase automatically scan "
-                        "and cache field values?"))
+                  (str "Metabase can scan the values present in each field in this database to enable checkbox "
+                       "filters in dashboards and questions. This can be a somewhat resource-intensive process, "
+                       "particularly if you have a very large database. When should Metabase automatically scan "
+                       "and cache field values?"))
    :visible-if   {"let-user-control-scheduling" true}})
 
 (def json-unfolding
@@ -168,9 +169,9 @@
    :type         :boolean
    :visible-if   {"advanced-options" true}
    :description  (deferred-tru
-                   (str "This enables unfolding JSON columns into their component fields. "
-                        "Disable unfolding if performance is slow. If enabled, you can still disable unfolding for "
-                        "individual fields in their settings."))
+                  (str "This enables unfolding JSON columns into their component fields. "
+                       "Disable unfolding if performance is slow. If enabled, you can still disable unfolding for "
+                       "individual fields in their settings."))
    :default      true})
 
 (def refingerprint
@@ -179,8 +180,8 @@
    :type         :boolean
    :display-name (deferred-tru "Periodically refingerprint tables")
    :description  (deferred-tru
-                   (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
-                        "behavior, like improved auto-binning on your bar charts."))
+                  (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
+                       "behavior, like improved auto-binning on your bar charts."))
    :visible-if   {"advanced-options" true}})
 
 (def default-advanced-options
@@ -216,8 +217,8 @@
    :getter (fn []
              (when-let [ips (public-settings/cloud-gateway-ips)]
                (str (deferred-tru
-                      (str "If your database is behind a firewall, you may need to allow connections from our Metabase "
-                           "[Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"))
+                     (str "If your database is behind a firewall, you may need to allow connections from our Metabase "
+                          "[Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"))
                     "\n"
                     (str/join " - " ips))))})
 
@@ -229,7 +230,12 @@
 (def auth-provider-options
   "Options for using an auth provider instead of a literal password."
   [{:name "use-auth-provider"
-    :type :section
+    :type :checked-section
+    :check (fn []
+             (and
+               ;; Managed Identities only make sense if Metabase is in the same cloud as the DW
+              (not (premium-features/is-hosted?))
+              (premium-features/enable-database-auth-providers?)))
     :default false}
    {:name "auth-provider"
     :display-name (deferred-tru "Auth provider")
@@ -251,7 +257,6 @@
    {:name "oauth-token-headers"
     :display-name (deferred-tru "Auth token request headers (a JSON map)")
     :visible-if {"auth-provider" "oauth"}}])
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Class -> Base Type                                               |

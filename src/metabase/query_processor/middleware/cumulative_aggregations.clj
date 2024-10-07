@@ -70,7 +70,6 @@
       (cond-> query'
         (seq replaced-indexes) (assoc ::replaced-indexes replaced-indexes)))))
 
-
 ;;;; Post-processing
 
 (defn- partition-key

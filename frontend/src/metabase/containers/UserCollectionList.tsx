@@ -6,13 +6,13 @@ import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import {
-  ROOT_COLLECTION,
   PERSONAL_COLLECTIONS,
+  ROOT_COLLECTION,
 } from "metabase/entities/collections/constants";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-import { Icon, Box, Flex, Loader } from "metabase/ui";
+import { Box, Flex, Icon, Loader } from "metabase/ui";
 
 import {
   CardContent,

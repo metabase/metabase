@@ -11,7 +11,7 @@
 
   Batch processing can be disabled by setting the environment variable `MB_DISABLE_GROUPER_BATCH_PROCESSING=true`."
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [grouper.core :as grouper]
    [metabase.models.setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -22,8 +22,8 @@
 (set! *warn-on-reflection* true)
 
 (comment
- p/keep-me
- Grouper/keep-me)
+  p/keep-me
+  Grouper/keep-me)
 
 (defsetting synchronous-batch-updates
   (deferred-tru "Process batches updates synchronously. If true, all `submit!` calls will be processed immediately. Default is false.")

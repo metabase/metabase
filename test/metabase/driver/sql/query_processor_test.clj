@@ -277,14 +277,14 @@
 (defn- query-on-dataset-with-nils
   [query]
   (mt/rows
-    (qp/process-query
-     {:database (mt/id)
-      :type     :query
-      :query    (merge
-                 {:source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}
-                  :expressions  {"initial" [:regex-match-first [:field "A" {:base-type :type/Text}] "(\\w)"]}
-                  :order-by     [[:asc [:field "A" {:base-type :type/Text}]]]}
-                 query)})))
+   (qp/process-query
+    {:database (mt/id)
+     :type     :query
+     :query    (merge
+                {:source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}
+                 :expressions  {"initial" [:regex-match-first [:field "A" {:base-type :type/Text}] "(\\w)"]}
+                 :order-by     [[:asc [:field "A" {:base-type :type/Text}]]]}
+                query)})))
 
 (deftest ^:parallel correct-for-null-behaviour
   (testing (str "NULLs should be treated intuitively in filters (SQL has somewhat unintuitive semantics where NULLs "
@@ -1055,12 +1055,10 @@
       ;; String containing semicolon followed by double dash followed by THE _comment or semicolon or end of input_.
       ;; TODO: Enable when better sql parsing solution is found in the [[sql.qp/make-nestable-sql]]].
       ;; Tech debt issue: #39401
-      #_#_
-      "SELECT 'string with \n ; -- ending on the same line';"
-      "(SELECT 'string with \n ; -- ending on the same line')"
-      #_#_
-      "SELECT 'string with \n ; -- ending on the same line';\n-- comment"
-      "(SELECT 'string with \n ; -- ending on the same line')"
+      #_#_"SELECT 'string with \n ; -- ending on the same line';"
+        "(SELECT 'string with \n ; -- ending on the same line')"
+      #_#_"SELECT 'string with \n ; -- ending on the same line';\n-- comment"
+        "(SELECT 'string with \n ; -- ending on the same line')"
 
       ;; String containing just `--` without `;` works
       "SELECT 'string with \n -- ending on the same line';"

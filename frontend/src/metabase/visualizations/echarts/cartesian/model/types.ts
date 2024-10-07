@@ -2,10 +2,10 @@ import type { Dayjs } from "dayjs";
 import type { OptionAxisType } from "echarts/types/src/coord/axisCommonTypes";
 
 import type {
-  X_AXIS_DATA_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
-  POSITIVE_STACK_TOTAL_DATA_KEY,
   ORIGINAL_INDEX_DATA_KEY,
+  POSITIVE_STACK_TOTAL_DATA_KEY,
+  X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
   CardId,
@@ -41,6 +41,9 @@ export type BaseSeriesModel = {
   name: string;
   color: string;
   dataKey: DataKey;
+  visible: boolean;
+  column: DatasetColumn;
+  columnIndex: number;
 };
 
 export type RegularSeriesModel = BaseSeriesModel & {
@@ -53,9 +56,6 @@ export type RegularSeriesModel = BaseSeriesModel & {
 
   cardId?: number;
   tooltipName: string;
-
-  column: DatasetColumn;
-  columnIndex: number;
 };
 
 export type BreakoutSeriesModel = RegularSeriesModel & {

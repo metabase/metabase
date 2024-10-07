@@ -1,22 +1,22 @@
-import { WRITABLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  queryWritableDB,
-  popover,
-  describeWithSnowplow,
-  expectGoodSnowplowEvent,
-  expectNoBadSnowplowEvents,
-  resetSnowplow,
-  enableTracking,
-  setTokenFeatures,
-  modal,
-  enableUploads,
-  uploadFile,
+  FIXTURE_PATH,
   INVALID_CSV_FILES,
   VALID_CSV_FILES,
-  FIXTURE_PATH,
+  describeWithSnowplow,
+  enableTracking,
+  enableUploads,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
   headlessUpload,
+  modal,
+  popover,
+  queryWritableDB,
+  resetSnowplow,
+  restore,
+  setTokenFeatures,
+  uploadFile,
 } from "e2e/support/helpers";
 
 const { NOSQL_GROUP, ALL_USERS_GROUP } = USER_GROUPS;

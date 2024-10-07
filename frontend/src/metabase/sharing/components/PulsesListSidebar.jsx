@@ -3,7 +3,7 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import Label from "metabase/components/type/Label";

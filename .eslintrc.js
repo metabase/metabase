@@ -62,6 +62,13 @@ module.exports = {
         warnOnUnassignedImports: false,
       },
     ],
+    "sort-imports": [
+      "error",
+      {
+        // allows this rule to work with import/order
+        ignoreDeclarationSort: true,
+      },
+    ],
     "no-console": [2, { allow: ["warn", "error", "errorBuffer"] }],
     "react/no-is-mounted": 2,
     "react/prefer-es6-class": 2,
@@ -135,6 +142,7 @@ module.exports = {
     "plugin:import/warnings",
     "plugin:import/typescript",
     "plugin:depend/recommended",
+    "plugin:storybook/recommended"
   ],
   settings: {
     "import/internal-regex": "^metabase/|^metabase-lib/",

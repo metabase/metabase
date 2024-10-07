@@ -1,9 +1,9 @@
-import type { UniqueIdentifier, DragEndEvent } from "@dnd-kit/core";
+import type { DragEndEvent, UniqueIdentifier } from "@dnd-kit/core";
 import {
   DndContext,
-  useSensor,
-  PointerSensor,
   MouseSensor,
+  PointerSensor,
+  useSensor,
 } from "@dnd-kit/core";
 import {
   restrictToHorizontalAxis,
@@ -13,7 +13,7 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useCallback, useState, useRef, useLayoutEffect } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { usePreviousDistinct } from "react-use";
 
 import ExplicitSize from "metabase/components/ExplicitSize";

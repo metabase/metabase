@@ -8,5 +8,6 @@
          ~(macros.common/ignore-unused 'c2) 2
          ~(macros.common/ignore-unused 'c3) 3
          ~(macros.common/ignore-unused 'c4) 4
-         ~(macros.common/ignore-unused 'arch) 5]
+         ~(macros.common/ignore-unused 'archived) 5
+         ~(macros.common/ignore-unused 'invalid) 6]
      ~@body))

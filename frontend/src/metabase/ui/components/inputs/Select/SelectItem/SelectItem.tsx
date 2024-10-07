@@ -1,6 +1,6 @@
 import { type BoxProps, Group, type MantineSize, Text } from "@mantine/core";
 import cx from "classnames";
-import { forwardRef, type HTMLAttributes, type Ref } from "react";
+import { type HTMLAttributes, type Ref, forwardRef } from "react";
 
 import { Icon, type IconName } from "metabase/ui";
 

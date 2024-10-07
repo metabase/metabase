@@ -1,30 +1,30 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  cartesianChartCircleWithColors,
+  checkExpressionEditorHelperPopoverPosition,
   enterCustomColumnDetails,
-  restore,
-  openOrdersTable,
-  openProductsTable,
-  openReviewsTable,
-  openPeopleTable,
-  openNotebook,
-  popover,
-  visitQuestionAdhoc,
-  visualize,
-  summarize,
+  expressionEditorWidget,
   filter,
   filterField,
   filterFieldPopover,
+  getNotebookStep,
   join,
   joinTable,
-  setupBooleanQuery,
-  checkExpressionEditorHelperPopoverPosition,
-  getNotebookStep,
+  openNotebook,
+  openOrdersTable,
+  openPeopleTable,
+  openProductsTable,
+  openReviewsTable,
+  popover,
   queryBuilderMain,
+  restore,
   selectFilterOperator,
-  expressionEditorWidget,
-  cartesianChartCircleWithColors,
+  setupBooleanQuery,
+  summarize,
   tableHeaderClick,
+  visitQuestionAdhoc,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
@@ -44,7 +44,7 @@ describe("scenarios > question > filter", () => {
 
     filter({ mode: "notebook" });
     popover().within(() => {
-      cy.findByText("Product").click();
+      cy.findByText("Products").click();
       cy.findByText("Category").click();
       cy.findByDisplayValue("Is").click();
     });

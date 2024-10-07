@@ -171,17 +171,18 @@
     (do-with-streaming-rff
      export-format os
      (^:once fn* [rff]
-      (let [result (try
-                     (f rff)
-                     (catch Throwable e
-                       e))]
-        (assert (some? result) "QP unexpectedly returned nil.")
+       (let [result (try
+                      (binding [qp.pipeline/*canceled-chan* canceled-chan]
+                        (f rff))
+                      (catch Throwable e
+                        e))]
+         (assert (some? result) "QP unexpectedly returned nil.")
         ;; if you see this, it's because it's old code written before the changes in #35465... rework the code in
         ;; question to return a response directly instead of a core.async channel
-        (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
-        (when (or (instance? Throwable result)
-                  (= (:status result) :failed))
-          (streaming-response/write-error! os result)))))))
+         (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
+         (when (or (instance? Throwable result)
+                   (= (:status result) :failed))
+           (streaming-response/write-error! os result export-format)))))))
 
 (defmacro streaming-response
   "Return results of processing a query as a streaming response. This response implements the appropriate Ring/Compojure

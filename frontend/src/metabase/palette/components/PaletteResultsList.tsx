@@ -7,7 +7,7 @@
  * Original can be found at https://github.com/timc1/kbar/blob/846b2c1a89f6cbff1ce947b82d04cb96a5066fbb/src/KBarResults.tsx
  */
 
-import { useKBar, KBAR_LISTBOX, getListboxItemId } from "kbar";
+import { KBAR_LISTBOX, getListboxItemId, useKBar } from "kbar";
 import * as React from "react";
 
 import type { PaletteActionImpl } from "../types";
@@ -71,7 +71,15 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
         // having to calculate the current action to perform based
         // on the `activeIndex`, which we would have needed to add
         // as part of the dependencies array.
-        activeRef.current?.click();
+
+        //If we have a link for a child, then click that instead
+        const childAnchor = activeRef.current?.querySelector("a");
+
+        if (childAnchor) {
+          childAnchor.click();
+        } else {
+          activeRef.current?.click();
+        }
       }
     };
     window.addEventListener("keydown", handler, { capture: true });
@@ -86,7 +94,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
         block: "nearest",
       });
     } else {
-      parentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      parentRef.current?.scrollTo?.({ top: 0, behavior: "smooth" });
     }
   }, [activeIndex]);
 
@@ -112,7 +120,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
       if (item.command) {
         item.command.perform(item);
         query.toggle();
-      } else {
+      } else if (!item.extra?.href) {
         query.setSearch("");
         query.setCurrentRootAction(item.id);
       }

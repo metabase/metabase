@@ -1,33 +1,33 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_COUNT_QUESTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  popover,
-  restore,
-  visitDashboard,
-  editDashboard,
-  getDashboardCard,
-  selectDashboardFilter,
-  saveDashboard,
-  updateDashboardCards,
-  visitDashboardAndCreateTab,
-  goToTab,
   createNewTab,
+  dashboardHeader,
+  dashboardParametersContainer,
+  editDashboard,
+  entityPickerModal,
+  findDashCardAction,
+  getDashboardCard,
+  goToTab,
+  modal,
+  multiAutocompleteInput,
+  openQuestionActions,
+  popover,
+  removeDashboardCard,
+  restore,
+  saveDashboard,
+  selectDashboardFilter,
+  setFilter,
+  sidebar,
   undoToast,
   undoToastList,
-  setFilter,
+  updateDashboardCards,
+  visitDashboard,
+  visitDashboardAndCreateTab,
   visitQuestion,
-  modal,
-  dashboardParametersContainer,
-  openQuestionActions,
-  entityPickerModal,
-  multiAutocompleteInput,
-  findDashCardAction,
-  removeDashboardCard,
-  sidebar,
-  dashboardHeader,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, PRODUCTS_ID, REVIEWS_ID, ORDERS, PEOPLE, PRODUCTS } =
@@ -535,7 +535,7 @@ describe("dashboard filters auto-wiring", () => {
         .findByRole("button", { name: "Auto-connect" })
         .click();
 
-      getDashboardCard(0).findByText("Product.ID").should("exist");
+      getDashboardCard(0).findByText("Products.ID").should("exist");
       getDashboardCard(1).findByText("Product.ID").should("exist");
       getDashboardCard(2).findByText("Product.ID").should("exist");
 
@@ -585,7 +585,7 @@ describe("dashboard filters auto-wiring", () => {
 
       goToFilterMapping("ID");
 
-      getDashboardCard(0).findByText("Product.ID").should("exist");
+      getDashboardCard(0).findByText("Products.ID").should("exist");
       getDashboardCard(1).findByText("Product.ID").should("exist");
       getDashboardCard(2).findByText("Product.ID").should("exist");
 

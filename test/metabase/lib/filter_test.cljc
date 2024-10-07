@@ -273,7 +273,7 @@
         (is (=? {"ID"            {"="       {:display-name "=", :long-display-name "Is"}
                                   "is-null" {:display-name "Is empty", :long-display-name "Is empty"}
                                   ">"       {:display-name ">", :long-display-name "Greater than"}
-                                  ">="      {:display-name "≥", :long-display-name "Greater than or equal to"},}
+                                  ">="      {:display-name "≥", :long-display-name "Greater than or equal to"}}
                  "NAME"          {"="        {:display-name "=", :long-display-name "Is"}
                                   "is-empty" {:display-name "Is empty", :long-display-name "Is empty"}}
                  "LAST_LOGIN"    {"!=" {:display-name "≠", :long-display-name "Excludes"}
@@ -356,28 +356,28 @@
             {:lib/type :operator/filter, :short :is-null, :display-name-variant :is-empty}
             {:lib/type :operator/filter, :short :not-null, :display-name-variant :not-empty}]
            (lib.filter.operator/filter-operators
-             {:description nil,
-              :lib/type :metadata/column,
-              :base-type :type/Boolean,
-              :semantic-type :type/Category,
-              :table-id 7,
-              :name "TRIAL_CONVERTED",
-              :coercion-strategy nil,
-              :lib/source :source/table-defaults,
-              :lib/source-column-alias "TRIAL_CONVERTED",
-              :settings nil,
-              :lib/source-uuid "ad9a276f-3af8-4e5a-b17e-d8170273ec0a",
-              :nfc-path nil,
-              :database-type "BOOLEAN",
-              :effective-type :type/Boolean,
-              :fk-target-field-id nil,
-              :id 14,
-              :parent-id nil,
-              :visibility-type :normal,
-              :lib/desired-column-alias "TRIAL_CONVERTED",
-              :display-name "Trial Converted",
-              :position 10,
-              :fingerprint {:global {:distinct-count 2, :nil% 0.0}}}))))
+            {:description nil,
+             :lib/type :metadata/column,
+             :base-type :type/Boolean,
+             :semantic-type :type/Category,
+             :table-id 7,
+             :name "TRIAL_CONVERTED",
+             :coercion-strategy nil,
+             :lib/source :source/table-defaults,
+             :lib/source-column-alias "TRIAL_CONVERTED",
+             :settings nil,
+             :lib/source-uuid "ad9a276f-3af8-4e5a-b17e-d8170273ec0a",
+             :nfc-path nil,
+             :database-type "BOOLEAN",
+             :effective-type :type/Boolean,
+             :fk-target-field-id nil,
+             :id 14,
+             :parent-id nil,
+             :visibility-type :normal,
+             :lib/desired-column-alias "TRIAL_CONVERTED",
+             :display-name "Trial Converted",
+             :position 10,
+             :fingerprint {:global {:distinct-count 2, :nil% 0.0}}}))))
   (testing "should return text-like operators for text-like PKs and FKs"
     (doseq [semantic-type [:type/PK :type/FK]
             :let [column {:description nil,
@@ -401,17 +401,17 @@
                           :lib/desired-column-alias "ID",
                           :display-name "ID",
                           :position 10}]]
-        (is (= [:= :!= :is-empty :not-empty]
-               (mapv :short (lib.filter.operator/filter-operators column)))))))
+      (is (= [:= :!= :is-empty :not-empty]
+             (mapv :short (lib.filter.operator/filter-operators column)))))))
 
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
     (let [query           (lib/query meta/metadata-provider (meta/table-metadata :users))
           [first-col]     (lib/filterable-columns query)
           query           (lib/filter query (lib/filter-clause
-                                              (first (lib/filterable-column-operators first-col))
-                                              first-col
-                                              515))
+                                             (first (lib/filterable-column-operators first-col))
+                                             first-col
+                                             515))
           [filter-clause] (lib/filters query)
           external-op     (lib/external-op filter-clause)]
       (is (=? {:stages [{:filters [[:= {} [:field {} (meta/id :users :id)] 515]]}]}
@@ -493,255 +493,255 @@
 
 (defn- check-display-names [tests]
   (let [metadata-provider (lib/composed-metadata-provider
-                            (lib.tu/mock-metadata-provider
-                              {:fields [last-online-time is-active]})
-                            meta/metadata-provider)
+                           (lib.tu/mock-metadata-provider
+                            {:fields [last-online-time is-active]})
+                           meta/metadata-provider)
         query (lib/query metadata-provider (meta/table-metadata :venues))]
     (doseq [{exp :name [op & args] :clause options :options} tests]
       (testing exp
         (is (= exp (lib/display-name
-                     query -1
-                     (lib/expression-clause op args options))))))))
+                    query -1
+                    (lib/expression-clause op args options))))))))
 
 (deftest ^:parallel truncate-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)
         created-at-with #(lib/with-temporal-bucket created-at %1)]
     (check-display-names
-      [{:clause [:= (created-at-with :year) "2023-10-02T00:00:00.000Z"]
-        :name "Created At is Jan 1 – Dec 31, 2023"}
-       {:clause [:= (created-at-with :month) "2023-10-02T00:00:00.000Z"]
-        :name "Created At is Oct 1–31, 2023"}
-       {:clause [:= (created-at-with :day) "2023-10-02T00:00:00.000Z"]
-        :name "Created At is Oct 2, 2023"}
-       {:clause [:= (created-at-with :hour) "2023-10-02T00:00:00.000Z"]
-        :name "Created At is Oct 2, 2023, 12:00 AM – 12:59 AM"}
-       {:clause [:= (created-at-with :minute) "2023-10-02T00:00:00.000Z"]
-        :name "Created At is Oct 2, 2023, 12:00 AM"}])))
+     [{:clause [:= (created-at-with :year) "2023-10-02T00:00:00.000Z"]
+       :name "Created At is Jan 1 – Dec 31, 2023"}
+      {:clause [:= (created-at-with :month) "2023-10-02T00:00:00.000Z"]
+       :name "Created At is Oct 1–31, 2023"}
+      {:clause [:= (created-at-with :day) "2023-10-02T00:00:00.000Z"]
+       :name "Created At is Oct 2, 2023"}
+      {:clause [:= (created-at-with :hour) "2023-10-02T00:00:00.000Z"]
+       :name "Created At is Oct 2, 2023, 12:00 AM – 12:59 AM"}
+      {:clause [:= (created-at-with :minute) "2023-10-02T00:00:00.000Z"]
+       :name "Created At is Oct 2, 2023, 12:00 AM"}])))
 
 (deftest ^:parallel exclude-date-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)
         created-at-with #(lib/with-temporal-bucket created-at %1)]
     (check-display-names
-      [{:clause [:!= (created-at-with :day-of-week) "2023-10-02"],
-        :name "Created At excludes Mondays"}
-       {:clause [:!= (created-at-with :day-of-week) "2023-10-02" "2023-10-03" "2023-10-04"],
-        :name "Created At excludes 3 day of week selections"}
-       {:clause [:!= (created-at-with :month-of-year) "2023-01-01"],
-        :name "Created At excludes each Jan"}
-       {:clause [:!= (created-at-with :month-of-year) "2023-01-01" "2023-02-01" "2023-03-01"],
-        :name "Created At excludes 3 month of year selections"}
-       {:clause [:!= (created-at-with :quarter-of-year) "2023-01-03"],
-        :name "Created At excludes Q1 each year"}
-       {:clause [:!= (created-at-with :quarter-of-year) "2023-01-03" "2023-04-03" "2023-07-03"],
-        :name "Created At excludes 3 quarter of year selections"}
-       {:clause [:!= (created-at-with :hour-of-day) 0],
-        :name "Created At excludes the hour of 12 AM"}
-       {:clause [:!= (created-at-with :hour-of-day) 4],
-        :name "Created At excludes the hour of 4 AM"}
-       {:clause [:!= (created-at-with :hour-of-day) 12],
-        :name "Created At excludes the hour of 12 PM"}
-       {:clause [:!= (created-at-with :hour-of-day) 16],
-        :name "Created At excludes the hour of 4 PM"}
-       {:clause [:!= (created-at-with :hour-of-day) 0 1 2],
-        :name "Created At excludes 3 hour of day selections"}
-       {:clause [:is-null created-at],
-        :name "Created At is empty"}
-       {:clause [:not-null created-at],
-        :name "Created At is not empty"}])))
+     [{:clause [:!= (created-at-with :day-of-week) "2023-10-02"],
+       :name "Created At excludes Mondays"}
+      {:clause [:!= (created-at-with :day-of-week) "2023-10-02" "2023-10-03" "2023-10-04"],
+       :name "Created At excludes 3 day of week selections"}
+      {:clause [:!= (created-at-with :month-of-year) "2023-01-01"],
+       :name "Created At excludes each Jan"}
+      {:clause [:!= (created-at-with :month-of-year) "2023-01-01" "2023-02-01" "2023-03-01"],
+       :name "Created At excludes 3 month of year selections"}
+      {:clause [:!= (created-at-with :quarter-of-year) "2023-01-03"],
+       :name "Created At excludes Q1 each year"}
+      {:clause [:!= (created-at-with :quarter-of-year) "2023-01-03" "2023-04-03" "2023-07-03"],
+       :name "Created At excludes 3 quarter of year selections"}
+      {:clause [:!= (created-at-with :hour-of-day) 0],
+       :name "Created At excludes the hour of 12 AM"}
+      {:clause [:!= (created-at-with :hour-of-day) 4],
+       :name "Created At excludes the hour of 4 AM"}
+      {:clause [:!= (created-at-with :hour-of-day) 12],
+       :name "Created At excludes the hour of 12 PM"}
+      {:clause [:!= (created-at-with :hour-of-day) 16],
+       :name "Created At excludes the hour of 4 PM"}
+      {:clause [:!= (created-at-with :hour-of-day) 0 1 2],
+       :name "Created At excludes 3 hour of day selections"}
+      {:clause [:is-null created-at],
+       :name "Created At is empty"}
+      {:clause [:not-null created-at],
+       :name "Created At is not empty"}])))
 
 (deftest ^:parallel time-frontend-filter-display-names-test
   (check-display-names
-    [{:clause [:< last-online-time "00:00:00.000"], :name "Last Online Time is before 12:00 AM"}
-     {:clause [:> last-online-time "12:00:00.000"], :name "Last Online Time is after 12:00 PM"}
-     {:clause [:between last-online-time "12:00:00.000" "00:00:00.000"],
-      :name "Last Online Time is 12:00 PM – 12:00 AM"}
-     {:clause [:is-null last-online-time], :name "Last Online Time is empty"}
-     {:clause [:not-null last-online-time], :name "Last Online Time is not empty"}]))
+   [{:clause [:< last-online-time "00:00:00.000"], :name "Last Online Time is before 12:00 AM"}
+    {:clause [:> last-online-time "12:00:00.000"], :name "Last Online Time is after 12:00 PM"}
+    {:clause [:between last-online-time "12:00:00.000" "00:00:00.000"],
+     :name "Last Online Time is 12:00 PM – 12:00 AM"}
+    {:clause [:is-null last-online-time], :name "Last Online Time is empty"}
+    {:clause [:not-null last-online-time], :name "Last Online Time is not empty"}]))
 
 (deftest ^:parallel pk-frontend-filter-display-names-test
   (let [pk (meta/field-metadata :venues :id)]
     (check-display-names
-      [{:clause [:= pk 1], :name "ID is 1"}
-       {:clause [:= pk 4], :name "ID is 4"}
-       {:clause [:= pk 1 2], :name "ID is 2 selections"}
-       {:clause [:= pk 1 2 3], :name "ID is 3 selections"}
-       {:clause [:!= pk 4], :name "ID is not 4"}
-       {:clause [:!= pk 1 2], :name "ID is not 2 selections"}
-       {:clause [:!= pk 2 3 5], :name "ID is not 3 selections"}
-       {:clause [:> pk 1], :name "ID is greater than 1"}
-       {:clause [:< pk 1], :name "ID is less than 1"}
-       {:clause [:between pk 1 10], :name "ID is between 1 and 10"}
-       {:clause [:>= pk 1], :name "ID is greater than or equal to 1"}
-       {:clause [:<= pk 1], :name "ID is less than or equal to 1"}
-       {:clause [:is-null pk], :name "ID is empty"}
-       {:clause [:not-null pk], :name "ID is not empty"}])))
+     [{:clause [:= pk 1], :name "ID is 1"}
+      {:clause [:= pk 4], :name "ID is 4"}
+      {:clause [:= pk 1 2], :name "ID is 2 selections"}
+      {:clause [:= pk 1 2 3], :name "ID is 3 selections"}
+      {:clause [:!= pk 4], :name "ID is not 4"}
+      {:clause [:!= pk 1 2], :name "ID is not 2 selections"}
+      {:clause [:!= pk 2 3 5], :name "ID is not 3 selections"}
+      {:clause [:> pk 1], :name "ID is greater than 1"}
+      {:clause [:< pk 1], :name "ID is less than 1"}
+      {:clause [:between pk 1 10], :name "ID is between 1 and 10"}
+      {:clause [:>= pk 1], :name "ID is greater than or equal to 1"}
+      {:clause [:<= pk 1], :name "ID is less than or equal to 1"}
+      {:clause [:is-null pk], :name "ID is empty"}
+      {:clause [:not-null pk], :name "ID is not empty"}])))
 
 (deftest ^:parallel coordinate-frontend-filter-display-names-test
   (let [longitude (meta/field-metadata :venues :longitude)
         latitude (meta/field-metadata :venues :latitude)]
     (check-display-names
-      [{:clause [:inside longitude latitude 1 2 3 4],
-        :name "Longitude is between 3 and 1 and Latitude is between 2 and 4"}])))
+     [{:clause [:inside longitude latitude 1 2 3 4],
+       :name "Longitude is between 3 and 1 and Latitude is between 2 and 4"}])))
 
 (deftest ^:parallel fk-frontend-filter-display-names-test
   (let [fk (meta/field-metadata :orders :user-id)]
     (check-display-names
-      [{:clause [:= fk 1], :name "User ID is 1"}
-       {:clause [:= fk 11], :name "User ID is 11"}
-       {:clause [:= fk 1 2], :name "User ID is 2 selections"}
-       {:clause [:= fk 1 2 12], :name "User ID is 3 selections"}
-       {:clause [:!= fk 1], :name "User ID is not 1"}
-       {:clause [:!= fk 1 2], :name "User ID is not 2 selections"}
-       {:clause [:!= fk 1 2 12], :name "User ID is not 3 selections"}
-       {:clause [:> fk 1], :name "User ID is greater than 1"}
-       {:clause [:< fk 1], :name "User ID is less than 1"}
-       {:clause [:between fk 1 10], :name "User ID is between 1 and 10"}
-       {:clause [:>= fk 1], :name "User ID is greater than or equal to 1"}
-       {:clause [:<= fk 1], :name "User ID is less than or equal to 1"}
-       {:clause [:is-null fk], :name "User ID is empty"}
-       {:clause [:not-null fk], :name "User ID is not empty"}])))
+     [{:clause [:= fk 1], :name "User ID is 1"}
+      {:clause [:= fk 11], :name "User ID is 11"}
+      {:clause [:= fk 1 2], :name "User ID is 2 selections"}
+      {:clause [:= fk 1 2 12], :name "User ID is 3 selections"}
+      {:clause [:!= fk 1], :name "User ID is not 1"}
+      {:clause [:!= fk 1 2], :name "User ID is not 2 selections"}
+      {:clause [:!= fk 1 2 12], :name "User ID is not 3 selections"}
+      {:clause [:> fk 1], :name "User ID is greater than 1"}
+      {:clause [:< fk 1], :name "User ID is less than 1"}
+      {:clause [:between fk 1 10], :name "User ID is between 1 and 10"}
+      {:clause [:>= fk 1], :name "User ID is greater than or equal to 1"}
+      {:clause [:<= fk 1], :name "User ID is less than or equal to 1"}
+      {:clause [:is-null fk], :name "User ID is empty"}
+      {:clause [:not-null fk], :name "User ID is not empty"}])))
 
 (deftest ^:parallel string-frontend-filter-display-names-test
   (let [nam (meta/field-metadata :venues :name)]
     (check-display-names
-      [{:clause [:= nam "ABC"], :name "Name is ABC"}
-       {:clause [:= nam "A" "B"], :name "Name is 2 selections"}
-       {:clause [:= nam "A" "B" "C"], :name "Name is 3 selections"}
-       {:clause [:!= nam "ABC"], :name "Name is not ABC"}
-       {:clause [:!= nam "A" "B"], :name "Name is not 2 selections"}
-       {:clause [:!= nam "A" "B" "C"], :name "Name is not 3 selections"}
-       {:clause [:contains nam "ABC"], :name "Name contains ABC"}
-       {:clause [:contains nam "ABC"], :options {:case-sensitive true}, :name "Name contains ABC"}
-       {:clause [:contains nam "ABC"], :options {:case-sensitive false}, :name "Name contains ABC"}
-       {:clause [:contains nam "ABC" "HJK" "XYZ"], :name "Name contains 3 selections"}
-       {:clause [:does-not-contain nam "ABC"], :name "Name does not contain ABC"}
-       {:clause [:does-not-contain nam "ABC" "HJK" "XYZ"], :name "Name does not contain 3 selections"}
-       {:clause [:is-empty nam], :name "Name is empty"}
-       {:clause [:not-empty nam], :name "Name is not empty"}
-       {:clause [:does-not-contain nam "ABC"], :name "Name does not contain ABC"}
-       {:clause [:starts-with nam "ABC"], :name "Name starts with ABC"}
-       {:clause [:starts-with nam "ABC" "HJK" "XYZ"], :name "Name starts with 3 selections"}
-       {:clause [:ends-with nam "ABC"], :name "Name ends with ABC"}
-       {:clause [:ends-with nam "ABC" "HJK" "XYZ"], :name "Name ends with 3 selections"}])))
+     [{:clause [:= nam "ABC"], :name "Name is ABC"}
+      {:clause [:= nam "A" "B"], :name "Name is 2 selections"}
+      {:clause [:= nam "A" "B" "C"], :name "Name is 3 selections"}
+      {:clause [:!= nam "ABC"], :name "Name is not ABC"}
+      {:clause [:!= nam "A" "B"], :name "Name is not 2 selections"}
+      {:clause [:!= nam "A" "B" "C"], :name "Name is not 3 selections"}
+      {:clause [:contains nam "ABC"], :name "Name contains ABC"}
+      {:clause [:contains nam "ABC"], :options {:case-sensitive true}, :name "Name contains ABC"}
+      {:clause [:contains nam "ABC"], :options {:case-sensitive false}, :name "Name contains ABC"}
+      {:clause [:contains nam "ABC" "HJK" "XYZ"], :name "Name contains 3 selections"}
+      {:clause [:does-not-contain nam "ABC"], :name "Name does not contain ABC"}
+      {:clause [:does-not-contain nam "ABC" "HJK" "XYZ"], :name "Name does not contain 3 selections"}
+      {:clause [:is-empty nam], :name "Name is empty"}
+      {:clause [:not-empty nam], :name "Name is not empty"}
+      {:clause [:does-not-contain nam "ABC"], :name "Name does not contain ABC"}
+      {:clause [:starts-with nam "ABC"], :name "Name starts with ABC"}
+      {:clause [:starts-with nam "ABC" "HJK" "XYZ"], :name "Name starts with 3 selections"}
+      {:clause [:ends-with nam "ABC"], :name "Name ends with ABC"}
+      {:clause [:ends-with nam "ABC" "HJK" "XYZ"], :name "Name ends with 3 selections"}])))
 
 (deftest ^:parallel boolean-frontend-filter-display-names-test
   (check-display-names
-    [{:clause [:= is-active true], :name "Is Active is true"}
-     {:clause [:= is-active false], :name "Is Active is false"}
-     {:clause [:is-null is-active], :name "Is Active is empty"}
-     {:clause [:not-null is-active], :name "Is Active is not empty"}]))
+   [{:clause [:= is-active true], :name "Is Active is true"}
+    {:clause [:= is-active false], :name "Is Active is false"}
+    {:clause [:is-null is-active], :name "Is Active is empty"}
+    {:clause [:not-null is-active], :name "Is Active is not empty"}]))
 
 (deftest ^:parallel number-frontend-filter-display-names-test
   (let [tax (meta/field-metadata :orders :tax)]
     (check-display-names
-      [{:clause [:= tax 1], :name "Tax is equal to 1"}
-       {:clause [:= tax 7], :name "Tax is equal to 7"}
-       {:clause [:= tax 7 10], :name "Tax is equal to 2 selections"}
-       {:clause [:= tax 7 10 71], :name "Tax is equal to 3 selections"}
-       {:clause [:!= tax 1], :name "Tax is not equal to 1"}
-       {:clause [:!= tax 7], :name "Tax is not equal to 7"}
-       {:clause [:!= tax 7 10], :name "Tax is not equal to 2 selections"}
-       {:clause [:!= tax 7 10 71], :name "Tax is not equal to 3 selections"}
-       {:clause [:> tax 7], :name "Tax is greater than 7"}
-       {:clause [:< tax 7], :name "Tax is less than 7"}
-       {:clause [:between tax 7 10], :name "Tax is between 7 and 10"}
-       {:clause [:>= tax 1], :name "Tax is greater than or equal to 1"}
-       {:clause [:<= tax 1], :name "Tax is less than or equal to 1"}
-       {:clause [:is-null tax], :name "Tax is empty"}
-       {:clause [:not-null tax], :name "Tax is not empty"}])))
+     [{:clause [:= tax 1], :name "Tax is equal to 1"}
+      {:clause [:= tax 7], :name "Tax is equal to 7"}
+      {:clause [:= tax 7 10], :name "Tax is equal to 2 selections"}
+      {:clause [:= tax 7 10 71], :name "Tax is equal to 3 selections"}
+      {:clause [:!= tax 1], :name "Tax is not equal to 1"}
+      {:clause [:!= tax 7], :name "Tax is not equal to 7"}
+      {:clause [:!= tax 7 10], :name "Tax is not equal to 2 selections"}
+      {:clause [:!= tax 7 10 71], :name "Tax is not equal to 3 selections"}
+      {:clause [:> tax 7], :name "Tax is greater than 7"}
+      {:clause [:< tax 7], :name "Tax is less than 7"}
+      {:clause [:between tax 7 10], :name "Tax is between 7 and 10"}
+      {:clause [:>= tax 1], :name "Tax is greater than or equal to 1"}
+      {:clause [:<= tax 1], :name "Tax is less than or equal to 1"}
+      {:clause [:is-null tax], :name "Tax is empty"}
+      {:clause [:not-null tax], :name "Tax is not empty"}])))
 
 (deftest ^:parallel relative-datetime-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]
     (check-display-names
-      [{:clause [:time-interval created-at -1 :minute], :name "Created At is in the previous minute"}
-       {:clause [:time-interval created-at -3 :minute], :name "Created At is in the previous 3 minutes"}
-       {:clause [:time-interval created-at -1 :hour], :name "Created At is in the previous hour"}
-       {:clause [:time-interval created-at -3 :hour], :name "Created At is in the previous 3 hours"}
-       {:clause [:time-interval created-at -1 :day], :name "Created At is yesterday"}
-       {:clause [:time-interval created-at -3 :day], :name "Created At is in the previous 3 days"}
-       {:clause [:time-interval created-at -1 :week], :name "Created At is in the previous week"}
-       {:clause [:time-interval created-at -3 :week], :name "Created At is in the previous 3 weeks"}
-       {:clause [:time-interval created-at -1 :month], :name "Created At is in the previous month"}
-       {:clause [:time-interval created-at -3 :month], :name "Created At is in the previous 3 months"}
-       {:clause [:time-interval created-at -1 :quarter], :name "Created At is in the previous quarter"}
-       {:clause [:time-interval created-at -3 :quarter],
-        :name "Created At is in the previous 3 quarters"}
-       {:clause [:time-interval created-at -1 :year], :name "Created At is in the previous year"}
-       {:clause [:time-interval created-at -3 :year], :name "Created At is in the previous 3 years"}
-       {:clause [:between
-                 (lib/expression-clause :+
-                                        [created-at
-                                         (lib/expression-clause :interval [1 :month] nil)] nil)
-                 (lib/expression-clause :relative-datetime [-1 :month] nil)
-                 (lib/expression-clause :relative-datetime [0 :month] nil)],
-        :name "Created At is in the previous month, starting 1 month ago"}
-       {:clause [:time-interval created-at :current :day], :name "Created At is today"}
-       {:clause [:time-interval created-at :current :week], :name "Created At is this week"}
-       {:clause [:time-interval created-at :current :month], :name "Created At is this month"}
-       {:clause [:time-interval created-at :current :quarter],
-        :name "Created At is this quarter"}
-       {:clause [:time-interval created-at :current :year], :name "Created At is this year"}
-       {:clause [:time-interval created-at 1 :minute], :name "Created At is in the next minute"}
-       {:clause [:time-interval created-at 3 :minute], :name "Created At is in the next 3 minutes"}
-       {:clause [:time-interval created-at 1 :hour], :name "Created At is in the next hour"}
-       {:clause [:time-interval created-at 3 :hour], :name "Created At is in the next 3 hours"}
-       {:clause [:time-interval created-at 1 :day], :name "Created At is tomorrow"}
-       {:clause [:time-interval created-at 3 :day], :name "Created At is in the next 3 days"}
-       {:clause [:time-interval created-at 1 :week], :name "Created At is in the next week"}
-       {:clause [:time-interval created-at 3 :week], :name "Created At is in the next 3 weeks"}
-       {:clause [:time-interval created-at 1 :month], :name "Created At is in the next month"}
-       {:clause [:time-interval created-at 3 :month], :name "Created At is in the next 3 months"}
-       {:clause [:time-interval created-at 1 :quarter], :name "Created At is in the next quarter"}
-       {:clause [:time-interval created-at 3 :quarter], :name "Created At is in the next 3 quarters"}
-       {:clause [:time-interval created-at 1 :year], :name "Created At is in the next year"}
-       {:clause [:time-interval created-at 3 :year], :name "Created At is in the next 3 years"}
-       {:clause [:between
-                  (lib/expression-clause :+
-                                         [created-at
-                                          (lib/expression-clause :interval [-1 :month] nil)] nil)
-                  (lib/expression-clause :relative-datetime [0 :month] nil)
-                  (lib/expression-clause :relative-datetime [1 :month] nil)],
-        :name "Created At is in the next month, starting 1 month from now"}
-       {:clause [:relative-time-interval created-at 10 :week 10 :week]
-        :name "Created At is in the next 10 weeks, starting 10 weeks from now"}
-       {:clause [:relative-time-interval created-at -10 :week -10 :week]
-        :name "Created At is in the previous 10 weeks, starting 10 weeks ago"}])))
+     [{:clause [:time-interval created-at -1 :minute], :name "Created At is in the previous minute"}
+      {:clause [:time-interval created-at -3 :minute], :name "Created At is in the previous 3 minutes"}
+      {:clause [:time-interval created-at -1 :hour], :name "Created At is in the previous hour"}
+      {:clause [:time-interval created-at -3 :hour], :name "Created At is in the previous 3 hours"}
+      {:clause [:time-interval created-at -1 :day], :name "Created At is yesterday"}
+      {:clause [:time-interval created-at -3 :day], :name "Created At is in the previous 3 days"}
+      {:clause [:time-interval created-at -1 :week], :name "Created At is in the previous week"}
+      {:clause [:time-interval created-at -3 :week], :name "Created At is in the previous 3 weeks"}
+      {:clause [:time-interval created-at -1 :month], :name "Created At is in the previous month"}
+      {:clause [:time-interval created-at -3 :month], :name "Created At is in the previous 3 months"}
+      {:clause [:time-interval created-at -1 :quarter], :name "Created At is in the previous quarter"}
+      {:clause [:time-interval created-at -3 :quarter],
+       :name "Created At is in the previous 3 quarters"}
+      {:clause [:time-interval created-at -1 :year], :name "Created At is in the previous year"}
+      {:clause [:time-interval created-at -3 :year], :name "Created At is in the previous 3 years"}
+      {:clause [:between
+                (lib/expression-clause :+
+                                       [created-at
+                                        (lib/expression-clause :interval [1 :month] nil)] nil)
+                (lib/expression-clause :relative-datetime [-1 :month] nil)
+                (lib/expression-clause :relative-datetime [0 :month] nil)],
+       :name "Created At is in the previous month, starting 1 month ago"}
+      {:clause [:time-interval created-at :current :day], :name "Created At is today"}
+      {:clause [:time-interval created-at :current :week], :name "Created At is this week"}
+      {:clause [:time-interval created-at :current :month], :name "Created At is this month"}
+      {:clause [:time-interval created-at :current :quarter],
+       :name "Created At is this quarter"}
+      {:clause [:time-interval created-at :current :year], :name "Created At is this year"}
+      {:clause [:time-interval created-at 1 :minute], :name "Created At is in the next minute"}
+      {:clause [:time-interval created-at 3 :minute], :name "Created At is in the next 3 minutes"}
+      {:clause [:time-interval created-at 1 :hour], :name "Created At is in the next hour"}
+      {:clause [:time-interval created-at 3 :hour], :name "Created At is in the next 3 hours"}
+      {:clause [:time-interval created-at 1 :day], :name "Created At is tomorrow"}
+      {:clause [:time-interval created-at 3 :day], :name "Created At is in the next 3 days"}
+      {:clause [:time-interval created-at 1 :week], :name "Created At is in the next week"}
+      {:clause [:time-interval created-at 3 :week], :name "Created At is in the next 3 weeks"}
+      {:clause [:time-interval created-at 1 :month], :name "Created At is in the next month"}
+      {:clause [:time-interval created-at 3 :month], :name "Created At is in the next 3 months"}
+      {:clause [:time-interval created-at 1 :quarter], :name "Created At is in the next quarter"}
+      {:clause [:time-interval created-at 3 :quarter], :name "Created At is in the next 3 quarters"}
+      {:clause [:time-interval created-at 1 :year], :name "Created At is in the next year"}
+      {:clause [:time-interval created-at 3 :year], :name "Created At is in the next 3 years"}
+      {:clause [:between
+                (lib/expression-clause :+
+                                       [created-at
+                                        (lib/expression-clause :interval [-1 :month] nil)] nil)
+                (lib/expression-clause :relative-datetime [0 :month] nil)
+                (lib/expression-clause :relative-datetime [1 :month] nil)],
+       :name "Created At is in the next month, starting 1 month from now"}
+      {:clause [:relative-time-interval created-at 10 :week 10 :week]
+       :name "Created At is in the next 10 weeks, starting 10 weeks from now"}
+      {:clause [:relative-time-interval created-at -10 :week -10 :week]
+       :name "Created At is in the previous 10 weeks, starting 10 weeks ago"}])))
 
 (deftest ^:parallel specific-date-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]
     (check-display-names
-      [{:clause [:= created-at "2023-10-03"], :name "Created At is on Oct 3, 2023"}
-       {:clause [:= created-at "2023-10-03T12:30:00"],
-        :name "Created At is on Oct 3, 2023, 12:30 PM"}
-       {:clause [:> created-at "2023-10-03"], :name "Created At is after Oct 3, 2023"}
-       {:clause [:> created-at "2023-10-03T12:30:00"],
-        :name "Created At is after Oct 3, 2023, 12:30 PM"}
-       {:clause [:< created-at "2023-10-03"], :name "Created At is before Oct 3, 2023"}
-       {:clause [:< created-at "2023-10-03T12:30:00"],
-        :name "Created At is before Oct 3, 2023, 12:30 PM"}
-       {:clause [:between created-at "2023-10-03" "2023-10-05"],
-        :name "Created At is Oct 3–5, 2023"}
-       {:clause [:between created-at "2023-10-03T01:00:00" "2023-10-03T14:00:00"],
-        :name "Created At is Oct 3, 2023, 1:00 AM – 2:00 PM"}
-       {:clause [:between created-at "2023-10-03T13:00:00" "2023-10-05T01:00:00"],
-        :name "Created At is Oct 3, 1:00 PM – Oct 5, 2023, 1:00 AM"}
-       {:clause [:between created-at "2023-09-03" "2023-10-03"],
-        :name "Created At is Sep 3 – Oct 3, 2023"}
-       {:clause [:between created-at "2023-09-03T13:00:00" "2023-10-03T13:00:00"],
-        :name "Created At is Sep 3, 1:00 PM – Oct 3, 2023, 1:00 PM"}
-       {:clause [:between created-at "2022-10-01" "2023-10-03"],
-        :name "Created At is Oct 1, 2022 – Oct 3, 2023"}
-       {:clause [:between created-at "2022-10-01T13:00:00" "2023-10-03T01:00:00"],
-        :name "Created At is Oct 1, 2022, 1:00 PM – Oct 3, 2023, 1:00 AM"}
-       {:clause [:between created-at "2022-09-01" "2023-10-03"],
-        :name "Created At is Sep 1, 2022 – Oct 3, 2023"}
-       {:clause [:between created-at "2022-09-01T13:00:00" "2023-10-03T01:00:00"],
-        :name "Created At is Sep 1, 2022, 1:00 PM – Oct 3, 2023, 1:00 AM"}
-       {:clause [:between
-                 (lib/with-temporal-bucket created-at :week)
-                 "2023-08-27T00:00:00-06:00"
-                 "2023-11-27T00:00:00-06:00"],
-        :name "Created At is Aug 27, 12:00 AM – Nov 27, 2023, 12:00 AM"}])))
+     [{:clause [:= created-at "2023-10-03"], :name "Created At is on Oct 3, 2023"}
+      {:clause [:= created-at "2023-10-03T12:30:00"],
+       :name "Created At is on Oct 3, 2023, 12:30 PM"}
+      {:clause [:> created-at "2023-10-03"], :name "Created At is after Oct 3, 2023"}
+      {:clause [:> created-at "2023-10-03T12:30:00"],
+       :name "Created At is after Oct 3, 2023, 12:30 PM"}
+      {:clause [:< created-at "2023-10-03"], :name "Created At is before Oct 3, 2023"}
+      {:clause [:< created-at "2023-10-03T12:30:00"],
+       :name "Created At is before Oct 3, 2023, 12:30 PM"}
+      {:clause [:between created-at "2023-10-03" "2023-10-05"],
+       :name "Created At is Oct 3–5, 2023"}
+      {:clause [:between created-at "2023-10-03T01:00:00" "2023-10-03T14:00:00"],
+       :name "Created At is Oct 3, 2023, 1:00 AM – 2:00 PM"}
+      {:clause [:between created-at "2023-10-03T13:00:00" "2023-10-05T01:00:00"],
+       :name "Created At is Oct 3, 1:00 PM – Oct 5, 2023, 1:00 AM"}
+      {:clause [:between created-at "2023-09-03" "2023-10-03"],
+       :name "Created At is Sep 3 – Oct 3, 2023"}
+      {:clause [:between created-at "2023-09-03T13:00:00" "2023-10-03T13:00:00"],
+       :name "Created At is Sep 3, 1:00 PM – Oct 3, 2023, 1:00 PM"}
+      {:clause [:between created-at "2022-10-01" "2023-10-03"],
+       :name "Created At is Oct 1, 2022 – Oct 3, 2023"}
+      {:clause [:between created-at "2022-10-01T13:00:00" "2023-10-03T01:00:00"],
+       :name "Created At is Oct 1, 2022, 1:00 PM – Oct 3, 2023, 1:00 AM"}
+      {:clause [:between created-at "2022-09-01" "2023-10-03"],
+       :name "Created At is Sep 1, 2022 – Oct 3, 2023"}
+      {:clause [:between created-at "2022-09-01T13:00:00" "2023-10-03T01:00:00"],
+       :name "Created At is Sep 1, 2022, 1:00 PM – Oct 3, 2023, 1:00 AM"}
+      {:clause [:between
+                (lib/with-temporal-bucket created-at :week)
+                "2023-08-27T00:00:00-06:00"
+                "2023-11-27T00:00:00-06:00"],
+       :name "Created At is Aug 27, 12:00 AM – Nov 27, 2023, 12:00 AM"}])))
 
 (deftest ^:parallel filter-positions-test
   (let [base (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

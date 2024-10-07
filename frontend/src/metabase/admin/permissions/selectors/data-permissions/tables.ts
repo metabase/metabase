@@ -6,9 +6,11 @@ import {
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import {
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
@@ -16,13 +18,15 @@ import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
 import { navigateToGranularPermissions } from "../../permissions";
 import type { PermissionSectionConfig, SchemaEntityId } from "../../types";
 import {
-  DataPermissionValue,
   DataPermission,
   DataPermissionType,
+  DataPermissionValue,
 } from "../../types";
 import {
+  getBlockWarning,
   getPermissionWarning,
   getPermissionWarningModal,
+  getViewDataPermissionsTooRestrictiveWarningModal,
   getWillRevokeNativeAccessWarningModal,
 } from "../confirmations";
 
@@ -55,13 +59,25 @@ const buildAccessPermission = (
     DataPermission.VIEW_DATA,
   );
 
-  const warning = getPermissionWarning(
+  const dbValue = getSchemasPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.VIEW_DATA,
+  );
+
+  const permissionWarning = getPermissionWarning(
     value,
     defaultGroupValue,
     "tables",
     defaultGroup,
     groupId,
   );
+
+  const blockWarning = getBlockWarning(dbValue, value);
+
+  // permissionWarning should always trump a blockWarning
+  const warning = permissionWarning || blockWarning;
 
   const confirmations = (newValue: DataPermissionValue) => [
     getPermissionWarningModal(
@@ -79,21 +95,20 @@ const buildAccessPermission = (
       DATA_PERMISSION_OPTIONS.controlled,
       originalValue === DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated.value &&
         DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated,
+      ...PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS,
     ]),
     value,
   );
 
+  const isDisabled =
+    isAdmin ||
+    options.length <= 1 ||
+    PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(value, "tables");
+
   return {
     permission: DataPermission.VIEW_DATA,
     type: DataPermissionType.ACCESS,
-    isDisabled:
-      isAdmin ||
-      (!isAdmin &&
-        (options.length <= 1 ||
-          PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(
-            value,
-            "tables",
-          ))),
+    isDisabled,
     isHighlighted: isAdmin,
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
     value,
@@ -112,6 +127,7 @@ const buildNativePermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   accessPermissionValue: DataPermissionValue,
+  database: Database,
 ): PermissionSectionConfig => {
   const dbValue = getSchemasPermission(
     permissions,
@@ -149,8 +165,15 @@ const buildNativePermission = (
     postActions: {
       controlled: () => navigateToGranularPermissions(groupId, entityId),
     },
-    confirmations: () => [
+    confirmations: (newValue: DataPermissionValue) => [
       getWillRevokeNativeAccessWarningModal(permissions, groupId, entityId),
+      getViewDataPermissionsTooRestrictiveWarningModal(
+        permissions,
+        groupId,
+        entityId,
+        database,
+        newValue,
+      ),
     ],
   };
 };
@@ -162,6 +185,7 @@ export const buildTablesPermissions = (
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
   defaultGroup: Group,
+  database: Database,
 ): PermissionSectionConfig[] => {
   const accessPermission = buildAccessPermission(
     entityId,
@@ -178,6 +202,7 @@ export const buildTablesPermissions = (
     isAdmin,
     permissions,
     accessPermission.value,
+    database,
   );
 
   const hasAnyAccessOptions = accessPermission.options.length > 1;

@@ -61,7 +61,6 @@
   [driver]
   (not (concrete? driver)))
 
-
 ;;; -------------------------------------------- Loading Driver Namespace --------------------------------------------
 
 (mu/defn- driver->expected-namespace [driver :- :keyword]
@@ -102,7 +101,6 @@
               ;; if *still* not registered, throw an Exception
               (when-not (registered? driver)
                 (throw (Exception. (tru "Driver not registered after loading: {0}" driver)))))))))))
-
 
 ;;; -------------------------------------------------- Registration --------------------------------------------------
 
@@ -174,7 +172,6 @@
          "")
        (u/emoji "🚚")))))
 
-
 ;;; ------------------------------------------------- Initialization -------------------------------------------------
 
 ;; We'll keep track of which drivers are initialized using a set rather than adding a special key to the hierarchy or
@@ -212,7 +209,6 @@
           (log/debug "Reason:" (u/pprint-to-str :blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
           (init-fn driver)
           (swap! initialized-drivers conj driver))))))
-
 
 ;;; ----------------------------------------------- [[truncate-alias]] -----------------------------------------------
 

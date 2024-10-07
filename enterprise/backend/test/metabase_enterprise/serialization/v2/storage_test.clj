@@ -10,8 +10,8 @@
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues NativeQuerySnippet
                             Table]]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
@@ -90,7 +90,6 @@
                        [gp-dir p-dir "dashboards" (str (:entity_id d1) "_parent_dash.yaml")]} ; Parent dashboard
                      (file-set (io/file dump-dir "collections")))))))))))
 
-
 (deftest snippets-collections-nesting-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db
@@ -144,8 +143,7 @@
                 "Slashes in directory names get escaped"))
 
           (testing "the Field was properly exported"
-            (is (= (-> (ts/extract-one "Field" (:id website))
-                       (update :created_at u.date/format))
+            (is (= (ts/extract-one "Field" (:id website))
                    (-> (yaml/from-file (io/file dump-dir
                                                 "databases" "My Company Data"
                                                 "tables"    "Customers"
@@ -224,3 +222,18 @@
             (is (thrown-with-msg? Exception #"Destination path is not writeable: "
                                   (storage/store! [{:serdes/meta [{:model "A" :id "B"}]}]
                                                   dump-dir)))))))))
+
+(deftest nested-fields-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (mt/with-empty-h2-app-db
+      (let [db  (ts/create! Database :name "mydb")
+            t   (ts/create! Table :name "table" :db_id (:id db))
+            f1  (ts/create! Field :name "parent" :table_id (:id t))
+            _f2 (ts/create! Field :name "child" :table_id (:id t) :parent_id (:id f1))]
+        (serdes/with-cache
+          (-> (extract/extract {:no-settings true})
+              (storage/store! dump-dir)))
+        (testing "we get correct names for nested fields"
+          (is (= #{["parent.yaml"]
+                   ["parent.child.yaml"]}
+                 (file-set (io/file dump-dir "databases" "mydb" "tables" "table" "fields")))))))))

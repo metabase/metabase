@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { Modal, Flex } from "metabase/ui";
+import { Flex, Modal } from "metabase/ui";
 
 export const ModalContent = styled(Modal.Content)`
   flex-grow: 1;

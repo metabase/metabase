@@ -2,13 +2,14 @@ import fs from "fs/promises";
 
 import { input } from "@inquirer/prompts";
 
+import { getGeneratedComponentFilesMessage } from "../constants/messages";
 import { ANALYTICS_CSS_SNIPPET } from "../snippets/analytics-css-snippet";
 import type { CliStepMethod } from "../types/cli";
 import { getComponentSnippets } from "../utils/get-component-snippets";
 import { printError, printSuccess } from "../utils/print";
 
 export const generateReactComponentFiles: CliStepMethod = async state => {
-  const { instanceUrl, apiKey, dashboards = [] } = state;
+  const { instanceUrl, apiKey, dashboards = [], token } = state;
 
   if (!instanceUrl || !apiKey) {
     return [
@@ -41,6 +42,10 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     instanceUrl,
     apiKey,
     dashboards,
+
+    // Enable user switching only when a valid license is present,
+    // as JWT requires a valid license.
+    userSwitcherEnabled: !!token,
   });
 
   // Generate sample components files in the specified directory.
@@ -59,9 +64,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
 
   await fs.writeFile(`${path}/index.js`, exportIndexContent);
 
-  printSuccess(
-    `Generated example React components files in "${path}". You can import the <AnalyticsPage /> component in your React app from this path.`,
-  );
+  printSuccess(getGeneratedComponentFilesMessage(path));
 
-  return [{ type: "done" }, state];
+  return [{ type: "done" }, { ...state, reactComponentDir: path }];
 };

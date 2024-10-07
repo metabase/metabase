@@ -18,8 +18,8 @@ import {
   getDashboardComplete,
   getDraftParameterValues,
   getIsNavigatingBackToDashboard,
-  getParameters,
   getParameterValues,
+  getParameters,
   getSelectedTabId,
   getSlowCards,
 } from "metabase/dashboard/selectors";

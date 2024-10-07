@@ -1,10 +1,10 @@
 import {
-  restore,
-  snapshot,
-  addPostgresDatabase,
   addMongoDatabase,
   addMySQLDatabase,
+  addPostgresDatabase,
+  restore,
   setupWritableDB,
+  snapshot,
 } from "e2e/support/helpers";
 
 describe("qa databases snapshots", { tags: "@external" }, () => {

@@ -1,5 +1,6 @@
 import type {
   Alert,
+  AlertCard,
   AlertId,
   CreateAlertRequest,
   ListAlertsRequest,
@@ -70,6 +71,13 @@ export const alertApi = Api.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("alert"), idTag("alert", id)]),
     }),
+    testAlert: builder.mutation<void, Partial<Alert> & { cards: AlertCard[] }>({
+      query: body => ({
+        method: "POST",
+        url: `/api/pulse/test`,
+        body,
+      }),
+    }),
   }),
 });
 
@@ -80,4 +88,5 @@ export const {
   useCreateAlertMutation,
   useUpdateAlertMutation,
   useDeleteAlertSubscriptionMutation,
+  useTestAlertMutation,
 } = alertApi;

@@ -54,17 +54,17 @@
                   :height      height
                   :frameborder 0}]))
 
-
 ;;; ----------------------------------------------- EMBEDDING UTIL FNS -----------------------------------------------
 
 (defsetting embedding-secret-key
   (deferred-tru "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.")
+  :encryption :when-encryption-key-set
   :visibility :admin
   :audit :no-value
   :setter (fn [new-value]
             (when (seq new-value)
               (assert (u/hexadecimal-string? new-value)
-                (tru "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string).")))
+                      (tru "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string).")))
             (setting/set-value-of-type! :string :embedding-secret-key new-value)))
 
 (defn- jwt-header
@@ -121,6 +121,6 @@
   :default true
   :export? true
   :getter  (fn []
-              (if-not (and config/ee-available? (:valid (premium-features/token-status)))
-                (setting/get-value-of-type :boolean :show-static-embed-terms)
-                false)))
+             (if-not (and config/ee-available? (:valid (premium-features/token-status)))
+               (setting/get-value-of-type :boolean :show-static-embed-terms)
+               false)))

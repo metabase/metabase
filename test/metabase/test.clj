@@ -11,6 +11,7 @@
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
    [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
+   [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -93,6 +94,7 @@
   tu/keep-me
   tx.env/keep-me
   tx/keep-me
+  mdb.test-util/keep-me
   u.random/keep-me)
 
 ;; Add more stuff here as needed
@@ -154,7 +156,7 @@
   client-real-response]
 
  [i18n.tu
-  with-mock-i18n-bundles
+  with-mock-i18n-bundles!
   with-user-locale]
 
  [initialize
@@ -169,6 +171,9 @@
  [mw.session
   with-current-user
   as-admin]
+
+ [mdb.test-util
+  with-app-db-timezone-id!]
 
  [perms.test-util
   with-restored-data-perms!
@@ -214,7 +219,7 @@
   derecordize]
 
  [test.persistence
-  with-persistence-enabled]
+  with-persistence-enabled!]
 
  [test.users
   fetch-user
@@ -266,7 +271,7 @@
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file
-  with-temp-scheduler
+  with-temp-scheduler!
   with-temp-vals-in-db
   with-temporary-setting-values
   with-temporary-raw-setting-values

@@ -1,12 +1,12 @@
 (ns metabase-enterprise.sandbox.api.dataset-test
   (:require
-    [clojure.test :refer :all]
-    [metabase-enterprise.test :as met]
-    [metabase.models :refer [Card]]
-    [metabase.test :as mt]))
+   [clojure.test :refer :all]
+   [metabase-enterprise.test :as met]
+   [metabase.models :refer [Card]]
+   [metabase.test :as mt]))
 
 (deftest dataset-parameter-test
-  (testing "POST /api/dataset/parameter/values should follow sandbox rules"
+  (testing "POST /api/dataset/parameter/values should respect sandboxing"
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (testing "with values_source_type=card"
         (mt/with-temp
@@ -17,12 +17,12 @@
           (testing "when getting values"
             (let [get-values (fn [user]
                                (mt/user-http-request user :post 200 "/dataset/parameter/values"
-                                 {:parameter {:id                   "abc"
-                                              :type                 "category"
-                                              :name                 "CATEGORY"
-                                              :values_source_type   "card"
-                                              :values_source_config {:card_id     source-card-id
-                                                                     :value_field (mt/$ids $categories.name)}}}))]
+                                                     {:parameter {:id                   "abc"
+                                                                  :type                 "category"
+                                                                  :name                 "CATEGORY"
+                                                                  :values_source_type   "card"
+                                                                  :values_source_config {:card_id     source-card-id
+                                                                                         :value_field (mt/$ids $categories.name)}}}))]
 
               ;; returns much more if not sandboxed
               (is (> (-> (get-values :crowberto) :values count) 3))
@@ -46,7 +46,7 @@
                       (search :crowberto)))
 
               (is (=? {:values          []
-                        :has_more_values false}
+                       :has_more_values false}
                       (search :rasta)))))))
 
       (testing "values_source_type=nil (values from fields)"

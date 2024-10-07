@@ -5,9 +5,9 @@ import { t } from "ttag";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import CS from "metabase/css/core/index.css";
 import {
-  isDefaultGroup,
-  isAdminGroup,
   getGroupNameLocalized,
+  isAdminGroup,
+  isDefaultGroup,
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";

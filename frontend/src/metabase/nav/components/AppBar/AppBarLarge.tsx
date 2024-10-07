@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type { CollectionId } from "metabase-types/api";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
@@ -8,11 +10,11 @@ import { SearchBar } from "../search/SearchBar";
 import { SearchButton } from "../search/SearchButton";
 
 import {
+  AppBarInfoContainer,
   AppBarLeftContainer,
+  AppBarProfileLinkContainer,
   AppBarRightContainer,
   AppBarRoot,
-  AppBarInfoContainer,
-  AppBarProfileLinkContainer,
 } from "./AppBarLarge.styled";
 import { AppBarLogo } from "./AppBarLogo";
 import { AppBarToggle } from "./AppBarToggle";
@@ -75,7 +77,7 @@ const AppBarLarge = ({
           {isSearchVisible && (isEmbedded ? <SearchBar /> : <SearchButton />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {isProfileLinkVisible && (
-            <AppBarProfileLinkContainer>
+            <AppBarProfileLinkContainer aria-label={t`Settings menu`}>
               <ProfileLink onLogout={onLogout} />
             </AppBarProfileLinkContainer>
           )}

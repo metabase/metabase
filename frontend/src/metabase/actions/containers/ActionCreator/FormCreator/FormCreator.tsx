@@ -1,10 +1,10 @@
-import { useEffect, useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   DraggableProvided,
-  DroppableProvided,
   DropResult,
+  DroppableProvided,
 } from "react-beautiful-dnd";
-import { Droppable, Draggable } from "react-beautiful-dnd";
+import { Draggable, Droppable } from "react-beautiful-dnd";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -19,9 +19,9 @@ import type {
 } from "metabase-types/api";
 
 import {
+  getDefaultFormSettings,
   getForm,
   getFormValidationSchema,
-  getDefaultFormSettings,
 } from "../../../utils";
 import { syncFieldsWithParameters } from "../utils";
 

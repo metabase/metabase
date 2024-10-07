@@ -1,13 +1,13 @@
 import {
-  restore,
-  filterWidget,
   editDashboard,
-  saveDashboard,
-  visitDashboard,
-  sidebar,
+  filterWidget,
   getDashboardCard,
   popover,
+  restore,
+  saveDashboard,
   setFilter,
+  sidebar,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 describe("scenarios > dashboard > filters > SQL > management", () => {

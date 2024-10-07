@@ -18,21 +18,21 @@ import { useSelector } from "metabase/lib/redux";
 import { Icon, Select } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type {
-  Dashboard,
-  DashboardId,
   CardId,
   ClickBehavior,
-  EntityCustomDestinationClickBehavior,
-  DashboardTab,
+  Dashboard,
   DashboardCard,
+  DashboardId,
+  DashboardTab,
+  EntityCustomDestinationClickBehavior,
 } from "metabase-types/api";
 
 import { Heading } from "../../ClickBehaviorSidebar.styled";
 import { SidebarItem } from "../../SidebarItem";
 import {
   LinkTargetEntityPickerContent,
-  SelectedEntityPickerIcon,
   SelectedEntityPickerContent,
+  SelectedEntityPickerIcon,
 } from "../LinkOptions.styled";
 
 const LINK_TARGETS = {
@@ -186,7 +186,7 @@ export function LinkedEntityPicker({
   const dashboardTabs = targetDashboard?.tabs ?? NO_DASHBOARD_TABS;
   const defaultDashboardTabId: number | undefined = dashboardTabs[0]?.id;
   const dashboardTabId = isDashboard
-    ? clickBehavior.tabId ?? defaultDashboardTabId
+    ? (clickBehavior.tabId ?? defaultDashboardTabId)
     : undefined;
   const dashboardTabExists = dashboardTabs.some(
     tab => tab.id === dashboardTabId,

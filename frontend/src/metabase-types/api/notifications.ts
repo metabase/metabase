@@ -1,4 +1,7 @@
-import type { ScheduleSettings } from "metabase-types/api/settings";
+import type {
+  ScheduleSettings,
+  ScheduleType,
+} from "metabase-types/api/settings";
 
 import type { Card } from "./card";
 import type { User } from "./user";
@@ -13,6 +16,7 @@ export type Channel = {
   details: Record<string, string>;
   enabled?: boolean;
   recipients?: User[];
+  channel_id?: number;
 } & Pick<
   ScheduleSettings,
   "schedule_day" | "schedule_type" | "schedule_hour" | "schedule_frame"
@@ -30,7 +34,7 @@ export type ChannelSpecRecipients = ("user" | "email")[];
 export type ChannelSpec = {
   type: ChannelType;
   name: string;
-  schedules: ScheduleValue[];
+  schedules: ScheduleType[];
   schedule_type: any;
   allows_recipients: boolean;
   configured: boolean;
@@ -55,20 +59,45 @@ export type PulseParameter = {
   value?: string;
 };
 
-type ScheduleValue = "hourly" | "daily" | "weekly" | "monthly";
+export type ChannelDetails = {
+  url: string;
+  "auth-method": NotificationAuthMethods;
+  "auth-info"?: Record<string, string>;
+  "fe-form-type": NotificationAuthType;
+};
+
+export type NotificationAuthMethods =
+  | "none"
+  | "header"
+  | "query-param"
+  | "request-body";
+
+export type NotificationAuthType = "none" | "basic" | "bearer" | "api-key";
+
+export type NotificationChannel<Details = ChannelDetails> = {
+  active: boolean;
+  created_at: string;
+  details: Details;
+  type: "channel/http";
+  updated_at: string;
+  id: number;
+  name: string;
+  description: string;
+};
 
 export type SlackChannelSpec = ChannelSpec & {
   fields: ChannelField[];
 };
 
-type EmailChannelSpec = ChannelSpec & {
-  recipients: ("user" | "email")[];
+export type EmailChannelSpec = ChannelSpec & {
+  recipients: ChannelSpecRecipients;
 };
-export interface FormInput {
+export interface ChannelApiResponse {
   channels: {
-    email: SlackChannelSpec;
-    slack: EmailChannelSpec;
+    email: EmailChannelSpec;
+    slack: SlackChannelSpec;
+    http: ChannelSpec;
   };
 }
 
-export type ChannelType = keyof FormInput["channels"];
+export type ChannelType = keyof ChannelApiResponse["channels"];

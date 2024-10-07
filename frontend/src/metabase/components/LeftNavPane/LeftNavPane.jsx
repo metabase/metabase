@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Link, IndexLink } from "react-router";
+import { IndexLink, Link } from "react-router";
 import { t } from "ttag";
 
 import AdminS from "metabase/css/admin.module.css";

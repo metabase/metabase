@@ -1,24 +1,24 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCardsEndpoints,
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupErrorParameterValuesEndpoints,
   setupParameterValuesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
+  setupTableQueryMetadataEndpoint,
   setupUnauthorizedCardsEndpoints,
   setupUnauthorizedCollectionsEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupTableQueryMetadataEndpoint,
-  setupCollectionByIdEndpoint,
-  setupCollectionItemsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { TokenFeatures, Card, ParameterValues } from "metabase-types/api";
+import type { Card, ParameterValues, TokenFeatures } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,

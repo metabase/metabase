@@ -3,18 +3,18 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterpriseTest } from "__support__/enterprise";
 import {
-  setupCollectionsEndpoints,
   setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  mockGetBoundingClientRect,
+  mockScrollBy,
   renderWithProviders,
   screen,
   waitFor,
-  mockGetBoundingClientRect,
-  mockScrollBy,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {

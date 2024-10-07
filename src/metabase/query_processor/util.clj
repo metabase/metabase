@@ -11,6 +11,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -59,7 +60,6 @@
   [_ query]
   (default-query->remark query))
 
-
 ;;; ------------------------------------------------- Normalization --------------------------------------------------
 
 ;; TODO - this has been moved to `metabase.legacy-mbql.util`; use that implementation instead.
@@ -71,7 +71,6 @@
       u/lower-case-en
       (str/replace #"_" "-")
       keyword))
-
 
 ;;; ---------------------------------------------------- Hashing -----------------------------------------------------
 
@@ -87,17 +86,6 @@
        x))
    x))
 
-(defn- remove-lib-uuids
-  "Two queries should be the same even if they have different :lib/uuids, because they might have both been converted
-  from the same legacy query."
-  [x]
-  (walk/postwalk
-   (fn [x]
-     (if (map? x)
-       (dissoc x :lib/uuid)
-       x))
-   x))
-
 (mu/defn- select-keys-for-hashing
   "Return `query` with only the keys relevant to hashing kept.
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
@@ -107,7 +95,7 @@
     (cond-> query
       (empty? constraints) (dissoc :constraints)
       (empty? parameters)  (dissoc :parameters)
-      true                 remove-lib-uuids
+      true                 lib.schema.util/remove-lib-uuids
       true                 walk-query-sort-maps)))
 
 (mu/defn query-hash :- bytes?
@@ -127,7 +115,6 @@
                                   {:query query}
                                   e))))]
     (buddy-hash/sha3-256 (json/generate-string (select-keys-for-hashing query)))))
-
 
 ;;; --------------------------------------------- Query Source Card IDs ----------------------------------------------
 
@@ -154,7 +141,7 @@
 
 (defn- field-normalizer
   [field]
-  (let [[type id-or-name options ] (mbql.normalize/normalize-tokens field)]
+  (let [[type id-or-name options] (mbql.normalize/normalize-tokens field)]
     [type id-or-name (select-keys options field-options-for-identification)]))
 
 (defn field->field-info
@@ -163,19 +150,19 @@
   (let [[_ttype id-or-name options :as field] (field-normalizer field)]
     (or
       ;; try match field_ref first
-      (first (filter (fn [field-info]
-                       (= field
-                          (-> field-info
-                              :field_ref
-                              field-normalizer)))
-                     result-metadata))
+     (first (filter (fn [field-info]
+                      (= field
+                         (-> field-info
+                             :field_ref
+                             field-normalizer)))
+                    result-metadata))
       ;; if not match name and base type for aggregation or field with string id
-      (first (filter (fn [field-info]
-                       (and (= (:name field-info)
-                               id-or-name)
-                            (= (:base-type options)
-                               (:base_type field-info))))
-                     result-metadata)))))
+     (first (filter (fn [field-info]
+                      (and (= (:name field-info)
+                              id-or-name)
+                           (= (:base-type options)
+                              (:base_type field-info))))
+                    result-metadata)))))
 
 (def preserved-keys
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging

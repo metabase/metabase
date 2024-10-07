@@ -1,20 +1,20 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
-import { css, type Theme } from "@emotion/react";
+import { type Theme, css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type {
-  HTMLAttributes,
   ChangeEventHandler,
+  HTMLAttributes,
   KeyboardEventHandler,
   MouseEventHandler,
   Ref,
 } from "react";
 import {
-  useEffect,
-  useContext,
+  forwardRef,
   useCallback,
+  useContext,
+  useEffect,
   useRef,
   useState,
-  forwardRef,
 } from "react";
 import { t } from "ttag";
 
@@ -23,18 +23,18 @@ import { lighten } from "metabase/lib/colors";
 
 import type { TabContextType } from "../Tab";
 import {
+  TabContext,
   getTabButtonInputId,
   getTabId,
   getTabPanelId,
-  TabContext,
 } from "../Tab";
 
 import {
-  TabButtonInput,
-  TabButtonRoot,
   MenuButton,
-  TabButtonInputWrapper,
+  TabButtonInput,
   TabButtonInputResizer,
+  TabButtonInputWrapper,
+  TabButtonRoot,
 } from "./TabButton.styled";
 import { TabButtonMenu } from "./TabButtonMenu";
 

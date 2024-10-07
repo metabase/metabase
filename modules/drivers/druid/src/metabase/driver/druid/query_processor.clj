@@ -150,14 +150,12 @@
                            :threshold topN-max-results}
      ::groupBy            {:queryType :groupBy})))
 
-
 ;;; ---------------------------------------------- handle-source-table -----------------------------------------------
 
 (defn- handle-source-table
   [_query-type {source-table-id :source-table} druid-query]
   (let [{source-table-name :name} (lib.metadata/table (qp.store/metadata-provider) source-table-id)]
     (assoc-in druid-query [:query :dataSource] source-table-name)))
-
 
 ;;; ---------------------- handle-filter. See http://druid.io/docs/latest/querying/filters.html ----------------------
 
@@ -461,9 +459,7 @@
         (seq filter)    (assoc-in [:query :filter] filter)
         (seq intervals) (assoc-in [:query :intervals] intervals)))))
 
-
 ;;; ----------------------------------------------- handle-aggregation -----------------------------------------------
-
 
 (defn- expression->field-names
   [[_ & args]]
@@ -499,11 +495,11 @@
      :name        output-name
      :fieldNames  field-names
      :fnReset     (druid.js/function []
-                    (druid.js/return 0))
+                                     (druid.js/return 0))
      :fnAggregate (druid.js/function (cons :current field-names)
-                    (druid.js/return (druid.js/+ :current (expression->js expression (if (= operator :/) 1 0)))))
+                                     (druid.js/return (druid.js/+ :current (expression->js expression (if (= operator :/) 1 0)))))
      :fnCombine   (druid.js/function [:x :y]
-                    (druid.js/return (druid.js/+ :x :y)))}))
+                                     (druid.js/return (druid.js/+ :x :y)))}))
 
 (defn- ag:doubleSum
   [field-clause output-name]
@@ -529,12 +525,12 @@
      :name        output-name
      :fieldNames  field-names
      :fnReset     (druid.js/function []
-                    (druid.js/return "Number.MAX_VALUE"))
+                                     (druid.js/return "Number.MAX_VALUE"))
      :fnAggregate (druid.js/function (cons :current field-names)
-                    (druid.js/return (druid.js/fn-call :Math.min :current
-                                                       (expression->js expression :Number.MAX_VALUE))))
+                                     (druid.js/return (druid.js/fn-call :Math.min :current
+                                                                        (expression->js expression :Number.MAX_VALUE))))
      :fnCombine   (druid.js/function [:x :y]
-                    (druid.js/return (druid.js/fn-call :Math.min :x :y)))}))
+                                     (druid.js/return (druid.js/fn-call :Math.min :x :y)))}))
 
 (defn- ag:doubleMin
   [field-clause output-name]
@@ -558,12 +554,12 @@
      :name        output-name
      :fieldNames  field-names
      :fnReset     (druid.js/function []
-                    (druid.js/return "Number.MIN_VALUE"))
+                                     (druid.js/return "Number.MIN_VALUE"))
      :fnAggregate (druid.js/function (cons :current field-names)
-                    (druid.js/return (druid.js/fn-call :Math.max :current
-                                                       (expression->js expression :Number.MIN_VALUE))))
+                                     (druid.js/return (druid.js/fn-call :Math.max :current
+                                                                        (expression->js expression :Number.MIN_VALUE))))
      :fnCombine   (druid.js/function [:x :y]
-                    (druid.js/return (druid.js/fn-call :Math.max :x :y)))}))
+                                     (druid.js/return (druid.js/fn-call :Math.max :x :y)))}))
 
 (defn- ag:doubleMax
   [field output-name]
@@ -764,8 +760,7 @@
                       ;; we should never get here unless our code is B U S T E D
                       _
                       (throw (ex-info (tru "Expected :aggregation-options, constant, or expression.")
-                               {:type :bug, :input arg})))))}))
-
+                                      {:type :bug, :input arg})))))}))
 
 (declare handle-aggregations)
 
@@ -815,7 +810,6 @@
        (handle-aggregation query-type &match druid-query)))
    druid-query
    aggregations))
-
 
 ;;; ------------------------------------------------ handle-breakout -------------------------------------------------
 
@@ -942,9 +936,10 @@
    :extractionFn (unit->extraction-fn unit)})
 
 (defmethod ->dimension-rvalue :field
-  [[_ _ {:keys [temporal-unit]} :as clause]]
-  (if temporal-unit
-    (temporal-dimension-rvalue temporal-unit)
+  [[_ _ {:keys [base-type temporal-unit]} :as clause]]
+  (if (or temporal-unit
+          (isa? base-type :type/Temporal))
+    (temporal-dimension-rvalue (or temporal-unit :default))
     (->rvalue clause)))
 
 (defmulti ^:private handle-breakout
@@ -991,7 +986,6 @@
                                        (field-clause->name breakout-field))))))
       (assoc-in [:query :dimensions] (mapv ->dimension-rvalue breakout-fields))))
 
-
 ;;; ------------------------------------------------ handle-order-by -------------------------------------------------
 
 (defmulti ^:private handle-order-by
@@ -1026,10 +1020,10 @@
     (when-not sort-by-breakout?
       (assert ag-field))
     (assoc-in druid-query [:query :metric] (match [sort-by-breakout? direction]
-                                               [true  :asc]  {:type :alphaNumeric}
-                                               [true  :desc] {:type :inverted, :metric {:type :alphaNumeric}}
-                                               [false :asc]  {:type :inverted, :metric ag-field}
-                                               [false :desc] ag-field))))
+                                             [true  :asc]  {:type :alphaNumeric}
+                                             [true  :desc] {:type :inverted, :metric {:type :alphaNumeric}}
+                                             [false :asc]  {:type :inverted, :metric ag-field}
+                                             [false :desc] ag-field))))
 
 (defmethod handle-order-by ::groupBy
   [_ {:keys [order-by]} druid-query]
@@ -1075,7 +1069,6 @@
                                             :desc :descending
                                             :asc  :ascending)))))
 
-
 ;;; ------------------------------------------------- handle-fields --------------------------------------------------
 
 (defmulti ^:private handle-fields
@@ -1088,7 +1081,7 @@
     (log/warn
      (u/format-color 'red
          ;; TODO - this is not really true, is it
-         "WARNING: It only makes sense to specify :fields for a query with no aggregation. Ignoring the clause.")))
+                     "WARNING: It only makes sense to specify :fields for a query with no aggregation. Ignoring the clause.")))
   druid-query)
 
 (defmethod handle-fields ::scan
@@ -1114,7 +1107,6 @@
             (update-in [:query :columns] conj (->rvalue field))))))
    druid-query
    fields))
-
 
 ;;; -------------------------------------------------- handle-limit --------------------------------------------------
 
@@ -1153,7 +1145,6 @@
     true  (assoc-in [:query :limitSpec :type]  :default)
     limit (assoc-in [:query :limitSpec :limit] (adjust-limit limit))))
 
-
 ;;; -------------------------------------------------- handle-page ---------------------------------------------------
 
 ;; TODO - no real way to implement this DB side, probably have to do Clojure-side w/ `take`/`drop`
@@ -1167,7 +1158,6 @@
   (when page-clause
     (log/warn (u/format-color 'red "WARNING: 'page' is not yet implemented.")))
   druid-query)
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Build + Log + Process Query                                           |

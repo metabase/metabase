@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo, useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,8 +8,8 @@ import { hasActionsMenu } from "metabase/lib/click-behavior";
 import type {
   ClickBehavior,
   ClickBehaviorType,
-  DatasetColumn,
   DashboardCard,
+  DatasetColumn,
 } from "metabase-types/api";
 
 import { Column } from "./Column";

@@ -10,22 +10,22 @@ import type {
   ActionFormSettings,
   BaseDashboardCard,
   Card,
-  FieldType,
   FieldSettings,
   FieldSettingsMap,
+  FieldType,
   InputComponentType,
   InputSettingType,
   Parameter,
+  VirtualCard,
   WritebackAction,
   WritebackActionBase,
   WritebackImplicitQueryAction,
   WritebackParameter,
-  VirtualCard,
 } from "metabase-types/api";
 
 import type {
-  ActionFormProps,
   ActionFormFieldProps,
+  ActionFormProps,
   FieldSettings as LocalFieldSettings,
 } from "./types";
 

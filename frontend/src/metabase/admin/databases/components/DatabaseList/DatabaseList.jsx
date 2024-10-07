@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { createRef, Component } from "react";
+import { Component, createRef } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -15,9 +15,9 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Button, Flex, Modal, Text } from "metabase/ui";
 
 import {
+  AddSampleDatabaseLink,
   TableCellContent,
   TableCellSpinner,
-  AddSampleDatabaseLink,
 } from "../../containers/DatabaseListApp.styled";
 
 const query = {
@@ -163,37 +163,29 @@ export default class DatabaseList extends Component {
           ) : null}
         </section>
 
-        {/* Needed to make this a composed modal to get the padding we wanted.
-            Not sure why the padding prop didn't work */}
-        <Modal.Root
+        <Modal
           opened={isPermissionModalOpened}
           size={620}
           withCloseButton={false}
+          title={t`Your database was added! Want to configure permissions?`}
+          padding="2rem"
         >
-          <Modal.Overlay />
-          <Modal.Content p="1rem">
-            <Modal.Header>
-              <Modal.Title fz="1.25rem">{t`Your database was added! Want to configure permissions?`}</Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-              <Text
-                mb="1.5rem"
-                mt="1rem"
-              >{t`You can change these settings later in the Permissions tab. Do you want to configure it?`}</Text>
-              <Flex justify="end">
-                <Button
-                  mr="0.5rem"
-                  onClick={this.onPermissionModalClose}
-                >{t`Maybe later`}</Button>
-                <Button
-                  component={Link}
-                  variant="filled"
-                  to={`/admin/permissions/data/database/${createdDbId}`}
-                >{t`Configure permissions`}</Button>
-              </Flex>
-            </Modal.Body>
-          </Modal.Content>
-        </Modal.Root>
+          <Text
+            mb="1.5rem"
+            mt="1rem"
+          >{t`You can change these settings later in the Permissions tab. Do you want to configure it?`}</Text>
+          <Flex justify="end">
+            <Button
+              mr="0.5rem"
+              onClick={this.onPermissionModalClose}
+            >{t`Maybe later`}</Button>
+            <Button
+              component={Link}
+              variant="filled"
+              to={`/admin/permissions/data/database/${createdDbId}`}
+            >{t`Configure permissions`}</Button>
+          </Flex>
+        </Modal>
       </div>
     );
   }

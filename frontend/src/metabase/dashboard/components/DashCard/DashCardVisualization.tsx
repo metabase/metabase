@@ -21,13 +21,13 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
-  Dashboard,
   DashCardId,
+  Dashboard,
+  DashboardCard,
   Dataset,
   Series,
   VirtualCardDisplay,
   VisualizationSettings,
-  DashboardCard,
 } from "metabase-types/api";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
@@ -86,6 +86,7 @@ interface DashCardVisualizationProps {
   onChangeCardAndRun: DashCardOnChangeCardAndRunHandler | null;
   showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
+  onTogglePreviewing: () => void;
 
   downloadsEnabled: boolean;
 }
@@ -121,6 +122,7 @@ export function DashCardVisualization({
   isEditingParameter,
   withTitle = true,
   onChangeCardAndRun,
+  onTogglePreviewing,
   showClickBehaviorSidebar,
   onChangeLocation,
   onUpdateVisualizationSettings,
@@ -155,6 +157,7 @@ export function DashCardVisualization({
             text: t`Text Card`,
             heading: t`Heading Card`,
             placeholder: t`Placeholder Card`,
+            iframe: t`Iframe Card`,
           }[virtualDashcardType] ??
           t`This card does not support click mappings`;
 
@@ -267,6 +270,7 @@ export function DashCardVisualization({
       error={error?.message}
       errorIcon={error?.icon}
       showTitle={withTitle}
+      canToggleSeriesVisibility={!isEditing}
       isAction={isAction}
       isDashboard
       isSlow={isSlow}
@@ -280,6 +284,7 @@ export function DashCardVisualization({
       replacementContent={visualizationOverlay}
       getExtraDataForClick={getExtraDataForClick}
       onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
+      onTogglePreviewing={onTogglePreviewing}
       onChangeCardAndRun={onChangeCardAndRun}
       onChangeLocation={onChangeLocation}
     />

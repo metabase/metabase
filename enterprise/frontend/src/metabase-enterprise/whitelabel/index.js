@@ -17,12 +17,12 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
   getApplicationName,
   getIsWhiteLabeling,
+  getLandingPageIllustration,
   getLoadingMessage,
   getLoginPageIllustration,
-  getLandingPageIllustration,
-  getShowMetabaseLinks,
   getNoDataIllustration,
   getNoObjectIllustration,
+  getShowMetabaseLinks,
 } from "metabase-enterprise/settings/selectors";
 
 import ColorSettingsWidget from "./components/ColorSettingsWidget";

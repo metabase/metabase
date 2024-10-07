@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { MaxLengthParams, LengthParams } from "./types";
+import type { LengthParams, MaxLengthParams } from "./types";
 
 export const required = () => t`required`;
 

@@ -15,12 +15,12 @@ import type {
 } from "metabase-types/api";
 
 import {
+  Divider,
+  RequiredToggleLabel,
+  SectionLabel,
+  SettingsPopoverBody,
   SettingsTriggerIcon,
   ToggleContainer,
-  SettingsPopoverBody,
-  SectionLabel,
-  RequiredToggleLabel,
-  Divider,
 } from "./FieldSettingsPopover.styled";
 import { getDefaultValueInputType } from "./utils";
 

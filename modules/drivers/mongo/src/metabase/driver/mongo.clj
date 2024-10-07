@@ -39,12 +39,12 @@
 (json.generate/add-encoder org.bson.BsonUndefined json.generate/encode-nil)
 
 (nippy/extend-freeze ObjectId :mongodb/ObjectId
-                     [^ObjectId oid data-output]
-                     (.writeUTF data-output (.toHexString oid)))
+  [^ObjectId oid data-output]
+  (.writeUTF data-output (.toHexString oid)))
 
 (nippy/extend-thaw :mongodb/ObjectId
-                   [data-input]
-                   (ObjectId. (.readUTF data-input)))
+  [data-input]
+  (ObjectId. (.readUTF data-input)))
 
 (driver/register! :mongo)
 
@@ -97,8 +97,6 @@
     message))
 
 ;;; ### Syncing
-
-(declare update-field-attrs)
 
 (defmethod driver/sync-in-context :mongo
   [_ database do-sync-fn]

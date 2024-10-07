@@ -1,14 +1,14 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  filterWidget,
   editDashboard,
-  saveDashboard,
-  visitDashboard,
-  setFilter,
+  filterWidget,
   getDashboardCard,
   multiAutocompleteInput,
+  popover,
+  restore,
+  saveDashboard,
+  setFilter,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;

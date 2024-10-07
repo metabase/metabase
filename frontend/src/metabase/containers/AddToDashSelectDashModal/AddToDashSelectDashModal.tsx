@@ -8,9 +8,9 @@ import type { Card, Dashboard } from "metabase-types/api";
 
 import { useMostRecentlyViewedDashboard } from "./hooks";
 import {
-  shouldDisableItem,
   filterWritableDashboards,
   filterWritableRecents,
+  shouldDisableItem,
 } from "./utils";
 
 const getTitle = ({ type }: Card) => {

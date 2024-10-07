@@ -3,7 +3,7 @@ import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { getDashboard } from "metabase/dashboard/selectors";
 import Bookmark from "metabase/entities/bookmarks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import type { Bookmark as IBookmark, DashboardId } from "metabase-types/api";
+import type { DashboardId, Bookmark as IBookmark } from "metabase-types/api";
 
 export interface DashboardBookmarkProps {
   isBookmarked: boolean;

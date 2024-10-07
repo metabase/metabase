@@ -5,8 +5,8 @@ import type { GroupsPermissions } from "metabase-types/api";
 import { DataPermission, DataPermissionValue } from "../../types";
 
 import {
-  getModifiedGroupsPermissionsGraphParts,
   getModifiedCollectionPermissionsGraphParts,
+  getModifiedGroupsPermissionsGraphParts,
   mergeGroupsPermissionsUpdates,
 } from "./partial-updates";
 
@@ -77,8 +77,11 @@ describe("mergeGroupsPermissionsUpdates", () => {
         "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
       },
     };
+    const modifiedGroupIds = Object.keys(update);
 
-    expect(mergeGroupsPermissionsUpdates(undefined, update)).toBe(update);
+    expect(
+      mergeGroupsPermissionsUpdates(undefined, update, modifiedGroupIds),
+    ).toBe(update);
   });
 
   it("should only apply updates to groups that have been modified", async () => {
@@ -95,6 +98,8 @@ describe("mergeGroupsPermissionsUpdates", () => {
       "2": { "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.NO } },
     };
 
+    const modifiedGroupIds = Object.keys(update);
+
     const expectedResult = {
       "1": {
         "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
@@ -102,9 +107,35 @@ describe("mergeGroupsPermissionsUpdates", () => {
       "2": { "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.NO } },
     };
 
-    expect(mergeGroupsPermissionsUpdates(permissions, update)).toEqual(
-      expectedResult,
-    );
+    expect(
+      mergeGroupsPermissionsUpdates(permissions, update, modifiedGroupIds),
+    ).toEqual(expectedResult);
+  });
+
+  it("should return empty objects for modified groups that have empty values in the update object (this means they have default values for all permissions)", async () => {
+    const permissions: GroupsPermissions = {
+      "1": {
+        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
+      },
+      "2": {
+        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
+      },
+    };
+
+    const update: GroupsPermissions = {};
+
+    const modifiedGroupIds = ["2"];
+
+    const expectedResult = {
+      "1": {
+        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
+      },
+      "2": {},
+    };
+
+    expect(
+      mergeGroupsPermissionsUpdates(permissions, update, modifiedGroupIds),
+    ).toEqual(expectedResult);
   });
 });
 

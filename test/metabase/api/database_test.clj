@@ -19,6 +19,7 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database :refer [protected-password]]
+   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
@@ -53,8 +54,8 @@
 ;; HELPER FNS
 
 (driver/register! ::test-driver
-  :parent :sql-jdbc
-  :abstract? true)
+                  :parent :sql-jdbc
+                  :abstract? true)
 
 (defmethod driver/connection-properties ::test-driver
   [_]
@@ -98,8 +99,8 @@
 
 (defn- expected-tables [db-or-id]
   (map table-details (t2/select Table
-                       :db_id (u/the-id db-or-id), :active true, :visibility_type nil
-                       {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
+                                :db_id (u/the-id db-or-id), :active true, :visibility_type nil
+                                {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
 
 (defn- field-details [field]
   (mt/derecordize
@@ -110,7 +111,7 @@
      field
      [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id :position]))))
 
-(defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
+(defn- card-with-native-query [card-name & {:as kvs}]
   (merge
    {:name          card-name
     :database_id   (mt/id)
@@ -119,7 +120,7 @@
                     :native   {:query (format "SELECT * FROM VENUES")}}}
    kvs))
 
-(defn- card-with-mbql-query {:style/indent 1} [card-name & {:as inner-query-clauses}]
+(defn- card-with-mbql-query [card-name & {:as inner-query-clauses}]
   {:name          card-name
    :database_id   (mt/id)
    :dataset_query {:database (mt/id)
@@ -199,18 +200,18 @@
 (deftest get-database-legacy-no-self-service-test
   (testing "GET /api/database/:id"
     (testing "A database can be fetched even if one table has legacy-no-self-service permissions"
-        (mt/with-user-in-groups [group {:name "Legacy no-self-service group"}
-                                 user  [group]]
-          (mt/with-temp [:model/Database         {db-id :id}      {}
-                         :model/Table            {table-id-1 :id} {:db_id  db-id}
-                         :model/Table            {table-id-2 :id} {:db_id  db-id}]
-            (mt/with-no-data-perms-for-all-users!
+      (mt/with-user-in-groups [group {:name "Legacy no-self-service group"}
+                               user  [group]]
+        (mt/with-temp [:model/Database         {db-id :id}      {}
+                       :model/Table            {table-id-1 :id} {:db_id  db-id}
+                       :model/Table            {table-id-2 :id} {:db_id  db-id}]
+          (mt/with-no-data-perms-for-all-users!
               ;; Query permissions for a single table is enough to fetch the DB
-              (data-perms/set-table-permission! group table-id-1 :perms/view-data :legacy-no-self-service)
-              (data-perms/set-table-permission! group table-id-1 :perms/create-queries :no)
-              (data-perms/set-table-permission! group table-id-2 :perms/view-data :unrestricted)
-              (data-perms/set-table-permission! group table-id-2 :perms/create-queries :query-builder)
-              (mt/user-http-request user :get 200 (format "database/%d" db-id))))))))
+            (data-perms/set-table-permission! group table-id-1 :perms/view-data :legacy-no-self-service)
+            (data-perms/set-table-permission! group table-id-1 :perms/create-queries :no)
+            (data-perms/set-table-permission! group table-id-2 :perms/view-data :unrestricted)
+            (data-perms/set-table-permission! group table-id-2 :perms/create-queries :query-builder)
+            (mt/user-http-request user :get 200 (format "database/%d" db-id))))))))
 
 (deftest get-database-can-upload-test
   (testing "GET /api/database"
@@ -307,9 +308,9 @@
                    driver/can-connect? (constantly true)]
        ~@body)))
 
-(defmacro with-db-scheduler-setup
+(defmacro with-db-scheduler-setup!
   [& body]
-  `(mt/with-temp-scheduler
+  `(mt/with-temp-scheduler!
      (#'task.sync-databases/job-init)
      (u/prog1 ~@body
        (qs/delete-job (#'task/scheduler) (.getKey ^JobDetail @#'task.sync-databases/sync-analyze-job))
@@ -318,7 +319,7 @@
 (deftest create-db-default-schedule-test
   (testing "POST /api/database"
     (testing "create a db with default scan options"
-      (with-db-scheduler-setup
+      (with-db-scheduler-setup!
         (with-test-driver-available!
           (let [resp (mt/user-http-request :crowberto :post 200 "database"
                                            {:name    (mt/random-name)
@@ -407,7 +408,8 @@
 (deftest create-db-succesful-track-snowplow-test
   ;; h2 is no longer supported as a db source
   ;; the rests are disj because it's timeouted when adding it as a DB for some reasons
-  (mt/test-drivers (disj (mt/normal-drivers) :h2 :bigquery-cloud-sdk :athena :snowflake)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
+                         :h2 :bigquery-cloud-sdk :snowflake)
     (snowplow-test/with-fake-snowplow-collector
       (let [dataset-def (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'avian-singles))]
         ;; trigger this to make sure the database exists before we add them
@@ -731,9 +733,9 @@
                  Field    _           {:table_id (u/the-id table)}]
     (testing "GET /api/database/:id/metadata?skip_fields=true"
       (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
-                      :tables
-                      first
-                      :fields)]
+                        :tables
+                        first
+                        :fields)]
         (is (= () fields))))))
 
 (deftest ^:parallel autocomplete-suggestions-test
@@ -1083,9 +1085,9 @@
                      Card bad-card (merge
                                     (mt/$ids checkins
                                       (card-with-mbql-query "Cum Count Card"
-                                        :source-table $$checkins
-                                        :aggregation  [[:cum-count]]
-                                        :breakout     [!month.date]))
+                                                            :source-table $$checkins
+                                                            :aggregation  [[:cum-count]]
+                                                            :breakout     [!month.date]))
                                     {:result_metadata [{:name "num_toucans"}]})]
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
@@ -1124,7 +1126,6 @@
                (mt/user-http-request :crowberto :get 200
                                      (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                CRON SCHEDULES!                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1146,7 +1147,7 @@
 (deftest create-db-with-manual-schedules-test
   (testing "POST /api/database"
     (testing "create a db with scan field values option is \"regularly on a schedule\""
-      (with-db-scheduler-setup
+      (with-db-scheduler-setup!
         (with-test-driver-available!
           (let [{:keys [details] :as db}
                 (mt/user-http-request :crowberto :post 200 "database"
@@ -1168,7 +1169,7 @@
 (deftest create-db-never-scan-field-values-test
   (testing "POST /api/database"
     (testing "create a db with scan field values option is \"Never, I'll do it myself\""
-      (with-db-scheduler-setup
+      (with-db-scheduler-setup!
         (with-test-driver-available!
           (let [resp (mt/user-http-request :crowberto :post 200 "database"
                                            {:name         (mt/random-name)
@@ -1189,7 +1190,7 @@
 (deftest create-db-on-demand-scan-field-values-test
   (testing "POST /api/database"
     (testing "create a db with scan field values option is \"Only when adding a new filter widget\""
-      (with-db-scheduler-setup
+      (with-db-scheduler-setup!
         (with-test-driver-available!
           (let [resp (mt/user-http-request :crowberto :post 200 "database"
                                            {:name         (mt/random-name)
@@ -1208,7 +1209,7 @@
                    (task.sync-databases-test/query-all-db-sync-triggers-name db)))))))))
 
 (deftest update-db-to-sync-on-custom-schedule-test
-  (with-db-scheduler-setup
+  (with-db-scheduler-setup!
     (with-test-driver-available!
       (mt/with-temp
         [:model/Database db {}]
@@ -1239,45 +1240,48 @@
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-last-friday-at-11pm)
                    (:cache_field_values_schedule db)))))
 
-       (testing "update db setting to never scan should remove scan field values trigger"
-         (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
-                               {:details     {:let-user-control-scheduling true}
-                                :schedules   {:metadata_sync      schedule-map-for-weekly
-                                              :cache_field_values schedule-map-for-last-friday-at-11pm}
-                                :is_full_sync false
-                                :is_on_demand false})
-         (is (= #{(sync-and-analyze-trigger-name db)}
-                (task.sync-databases-test/query-all-db-sync-triggers-name db)))
-         (let [db (t2/select-one :model/Database (:id db))]
-           (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
-                  (:metadata_sync_schedule db)))
-           (is (nil? (:cache_field_values_schedule db)))))
+        (testing "update db setting to never scan should remove scan field values trigger"
+          (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                                {:details     {:let-user-control-scheduling true}
+                                 :schedules   {:metadata_sync      schedule-map-for-weekly
+                                               :cache_field_values schedule-map-for-last-friday-at-11pm}
+                                 :is_full_sync false
+                                 :is_on_demand false})
+          (is (= #{(sync-and-analyze-trigger-name db)}
+                 (task.sync-databases-test/query-all-db-sync-triggers-name db)))
+          (let [db (t2/select-one :model/Database (:id db))]
+            (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
+                   (:metadata_sync_schedule db)))
+            (is (nil? (:cache_field_values_schedule db)))))
 
-       (testing "turn back to default settings should recreate all tasks with randomized schedule"
-         (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
-                               {:details     {:let-user-control-scheduling false}
-                                :schedules   {:metadata_sync      schedule-map-for-weekly
-                                              :cache_field_values schedule-map-for-last-friday-at-11pm}
-                                :is_full_sync true
-                                :is_on_demand false})
-         (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
-                (task.sync-databases-test/query-all-db-sync-triggers-name db)))
-         (let [db (t2/select-one :model/Database (:id db))]
+        (testing "turn back to default settings should recreate all tasks with randomized schedule"
+          (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                                {:details     {:let-user-control-scheduling false}
+                                 :schedules   {:metadata_sync      schedule-map-for-weekly
+                                               :cache_field_values schedule-map-for-last-friday-at-11pm}
+                                 :is_full_sync true
+                                 :is_on_demand false})
+          (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                 (task.sync-databases-test/query-all-db-sync-triggers-name db)))
+          (let [db (t2/select-one :model/Database (:id db))]
            ;; make sure the new schedule is randomized, not from the payload
-           (is (not= (-> schedule-map-for-weekly u.cron/schedule-map->cron-string)
-                     (:metadata_sync_schedule db)))
-           (is (not= (-> schedule-map-for-last-friday-at-11pm u.cron/schedule-map->cron-string)
-                     (:cache_field_values_schedule db)))))))))
-
+            (is (not= (-> schedule-map-for-weekly u.cron/schedule-map->cron-string)
+                      (:metadata_sync_schedule db)))
+            (is (not= (-> schedule-map-for-last-friday-at-11pm u.cron/schedule-map->cron-string)
+                      (:cache_field_values_schedule db)))))))))
 (deftest update-db-to-never-scan-values-on-demand-test
-  (with-db-scheduler-setup
+  (with-db-scheduler-setup!
     (with-test-driver-available!
       (mt/with-temp
         [:model/Database db {}]
         (testing "update db setting to never scan should remove scan field values trigger"
           (testing "sanity check that it has all triggers to begin with"
             (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
-                   (task.sync-databases-test/query-all-db-sync-triggers-name db))))
+                   ;; this is flaking and I suspect it's because the triggers is created async in
+                   ;; post-insert hook of Database
+                   (u/poll {:thunk     #(task.sync-databases-test/query-all-db-sync-triggers-name db)
+                            :done?      not-empty
+                            :timeout-ms 300}))))
           (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
                                 {:details     {:let-user-control-scheduling true}
                                  :schedules   {:metadata_sync      schedule-map-for-weekly
@@ -1292,7 +1296,7 @@
             (is (nil? (:cache_field_values_schedule db)))))))))
 
 (deftest update-db-to-scan-field-values-on-demand-test
-  (with-db-scheduler-setup
+  (with-db-scheduler-setup!
     (with-test-driver-available!
       (testing "update db to scan on demand should remove scan field values trigger"
         (mt/with-temp
@@ -1434,7 +1438,7 @@
    (with-redefs [h2/*allow-testing-h2-connections* true]
      (mt/user-http-request user :post expected-status-code "database/validate" request-body))))
 
-(defn- test-connection-details [engine details]
+(defn- test-connection-details! [engine details]
   (with-redefs [h2/*allow-testing-h2-connections* true]
     (#'api.database/test-connection-details engine details)))
 
@@ -1447,7 +1451,7 @@
 
     (testing "Underlying `test-connection-details` function should work"
       (is (= (:details (mt/db))
-             (test-connection-details "h2" (:details (mt/db))))))
+             (test-connection-details! "h2" (:details (mt/db))))))
 
     (testing "Valid database connection details"
       (is (= (merge (:details (mt/db)) {:valid true})
@@ -1458,7 +1462,7 @@
         (is (= {:errors  {:db "check your connection string"}
                 :message "Implicitly relative file paths are not allowed."
                 :valid   false}
-               (test-connection-details "h2" {:db "ABC"}))))
+               (test-connection-details! "h2" {:db "ABC"}))))
 
       (testing "via the API endpoint"
         (is (= {:errors  {:db "check your connection string"}
@@ -1506,7 +1510,6 @@
           (is (= 1 @call-count))
           (is (= [true] @ssl-values)))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                      GET /api/database/:id/schemas & GET /api/database/:id/schema/:schema                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1545,6 +1548,14 @@
                      Table    _ {:db_id db-id :schema " "}]
         (is (= ["" " "]
                (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" db-id))))))))
+
+(deftest ^:parallel blank-schema-identifier-test
+  (testing "We should handle Databases with blank schema correctly (#12450)"
+    (t2.with-temp/with-temp [Database {db-id :id} {:name "my/database"}]
+      (doseq [schema-name [nil ""]]
+        (testing (str "schema name = " (pr-str schema-name))
+          (t2.with-temp/with-temp [Table _ {:db_id db-id, :schema schema-name, :name "just a table"}]
+            (is (= [""] (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))))))
 
 (deftest get-syncable-schemas-test
   (testing "GET /api/database/:id/syncable_schemas"
@@ -1596,7 +1607,7 @@
       (testing "should return a 403 for a user that doesn't have read permissions for the database"
         (mt/with-no-data-perms-for-all-users!
           (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id))))))
+                 (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id))))))
 
       (testing "should return a 403 if there are no perms for any schema"
         (mt/with-full-data-perms-for-all-users!
@@ -1781,6 +1792,47 @@
         (is (= ["t1" "t2"]
                (map :name (mt/user-http-request :lucky :get 200 (format "database/%d/schema/" db-id)))))))))
 
+(deftest get-schema-tables-unreadable-metrics-are-not-returned-test
+  (mt/with-temp [Collection model-coll   {:name "Model Collection"}
+                 Card       card         (assoc (card-with-native-query "Card 1")
+                                                :collection_id (:id model-coll)
+                                                :type :model)
+                 Collection metric-coll {:name "Metric Collection"}
+                 Card       metric      {:type          :metric
+                                         :name          "Metric"
+                                         :database_id   (mt/id)
+                                         :collection_id (:id metric-coll)
+                                         :dataset_query {:type     :query
+                                                         :database (mt/id)
+                                                         :query    {:source-table (str "card__" (:id card))
+                                                                    :aggregation  [[:count]]}}}]
+    (is (=? {:status "completed"}
+            (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card)))))
+    (let [virtual-table {:id           (format "card__%d" (:id card))
+                         :db_id        (mt/id)
+                         :metrics      nil
+                         :display_name "Card 1"
+                         :schema       (:name model-coll)
+                         :type         "model"}]
+      (testing "Metrics should be returned"
+        (is (=? [(assoc virtual-table
+                        :metrics [{:id             (:id metric)
+                                   :name           "Metric"
+                                   :type           "metric"
+                                   :source_card_id (:id card)
+                                   :database_id    (mt/id)}])]
+                (mt/user-http-request :lucky :get 200
+                                      (format "database/%d/datasets/%s"
+                                              lib.schema.id/saved-questions-virtual-database-id
+                                              (:name model-coll))))))
+      (perms/revoke-collection-permissions! (perms-group/all-users) (:id metric-coll))
+      (testing "Metrics should not be returned if its collection is not accessible"
+        (is (=? [virtual-table]
+                (mt/user-http-request :lucky :get 200
+                                      (format "database/%d/datasets/%s"
+                                              lib.schema.id/saved-questions-virtual-database-id
+                                              (:name model-coll)))))))))
+
 (deftest get-schema-tables-permissions-test
   (testing "GET /api/database/:id/schema/:schema against permissions"
     (mt/with-temp [Database {db-id :id} {}
@@ -1790,7 +1842,7 @@
       (testing "if we have full data perms for the DB"
         (mt/with-full-data-perms-for-all-users!
           (is (= ["t1" "t3"]
-               (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")))))))
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")))))))
 
       (testing "if we have query perms for all tables in the schema"
         (mt/with-no-data-perms-for-all-users!
@@ -1964,7 +2016,6 @@
                                                     :tunnel-private-key-passphrase protected-password
                                                     :access-token                  protected-password
                                                     :refresh-token                 protected-password})))))
-
 
 (deftest ^:parallel secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver

@@ -10,7 +10,7 @@ import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { PermissionsApi } from "metabase/services";
-import { Loader, Center } from "metabase/ui";
+import { Center, Loader } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, Group } from "metabase-types/api";
 
@@ -18,11 +18,11 @@ import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
 import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
 import ToolbarUpsell from "../../components/ToolbarUpsell";
 import {
-  saveDataPermissions,
-  restoreLoadedPermissions,
   LOAD_DATA_PERMISSIONS_FOR_GROUP,
+  restoreLoadedPermissions,
+  saveDataPermissions,
 } from "../../permissions";
-import { getIsDirty, getDiff } from "../../selectors/data-permissions/diff";
+import { getDiff, getIsDirty } from "../../selectors/data-permissions/diff";
 
 type DataPermissionsPageProps = {
   children: ReactNode;

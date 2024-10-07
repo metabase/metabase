@@ -17,7 +17,7 @@ import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getIsWebApp } from "metabase/selectors/web-app";
-import { mergeSettings } from "metabase/visualizations/lib/settings";
+import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import Question from "metabase-lib/v1/Question";
 import {
   getValuePopulatedParameters as _getValuePopulatedParameters,
@@ -146,6 +146,11 @@ export const getIsShowDashboardInfoSidebar = createSelector(
   sidebar => sidebar.name === SIDEBAR_NAME.info,
 );
 
+export const getIsShowDashboardSettingsSidebar = createSelector(
+  [getSidebar],
+  sidebar => sidebar.name === SIDEBAR_NAME.settings,
+);
+
 export const getDashboardId = (state: State) => state.dashboard.dashboardId;
 
 export const getDashboard = createSelector(
@@ -217,13 +222,10 @@ export const getDashcardHref = createSelector(
       return undefined;
     }
 
-    const card = {
-      ...dashcard.card,
-      visualization_settings: mergeSettings(
-        dashcard.card.visualization_settings,
-        dashcard.visualization_settings,
-      ),
-    };
+    const card = extendCardWithDashcardSettings(
+      dashcard.card,
+      dashcard.visualization_settings,
+    );
 
     return getNewCardUrl({
       metadata,
@@ -404,6 +406,7 @@ export const getQuestions = (state: State) => {
   return questionsById;
 };
 
+// TODO: remove it as we added cache to MLv2 and it should be fast now
 // getQuestions selector returns an array with stable references to the questions
 // but array itself is always new, so it may cause troubles in re-renderings
 const getQuestionsMemoized = createDeepEqualSelector(

@@ -1,4 +1,4 @@
-import { withRouter, type WithRouterProps } from "react-router";
+import { type WithRouterProps, withRouter } from "react-router";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";

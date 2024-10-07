@@ -1,4 +1,4 @@
-import { useRegisterActions, type Action } from "kbar";
+import { type Action, useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
@@ -14,8 +14,8 @@ import * as Urls from "metabase/lib/urls";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import {
   getHasDataAccess,
-  getHasNativeWrite,
   getHasDatabaseWithActionsEnabled,
+  getHasNativeWrite,
 } from "metabase/selectors/data";
 
 export const useCommandPaletteBasicActions = ({
@@ -127,6 +127,28 @@ export const useCommandPaletteBasicActions = ({
         perform: () => {
           dispatch(closeModal());
           dispatch(push("model/new"));
+        },
+      });
+    }
+
+    if (hasDataAccess) {
+      actions.push({
+        id: "new_metric",
+        name: t`New metric`,
+        section: "basic",
+        icon: "metric",
+        perform: () => {
+          dispatch(closeModal());
+          dispatch(push("metric/query"));
+          dispatch(
+            push(
+              Urls.newQuestion({
+                mode: "query",
+                cardType: "metric",
+                collectionId,
+              }),
+            ),
+          );
         },
       });
     }

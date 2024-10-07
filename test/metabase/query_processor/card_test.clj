@@ -3,8 +3,8 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer :all]
-   [metabase.api.common :as api]
    [metabase.models :refer [Card]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -19,12 +19,12 @@
   [card-id]
   ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
   ;; stuff doesn't belong in the Dashboard QP namespace
-  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+  (mt/as-admin
     (qp.card/process-query-for-card
-      card-id :api
-      :make-run (constantly
-                  (fn [query info]
-                    (qp/process-query (assoc query :info info)))))))
+     card-id :api
+     :make-run (constantly
+                (fn [query info]
+                  (qp/process-query (assoc query :info info)))))))
 
 (defn field-filter-query
   "A query with a Field Filter parameter"
@@ -175,7 +175,7 @@
   (testing "Pivot tables should not override the run function (#44160)"
     (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query
                                                         (mt/mbql-query venues
-                                                                       {:aggregation [[:count]]})
+                                                          {:aggregation [[:count]]})
                                                         :display :pivot}]
       (let [result (run-query-for-card card-id)]
         (is (=? {:status :completed}
@@ -198,14 +198,16 @@
                                                                                 :query    {:source-table (format "card__%d" (u/the-id parent-card))}}
                                                                 :collection_id (u/the-id allowed-collection)}]
           (perms/grant-collection-read-permissions! (perms-group/all-users) allowed-collection)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
           (mt/with-test-user :rasta
             (letfn [(process-query-for-card [card]
                       (qp.card/process-query-for-card
                        (u/the-id card) :api
                        :make-run (constantly
-                                   (fn [query info]
-                                     (let [info (assoc info :query-hash (byte-array 0))]
-                                       (qp/process-query (assoc query :info info)))))))]
+                                  (fn [query info]
+                                    (let [info (assoc info :query-hash (byte-array 0))]
+                                      (qp/process-query (assoc query :info info)))))))]
               (testing "Should not be able to run the parent Card"
                 (is (not (mi/can-read? disallowed-collection)))
                 (is (not (mi/can-read? parent-card)))

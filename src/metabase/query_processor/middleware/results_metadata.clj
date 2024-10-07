@@ -12,7 +12,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -36,7 +36,8 @@
                card-id
                ;; don't want to update metadata when we use a Card as a source Card.
                (not (:qp/source-card-id query)))
-      (t2/update! :model/Card card-id {:result_metadata metadata}))
+      (t2/update! :model/Card card-id {:result_metadata metadata
+                                       :updated_at      :updated_at}))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e
@@ -56,7 +57,7 @@
      (merge
       (select-keys final-col [:id :description :display_name :semantic_type :fk_target_field_id
                               :settings :field_ref :base_type :effective_type
-                              :coercion_strategy :visibility_type])
+                              :remapped_from :remapped_to :coercion_strategy :visibility_type])
       insights-col
       {:name (:name final-col)} ; The final cols have correctly disambiguated ID_2 names, but the insights cols don't.
       (when (= our-base-type :type/*)

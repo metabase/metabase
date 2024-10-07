@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
-  setupCardQueryMetadataEndpoint,
   setupCardQueryEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";

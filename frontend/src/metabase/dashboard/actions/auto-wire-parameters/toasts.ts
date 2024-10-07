@@ -8,11 +8,11 @@ import {
 } from "metabase/dashboard/actions";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import type {
-  QuestionDashboardCard,
   DashCardId,
   DashboardParameterMapping,
   Parameter,
   ParameterId,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
@@ -169,7 +169,7 @@ export const showAddedCardAutoWireParametersToast =
 export const closeAutoWireParameterToast =
   (toastId: string = AUTO_WIRE_TOAST_ID) =>
   (dispatch: Dispatch) => {
-    dispatch(dismissUndo({ undoId: toastId, track: false }));
+    dispatch(dismissUndo({ undoId: toastId }));
   };
 
 const autoWireToastTypes = ["filterAutoConnect", "filterAutoConnectDone"];
@@ -179,7 +179,7 @@ export const closeAddCardAutoWireToasts =
 
     for (const undo of undos) {
       if (undo.type && autoWireToastTypes.includes(undo.type)) {
-        dispatch(dismissUndo({ undoId: undo.id, track: false }));
+        dispatch(dismissUndo({ undoId: undo.id }));
       }
     }
   };

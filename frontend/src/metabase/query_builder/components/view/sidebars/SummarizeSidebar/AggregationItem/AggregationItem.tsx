@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -54,7 +54,7 @@ export function AggregationItem({
           clause={aggregation}
           clauseIndex={aggregationIndex}
           operators={operators}
-          hasExpressionInput={false}
+          allowTemporalComparisons
           onQueryChange={onQueryChange}
         />
       </Popover.Dropdown>

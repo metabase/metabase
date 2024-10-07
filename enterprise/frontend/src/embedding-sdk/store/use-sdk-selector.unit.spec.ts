@@ -1,8 +1,8 @@
 import { renderHook } from "@testing-library/react";
 
 import {
-  useSdkSelector,
   USE_OUTSIDE_OF_CONTEXT_MESSAGE,
+  useSdkSelector,
 } from "./use-sdk-selector";
 
 describe("useSdkSelector", () => {

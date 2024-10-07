@@ -192,12 +192,12 @@
                        (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
                            (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))))))))
 
- (testing "if sso enabled and password login is disabled, email should send a link to sso login"
-   (mt/with-premium-features #{:disable-password-login}
-     (mt/with-temporary-setting-values [enable-password-login false]
-       (ldap.test/with-ldap-server
-         (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
-         (is (seq (mt/regex-email-bodies #"/auth/login"))))))))
+  (testing "if sso enabled and password login is disabled, email should send a link to sso login"
+    (mt/with-premium-features #{:disable-password-login}
+      (mt/with-temporary-setting-values [enable-password-login false]
+        (ldap.test/with-ldap-server!
+          (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
+          (is (seq (mt/regex-email-bodies #"/auth/login"))))))))
 
 (deftest ldap-user-passwords-test
   (testing (str "LDAP users should not persist their passwords. Check that if somehow we get passed an LDAP user "
@@ -231,7 +231,6 @@
              (t2/select-one-fn :login_attributes User :email "ldaptest@metabase.com")))
       (finally
         (t2/delete! User :email "ldaptest@metabase.com")))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            New Group IDs Functions                                             |

@@ -1,9 +1,13 @@
 import { t } from "ttag";
 
+import { useEditItemVerificationMutation } from "metabase/api";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import ModerationReviewBanner from "./components/ModerationReviewBanner";
+import {
+  ModerationReviewBanner,
+  ModerationReviewText,
+} from "./components/ModerationReviewBanner";
 import { ModerationStatusIcon } from "./components/ModerationStatusIcon";
 import QuestionModerationButton from "./components/QuestionModerationButton";
 import QuestionModerationIcon from "./components/QuestionModerationIcon";
@@ -15,8 +19,6 @@ import {
   getQuestionIcon,
   getStatusIcon,
   isItemVerified,
-  removeReview,
-  verifyItem,
 } from "./service";
 import { getVerifyQuestionTitle } from "./utils";
 
@@ -27,11 +29,14 @@ if (hasPremiumFeature("content_verification")) {
     QuestionModerationSection,
     QuestionModerationButton,
     ModerationReviewBanner,
+    ModerationReviewText,
     ModerationStatusIcon,
     getStatusIcon,
     getQuestionIcon,
     getModerationTimelineEvents,
-    getMenuItems: (model, isModerator, reload) => {
+
+    useMenuItems(model, isModerator, reload) {
+      const [editItemVerification] = useEditItemVerificationMutation();
       const id = model.id();
       const { name: verifiedIconName } = getStatusIcon(
         MODERATION_STATUS.verified,
@@ -50,10 +55,19 @@ if (hasPremiumFeature("content_verification")) {
             icon: isVerified ? "close" : verifiedIconName,
             action: async () => {
               if (isVerified) {
-                await removeReview({ itemId: id, itemType: "card" });
+                await editItemVerification({
+                  moderated_item_id: id,
+                  moderated_item_type: "card",
+                  status: null,
+                });
               } else {
-                await verifyItem({ itemId: id, itemType: "card" });
+                await editItemVerification({
+                  moderated_item_id: id,
+                  moderated_item_type: "card",
+                  status: "verified",
+                });
               }
+
               reload();
             },
             testId: isVerified

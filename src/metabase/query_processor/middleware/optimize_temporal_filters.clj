@@ -50,7 +50,6 @@
              (when-let [expr-type ((some-fn :effective-type :base-type) opts)]
                (isa? expr-type :type/Temporal))))))
 
-
 (defn- optimizable-expr? [expr]
   (lib.util.match/match-one expr
     #{:field :expression}
@@ -124,22 +123,22 @@
 (defmethod can-optimize-filter? :>=
   [filter-clause]
   (lib.util.match/match-one
-   filter-clause
-   [_tag
+    filter-clause
+    [_tag
     ;; Don't optimize >= with column that has default temporal bucket
-    (field :guard (every-pred not-default-bucket-clause optimizable-expr?))
-    (temporal-value :guard optimizable-temporal-value?)]
-   (field-and-temporal-value-have-compatible-units? field temporal-value)))
+     (field :guard (every-pred not-default-bucket-clause optimizable-expr?))
+     (temporal-value :guard optimizable-temporal-value?)]
+    (field-and-temporal-value-have-compatible-units? field temporal-value)))
 
 (defmethod can-optimize-filter? :<
   [filter-clause]
   (lib.util.match/match-one
-   filter-clause
-   [_tag
+    filter-clause
+    [_tag
     ;; Don't optimize < with column that has default temporal bucket
-    (field :guard (every-pred not-default-bucket-clause optimizable-expr?))
-    (temporal-value :guard optimizable-temporal-value?)]
-   (field-and-temporal-value-have-compatible-units? field temporal-value)))
+     (field :guard (every-pred not-default-bucket-clause optimizable-expr?))
+     (temporal-value :guard optimizable-temporal-value?)]
+    (field-and-temporal-value-have-compatible-units? field temporal-value)))
 
 (defmethod can-optimize-filter? :between
   [filter-clause]
@@ -163,7 +162,7 @@
 (mr/def ::temporal
   (lib.schema.common/instance-of-class java.time.temporal.Temporal))
 
-  (mu/defn- temporal-literal-lower-bound :- ::temporal
+(mu/defn- temporal-literal-lower-bound :- ::temporal
   [unit :- (into [:enum] u.date/add-units)
    t    :- ::temporal]
   (:start (u.date/range t unit)))

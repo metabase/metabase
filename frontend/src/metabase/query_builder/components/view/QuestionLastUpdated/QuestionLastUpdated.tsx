@@ -1,16 +1,19 @@
 import { c } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { Flex, FixedSizeIcon, Tooltip, type FlexProps } from "metabase/ui";
+import { FixedSizeIcon, Flex, type FlexProps, Tooltip } from "metabase/ui";
+import type { Dataset } from "metabase-types/api";
 
-import { getTimePassedSince, getAbbreviatedRelativeTimeStrings } from "./utils";
+import { getAbbreviatedRelativeTimeStrings, getTimePassedSince } from "./utils";
+
+export type QuestionLastUpdatedProps = {
+  result: Pick<Dataset, "cached">;
+} & FlexProps;
 
 export const QuestionLastUpdated = ({
   result,
   ...flexProps
-}: {
-  result: { cached?: string | null };
-} & FlexProps) => {
+}: QuestionLastUpdatedProps) => {
   if (!result) {
     return null;
   }
@@ -53,5 +56,5 @@ const QuestionLastUpdatedBody = ({
   );
 };
 
-QuestionLastUpdated.shouldRender = ({ result }: { result: any }) =>
+QuestionLastUpdated.shouldRender = ({ result }: QuestionLastUpdatedProps) =>
   result && result.cached;

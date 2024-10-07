@@ -3,8 +3,8 @@ import { formatValue } from "metabase/lib/formatting/value";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import {
   CHANGE_ARROW_ICONS,
-  computeTrend as _computeTrend,
   CHANGE_TYPE_OPTIONS,
+  computeTrend as _computeTrend,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
 import {
   createMockColumn,

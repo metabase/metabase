@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -13,10 +13,10 @@ import {
 } from "../../EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
+  DashboardPickerInitialValueItem,
   DashboardPickerItem,
   DashboardPickerOptions,
   DashboardPickerValueItem,
-  DashboardPickerInitialValueItem,
 } from "../types";
 import { getCollectionId } from "../utils";
 
@@ -158,8 +158,8 @@ export const DashboardPickerModal = ({
           options.showRootCollection === false
             ? { filter_items_in_personal_collection: "only" }
             : options.showPersonalCollections === false
-            ? { filter_items_in_personal_collection: "exclude" }
-            : undefined
+              ? { filter_items_in_personal_collection: "exclude" }
+              : undefined
         }
         trapFocus={!isCreateDialogOpen}
       />

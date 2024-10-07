@@ -1,65 +1,62 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
-import _ from "underscore";
-/* eslint-disable import/order */
-// NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
-import * as Lib from "metabase-lib";
-import StructuredQuery, {
-  STRUCTURED_QUERY_TEMPLATE,
-} from "metabase-lib/v1/queries/StructuredQuery";
-import NativeQuery, {
-  NATIVE_QUERY_TEMPLATE,
-} from "metabase-lib/v1/queries/NativeQuery";
-import type AtomicQuery from "metabase-lib/v1/queries/AtomicQuery";
-import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
-import type BaseQuery from "metabase-lib/v1/queries/Query";
-import Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Table from "metabase-lib/v1/metadata/Table";
-import { sortObject } from "metabase-lib/v1/utils";
+import _ from "underscore";
 
-import type {
-  Card as CardObject,
-  CardDisplayType,
-  CardType,
-  CollectionId,
-  DashboardId,
-  DashCardId,
-  DatabaseId,
-  DatasetData,
-  DatasetQuery,
-  Field,
-  Parameter as ParameterObject,
-  ParameterId,
-  ParameterValues,
-  TableId,
-  VisualizationSettings,
-} from "metabase-types/api";
-
-// TODO: remove these dependencies
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-
-import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
-import {
-  applyFilterParameter,
-  applyTemporalUnitParameter,
-} from "metabase-lib/v1/parameters/utils/mbql";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import { isTransientId } from "metabase-lib/v1/queries/utils/card";
+import * as Lib from "metabase-lib";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/v1/Alert";
-
-import type { Query } from "../types";
+import type Database from "metabase-lib/v1/metadata/Database";
+import Metadata from "metabase-lib/v1/metadata/Metadata";
+import type Table from "metabase-lib/v1/metadata/Table";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import {
+  applyFilterParameter,
+  applyTemporalUnitParameter,
+} from "metabase-lib/v1/parameters/utils/mbql";
 import {
   isFilterParameter,
   isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
+import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
+import type AtomicQuery from "metabase-lib/v1/queries/AtomicQuery";
+import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
+import NativeQuery, {
+  NATIVE_QUERY_TEMPLATE,
+} from "metabase-lib/v1/queries/NativeQuery";
+import type BaseQuery from "metabase-lib/v1/queries/Query";
+import StructuredQuery, {
+  STRUCTURED_QUERY_TEMPLATE,
+} from "metabase-lib/v1/queries/StructuredQuery";
+import { isTransientId } from "metabase-lib/v1/queries/utils/card";
+import { sortObject } from "metabase-lib/v1/utils";
+import type {
+  CardDisplayType,
+  Card as CardObject,
+  CardType,
+  CollectionId,
+  DashCardId,
+  DashboardId,
+  DatabaseId,
+  DatasetData,
+  DatasetQuery,
+  Field,
+  LastEditInfo,
+  ParameterId,
+  Parameter as ParameterObject,
+  ParameterValues,
+  TableId,
+  UserInfo,
+  VisualizationSettings,
+} from "metabase-types/api";
+
+import type { Query } from "../types";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -232,20 +229,12 @@ class Question {
   /**
    * The visualization type of the question
    */
-  display(): string {
+  display(): CardDisplayType {
     return this._card && this._card.display;
   }
 
-  setDisplay(display) {
+  setDisplay(display: CardDisplayType) {
     return this.setCard(assoc(this.card(), "display", display));
-  }
-
-  cacheTTL(): number | null {
-    return this._card?.cache_ttl;
-  }
-
-  setCacheTTL(cache) {
-    return this.setCard(assoc(this.card(), "cache_ttl", cache));
   }
 
   type(): CardType {
@@ -491,6 +480,10 @@ class Question {
     return this.setCard(assoc(this.card(), "name", name));
   }
 
+  collection(): Collection | null | undefined {
+    return this?._card?.collection;
+  }
+
   collectionId(): CollectionId | null | undefined {
     return this._card && this._card.collection_id;
   }
@@ -535,7 +528,7 @@ class Question {
     return this.setCard(assoc(this.card(), "description", description));
   }
 
-  lastEditInfo() {
+  lastEditInfo(): LastEditInfo {
     return this._card && this._card["last-edit-info"];
   }
 
@@ -820,7 +813,7 @@ class Question {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
 
-  getCreator(): string {
+  getCreator(): UserInfo {
     return getIn(this, ["_card", "creator"]) || "";
   }
 

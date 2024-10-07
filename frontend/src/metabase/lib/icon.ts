@@ -5,8 +5,8 @@ import { getIconForVisualizationType } from "metabase/visualizations";
 import type {
   CardDisplayType,
   Collection,
-  SearchModel,
   CollectionItemModel,
+  SearchModel,
 } from "metabase-types/api";
 
 type IconModel = SearchModel | CollectionItemModel | "schema";

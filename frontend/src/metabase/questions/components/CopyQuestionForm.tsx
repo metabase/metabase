@@ -6,11 +6,11 @@ import FormCollectionPicker from "metabase/collections/containers/FormCollection
 import FormFooter from "metabase/core/components/FormFooter";
 import {
   Form,
-  FormTextInput,
-  FormTextarea,
+  FormErrorMessage,
   FormProvider,
   FormSubmitButton,
-  FormErrorMessage,
+  FormTextInput,
+  FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Button } from "metabase/ui";
@@ -62,6 +62,7 @@ export const CopyQuestionForm = ({
       initialValues={computedInitialValues}
       validationSchema={QUESTION_SCHEMA}
       onSubmit={handleDuplicate}
+      enableReinitialize
     >
       <Form>
         <FormTextInput

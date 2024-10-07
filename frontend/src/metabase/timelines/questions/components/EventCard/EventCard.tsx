@@ -14,12 +14,12 @@ import type { Timeline, TimelineEvent } from "metabase-types/api";
 import {
   CardAside,
   CardBody,
+  CardCheckboxContainer,
   CardCreatorInfo,
   CardDateInfo,
   CardDescription,
   CardIcon,
   CardIconAndDateContainer,
-  CardCheckboxContainer,
   CardRoot,
   CardTitle,
 } from "./EventCard.styled";

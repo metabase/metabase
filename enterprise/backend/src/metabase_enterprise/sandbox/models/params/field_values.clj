@@ -93,7 +93,7 @@
      ;; use the normal OSS batched implementation for any Fields that aren't subject to sandboxing.
      (when (seq unsandboxed-fields)
        (params.field-values/default-field-id->field-values-for-current-user
-         (map u/the-id unsandboxed-fields)))
+        (map u/the-id unsandboxed-fields)))
      ;; for sandboxed fields, fetch the sandboxed values individually.
      (into {} (for [{field-id :id, :as field} sandboxed-fields]
                 [field-id (select-keys (params.field-values/get-or-create-advanced-field-values! :sandbox field)

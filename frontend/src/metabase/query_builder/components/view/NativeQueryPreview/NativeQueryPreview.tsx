@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { rem, Flex, Box, Icon, Loader } from "metabase/ui";
+import { Box, Flex, Icon, Loader, rem } from "metabase/ui";
 
 import { NativeCodePanel } from "../NativeCodePanel";
 

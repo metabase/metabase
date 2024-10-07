@@ -1,9 +1,9 @@
 import { Link } from "react-router";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { isNotNull } from "metabase/lib/types";
-import { Anchor, Button, Icon, Text, List } from "metabase/ui";
+import { Anchor, Button, Icon, List, Text } from "metabase/ui";
 
 import type { EmbedHomepageViewProps } from "./EmbedHomepageView";
 import { trackEmbeddingHomepageExampleDashboardClick } from "./analytics";

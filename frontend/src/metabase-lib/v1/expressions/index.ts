@@ -6,10 +6,10 @@ import Dimension from "metabase-lib/v1/Dimension";
 import type { Expression } from "metabase-types/api";
 
 import {
-  OPERATORS,
-  FUNCTIONS,
-  EDITOR_QUOTES,
   EDITOR_FK_SYMBOLS,
+  EDITOR_QUOTES,
+  FUNCTIONS,
+  OPERATORS,
   getMBQLName,
 } from "./config";
 
@@ -127,31 +127,60 @@ export function formatSegmentName(
  */
 export function parseDimension(
   name: string,
-  {
-    query,
-    stageIndex,
-    expressionIndex,
-  }: {
+  options: {
     query: Lib.Query;
     stageIndex: number;
-    source: string;
     expressionIndex: number | undefined;
+    startRule: string;
   },
 ) {
-  const columns = Lib.expressionableColumns(query, stageIndex, expressionIndex);
-
-  return columns.find(column => {
-    const displayInfo = Lib.displayInfo(query, stageIndex, column);
-
+  return getAvailableDimensions(options).find(({ info }) => {
     return EDITOR_FK_SYMBOLS.symbols.some(separator => {
       const displayName = getDisplayNameWithSeparator(
-        displayInfo.longDisplayName,
+        info.longDisplayName,
         separator,
       );
 
       return displayName === name;
     });
+  })?.dimension;
+}
+
+function getAvailableDimensions({
+  query,
+  stageIndex,
+  expressionIndex,
+  startRule,
+}: {
+  query: Lib.Query;
+  stageIndex: number;
+  expressionIndex: number | undefined;
+  startRule: string;
+}) {
+  const results = Lib.expressionableColumns(
+    query,
+    stageIndex,
+    expressionIndex,
+  ).map(dimension => {
+    return {
+      dimension,
+      info: Lib.displayInfo(query, stageIndex, dimension),
+    };
   });
+
+  if (startRule === "aggregation") {
+    return [
+      ...results,
+      ...Lib.availableMetrics(query, stageIndex).map(dimension => {
+        return {
+          dimension,
+          info: Lib.displayInfo(query, stageIndex, dimension),
+        };
+      }),
+    ];
+  }
+
+  return results;
 }
 
 export function formatLegacyDimensionName(

@@ -1,10 +1,10 @@
 import cx from "classnames";
 import {
-  useCallback,
   type FocusEventHandler,
   type MouseEvent,
   type MouseEventHandler,
   type ReactNode,
+  useCallback,
 } from "react";
 import type { LinkProps } from "react-router";
 import { Link } from "react-router";

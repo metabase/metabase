@@ -32,6 +32,7 @@ import barOrdinalXScaleAutoRotatedLabels from "./bar-ordinal-x-scale-auto-rotate
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barRelativeDatetimeOrdinalScale from "./bar-relative-datetime-ordinal-scale.json";
 import barStackLinearXAxis from "./bar-stack-linear-x-axis.json";
+import barStackedAllLabelsTimeseriesWithGap45717 from "./bar-stacked-all-labels-timeseries-with-gap-45717.json";
 import barStackedLabelsNullVsZero from "./bar-stacked-labels-null-vs-zero.json";
 import barStackedNormalizedEmptySpace37880 from "./bar-stacked-normalized-empty-space-37880.json";
 import barStackedNormalizedSeriesLabels from "./bar-stacked-normalized-series-labels.json";
@@ -90,6 +91,7 @@ import noGoodAxisSplit from "./no-good-axis-split.json";
 import nullCategoryValueFormatting from "./null-category-value-formatting.json";
 import numberOfInsightsError39608 from "./number-of-insights-error-39608.json";
 import numericXAxisIncludesZero37082 from "./numeric-x-axis-includes-zero-37082.json";
+import offsetBasedTimezone47835 from "./offset-based-timezone-47835.json";
 import powYScaleCustomYAxisRange from "./pow-y-scale-custom-y-axis-range.json";
 import safariNonIanaTimezoneRepro44128 from "./safari-non-iana-timezone-repro-44128.json";
 import seriesOrderSettingsDoNotMatchSeriesCount from "./series-order-settings-do-not-match-series-count.json";
@@ -102,6 +104,7 @@ import timezoneTicksPlacement from "./timezone-ticks-placement.json";
 import trendComboLog from "./trend-combo-log.json";
 import trendComboPower from "./trend-combo-power.json";
 import trendCombo from "./trend-combo.json";
+import trendGoalLinesWithScalingPowScaleCustomRange from "./trend-goal-lines-with-scaling-pow-scale-custom-range.json";
 import trendMultiSeriesArea from "./trend-multi-series-area.json";
 import trendMultiSeriesBar from "./trend-multi-series-bar.json";
 import trendMultiSeriesLine from "./trend-multi-series-line.json";
@@ -232,4 +235,7 @@ export const data = {
   combinedWithInvalidSettings,
   stackedChartCustomYAxisRange,
   seriesOrderSettingsDoNotMatchSeriesCount,
+  trendGoalLinesWithScalingPowScaleCustomRange,
+  barStackedAllLabelsTimeseriesWithGap45717,
+  offsetBasedTimezone47835,
 };

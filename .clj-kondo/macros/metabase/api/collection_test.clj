@@ -1,7 +1,7 @@
 (ns macros.metabase.api.collection-test
   (:require [macros.common]))
 
-(defmacro with-collection-hierarchy [bindings & body]
+(defmacro with-collection-hierarchy! [bindings & body]
   `(let [~(macros.common/ignore-unused 'a) nil
          ~(macros.common/ignore-unused 'b) nil
          ~(macros.common/ignore-unused 'c) nil
@@ -12,6 +12,6 @@
      ~bindings
      ~@body))
 
-(defmacro with-some-children-of-collection [collection-or-id-or-nil & body]
+(defmacro with-some-children-of-collection! [collection-or-id-or-nil & body]
   `(let [~(macros.common/ignore-unused '&ids) ~collection-or-id-or-nil]
      ~@body))

@@ -12,7 +12,7 @@ In general, embedding works by displaying a Metabase URL inside an iframe in you
 
 You can can't use static embeds with [data sandboxes](../permissions/data-sandboxes.md), [drill-through](https://www.metabase.com/learn/questions/drill-through), and user-specific data isn't captured in [usage analytics](../usage-and-performance-tools/usage-analytics.md) because signed JWTs don't create user sessions (server-side sessions). For those features, check out [interactive embedding](./interactive-embedding.md).
 
-You can, however, restrict data in static embeds for specific people or groups by [locking parameters](./static-embedding-parameters.md#restricting-data-in-a-static-embed).
+You can, however, restrict data in static embeds for specific people or groups by [locking parameters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters).
 
 ## How static embedding works
 
@@ -113,23 +113,7 @@ You can find a list of all embedded questions and dashboards from **Admin settin
 
 ## Customizing the appearance of static embeds
 
-You can change the way an embedded question or dashboard looks in an iframe (which won't change how it looks in your Metabase instance).
-
-When setting up a static embed, click on the **Appearance** tab, and play around with the different appearance settings.
-
-Settings include:
-
-- Border
-- Title
-- Theme (light, dark, transparent)
-- Font\*
-- Download data (questions only)\*
-
-\* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
-When you make changes to the embed's appearance, Metabase will highlight the changes it made to the code.
-
-For global appearance settings, such as the colors and fonts used across your entire Metabase instance, see [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
+See [Customizing appearance of static embeds](./static-embedding-parameters.md#customizing-the-appearance-of-a-static-embed)
 
 ## Auto-refreshing the results of an embedded dashboard
 
@@ -166,9 +150,12 @@ This key is shared across all static embeds. Whoever has access to this key coul
 
 Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automatically sized vertically to fit their contents you can use the [iFrame Resizer](https://github.com/davidjbradshaw/iframe-resizer) script. Metabase serves a copy for convenience:
 
-```
+```html
 <script src="http://metabase.example.com/app/iframeResizer.js"></script>
-<iframe src="http://metabase.example.com/embed/dashboard/TOKEN" onload="iFrameResize({}, this)"></iframe>
+<iframe
+  src="http://metabase.example.com/embed/dashboard/TOKEN"
+  onload="iFrameResize({}, this)"
+></iframe>
 ```
 
 ## Custom destinations on dashboards in static embeds

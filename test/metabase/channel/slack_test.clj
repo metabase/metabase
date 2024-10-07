@@ -22,7 +22,7 @@
                                                :content     [:div "hi again"]}
                              :channel-id      "FOO"}]
             processed      (with-redefs [slack/upload-file! (slack-uploader titles)]
-                            (#'channel.slack/create-and-upload-slack-attachments! attachments))]
+                             (#'channel.slack/create-and-upload-slack-attachments! attachments))]
         (is (= [{:title "a", :image_url "http://uploaded/a.png"}
                 {:title "b", :image_url "http://uploaded/b.png"}]
                processed))
@@ -41,7 +41,7 @@
                                                :render/text "hi again"}
                              :channel-id      "FOO"}]
             processed      (with-redefs [slack/upload-file! (slack-uploader titles)]
-                            (#'channel.slack/create-and-upload-slack-attachments! attachments))]
+                             (#'channel.slack/create-and-upload-slack-attachments! attachments))]
         (is (= [{:title "a", :image_url "http://uploaded/a.png"}
                 {:title "b", :text "hi again"}]
                processed))

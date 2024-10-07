@@ -4,33 +4,34 @@ import _ from "underscore";
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
-  FIRST_COLLECTION_ID,
-  SECOND_COLLECTION_ID,
-  THIRD_COLLECTION_ID,
   ADMIN_PERSONAL_COLLECTION_ID,
   ALL_USERS_GROUP_ID,
+  FIRST_COLLECTION_ID,
+  ORDERS_QUESTION_ID,
+  SECOND_COLLECTION_ID,
+  THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  openOrdersTable,
-  navigationSidebar,
-  openNavigationSidebar,
   closeNavigationSidebar,
-  visitCollection,
+  createCollection,
+  createQuestion,
   dragAndDrop,
-  openUnpinnedItemMenu,
+  entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   getPinnedSection,
   moveOpenedCollectionTo,
-  pickEntity,
-  entityPickerModal,
-  openCollectionMenu,
-  createQuestion,
-  entityPickerModalItem,
-  createCollection,
+  navigationSidebar,
   openCollectionItemMenu,
-  entityPickerModalTab,
+  openCollectionMenu,
+  openNavigationSidebar,
+  openOrdersTable,
+  openUnpinnedItemMenu,
+  pickEntity,
+  popover,
+  restore,
+  sidesheet,
+  visitCollection,
 } from "e2e/support/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -208,14 +209,14 @@ describe("scenarios > collection defaults", () => {
   });
 
   it("should support markdown in collection description", () => {
-    cy.request("PUT", `/api/collection/${FIRST_COLLECTION_ID}`, {
+    cy.request("PUT", `/api/collection/${SECOND_COLLECTION_ID}`, {
       description: "[link](https://metabase.com)",
     });
 
-    visitRootCollection();
+    visitCollection(FIRST_COLLECTION_ID);
 
     cy.get("table").within(() => {
-      cy.findByText("First collection")
+      cy.findByText("Second collection")
         .closest("tr")
         .within(() => {
           cy.icon("info").trigger("mouseenter");
@@ -225,6 +226,46 @@ describe("scenarios > collection defaults", () => {
     cy.findByRole("tooltip").within(() => {
       cy.findByRole("link").should("include.text", "link");
       cy.findByRole("link").should("not.include.text", "[link]");
+    });
+  });
+
+  it("should allow description to be edited in the sidesheet", () => {
+    cy.request("PUT", `/api/collection/${FIRST_COLLECTION_ID}`, {
+      description: "[link](https://metabase.com)",
+    });
+
+    visitCollection(FIRST_COLLECTION_ID);
+
+    cy.log("Description visible in collection caption");
+    cy.findByTestId("collection-caption")
+      .findAllByTestId("editable-text")
+      .eq(1)
+      .findByRole("link")
+      .should("have.text", "link")
+      .should("have.attr", "href", "https://metabase.com");
+
+    const toggleSidesheet = () =>
+      cy.findByTestId("collection-menu").icon("info").click();
+
+    cy.log("Let's edit the description");
+    toggleSidesheet();
+    sidesheet().within(() => {
+      cy.findByTestId("editable-text").click().type("edited ");
+      cy.realPress("Tab");
+      cy.findByLabelText("Close").click();
+    });
+
+    cy.log("The edited description is visible in collection caption");
+
+    cy.findByTestId("collection-caption")
+      .findAllByTestId("editable-text")
+      .eq(1)
+      .should("have.text", "edited link");
+
+    cy.log("The edited description is visible in the sidesheet");
+    toggleSidesheet();
+    sidesheet().within(() => {
+      cy.findByTestId("editable-text").should("have.text", "edited link");
     });
   });
 

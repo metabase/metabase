@@ -131,46 +131,46 @@
           (is (= (lib.tu.macros/mbql-query nil
                    {:source-query after})
                  (expand-macros
-                   (lib.tu.macros/mbql-query nil
-                     {:source-query before})))))
+                  (lib.tu.macros/mbql-query nil
+                    {:source-query before})))))
         (testing "nested 2 levels"
           (is (= (lib.tu.macros/mbql-query nil
                    {:source-query {:source-query after}})
                  (expand-macros
-                   (lib.tu.macros/mbql-query nil
-                     {:source-query {:source-query before}})))))
+                  (lib.tu.macros/mbql-query nil
+                    {:source-query {:source-query before}})))))
         (testing "nested 3 levels"
           (is (= (lib.tu.macros/mbql-query nil
                    {:source-query {:source-query {:source-query after}}})
                  (expand-macros
-                   (lib.tu.macros/mbql-query nil
-                     {:source-query {:source-query {:source-query before}}})))))
+                  (lib.tu.macros/mbql-query nil
+                    {:source-query {:source-query {:source-query before}}})))))
         (testing "nested at different levels"
           (is (= (lib.tu.macros/mbql-query nil
                    {:source-query (-> after
                                       (dissoc :source-table)
                                       (assoc :source-query after))})
                  (expand-macros
-                   (lib.tu.macros/mbql-query nil
-                     {:source-query (-> before
-                                        (dissoc :source-table)
-                                        (assoc :source-query before))})))))
+                  (lib.tu.macros/mbql-query nil
+                    {:source-query (-> before
+                                       (dissoc :source-table)
+                                       (assoc :source-query before))})))))
         (testing "inside :source-query inside :joins"
           (is (= (lib.tu.macros/mbql-query checkins
                    {:joins [{:condition    [:= [:field 1 nil] 2]
                              :source-query after}]})
                  (expand-macros
-                   (lib.tu.macros/mbql-query checkins
-                     {:joins [{:condition    [:= [:field 1 nil] 2]
-                               :source-query before}]})))))
+                  (lib.tu.macros/mbql-query checkins
+                    {:joins [{:condition    [:= [:field 1 nil] 2]
+                              :source-query before}]})))))
         (testing "inside join condition"
           (is (= (lib.tu.macros/mbql-query checkins
                    {:joins [{:source-table $$checkins
                              :condition    (:filter after)}]})
                  (expand-macros
-                   (lib.tu.macros/mbql-query checkins
-                     {:joins [{:source-table $$checkins
-                               :condition    (:filter before)}]})))))
+                  (lib.tu.macros/mbql-query checkins
+                    {:joins [{:source-table $$checkins
+                              :condition    (:filter before)}]})))))
         (testing "inside :joins inside :source-query"
           (is (= (lib.tu.macros/mbql-query nil
                    {:source-query {:source-table $$checkins

@@ -18,6 +18,10 @@ export type {
   StructuredQuestionDetails,
 } from "./createQuestion";
 export { createQuestionAndDashboard } from "./createQuestionAndDashboard";
+export { createTimeline } from "./createTimeline";
+export { createTimelineEvent } from "./createTimelineEvent";
+export { createTimelineWithEvents } from "./createTimelineWithEvents";
 export { getCurrentUser } from "./getCurrentUser";
 export { remapDisplayValueToFK } from "./remapDisplayValueToFK";
 export { updateDashboardCards } from "./updateDashboardCards";
+export { updateSetting } from "./updateSetting";

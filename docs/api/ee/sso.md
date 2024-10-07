@@ -20,7 +20,7 @@ SSO entry-point for an SSO user that has not logged in yet.
 
 ### PARAMS:
 
-*  **`req`**
+-  **`req`**
 
 ## `POST /auth/sso/`
 
@@ -28,7 +28,23 @@ Route the SSO backends call with successful login details.
 
 ### PARAMS:
 
-*  **`req`**
+-  **`req`**
+
+## `POST /auth/sso/handle_slo`
+
+Handles client confirmation of saml logout via slo.
+
+### PARAMS:
+
+-  **`req`**
+
+## `POST /auth/sso/logout`
+
+Logout.
+
+### PARAMS:
+
+-  **`cookies`** map where {metabase.SESSION -> <map where {:value -> <value must be a non-blank string.>}>}.
 
 ---
 

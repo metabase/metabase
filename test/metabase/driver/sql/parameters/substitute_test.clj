@@ -75,7 +75,6 @@
                                                 (optional " AND color = " (param "bird_color")))]
             {"bird_type" "Steller's Jay"})))))
 
-
 ;;; ------------------------------------------------- Field Filters --------------------------------------------------
 
 (defn- date-field-filter-value
@@ -321,10 +320,9 @@
       (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
              (substitute query {"snippet:symbol_is_A" (params/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
 
-
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
-(defn- substitute-e2e {:style/indent 1} [sql params]
+(defn- substitute-e2e [sql params]
   (let [[query params] (driver/with-driver :h2
                          (mt/with-metadata-provider meta/metadata-provider
                            (#'sql.params.substitute/substitute (params.parse/parse sql) (into {} params))))]
@@ -334,23 +332,22 @@
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
-           {"toucans_are_cool" true})))
+                         {"toucans_are_cool" true})))
   (is (thrown?
        Exception
        (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
-         nil)))
+                       nil)))
   (testing "Multiple params"
     (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
             :params ["toucan"]}
            (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
-             {"toucans_are_cool" true, "bird_type" "toucan"}))))
+                           {"toucans_are_cool" true, "bird_type" "toucan"}))))
 
   (testing "Should throw an Exception if a required param is missing"
     (is (thrown?
          Exception
          (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
-           {"toucans_are_cool" true})))))
-
+                         {"toucans_are_cool" true})))))
 
 ;;; ---------------------------------- optional substitution — [[ ... {{x}} ... ]] ----------------------------------
 
@@ -358,122 +355,121 @@
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}}]]"
-           {"toucans_are_cool" true})))
+                         {"toucans_are_cool" true})))
 
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{ toucans_are_cool }}]]"
-           {"toucans_are_cool" true})))
+                         {"toucans_are_cool" true})))
 
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool }}]]"
-           {"toucans_are_cool" true})))
+                         {"toucans_are_cool" true})))
 
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{ toucans_are_cool}}]]"
-           {"toucans_are_cool" true})))
+                         {"toucans_are_cool" true})))
 
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool_2}}]]"
-           {"toucans_are_cool_2" true})))
+                         {"toucans_are_cool_2" true})))
 
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = 'toucan'"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = 'toucan']]"
-           {"toucans_are_cool" true})))
+                         {"toucans_are_cool" true})))
 
   (testing "Two parameters in an optional"
     (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
             :params ["toucan"]}
            (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}]]"
-             {"toucans_are_cool" true, "bird_type" "toucan"}))))
+                           {"toucans_are_cool" true, "bird_type" "toucan"}))))
 
   (is (= {:query  "SELECT * FROM bird_facts"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}}]]"
-           nil)))
+                         nil)))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-           {"num_toucans" 5})))
+                         {"num_toucans" 5})))
 
   (testing "make sure nil gets substitute-e2ed in as `NULL`"
     (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > NULL"
             :params []}
            (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-             {"num_toucans" nil}))))
+                           {"num_toucans" nil}))))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-           {"num_toucans" true})))
+                         {"num_toucans" true})))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > FALSE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-           {"num_toucans" false})))
+                         {"num_toucans" false})))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > ?"
           :params ["abc"]}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-           {"num_toucans" "abc"})))
+                         {"num_toucans" "abc"})))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > ?"
           :params ["yo' mama"]}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-           {"num_toucans" "yo' mama"})))
+                         {"num_toucans" "yo' mama"})))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-           nil)))
+                         nil)))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 2 AND total_birds > 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-           {"num_toucans" 2, "total_birds" 5})))
+                         {"num_toucans" 2, "total_birds" 5})))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE  AND total_birds > 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-           {"total_birds" 5})))
+                         {"total_birds" 5})))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 3"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-           {"num_toucans" 3})))
+                         {"num_toucans" 3})))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-           nil)))
+                         nil)))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE bird_type = ? AND num_toucans > 2 AND total_birds > 5"
           :params ["toucan"]}
          (substitute-e2e "SELECT * FROM toucanneries WHERE bird_type = {{bird_type}} [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-           {"bird_type" "toucan", "num_toucans" 2, "total_birds" 5})))
+                         {"bird_type" "toucan", "num_toucans" 2, "total_birds" 5})))
 
   (testing "should throw an Exception if a required param is missing"
     (is (thrown?
          Exception
          (substitute-e2e "SELECT * FROM toucanneries WHERE bird_type = {{bird_type}} [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-           {"num_toucans" 2, "total_birds" 5}))))
+                         {"num_toucans" 2, "total_birds" 5}))))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 5 AND num_toucans < 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND num_toucans < {{num_toucans}}]]"
-           {"num_toucans" 5})))
+                         {"num_toucans" 5})))
 
   (testing "Make sure that substitutions still work if the substitution contains brackets inside it (#3657)"
     (is (= {:query  "select * from foobars  where foobars.id in (string_to_array(100, ',')::integer[])"
             :params []}
            (substitute-e2e "select * from foobars [[ where foobars.id in (string_to_array({{foobar_id}}, ',')::integer[]) ]]"
-             {"foobar_id" 100})))))
-
+                           {"foobar_id" 100})))))
 
 ;;; ------------------------------------------- expansion tests: variables -------------------------------------------
 
@@ -534,7 +530,6 @@
                                   :template-tags {"category" {:name "category", :display-name "Category", :type :text}}}
                      :parameters [{:type "category", :target [:variable [:template-tag "category"]], :value "Gizmo"}]})))))
 
-
 ;;; ----------------------------------------- expansion tests: field filters -----------------------------------------
 
 (defn- expand-with-field-filter-param
@@ -557,7 +552,7 @@
          expand*
          (dissoc :template-tags)))))
 
-(deftest expand-field-filters-test
+(deftest expand-field-filters-for-date-field-test
   (mt/with-temporary-setting-values [start-of-week :sunday]
     (testing "dimension (date/single)"
       (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
@@ -647,6 +642,146 @@
       (is (= {:query  "SELECT * FROM ORDERS WHERE TOTAL > 100  AND CREATED_AT < now()"
               :params []}
              (expand-with-field-filter-param
+              "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
+              nil))))))
+
+(defn- expand-with-field-filter-param-on-datetime-field
+  ([field-filter-param]
+   (expand-with-field-filter-param-on-datetime-field "SELECT * FROM orders WHERE {{date}};" field-filter-param))
+
+  ([sql field-filter-param]
+   ;; TIMEZONE FIXME
+   (mt/with-clock (t/mock-clock #t "2016-06-07T12:00-00:00" (t/zone-id "UTC"))
+     (-> {:native     {:query
+                       sql
+                       :template-tags {"date" {:name         "date"
+                                               :display-name "Created At"
+                                               :type         :dimension
+                                               :widget-type  :date/all-options
+                                               :dimension    [:field (meta/id :orders :created-at) nil]}}}
+          :parameters (when field-filter-param
+                        [(merge {:target [:dimension [:template-tag "date"]]}
+                                field-filter-param)])}
+         expand*
+         (dissoc :template-tags)))))
+
+;;;; The following test is [[expand-field-filters-for-date-field-test]] adjusted to datetime field.
+(deftest expand-field-filters-for-datetime-field-test
+  (mt/with-temporary-setting-values [start-of-week :sunday]
+    (testing "dimension (date/all-options) (`on` filter with with time)"
+      (is (= {:query "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2024-08-20T10:20Z[UTC]"
+                       #t "2024-08-20T10:21Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/all-options, :value "2024-08-20T10:20:00"}))))
+    (testing "dimension (date/all-options) (`before` filter with with time)"
+      (is (= {:query "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2024-08-20T10:20Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/all-options, :value "~2024-08-20T10:20:00"}))))
+    (testing "dimension (date/all-options) (`after` filter with with time)"
+      (is (= {:query "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?;",
+              :params [#t "2024-08-20T10:21Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/all-options, :value "2024-08-20T10:20:00~"}))))
+    (testing "dimension (date/single)"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-07-01T00:00Z[UTC]"
+                       #t "2016-07-02T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/single, :value "2016-07-01"}))))
+    (testing "dimension (date/range)"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-07-01T00:00Z[UTC]"
+                       #t "2016-08-02T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "2016-07-01~2016-08-01"}))))
+    (testing "dimension (date/month-year)"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-07-01T00:00Z[UTC]"
+                       #t "2016-08-01T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/month-year, :value "2016-07"}))))
+    (testing "dimension (date/quarter-year)"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-01-01T00:00Z[UTC]"
+                       #t "2016-04-01T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/quarter-year, :value "Q1-2016"}))))
+    (testing "dimension (date/all-options, before)"
+      (is (= {:query "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;", :params [#t "2016-07-01T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/all-options, :value "~2016-07-01"}))))
+    (testing "dimension (date/all-options, after)"
+      (is (= {:query "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?;", :params [#t "2016-07-02T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/all-options, :value "2016-07-01~"}))))
+    (testing "relative date — 'yesterday'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-06-06T00:00Z[UTC]"
+                       #t "2016-06-07T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "yesterday"}))))
+    (testing "relative date — 'past7days'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-05-31T00:00Z[UTC]"
+                       #t "2016-06-07T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "past7days"}))))
+    (testing "relative date — 'past30days'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-05-08T00:00Z[UTC]"
+                       #t "2016-06-07T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "past30days"}))))
+    (testing "relative date — 'thisweek'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-06-05T00:00Z[UTC]"
+                       #t "2016-06-12T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "thisweek"}))))
+    (testing "relative date — 'thismonth'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-06-01T00:00Z[UTC]"
+                       #t "2016-07-01T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "thismonth"}))))
+    (testing "relative date — 'thisyear'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-01-01T00:00Z[UTC]"
+                       #t "2017-01-01T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "thisyear"}))))
+    (testing "relative date — 'lastweek'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-05-29T00:00Z[UTC]"
+                       #t "2016-06-05T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "lastweek"}))))
+    (testing "relative date — 'lastmonth'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2016-05-01T00:00Z[UTC]"
+                       #t "2016-06-01T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "lastmonth"}))))
+    (testing "relative date — 'lastyear'"
+      (is (= {:query
+              "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
+              :params [#t "2015-01-01T00:00Z[UTC]"
+                       #t "2016-01-01T00:00Z[UTC]"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :date/range, :value "lastyear"}))))
+    (testing "dimension with no value — just replace with an always true clause (e.g. 'WHERE 1 = 1')"
+      (is (= {:query  "SELECT * FROM orders WHERE 1 = 1;"
+              :params []}
+             (expand-with-field-filter-param-on-datetime-field nil))))
+    (testing "dimension — number — should get parsed to Number"
+      (is (= {:query  "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" = 100;"
+              :params []}
+             (expand-with-field-filter-param-on-datetime-field {:type :number, :value "100"}))))
+    (testing "dimension — text"
+      (is (= {:query  "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" = ?;"
+              :params ["100"]}
+             (expand-with-field-filter-param-on-datetime-field {:type :text, :value "100"}))))
+    (testing (str "*OPTIONAL* Field Filter params should not get replaced with 1 = 1 if the param is not present "
+                  "(#5541, #9489). *Optional params should be emitted entirely.")
+      (is (= {:query  "SELECT * FROM ORDERS WHERE TOTAL > 100  AND CREATED_AT < now()"
+              :params []}
+             (expand-with-field-filter-param-on-datetime-field
               "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
               nil))))))
 
@@ -766,32 +901,34 @@
   (mt/test-drivers (sql-parameters-engines)
     (is (= [29]
            (mt/first-row
-            (mt/format-rows-by [int]
-              (process-native
-                :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
-                             :template-tags {"checkin_date" {:name         "checkin_date"
-                                                             :display-name "Checkin Date"
-                                                             :type         :dimension
-                                                             :widget-type  :date/range
-                                                             :dimension    [:field (mt/id :checkins :date) nil]}}}
-                :parameters [{:type   :date/range
-                              :target [:dimension [:template-tag "checkin_date"]]
-                              :value  "2015-04-01~2015-05-01"}])))))))
+            (mt/format-rows-by
+             [int]
+             (process-native
+              :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
+                           :template-tags {"checkin_date" {:name         "checkin_date"
+                                                           :display-name "Checkin Date"
+                                                           :type         :dimension
+                                                           :widget-type  :date/range
+                                                           :dimension    [:field (mt/id :checkins :date) nil]}}}
+              :parameters [{:type   :date/range
+                            :target [:dimension [:template-tag "checkin_date"]]
+                            :value  "2015-04-01~2015-05-01"}])))))))
 
 (deftest ^:parallel e2e-no-parameter-test
   (mt/test-drivers (sql-parameters-engines)
     (testing "no parameter — should give us a query with \"WHERE 1 = 1\""
       (is (= [1000]
              (mt/first-row
-              (mt/format-rows-by [int]
-                (process-native
-                 :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
-                              :template-tags {"checkin_date" {:name         "checkin_date"
-                                                              :display-name "Checkin Date"
-                                                              :type         :dimension
-                                                              :widget-type  :date/all-options
-                                                              :dimension    [:field (mt/id :checkins :date) nil]}}}
-                 :parameters []))))))))
+              (mt/format-rows-by
+               [int]
+               (process-native
+                :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
+                             :template-tags {"checkin_date" {:name         "checkin_date"
+                                                             :display-name "Checkin Date"
+                                                             :type         :dimension
+                                                             :widget-type  :date/all-options
+                                                             :dimension    [:field (mt/id :checkins :date) nil]}}}
+                :parameters []))))))))
 
 (deftest ^:parallel e2e-relative-dates-test
   (mt/test-drivers (sql-parameters-engines)
@@ -800,18 +937,19 @@
                   "which is fully-tested :D")
       (is (= [0]
              (mt/first-row
-              (mt/format-rows-by [int]
-                (process-native
-                  :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
-                                                      (table-identifier :checkins))
-                               :template-tags {"checkin_date" {:name         "checkin_date"
-                                                               :display-name "Checkin Date"
-                                                               :type         :dimension
-                                                               :widget-type  :date/relative
-                                                               :dimension    [:field (mt/id :checkins :date) nil]}}}
-                  :parameters [{:type   :date/relative
-                                :target [:dimension [:template-tag "checkin_date"]]
-                                :value  "thismonth"}]))))))))
+              (mt/format-rows-by
+               [int]
+               (process-native
+                :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
+                                                    (table-identifier :checkins))
+                             :template-tags {"checkin_date" {:name         "checkin_date"
+                                                             :display-name "Checkin Date"
+                                                             :type         :dimension
+                                                             :widget-type  :date/relative
+                                                             :dimension    [:field (mt/id :checkins :date) nil]}}}
+                :parameters [{:type   :date/relative
+                              :target [:dimension [:template-tag "checkin_date"]]
+                              :value  "thismonth"}]))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::e2e-exclude-date-parts-test]
   [driver _feature _database]
@@ -852,21 +990,22 @@
     (testing "test that multiple filters applied to the same variable combine into `AND` clauses (#3539)"
       (is (= [4]
              (mt/first-row
-              (mt/format-rows-by [int]
-                (process-native
-                  :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
-                                                      (table-identifier :checkins))
-                               :template-tags {"checkin_date" {:name         "checkin_date"
-                                                               :display-name "Checkin Date"
-                                                               :type         :dimension
-                                                               :widget-type  :date/all-options
-                                                               :dimension    [:field (mt/id :checkins :date) nil]}}}
-                  :parameters [{:type   :date/range
-                                :target [:dimension [:template-tag "checkin_date"]]
-                                :value  "2015-01-01~2016-09-01"}
-                               {:type   :date/single
-                                :target [:dimension [:template-tag "checkin_date"]]
-                                :value  "2015-07-01"}]))))))))
+              (mt/format-rows-by
+               [int]
+               (process-native
+                :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
+                                                    (table-identifier :checkins))
+                             :template-tags {"checkin_date" {:name         "checkin_date"
+                                                             :display-name "Checkin Date"
+                                                             :type         :dimension
+                                                             :widget-type  :date/all-options
+                                                             :dimension    [:field (mt/id :checkins :date) nil]}}}
+                :parameters [{:type   :date/range
+                              :target [:dimension [:template-tag "checkin_date"]]
+                              :value  "2015-01-01~2016-09-01"}
+                             {:type   :date/single
+                              :target [:dimension [:template-tag "checkin_date"]]
+                              :value  "2015-07-01"}]))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::e2e-parse-native-dates-test]
   [driver _feature _database]
@@ -970,7 +1109,6 @@
            (expand* {:native     {:query         "SELECT * FROM ORDERS WHERE true [[ AND ID = {{id}} OR USER_ID = {{id}} ]]"
                                   :template-tags {"id" {:name "id", :display-name "ID", :type :text}}}
                      :parameters [{:type "category", :target [:variable [:template-tag "id"]], :value "2"}]})))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            RELATIVE DATES & DEFAULTS IN "DIMENSION" PARAMS (#6059)                             |

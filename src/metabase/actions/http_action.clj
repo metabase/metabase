@@ -127,10 +127,10 @@
                    :throw-exceptions false
                    :headers (merge
                               ;; TODO maybe we want to default Agent here? Maybe Origin/Referer?
-                              {"X-Metabase-Action" (:name action)}
-                              (-> headers
-                                  (parse-and-substitute params->value)
-                                  (json/decode)))
+                             {"X-Metabase-Action" (:name action)}
+                             (-> headers
+                                 (parse-and-substitute params->value)
+                                 (json/decode)))
                    :body (parse-and-substitute body params->value)}
           response (-> (http/request request)
                        (select-keys [:body :headers :status])

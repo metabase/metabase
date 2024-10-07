@@ -222,9 +222,9 @@
                             [:expression "foo" {:base-type :type/DateTime}]
                             [:absolute-datetime #t "2014-01-01T00:00" :default]]})
            (wrap-value-literals
-             (lib.tu.macros/mbql-query checkins
-               {:expressions {"foo" $date}
-                :filter      [:> [:expression "foo" {:base-type :type/DateTime}] "2014-01-01"]}))))))
+            (lib.tu.macros/mbql-query checkins
+              {:expressions {"foo" $date}
+               :filter      [:> [:expression "foo" {:base-type :type/DateTime}] "2014-01-01"]}))))))
 
 (deftest ^:parallel other-clauses-test
   (testing "Make sure we apply the transformation to predicates in all parts of the query, not only `:filter`"
@@ -311,9 +311,9 @@
     (toucan2.with-temp/with-temp [:model/Card {id :id} {:dataset_query (mt/mbql-query venues)
                                                         :type          :model}]
       (let [query (mt/mbql-query
-                   venues
-                   {:source-table (str "card__" id)
-                    :filter [:= [:field "ID" {:base-type :type/Integer}] 1]})
+                    venues
+                    {:source-table (str "card__" id)
+                     :filter [:= [:field "ID" {:base-type :type/Integer}] 1]})
             preprocessed (qp.preprocess/preprocess query)]
         ;; [:query :filter 2 2 :database_type] points to wrapped value's options
         (is (= "BIGINT" (get-in preprocessed [:query :filter 2 2 :database_type])))))))
@@ -325,13 +325,13 @@
     (toucan2.with-temp/with-temp [:model/Card {id :id} {:dataset_query (mt/mbql-query venues)
                                                         :type          :model}]
       (let [query (mt/mbql-query
-                   venues
-                   {:filter [:= [:field "ID" {:base-type :type/Integer :join-alias "x"}] 1]
-                    :joins [{:alias "x"
-                             :condition [:=
-                                         $id
-                                         [:field "ID" {:base-type :type/Integer :join-alias "x"}]]
-                             :source-table (str "card__" id)}]})
+                    venues
+                    {:filter [:= [:field "ID" {:base-type :type/Integer :join-alias "x"}] 1]
+                     :joins [{:alias "x"
+                              :condition [:=
+                                          $id
+                                          [:field "ID" {:base-type :type/Integer :join-alias "x"}]]
+                              :source-table (str "card__" id)}]})
             preprocessed (qp.preprocess/preprocess query)]
         ;; [:query :filter 2 2 :database_type] points to wrapped value's options
         (is (= "BIGINT" (get-in preprocessed [:query :filter 2 2 :database_type])))))))

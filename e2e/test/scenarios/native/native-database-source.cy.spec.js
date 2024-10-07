@@ -1,11 +1,12 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
-  restore,
-  popover,
-  addPostgresDatabase,
   POPOVER_ELEMENT,
-  setTokenFeatures,
+  addPostgresDatabase,
   openNativeEditor,
+  popover,
+  restore,
+  setTokenFeatures,
+  updateSetting,
 } from "e2e/support/helpers";
 
 const PG_DB_ID = 2;
@@ -107,9 +108,7 @@ describe(
     });
 
     it("should not update the setting when the same database is selected again", () => {
-      cy.request("PUT", "/api/setting/last-used-native-database-id", {
-        value: SAMPLE_DB_ID,
-      });
+      updateSetting("last-used-native-database-id", SAMPLE_DB_ID);
 
       startNativeQuestion();
       cy.findByTestId("selected-database")

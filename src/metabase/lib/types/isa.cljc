@@ -173,6 +173,12 @@
   [column]
   (clojure.core/isa? (:effective-type column) :type/Number))
 
+(defn ^:export date-or-datetime?
+  "Is `column` a date or datetime?"
+  [column]
+  (or (clojure.core/isa? (:effective-type column) :type/Date)
+      (clojure.core/isa? (:effective-type column) :type/DateTime)))
+
 (defn ^:export date-without-time?
   "Is `column` a date without time?"
   [column]
@@ -325,7 +331,7 @@
   of `dst-column`."
   [src-column dst-column]
   (or
-    (and (string? src-column)   (string? dst-column))
-    (and (number? src-column)   (number? dst-column))
-    (and (temporal? src-column) (temporal? dst-column))
-    (clojure.core/isa? (:base-type src-column) (:base-type dst-column))))
+   (and (string? src-column)   (string? dst-column))
+   (and (number? src-column)   (number? dst-column))
+   (and (temporal? src-column) (temporal? dst-column))
+   (clojure.core/isa? (:base-type src-column) (:base-type dst-column))))

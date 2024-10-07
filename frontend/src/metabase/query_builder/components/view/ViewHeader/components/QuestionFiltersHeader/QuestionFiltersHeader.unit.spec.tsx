@@ -8,11 +8,11 @@ import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   PEOPLE,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { QuestionFiltersHeader } from "./QuestionFiltersHeader";
@@ -82,12 +82,12 @@ describe("QuestionFiltersHeader", () => {
     expect(screen.queryByTestId("TEST_CONTAINER")).toBeEmptyDOMElement();
   });
 
-  it("should render filters from the last two stages", () => {
+  it("should render filters from all stages", () => {
     setup();
-    expect(screen.getAllByTestId("filter-pill")).toHaveLength(2);
+    expect(screen.getAllByTestId("filter-pill")).toHaveLength(3);
+    expect(screen.getByText("Quantity is greater than 4")).toBeInTheDocument();
     expect(screen.getByText("Count is greater than 5")).toBeInTheDocument();
     expect(screen.getByText("User → Source is Organic")).toBeInTheDocument();
-    expect(screen.queryByText(/Quantity/i)).not.toBeInTheDocument();
   });
 
   it("should update a filter on the last stage", async () => {

@@ -82,7 +82,7 @@
   ([schema x {:keys [throw?], :or {throw? false}, :as _options}]
    (let [schema (or schema (infer-schema x))
          thunk  (^:once fn* []
-                 ((coercer schema) x))]
+                  ((coercer schema) x))]
      (if throw?
        (binding [*error-fn* (fn [error]
                               (throw (ex-info (i18n/tru "Normalization error")

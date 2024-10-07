@@ -1,7 +1,7 @@
 import { b64url_to_utf8 } from "metabase/lib/encoding";
 import { CardApi, CollectionsApi, DashboardApi } from "metabase/services";
 
-import type { ReportableEntityName, ErrorPayload } from "./types";
+import type { ErrorPayload, ReportableEntityName } from "./types";
 
 export function downloadObjectAsJson(
   exportObj: ErrorPayload,

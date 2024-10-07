@@ -11,8 +11,9 @@
                  :order-by [[:asc $id]]})]
     (mt/with-native-query-testing-context query
       (is (= expected
-             (mt/formatted-rows [int str]
-               (qp/process-query query)))))))
+             (mt/formatted-rows
+              [int str]
+              (qp/process-query query)))))))
 
 (deftest ^:parallel page-test
   (mt/test-drivers (mt/normal-drivers)
@@ -29,9 +30,9 @@
   (mt/test-drivers (mt/normal-drivers)
     (testing "Test that we can get \"pages\" of results."
       (testing "get the second page"
-        (page-is [[ 6 "Bakery"]
-                  [ 7 "Bar"]
-                  [ 8 "Beer Garden"]
-                  [ 9 "Breakfast / Brunch"]
+        (page-is [[6 "Bakery"]
+                  [7 "Bar"]
+                  [8 "Beer Garden"]
+                  [9 "Breakfast / Brunch"]
                   [10 "Brewery"]]
                  2)))))

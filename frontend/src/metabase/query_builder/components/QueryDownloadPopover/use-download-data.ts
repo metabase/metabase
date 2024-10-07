@@ -5,14 +5,14 @@ import { useDispatch } from "metabase/lib/redux";
 import { downloadQueryResults } from "metabase/redux/downloads";
 import type Question from "metabase-lib/v1/Question";
 import type {
-  DashboardId,
   DashCardId,
+  DashboardId,
   Dataset,
   ParameterValuesMap,
   VisualizationSettings,
 } from "metabase-types/api";
 
-type UseDownloadDataParams = {
+export type UseDownloadDataParams = {
   question: Question;
   result: Dataset;
   dashboardId?: DashboardId;

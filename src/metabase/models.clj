@@ -5,6 +5,7 @@
    [metabase.models.bookmark :as bookmark]
    [metabase.models.cache-config :as cache-config]
    [metabase.models.card :as card]
+   [metabase.models.channel :as models.channel]
    [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision
     :as c-perm-revision]
@@ -79,6 +80,7 @@
          legacy-metric-important-field/keep-me
          login-history/keep-me
          moderation-review/keep-me
+         models.channel/keep-me
          native-query-snippet/keep-me
          parameter-card/keep-me
          perms-group-membership/keep-me
@@ -182,8 +184,8 @@
   "Handle models deriving from :metabase/model."
   [symb]
   (or
-    (when (simple-symbol? symb)
-      (let [metabase-models-keyword (keyword "model" (name symb))]
-        (when (isa? metabase-models-keyword :metabase/model)
-          metabase-models-keyword)))
-    (next-method symb)))
+   (when (simple-symbol? symb)
+     (let [metabase-models-keyword (keyword "model" (name symb))]
+       (when (isa? metabase-models-keyword :metabase/model)
+         metabase-models-keyword)))
+   (next-method symb)))

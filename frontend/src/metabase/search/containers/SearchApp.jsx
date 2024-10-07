@@ -16,8 +16,8 @@ import {
   SearchFilterKeys,
 } from "metabase/search/constants";
 import {
-  SearchControls,
   SearchBody,
+  SearchControls,
   SearchMain,
   SearchResultContainer,
 } from "metabase/search/containers/SearchApp.styled";
@@ -27,7 +27,7 @@ import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
 } from "metabase/search/utils";
-import { Box, Text, Group, Paper } from "metabase/ui";
+import { Box, Group, Paper, Text } from "metabase/ui";
 
 function SearchApp({ location }) {
   const dispatch = useDispatch();

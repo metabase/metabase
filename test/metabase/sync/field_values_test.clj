@@ -94,41 +94,41 @@
            valid-linked-filter-id
            old-full-id
            new-full-id]             (t2/insert-returning-pks!
-                                      (t2/table-name FieldValues)
-                                      [;; expired sandbox fieldvalues
-                                       {:field_id   field-id
-                                        :type       "sandbox"
-                                        :hash_key   "random-hash"
-                                        :created_at expired-created-at
-                                        :updated_at expired-created-at}
+                                     (t2/table-name FieldValues)
+                                     [;; expired sandbox fieldvalues
+                                      {:field_id   field-id
+                                       :type       "sandbox"
+                                       :hash_key   "random-hash"
+                                       :created_at expired-created-at
+                                       :updated_at expired-created-at}
                                        ;; expired linked-filter fieldvalues
-                                       {:field_id   field-id
-                                        :type       "linked-filter"
-                                        :hash_key   "random-hash"
-                                        :created_at expired-created-at
-                                        :updated_at expired-created-at}
+                                      {:field_id   field-id
+                                       :type       "linked-filter"
+                                       :hash_key   "random-hash"
+                                       :created_at expired-created-at
+                                       :updated_at expired-created-at}
                                        ;; valid sandbox fieldvalues
-                                       {:field_id   field-id
-                                        :type       "sandbox"
-                                        :hash_key   "random-hash"
-                                        :created_at now
-                                        :updated_at now}
+                                      {:field_id   field-id
+                                       :type       "sandbox"
+                                       :hash_key   "random-hash"
+                                       :created_at now
+                                       :updated_at now}
                                        ;; valid linked-filter fieldvalues
-                                       {:field_id   field-id
-                                        :type       "linked-filter"
-                                        :hash_key   "random-hash"
-                                        :created_at now
-                                        :updated_at now}
+                                      {:field_id   field-id
+                                       :type       "linked-filter"
+                                       :hash_key   "random-hash"
+                                       :created_at now
+                                       :updated_at now}
                                        ;; old full fieldvalues
-                                       {:field_id   field-id
-                                        :type       "full"
-                                        :created_at expired-created-at
-                                        :updated_at expired-created-at}
+                                      {:field_id   field-id
+                                       :type       "full"
+                                       :created_at expired-created-at
+                                       :updated_at expired-created-at}
                                        ;; new full fieldvalues
-                                       {:field_id   field-id
-                                        :type       "full"
-                                        :created_at now
-                                        :updated_at now}])]
+                                      {:field_id   field-id
+                                       :type       "full"
+                                       :created_at now
+                                       :updated_at now}])]
       (is (= (repeat 2 {:deleted 2})
              (sync-database!' "delete-expired-advanced-field-values" (data/db))))
       (testing "The expired Advanced FieldValues should be deleted"
@@ -216,7 +216,7 @@
         (testing "has_field_values shouldn't change and has_more_values should be true"
           (is (= :list
                  (t2/select-one-fn :has_field_values Field
-                                      :id (mt/id :blueberries_consumed :str)))))
+                                   :id (mt/id :blueberries_consumed :str)))))
         (testing "it should still have FieldValues, but the stored list has at most [metadata-queries/absolute-max-distinct-values-limit] elements"
           (is (= {:values                (take field-values/*absolute-max-distinct-values-limit*
                                                (one-off-dbs/range-str (+ 100 field-values/*absolute-max-distinct-values-limit*)))
@@ -244,10 +244,10 @@
         (testing "has_field_values shouldn't change and has_more_values should be true"
           (is (= :list
                  (t2/select-one-fn :has_field_values Field
-                                      :id (mt/id :blueberries_consumed :str)))))
+                                   :id (mt/id :blueberries_consumed :str)))))
         (testing "it should still have FieldValues, but the stored list is just a sub-list of all distinct values and `has_more_values` = true"
           (is (= {:values                [(str/join (repeat 50 "A"))]
                   :human_readable_values []
                   :has_more_values       true}
                  (into {} (t2/select-one [FieldValues :values :human_readable_values :has_more_values]
-                                        :field_id (mt/id :blueberries_consumed :str))))))))))
+                                         :field_id (mt/id :blueberries_consumed :str))))))))))

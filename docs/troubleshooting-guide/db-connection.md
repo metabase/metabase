@@ -102,7 +102,7 @@ psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
 
 1. Go to the Metabase [SQL editor](../questions/native-editor/writing-sql.md).
 2. Test the connection to your database by running:
-   ```
+   ```sql
    SELECT 1
    ```
 

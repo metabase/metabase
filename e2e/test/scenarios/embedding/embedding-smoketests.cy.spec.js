@@ -1,15 +1,19 @@
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  visitQuestion,
-  visitDashboard,
   modal,
-  visitIframe,
+  openSharingMenu,
   openStaticEmbeddingModal,
+  restore,
+  sharingMenu,
+  sharingMenuButton,
+  updateSetting,
+  visitDashboard,
+  visitIframe,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
@@ -34,10 +38,10 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     cy.visit(`/model/${ORDERS_QUESTION_ID}`);
     cy.wait("@dataset");
 
+    sharingMenuButton().should("not.exist");
+
     cy.findByTestId("view-footer").within(() => {
       cy.icon("download").should("exist");
-      cy.icon("bell").should("not.exist");
-      cy.icon("share").should("not.exist");
     });
   });
 
@@ -307,10 +311,8 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 });
 
 function resetEmbedding() {
-  cy.request("PUT", "/api/setting/enable-embedding", { value: false });
-  cy.request("PUT", "/api/setting/embedding-secret-key", {
-    value: null,
-  });
+  updateSetting("enable-embedding", false);
+  updateSetting("embedding-secret-key", null);
 }
 
 function getTokenValue() {
@@ -324,14 +326,8 @@ function assertLinkMatchesUrl(text, url) {
 }
 
 function ensureEmbeddingIsDisabled() {
-  cy.icon("share").click();
-
-  cy.findByTestId("embed-menu-embed-modal-item").should("be.disabled");
-
-  cy.findByTestId("embed-menu-embed-modal-item").within(() => {
-    cy.findByText("Embedding is off").should("be.visible");
-    cy.findByText("Enable it in settings").should("be.visible");
-  });
+  openSharingMenu();
+  sharingMenu().findByText(/embedding is off/i);
 }
 
 function visitAndEnableSharing(object, acceptTerms = true) {

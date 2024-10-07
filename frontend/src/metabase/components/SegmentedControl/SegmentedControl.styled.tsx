@@ -2,7 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import _ from "underscore";
 
-import { color, darken, alpha } from "metabase/lib/colors";
+import { alpha, color, darken } from "metabase/lib/colors";
 import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 

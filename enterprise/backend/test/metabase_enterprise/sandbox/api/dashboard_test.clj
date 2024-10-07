@@ -16,9 +16,9 @@
 (deftest params-values-test
   (testing "Return sandboxed `param_values` for Fields to which the current User only has sandboxed access."
     (met/with-gtaps! {:gtaps      {:venues
-                                  {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
-                                   :query      (mt.tu/restricted-column-query (mt/id))}}
-                     :attributes {:cat 50}}
+                                   {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
+                                    :query      (mt.tu/restricted-column-query (mt/id))}}
+                      :attributes {:cat 50}}
       (mt/with-no-data-perms-for-all-users!
         (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
         (data-perms/set-table-permission! &group (mt/id :categories) :perms/create-queries :query-builder)
@@ -128,7 +128,6 @@
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
                    (get-values :rasta)))))
-
 
         (testing "when search values"
           (let [search (fn [user]

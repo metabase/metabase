@@ -2,8 +2,9 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import type { CacheableModel } from "metabase-types/api";
+import type { AdminPath } from "metabase-types/store";
 
-import type { StrategyData } from "../types";
+import { PerformanceTabId, type StrategyData } from "../types";
 import { getStrategyValidationSchema, isValidStrategyName } from "../utils";
 
 import { defaultMinDurationMs } from "./simple";
@@ -98,3 +99,22 @@ export const strategies = {
     validationSchema: doNotCacheStrategyValidationSchema,
   },
 } as Record<string, StrategyData>;
+
+export const getPerformanceTabMetadata = () =>
+  [
+    {
+      name: t`Database caching`,
+      path: "/admin/performance/databases",
+      key: "performance-databases",
+      tabId: PerformanceTabId.Databases,
+    },
+    {
+      name: t`Model persistence`,
+      path: "/admin/performance/models",
+      key: "performance-models",
+      tabId: PerformanceTabId.Models,
+    },
+  ] as (AdminPath & { tabId: string })[];
+
+export const getPerformanceAdminPaths = (metadata: AdminPath[]) =>
+  metadata.map(tab => ({ ...tab, name: `${t`Performance`} - ${tab.name}` }));

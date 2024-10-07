@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState, forwardRef } from "react";
+import { forwardRef, useState } from "react";
 
 import Tooltip from "./Tooltip";
 

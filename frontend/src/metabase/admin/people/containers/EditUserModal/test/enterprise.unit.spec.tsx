@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setup, defaultUser } from "./setup";
+import { defaultUser, setup } from "./setup";
 
 describe("EditUserModal - enterprise", () => {
   it("can add a user attribute", async () => {

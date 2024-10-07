@@ -71,19 +71,18 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn, merge } from "icepick";
 import inflection from "inflection"; // NOTE: need to use inflection directly here due to circular dependency
-import { normalize, denormalize, schema } from "normalizr";
+import { denormalize, normalize, schema } from "normalizr";
 import createCachedSelector from "re-reselect";
 import _ from "underscore";
 
-import { GET, PUT, POST, DELETE } from "metabase/lib/api";
+import { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import {
   combineReducers,
-  handleEntities,
   compose,
+  handleEntities,
   withAction,
-  withAnalytics,
-  withRequestState,
   withCachedDataAndRequestState,
+  withRequestState,
 } from "metabase/lib/redux";
 import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
 import { addUndo } from "metabase/redux/undo";
@@ -195,16 +194,6 @@ export function createEntity(def) {
     ]);
   }
 
-  // same as withRequestState, but with category/label
-  function withEntityAnalytics(action) {
-    return withAnalytics(
-      "entities",
-      entity.name,
-      action,
-      entity.getAnalyticsMetadata,
-    );
-  }
-
   function withEntityActionDecorators(action) {
     return entity.actionDecorators[action] || (_ => _);
   }
@@ -230,7 +219,6 @@ export function createEntity(def) {
 
     create: compose(
       withAction(CREATE_ACTION),
-      withEntityAnalytics("create"),
       withEntityRequestState(() => ["create"]),
       withEntityActionDecorators("create"),
     )(entityObject => async (dispatch, getState) => {
@@ -245,7 +233,6 @@ export function createEntity(def) {
 
     update: compose(
       withAction(UPDATE_ACTION),
-      withEntityAnalytics("update"),
       withEntityRequestState(object => [object.id, "update"]),
       withEntityActionDecorators("update"),
     )(
@@ -301,7 +288,6 @@ export function createEntity(def) {
 
     delete: compose(
       withAction(DELETE_ACTION),
-      withEntityAnalytics("delete"),
       withEntityRequestState(object => [object.id, "delete"]),
       withEntityActionDecorators("delete"),
     )(entityObject => async (dispatch, getState) => {
@@ -413,8 +399,8 @@ export function createEntity(def) {
     typeof entityId === "object"
       ? JSON.stringify(entityId)
       : entityId
-      ? entityId
-      : "",
+        ? entityId
+        : "",
   ); // must stringify objects
 
   // LIST SELECTORS
@@ -473,8 +459,9 @@ export function createEntity(def) {
     requestType,
   ];
 
+  const defaultRequestState = {};
   const getRequestState = (state, props) =>
-    getIn(state, getRequestStatePath(props)) || {};
+    getIn(state, getRequestStatePath(props)) || defaultRequestState;
 
   const getLoading = createSelector(
     [getRequestState],

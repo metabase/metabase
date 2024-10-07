@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useMemo, useState, useContext } from "react";
+import { useContext, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -11,13 +11,13 @@ import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import type { RowValue } from "metabase-types/api";
 
 import {
-  OptionContainer,
-  OptionsList,
   EmptyStateContainer,
-  OptionItem,
   FilterInputContainer,
+  OptionContainer,
+  OptionItem,
+  OptionsList,
 } from "./SingleSelectListField.styled";
-import type { SingleSelectListFieldProps, Option } from "./types";
+import type { Option, SingleSelectListFieldProps } from "./types";
 import { isValidOptionItem } from "./utils";
 
 function createOptionsFromValuesWithoutOptions(
@@ -139,7 +139,7 @@ const SingleSelectListField = ({
             <OptionItem
               data-testid={`${option[0]}-filter-value`}
               selectedColor={
-                checkedColor ?? isDashboardFilter
+                (checkedColor ?? isDashboardFilter)
                   ? "var(--mb-color-background-selected)"
                   : "var(--mb-color-filter)"
               }

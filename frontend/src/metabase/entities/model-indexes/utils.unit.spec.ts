@@ -1,7 +1,7 @@
 import Question from "metabase-lib/v1/Question";
 import Field from "metabase-lib/v1/metadata/Field";
 import type { Field as FieldAPI } from "metabase-types/api";
-import { createMockField, createMockCard } from "metabase-types/api/mocks";
+import { createMockCard, createMockField } from "metabase-types/api/mocks";
 
 import { canIndexField } from "./utils";
 

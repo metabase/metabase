@@ -8,10 +8,14 @@ import {
   expectNoBadSnowplowEvents,
   isEE,
   main,
+  mockSessionProperty,
+  onlyOnEE,
   popover,
   resetSnowplow,
   restore,
+  setTokenFeatures,
 } from "e2e/support/helpers";
+import { SUBSCRIBE_URL } from "metabase/setup/constants";
 
 const { admin } = USERS;
 
@@ -190,12 +194,26 @@ describe("scenarios > setup", () => {
       );
       cy.button("Finish").click();
 
+      // we need a mocked response (second parameter) to make sure we're not hitting the real endpoint
+      cy.intercept(SUBSCRIBE_URL, {}).as("subscribe");
+
       // Finish & Subscribe
+      cy.findByText(
+        "Get infrequent emails about new releases and feature updates.",
+      ).click();
+
       cy.findByText("Take me to Metabase").click();
     });
+
     cy.location("pathname").should("eq", "/");
 
     main().findByText("Embed Metabase in your app").should("not.exist");
+
+    cy.wait("@subscribe").then(({ request }) => {
+      const formData = request.body;
+      // the body is encoded as formData, but it should contain the email in plan text
+      expect(formData).to.include(admin.email);
+    });
   });
 
   // Values in this test are set through MB_USER_DEFAULTS environment variable!
@@ -215,6 +233,29 @@ describe("scenarios > setup", () => {
         "have.value",
         "Epic Team",
       );
+    });
+  });
+
+  it("should pre-fill user info for hosted instances (infra-frontend#1109)", () => {
+    onlyOnEE();
+    setTokenFeatures("none");
+    mockSessionProperty("is-hosted?", true);
+
+    cy.visit(
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
+    );
+
+    skipWelcomePage();
+    selectPreferredLanguageAndContinue();
+
+    cy.findByTestId("setup-forms").within(() => {
+      cy.findByDisplayValue("John").should("exist");
+      cy.findByDisplayValue("Doe").should("exist");
+      cy.findByDisplayValue("john@doe.test").should("exist");
+      cy.findByDisplayValue("Doe Unlimited").should("exist");
+      cy.findByLabelText("Create a password")
+        .should("be.focused")
+        .and("be.empty");
     });
   });
 
@@ -529,6 +570,26 @@ describeWithSnowplow("scenarios > setup", () => {
       });
 
       expectGoodSnowplowEvents(goodEvents);
+
+      cy.findByText(
+        "Get infrequent emails about new releases and feature updates.",
+      ).click();
+
+      expectGoodSnowplowEvent({
+        event: "newsletter-toggle-clicked",
+        triggered_from: "setup",
+        event_detail: "opted-in",
+      });
+
+      cy.findByText(
+        "Get infrequent emails about new releases and feature updates.",
+      ).click();
+
+      expectGoodSnowplowEvent({
+        event: "newsletter-toggle-clicked",
+        triggered_from: "setup",
+        event_detail: "opted-out",
+      });
     });
   });
 

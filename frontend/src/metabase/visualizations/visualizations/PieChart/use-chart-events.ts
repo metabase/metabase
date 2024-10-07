@@ -3,19 +3,25 @@ import { type MutableRefObject, useEffect, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { checkNotNull } from "metabase/lib/types";
 import { formatPercent } from "metabase/static-viz/lib/numbers";
 import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import {
-  getPercent,
-  getTotalValue,
-} from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
+import { getTotalValue } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
-import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
-import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
+import type { EChartsSunburstSeriesMouseEvent } from "metabase/visualizations/echarts/pie/types";
+import {
+  getArrayFromMapValues,
+  getSliceKeyPath,
+  getSliceTreeNodesFromPath,
+} from "metabase/visualizations/echarts/pie/util";
+import {
+  getMarkerColorClass,
+  useClickedStateTooltipSync,
+} from "metabase/visualizations/echarts/tooltip";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
   ClickObject,
@@ -24,115 +30,138 @@ import type {
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 
 export const getTooltipModel = (
-  dataIndex: number,
+  sliceKeyPath: string[],
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
 ): EChartsTooltipModel => {
-  const hoveredIndex = dataIndexToHoveredIndex(dataIndex);
-  const hoveredOther =
-    chartModel.slices[hoveredIndex].data.isOther &&
-    chartModel.otherSlices.length > 1;
-
-  const rows = (hoveredOther ? chartModel.otherSlices : chartModel.slices).map(
-    slice => ({
-      name: formatters.formatDimension(slice.data.key),
-      value: slice.data.displayValue,
-      color: hoveredOther ? undefined : slice.data.color,
-      formatter: formatters.formatMetric,
-    }),
+  const { sliceTreeNode, nodes } = getSliceTreeNodesFromPath(
+    chartModel.sliceTree,
+    sliceKeyPath,
+  );
+  const siblingNodes = getArrayFromMapValues(
+    nodes.length >= 2 ? nodes[nodes.length - 2].children : chartModel.sliceTree,
   );
 
+  const rows = (
+    sliceTreeNode.isOther
+      ? getArrayFromMapValues(sliceTreeNode.children)
+      : siblingNodes
+  )
+    .filter(node => node.visible)
+    .map(slice => ({
+      name: slice.name,
+      value: slice.displayValue,
+      color: nodes.length === 1 ? slice.color : undefined,
+      formatter: formatters.formatMetric,
+      key: slice.key,
+      normalizedPercentage: slice.normalizedPercentage,
+    }));
   const rowsTotal = getTotalValue(rows);
-  const isShowingTotalSensible = rows.length > 1;
 
-  const formattedRows: EChartsTooltipRow[] = rows.map((row, index) => {
+  const formattedRows: EChartsTooltipRow[] = rows.map(row => {
     const markerColorClass = row.color
       ? getMarkerColorClass(row.color)
       : undefined;
     return {
-      isFocused: !hoveredOther && index === hoveredIndex,
+      isFocused: !sliceTreeNode.isOther && row.key === sliceTreeNode.key,
       markerColorClass,
       name: row.name,
       values: [
         row.formatter(row.value),
-        formatPercent(getPercent(chartModel.total, row.value) ?? 0),
+        formatPercent(row.normalizedPercentage),
       ],
     };
   });
 
   return {
-    header: getFriendlyName(chartModel.colDescs.dimensionDesc.column),
+    header:
+      nodes.length === 1
+        ? getFriendlyName(sliceTreeNode.column)
+        : nodes
+            .slice(0, -1)
+            .map(node => node.name)
+            .join("  >  "),
     rows: formattedRows,
-    footer: isShowingTotalSensible
-      ? {
-          name: t`Total`,
-          values: [
-            formatters.formatMetric(rowsTotal),
-            formatPercent(getPercent(chartModel.total, rowsTotal) ?? 0),
-          ],
-        }
-      : undefined,
+    footer:
+      rows.length > 1
+        ? {
+            name: t`Total`,
+            values: [formatters.formatMetric(rowsTotal), formatPercent(1)],
+          }
+        : undefined,
   };
 };
 
-const dataIndexToHoveredIndex = (index: number) => index - 1;
-const hoveredIndexToDataIndex = (index: number) => index + 1;
-
 function getHoverData(
-  event: EChartsSeriesMouseEvent,
+  event: EChartsSunburstSeriesMouseEvent,
   chartModel: PieChartModel,
 ) {
   if (event.dataIndex == null) {
     return null;
   }
-  const index = dataIndexToHoveredIndex(event.dataIndex);
 
-  const indexOutOfBounds = chartModel.slices[index] == null;
-  if (indexOutOfBounds || chartModel.slices[index].data.noHover) {
-    return null;
+  const pieSliceKeyPath = getSliceKeyPath(event);
+
+  const dimensionNode = chartModel.sliceTree.get(pieSliceKeyPath[0]);
+  if (dimensionNode == null) {
+    throw Error(`Could not find dimensionNode for key ${pieSliceKeyPath[0]}`);
   }
 
   return {
-    index,
+    index: dimensionNode.legendHoverIndex,
     event: event.event.event,
+    pieSliceKeyPath,
   };
 }
 
 function handleClick(
-  event: EChartsSeriesMouseEvent,
+  event: EChartsSunburstSeriesMouseEvent,
   dataProp: VisualizationProps["data"],
   settings: VisualizationProps["settings"],
   visualizationIsClickable: VisualizationProps["visualizationIsClickable"],
   onVisualizationClick: VisualizationProps["onVisualizationClick"],
   chartModel: PieChartModel,
 ) {
-  if (!event.dataIndex) {
+  if (event.dataIndex == null) {
     return;
   }
-  const slice = chartModel.slices[dataIndexToHoveredIndex(event.dataIndex)];
+
+  const { sliceTreeNode, nodes } = getSliceTreeNodesFromPath(
+    chartModel.sliceTree,
+    getSliceKeyPath(event),
+  );
+
+  if (sliceTreeNode.isOther) {
+    return;
+  }
+
+  const rowIndex = sliceTreeNode.rowIndex;
+
   const data =
-    slice.data.rowIndex != null
-      ? dataProp.rows[slice.data.rowIndex].map((value, index) => ({
+    rowIndex != null
+      ? dataProp.rows[rowIndex].map((value, index) => ({
           value,
           col: dataProp.cols[index],
         }))
       : undefined;
 
+  if (data != null) {
+    data[chartModel.colDescs.metricDesc.index].value = sliceTreeNode.value;
+  }
+
   const clickObject: ClickObject = {
-    value: slice.data.value,
+    value: sliceTreeNode.value,
     column: chartModel.colDescs.metricDesc.column,
     data,
-    dimensions: [
-      {
-        value: slice.data.key,
-        column: chartModel.colDescs.dimensionDesc.column,
-      },
-    ],
+    dimensions: nodes.map(node => ({
+      value: node.key,
+      column: checkNotNull(node.column),
+    })),
     settings,
     event: event.event.event,
   };
 
-  if (visualizationIsClickable(clickObject) && !slice.data.isOther) {
+  if (visualizationIsClickable(clickObject)) {
     onVisualizationClick(clickObject);
   }
 }
@@ -149,31 +178,40 @@ export function useChartEvents(
     visualizationIsClickable,
     onVisualizationClick,
   } = props;
-  const hoveredIndex = props.hovered?.index;
+  // We use `pieLegendHoverIndex` instead of `hovered.index` because we only
+  // want to manually highlight and downplay when the user hovers over the
+  // legend. If the user hovers over the chart, echarts will handle highlighting
+  // the chart itself.
+  const legendHoverIndex = props.hovered?.pieLegendHoverIndex;
   const chart = chartRef?.current;
 
   useEffect(
     function higlightChartOnLegendHover() {
-      if (chart == null || hoveredIndex == null) {
+      if (chart == null || legendHoverIndex == null) {
         return;
       }
 
+      const name = getArrayFromMapValues(chartModel.sliceTree)[legendHoverIndex]
+        .key;
+
       chart.dispatchAction({
         type: "highlight",
-        dataIndex: hoveredIndexToDataIndex(hoveredIndex),
+        name,
         seriesIndex: 0,
       });
 
       return () => {
         chart.dispatchAction({
           type: "downplay",
-          dataIndex: hoveredIndexToDataIndex(hoveredIndex),
+          name,
           seriesIndex: 0,
         });
       };
     },
-    [chart, hoveredIndex],
+    [chart, chartModel, legendHoverIndex],
   );
+
+  useClickedStateTooltipSync(chartRef.current, props.clicked);
 
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [
@@ -187,14 +225,14 @@ export function useChartEvents(
       {
         eventName: "mousemove",
         query: "series",
-        handler: (event: EChartsSeriesMouseEvent) => {
+        handler: (event: EChartsSunburstSeriesMouseEvent) => {
           onHoverChange?.(getHoverData(event, chartModel));
         },
       },
       {
         eventName: "click",
         query: "series",
-        handler: (event: EChartsSeriesMouseEvent) => {
+        handler: (event: EChartsSunburstSeriesMouseEvent) => {
           handleClick(
             event,
             data,

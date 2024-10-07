@@ -1,8 +1,8 @@
 import {
+  formatNativeQuery,
   getEngineNativeAceMode,
   getEngineNativeType,
   getNativeQueryLanguage,
-  formatNativeQuery,
   isDeprecatedEngine,
 } from "metabase/lib/engine";
 import type { Engine } from "metabase-types/api";

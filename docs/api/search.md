@@ -11,7 +11,7 @@ API endpoints for Search.
 ## `GET /api/search/`
 
 Search for items in Metabase.
-  For the list of supported models, check [[metabase.search.config/all-models]].
+  For the list of supported models, check [[metabase.search/all-models]].
 
   Filters:
   - `archived`: set to true to search archived items only, default is false
@@ -24,6 +24,7 @@ Search for items in Metabase.
   - `last_edited_by`: search for items last edited by a specific user
   - `search_native_query`: set to true to search the content of native queries
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
+  - `ids`: search for items with those ids, works iff single value passed to `models`
 
   Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:
   - The `created-by` filter supports dashboards, models, actions, and cards.
@@ -33,29 +34,33 @@ Search for items in Metabase.
 
 ### PARAMS:
 
-*  **`filter_items_in_personal_collection`** nullable enum of only, exclude
+-  **`filter_items_in_personal_collection`** nullable enum of only, exclude.
 
-*  **`table_db_id`** nullable value must be an integer greater than zero.
+-  **`table_db_id`** nullable value must be an integer greater than zero.
 
-*  **`created_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
+-  **`created_by`** nullable vector of value must be an integer greater than zero.
 
-*  **`verified`** nullable true
+-  **`verified`** nullable true.
 
-*  **`created_at`** nullable value must be a non-blank string.
+-  **`created_at`** nullable value must be a non-blank string.
 
-*  **`archived`** nullable boolean
+-  **`archived`** nullable boolean.
 
-*  **`q`** nullable value must be a non-blank string.
+-  **`q`** nullable value must be a non-blank string.
 
-*  **`search_native_query`** nullable true
+-  **`ids`** nullable vector of value must be an integer greater than zero.
 
-*  **`models`** nullable enum of dashboard, table, dataset, segment, collection, database, action, indexed-entity, metric, card, or sequence of enum of dashboard, table, dataset, segment, collection, database, action, indexed-entity, metric, card
+-  **`search_native_query`** nullable true.
 
-*  **`last_edited_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
+-  **`models`** nullable vector of enum of dashboard, table, dataset, segment, collection, database, action, indexed-entity, metric, card.
 
-*  **`last_edited_at`** nullable value must be a non-blank string.
+-  **`search_engine`** nullable string.
 
-*  **`context`** nullable enum of search-bar, search-app
+-  **`last_edited_by`** nullable vector of value must be an integer greater than zero.
+
+-  **`last_edited_at`** nullable value must be a non-blank string.
+
+-  **`model_ancestors`** nullable boolean.
 
 ## `GET /api/search/models`
 
@@ -63,25 +68,27 @@ Get the set of models that a search query will return.
 
 ### PARAMS:
 
-*  **`filter_items_in_personal_collection`** 
+-  **`filter_items_in_personal_collection`** 
 
-*  **`created_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
+-  **`created_by`** nullable vector of value must be an integer greater than zero.
 
-*  **`verified`** nullable true
+-  **`verified`** nullable true.
 
-*  **`created_at`** nullable value must be a non-blank string.
+-  **`created_at`** nullable value must be a non-blank string.
 
-*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`q`** 
+-  **`q`** 
 
-*  **`search_native_query`** nullable true
+-  **`search_native_query`** nullable true.
 
-*  **`last_edited_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
+-  **`search_engine`** nullable string.
 
-*  **`last_edited_at`** nullable value must be an integer greater than zero.
+-  **`last_edited_by`** nullable vector of value must be an integer greater than zero.
 
-*  **`table-db-id`** nullable value must be an integer greater than zero.
+-  **`last_edited_at`** nullable value must be an integer greater than zero.
+
+-  **`table-db-id`** nullable value must be an integer greater than zero.
 
 ---
 

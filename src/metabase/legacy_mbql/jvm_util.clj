@@ -86,10 +86,10 @@
   "Unwrap host and domain."
   [expression]
   (lib.util.match/replace
-   expression
-   [:host column]
-   (recur [:regex-match-first column (str host-regex)])
-   [:domain column]
-   (recur [:regex-match-first column (str domain-regex)])
-   [:subdomain column]
-   (recur [:regex-match-first column (str subdomain-regex)])))
+    expression
+    [:host column]
+    (recur [:regex-match-first column (str host-regex)])
+    [:domain column]
+    (recur [:regex-match-first column (str domain-regex)])
+    [:subdomain column]
+    (recur [:regex-match-first column (str subdomain-regex)])))

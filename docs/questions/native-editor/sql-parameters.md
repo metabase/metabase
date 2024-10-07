@@ -18,7 +18,7 @@ Field Filters, a special type of filter, have a [slightly different syntax](#fie
 
 This example defines a **Text** variable called `category`:
 
-```
+```sql
 {% raw %}
 SELECT
   count(*)
@@ -31,7 +31,7 @@ WHERE
 
 Metabase will read the variable and attach a filter widget to the query, which people can use to change the value inserted into the `cat` variable with quotes. So if someone entered "Gizmo" into the filter widget, the query Metabase would run would be:
 
-```
+```sql
 SELECT
   count(*)
 FROM
@@ -118,7 +118,7 @@ Let's say you want to create a Field Filter that filters the `People` table by s
 
 The syntax for Field Filters differs from a Text, Number, or Date variable.
 
-```
+```sql
 {% raw %}
 SELECT
   *
@@ -140,6 +140,17 @@ A MongoDB native query example might look like this:
 ```
 
 For a more in-depth guide, check out [Field Filters: create smart filter widgets for SQL questions][field-filter].
+
+### Field filters in BigQuery and Oracle
+
+Make sure your SQL dialect matches the database you've selected. Common issues involving how tables are quoted in the query:
+
+| Database | Dialect quirk                                       | Example                    |
+| -------- | --------------------------------------------------- | -------------------------- |
+| BigQuery | Schemas and tables must be quoted with backticks.   | `` FROM `dataset.table` `` |
+| Oracle   | Schemas and tables must be quoted in double quotes. | `FROM schema.table`        |
+
+For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md#sql-editor).
 
 ## How to create different types of filter widgets
 
@@ -196,7 +207,7 @@ The reason is that field filters generate SQL based on the mapped field; Metabas
 
 Your main query should be aware of all the tables that your Field Filter variable is pointing to, otherwise you'll get a SQL syntax error. For example, let's say that your main query includes a field filter like this:
 
-```
+```sql
 {% raw %}
 SELECT
   *
@@ -209,7 +220,7 @@ WHERE
 
 Let's say the `{% raw %}{{ product_category }}{% endraw %}` variable refers to another question that uses the `Products` table. For the field filter to work, you'll need to include a join to `Products` in your main query.
 
-```
+```sql
 {% raw %}
 SELECT
   *
@@ -248,7 +259,7 @@ In the variables sidebar, you can set a default value for your variable. This va
 
 You can also define default values directly in your query by enclosing comment syntax inside the end brackets of an optional parameter.
 
-```
+```sql
 WHERE column = [[ {% raw %}{{ your_parameter }}{% endraw %} --]] your_default_value
 ```
 
@@ -256,7 +267,7 @@ The comment will "activate" whenever you pass a value to `your_parameter`.
 
 This is useful when defining complex default values (for example, if your default value is a function like `CURRENT_DATE`). Here's a PostgreSQL example that sets the default value of a Date filter to the current date using `CURRENT_DATE`:
 
-```
+```sql
 {% raw %}
 SELECT
   *
@@ -286,7 +297,7 @@ To make a variable optional in your native query, put `[[ .. ]]` brackets around
 
 In this example, if no value is given to `cat`, then the query will just select all the rows from the `products` table. But if `cat` does have a value, like "Widget", then the query will only grab the products with a category type of Widget:
 
-```
+```sql
 {% raw %}
 SELECT
   count(*)
@@ -302,7 +313,7 @@ You need to make sure that your SQL is still valid when no value is passed to th
 
 For example, excluding the `WHERE` keyword from the bracketed clause will cause an error if there's no value given for `cat`:
 
-```
+```sql
 -- this will cause an error:
 {% raw %}
 SELECT
@@ -316,7 +327,7 @@ WHERE
 
 That's because when no value is given for `cat`, Metabase will try to execute SQL as if the clause in `[[ ]]` didn't exist:
 
-```
+```sql
 SELECT
   count(*)
 FROM
@@ -328,7 +339,7 @@ which is not a valid SQL query.
 
 Instead, put the entire `WHERE` clause in `[[ ]]`:
 
-```
+```sql
 {% raw %}
 SELECT
   count(*)
@@ -341,7 +352,7 @@ FROM
 
 When there's no value given for `cat`, Metabase will just execute:
 
-```
+```sql
 {% raw %}
 SELECT
   count(*)
@@ -356,7 +367,7 @@ which is still a valid query.
 
 To use multiple optional clauses, you must include at least one regular `WHERE` clause followed by optional clauses, each starting with `AND`:
 
-```
+```sql
 {% raw %}
 SELECT
   count(*)
@@ -428,4 +439,4 @@ More on [Dashboard filters][dashboard-filters].
 [sql-variables]: https://www.metabase.com/learn/sql-questions/sql-variables.html
 [troubleshooting-filters]: ../../troubleshooting-guide/filters.md
 [troubleshooting-sql]: ../../troubleshooting-guide/sql.md
-[basic-input]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-variables#basic-input-variable-text
+[basic-input]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-variables

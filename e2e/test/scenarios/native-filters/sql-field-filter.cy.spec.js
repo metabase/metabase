@@ -1,12 +1,12 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  openNativeEditor,
   clearFilterWidget,
   filterWidget,
+  multiAutocompleteInput,
+  openNativeEditor,
   popover,
   removeMultiAutocompleteValue,
-  multiAutocompleteInput,
+  restore,
 } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";

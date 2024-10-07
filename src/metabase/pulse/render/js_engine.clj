@@ -20,7 +20,7 @@
   [thunk threshold]
   (memoize/fifo
    (with-meta thunk {::memoize/args-fn (fn [_]
-                                        [(.getId (Thread/currentThread))])})
+                                         [(.getId (Thread/currentThread))])})
    :fifo/threshold threshold))
 
 (defn context

@@ -8,11 +8,11 @@ import * as dashboardActions from "metabase/dashboard/actions";
 import {
   getDashboardComplete,
   getDashcardDataMap,
-  getSlowCards,
-  getParameters,
-  getParameterValues,
   getIsNavigatingBackToDashboard,
+  getParameterValues,
+  getParameters,
   getSelectedTabId,
+  getSlowCards,
 } from "metabase/dashboard/selectors";
 import { setErrorPage } from "metabase/redux/app";
 

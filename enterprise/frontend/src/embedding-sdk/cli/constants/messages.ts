@@ -1,4 +1,6 @@
-import { CONTAINER_NAME } from "./config";
+import { blue, green, yellow } from "chalk";
+
+import { CONTAINER_NAME, SDK_NPM_LINK } from "./config";
 
 export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
   Could not find a package.json file in the current directory.
@@ -22,22 +24,22 @@ export const INSTANCE_CONFIGURED_MESSAGE = `
   ${DELETE_CONTAINER_MESSAGE}
 `;
 
-export const EMBEDDING_FAILED_MESSAGE = `
-  Failed to enable embedding features.
-  ${DELETE_CONTAINER_MESSAGE}
+export const getGeneratedComponentFilesMessage = (path: string) => `
+  Generated example React components files in "${path}".
 `;
 
-export const PREMIUM_TOKEN_REQUIRED_MESSAGE =
-  "  Don't forget to add your premium token to your Metabase instance in the admin settings! The embedding demo will not work without a license.";
+export const getEmbeddingFailedMessage = (reason: string) => `
+  Failed to enable embedding features.
+  ${DELETE_CONTAINER_MESSAGE}
+
+  Reason: ${reason}
+`;
 
 export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
   // eslint-disable-next-line no-unconditional-metabase-links-render -- link for the CLI message
   `
-  Metabase instance is ready for embedding.
-  Go to ${instanceUrl} to start using Metabase.
-
+  Metabase is running at ${blue(instanceUrl)}
   You can find your login credentials at METABASE_LOGIN.json
-  Don't forget to put this file in your .gitignore.
 
   Metabase will phone home some data collected via Snowplow.
   We don’t collect any usernames, emails, server IPs, database details of any kind, or
@@ -48,3 +50,27 @@ export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
 
   Read more: https://www.metabase.com/docs/latest/installation-and-operation/information-collection
 `;
+
+export const getNoTenantMessage = (unsampledTableNames: string[]) => {
+  const tables = unsampledTableNames.join(", ");
+  const warningTitle = `Sandboxing is not configured for the following tables: ${tables}.`;
+
+  return `
+  ${yellow(warningTitle)}
+
+  At least one tenant is needed to demonstrate sandboxing.
+  You can assign your tenant's id to your user attribute, e.g. "customer_id: 5".
+`;
+};
+
+export const SETUP_PRO_LICENSE_MESSAGE = `
+  This tool can set up permissions for multi-tenancy and a mock back-end server that
+  signs users into Metabase to emulate the experience from different tenants.
+
+  To proceed, you will need a Pro license.
+  If you skip, we will proceed without multi-tenancy or SSO.
+`;
+
+export const SDK_LEARN_MORE_MESSAGE = `All done! 🚀 Learn more about the SDK here: ${green(
+  SDK_NPM_LINK,
+)}`;

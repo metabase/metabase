@@ -1,10 +1,10 @@
 (ns ^:mb/once metabase.legacy-mbql.util-test
   (:require
+   #?@(:clj (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt]))
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.types]
-   #?@(:clj (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt]))))
+   [metabase.types]))
 
 (comment metabase.types/keep-me)
 
@@ -179,7 +179,7 @@
              [:= [:field 4 nil] 300]]))
         "Should be able to combine multiple compound clauses"))
 
-(t/deftest ^:parallel add-filter-clause-test
+(t/deftest ^:parallel add-filter-clause-test-1-single-stage
   (t/is (= {:database 1
             :type     :query
             :query    {:source-table 1
@@ -189,8 +189,47 @@
              :type     :query
              :query    {:source-table 1
                         :filter       [:= [:field 1 nil] 100]}}
+            0
             [:= [:field 2 nil] 200]))
         "Should be able to add a filter clause to a query"))
+
+(t/deftest ^:parallel add-filter-clause-test-2-earlier-stage
+  (doseq [stage-number [0 -2]]
+    (t/is (= {:database 1
+              :type     :query
+              :query    {:source-query {:source-table 1
+                                        :filter       [:and [:= [:field 1 nil] 100] [:= [:field 2 nil] 200]]
+                                        :aggregation  [[:count]]}
+                         :expressions  {"negated" [:* [:field 1 nil] -1]}}}
+             (mbql.u/add-filter-clause
+              {:database 1
+               :type     :query
+               :query    {:source-query {:source-table 1
+                                         :filter       [:= [:field 1 nil] 100]
+                                         :aggregation  [[:count]]}
+                          :expressions  {"negated" [:* [:field 1 nil] -1]}}}
+              stage-number
+              [:= [:field 2 nil] 200]))
+          "Should be able to add a filter clause to an earlier stage of a query")))
+
+(t/deftest ^:parallel add-filter-clause-test-3-later-stage
+  (doseq [stage-number [-1 1]]
+    (t/is (= {:database 1
+              :type     :query
+              :query    {:source-query {:source-table 1
+                                        :filter       [:= [:field 1 nil] 100]
+                                        :aggregation  [[:count]]}
+                         :expressions  {"negated" [:* [:field 1 nil] -1]}
+                         :filter       [:= [:field 2 nil] 200]}}
+             (mbql.u/add-filter-clause
+              {:database 1
+               :type     :query
+               :query    {:source-query {:source-table 1
+                                         :filter       [:= [:field 1 nil] 100]
+                                         :aggregation  [[:count]]}
+                          :expressions  {"negated" [:* [:field 1 nil] -1]}}}
+              stage-number
+              [:= [:field 2 nil] 200])))))
 
 (t/deftest ^:parallel desugar-time-interval-test
   (t/is (= [:between
@@ -444,13 +483,13 @@
                   [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
                   [:not [:contains [:field 1 nil] "XYZ" {:case-sensitive false}]]]
                  (mbql.u/desugar-filter-clause
-                   [:does-not-contain {:case-sensitive false} [:field 1 nil] "ABC" "XYZ"])))
+                  [:does-not-contain {:case-sensitive false} [:field 1 nil] "ABC" "XYZ"])))
         (t/is (= [:and
                   [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
                   [:not [:contains [:field 1 nil] "XYZ" {:case-sensitive false}]]
                   [:not [:contains [:field 1 nil] "LMN" {:case-sensitive false}]]]
                  (mbql.u/desugar-filter-clause
-                   [:does-not-contain {:case-sensitive false} [:field 1 nil] "ABC" "XYZ" "LMN"])))))))
+                  [:does-not-contain {:case-sensitive false} [:field 1 nil] "ABC" "XYZ" "LMN"])))))))
 
 (t/deftest ^:parallel desugar-temporal-extract-test
   (t/testing "desugaring :get-year, :get-month, etc"
@@ -583,7 +622,6 @@
     (t/is (= 5
              (mbql.u/join->source-table-id (assoc join :source-query {:source-table 5}))))))
 
-
 ;;; ---------------------------------------------- aggregation-at-index ----------------------------------------------
 
 (def ^:private query-with-some-nesting
@@ -605,7 +643,6 @@
       (t/is (= expected
                (apply mbql.u/aggregation-at-index query-with-some-nesting input))))))
 
-
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
 (t/deftest ^:parallel uniquify-names
@@ -618,7 +655,7 @@
              (mbql.u/uniquify-names ["count" "count" "count_2"]))))
 
   (t/testing (str "for wacky DBMSes like SQL Server that return blank column names sometimes let's make sure we handle "
-                "those without exploding")
+                  "those without exploding")
     (t/is (= ["" "_2"]
              (mbql.u/uniquify-names ["" ""])))))
 
@@ -653,12 +690,12 @@
                 [:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
                 [:aggregation-options [:min [:field 1 nil]]   {:name "min"}]]
                (mbql.u/pre-alias-aggregations simple-ag->name
-                 [[:sum [:field 1 nil]]
-                  [:count [:field 1 nil]]
-                  [:sum [:field 1 nil]]
-                  [:avg [:field 1 nil]]
-                  [:sum [:field 1 nil]]
-                  [:min [:field 1 nil]]]))))
+                                              [[:sum [:field 1 nil]]
+                                               [:count [:field 1 nil]]
+                                               [:sum [:field 1 nil]]
+                                               [:avg [:field 1 nil]]
+                                               [:sum [:field 1 nil]]
+                                               [:min [:field 1 nil]]]))))
 
     (t/testing "we shouldn't change the name of ones that are already named"
       (t/is (= [[:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
@@ -668,13 +705,12 @@
                 [:aggregation-options [:sum [:field 1 nil]]   {:name "sum_2"}]
                 [:aggregation-options [:min [:field 1 nil]]   {:name "min"}]]
                (mbql.u/pre-alias-aggregations simple-ag->name
-                 [[:sum [:field 1 nil]]
-                  [:count [:field 1 nil]]
-                  [:sum [:field 1 nil]]
-                  [:avg [:field 1 nil]]
-                  [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
-                  [:min [:field 1 nil]]]))))
-
+                                              [[:sum [:field 1 nil]]
+                                               [:count [:field 1 nil]]
+                                               [:sum [:field 1 nil]]
+                                               [:avg [:field 1 nil]]
+                                               [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
+                                               [:min [:field 1 nil]]]))))
 
     (t/testing "ok, can we do the same thing as the tests above but make those names *unique* at the same time?"
       (t/is (= [[:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
@@ -684,12 +720,12 @@
                 [:aggregation-options [:sum [:field 1 nil]]   {:name "sum_3"}]
                 [:aggregation-options [:min [:field 1 nil]]   {:name "min"}]]
                (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
-                 [[:sum [:field 1 nil]]
-                  [:count [:field 1 nil]]
-                  [:sum [:field 1 nil]]
-                  [:avg [:field 1 nil]]
-                  [:sum [:field 1 nil]]
-                  [:min [:field 1 nil]]])))
+                                                           [[:sum [:field 1 nil]]
+                                                            [:count [:field 1 nil]]
+                                                            [:sum [:field 1 nil]]
+                                                            [:avg [:field 1 nil]]
+                                                            [:sum [:field 1 nil]]
+                                                            [:min [:field 1 nil]]])))
 
       (t/is (= [[:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
                 [:aggregation-options [:count [:field 1 nil]] {:name "count"}]
@@ -698,31 +734,31 @@
                 [:aggregation-options [:sum [:field 1 nil]]   {:name "sum_2_2"}]
                 [:aggregation-options [:min [:field 1 nil]]   {:name "min"}]]
                (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
-                 [[:sum [:field 1 nil]]
-                  [:count [:field 1 nil]]
-                  [:sum [:field 1 nil]]
-                  [:avg [:field 1 nil]]
-                  [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
-                  [:min [:field 1 nil]]]))))
+                                                           [[:sum [:field 1 nil]]
+                                                            [:count [:field 1 nil]]
+                                                            [:sum [:field 1 nil]]
+                                                            [:avg [:field 1 nil]]
+                                                            [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
+                                                            [:min [:field 1 nil]]]))))
 
     (t/testing (str "if `:aggregation-options` only specifies `:display-name` it should still a new `:name`. "
-                  "`pre-alias-and-uniquify-aggregations` shouldn't stomp over display name")
+                    "`pre-alias-and-uniquify-aggregations` shouldn't stomp over display name")
       (t/is (= [[:aggregation-options [:sum [:field 1 nil]] {:name "sum"}]
                 [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
                 [:aggregation-options [:sum [:field 1 nil]] {:display-name "Sum of Field 1", :name "sum_3"}]]
                (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
-                 [[:sum [:field 1 nil]]
-                  [:sum [:field 1 nil]]
-                  [:aggregation-options [:sum [:field 1 nil]] {:display-name "Sum of Field 1"}]])))
+                                                           [[:sum [:field 1 nil]]
+                                                            [:sum [:field 1 nil]]
+                                                            [:aggregation-options [:sum [:field 1 nil]] {:display-name "Sum of Field 1"}]])))
 
       (t/testing "if both are specified, `display-name` should still be propagated"
         (t/is (= [[:aggregation-options [:sum [:field 1 nil]] {:name "sum"}]
                   [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
                   [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2_2", :display-name "Sum of Field 1"}]]
                  (mbql.u/pre-alias-and-uniquify-aggregations simple-ag->name
-                   [[:sum [:field 1 nil]]
-                    [:sum [:field 1 nil]]
-                    [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2", :display-name "Sum of Field 1"}]])))))))
+                                                             [[:sum [:field 1 nil]]
+                                                              [:sum [:field 1 nil]]
+                                                              [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2", :display-name "Sum of Field 1"}]])))))))
 
 (t/deftest ^:parallel unique-name-generator-test
   (t/testing "Can we get a simple unique name generator"
@@ -762,7 +798,6 @@
       (let [f (mbql.u/unique-name-generator :unique-alias-fn (fn [x y] (str y "~~" x)))]
         (t/is (= ["x" "2~~x"]
                  (map f ["x" "x"])))))))
-
 
 ;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
 

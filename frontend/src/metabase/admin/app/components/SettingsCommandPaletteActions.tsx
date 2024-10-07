@@ -1,4 +1,4 @@
-import { useRegisterActions, type Action, useKBar } from "kbar";
+import { type Action, useKBar, useRegisterActions } from "kbar";
 import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { useMount } from "react-use";

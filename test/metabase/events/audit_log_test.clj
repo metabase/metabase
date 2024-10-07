@@ -220,18 +220,18 @@
       (let [event {:object           metric
                    :revision-message "deleted"
                    :user-id          (mt/user->id :rasta)}]
-       (is (= event
-              (events/publish-event! :event/metric-delete event)))
-       (is (= {:topic       :metric-delete
-               :user_id     (mt/user->id :rasta)
-               :model       "Metric"
-               :model_id    (:id metric)
-               :details     {:name             (:name metric)
-                             :description      (:description metric)
-                             :revision-message "deleted"
-                             :database_id (mt/id)
-                             :table_id    (mt/id :venues)}}
-              (mt/latest-audit-log-entry "metric-delete" (:id metric))))))))
+        (is (= event
+               (events/publish-event! :event/metric-delete event)))
+        (is (= {:topic       :metric-delete
+                :user_id     (mt/user->id :rasta)
+                :model       "Metric"
+                :model_id    (:id metric)
+                :details     {:name             (:name metric)
+                              :description      (:description metric)
+                              :revision-message "deleted"
+                              :database_id (mt/id)
+                              :table_id    (mt/id :venues)}}
+               (mt/latest-audit-log-entry "metric-delete" (:id metric))))))))
 
 (deftest subscription-events-test
   (t2.with-temp/with-temp [Dashboard      {dashboard-id :id} {}
@@ -384,55 +384,55 @@
   (testing :segment-create
     (t2.with-temp/with-temp [Segment segment]
       (mt/with-test-user :rasta
-       (is (= {:object segment :user-id (mt/user->id :rasta)}
-              (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :rasta)})))
-       (is (= {:topic       :segment-create
-               :user_id     (mt/user->id :rasta)
-               :model       "Segment"
-               :model_id    (:id segment)
-               :details     {:name        (:name segment)
-                             :description (:description segment)
-                             :database_id (mt/id)
-                             :table_id    (mt/id :checkins)}}
-              (mt/latest-audit-log-entry "segment-create" (:id segment))))))))
+        (is (= {:object segment :user-id (mt/user->id :rasta)}
+               (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :rasta)})))
+        (is (= {:topic       :segment-create
+                :user_id     (mt/user->id :rasta)
+                :model       "Segment"
+                :model_id    (:id segment)
+                :details     {:name        (:name segment)
+                              :description (:description segment)
+                              :database_id (mt/id)
+                              :table_id    (mt/id :checkins)}}
+               (mt/latest-audit-log-entry "segment-create" (:id segment))))))))
 
 (deftest segment-update-event-test
   (testing :segment-update
     (t2.with-temp/with-temp [Segment segment]
-     (let [event (-> {:object segment}
-                     (assoc :revision-message "update this mofo")
-                     (assoc :user-id (mt/user->id :rasta)))]
-       (is (= event
-              (events/publish-event! :event/segment-update event)))
-       (is (= {:topic       :segment-update
-               :user_id     (mt/user->id :rasta)
-               :model       "Segment"
-               :model_id    (:id segment)
-               :details     {:name             (:name segment)
-                             :description      (:description segment)
-                             :revision-message "update this mofo"
-                             :database_id (mt/id)
-                             :table_id    (mt/id :checkins)}}
-              (mt/latest-audit-log-entry "segment-update" (:id segment))))))))
+      (let [event (-> {:object segment}
+                      (assoc :revision-message "update this mofo")
+                      (assoc :user-id (mt/user->id :rasta)))]
+        (is (= event
+               (events/publish-event! :event/segment-update event)))
+        (is (= {:topic       :segment-update
+                :user_id     (mt/user->id :rasta)
+                :model       "Segment"
+                :model_id    (:id segment)
+                :details     {:name             (:name segment)
+                              :description      (:description segment)
+                              :revision-message "update this mofo"
+                              :database_id (mt/id)
+                              :table_id    (mt/id :checkins)}}
+               (mt/latest-audit-log-entry "segment-update" (:id segment))))))))
 
 (deftest segment-delete-event-test
   (testing :segment-delete
     (t2.with-temp/with-temp [Segment segment]
-     (let [event (assoc {:object segment}
-                        :revision-message "deleted"
-                        :user-id (mt/user->id :rasta))]
-       (is (= event
-              (events/publish-event! :event/segment-delete event)))
-       (is (= {:topic       :segment-delete
-               :user_id     (mt/user->id :rasta)
-               :model       "Segment"
-               :model_id    (:id segment)
-               :details     {:name             (:name segment)
-                             :description      (:description segment)
-                             :revision-message "deleted"
-                             :database_id (mt/id)
-                             :table_id    (mt/id :checkins)}}
-              (mt/latest-audit-log-entry "segment-delete" (:id segment))))))))
+      (let [event (assoc {:object segment}
+                         :revision-message "deleted"
+                         :user-id (mt/user->id :rasta))]
+        (is (= event
+               (events/publish-event! :event/segment-delete event)))
+        (is (= {:topic       :segment-delete
+                :user_id     (mt/user->id :rasta)
+                :model       "Segment"
+                :model_id    (:id segment)
+                :details     {:name             (:name segment)
+                              :description      (:description segment)
+                              :revision-message "deleted"
+                              :database_id (mt/id)
+                              :table_id    (mt/id :checkins)}}
+               (mt/latest-audit-log-entry "segment-delete" (:id segment))))))))
 
 (deftest user-joined-event-test
   (testing :user-joined
@@ -477,30 +477,30 @@
              (mt/latest-audit-log-entry :user-update (mt/user->id :lucky))))))))
 
 (deftest user-deactivated-event-test
- (testing :event/user-deactivated
-   (mt/with-current-user (mt/user->id :rasta)
-     (let [user (mt/fetch-user :lucky)]
-       (is (= {:object user}
-              (events/publish-event! :event/user-deactivated {:object user})))
-       (is (= {:model_id (mt/user->id :lucky)
-               :user_id  (mt/user->id :rasta)
-               :details  {}
-               :topic    :user-deactivated
-               :model    "User"}
-              (mt/latest-audit-log-entry :user-deactivated (mt/user->id :lucky))))))))
+  (testing :event/user-deactivated
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [user (mt/fetch-user :lucky)]
+        (is (= {:object user}
+               (events/publish-event! :event/user-deactivated {:object user})))
+        (is (= {:model_id (mt/user->id :lucky)
+                :user_id  (mt/user->id :rasta)
+                :details  {}
+                :topic    :user-deactivated
+                :model    "User"}
+               (mt/latest-audit-log-entry :user-deactivated (mt/user->id :lucky))))))))
 
 (deftest user-reactivated-event-test
- (testing :event/user-reactivated
-   (mt/with-current-user (mt/user->id :rasta)
-     (let [user (mt/fetch-user :lucky)]
-       (is (= {:object user}
-              (events/publish-event! :event/user-reactivated {:object user})))
-       (is (= {:model_id (mt/user->id :lucky)
-               :user_id  (mt/user->id :rasta)
-               :details  {}
-               :topic    :user-reactivated
-               :model    "User"}
-              (mt/latest-audit-log-entry :user-reactivated (mt/user->id :lucky))))))))
+  (testing :event/user-reactivated
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [user (mt/fetch-user :lucky)]
+        (is (= {:object user}
+               (events/publish-event! :event/user-reactivated {:object user})))
+        (is (= {:model_id (mt/user->id :lucky)
+                :user_id  (mt/user->id :rasta)
+                :details  {}
+                :topic    :user-reactivated
+                :model    "User"}
+               (mt/latest-audit-log-entry :user-reactivated (mt/user->id :lucky))))))))
 
 (deftest password-reset-initiated-event-test
   (testing :event/password-reset-initiated
@@ -527,3 +527,37 @@
                 :topic    :password-reset-successful
                 :model    "User"}
                (mt/latest-audit-log-entry :password-reset-successful (mt/user->id :rasta))))))))
+
+(deftest create-channel-event-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-temp [:model/Channel channel {:name    "Test channel"
+                                           :type    "channel/metabase-test"
+                                           :details {:return-type  "return-value"
+                                                     :return-value true}}]
+      (testing :event/channel-create
+        (is (= {:object channel}
+               (events/publish-event! :event/channel-create {:object channel})))
+        (is (= {:model_id (:id channel)
+                :user_id  (mt/user->id :rasta)
+                :details  {:id          (:id channel)
+                           :name        "Test channel"
+                           :description nil
+                           :type        "channel/metabase-test"
+                           :active      true}
+                :topic    :channel-create
+                :model    "Channel"}
+               (mt/latest-audit-log-entry :channel-create (:id channel)))))
+
+      (testing :event/channel-update
+        (events/publish-event! :event/channel-update {:object          (assoc channel
+                                                                              :details {:new-detail true}
+                                                                              :name "New Name")
+                                                      :previous-object channel})
+
+        (is (= {:model_id (:id channel)
+                :user_id  (mt/user->id :rasta)
+                :details  {:previous {:name "Test channel"}
+                           :new      {:name "New Name"}}
+                :topic    :channel-update
+                :model    "Channel"}
+               (mt/latest-audit-log-entry :channel-update (:id channel))))))))

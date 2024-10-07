@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { connect } from "react-redux";
-import { ngettext, msgid, t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -191,13 +191,12 @@ const ConnectedQuestionRowCount = _.compose(
   }),
 )(QuestionRowCount);
 
-function shouldRender({
-  result,
-  isObjectDetail,
-}: {
+export type QuestionRowCountOpts = {
   result?: Dataset;
   isObjectDetail: boolean;
-}) {
+};
+
+function shouldRender({ result, isObjectDetail }: QuestionRowCountOpts) {
   return result?.data && !isObjectDetail;
 }
 

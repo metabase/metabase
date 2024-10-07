@@ -63,7 +63,7 @@
              [0]
              [0 1]
              ;; "grand totals" row
-             [      3]
+             [3]
              ;; bottom right corner
              []])
            (#'qp.pivot/breakout-combinations 4 [0 1 2] [3])))))
@@ -72,18 +72,18 @@
   (testing "Should return the combos that Paul specified in (#14329)"
     (testing "If pivot-rows and pivot-cols aren't specified, then just return the powerset"
       (is (= [[0 1 2]
-              [  1 2]
+              [1 2]
               [0   2]
-              [    2]
+              [2]
               [0 1]
-              [  1]
+              [1]
               [0]
               []]
              (#'qp.pivot/breakout-combinations 3 [] []))))))
 
 (deftest ^:parallel breakout-combinations-test-4
-  (testing "I guess in some cases the order of breakouts can change?"
-    (is (= [[0 1 2] [1 2] [2] [1 0] [1] []]
+  (testing "The breakouts are sorted ascending."
+    (is (= [[0 1 2] [1 2] [2] [0 1] [1] []]
            (#'qp.pivot/breakout-combinations 3 [1 0] [2])))))
 
 (deftest ^:parallel validate-pivot-rows-cols-test
@@ -100,7 +100,6 @@
   ;; TODO -- we should require these columns to be distinct as well (I think?)
   ;; TODO -- require all numbers to be positive
   ;; TODO -- can you specify something in both pivot-rows and pivot-cols?
-
 
 (defn- test-query []
   (mt/dataset test-data
@@ -154,8 +153,8 @@
                           {:query {:breakout    [$orders.product_id->products.category
                                                  [:expression "pivot-grouping"]]
                                    :expressions {:pivot-grouping [:abs 3]}}}
-                          {:query {:breakout    [$orders.user_id->people.source
-                                                 $orders.user_id->people.state
+                          {:query {:breakout    [$orders.user_id->people.state
+                                                 $orders.user_id->people.source
                                                  [:expression "pivot-grouping"]]
                                    :expressions {:pivot-grouping [:abs 4]}}}
                           {:query {:breakout    [$orders.user_id->people.source
@@ -200,8 +199,8 @@
                                         num-breakouts
                                         (:pivot-rows pivot-options)
                                         (:pivot-cols pivot-options)))
-        3 [[0 1 2]   [1 2] [2] [1 0] [1] []]
-        4 [[0 1 2 3] [1 2] [2] [1 0] [1] []]))))
+        3 [[0 1 2]   [1 2] [2] [0 1] [1] []]
+        4 [[0 1 2 3] [1 2] [2] [0 1] [1] []]))))
 
 (deftest ^:parallel ignore-bad-pivot-options-test
   (mt/dataset test-data
@@ -286,15 +285,15 @@
 (deftest model-with-aggregations-nested-pivot-aggregation-names-test
   (testing "#43993"
     (let [model (mt/mbql-query orders
-                               {:source-table $$orders
-                                :joins        [{:source-table $$people
-                                                :alias        "People - User"
-                                                :condition
-                                                [:= $orders.user_id
-                                                 [:field %people.id {:join-alias "People - User"}]]}]
-                                :aggregation  [[:sum $subtotal]]
-                                :breakout     [!month.created_at
-                                               [:field %people.id {:join-alias "People - User"}]]})]
+                  {:source-table $$orders
+                   :joins        [{:source-table $$people
+                                   :alias        "People - User"
+                                   :condition
+                                   [:= $orders.user_id
+                                    [:field %people.id {:join-alias "People - User"}]]}]
+                   :aggregation  [[:sum $subtotal]]
+                   :breakout     [!month.created_at
+                                  [:field %people.id {:join-alias "People - User"}]]})]
       (mt/with-temp [Card card {:dataset_query model, :type :model}]
         (testing "Column aliasing needs to work even with aggregations over a model"
           (let [query        (mt/mbql-query
@@ -318,18 +317,18 @@
     (mt/with-temp [Card model1 {:type :model
                                 :dataset_query
                                 (mt/mbql-query products
-                                               {:source-table $$products
-                                                :expressions  {"Rating Bucket" [:floor $products.rating]}})}
+                                  {:source-table $$products
+                                   :expressions  {"Rating Bucket" [:floor $products.rating]}})}
                    Card model2 {:type :model
                                 :dataset_query
                                 (mt/mbql-query orders
-                                               {:source-table $$orders
-                                                :joins        [{:source-table (str "card__" (u/the-id model1))
-                                                                :alias        "model A - Product"
-                                                                :fields       :all
-                                                                :condition    [:= $orders.product_id
-                                                                               [:field %products.id
-                                                                                {:join-alias "model A - Product"}]]}]})}]
+                                  {:source-table $$orders
+                                   :joins        [{:source-table (str "card__" (u/the-id model1))
+                                                   :alias        "model A - Product"
+                                                   :fields       :all
+                                                   :condition    [:= $orders.product_id
+                                                                  [:field %products.id
+                                                                   {:join-alias "model A - Product"}]]}]})}]
       (testing "Column aliasing works when joining an expression in an inner model"
         (let [query        (mt/mbql-query
                              orders {:source-table (str "card__" (u/the-id model2))
@@ -380,12 +379,12 @@
 
 (defn- distinct-values [table col]
   (->> (mt/rows
-         (mt/dataset test-data
-           (qp/process-query
-            {:database (mt/id)
-             :type     :query
-             :query    {:source-table (mt/id table)
-                        :breakout     [[:field (mt/id table col) nil]]}})))
+        (mt/dataset test-data
+          (qp/process-query
+           {:database (mt/id)
+            :type     :query
+            :query    {:source-table (mt/id table)
+                       :breakout     [[:field (mt/id table col) nil]]}})))
        (map first)
        set))
 
@@ -506,15 +505,15 @@
         (let [query (mt/mbql-query orders
                       {:aggregation [[:count]]
                        :breakout    [$product_id->products.category $user_id->people.source]})]
-           (mt/with-no-data-perms-for-all-users!
-             (data-perms/set-table-permission! (perms-group/all-users) (data/id :orders) :perms/create-queries :no)
-             (data-perms/set-database-permission! (perms-group/all-users) (data/id) :perms/view-data :unrestricted)
-             (testing "User without perms shouldn't be able to run the query normally"
-               (is (thrown-with-msg?
-                    clojure.lang.ExceptionInfo
-                    #"You do not have permissions to run this query"
-                    (mt/with-test-user :rasta
-                      (qp/process-query query)))))
+          (mt/with-no-data-perms-for-all-users!
+            (data-perms/set-table-permission! (perms-group/all-users) (data/id :orders) :perms/create-queries :no)
+            (data-perms/set-database-permission! (perms-group/all-users) (data/id) :perms/view-data :unrestricted)
+            (testing "User without perms shouldn't be able to run the query normally"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (mt/with-test-user :rasta
+                     (qp/process-query query)))))
             (testing "Should be able to run the query via a Card that All Users has perms for"
               ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
               ;; Collection inherits Root Collection perms when created
@@ -579,8 +578,7 @@
   ;; breakout 1: year(created-at)
   ;;
   ;; rating, year(created-at), pivot-grouping, count
-  [
-   ;; query 1 [0 1]: breakout on rating, year(created-at), pivot-grouping
+  [;; query 1 [0 1]: breakout on rating, year(created-at), pivot-grouping
    [1 "2020-01-01T00:00:00Z" 0 5]
    [2 "2020-01-01T00:00:00Z" 0 13]
    [3 "2020-01-01T00:00:00Z" 0 14]
@@ -685,3 +683,29 @@
                 [:expression "pivot-grouping"]
                 [:aggregation 0]])
              (mapv :field_ref (mt/cols (qp.pivot/run-pivot-query query))))))))
+
+(deftest ^:parallel splice-in-remap-test
+  (let [splice #'qp.pivot/splice-in-remap]
+    (is (= []
+           (splice [] {1 0, 4 3})))
+    (is (= [0 1]
+           (splice [0] {1 0, 4 3})))
+    (is (= [2]
+           (splice [1] {1 0, 4 3})))
+    (is (= [0 1 2]
+           (splice [0 1] {1 0, 4 3})))
+    (is (= [0 1 3 4]
+           (splice [0 2] {1 0, 4 3})))
+    (testing "chained remapping"
+      (is (= [1 2 3 5]
+             (splice [1 2] {1 2, 2 5})))
+      (is (= [1 2 3 4 5]
+             (splice [1 2 3] {1 2, 2 5})))
+      (is (= [1 2 3 5 6]
+             (splice [1 2 4] {1 2, 2 5})))
+      (is (= [1 2 3 5 7]
+             (splice [1 2 5] {1 2, 2 5})))
+      (is (= [1 2 3 5 8]
+             (splice [1 2 6] {1 2, 2 5})))
+      (is (= [1 2 3 5 8]
+             (splice [1 2 6] {1 2, 2 5, 3 2}))))))

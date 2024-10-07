@@ -1,14 +1,14 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  addOrUpdateDashboardCard,
+  appBar,
   filterWidget,
+  getDashboardCard,
+  multiAutocompleteInput,
   popover,
   queryBuilderMain,
   restore,
   visitDashboard,
-  addOrUpdateDashboardCard,
-  getDashboardCard,
-  appBar,
-  multiAutocompleteInput,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =

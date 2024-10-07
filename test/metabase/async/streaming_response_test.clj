@@ -27,7 +27,7 @@
 
 (def ^:private thread-pool-size 5)
 
-(defn- do-with-streaming-response-thread-pool [thunk]
+(defn- do-with-streaming-response-thread-pool! [thunk]
   (let [pool (Executors/newFixedThreadPool thread-pool-size
                                            (.build
                                             (doto (BasicThreadFactory$Builder.)
@@ -40,13 +40,13 @@
         (finally
           (.shutdownNow pool))))))
 
-(defmacro ^:private with-streaming-response-thread-pool {:style/indent 0} [& body]
-  `(do-with-streaming-response-thread-pool (fn [] ~@body)))
+(defmacro ^:private with-streaming-response-thread-pool! {:style/indent 0} [& body]
+  `(do-with-streaming-response-thread-pool! (fn [] ~@body)))
 
 (defmacro ^:private with-test-driver-db! {:style/indent 0} [& body]
   `(t2.with-temp/with-temp [Database db# {:engine ::test-driver}]
      (mt/with-db db#
-       (with-streaming-response-thread-pool
+       (with-streaming-response-thread-pool!
          ~@body))))
 
 (def ^:private start-execution-chan
@@ -143,14 +143,13 @@
               ;; wait a little while for the query to start running -- this should usually happen fairly quickly
               (mt/wait-for-result start-chan (u/seconds->ms 15))
               (future-cancel futur)
-              ;; check every 50ms, up to 1000ms, whether `canceled?` is now `true`
+              ;; check every 10ms, up to 1000ms, whether `canceled?` is now `true`
               (is (loop [[wait & more] (repeat 10 100)]
                     (or @canceled?
-                        (if wait
+                        (when wait
                           (do
                             (Thread/sleep (long wait))
-                            (recur more))
-                          ::timed-out)))))))))))
+                            (recur more)))))))))))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
 

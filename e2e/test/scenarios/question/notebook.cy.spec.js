@@ -4,7 +4,10 @@ import {
   addCustomColumn,
   addSummaryField,
   addSummaryGroupingField,
+  createQuestion,
   enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
   filter,
   filterField,
   getNotebookStep,
@@ -22,9 +25,6 @@ import {
   summarize,
   visitQuestionAdhoc,
   visualize,
-  createQuestion,
-  entityPickerModal,
-  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =

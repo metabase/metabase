@@ -39,7 +39,7 @@
 
     (u/varargs String)
     (u/varargs String [\"A\" \"B\"])"
-  {:style/indent 1, :arglists '([klass] [klass xs])}
+  {:style/indent [:defn], :arglists '([klass] [klass xs])}
   [klass & [objects]]
   (vary-meta `(into-array ~klass ~objects)
              assoc :tag (format "[L%s;" (.getTypeName ^Class (ns-resolve *ns* klass)))))
@@ -170,7 +170,6 @@
 
    For implementing more fine grained retry policies like exponential backoff,
    consider using the `metabase.util.retry` namespace."
-  {:style/indent 1}
   [num-retries f]
   (if (<= num-retries 0)
     (f)
@@ -193,8 +192,9 @@
   consider using the `metabase.util.retry` namespace."
   {:style/indent 1}
   [num-retries & body]
-  `(do-with-auto-retries ~num-retries
-     (fn [] ~@body)))
+  `(do-with-auto-retries
+    ~num-retries
+    (fn [] ~@body)))
 
 (def ^:private ^Base64$Decoder base64-decoder
   "A shared Base64 decoder instance."
@@ -302,7 +302,12 @@
 
 (defn poll
   "Returns `(thunk)` if the result satisfies the `done?` predicate within the timeout and nil otherwise.
-  The default timeout is 1000ms and the default interval is 100ms."
+  The default timeout is 1000ms and the default interval is 100ms.
+
+    (u/poll {:thunk       (fn [] (upload!))
+             :done        (fn [response] (get-in response [:status :done]))
+             :timeout-ms  1000
+             :interval-ms 100})"
   [{:keys [thunk done? timeout-ms interval-ms]
     :or   {timeout-ms 1000 interval-ms 100}}]
   (let [start-time (System/currentTimeMillis)]

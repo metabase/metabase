@@ -1,4 +1,4 @@
-import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
+import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { getIn } from "icepick";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
@@ -11,9 +11,9 @@ import { loginGoogle } from "../../actions";
 import { getGoogleClientId, getSiteLocale } from "../../selectors";
 
 import {
-  GoogleButtonRoot,
   AuthError,
   AuthErrorRoot,
+  GoogleButtonRoot,
   TextLink,
 } from "./GoogleButton.styled";
 

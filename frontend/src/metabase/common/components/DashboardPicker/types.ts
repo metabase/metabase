@@ -1,8 +1,8 @@
 import type {
+  CollectionId,
+  DashboardId,
   ListCollectionItemsRequest,
   SearchModel,
-  DashboardId,
-  CollectionId,
 } from "metabase-types/api";
 
 import type {

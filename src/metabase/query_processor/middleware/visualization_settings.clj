@@ -18,27 +18,27 @@
   [column-viz-settings field-ids]
   ;; Retrieve field-level settings
   (let [field-id->settings      (reduce
-                                  (fn [m field-id]
-                                    (let [field-settings      (:settings (lib.metadata/field (qp.store/metadata-provider) field-id))
-                                          norm-field-settings (normalize-field-settings field-id field-settings)]
-                                      (cond-> m
-                                        (seq norm-field-settings)
-                                        (assoc field-id norm-field-settings))))
-                                  {}
-                                  field-ids)
+                                 (fn [m field-id]
+                                   (let [field-settings      (:settings (lib.metadata/field (qp.store/metadata-provider) field-id))
+                                         norm-field-settings (normalize-field-settings field-id field-settings)]
+                                     (cond-> m
+                                       (seq norm-field-settings)
+                                       (assoc field-id norm-field-settings))))
+                                 {}
+                                 field-ids)
         ;; For each column viz setting, if there is a match on the field settings, merge it in,
         ;; with the column viz settings being the default in the event of conflicts.
         merged-settings         (reduce-kv
-                                  (fn [coll {field-id ::mb.viz/field-id :as k} column-viz-setting]
-                                    (assoc coll k (merge (get field-id->settings field-id {}) column-viz-setting)))
-                                  {}
-                                  column-viz-settings)
+                                 (fn [coll {field-id ::mb.viz/field-id :as k} column-viz-setting]
+                                   (assoc coll k (merge (get field-id->settings field-id {}) column-viz-setting)))
+                                 {}
+                                 column-viz-settings)
         ;; The field-ids that are in the merged settings
         viz-field-ids           (set (map ::mb.viz/field-id (keys merged-settings)))
         ;; Keep any field settings that aren't in the merged settings and have settings
         distinct-field-settings (update-keys
-                                  (remove (comp viz-field-ids first) field-id->settings)
-                                  (fn [k] {::mb.viz/field-id k}))]
+                                 (remove (comp viz-field-ids first) field-id->settings)
+                                 (fn [k] {::mb.viz/field-id k}))]
     (merge merged-settings distinct-field-settings)))
 
 (defn- viz-settings

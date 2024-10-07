@@ -26,34 +26,34 @@
 
 (def ^:private Show
   (mu/with-api-error-message
-    [:maybe [:or [:enum "all"] nat-int?]]
-    (deferred-tru "invalid show value")))
+   [:maybe [:or [:enum "all"] nat-int?]]
+   (deferred-tru "invalid show value")))
 
 (def ^:private Prefix
   (mu/with-api-error-message
-    [:fn (fn [prefix]
-           (some #(not-empty (xrays/get-dashboard-templates [% prefix])) ["table" "metric" "field"]))]
-    (deferred-tru "invalid value for prefix")))
+   [:fn (fn [prefix]
+          (some #(not-empty (xrays/get-dashboard-templates [% prefix])) ["table" "metric" "field"]))]
+   (deferred-tru "invalid value for prefix")))
 
 (def ^:private DashboardTemplate
   (mu/with-api-error-message
-    [:fn (fn [dashboard-template]
-           (some (fn [toplevel]
-                   (some (comp xrays/get-dashboard-template
-                               (fn [prefix]
-                                 [toplevel prefix dashboard-template])
-                               :dashboard-template-name)
-                         (xrays/get-dashboard-templates [toplevel])))
-                 ["table" "metric" "field"]))]
-    (deferred-tru "invalid value for dashboard template name")))
+   [:fn (fn [dashboard-template]
+          (some (fn [toplevel]
+                  (some (comp xrays/get-dashboard-template
+                              (fn [prefix]
+                                [toplevel prefix dashboard-template])
+                              :dashboard-template-name)
+                        (xrays/get-dashboard-templates [toplevel])))
+                ["table" "metric" "field"]))]
+   (deferred-tru "invalid value for dashboard template name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
   (comp #(json/decode % keyword) codecs/bytes->str codec/base64-decode))
 
 (def ^:private Base64EncodedJSON
   (mu/with-api-error-message
-    [:fn decode-base64-json]
-    (deferred-tru "value couldn''t be parsed as base64 encoded JSON")))
+   [:fn decode-base64-json]
+   (deferred-tru "value couldn''t be parsed as base64 encoded JSON")))
 
 (api/defendpoint GET "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards ordered by interestingness."
@@ -131,13 +131,13 @@
 
 (def ^:private Entity
   (mu/with-api-error-message
-    (into [:enum] entities)
-    (deferred-tru "Invalid entity type")))
+   (into [:enum] entities)
+   (deferred-tru "Invalid entity type")))
 
 (def ^:private ComparisonEntity
   (mu/with-api-error-message
-    [:enum "segment" "adhoc" "table"]
-    (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"")))
+   [:enum "segment" "adhoc" "table"]
+   (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"")))
 
 (defn- coerce-show
   "Show is either nil, \"all\", or a number. If it's a string it needs to be converted into a keyword."
@@ -165,10 +165,10 @@
   "Return all metadata for an automagic dashboard for entity `entity` with id `id`."
   [entity entity-id-or-query]
   {entity (mu/with-api-error-message
-            (into [:enum] entities)
-            (deferred-tru "Invalid entity type"))}
+           (into [:enum] entities)
+           (deferred-tru "Invalid entity type"))}
   (api.query-metadata/batch-fetch-dashboard-metadata
-    [(get-automagic-dashboard entity entity-id-or-query nil)]))
+   [(get-automagic-dashboard entity entity-id-or-query nil)]))
 
 (defn linked-entities
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."

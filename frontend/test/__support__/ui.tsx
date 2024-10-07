@@ -1,6 +1,6 @@
 import { Global } from "@emotion/react";
 import type { MantineThemeOverride } from "@mantine/core";
-import type { Store, Reducer } from "@reduxjs/toolkit";
+import type { Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher } from "@testing-library/react";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -12,9 +12,10 @@ import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import { Provider } from "react-redux";
 import { Router, useRouterHistory } from "react-router";
-import { routerReducer, routerMiddleware } from "react-router-redux";
+import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
+import { mockSettings } from "__support__/settings";
 import {
   MetabaseProviderInternal,
   type MetabaseProviderProps,
@@ -28,9 +29,12 @@ import { baseStyle } from "metabase/css/core/base.styled";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
 import { ThemeProvider } from "metabase/ui";
+import type { TokenFeature } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
+import { setupEnterprisePlugins } from "./enterprise";
 import { getStore } from "./entities-store";
 
 type ReducerValue = ReducerObject | Reducer;
@@ -50,6 +54,11 @@ export interface RenderWithProvidersOptions {
   withKBar?: boolean;
   withDND?: boolean;
   withUndos?: boolean;
+  /** Token features to enable.
+   *
+   * Note: To keep tests isolated from another, don't change token features between tests in the same file. */
+  withFeatures?: TokenFeature[];
+  shouldSetupEnterprisePlugins?: boolean;
   customReducers?: ReducerObject;
   sdkProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
@@ -70,12 +79,30 @@ export function renderWithProviders(
     withKBar = false,
     withDND = false,
     withUndos = false,
+    withFeatures,
+    shouldSetupEnterprisePlugins,
     customReducers,
     sdkProviderProps = null,
     theme,
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
+  if (withFeatures?.length) {
+    const featuresObject = Object.fromEntries(
+      withFeatures.map(feature => [feature, true]),
+    );
+    storeInitialState.settings = {
+      ...storeInitialState.settings,
+      ...mockSettings({
+        "token-features": createMockTokenFeatures(featuresObject),
+      }),
+    };
+  }
+
+  if (shouldSetupEnterprisePlugins || withFeatures?.length) {
+    setupEnterprisePlugins();
+  }
+
   let { routing, ...initialState }: Partial<State> =
     createMockState(storeInitialState);
 
@@ -88,6 +115,12 @@ export function renderWithProviders(
       { sdk: createMockSdkState(), ...initialState },
       ...sdkReducerNames,
     ) as SdkStoreState;
+
+    // Enable the embedding_sdk premium feature by default in SDK tests, unless explicitly disabled.
+    // Without this, SDK components will not render due to missing token features.
+    if (!storeInitialState.settings && initialState.settings) {
+      initialState.settings.values["token-features"].embedding_sdk = true;
+    }
   }
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,
@@ -127,14 +160,21 @@ export function renderWithProviders(
     storeMiddleware,
   ) as unknown as Store<State>;
 
+  if (sdkProviderProps?.config) {
+    // Prevent spamming the console during tests
+    sdkProviderProps.config.allowConsoleLog = false;
+  }
+
   const wrapper = (props: any) => {
     if (mode === "sdk") {
       return (
-        <MetabaseProviderInternal
-          {...props}
-          {...sdkProviderProps}
-          store={store}
-        />
+        <Provider store={store}>
+          <MetabaseProviderInternal
+            {...props}
+            {...sdkProviderProps}
+            store={store}
+          />
+        </Provider>
       );
     }
 

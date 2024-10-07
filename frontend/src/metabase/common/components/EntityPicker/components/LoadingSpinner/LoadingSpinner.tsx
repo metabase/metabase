@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMount } from "react-use";
 
-import { Loader, Flex, Text } from "metabase/ui";
+import { Flex, Loader, Text } from "metabase/ui";
 
 export const LoadingSpinner = ({ text }: { text?: string }) => (
   <Flex

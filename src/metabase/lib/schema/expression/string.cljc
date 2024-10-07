@@ -1,7 +1,7 @@
 (ns metabase.lib.schema.expression.string
   (:require
-    [metabase.lib.schema.expression :as expression]
-    [metabase.lib.schema.mbql-clause :as mbql-clause]))
+   [metabase.lib.schema.expression :as expression]
+   [metabase.lib.schema.mbql-clause :as mbql-clause]))
 
 (doseq [op [:trim :ltrim :rtrim :upper :lower]]
   (mbql-clause/define-tuple-mbql-clause op :- :type/Text

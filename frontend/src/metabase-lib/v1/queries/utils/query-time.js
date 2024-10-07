@@ -1,6 +1,6 @@
 import { assoc } from "icepick";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";

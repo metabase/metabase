@@ -27,7 +27,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
@@ -230,7 +230,6 @@
      {:snippet-id (:id snippet)
       :content    (:content snippet)})))
 
-
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 
 (mu/defn- param-value-for-raw-value-tag
@@ -272,7 +271,6 @@
 (defmethod parse-tag :date
   [tag params]
   (param-value-for-raw-value-tag tag params))
-
 
 ;;; Parsing Values
 

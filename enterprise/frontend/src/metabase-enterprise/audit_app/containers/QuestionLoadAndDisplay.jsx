@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useEffect, useRef, useImperativeHandle } from "react";
+import { useEffect, useImperativeHandle, useRef } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";

@@ -5,13 +5,14 @@ import { propagateErrorResponse } from "./propagate-error-response";
 interface Options {
   table: Table;
   databaseId: number;
+  collectionId: number | null;
 
   cookie: string;
   instanceUrl: string;
 }
 
 export async function createModelFromTable(options: Options) {
-  const { databaseId, table, instanceUrl, cookie = "" } = options;
+  const { databaseId, collectionId, table, instanceUrl, cookie = "" } = options;
 
   const datasetQuery = {
     type: "query",
@@ -19,23 +20,8 @@ export async function createModelFromTable(options: Options) {
     query: { "source-table": table.id },
   };
 
-  // Generate the query metadata
-  let res = await fetch(`${instanceUrl}/api/dataset/query_metadata`, {
-    method: "POST",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify(datasetQuery),
-  });
-
-  await propagateErrorResponse(res);
-
-  const { tables } = (await res.json()) as { tables: Table[] };
-
-  if (tables.length === 0) {
-    throw new Error(`Cannot find table "${table.name}" in database.`);
-  }
-
   // Create a new model
-  res = await fetch(`${instanceUrl}/api/card`, {
+  const res = await fetch(`${instanceUrl}/api/card`, {
     method: "POST",
     headers: { "content-type": "application/json", cookie },
     body: JSON.stringify({
@@ -43,7 +29,7 @@ export async function createModelFromTable(options: Options) {
       type: "model",
       display: "table",
       result_metadata: null,
-      collection_id: null,
+      collection_id: collectionId,
       collection_position: 1,
       visualization_settings: {},
       dataset_query: datasetQuery,
@@ -55,5 +41,8 @@ export async function createModelFromTable(options: Options) {
 
   const { id: modelId } = (await res.json()) as { id: number };
 
-  return { modelId, modelName: table.display_name };
+  return {
+    modelId,
+    modelName: table.display_name,
+  };
 }

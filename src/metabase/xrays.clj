@@ -18,18 +18,18 @@
   metabase.xrays.transforms.materialize/keep-me)
 
 (p/import-vars
-  [metabase.xrays.automagic-dashboards.comparison
-   comparison-dashboard]
-  [metabase.xrays.automagic-dashboards.core
-   automagic-analysis
-   candidate-tables]
-  [metabase.xrays.automagic-dashboards.dashboard-templates
-   get-dashboard-template
-   get-dashboard-templates]
-  [metabase.xrays.automagic-dashboards.populate
-   create-collection!
-   get-or-create-root-container-collection]
-  [metabase.xrays.transforms.dashboard
-   dashboard]
-  [metabase.xrays.transforms.materialize
-   get-collection])
+ [metabase.xrays.automagic-dashboards.comparison
+  comparison-dashboard]
+ [metabase.xrays.automagic-dashboards.core
+  automagic-analysis
+  candidate-tables]
+ [metabase.xrays.automagic-dashboards.dashboard-templates
+  get-dashboard-template
+  get-dashboard-templates]
+ [metabase.xrays.automagic-dashboards.populate
+  create-collection!
+  get-or-create-root-container-collection]
+ [metabase.xrays.transforms.dashboard
+  dashboard]
+ [metabase.xrays.transforms.materialize
+  get-collection])

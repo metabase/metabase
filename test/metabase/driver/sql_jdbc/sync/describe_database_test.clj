@@ -16,6 +16,7 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -93,7 +94,7 @@
                     {:name "REVIEWS", :schema "PUBLIC", :description nil}}}
          (sql-jdbc.describe-database/describe-database :h2 (mt/id)))))
 
-(defn- describe-database-with-open-resultset-count
+(defn- describe-database-with-open-resultset-count!
   "Just like `describe-database`, but instead of returning the database description returns the number of ResultSet
   objects the sync process left open. Make sure you wrap ResultSets with `with-open`! Otherwise some JDBC drivers like
   Oracle and Redshift will keep open cursors indefinitely."
@@ -120,8 +121,8 @@
 (defn- count-active-tables-in-db
   [db-id]
   (t2/count Table
-    :db_id  db-id
-    :active true))
+            :db_id  db-id
+            :active true))
 
 (deftest sync-only-accessable
   (one-off-dbs/with-blank-db
@@ -142,7 +143,7 @@
     (testing (str "make sure that running the sync process doesn't leak cursors because it's not closing the ResultSets. "
                   "See issues #4389, #6028, and #6467 (Oracle) and #7609 (Redshift)")
       (is (= 0
-             (describe-database-with-open-resultset-count driver/*driver* (mt/db)))))))
+             (describe-database-with-open-resultset-count! driver/*driver* (mt/db)))))))
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (t2.with-temp/with-temp [Database db-filtered database]
@@ -221,7 +222,12 @@
                    (mt/db)
                    nil
                    (fn [^java.sql.Connection conn]
-                     (.setAutoCommit conn auto-commit)
+                     ;; Databricks does not support setting auto commit to false. Catching the setAutoCommit
+                     ;; exception results in testing the true value only.
+                     (try
+                       (.setAutoCommit conn auto-commit)
+                       (catch Exception _
+                         (log/trace "Failed to set auto commit.")))
                      (is (false? (sql-jdbc.sync.interface/have-select-privilege?
                                   driver/*driver* conn schema (str table-name "_should_not_exist"))))
                      (is (true? (sql-jdbc.sync.interface/have-select-privilege?

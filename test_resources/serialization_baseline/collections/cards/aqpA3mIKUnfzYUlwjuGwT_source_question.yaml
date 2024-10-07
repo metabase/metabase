@@ -1,0 +1,35 @@
+name: Source question
+description: null
+entity_id: aqpA3mIKUnfzYUlwjuGwT
+created_at: '2024-08-28T14:29:47.378643Z'
+creator_id: ann@heart.band
+display: table
+archived: false
+collection_id: null
+collection_preview: true
+collection_position: null
+query_type: native
+database_id: My Database
+table_id: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: My Database
+  native:
+    native: select 1
+  type: native
+result_metadata: null
+visualization_settings:
+  column_settings: null
+serdes/meta:
+- id: aqpA3mIKUnfzYUlwjuGwT
+  label: source_question
+  model: Card
+archived_directly: false
+metabase_version: v1.48.1-SNAPSHOT (53cf083)
+source_card_id: null
+type: model

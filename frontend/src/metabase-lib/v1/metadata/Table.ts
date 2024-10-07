@@ -1,14 +1,13 @@
-/* eslint-disable import/order */
 import _ from "underscore";
 
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
-import Question from "../Question";
-
+import { singularize } from "metabase/lib/formatting";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getAggregationOperators } from "metabase-lib/v1/operators/utils";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type { NormalizedTable } from "metabase-types/api";
-import { singularize } from "metabase/lib/formatting";
+
+import Question from "../Question";
 
 import type Database from "./Database";
 import type Field from "./Field";

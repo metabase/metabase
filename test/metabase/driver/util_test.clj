@@ -1,19 +1,15 @@
 (ns metabase.driver.util-test
   (:require
-   [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.auth-provider :as auth-provider]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
-   [metabase.http-client :as client]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u])
   (:import
@@ -213,12 +209,12 @@
              :required    true}
             {:name "last-prop"}]
            (driver.u/connection-props-server->client
-             nil
-             [{:name "first-prop"}
-              {:name         "my-schema-filters"
-               :type         :schema-filters
-               :display-name "Schemas"}
-              {:name "last-prop"}])))))
+            nil
+            [{:name "first-prop"}
+             {:name         "my-schema-filters"
+              :type         :schema-filters
+              :display-name "Schemas"}
+             {:name "last-prop"}])))))
 
 (deftest ^:parallel connection-props-server->client-detect-cycles-test
   (testing "connection-props-server->client detects cycles in visible-if dependencies"
@@ -226,9 +222,9 @@
                       {:name "prop-b", :visible-if {:prop-a "something else"}}
                       {:name "prop-c", :visible-if {:prop-b "something else entirely"}}]]
       (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Cycle detected"
-            (driver.u/connection-props-server->client :fake-cyclic-driver fake-props))))))
+           clojure.lang.ExceptionInfo
+           #"Cycle detected"
+           (driver.u/connection-props-server->client :fake-cyclic-driver fake-props))))))
 
 (deftest ^:parallel connection-details-client->server-test
   (testing "db-details-client->server works as expected"
@@ -279,8 +275,8 @@
 
 (deftest ^:parallel mark-h2-superseded-test
   (testing "H2 should have :superseded-by set so it doesn't show up in the list of available drivers in the UI DB edit forms"
-   (is (=? {:driver-name "H2", :superseded-by :deprecated}
-           (:h2 (driver.u/available-drivers-info))))))
+    (is (=? {:driver-name "H2", :superseded-by :deprecated}
+            (:h2 (driver.u/available-drivers-info))))))
 
 (deftest ^:parallel database-id->driver-use-qp-store-test
   (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
@@ -315,88 +311,14 @@
             (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
               (is (false? (driver.u/supports? :test-driver feature db)))
               (is (some (fn [{:keys [level e message]}]
-                            (and (= level :error)
-                                 (= (ex-message e) "Timed out after 100.0 ms")
-                                 (= message (u/format-color 'red "Failed to check feature '%s' for database '%s'"
-                                                            (u/qualified-name feature)
-                                                            (:name db)))))
-                          (log-messages)))))
+                          (and (= level :error)
+                               (= (ex-message e) "Timed out after 100.0 ms")
+                               (= message (u/format-color 'red "Failed to check feature '%s' for database '%s'"
+                                                          (u/qualified-name feature)
+                                                          (:name db)))))
+                        (log-messages)))))
           (testing "we memoize the results for the same database, so we don't log the error again"
             (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
               (is (false? (driver.u/supports? :test-driver feature db)))
               (is (= []
                      (log-messages))))))))))
-
-(defmethod auth-provider/fetch-auth ::test-me
-  [_provider _db-id details]
-  (is (= "testing" (:key details)))
-  {:password "qux"})
-
-(deftest ^:parallel simple-test
-  (let [details {:username "test"
-                 :password "ignored"
-                 :use-auth-provider true
-                 :auth-provider ::test-me
-                 :key "testing"}]
-    (mt/with-temp [:model/Database db {:details details}]
-      (is (=? (assoc details :password "qux")
-              (driver.u/fetch-and-incorporate-auth-provider-details
-               (:engine db)
-               (:id db)
-               (:details db)))))))
-
-(deftest http-provider-tests
-  (let [original-details (:details (mt/db))
-        provider-details {:use-auth-provider true
-                          :auth-provider "http"
-                          :http-auth-url (client/build-url "/testing/echo"
-                                                           {:body (json/encode original-details)})}]
-    (is (= original-details (auth-provider/fetch-auth :http nil provider-details)))
-    (is (= (merge provider-details original-details)
-           (driver.u/fetch-and-incorporate-auth-provider-details
-            (tx/driver)
-            provider-details)))))
-
-(deftest oauth-provider-tests
-  (let [oauth-response {:access_token "foobar"
-                        :expires_in "84791"}
-        provider-details {:use-auth-provider true
-                          :auth-provider :oauth
-                          :oauth-token-url (client/build-url "/testing/echo"
-                                                             {:body (json/encode oauth-response)})}]
-    (is (= oauth-response (auth-provider/fetch-auth :oauth nil provider-details)))
-    (is (=? (merge provider-details
-                   {:password "foobar"
-                    :password-expiry-timestamp #(and (int? %) (> % (System/currentTimeMillis)))})
-            (driver.u/fetch-and-incorporate-auth-provider-details
-             (tx/driver)
-             provider-details)))))
-
-(deftest ^:parallel azure-managed-identity-provider-tests
-  (testing "password gets resolved"
-    (let [client-id "client ID"
-          provider-details {:use-auth-provider true
-                            :auth-provider :azure-managed-identity
-                            :azure-managed-identity-client-id client-id
-                            :password "xyz"}
-          response-body {:access_token "foobar"}]
-      (binding [auth-provider/*fetch-as-json* (fn [url _headers]
-                                                (is (str/includes? url client-id))
-                                                response-body)]
-        (is (= response-body (auth-provider/fetch-auth :azure-managed-identity nil provider-details)))
-        (is (= (merge provider-details {:password "foobar"})
-               (driver.u/fetch-and-incorporate-auth-provider-details
-                (tx/driver)
-                provider-details))))))
-  (testing "existing password doesn't get overwritten if not using an auth provider"
-    (let [client-id "client ID"
-          provider-details {:use-auth-provider false
-                            :auth-provider :azure-managed-identity
-                            :azure-managed-identity-client-id client-id
-                            :password "xyz"}]
-      (binding [auth-provider/*fetch-as-json* (fn [_url _headers]
-                                                (is false "should not get called"))]
-        (is (= provider-details
-               (driver.u/fetch-and-incorporate-auth-provider-details
-                (tx/driver)
-                provider-details)))))))

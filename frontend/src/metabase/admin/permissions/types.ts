@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export type GroupRouteParams = {
   groupId?: number;
   databaseId?: number;
@@ -112,7 +114,7 @@ export type PermissionSectionConfig = {
   confirmations?: (newValue: DataPermissionValue) => (
     | {
         title: string;
-        message: string;
+        message: string | ReactNode;
         confirmButtonText: string;
         cancelButtonText: string;
       }

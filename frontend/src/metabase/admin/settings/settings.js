@@ -1,17 +1,17 @@
 import {
+  combineReducers,
   createAction,
   createThunkAction,
   handleActions,
-  combineReducers,
 } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import {
-  SettingsApi,
   EmailApi,
-  SlackApi,
-  LdapApi,
   GoogleApi,
+  LdapApi,
   SamlApi,
+  SettingsApi,
+  SlackApi,
 } from "metabase/services";
 
 // ACTION TYPES AND ACTION CREATORS

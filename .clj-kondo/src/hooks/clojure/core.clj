@@ -141,7 +141,7 @@
   (str/ends-with? s "!"))
 
 (defn- non-thread-safe-form-should-end-with-exclamation*
-  [{[defn-or-defmacro form-name] :children, :as node}]
+  [{[defn-or-defmacro form-name] :children, :as node} config]
   (when-not (and (:string-value form-name)
                  (end-with-exclamation? (:string-value form-name)))
     (letfn [(walk [f form]
@@ -151,9 +151,10 @@
       (walk (fn [form]
               (when-let [qualified-symbol (hooks.common/node->qualified-symbol form)]
                 (when (and (not (contains? symbols-allowed-in-fns-not-ending-in-an-exclamation-point qualified-symbol))
-                           (end-with-exclamation? qualified-symbol))
+                           (or (end-with-exclamation? qualified-symbol)
+                               (contains? (get-in config [:linters :metabase/validate-deftest :parallel/unsafe]) qualified-symbol)))
                   (hooks/reg-finding! (assoc (meta form-name)
-                                             :message (format "The name of this %s should end with `!` because it contains calls to non thread safe form `%s`."
+                                             :message (format "The name of this %s should end with `!` because it contains calls to non thread safe form `%s`. [:metabase/test-helpers-use-non-thread-safe-functions]"
                                                               (:string-value defn-or-defmacro) qualified-symbol)
                                              :type :metabase/test-helpers-use-non-thread-safe-functions)))))
             node))
@@ -164,10 +165,10 @@
   A function or a macro can be defined as 'not thread safe' when their funciton name ends with a `!`.
 
   Only used in tests to identify thread-safe/non-thread-safe test helpers. See #37126"
-  [{:keys [node cljc lang]}]
+  [{:keys [node cljc lang config]}]
   (when (or (not cljc)
             (= lang :clj))
-    (non-thread-safe-form-should-end-with-exclamation* node))
+    (non-thread-safe-form-should-end-with-exclamation* node config))
   {:node node})
 
 (comment

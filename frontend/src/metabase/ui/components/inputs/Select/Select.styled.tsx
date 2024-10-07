@@ -5,8 +5,8 @@ import {
   type MantineThemeOverride,
   getSize,
   getStylesRef,
-  rem,
   px,
+  rem,
 } from "@mantine/core";
 
 import { SelectDropdown } from "./SelectDropdown";

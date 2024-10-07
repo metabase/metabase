@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -12,21 +13,23 @@
 (deftest ^:parallel coalesce-test
   (testing "`coalesce` correctly returns the most permissive value by default"
     (are [expected args] (= expected (apply data-perms/coalesce args))
-      :unrestricted    [:perms/view-data   #{:unrestricted :legacy-no-self-service :blocked}]
+      :unrestricted    [:perms/view-data #{:unrestricted :legacy-no-self-service :blocked}]
+      :unrestricted    [:perms/view-data #{:unrestricted :legacy-no-self-service}]
+      :blocked         [:perms/view-data #{:legacy-no-self-service :blocked}]
       :blocked         [:perms/view-data #{:blocked}]
       nil              [:perms/view-data #{}])))
 
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"
-   (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :unrestricted))
-   (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :legacy-no-self-service))
-   (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :blocked))
-   (is (not (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :unrestricted)))
-   (is (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :legacy-no-self-service))
-   (is (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :blocked))
-   (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :unrestricted)))
-   (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :legacy-no-self-service)))
-   (is (data-perms/at-least-as-permissive? :perms/view-data :blocked :blocked))))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :unrestricted))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :legacy-no-self-service))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :blocked))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :unrestricted)))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :legacy-no-self-service))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :blocked))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :unrestricted)))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :legacy-no-self-service)))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :blocked :blocked))))
 
 (deftest set-database-permission!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
@@ -36,23 +39,23 @@
                                                        :db_id     database-id
                                                        :group_id  group-id
                                                        :perm_type perm-type))]
-     (mt/with-restored-data-perms-for-group! group-id
-       (testing "`set-database-permission!` correctly updates an individual database's permissions"
-         (data-perms/set-database-permission! group-id database-id :perms/create-queries :no)
-         (is (= :no (perm-value :perms/create-queries)))
-         (data-perms/set-database-permission! group-id database-id :perms/create-queries :query-builder)
-         (is (= :query-builder (perm-value :perms/create-queries))))
+      (mt/with-restored-data-perms-for-group! group-id
+        (testing "`set-database-permission!` correctly updates an individual database's permissions"
+          (data-perms/set-database-permission! group-id database-id :perms/create-queries :no)
+          (is (= :no (perm-value :perms/create-queries)))
+          (data-perms/set-database-permission! group-id database-id :perms/create-queries :query-builder)
+          (is (= :query-builder (perm-value :perms/create-queries))))
 
-       (testing "`set-database-permission!` sets native query permissions to :no if data access is set to :blocked"
-         (data-perms/set-database-permission! group-id database-id :perms/view-data :blocked)
-         (is (= :blocked (perm-value :perms/view-data)))
-         (is (= :no (perm-value :perms/create-queries))))
+        (testing "`set-database-permission!` sets native query permissions to :no if data access is set to :blocked"
+          (data-perms/set-database-permission! group-id database-id :perms/view-data :blocked)
+          (is (= :blocked (perm-value :perms/view-data)))
+          (is (= :no (perm-value :perms/create-queries))))
 
-       (testing "A database-level permission cannot be set to an invalid value"
-         (is (thrown-with-msg?
-              ExceptionInfo
-              #"Permission type :perms/create-queries cannot be set to :invalid-value"
-              (data-perms/set-database-permission! group-id database-id :perms/create-queries :invalid-value))))))))
+        (testing "A database-level permission cannot be set to an invalid value"
+          (is (thrown-with-msg?
+               ExceptionInfo
+               #"Permission type :perms/create-queries cannot be set to :invalid-value"
+               (data-perms/set-database-permission! group-id database-id :perms/create-queries :invalid-value))))))))
 
 (deftest set-table-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
@@ -64,10 +67,10 @@
                  :model/Table            {table-id-3 :id}    {:db_id database-id}
                  :model/Table            {table-id-4 :id}    {:db_id database-id-2}]
     (let [create-queries-perm-value (fn [table-id] (t2/select-one-fn :perm_value :model/DataPermissions
-                                                                   :db_id     database-id
-                                                                   :group_id  group-id
-                                                                   :table_id  table-id
-                                                                   :perm_type :perms/create-queries))]
+                                                                     :db_id     database-id
+                                                                     :group_id  group-id
+                                                                     :table_id  table-id
+                                                                     :perm_type :perms/create-queries))]
       (mt/with-restored-data-perms-for-group! group-id
         (testing "`set-table-permissions!` can set individual table permissions to different values"
           (data-perms/set-table-permissions! group-id :perms/create-queries {table-id-1 :no
@@ -109,11 +112,8 @@
                #"Permission type :perms/create-queries cannot be set to :invalid"
                (data-perms/set-table-permissions! group-id :perms/create-queries {table-id-1 :invalid}))))
 
-        (testing "A table-level permission cannot be set to :block"
-          (is (thrown-with-msg?
-               ExceptionInfo
-               #"Block permissions must be set at the database-level only."
-               (data-perms/set-table-permissions! group-id :perms/view-data {table-id-1 :blocked}))))
+        (testing "A table-level permission can be set to :block"
+          (is (= nil (data-perms/set-table-permissions! group-id :perms/view-data {table-id-1 :blocked}))))
 
         (testing "Table-level permissions can only be set in bulk for tables in the same database"
           (is (thrown-with-msg?
@@ -128,6 +128,24 @@
           (is (nil?  (create-queries-perm-value table-id-1)))
           (is (nil?  (create-queries-perm-value table-id-2)))
           (is (nil?  (create-queries-perm-value table-id-3))))))))
+
+(deftest native-queries-against-db-with-some-blocked-table-is-illegal-test
+  (mt/with-temp [:model/Card {card-id :id {db-id :database} :dataset_query} {:dataset_query (mt/native-query {:query "select 1"})}]
+    (mt/with-no-data-perms-for-all-users!
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries (data-perms/most-permissive-value :perms/create-queries))
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data (data-perms/most-permissive-value :perms/view-data))
+      ;; rasta has access to the database:
+      (is (= "Can Run Query"
+             (:error (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+                     "Can Run Query")))
+
+      ;; block a single table on the db:
+      (let [tables-in-db (map :id (:tables (t2/hydrate (t2/select-one :model/Database db-id) :tables)))
+            table-id (rand-nth tables-in-db)]
+        (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {table-id :blocked}))
+
+      (is (= "You do not have permissions to run this query."
+             (:error (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))))
 
 (deftest database-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
@@ -157,14 +175,19 @@
         (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
           (data-perms/set-database-permission! group-id-1 database-id-1 :perms/manage-database :yes)
           (data-perms/with-relevant-permissions-for-user user-id
-            ;; retrieve the cache now so it doesn't get counted in the call-count
-            @data-perms/*permissions-for-user*
+            ;; Fetch the perms once to populate the cache for this DB
+            (data-perms/database-permission-for-user user-id :perms/manage-database database-id-1)
             ;; make the cache wrong
             (data-perms/set-database-permission! group-id-1 database-id-1 :perms/manage-database :no)
             ;; the cached value is used
             (t2/with-call-count [call-count]
               (is (= :yes (data-perms/database-permission-for-user user-id :perms/manage-database database-id-1)))
-              (is (zero? (call-count))))))))))
+              (is (zero? (call-count)))))
+
+          ;; Fetching perms for a different DB is a cache miss
+          (t2/with-call-count [call-count]
+            (is (= :no (data-perms/database-permission-for-user user-id :perms/manage-database database-id-2)))
+            (is (= 1 (call-count)))))))))
 
 (deftest table-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}  {}
@@ -200,14 +223,42 @@
               (data-perms/set-table-permission! group-id-2 table-id-1 :perms/create-queries :query-builder)
               (is (= :query-builder (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1)))
               (data-perms/with-relevant-permissions-for-user user-id
-                ;; retrieve the cache now so it doesn't get counted in the call count
-                @data-perms/*permissions-for-user*
+                ;; Fetch the perms once to populate the cache
+                (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1)
                 ;; make the cache wrong
                 (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :no)
                 ;; the cached value is used
                 (t2/with-call-count [call-count]
                   (is (= :query-builder (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1)))
                   (is (zero? (call-count))))))))))))
+
+(deftest inactive-table-permission-test
+  (testing "An inactive table appears as if it has no permissions, and is not cached"
+    (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}  {}
+                   :model/User                       {user-id   :id}   {}
+                   :model/PermissionsGroupMembership {}                {:user_id  user-id
+                                                                        :group_id group-id-1}
+                   :model/Database                   {database-id :id} {}
+                   :model/Table                      {table-id-1 :id}  {:db_id database-id}]
+      ;; Revoke All Users perms so that it doesn't override perms in the new groups
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! group-id-1 database-id :perms/view-data :blocked)
+        (data-perms/set-table-permission! group-id-1 table-id-1 :perms/view-data :unrestricted)
+        (is (= :unrestricted
+               (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))
+        (t2/update! :model/Table table-id-1 {:active false})
+
+        ;; Deactivated table has minimum permissions when reading straight from DB
+        (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))
+
+        ;; Deactivated table has minimum permissions when reading from cache
+        (data-perms/with-relevant-permissions-for-user user-id
+          (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1))))
+
+        ;; Reactivating the table allows the perms to be read again
+        (t2/update! :model/Table table-id-1 {:active true})
+        (is (= :unrestricted
+               (data-perms/table-permission-for-user user-id :perms/view-data database-id table-id-1)))))))
 
 (deftest permissions-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
@@ -544,7 +595,7 @@
                                                        :perm_type :perms/download-results)))
             (t2/delete! :model/Database :id new-db-id)))
 
-       (testing "A new database gets `no` download permissions if a group has `no` for any database"
+        (testing "A new database gets `no` download permissions if a group has `no` for any database"
           (data-perms/set-database-permission! group-id db-id-2 :perms/download-results :no)
           (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
             (is (= :no (t2/select-one-fn :perm_value
@@ -622,3 +673,63 @@
           (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))
           (data-perms/with-additional-table-permission :perms/view-data db-id table-id :unrestricted
             (is (= :unrestricted (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))))))))
+
+(deftest blocked-tables-downgrade-to-blocked-dbs
+  (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
+    (let [user-id  (t2/insert-returning-pk! :core_user {:first_name  "Howard"
+                                                        :last_name   "Hughes"
+                                                        :email       "howard@aircraft.com"
+                                                        :password    "superstrong"
+                                                        :date_joined :%now})
+          db-id    (t2/insert-returning-pk! :metabase_database {:name       "DB"
+                                                                :engine     "h2"
+                                                                :created_at :%now
+                                                                :updated_at :%now
+                                                                :details    "{}"})
+          table-id (t2/insert-returning-pk! :metabase_table {:name       "orders"
+                                                             :active     true
+                                                             :db_id      db-id
+                                                             :created_at #t "2020"
+                                                             :updated_at #t "2020"})
+          group-id (t2/insert-returning-pk! :model/PermissionsGroup {:name "Test Group"})]
+      (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})
+      (migrate!)
+      (data-perms/set-table-permission! group-id table-id :perms/view-data :blocked)
+      (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))
+      (migrate! :down 49)
+      (is (contains?
+           (t2/select-fn-set :object :model/Permissions :group_id group-id)
+           (str "/block/db/" db-id "/"))))))
+
+(deftest dbs-with-a-single-blocked-table-downgrade-to-blocked-dbs
+  (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
+    (let [user-id      (t2/insert-returning-pk! :core_user {:first_name  "Howard"
+                                                            :last_name   "Hughes"
+                                                            :email       "howard@aircraft.com"
+                                                            :password    "superstrong"
+                                                            :date_joined :%now})
+          db-id        (t2/insert-returning-pk! :metabase_database {:name       "DB"
+                                                                    :engine     "h2"
+                                                                    :created_at :%now
+                                                                    :updated_at :%now
+                                                                    :details    "{}"})
+          table-id     (t2/insert-returning-pk! :metabase_table {:name       "orders"
+                                                                 :active     true
+                                                                 :db_id      db-id
+                                                                 :created_at #t "2020"
+                                                                 :updated_at #t "2020"})
+          _other-table (t2/insert-returning-pk! :metabase_table {:name       "other"
+                                                                 :active     true
+                                                                 :db_id      db-id
+                                                                 :created_at #t "2020"
+                                                                 :updated_at #t "2020"})
+          group-id     (t2/insert-returning-pk! :model/PermissionsGroup {:name "Test Group"})]
+      (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})
+      (migrate!)
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+      (data-perms/set-table-permission! group-id table-id :perms/view-data :blocked)
+      (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))
+      (migrate! :down 49)
+      (is (contains?
+           (t2/select-fn-set :object :model/Permissions :group_id group-id)
+           (str "/block/db/" db-id "/"))))))

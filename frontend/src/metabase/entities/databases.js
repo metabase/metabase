@@ -6,9 +6,9 @@ import { databaseApi } from "metabase/api";
 import { color } from "metabase/lib/colors";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import {
-  fetchData,
-  createThunkAction,
   compose,
+  createThunkAction,
+  fetchData,
   withAction,
   withCachedDataAndRequestState,
   withNormalize,

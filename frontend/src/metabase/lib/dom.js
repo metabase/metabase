@@ -495,23 +495,10 @@ export function initializeIframeResizer(onReady = () => {}) {
       onReady,
     };
 
-    // FIXME: Crimes
-    // This is needed so the FE test framework which runs in node
-    // without the avaliability of require.ensure skips over this part
-    // which is for external purposes only.
-    //
-    // Ideally that should happen in the test config, but it doesn't
-    // seem to want to play nice when messing with require
-    if (typeof require.ensure !== "function") {
-      return false;
-    }
-
     // Make iframe-resizer avaliable to the embed
     // We only care about contentWindow so require that minified file
 
-    require.ensure([], require => {
-      require("iframe-resizer/js/iframeResizer.contentWindow.js");
-    });
+    import("iframe-resizer/js/iframeResizer.contentWindow.js");
   }
 }
 

@@ -25,8 +25,12 @@
   "https://metabase.com/broken.geojson")
 
 (def ^:private ^String test-not-json-geojson-url
-  "URL of a GeoJSON file that is a valid URL but responds with a wrong application type"
+  "URL of a GeoJSON file that is a valid URL but responds with a wrong content type"
   "https://metabase.com/not-json.geojson")
+
+(def ^:private ^String missing-content-type-url
+  "URL of a GeoJSON file that is a valid URL but responds with a missing content type"
+  "https://metabase.com/missing-content-type.geojson")
 
 (def ^:private ^String test-geojson-body
   "Body of the GeoJSON file used for test purposes."
@@ -41,7 +45,10 @@
                                           :body    "oh no, not found!"})
    test-not-json-geojson-url (constantly {:status  200
                                           :headers {:content-type "application/html"}
-                                          :body    "<h1>oops</h1>"})})
+                                          :body    "<h1>oops</h1>"})
+   missing-content-type-url  (constantly {:status 200
+                                          :headers {}
+                                          :body    test-geojson-body})})
 
 (defmacro with-geojson-mocks [& body]
   `(fake/with-fake-routes fake-routes
@@ -178,6 +185,9 @@
         (is (= "GeoJSON URL returned invalid content-type"
                (mt/user-http-request :crowberto :get 400 "geojson"
                                      :url test-not-json-geojson-url))))
+      (testing "it's ok for the content-type header to be missing"
+        (is (= {:type "Point" :coordinates [37.77986 -122.429]}
+               (mt/user-http-request :crowberto :get 200 "geojson" :url missing-content-type-url))))
       (testing "cannot be called by non-admins"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 "geojson" :url test-geojson-url)))))))

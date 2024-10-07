@@ -61,6 +61,7 @@
 
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
+  :encryption :no
   :visibility :settings-manager
   :export?    true
   :audit      :getter
@@ -85,7 +86,6 @@
   :setter     :none
   :getter     (fn [] (long-timezone-name (report-timezone)))
   :doc        false)
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Current Driver                                                 |
@@ -113,7 +113,6 @@
   {:style/indent 1}
   [driver & body]
   `(do-with-driver ~driver (fn [] ~@body)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Driver Registration / Hierarchy / Multimethod Dispatch                             |
@@ -199,7 +198,6 @@
   [driver & _]
   (the-initialized-driver driver))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Interface (Multimethod Defintions)                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -245,7 +243,6 @@
   ;; implementation.
   ;;
   ;; `initialize-if-needed!` takes care to make sure a driver's parent(s) are initialized before initializing a driver.
-
 
 (defmethod initialize! :default [_]) ; no-op
 
@@ -397,8 +394,7 @@
     "Schema for a map containing information about a connection property we should ask the user to supply when setting up
   a new database, as returned by an implementation of `connection-properties`."
     (s/constrained
-     {
-      ;; The key that should be used to store this property in the `details` map.
+     {;; The key that should be used to store this property in the `details` map.
       :name su/NonBlankString
 
       ;; Human-readable name that should be displayed to the User in UI for editing this field.
@@ -681,6 +677,11 @@
     ;; Does this driver support UUID type
     :uuid-type
 
+    ;; True if this driver requires `:temporal-unit :default` on all temporal field refs, even if no temporal
+    ;; bucketing was specified in the query.
+    ;; Generally false, but a few time-series based analytics databases (eg. Druid) require it.
+    :temporal/requires-default-unit
+
     ;; Does this driver support window functions like cumulative count and cumulative sum? (default: false)
     :window-functions/cumulative
 
@@ -689,7 +690,12 @@
     :window-functions/offset
 
     ;; Does this driver support parameterized sql, eg. in prepared statements?
-    :parameterized-sql})
+    :parameterized-sql
+
+    ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
+    ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
+    ;; against except for Athena and Databricks which currently require test data to be loaded separately.
+    :test/dynamic-dataset-loading})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -814,12 +820,12 @@
   - Use [[metabase.driver.sql.util/format-sql]] in this method's implementation, providing dialect keyword
     representation that corresponds to to their driver's formatting (eg. `:sqlserver` uses `:tsql`).
   - Completly reimplement this method with their special formatting code."
-  {:added "0.47.0", :arglists '([driver native-form]), :style/indent 1}
+  {:added "0.47.0", :arglists '([driver native-form])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmethod prettify-native-form ::driver
- [_ native-form]
+  [_ native-form]
   native-form)
 
 (def ^:dynamic ^{:added "0.51.0"} *compile-with-inline-parameters*
@@ -878,7 +884,7 @@
     (defn sync-in-context [driver database f]
       (with-connection [_ database]
         (f)))"
-  {:added "0.32.0", :arglists '([driver database f]), :style/indent 2}
+  {:added "0.32.0", :arglists '([driver database f])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1055,7 +1061,6 @@
   {:added "0.47.0" :arglists '([driver conn role])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Upload                                                      |

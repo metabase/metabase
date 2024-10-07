@@ -45,9 +45,9 @@
                       (t2/select-one Card :id (:model_id model-index)))]
     (if (should-deindex? model model-index)
       (u/ignore-exceptions
-       (let [trigger-key (model-index-trigger-key model-index-id)]
-         (task/delete-trigger! trigger-key)
-         (t2/delete! ModelIndex model-index-id)))
+        (let [trigger-key (model-index-trigger-key model-index-id)]
+          (task/delete-trigger! trigger-key)
+          (t2/delete! ModelIndex model-index-id)))
       (model-index/add-values! model-index))))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
@@ -76,12 +76,12 @@
    (triggers/for-job (jobs/key refresh-model-index-key))
    (triggers/start-now)
    (triggers/with-schedule
-     (cron/schedule
-      (cron/cron-schedule (:schedule model-index))
-      (cron/in-time-zone (TimeZone/getTimeZone (or (driver/report-timezone)
-                                                   (qp.timezone/system-timezone-id)
-                                                   "UTC")))
-      (cron/with-misfire-handling-instruction-do-nothing)))))
+    (cron/schedule
+     (cron/cron-schedule (:schedule model-index))
+     (cron/in-time-zone (TimeZone/getTimeZone (or (driver/report-timezone)
+                                                  (qp.timezone/system-timezone-id)
+                                                  "UTC")))
+     (cron/with-misfire-handling-instruction-do-nothing)))))
 
 (defn add-indexing-job
   "Public API to start indexing a model."

@@ -8,8 +8,8 @@ import type Question from "metabase-lib/v1/Question";
 import { getDatasetMetadataCompletenessPercentage } from "metabase-lib/v1/metadata/utils/models";
 
 import {
-  Root,
   PercentageLabel,
+  Root,
   TooltipContent,
   TooltipParagraph,
 } from "./DatasetMetadataStrengthIndicator.styled";

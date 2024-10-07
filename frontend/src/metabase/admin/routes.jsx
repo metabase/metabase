@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { IndexRoute, IndexRedirect } from "react-router";
+import { IndexRedirect, IndexRoute } from "react-router";
 import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 import { t } from "ttag";
@@ -29,16 +29,16 @@ import { Logs } from "metabase/admin/tasks/components/Logs";
 import { JobInfoApp } from "metabase/admin/tasks/containers/JobInfoApp";
 import { JobTriggersModal } from "metabase/admin/tasks/containers/JobTriggersModal";
 import {
-  ModelCacheRefreshJobs,
   ModelCacheRefreshJobModal,
+  ModelCacheRefreshJobs,
 } from "metabase/admin/tasks/containers/ModelCacheRefreshJobs";
 import { TaskModal } from "metabase/admin/tasks/containers/TaskModal";
 import { TasksApp } from "metabase/admin/tasks/containers/TasksApp";
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
 import Tools from "metabase/admin/tools/containers/Tools";
 import {
-  createAdminRouteGuard,
   createAdminRedirect,
+  createAdminRouteGuard,
 } from "metabase/admin/utils";
 import CS from "metabase/css/core/index.css";
 import { withBackground } from "metabase/hoc/Background";
@@ -46,8 +46,10 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ADMIN_ROUTES,
-  PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_ADMIN_TOOLS,
+  PLUGIN_ADMIN_TROUBLESHOOTING,
+  PLUGIN_ADMIN_USER_MENU_ROUTES,
+  PLUGIN_CACHING,
 } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 
@@ -85,7 +87,9 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         component={createAdminRouteGuard("databases")}
       >
         <IndexRoute component={DatabaseListApp} />
-        <Route path="create" component={DatabaseEditApp} />
+        <Route path="create" component={IsAdmin}>
+          <IndexRoute component={DatabaseEditApp} />
+        </Route>
         <Route path=":databaseId" component={DatabaseEditApp} />
       </Route>
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
@@ -144,6 +148,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             />
           </Route>
           <Route path="logs" component={Logs} />
+          {PLUGIN_ADMIN_TROUBLESHOOTING.EXTRA_ROUTES}
         </Route>
       </Route>
       {/* SETTINGS */}
@@ -164,18 +169,16 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       >
         <Route title={t`Performance`}>
           <IndexRedirect to={PerformanceTabId.Databases} />
-          <Route
-            title={t`Database caching`}
-            path={PerformanceTabId.Databases}
-            component={() => (
-              <PerformanceApp tabId={PerformanceTabId.Databases} />
-            )}
-          />
-          <Route
-            title={t`Model persistence`}
-            path={PerformanceTabId.Models}
-            component={() => <PerformanceApp tabId={PerformanceTabId.Models} />}
-          />
+          {PLUGIN_CACHING.getTabMetadata().map(({ name, key, tabId }) => (
+            <Route
+              component={routeProps => (
+                <PerformanceApp {...routeProps} tabId={tabId} />
+              )}
+              title={name}
+              path={tabId}
+              key={key}
+            />
+          ))}
         </Route>
       </Route>
       <Route

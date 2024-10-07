@@ -1,21 +1,24 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  visitQuestionAdhoc,
-  sidebar,
-  getDraggableElements,
-  popover,
-  visitDashboard,
-  cypressWaitAll,
-  moveDnDKitElement,
+  assertEChartsTooltip,
   chartPathWithFillColor,
-  echartsContainer,
-  getValueLabels,
-  createQuestion,
   chartPathsWithFillColors,
   createNativeQuestion,
-  assertEChartsTooltip,
+  createQuestion,
+  cypressWaitAll,
+  echartsContainer,
+  getDraggableElements,
+  getValueLabels,
+  leftSidebar,
+  modal,
+  moveDnDKitElement,
+  popover,
+  queryBuilderHeader,
+  restore,
+  sidebar,
+  visitDashboard,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -162,46 +165,27 @@ describe("scenarios > visualizations > bar chart", () => {
         .should("contain.text", "Doohickey");
       cy.findAllByTestId("legend-item").eq(3).should("contain.text", "Widget");
 
-      const columnIndex = 1;
+      getDraggableElements().eq(1).icon("close").click(); // Hide Gizmo
 
-      getDraggableElements()
-        .eq(columnIndex)
-        .within(() => {
-          cy.icon("eye_outline").click();
-        });
+      cy.findByTestId("query-visualization-root")
+        .findByText("Gizmo")
+        .should("not.exist");
+      cy.findAllByTestId("legend-item").should("have.length", 3);
+      chartPathWithFillColor("#F2A86F").should("be.visible");
+      chartPathWithFillColor("#F9D45C").should("be.visible");
+      chartPathWithFillColor("#88BF4D").should("be.visible");
 
-      getDraggableElements()
-        .eq(columnIndex)
-        .invoke("text")
-        .then(columnName => {
-          cy.findByTestId("query-visualization-root")
-            .findByText(columnName)
-            .should("not.exist");
-          cy.findAllByTestId("legend-item").should("have.length", 3);
-          chartPathWithFillColor("#F2A86F").should("be.visible");
-          chartPathWithFillColor("#F9D45C").should("be.visible");
-          chartPathWithFillColor("#88BF4D").should("be.visible");
-        });
+      leftSidebar().button("Add another series").click();
+      popover().findByText("Gizmo").click();
 
-      getDraggableElements()
-        .eq(columnIndex)
-        .within(() => {
-          cy.icon("eye_crossed_out").click();
-        });
-
-      getDraggableElements()
-        .eq(columnIndex)
-        .invoke("text")
-        .then(columnName => {
-          cy.findByTestId("query-visualization-root")
-            .findByText(columnName)
-            .should("exist");
-          cy.findAllByTestId("legend-item").should("have.length", 4);
-          chartPathWithFillColor("#F2A86F").should("be.visible");
-          chartPathWithFillColor("#F9D45C").should("be.visible");
-          chartPathWithFillColor("#88BF4D").should("be.visible");
-          chartPathWithFillColor("#A989C5").should("be.visible");
-        });
+      cy.findByTestId("query-visualization-root")
+        .findByText("Gizmo")
+        .should("exist");
+      cy.findAllByTestId("legend-item").should("have.length", 4);
+      chartPathWithFillColor("#F2A86F").should("be.visible");
+      chartPathWithFillColor("#F9D45C").should("be.visible");
+      chartPathWithFillColor("#88BF4D").should("be.visible");
+      chartPathWithFillColor("#A989C5").should("be.visible");
 
       cy.findAllByTestId("legend-item").contains("Gadget").click();
       popover().findByText("See these Orders").click();
@@ -213,50 +197,41 @@ describe("scenarios > visualizations > bar chart", () => {
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
       moveDnDKitElement(getDraggableElements().first(), { vertical: 100 });
 
-      getDraggableElements()
-        .eq(1)
-        .within(() => {
-          cy.icon("eye_outline").click();
-        });
+      getDraggableElements().eq(1).icon("close").click(); // Hide Gizmo
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Product").click();
-
-      cy.findByTestId("filter-column-Category").within(() => {
-        cy.findByLabelText("Filter operator").click();
+      queryBuilderHeader().button("Filter").click();
+      modal().within(() => {
+        cy.findByText("Product").click();
+        cy.findByTestId("filter-column-Category")
+          .findByLabelText("Filter operator")
+          .click();
+      });
+      popover().findByText("Is not").click();
+      modal().within(() => {
+        cy.findByText("Product").click();
+        cy.findByTestId("filter-column-Category").findByText("Gadget").click();
+        cy.button("Apply filters").click();
       });
 
-      popover().within(() => {
-        cy.findByText("Is not").click();
-      });
+      getDraggableElements().should("have.length", 2);
+      getDraggableElements().eq(0).should("have.text", "Doohickey");
+      getDraggableElements().eq(1).should("have.text", "Widget");
 
-      cy.findByTestId("filter-column-Category").within(() => {
-        cy.findByText("Gadget").click();
-      });
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Apply filters").click();
+      cy.findByTestId("qb-filters-panel").icon("close").click();
 
       getDraggableElements().should("have.length", 3);
+      getDraggableElements().eq(0).should("have.text", "Gadget");
+      getDraggableElements().eq(1).should("have.text", "Doohickey");
+      getDraggableElements().eq(2).should("have.text", "Widget");
 
-      //Ensures that "Gizmo" is still hidden, so it's state hasn't changed.
-      getDraggableElements()
-        .eq(0)
-        .within(() => {
-          cy.icon("eye_crossed_out").click();
-        });
-
-      cy.findByTestId("qb-filters-panel").within(() => {
-        cy.icon("close").click();
-      });
+      leftSidebar().button("Add another series").click();
+      popover().findByText("Gizmo").click();
 
       getDraggableElements().should("have.length", 4);
-
-      //Re-added items should appear at the end of the list.
-      getDraggableElements().eq(0).should("have.text", "Gizmo");
-      getDraggableElements().eq(3).should("have.text", "Gadget");
+      getDraggableElements().eq(0).should("have.text", "Gadget");
+      getDraggableElements().eq(1).should("have.text", "Gizmo");
+      getDraggableElements().eq(2).should("have.text", "Doohickey");
+      getDraggableElements().eq(3).should("have.text", "Widget");
     });
   });
 

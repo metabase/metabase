@@ -1,20 +1,20 @@
 import _ from "underscore";
 
 import {
-  isEqualsOperator,
   doesOperatorExist,
-  getOperatorByTypeAndName,
-  getFilterOperators,
-  getSupportedAggregationOperators,
   getAggregationOperators,
+  getFilterOperators,
+  getOperatorByTypeAndName,
+  getSupportedAggregationOperators,
+  isEqualsOperator,
   isFuzzyOperator,
 } from "metabase-lib/v1/operators/utils/index";
 import {
-  TYPE,
-  NUMBER,
   COORDINATE,
-  PRIMARY_KEY,
   FOREIGN_KEY,
+  NUMBER,
+  PRIMARY_KEY,
+  TYPE,
 } from "metabase-lib/v1/types/constants";
 
 describe("metabase-lib/v1/operators/utils", () => {

@@ -140,13 +140,13 @@
 
 (defmethod global-type-settings :type/Date [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
   (merge
-    (:type/Temporal global-column-settings {})
-    {::mb.viz/time-enabled nil}))
+   (:type/Temporal global-column-settings {})
+   {::mb.viz/time-enabled nil}))
 
 (defmethod global-type-settings :type/Time [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
   (merge
-    (:type/Temporal global-column-settings {::mb.viz/time-style "h:mm A"})
-    {::mb.viz/date-style ""}))
+   (:type/Temporal global-column-settings {::mb.viz/time-style "h:mm A"})
+   {::mb.viz/date-style ""}))
 
 (defmethod global-type-settings :type/DateTime [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
   (:type/Temporal global-column-settings {}))
@@ -156,8 +156,8 @@
 
 (defmethod global-type-settings :type/Currency [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
   (merge
-    {::mb.viz/number-style "currency"}
-    (:type/Currency global-column-settings)))
+   {::mb.viz/number-style "currency"}
+   (:type/Currency global-column-settings)))
 
 (defmethod global-type-settings :default [_ _viz-settings]
   {})
@@ -198,7 +198,10 @@
                             (get all-cols-settings {::mb.viz/column-name field-id-or-name}))]
     (merge
      ;; The default global settings based on the type of the column
-     (global-type-settings col viz-settings)
+     (try
+       (global-type-settings col viz-settings)
+       (catch Exception _e
+         (global-type-settings (dissoc col :base_type :effective_type) viz-settings)))
      ;; Generally, we want to look up the default global settings based on semantic or effective type. However, if
      ;; a user has specified other settings, we should look up the base type of those settings and combine them.
      (column-setting-defaults global-column-settings column-settings)

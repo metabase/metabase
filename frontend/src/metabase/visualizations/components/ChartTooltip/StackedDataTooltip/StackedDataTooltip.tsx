@@ -7,11 +7,11 @@ import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
 
 import {
   DataPointHeader,
-  DataPointTableHeader,
   DataPointRoot,
-  DataPointTableBody,
   DataPointTable,
+  DataPointTableBody,
   DataPointTableFooter,
+  DataPointTableHeader,
 } from "./StackedDataTooltip.styled";
 import {
   getPercent,

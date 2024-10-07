@@ -1,8 +1,8 @@
 (ns metabase.util.memoize.impl.bounded
   (:require
-   [metabase.util.log :as log]
    #?(:clj  [clojure.core.cache :as cache]
-      :cljs [cljs.cache :as cache])))
+      :cljs [cljs.cache :as cache])
+   [metabase.util.log :as log]))
 
 (cache/defcache BoundedCache [cache threshold]
   cache/CacheProtocol
@@ -11,16 +11,16 @@
   (has?   [_ item] (contains? cache item))
   (hit    [this _item] this)
   (miss   [_ item result]
-    (if (< (count cache) threshold)
-      (BoundedCache. (assoc cache item result) threshold)
-      ;; It's too big! Throw away the original cache and start over!
-      (do
-        (log/warnf "BoundedCache threshold (%d) exceeded - runaway cache? threshold too small?" threshold)
-        (BoundedCache. {item result} threshold))))
+          (if (< (count cache) threshold)
+            (BoundedCache. (assoc cache item result) threshold)
+            ;; It's too big! Throw away the original cache and start over!
+            (do
+              (log/warnf "BoundedCache threshold (%d) exceeded - runaway cache? threshold too small?" threshold)
+              (BoundedCache. {item result} threshold))))
   (evict [_ item] (BoundedCache. (dissoc cache item) threshold))
   (seed  [_ base]
-    (assert (< (count base) threshold) "cache seed is larger than the threshold")
-    (BoundedCache. base threshold)))
+         (assert (< (count base) threshold) "cache seed is larger than the threshold")
+         (BoundedCache. base threshold)))
 
 (defn bounded-cache-factory
   "Create a bounded [[clojure.core.cache]]-compatible cache. This is a basic map with no bookkeeping on `hit` but

@@ -13,12 +13,12 @@
                         ;; Timeseries drivers currently support only testing with pre-loaded dataset
                         (remove (tqpt/timeseries-drivers)))
     (mt/dataset (mt/dataset-definition "custom-pk"
-                  ["user"
-                   [{:field-name "custom_id" :base-type :type/Integer :pk? true}]
-                   [[1]]]
-                  ["group"
-                   [{:field-name "user_custom_id" :base-type :type/Integer :fk "user"}]
-                   [[1]]])
+                                       ["user"
+                                        [{:field-name "custom_id" :base-type :type/Integer :pk? true}]
+                                        [[1]]]
+                                       ["group"
+                                        [{:field-name "user_custom_id" :base-type :type/Integer :fk "user"}]
+                                        [[1]]])
       (let [user-fields  (t2/select [:model/Field :name :semantic_type :fk_target_field_id] :table_id (mt/id :user))
             group-fields (t2/select [:model/Field :name :semantic_type :fk_target_field_id] :table_id (mt/id :group))
             format-name  #(ddl.i/format-name driver/*driver* %)]

@@ -3,13 +3,14 @@ import _ from "underscore";
 import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
 import {
   getFieldsPermission,
+  getSchemasPermission,
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
@@ -18,13 +19,14 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
-import type { TableEntityId, PermissionSectionConfig } from "../../types";
+import type { PermissionSectionConfig, TableEntityId } from "../../types";
 import {
-  DataPermissionValue,
   DataPermission,
   DataPermissionType,
+  DataPermissionValue,
 } from "../../types";
 import {
+  getBlockWarning,
   getPermissionWarning,
   getPermissionWarningModal,
   getRevokingAccessToAllTablesWarningModal,
@@ -53,6 +55,7 @@ const buildAccessPermission = (
     entityId,
     DataPermission.VIEW_DATA,
   );
+
   const defaultGroupValue = getFieldsPermission(
     permissions,
     defaultGroup.id,
@@ -60,13 +63,32 @@ const buildAccessPermission = (
     DataPermission.VIEW_DATA,
   );
 
-  const warning = getPermissionWarning(
+  const dbValue = getSchemasPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.VIEW_DATA,
+  );
+
+  const schemaValue = getTablesPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.VIEW_DATA,
+  );
+
+  const permissionWarning = getPermissionWarning(
     value,
     defaultGroupValue,
     "fields",
     defaultGroup,
     groupId,
   );
+
+  const blockWarning = getBlockWarning(dbValue, schemaValue, value);
+
+  // permissionWarning should always trump a blockWarning
+  const warning = permissionWarning || blockWarning;
 
   const confirmations = (newValue: DataPermissionValue) => [
     getPermissionWarningModal(
@@ -75,6 +97,7 @@ const buildAccessPermission = (
       "fields",
       defaultGroup,
       groupId,
+      undefined,
     ),
     ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.map(confirmation =>
       confirmation(permissions, groupId, entityId, newValue),
@@ -99,12 +122,8 @@ const buildAccessPermission = (
   );
   const isDisabled =
     isAdmin ||
-    (!isAdmin &&
-      (options.length <= 1 ||
-        PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(
-          value,
-          "fields",
-        )));
+    options.length <= 1 ||
+    PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(value, "fields");
 
   return {
     permission: DataPermission.VIEW_DATA,

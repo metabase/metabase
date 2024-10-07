@@ -1,23 +1,23 @@
 import {
-  WRITABLE_DB_ID,
-  WRITABLE_DB_CONFIG,
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
   QA_POSTGRES_PORT,
   SAMPLE_DB_ID,
+  WRITABLE_DB_CONFIG,
+  WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  typeAndBlurUsingLabel,
+  createSegment,
   isEE,
-  setTokenFeatures,
   modal,
+  popover,
+  restore,
+  setTokenFeatures,
   tooltip,
+  typeAndBlurUsingLabel,
 } from "e2e/support/helpers";
-import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 import { visitDatabase } from "./helpers/e2e-database-helpers";
 
@@ -487,6 +487,23 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.contains(/Sample Database/i);
     // This seems like a reasonable CTA if the database is beyond repair.
     cy.button("Remove this database").should("not.be.disabled");
+  });
+
+  it("should handle is_attached_dwh databases", () => {
+    cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}`, req => {
+      req.reply(res => {
+        res.body.details = null;
+        res.body.is_attached_dwh = true;
+      });
+    }).as("loadDatabase");
+
+    cy.visit("/admin/databases/1");
+    cy.wait("@loadDatabase");
+
+    cy.findByTestId("main-logo");
+    cy.findByTestId("breadcrumbs").findByText("Sample Database");
+    cy.findByRole("main").findByText("This database cannot be modified.");
+    cy.findByTestId("database-actions-panel").should("not.exist");
   });
 
   it("should show error upon a bad request", () => {

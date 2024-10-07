@@ -24,4 +24,4 @@
       (js/load-js-string context "function plus (x, y) { return x + y }" "plus test")
       (is (= (repeat 10 2)
              (mt/repeat-concurrently 10
-              #(.asLong (js/execute-fn-name context "plus" 1 1))))))))
+                                     #(.asLong (js/execute-fn-name context "plus" 1 1))))))))

@@ -2,7 +2,7 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import { color, alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 
 const BAR_HEIGHT = 8;
@@ -25,22 +25,22 @@ const MiniBar = ({ value, extent: [min, max], options }) => {
         borderRadius: BORDER_RADIUS,
       }
     : isNegative
-    ? {
-        width: barPercent / 2 + "%",
-        right: "50%",
-        borderTopRightRadius: 0,
-        borderBottomRightRadius: 0,
-        borderTopLeftRadius: BORDER_RADIUS,
-        borderBottomLeftRadius: BORDER_RADIUS,
-      }
-    : {
-        width: barPercent / 2 + "%",
-        left: "50%",
-        borderTopLeftRadius: 0,
-        borderBottomLeftRadius: 0,
-        borderTopRightRadius: BORDER_RADIUS,
-        borderBottomRightRadius: BORDER_RADIUS,
-      };
+      ? {
+          width: barPercent / 2 + "%",
+          right: "50%",
+          borderTopRightRadius: 0,
+          borderBottomRightRadius: 0,
+          borderTopLeftRadius: BORDER_RADIUS,
+          borderBottomLeftRadius: BORDER_RADIUS,
+        }
+      : {
+          width: barPercent / 2 + "%",
+          left: "50%",
+          borderTopLeftRadius: 0,
+          borderBottomLeftRadius: 0,
+          borderTopRightRadius: BORDER_RADIUS,
+          borderBottomRightRadius: BORDER_RADIUS,
+        };
 
   return (
     <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd, CS.relative)}>

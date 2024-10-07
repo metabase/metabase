@@ -4,7 +4,7 @@ import { colors } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { getDocsUrl } from "metabase/selectors/settings";
-import { Anchor, Text, Box, Icon, Alert } from "metabase/ui";
+import { Alert, Anchor, Box, Icon, Text } from "metabase/ui";
 
 export const PermissionsEditorSplitPermsMessage = () => {
   const dispatch = useDispatch();

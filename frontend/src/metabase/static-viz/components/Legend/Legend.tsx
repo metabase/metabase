@@ -1,13 +1,14 @@
 import { Group } from "@visx/group";
 
 import { Text } from "metabase/static-viz/components/Text";
-import { measureTextWidth, truncateText } from "metabase/static-viz/lib/text";
+import { measureTextWidth } from "metabase/static-viz/lib/text";
+import { truncateText } from "metabase/visualizations/lib/text";
 
 import {
-  LEGEND_CIRCLE_MARGIN_RIGHT,
-  LEGEND_CIRCLE_SIZE,
   DEFAULT_LEGEND_FONT_SIZE,
   DEFAULT_LEGEND_FONT_WEIGHT,
+  LEGEND_CIRCLE_MARGIN_RIGHT,
+  LEGEND_CIRCLE_SIZE,
   LEGEND_ITEM_MARGIN_RIGHT,
 } from "./constants";
 import type { PositionedLegendItem } from "./types";
@@ -49,8 +50,13 @@ export const Legend = ({
                   LEGEND_CIRCLE_SIZE -
                   LEGEND_CIRCLE_MARGIN_RIGHT -
                   legendItemMarginRight,
-                fontSize,
-                fontWeight,
+                (text, style) =>
+                  measureTextWidth(
+                    text,
+                    Number(style.size),
+                    Number(style.weight),
+                  ),
+                { size: fontSize, weight: fontWeight, family: "Lato" },
               )
             : originalName;
 

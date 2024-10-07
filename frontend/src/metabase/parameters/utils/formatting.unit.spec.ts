@@ -3,9 +3,9 @@ import { checkNotNull } from "metabase/lib/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import { createMockField } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  PRODUCTS,
   ORDERS,
+  PRODUCTS,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { formatParameterValue } from "./formatting";

@@ -64,13 +64,13 @@
                    Table    table {:db_id (u/the-id db)}]
       ;; All users get perms for all new DBs by default
       (mt/with-no-data-perms-for-all-users!
-       (is (thrown-with-msg?
-            ExceptionInfo
-            perms-error-msg
-            (check-perms-for-rasta
-             {:database (u/the-id db)
-              :type     :query
-              :query    {:source-table (u/the-id table)}})))))))
+        (is (thrown-with-msg?
+             ExceptionInfo
+             perms-error-msg
+             (check-perms-for-rasta
+              {:database (u/the-id db)
+               :type     :query
+               :query    {:source-table (u/the-id table)}})))))))
 
 (deftest mbql-query-perms-test-2
   (testing "...but it should work if user has perms [MBQL]"
@@ -144,21 +144,21 @@
                    Table    _       {:db_id (u/the-id db)}
                    Table    table-2 {:db_id (u/the-id db)}
                    Card     card    {:dataset_query {:database (u/the-id db), :type :query,
-                                                               :query {:source-table (u/the-id table-2)}}}]
+                                                     :query {:source-table (u/the-id table-2)}}}]
       ;; All users get perms for all new DBs by default
       (mt/with-no-data-perms-for-all-users!
-       (let [card-id  (:id card)
-             tag-name (str "#" card-id)]
-         (is (thrown-with-msg?
-              ExceptionInfo
-              perms-error-msg
-              (check-perms-for-rasta
-               {:database (u/the-id db)
-                :type     :native
-                :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
-                           :template-tags {tag-name
-                                           {:id   tag-name, :name tag-name, :display-name tag-name,
-                                            :type "card",   :card card-id}}}}))))))))
+        (let [card-id  (:id card)
+              tag-name (str "#" card-id)]
+          (is (thrown-with-msg?
+               ExceptionInfo
+               perms-error-msg
+               (check-perms-for-rasta
+                {:database (u/the-id db)
+                 :type     :native
+                 :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
+                            :template-tags {tag-name
+                                            {:id   tag-name, :name tag-name, :display-name tag-name,
+                                             :type "card",   :card card-id}}}}))))))))
 
 (deftest template-tags-referenced-queries-test-2
   (testing "...but it should work if user has perms [template tag referenced query]"
@@ -198,18 +198,18 @@
                                    :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]
       ;; All users get perms for all new DBs by default
       (mt/with-no-data-perms-for-all-users!
-       (let [card-id  (:id card)
-             tag-name (str "#" card-id)]
-         (is (thrown-with-msg?
-              ExceptionInfo
-              perms-error-msg
-              (check-perms-for-rasta
-               {:database (u/the-id db)
-                :type     :native
-                :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
-                           :template-tags {tag-name
-                                           {:id   tag-name, :name tag-name, :display-name tag-name,
-                                            :type "card",   :card card-id}}}}))))))))
+        (let [card-id  (:id card)
+              tag-name (str "#" card-id)]
+          (is (thrown-with-msg?
+               ExceptionInfo
+               perms-error-msg
+               (check-perms-for-rasta
+                {:database (u/the-id db)
+                 :type     :native
+                 :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
+                            :template-tags {tag-name
+                                            {:id   tag-name, :name tag-name, :display-name tag-name,
+                                             :type "card",   :card card-id}}}}))))))))
 
 (deftest template-tags-referenced-queries-test-4
   (testing "...but it should work if user has perms [template tag referenced query]"
@@ -270,6 +270,32 @@
                             qp.perms/*card-id* model-id]
                     (check! query)))))))))))
 
+(deftest inactive-table-test
+  (testing "Make sure a query on an inactive table fails to run"
+    (mt/with-temp [Database db {:name "Test DB"}
+                   Table    table {:db_id (u/the-id db)
+                                   :name "Inactive Table"
+                                   :schema "PUBLIC"
+                                   :active false}]
+      (mt/with-full-data-perms-for-all-users!
+        (is (thrown-with-msg?
+             Exception
+             #"Table \"Test DB.PUBLIC.Inactive Table\" is inactive."
+             (check-perms-for-rasta
+              {:database (u/the-id db)
+               :type     :query
+               :query    {:source-table (u/the-id table)}}))))
+
+      ;; Don't leak metadata about the table if the user doesn't have access to it, even if it's inactive
+      (mt/with-no-data-perms-for-all-users!
+        (is (thrown-with-msg?
+             Exception
+             #"Table [\d,]+ is inactive."
+             (check-perms-for-rasta
+              {:database (u/the-id db)
+               :type     :query
+               :query    {:source-table (u/the-id table)}})))))))
+
 (deftest e2e-nested-source-card-test
   (testing "Make sure permissions are calculated for Card -> Card -> Source Query (#12354)"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -316,19 +342,19 @@
                                          (mt/rows
                                           (qp/process-query (:dataset_query card-2)))))))
 
-                             (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
-                               (is (= expected
-                                      (mt/rows
-                                       (qp/process-query (mt/mbql-query nil
-                                                           {:source-table (format "card__%d" card-1-id)}))))))
+                              (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
+                                (is (= expected
+                                       (mt/rows
+                                        (qp/process-query (mt/mbql-query nil
+                                                            {:source-table (format "card__%d" card-1-id)}))))))
 
-                             (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
-                               (is (= expected
-                                      (mt/rows
-                                       (qp/process-query
-                                        (qp/userland-query
-                                         (mt/mbql-query nil
-                                           {:source-table (format "card__%d" (u/the-id card-2))}))))))))))))))))))))))
+                              (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
+                                (is (= expected
+                                       (mt/rows
+                                        (qp/process-query
+                                         (qp/userland-query
+                                          (mt/mbql-query nil
+                                            {:source-table (format "card__%d" (u/the-id card-2))}))))))))))))))))))))))
 
 (deftest e2e-ignore-user-supplied-card-ids-test
   (testing "You shouldn't be able to bypass security restrictions by passing `[:info :card-id]` in the query."

@@ -1,21 +1,27 @@
 import _ from "underscore";
 
+import type { IconName } from "metabase/ui";
 import { isEqualsOperator } from "metabase-lib/v1/operators/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import { getParameterType } from "metabase-lib/v1/parameters/utils/parameter-type";
 
-export function getParameterIconName(parameter: UiParameter | string) {
+export function getParameterIconName(
+  parameter: UiParameter | string,
+): IconName {
   const type = getParameterType(parameter);
   switch (type) {
     case "date":
       return "calendar";
     case "location":
       return "location";
+    case "string":
     case "category":
       return "string";
     case "number":
       return "number";
+    case "temporal-unit":
+      return "clock";
     case "id":
     default:
       return "label";

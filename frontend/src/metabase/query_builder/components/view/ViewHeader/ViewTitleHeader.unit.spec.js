@@ -10,10 +10,10 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  SAMPLE_DB_ID,
   ORDERS,
   ORDERS_ID,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 

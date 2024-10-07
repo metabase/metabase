@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";

@@ -13,9 +13,9 @@ import {
   TableColumnInfoPopover,
 } from "../ColumnInfoPopover";
 import {
-  PopoverHoverTarget,
-  PopoverDefaultIcon,
   HoverParent,
+  PopoverDefaultIcon,
+  PopoverHoverTarget,
 } from "../InfoIcon";
 export { HoverParent };
 

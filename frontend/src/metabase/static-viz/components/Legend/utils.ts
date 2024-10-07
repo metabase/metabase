@@ -1,13 +1,14 @@
-import { measureTextWidth, truncateText } from "metabase/static-viz/lib/text";
+import { measureTextWidth } from "metabase/static-viz/lib/text";
 import type { LegendItem } from "metabase/visualizations/echarts/cartesian/model/types";
+import { truncateText } from "metabase/visualizations/lib/text";
 
 import {
   DEFAULT_LEGEND_FONT_SIZE,
   DEFAULT_LEGEND_FONT_WEIGHT,
+  DEFAULT_LEGEND_LINE_HEIGHT,
   LEGEND_CIRCLE_MARGIN_RIGHT,
   LEGEND_CIRCLE_SIZE,
   LEGEND_ITEM_MARGIN_RIGHT,
-  DEFAULT_LEGEND_LINE_HEIGHT,
   LEGEND_ITEM_MARGIN_RIGHT_GRID,
 } from "./constants";
 import type { PositionedLegendItem } from "./types";
@@ -105,8 +106,13 @@ export const calculateLegendRows = ({
         name: truncateText(
           item.name,
           availableTotalWidth,
-          fontSize,
-          fontWeight,
+          (text, style) =>
+            measureTextWidth(text, Number(style.size), Number(style.weight)),
+          {
+            size: fontSize,
+            weight: fontWeight,
+            family: "Lato",
+          },
         ),
         left: horizontalPadding,
         top: currentRowIndex * lineHeight + verticalPadding,

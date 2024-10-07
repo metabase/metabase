@@ -4,6 +4,10 @@ import { getMetadata } from "metabase/selectors/metadata";
 import type { Database, TableId } from "metabase-types/api";
 import { createMockForeignKey } from "metabase-types/api/mocks";
 import {
+  ORDERS,
+  PRODUCTS,
+  PRODUCTS_ID,
+  REVIEWS,
   createOrdersProductIdField,
   createOrdersTable,
   createProductsIdField,
@@ -11,10 +15,6 @@ import {
   createReviewsProductIdField,
   createReviewsTable,
   createSampleDatabase,
-  ORDERS,
-  PRODUCTS,
-  PRODUCTS_ID,
-  REVIEWS,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 

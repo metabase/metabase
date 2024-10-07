@@ -62,12 +62,12 @@
   :feature :audit-app
   [group-id changes]
   (let [[change-id tyype] (first (filter #(= (first %) (:id (audit/default-audit-collection))) changes))]
-      (when change-id
-        (let [create-queries-value (case tyype
-                                     :read  :query-builder
-                                     :none  :no
-                                     :write (throw (ex-info (tru (str "Unable to make audit collections writable."))
-                                                            {:status-code 400})))
-              view-tables         (t2/select :model/Table :db_id audit/audit-db-id :name [:in audit-db-view-names])]
-          (doseq [table view-tables]
-            (data-perms/set-table-permission! group-id table :perms/create-queries create-queries-value))))))
+    (when change-id
+      (let [create-queries-value (case tyype
+                                   :read  :query-builder
+                                   :none  :no
+                                   :write (throw (ex-info (tru (str "Unable to make audit collections writable."))
+                                                          {:status-code 400})))
+            view-tables         (t2/select :model/Table :db_id audit/audit-db-id :name [:in audit-db-view-names])]
+        (doseq [table view-tables]
+          (data-perms/set-table-permission! group-id table :perms/create-queries create-queries-value))))))

@@ -1,12 +1,12 @@
 (ns metabase.lib.temporal-bucket-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-util :as lib.tu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -110,21 +110,21 @@
                          :minute-of-hour :hour-of-day
                          :day-of-week :day-of-month :day-of-year
                          :week-of-year :month-of-year :quarter-of-year}
-        expected-defaults [{:lib/type :option/temporal-bucketing, :unit :day, :default true}]]
+        expected-defaults [{:lib/type :option/temporal-bucketing, :unit :month, :default true}]]
     (testing "missing fingerprint"
       (let [column (dissoc column :fingerprint)
             options (lib.temporal-bucket/available-temporal-buckets-method nil -1 column)]
-          (is (= expected-units
-                 (into #{} (map :unit) options)))
-          (is (= expected-defaults
-                 (filter :default options)))))
+        (is (= expected-units
+               (into #{} (map :unit) options)))
+        (is (= expected-defaults
+               (filter :default options)))))
     (testing "existing fingerprint"
       (doseq [[latest unit] {"2019-04-15T13:34:19.931Z" :month
                              "2017-04-15T13:34:19.931Z" :week
                              "2016-05-15T13:34:19.931Z" :day
                              "2016-04-27T13:34:19.931Z" :minute
-                             nil                        :day
-                             "garbage"                  :day}]
+                             nil                        :month
+                             "garbage"                  :month}]
         (testing latest
           (let [bounds {:earliest "2016-04-26T19:29:55.147Z"
                         :latest latest}
@@ -158,13 +158,50 @@
                 (lib/available-temporal-buckets query)
                 (mapv #(select-keys % [:unit :default])))))))
 
+(def ^:private query-with-temporal-expression
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/expression "NY created at"
+                      (lib/convert-timezone (meta/field-metadata :orders :created-at)
+                                            "America/New_York" "UTC"))))
+
 (deftest ^:parallel temporal-bucketing-options-expressions-test
-  (testing "There should be no bucketing options for expressions as they are not supported (#31367)"
-    (let [query (-> lib.tu/venues-query
-                    (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id))))]
-      (is (empty? (->> (lib/returned-columns query)
-                       (m/find-first (comp #{"myadd"} :name))
-                       (lib/available-temporal-buckets query)))))))
+  (testing "Temporal bucketing should be available for Date and DateTime-valued expressions"
+    (is (=? [{:unit :minute}
+             {:unit :hour}
+             {:unit :day}
+             {:unit :week}
+             {:unit :month, :default true}
+             {:unit :quarter}
+             {:unit :year}
+             {:unit :minute-of-hour}
+             {:unit :hour-of-day}
+             {:unit :day-of-week}
+             {:unit :day-of-month}
+             {:unit :day-of-year}
+             {:unit :week-of-year}
+             {:unit :month-of-year}
+             {:unit :quarter-of-year}]
+            (->> (lib/returned-columns query-with-temporal-expression)
+                 (m/find-first (comp #{"NY created at"} :name))
+                 (lib/available-temporal-buckets query-with-temporal-expression))))))
+
+(deftest ^:parallel temporal-bucketing-get-and-set-expressions-test
+  (let [expr           (m/find-first (comp #{"NY created at"} :name)
+                                     (lib/returned-columns query-with-temporal-expression))
+        query          (-> query-with-temporal-expression
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (lib/with-temporal-bucket expr :week)))
+        [breakout-ref] (lib/breakouts query)
+        [breakout-col] (lib/returned-columns query)]
+    (testing `lib/temporal-bucket
+      (testing "on `:expression` refs"
+        (is (=? {:lib/type :option/temporal-bucketing
+                 :unit     :week}
+                (lib/temporal-bucket breakout-ref))))
+      (testing "on columns"
+        (is (=? {:lib/type :option/temporal-bucketing
+                 :unit     :week}
+                (lib/temporal-bucket breakout-col)))))))
 
 (deftest ^:parallel option-raw-temporal-bucket-test
   (let [option (m/find-first #(= (:unit %) :month)

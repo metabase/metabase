@@ -3,7 +3,7 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import _ from "underscore";
 
-import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
+import { coercions_for_type, is_coerceable } from "cljs/metabase.types";
 import { formatField, stripId } from "metabase/lib/formatting";
 import { getFilterOperators } from "metabase-lib/v1/operators/utils";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -14,7 +14,6 @@ import {
 } from "metabase-lib/v1/queries/utils/field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
-  isa,
   isAddress,
   isBoolean,
   isCategory,
@@ -41,16 +40,17 @@ import {
   isTime,
   isTypeFK,
   isZipCode,
+  isa,
 } from "metabase-lib/v1/types/utils/isa";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/v1/utils";
 import type {
   DatasetColumn,
-  FieldReference,
   FieldFingerprint,
-  FieldId,
   FieldFormattingSettings,
-  FieldVisibilityType,
+  FieldId,
+  FieldReference,
   FieldValuesType,
+  FieldVisibilityType,
 } from "metabase-types/api";
 
 import { FieldDimension } from "../Dimension";
@@ -546,7 +546,7 @@ class FieldInner extends Base {
 
   isJsonUnfolded() {
     const database = this.table?.database;
-    return this.json_unfolding ?? database?.details["json-unfolding"] ?? true;
+    return this.json_unfolding ?? database?.details?.["json-unfolding"] ?? true;
   }
 
   canUnfoldJson() {

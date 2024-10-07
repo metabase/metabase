@@ -1,7 +1,7 @@
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
-import { createQuery, columnFinder, findTemporalBucket } from "./test-helpers";
+import { columnFinder, createQuery, findTemporalBucket } from "./test-helpers";
 
 describe("breakout", () => {
   describe("add breakout", () => {

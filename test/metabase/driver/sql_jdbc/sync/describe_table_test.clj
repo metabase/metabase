@@ -194,9 +194,9 @@
     (let [arr-row    {:bob (json/encode [:bob :cob :dob 123 "blob"])}
           obj-row    {:zlob (json/encode {:blob Long/MAX_VALUE})}
           string-row {:naked (json/encode "string")}]
-     (is (= {} (#'sql-jdbc.describe-table/json-map->types string-row)))
-     (is (= {} (#'sql-jdbc.describe-table/json-map->types arr-row)))
-     (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/json-map->types obj-row)))))
+      (is (= {} (#'sql-jdbc.describe-table/json-map->types string-row)))
+      (is (= {} (#'sql-jdbc.describe-table/json-map->types arr-row)))
+      (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/json-map->types obj-row)))))
   (testing "JSON json-map->types handles bigint OK (#22732)"
     (let [int-row   {:zlob (json/encode {"blob" (inc (bigint Long/MAX_VALUE))})}
           float-row {:zlob "{\"blob\": 12345678901234567890.12345678901234567890}"}]
@@ -336,26 +336,26 @@
                     :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "title"]}}
-               (sql-jdbc.sync/describe-nested-field-columns
-                 driver/*driver*
-                 (mt/db)
-                 {:name "json" :id (mt/id "json")}))))))))
+                 (sql-jdbc.sync/describe-nested-field-columns
+                  driver/*driver*
+                  (mt/db)
+                  {:name "json" :id (mt/id "json")}))))))))
 
 (deftest json-columns-with-values-are-not-object-test
   (testing "able sync a db with jsonb columns where value is an array or a string #44459"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
       (mt/dataset (mt/dataset-definition
-                    "naked_json"
-                    ["json_table"
-                     [{:field-name "array_col" :base-type :type/JSON}
-                      {:field-name "string_col" :base-type :type/JSON}]
-                     [ ["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]])
+                   "naked_json"
+                   ["json_table"
+                    [{:field-name "array_col" :base-type :type/JSON}
+                     {:field-name "string_col" :base-type :type/JSON}]
+                    [["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]])
 
         (testing "there should be no nested fields"
-         (is (= #{} (sql-jdbc.sync/describe-nested-field-columns
-                     driver/*driver*
-                     (mt/db)
-                     {:name "json_table" :id (mt/id "json_table")}))))
+          (is (= #{} (sql-jdbc.sync/describe-nested-field-columns
+                      driver/*driver*
+                      (mt/db)
+                      {:name "json_table" :id (mt/id "json_table")}))))
 
         (sync/sync-database! (mt/db))
         (is (=? (if (mysql/mariadb? (mt/db))
@@ -406,9 +406,9 @@
         (testing "Nested field column listing, but big"
           (is (= sql-jdbc.describe-table/max-nested-field-columns
                  (count (sql-jdbc.sync/describe-nested-field-columns
-                          driver/*driver*
-                          (mt/db)
-                          {:name "big_json" :id (mt/id "big_json")})))))))))
+                         driver/*driver*
+                         (mt/db)
+                         {:name "big_json" :id (mt/id "big_json")})))))))))
 
 (mt/defdataset long-json
   [["long_json_table"
@@ -569,40 +569,40 @@
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info)
                                      (mt/sql-jdbc-drivers))
     (mt/dataset (mt/dataset-definition "indexes"
-                  ["single_index"
-                   [{:field-name "indexed" :indexed? true :base-type :type/Integer}
-                    {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
-                   [[1 2]]]
-                  ["composite_index"
-                   [{:field-name "first" :indexed? false :base-type :type/Integer}
-                    {:field-name "second" :indexed? false :base-type :type/Integer}]
-                   [[1 2]]])
+                                       ["single_index"
+                                        [{:field-name "indexed" :indexed? true :base-type :type/Integer}
+                                         {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
+                                        [[1 2]]]
+                                       ["composite_index"
+                                        [{:field-name "first" :indexed? false :base-type :type/Integer}
+                                         {:field-name "second" :indexed? false :base-type :type/Integer}]
+                                        [[1 2]]])
       (try
-       (let [describe-table-indexes (fn [table]
-                                      (->> (driver/describe-table-indexes
-                                            driver/*driver*
-                                            (mt/db)
-                                            table)
-                                           (map (fn [index]
-                                                  (update index :value #(if (string? %)
-                                                                          (u/lower-case-en %)
-                                                                          (map u/lower-case-en %)))))
-                                           set))]
-         (testing "single column indexes are synced correctly"
-           (is (= #{{:type :normal-column-index :value "id"}
-                    {:type :normal-column-index :value "indexed"}}
-                  (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
+        (let [describe-table-indexes (fn [table]
+                                       (->> (driver/describe-table-indexes
+                                             driver/*driver*
+                                             (mt/db)
+                                             table)
+                                            (map (fn [index]
+                                                   (update index :value #(if (string? %)
+                                                                           (u/lower-case-en %)
+                                                                           (map u/lower-case-en %)))))
+                                            set))]
+          (testing "single column indexes are synced correctly"
+            (is (= #{{:type :normal-column-index :value "id"}
+                     {:type :normal-column-index :value "indexed"}}
+                   (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
 
-         (testing "for composite indexes, we only care about the 1st column"
-           (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                          (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
-           (sync/sync-database! (mt/db))
-           (is (= #{{:type :normal-column-index :value "id"}
-                    {:type :normal-column-index :value "first"}}
-                  (describe-table-indexes (t2/select-one :model/Table (mt/id :composite_index)))))))
-       (finally
+          (testing "for composite indexes, we only care about the 1st column"
+            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                           (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
+            (sync/sync-database! (mt/db))
+            (is (= #{{:type :normal-column-index :value "id"}
+                     {:type :normal-column-index :value "first"}}
+                   (describe-table-indexes (t2/select-one :model/Table (mt/id :composite_index)))))))
+        (finally
         ;; clean the db so this test is repeatable
-         (t2/delete! :model/Database (mt/id)))))))
+          (t2/delete! :model/Database (mt/id)))))))
 
 (defn- describe-table-indexes [table]
   (into #{}

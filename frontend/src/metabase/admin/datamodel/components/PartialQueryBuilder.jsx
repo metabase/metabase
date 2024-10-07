@@ -14,8 +14,8 @@ import * as Urls from "metabase/lib/urls";
 import { getMetadata } from "metabase/selectors/metadata";
 import Query from "metabase-lib/v1/queries/Query";
 import {
-  getSegmentOrMetricQuestion,
   getDefaultSegmentOrMetricQuestion,
+  getSegmentOrMetricQuestion,
 } from "metabase-lib/v1/queries/utils/segments";
 
 import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";

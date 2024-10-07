@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { useGroupListQuery } from "metabase/common/hooks";
 import type { SelectProps } from "metabase/ui";
-import { Select, Loader } from "metabase/ui";
+import { Loader, Select } from "metabase/ui";
 import type { GroupId } from "metabase-types/api";
 
 interface FormGroupWidgetProps

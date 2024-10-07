@@ -6,7 +6,7 @@ import {
   createMockSettings,
 } from "metabase-types/api/mocks";
 
-import { setup, FULL_APP_EMBEDDING_URL, EMAIL_URL } from "./setup";
+import { EMAIL_URL, FULL_APP_EMBEDDING_URL, setup } from "./setup";
 
 describe("SettingsEditor", () => {
   describe("full-app embedding", () => {

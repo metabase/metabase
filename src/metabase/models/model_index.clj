@@ -146,7 +146,6 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
                        :error      (ex-message e)
                        :indexed_at :%now}))))))
 
-
 ;;;; creation
 
 (defn default-schedule

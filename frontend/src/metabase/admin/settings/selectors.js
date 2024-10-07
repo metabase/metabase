@@ -6,9 +6,10 @@ import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMT
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import MetabaseSettings from "metabase/lib/settings";
+import { newVersionAvailable } from "metabase/lib/utils";
 import {
-  PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
+  PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_EMBEDDING,
   PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
@@ -23,7 +24,7 @@ import { CloudPanel } from "./components/CloudPanel";
 import { BccToggleWidget } from "./components/Email/BccToggleWidget";
 import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
 import SettingsLicense from "./components/SettingsLicense";
-import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
+import { SettingsUpdatesForm } from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import { UploadSettings } from "./components/UploadSettings";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import {
@@ -43,6 +44,7 @@ import RedirectWidget from "./components/widgets/RedirectWidget";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
+import { NotificationSettings } from "./notifications/NotificationSettings";
 import { updateSetting } from "./settings";
 import SetupCheckList from "./setup/components/SetupCheckList";
 import SlackSettings from "./slack/containers/SlackSettings";
@@ -215,7 +217,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
       {
         key: "bcc-enabled?",
         display_name: t`Add Recipients as CC or BCC`,
-        description: t`Control the visibility of recipients.`,
+        description: t`Control the visibility of alerts and subscriptions recipients.`,
         options: [
           { value: true, name: t`BCC - Hide recipients` },
           {
@@ -277,10 +279,16 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
     ],
   },
-  slack: {
+  "notifications/slack": {
     name: "Slack",
     order: 50,
     component: SlackSettings,
+    settings: [],
+  },
+  notifications: {
+    name: t`Notification channels`,
+    order: 51,
+    component: NotificationSettings,
     settings: [],
   },
   authentication: {
@@ -381,7 +389,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         key: "uploads-settings",
       },
     ],
-    getHidden: settings => settings["token-features"]?.attached_dwh === true,
   },
 
   "public-sharing": {
@@ -614,9 +621,31 @@ export const getSettingValues = createSelector(getSettings, settings => {
   return settingValues;
 });
 
-export const getNewVersionAvailable = createSelector(getSettings, settings => {
-  return MetabaseSettings.newVersionAvailable(settings);
-});
+export const getCurrentVersion = createSelector(
+  getDerivedSettingValues,
+  settings => {
+    return settings.version?.tag;
+  },
+);
+
+export const getLatestVersion = createSelector(
+  getDerivedSettingValues,
+  settings => {
+    const updateChannel = settings["update-channel"] ?? "latest";
+    return settings["version-info"]?.[updateChannel]?.version;
+  },
+);
+
+export const getNewVersionAvailable = createSelector(
+  getCurrentVersion,
+  getLatestVersion,
+  (currentVersion, latestVersion) => {
+    return newVersionAvailable({
+      currentVersion,
+      latestVersion,
+    });
+  },
+);
 
 export const getSections = createSelector(
   getSettings,

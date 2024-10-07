@@ -25,7 +25,7 @@ The config file is split up into sections: `version` and `config.` Under `config
 
 Like so:
 
-```
+```yml
 version: 1
 config:
   settings:
@@ -44,7 +44,7 @@ The first user created in a Metabase instance is an Admin. The first user listed
 
 In the following example, assuming that the Metabase hasn't already been set up (which creates the first user) both users `first@example.com` and `admin@example.com` will be admins: `first@example.com` because it's the first user account on the list, and `admin@example.com` because that user has the `is_superuser` flag set to true.
 
-```
+```yml
 version: 1
 config:
   users:
@@ -69,7 +69,7 @@ If the Metabase has already been set up, then `first @example.com` will be loade
 
 On a new Metabase, the example below sets up an admin user account and one database connection.
 
-```
+```yml
 {% raw %}
 version: 1
 config:
@@ -102,7 +102,7 @@ You can also configure [uploads](../databases/uploads.md) in the config file wit
 
 Here's an example:
 
-```
+```yml
 {% raw %}
 version: 1
 config:
@@ -140,7 +140,7 @@ When loading a data model from a serialized export, you want to disable the sche
 
 To disable the initial database sync, you can add `config-from-file-sync-database` to the `settings` list and set the value to `false`. The setting `config-from-file-sync-database` must come _before_ the databases list, like so:
 
-```
+```yml
 version: 1
 config:
   settings:
@@ -157,19 +157,19 @@ In this config file, you can specify _any_ Admin setting.
 
 In general, the settings you can set in the `settings` section of this config file map to the [environment variables](./environment-variables.md), so check them out to see which settings you can use in your config file. The actual key that you include in the config file differs slightly from the format used for environment variables. For environment variables, the form is in screaming snake case, prefixed by an `MB`:
 
-```
+```txt
 MB_NAME_OF_VARIABLE
 ```
 
 Whereas in the config file, you'd translate that to:
 
-```
+```txt
 name-of-variable
 ```
 
 So for example, if you wanted to specify the `MB_EMAIL_FROM_NAME` in the `config.yml` file:
 
-```
+```yml
 version: 1
 config:
   settings:
@@ -183,7 +183,7 @@ config:
 
 Just to give you an idea for some settings, here's an incomplete list of settings you can set via the config file:
 
-```
+```txt
 application-colors
 config-from-file-sync-databases
 check-for-updates
@@ -223,6 +223,6 @@ But you can set any of the Admin settings with the config file. Check out the li
 
 Since loading from a config file is a Pro/Enterprise feature: for new installations, you'll need to supply Metabase with a token using the `MB_PREMIUM_EMBEDDING_TOKEN` environment variable.
 
-```
+```sh
 MB_PREMIUM_EMBEDDING_TOKEN="[your token]" java -jar metabase.jar
 ```

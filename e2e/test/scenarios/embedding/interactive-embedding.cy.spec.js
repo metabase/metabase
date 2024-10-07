@@ -1,27 +1,27 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   adhocQuestionHash,
-  entityPickerModal,
-  popover,
   appBar,
+  createDashboardWithTabs,
+  dashboardGrid,
+  describeEE,
+  entityPickerModal,
+  entityPickerModalTab,
+  getDashboardCard,
+  getDashboardCardMenu,
+  getNextUnsavedDashboardCardId,
+  getTextCardDetails,
+  goToTab,
+  navigationSidebar,
+  popover,
   restore,
   setTokenFeatures,
-  describeEE,
-  navigationSidebar,
-  getDashboardCard,
-  getTextCardDetails,
   updateDashboardCards,
-  getNextUnsavedDashboardCardId,
-  dashboardGrid,
-  createDashboardWithTabs,
-  goToTab,
   visitFullAppEmbeddingUrl,
-  getDashboardCardMenu,
-  entityPickerModalTab,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -532,7 +532,7 @@ describeEE("scenarios > embedding > full app", () => {
       cy.get("@postMessage").invoke("resetHistory");
       cy.findByTestId("app-bar").findByText("Our analytics").click();
 
-      cy.findByRole("heading", { name: "Metabase analytics" }).should(
+      cy.findByRole("heading", { name: "Usage analytics" }).should(
         "be.visible",
       );
       cy.get("@postMessage").should("have.been.calledWith", {

@@ -151,7 +151,7 @@
   "Remove all advanced FieldValues for a `field-or-id`."
   [field-or-id]
   (t2/delete! FieldValues :field_id (u/the-id field-or-id)
-                          :type     [:in advanced-field-values-types]))
+              :type     [:in advanced-field-values-types]))
 
 (defn clear-field-values-for-field!
   "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
@@ -227,7 +227,6 @@
                                        :else
                                        [])))))
 
-
 (defmethod serdes/hash-fields :model/FieldValues
   [_field-values]
   [(serdes/hydrated-hash :field)])
@@ -282,12 +281,12 @@
 
   ([max-length coll]
    (lazy-seq
-     (when-let [s (seq coll)]
-       (let [f          (first s)
-             new-length (- max-length (count (str (first f))))]
-         (when-not (neg? new-length)
-           (cons f (take-by-length new-length
-                                   (rest s)))))))))
+    (when-let [s (seq coll)]
+      (let [f          (first s)
+            new-length (- max-length (count (str (first f))))]
+        (when-not (neg? new-length)
+          (cons f (take-by-length new-length
+                                  (rest s)))))))))
 
 (defn fixup-human-readable-values
   "Field values and human readable values are lists that are zipped together. If the field values have changed, the
@@ -395,22 +394,30 @@
       nil)))
 
 (defn- delete-duplicates-and-return-latest!
-  "This is a workaround for the issue of stale FieldValues rows (metabase#668)
-  In order to mitigate the impact of duplicates, we return the most recently updated row, and delete the older rows."
-  [rows]
-  (if (<= (count rows) 1)
-    (first rows)
-    (let [[latest & duplicates] (sort-by :updated_at u/reverse-compare rows)]
-      (t2/delete! FieldValues :id [:in (map :id duplicates)])
-      latest)))
+  "Takes a list of field values, return a map of field-id -> latest FieldValues.
 
-(defn get-latest-field-values
+  If a field has more than one Field Values, delete the old ones. This is a workaround for the issue of stale FieldValues rows (metabase#668)
+  In order to mitigate the impact of duplicates, we return the most recently updated row, and delete the older rows.
+
+  It assumes that all rows are of the same type. Rows could be from multiple field-ids."
+  [fvs]
+  (let [fvs-grouped-by-field-id (update-vals (group-by :field_id fvs)
+                                             #(sort-by :updated_at u/reverse-compare %))
+        to-delete-fv-ids        (->> (vals fvs-grouped-by-field-id)
+                                     (mapcat rest)
+                                     (map :id))]
+    (when (seq to-delete-fv-ids)
+      (t2/delete! :model/FieldValues :id [:in to-delete-fv-ids]))
+    (update-vals fvs-grouped-by-field-id first)))
+
+(defn- get-latest-field-values
   "This returns the FieldValues with the given :type and :hash_key for the given Field.
-   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
+  This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-id type hash]
   (assert (= (nil? hash) (= type :full)) ":hash_key must be nil iff :type is :full")
-  (delete-duplicates-and-return-latest!
-    (t2/select FieldValues :field_id field-id :type type :hash_key hash)))
+  (-> (t2/select :model/FieldValues :field_id field-id :type type :hash_key hash)
+      delete-duplicates-and-return-latest!
+      (get field-id)))
 
 (defn get-latest-full-field-values
   "This returns the full FieldValues for the given Field.
@@ -418,14 +425,22 @@
   [field-id]
   (get-latest-field-values field-id :full nil))
 
+(defn batched-get-latest-full-field-values
+  "Batched version of [[get-latest-full-field-values]] .
+  Takes a list of field-ids and returns a map of field-id -> full FieldValues.
+  This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
+  [field-ids]
+  (delete-duplicates-and-return-latest!
+   (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil)))
+
 (defn create-or-update-full-field-values!
   "Create or update the full FieldValues object for `field`. If the FieldValues object already exists, then update values for
    it; otherwise create a new FieldValues object with the newly fetched values. Returns whether the field values were
    created/updated/deleted as a result of this call.
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
-  [field & [human-readable-values]]
-  (let [field-values              (get-latest-full-field-values (u/the-id field))
+  [field & {:keys [field-values human-readable-values]}]
+  (let [field-values              (or field-values (get-latest-full-field-values (u/the-id field)))
         {unwrapped-values :values
          :keys [has_more_values]} (distinct-values field)
         ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
@@ -497,7 +512,7 @@
   (when (field-should-have-field-values? field)
     (let [existing (or (not-empty field-values) (get-latest-full-field-values field-id))]
       (if (or (not existing) (inactive? existing))
-        (case (create-or-update-full-field-values! field human-readable-values)
+        (case (create-or-update-full-field-values! field :human-readable-values human-readable-values)
           ::fv-deleted
           nil
 
@@ -526,7 +541,7 @@
                                (t2/select-pk->fn :db_id 'Table :id [:in table-ids]))
         db-id->is-on-demand? (when (seq table-id->db-id)
                                (t2/select-pk->fn :is_on_demand 'Database
-                                 :id [:in (set (vals table-id->db-id))]))]
+                                                 :id [:in (set (vals table-id->db-id))]))]
     (into {} (for [table-id table-ids]
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
 
@@ -561,25 +576,29 @@
   ;; Take the path, but drop the FieldValues section at the end, to get the parent Field's path instead.
   [(pop (serdes/path fv))])
 
-(defmethod serdes/extract-one "FieldValues" [_model-name _opts fv]
-  (-> (serdes/extract-one-basics "FieldValues" fv)
-      (dissoc :field_id)))
-
-(defmethod serdes/load-xform "FieldValues" [fv]
-  (let [[db schema table field :as field-ref] (map :id (pop (serdes/path fv)))
-        field-ref (if field
-                    field-ref
-                    ;; It's too short, so no schema. Shift them over and add a nil schema.
-                    [db nil schema table])]
-    (-> (serdes/load-xform-basics fv)
-        (assoc :field_id (serdes/*import-field-fk* field-ref))
-        (update :type keyword))))
-
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
   (let [field (serdes/load-find-local (pop path))]
     ;; We only serialize the full values, see [[metabase.models.field/with-values]]
     (get-latest-full-field-values (:id field))))
+
+(defn- field-path->field-ref [field-values-path]
+  (let [[db schema table field :as field-ref] (map :id (pop field-values-path))]
+    (if field
+      field-ref
+      ;; It's too short, so no schema. Shift them over and add a nil schema.
+      [db nil schema table])))
+
+(defmethod serdes/make-spec "FieldValues" [_model-name _opts]
+  {:copy      [:values :human_readable_values :has_more_values :hash_key]
+   :transform {:created_at   (serdes/date)
+               :last_used_at (serdes/date)
+               :type         (serdes/kw)
+               :field_id     {::serdes/fk true
+                              :export     (constantly ::serdes/skip)
+                              :import-with-context (fn [current _ _]
+                                                     (let [field-ref (field-path->field-ref (serdes/path current))]
+                                                       (serdes/*import-field-fk* field-ref)))}}})
 
 (defmethod serdes/load-update! "FieldValues" [_ ingested local]
   ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.
@@ -596,7 +615,5 @@
   ;; [path to table "fields" "field-name___fieldvalues"] since there's zero or one FieldValues per Field, and Fields
   ;; don't have their own directories.
   (let [hierarchy    (serdes/path fv)
-        field        (last (drop-last hierarchy))
-        table-prefix (serdes/storage-table-path-prefix (drop-last 2 hierarchy))]
-    (concat table-prefix
-            ["fields" (str (:id field) field-values-slug)])))
+        field-path   (serdes/storage-path-prefixes (drop-last hierarchy))]
+    (update field-path (dec (count field-path)) str field-values-slug)))

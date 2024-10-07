@@ -362,3 +362,22 @@
             (is (= new-group-name (:name group)))
             (is (= 1 (count (:members group))))
             (is (= (mt/user->id :crowberto) (-> group :members first :user_id)))))))))
+
+(deftest delete-group-test
+  (with-scim-setup!
+    (testing "An existing group & memberships can be deleted via SCIM APIs"
+      (mt/with-temp [:model/PermissionsGroup group {:name (format "Test SCIM group %s" (random-uuid))}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (:id group)}]
+        (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))]
+          (scim-client :delete 204 (format "ee/scim/v2/Groups/%s" entity-id))
+          (is (not (t2/exists? :model/PermissionsGroup :id (:id group))))
+          (is (not (t2/exists? :model/PermissionsGroupMembership :group_id (:id group)))))))
+
+    (testing "404 is returned when trying to delete a non-existent group"
+      (scim-client :delete 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))
+
+    (testing "404 is returned when trying to delete the Admin or All Users group as they are not visible to SCIM"
+      (let [entity-ids (t2/select-fn-set :entity_id :model/PermissionsGroup
+                                         {:where [:in :id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
+        (doseq [entity-id entity-ids]
+          (scim-client :delete 404 (format "ee/scim/v2/Groups/%s" entity-id)))))))

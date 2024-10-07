@@ -324,8 +324,8 @@
             db (t2/select-one Database :id (:id (mt/db)))]
         (with-redefs [sync-metadata/make-sync-steps (fn [_]
                                                       [(sync-util/create-sync-step
-                                                         "fake-step"
-                                                         (fn [_] (throw (java.net.ConnectException.))))])]
+                                                        "fake-step"
+                                                        (fn [_] (throw (java.net.ConnectException.))))])]
           (sync/sync-database! db)
           (is (= "aborted" (t2/select-one-fn :initial_sync_status Database :id (:id db)))))))
 

@@ -1,36 +1,37 @@
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  openOrdersTable,
-  tabsShouldBe,
-  popover,
-  restore,
-  visualize,
-  startNewQuestion,
-  visitQuestionAdhoc,
-  saveQuestion,
-  getPersonalCollectionName,
-  visitCollection,
-  queryBuilderHeader,
+  collectionOnTheGoModal,
+  createDashboard,
+  createQuestion,
   entityPickerModal,
   entityPickerModalItem,
   entityPickerModalTab,
-  collectionOnTheGoModal,
+  getPersonalCollectionName,
   modal,
-  pickEntity,
-  visitQuestion,
-  tableHeaderClick,
-  onlyOnOSS,
-  createQuestion,
-  openNotebook,
   notebookButton,
+  onlyOnOSS,
+  openNotebook,
+  openOrdersTable,
+  pickEntity,
+  popover,
+  queryBuilderHeader,
+  restore,
+  saveQuestion,
   shouldDisplayTabs,
+  startNewQuestion,
+  tableHeaderClick,
+  tabsShouldBe,
+  visitCollection,
+  visitQuestion,
+  visitQuestionAdhoc,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -389,8 +390,13 @@ describe("scenarios > question > new", () => {
 
     beforeEach(() => {
       cy.intercept("POST", "/api/card").as("createQuestion");
-      cy.createCollection(collectionInRoot);
-      cy.createDashboard(dashboardInRoot);
+      cy.createCollection(collectionInRoot).then(({ body: { id } }) => {
+        createDashboard({
+          name: "Extra Dashboard",
+          collection_id: id,
+        });
+      });
+      createDashboard(dashboardInRoot);
       // Can't use `startNewQuestion` because it's missing `display: "table"` and
       // adding that will fail a lot of other tests and I don't want to deal with that yet.
       cy.visit("/");
@@ -463,6 +469,117 @@ describe("scenarios > question > new", () => {
         cy.findByText(collectionInRoot.name).should("be.visible");
         cy.findByText(dashboardInRoot.name).should("be.visible");
         cy.findByText("Create a new dashboard").should("be.visible");
+      });
+    });
+
+    describe("creating a new dashboard", () => {
+      beforeEach(() => {
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          cy.findByText("Orders").click();
+        });
+
+        queryBuilderHeader().button("Save").click();
+        cy.log("default selected collection is the root collection");
+
+        cy.findByTestId("save-question-modal").within(modal => {
+          cy.findByText("Save").click();
+          cy.wait("@createQuestion");
+        });
+
+        cy.get("#QuestionSavedModal").within(() => {
+          cy.findByText("Yes please!").click();
+        });
+      });
+
+      it("when selecting a collection", () => {
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Dashboards").click();
+          entityPickerModalItem(1, "Collection in root collection").click();
+          cy.button(/Create a new dashboard/).click();
+        });
+
+        cy.findByRole("dialog", { name: "Create a new dashboard" }).within(
+          () => {
+            cy.findByRole("textbox").type("New Dashboard");
+            cy.button("Create").click();
+          },
+        );
+
+        entityPickerModalItem(1, "Collection in root collection").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+
+        entityPickerModalItem(2, "New Dashboard").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+
+        entityPickerModal()
+          .button(/Select/)
+          .click();
+        cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
+      });
+
+      it("when selecting a collection with no child dashboards (metabase#47000)", () => {
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Dashboards").click();
+          entityPickerModalItem(1, "First collection").click();
+          cy.button(/Create a new dashboard/).click();
+        });
+
+        cy.findByRole("dialog", { name: "Create a new dashboard" }).within(
+          () => {
+            cy.findByRole("textbox").type("New Dashboard");
+            cy.button("Create").click();
+          },
+        );
+
+        entityPickerModalItem(1, "First collection").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+
+        entityPickerModalItem(2, "New Dashboard").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+
+        entityPickerModal()
+          .button(/Select/)
+          .click();
+        cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
+      });
+
+      it("when a dashboard is currently selected", () => {
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Dashboards").click();
+          entityPickerModalItem(1, "Orders in a dashboard").click();
+          cy.button(/Create a new dashboard/).click();
+        });
+
+        cy.findByRole("dialog", { name: "Create a new dashboard" }).within(
+          () => {
+            cy.findByRole("textbox").type("New Dashboard");
+            cy.button("Create").click();
+          },
+        );
+
+        entityPickerModalItem(1, "New Dashboard").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+
+        entityPickerModal()
+          .button(/Select/)
+          .click();
+        cy.location("pathname").should("eq", "/dashboard/12-new-dashboard");
       });
     });
   });

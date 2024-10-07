@@ -6,9 +6,9 @@ import { Divider } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import {
-  useSummarizeQuery,
-  SummarizeBreakoutColumnList,
   SummarizeAggregationItemList,
+  SummarizeBreakoutColumnList,
+  useSummarizeQuery,
 } from "./SummarizeContent";
 import { SidebarView } from "./SummarizeSidebar.styled";
 

@@ -1,7 +1,6 @@
 import { type ChangeEvent, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { getColumnGroupName } from "metabase/common/utils/column-groups";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
@@ -231,7 +230,7 @@ function getColumnSections(
     );
 
     return {
-      name: getColumnGroupName(groupInfo),
+      name: groupInfo.displayName,
       items,
     };
   });

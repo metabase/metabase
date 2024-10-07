@@ -3,22 +3,22 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import type { Expr, Node } from "metabase-lib/v1/expressions/pratt";
 import {
-  parse,
-  lexify,
-  compile,
   ResolverError,
+  compile,
+  lexify,
+  parse,
 } from "metabase-lib/v1/expressions/pratt";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import {
-  useShorthands,
   adjustCase,
-  adjustOptions,
   adjustOffset,
+  adjustOptions,
+  useShorthands,
 } from "./recursive-parser";
-import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
-import { tokenize, TOKEN, OPERATOR } from "./tokenizer";
+import { COMPARISON_OPS, LOGICAL_OPS, resolve } from "./resolver";
+import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
 import type { ErrorWithMessage } from "./types";
 
 import {
@@ -93,12 +93,12 @@ export function diagnose({
     mismatchedParentheses === 1
       ? t`Expecting a closing parenthesis`
       : mismatchedParentheses > 1
-      ? t`Expecting ${mismatchedParentheses} closing parentheses`
-      : mismatchedParentheses === -1
-      ? t`Expecting an opening parenthesis`
-      : mismatchedParentheses < -1
-      ? t`Expecting ${-mismatchedParentheses} opening parentheses`
-      : null;
+        ? t`Expecting ${mismatchedParentheses} closing parentheses`
+        : mismatchedParentheses === -1
+          ? t`Expecting an opening parenthesis`
+          : mismatchedParentheses < -1
+            ? t`Expecting ${-mismatchedParentheses} opening parentheses`
+            : null;
 
   if (message) {
     return { message };

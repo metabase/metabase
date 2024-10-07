@@ -22,8 +22,8 @@
   {id     ms/PositiveInt
    entity Entity}
   (let [[model instance] (model-and-instance entity id)]
-   (when (api/read-check instance)
-     (revision/revisions+details model id))))
+    (when (api/read-check instance)
+      (revision/revisions+details model id))))
 
 (api/defendpoint POST "/revert"
   "Revert an object to a prior revision."

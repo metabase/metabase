@@ -1,4 +1,4 @@
-import { TextEncoder, TextDecoder } from "util";
+import { TextDecoder, TextEncoder } from "util";
 import "cross-fetch/polyfill";
 import "raf/polyfill";
 import "jest-localstorage-mock";

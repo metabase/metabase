@@ -105,16 +105,16 @@
     (redux/post-complete
      (redux/juxt
       (apply fingerprinters/col-wise (for [{:keys [fingerprint], :as metadata} cols]
-                                      (if-not fingerprint
-                                        (fingerprinters/fingerprinter metadata)
-                                        (fingerprinters/constant-fingerprinter fingerprint))))
+                                       (if-not fingerprint
+                                         (fingerprinters/fingerprinter metadata)
+                                         (fingerprinters/constant-fingerprinter fingerprint))))
       (insights/insights cols))
      (fn [[fingerprints insights]]
-       {:metadata (map (fn [fingerprint metadata]
-                         (if (instance? Throwable fingerprint)
-                           metadata
-                           (assoc metadata :fingerprint fingerprint)))
-                       fingerprints
-                       cols)
+       {:metadata (mapv (fn [fingerprint metadata]
+                          (if (instance? Throwable fingerprint)
+                            metadata
+                            (assoc metadata :fingerprint fingerprint)))
+                        fingerprints
+                        cols)
         :insights (when-not (instance? Throwable insights)
                     insights)}))))

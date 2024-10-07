@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import Text from "metabase/components/type/Text";
 import Link from "metabase/core/components/Link";

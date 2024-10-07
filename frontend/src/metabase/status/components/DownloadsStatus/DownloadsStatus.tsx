@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { useSelector, useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { clearAll, getDownloads } from "metabase/redux/downloads";
 import useStatusVisibility from "metabase/status/hooks/use-status-visibility";
 

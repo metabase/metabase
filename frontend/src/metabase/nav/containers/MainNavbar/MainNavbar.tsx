@@ -17,13 +17,13 @@ import { NavRoot, Sidebar } from "./MainNavbar.styled";
 import MainNavbarContainer from "./MainNavbarContainer";
 import getSelectedItems, {
   isCollectionPath,
+  isMetricPath,
   isModelPath,
   isQuestionPath,
-  isMetricPath,
 } from "./getSelectedItems";
 import type {
-  MainNavbarOwnProps,
   MainNavbarDispatchProps,
+  MainNavbarOwnProps,
   SelectedItem,
 } from "./types";
 

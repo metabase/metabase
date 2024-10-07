@@ -9,11 +9,11 @@ import {
 
 import {
   formatInitialValue,
-  getInputType,
-  generateFieldSettingsFromParameters,
-  stripTZInfo,
-  getOrGenerateFieldSettings,
   formatSubmitValues,
+  generateFieldSettingsFromParameters,
+  getInputType,
+  getOrGenerateFieldSettings,
+  stripTZInfo,
 } from "./utils";
 
 const getFirstEntry = (obj: any): any => {

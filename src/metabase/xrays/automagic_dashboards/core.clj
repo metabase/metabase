@@ -273,8 +273,8 @@
 (defn- table-like?
   [card-or-question]
   (and
-    (nil? (get-in card-or-question [:dataset_query :query :aggregation]))
-    (nil? (get-in card-or-question [:dataset_query :query :breakout]))))
+   (nil? (get-in card-or-question [:dataset_query :query :aggregation]))
+   (nil? (get-in card-or-question [:dataset_query :query :breakout]))))
 
 (defn- table-id
   "Get the Table ID from `card-or-question`, which can be either a Card from the DB (which has a `:table_id` property)
@@ -471,7 +471,7 @@
    (-> dashboard-template
        (select-keys [:title :description :transient_title :groups])
        (cond->
-         (:comparison? root)
+        (:comparison? root)
          (update :groups (partial m/map-vals (fn [{:keys [title comparison_title] :as group}]
                                                (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context available-metrics {}))))
@@ -595,14 +595,14 @@
                      template-filters      :filters
                      :as                   indepth}]
                  (let [grounded-values (interesting/identify
-                                         base-context
-                                         {:dimension-specs template-dimensions
-                                          :metric-specs    template-metrics
-                                          :filter-specs    template-filters})
+                                        base-context
+                                        {:dimension-specs template-dimensions
+                                         :metric-specs    template-metrics
+                                         :filter-specs    template-filters})
                        {:keys [description cards] :as dashboard} (generate-base-dashboard
-                                                                   base-context
-                                                                   indepth
-                                                                   grounded-values)]
+                                                                  base-context
+                                                                  indepth
+                                                                  grounded-values)]
                    (when (and description (seq cards))
                      {:title       ((some-fn :short-title :title) dashboard)
                       :description description
@@ -677,8 +677,8 @@
         num-selected (count-leafs selected)]
     (if (pos? num-selected)
       (merge-with concat
-        selected
-        (fill-related (- available-slots num-selected) selectors related))
+                  selected
+                  (fill-related (- available-slots num-selected) selectors related))
       {})))
 
 (def ^:private related-selectors
@@ -697,13 +697,13 @@
               :related  [sideways sideways]
               :compare  [compare compare]})
    LegacyMetric  (let [down     [[:drilldown-fields]]
-                 sideways [[:metrics :segments]]
-                 up       [[:table]]
-                 compare  [[:compare]]]
-             {:zoom-in  [down down]
-              :zoom-out [up]
-              :related  [sideways sideways sideways]
-              :compare  [compare compare]})
+                       sideways [[:metrics :segments]]
+                       up       [[:table]]
+                       compare  [[:compare]]]
+                   {:zoom-in  [down down]
+                    :zoom-out [up]
+                    :related  [sideways sideways sideways]
+                    :compare  [compare compare]})
    Field   (let [sideways [[:fields]]
                  up       [[:table] [:metrics :segments]]
                  compare  [[:compare]]]
@@ -780,13 +780,13 @@
          :as                 template} (if dashboard-template
                                          (dashboard-templates/get-dashboard-template dashboard-template)
                                          (first (matching-dashboard-templates
-                                                  (dashboard-templates/get-dashboard-templates dashboard-templates-prefix)
-                                                  root)))
+                                                 (dashboard-templates/get-dashboard-templates dashboard-templates-prefix)
+                                                 root)))
         grounded-values (interesting/identify
-                          base-context
-                          {:dimension-specs template-dimensions
-                           :metric-specs    template-metrics
-                           :filter-specs    template-filters})]
+                         base-context
+                         {:dimension-specs template-dimensions
+                          :metric-specs    template-metrics
+                          :filter-specs    template-filters})]
     (generate-dashboard base-context template grounded-values)))
 
 (defmulti automagic-analysis
@@ -823,9 +823,9 @@
            (->> aggregation-clause second (t2/select-one LegacyMetric :id))
            (let [table-id (table-id question)]
              (mi/instance LegacyMetric {:definition {:aggregation  [aggregation-clause]
-                                               :source-table table-id}
-                                  :name       (names/metric->description root aggregation-clause)
-                                  :table_id   table-id}))))
+                                                     :source-table table-id}
+                                        :name       (names/metric->description root aggregation-clause)
+                                        :table_id   table-id}))))
        (get-in question [:dataset_query :query :aggregation])))
 
 (mu/defn- collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf Field)]]

@@ -1,31 +1,32 @@
 import { USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
-  ORDERS_DASHBOARD_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  describeEE,
-  popover,
-  restore,
-  visitDashboard,
-  modal,
+  createDashboard,
+  dashboardGrid,
   dashboardHeader,
-  navigationSidebar,
-  openNavigationSidebar,
+  describeEE,
   describeWithSnowplow,
+  enableTracking,
+  entityPickerModal,
+  entityPickerModalTab,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
-  resetSnowplow,
-  enableTracking,
   main,
-  undoToast,
+  modal,
+  navigationSidebar,
+  openNavigationSidebar,
+  popover,
+  resetSnowplow,
+  restore,
   setTokenFeatures,
-  entityPickerModal,
-  dashboardGrid,
-  entityPickerModalTab,
+  undoToast,
+  updateSetting,
+  visitDashboard,
   visitQuestion,
-  createDashboard,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -384,10 +385,8 @@ describe("scenarios > home > custom homepage", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
-      cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
-        value: ORDERS_DASHBOARD_ID,
-      });
+      updateSetting("custom-homepage", true);
+      updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
     });
 
     it("should not flash the homescreen before redirecting (#37089)", () => {

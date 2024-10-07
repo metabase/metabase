@@ -20,9 +20,10 @@
 
 (defsetting slack-token
   (deferred-tru
-    (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
-         "Please use a new Slack app integration instead."))
+   (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
+        "Please use a new Slack app integration instead."))
   :deprecated "0.42.0"
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :doc        false
   :audit      :never)
@@ -31,6 +32,7 @@
   (deferred-tru
    (str "Bot user OAuth token for connecting the Metabase Slack app. "
         "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :getter (fn []
             (-> (setting/get-value-of-type :string :slack-app-token)
@@ -42,8 +44,8 @@
 
 (defsetting slack-token-valid?
   (deferred-tru
-    (str "Whether the current Slack app token, if set, is valid. "
-         "Set to 'false' if a Slack API request returns an auth error."))
+   (str "Whether the current Slack app token, if set, is valid. "
+        "Set to 'false' if a Slack API request returns an auth error."))
   :type       :boolean
   :visibility :settings-manager
   :doc        false
@@ -57,6 +59,7 @@
 
 (defsetting slack-cached-channels-and-usernames
   "A cache shared between instances for storing an instance's slack channels and users."
+  :encryption :when-encryption-key-set
   :visibility :internal
   :type       :json
   :doc        false
@@ -76,6 +79,7 @@
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :default "metabase_files"
+  :encryption :no
   :visibility :settings-manager
   :audit      :getter
   :setter (fn [channel-name]
@@ -371,7 +375,6 @@
   (POST "files.getUploadURLExternal" {:query-params {:filename filename
                                                      :length   (count file)}}))
 
-
 (defn- upload-file-to-url! [upload-url file]
   (let [response (http/post upload-url {:multipart [{:name "file", :content file}]})]
     (if (= (:status response) 200)
@@ -406,10 +409,10 @@
    & [attachments]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
   (POST "chat.postMessage"
-        {:form-params
-         {:channel     channel-id
-          :username    "MetaBot"
-          :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
-          :text        text-or-nil
-          :attachments (when (seq attachments)
-                         (json/generate-string attachments))}}))
+    {:form-params
+     {:channel     channel-id
+      :username    "MetaBot"
+      :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
+      :text        text-or-nil
+      :attachments (when (seq attachments)
+                     (json/generate-string attachments))}}))

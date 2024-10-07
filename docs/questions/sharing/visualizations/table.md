@@ -22,7 +22,7 @@ Click on a column heading and Metabase will present quick options for filtering 
 
 ### Filter by this column
 
-You can enter a value and filter the column  value:
+You can enter a value and filter the column value:
 
 Text filters:
 
@@ -99,14 +99,12 @@ You can display the text as is, or you can display the text as a link. If you se
 For example, you could create a dynamic URL using a parameter from another column in the results:
 
 ```html
-{% raw %}
-https://www.example.com/{{category}}
-{% endraw %}
+{% raw %} https://www.example.com/{{category}} {% endraw %}
 ```
 
-In the above example, Metabase would take the value for the `category` column for that row  (in this case `widget`), and insert it into the URL:
+In the above example, Metabase would take the value for the `category` column for that row (in this case `widget`), and insert it into the URL:
 
-```
+```html
 https://www.example.com/widget
 ```
 
@@ -173,7 +171,7 @@ Gives you various options for how commas and periods are used to separate the nu
 - 100000.00
 - 100'000.00
 
-### Minimum number of decimal places
+### Number of decimal places
 
 Forces the number to be displayed with exactly this many decimal places.
 
@@ -195,11 +193,11 @@ Lets you change the unit of currency from whatever the system default is.
 
 ### Currency label style
 
- Allows you to switch between displaying the currency label as:
+Allows you to switch between displaying the currency label as:
 
- - a symbol (like $)
- - a code (like USD)
- - the full name of the currency (like "US dollars")
+- a symbol (like $)
+- a code (like USD)
+- the full name of the currency (like "US dollars")
 
 ### Where to display the unit of currency
 

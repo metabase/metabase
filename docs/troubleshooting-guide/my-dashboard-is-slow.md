@@ -38,7 +38,7 @@ Caching takes less effort because it doesn't involve any changes to your schemas
 
 ## Embedded dashboard is slow compared to original dashboard
 
-1. To speed up the embedded dashboard, set up a [locked parameter to pre-filter your data](../embedding/static-embedding-parameters.md#restricting-data-in-a-static-embed).
+1. To speed up the embedded dashboard, set up a [locked parameter to pre-filter your data](../embedding/static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters).
 
 **Explanation**
 

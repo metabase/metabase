@@ -194,7 +194,7 @@
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
         (cond->                                             ; card
-          (card/model? card) (t2/hydrate :persisted)))))
+         (card/model? card) (t2/hydrate :persisted)))))
 
 (defn get-card
   "Get `Card` with ID."
@@ -282,7 +282,7 @@
 (defmulti series-are-compatible?
   "Check if the `second-card` is compatible to be used as series of `card`."
   (fn [card _second-card _database-id->metadata-provider]
-   (:display card)))
+    (:display card)))
 
 (defmethod series-are-compatible? :area
   [first-card second-card database-id->metadata-provider]
@@ -334,7 +334,7 @@
         database-ids (set (keys database-id->metadata-provider))
         database-id->metadata-provider (->> matching-cards
                                             (filter #(or (nil? (get-in % [:visualization_settings :graph.metrics]))
-                                                       (nil? (get-in % [:visualization_settings :graph.dimensions]))))
+                                                         (nil? (get-in % [:visualization_settings :graph.dimensions]))))
                                             (keep :database_id)
                                             (set)
                                             (remove #(contains? database-ids %))
@@ -346,8 +346,8 @@
                                          ;; columns name on native query are not match with the column name in viz-settings. why??
                                          ;; so we can't use series-are-compatible? to filter out incompatible native cards.
                                          ;; => we assume all native queries are compatible and FE will figure it out later
-                                         (= (:query_type %) :native)
-                                         (series-are-compatible? card % database-id->metadata-provider))))]
+                                        (= (:query_type %) :native)
+                                        (series-are-compatible? card % database-id->metadata-provider))))]
     (if page-size
       [database-id->metadata-provider (take page-size compatible-cards)]
       [database-id->metadata-provider compatible-cards])))
@@ -362,10 +362,10 @@
   - page-size:   is nullable, it'll try to fetches exactly `page-size` cards if there are enough cards."
   ([card options]
    (fetch-compatible-series
-     card
-     options
-     {(:database_id card) (lib.metadata.jvm/application-database-metadata-provider (:database_id card))}
-     []))
+    card
+    options
+    {(:database_id card) (lib.metadata.jvm/application-database-metadata-provider (:database_id card))}
+    []))
 
   ([card {:keys [page-size] :as options} database-id->metadata-provider current-cards]
    (let [[database-id->metadata-provider cards] (fetch-compatible-series* card database-id->metadata-provider options)
@@ -427,7 +427,6 @@
                                         :events/start     (when start (u.date/parse start))
                                         :events/end       (when end (u.date/parse end))})))
 
-
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
 (defn check-data-permissions-for-query
@@ -453,7 +452,7 @@
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 
 (mr/def ::card-type
-  (into [:enum {:decode/json keyword}] (mapcat (juxt identity u/qualified-name)) card/card-types))
+  (into [:enum {:decode/json keyword}] card/card-types))
 
 (defn- check-if-card-can-be-saved
   [dataset-query card-type]
@@ -465,7 +464,7 @@
                        :status-code 400})))))
 
 (api/defendpoint POST "/"
-  "Create a new `Card`."
+  "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
   {name                   ms/NonBlankString
@@ -496,7 +495,7 @@
   [id]
   {id [:maybe ms/PositiveInt]}
   (let [orig-card (api/read-check Card id)
-        new-name  (str (trs "Copy of ") (:name orig-card))
+        new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
     (-> (card/create-card! new-card @api/*current-user*)
         hydrate-card-details
@@ -606,7 +605,7 @@
   ;; Sorting by `:collection_position` to ensure lower position cards are appended first
   (let [sorted-cards        (sort-by :collection_position cards)
         max-position-result (t2/select-one [Card [:%max.collection_position :max_position]]
-                              :collection_id new-collection-id-or-nil)
+                                           :collection_id new-collection-id-or-nil)
         ;; collection_position for the next card in the collection
         starting-position   (inc (get max-position-result :max_position 0))]
 
@@ -636,10 +635,10 @@
   ;; for each affected card...
   (when (seq card-ids)
     (let [cards (t2/select [Card :id :collection_id :collection_position :dataset_query]
-                  {:where [:and [:in :id (set card-ids)]
-                                [:or [:not= :collection_id new-collection-id-or-nil]
-                                  (when new-collection-id-or-nil
-                                    [:= :collection_id nil])]]})] ; poisioned NULLs = ick
+                           {:where [:and [:in :id (set card-ids)]
+                                    [:or [:not= :collection_id new-collection-id-or-nil]
+                                     (when new-collection-id-or-nil
+                                       [:= :collection_id nil])]]})] ; poisioned NULLs = ick
       ;; ...check that we have write permissions for it...
       (doseq [card cards]
         (api/write-check card))
@@ -676,9 +675,7 @@
   (move-cards-to-collection! collection_id card_ids)
   {:status :ok})
 
-
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
-
 
 (api/defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
@@ -773,9 +770,9 @@
   {card-id      ms/PositiveInt
    ignore_cache [:maybe :boolean]}
   (qp.card/process-query-for-card card-id :api
-                                    :parameters   parameters
-                                    :qp           qp.pivot/run-pivot-query
-                                    :ignore-cache ignore_cache))
+                                  :parameters   parameters
+                                  :qp           qp.pivot/run-pivot-query
+                                  :ignore-cache ignore_cache))
 
 (api/defendpoint POST "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
@@ -891,8 +888,9 @@
                                             :db-id         (or (:db_id uploads-db-settings)
                                                                (throw (ex-info (tru "The uploads database is not configured.")
                                                                                {:status-code 422})))})]
-      {:status 200
-       :body   (:id model)})
+      {:status  200
+       :body    (:id model)
+       :headers {"metabase-table-id" (str (:table-id model))}})
     (catch Throwable e
       {:status (or (-> e ex-data :status-code)
                    500)

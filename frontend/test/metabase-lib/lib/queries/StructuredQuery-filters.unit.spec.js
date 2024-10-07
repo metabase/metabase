@@ -1,10 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
 import Dimension from "metabase-lib/v1/Dimension";
 import {
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 const metadata = createMockMetadata({

@@ -31,7 +31,7 @@
             (base64-encode
              (.digest (doto (MessageDigest/getInstance "SHA-256")
                         (.update (.getBytes (slurp (io/resource resource-filename))))))))]
-    (mapv file-hash [ ;; inline script in index.html that sets `MetabaseBootstrap` and the like
+    (mapv file-hash [;; inline script in index.html that sets `MetabaseBootstrap` and the like
                      "frontend_client/inline_js/index_bootstrap.js"
                      ;; inline script in init.html
                      "frontend_client/inline_js/init.js"
@@ -62,22 +62,22 @@
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
-                                  ["'self'"
-                                   "https://maps.google.com"
-                                   "https://accounts.google.com"
-                                   (when (public-settings/anon-tracking-enabled)
-                                     "https://www.google-analytics.com")
+                                 ["'self'"
+                                  "https://maps.google.com"
+                                  "https://accounts.google.com"
+                                  (when (public-settings/anon-tracking-enabled)
+                                    "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
-                                   (when config/is-dev?
-                                     "http://localhost:8080")
+                                  (when config/is-dev?
+                                    "http://localhost:8080")
                                    ;; for react dev tools to work in Firefox until resolution of
                                    ;; https://github.com/facebook/react/issues/17997
-                                   (when config/is-dev?
-                                     "'unsafe-inline'")]
-                                  ;; CLJS REPL
                                   (when config/is-dev?
-                                    ["'unsafe-eval'"
-                                     "http://localhost:9630"])
+                                    "'unsafe-inline'")]
+                                  ;; CLJS REPL
+                                 (when config/is-dev?
+                                   ["'unsafe-eval'"
+                                    "http://localhost:9630"])
                                  (when-not config/is-dev?
                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
@@ -93,6 +93,7 @@
                                  (when config/is-dev?
                                    "http://localhost:9630")
                                  "https://accounts.google.com"]
+                  :frame-src     ["*"]
                   :font-src     ["*"]
                   :img-src      ["*"
                                  "'self' data:"]
@@ -101,9 +102,6 @@
                                  "https://accounts.google.com"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
-                                 ;; Google analytics
-                                 (when (public-settings/anon-tracking-enabled)
-                                   "www.google-analytics.com")
                                  ;; Snowplow analytics
                                  (when (public-settings/anon-tracking-enabled)
                                    (snowplow/snowplow-url))
@@ -120,6 +118,11 @@
   []
   (when (and (embed.settings/enable-embedding) (embed.settings/embedding-app-origin))
     (embed.settings/embedding-app-origin)))
+
+(defn- embedding-app-origin-sdk
+  []
+  (when (embed.settings/enable-embedding)
+    (str "localhost:* " (embed.settings/embedding-app-origin))))
 
 (defn- content-security-policy-header-with-frame-ancestors
   [allow-iframes? nonce]
@@ -140,7 +143,6 @@
           {:protocol protocol
            :domain domain
            :port port})))))
-
 
 (defn approved-domain?
   "Checks if the domain is compatible with the reference one"
@@ -164,10 +166,10 @@
    (= port reference-port)))
 
 (defn parse-approved-origins
-    "Parses the space separated string of approved origins"
-    [approved-origins-raw]
-    (let [urls (str/split approved-origins-raw #" +")]
-     (keep parse-url urls)))
+  "Parses the space separated string of approved origins"
+  [approved-origins-raw]
+  (let [urls (str/split approved-origins-raw #" +")]
+    (keep parse-url urls)))
 
 (defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
@@ -177,19 +179,20 @@
      (let [approved-list (parse-approved-origins approved-origins-raw)
            origin        (parse-url raw-origin)]
        (some (fn [approved-origin]
-                           (and
-                            (approved-domain? (:domain origin) (:domain approved-origin))
-                            (approved-protocol? (:protocol origin) (:protocol approved-origin))
-                            (approved-port? (:port origin) (:port approved-origin))))
-                      approved-list)))))
+               (and
+                (approved-domain? (:domain origin) (:domain approved-origin))
+                (approved-protocol? (:protocol origin) (:protocol approved-origin))
+                (approved-port? (:port origin) (:port approved-origin))))
+             approved-list)))))
 
-(defn- access-control-headers
+(defn access-control-headers
+  "Returns headers for CORS requests"
   [origin]
   (merge
    (when
-    (approved-origin? origin (embedding-app-origin))
-    {"Access-Control-Allow-Origin" origin
-     "Vary"                        "Origin"})
+    (approved-origin? origin (embedding-app-origin-sdk))
+     {"Access-Control-Allow-Origin" origin
+      "Vary"                        "Origin"})
 
    {"Access-Control-Allow-Headers"   "*"
     "Access-Control-Allow-Methods"   "*"
@@ -212,13 +215,13 @@
      (cache-prevention-headers))
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
-   (when (embedding-app-origin) (access-control-headers origin))
+   (when (embedding-app-origin-sdk) (access-control-headers origin))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
      {"X-Frame-Options"                 (if (embedding-app-origin)
                                           (format "ALLOW-FROM %s" (first-embedding-app-origin))
                                           "DENY")})
-   { ;; Tell browser to block suspected XSS attacks
+   {;; Tell browser to block suspected XSS attacks
     "X-XSS-Protection"                  "1; mode=block"
     ;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"

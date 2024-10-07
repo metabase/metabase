@@ -7,7 +7,7 @@
    [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -24,17 +24,19 @@
                   {:last_used_at (into [:case]
                                        (mapcat (fn [[id timestamp]]
                                                  [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
-                                               card-id->timestamp))})
+                                               card-id->timestamp))
+                   ;; Set updated_at to its current value to prevent it from updating automatically
+                   :updated_at :updated_at})
       (catch Throwable e
         (log/error e "Error updating used cards")))))
 
 (defonce ^:private
   update-used-cards-queue
   (delay
-   (grouper/start!
-    update-used-cards!*
-    :capacity 500
-    :interval (* update-used-card-interval-seconds 1000))))
+    (grouper/start!
+     update-used-cards!*
+     :capacity 500
+     :interval (* update-used-card-interval-seconds 1000))))
 
 (mu/defn update-used-cards! :- ::qp.schema/qp
   "Middleware that get all card-ids that were used during a query execution and updates their `last_used_at`.

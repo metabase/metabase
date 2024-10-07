@@ -2,12 +2,12 @@ import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { StyleHTMLAttributes } from "react";
 import {
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-  useMemo,
   forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import { connect } from "react-redux";
 import { useMount, usePrevious, useThrottle, useUnmount } from "react-use";
@@ -40,31 +40,31 @@ import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
   Dashboard,
-  Parameter,
   FieldValue,
+  Parameter,
   RowValue,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
-import type { ValuesMode, LoadingStateType } from "./types";
+import type { LoadingStateType, ValuesMode } from "./types";
 import {
-  canUseParameterEndpoints,
-  isNumeric,
-  hasList,
-  isSearchable,
-  isExtensionOfPreviousSearch,
-  showRemapping,
-  getNonVirtualFields,
-  dedupeValues,
-  searchFieldValues,
-  getValuesMode,
-  shouldList,
-  canUseDashboardEndpoints,
   canUseCardEndpoints,
-  getTokenFieldPlaceholder,
+  canUseDashboardEndpoints,
+  canUseParameterEndpoints,
+  dedupeValues,
   getLabel,
+  getNonVirtualFields,
+  getTokenFieldPlaceholder,
   getValue,
+  getValuesMode,
+  hasList,
+  isExtensionOfPreviousSearch,
+  isNumeric,
+  isSearchable,
+  searchFieldValues,
+  shouldList,
+  showRemapping,
 } from "./utils";
 
 const MAX_SEARCH_RESULTS = 100;
@@ -205,9 +205,8 @@ export function FieldValuesWidgetInner({
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else if (canUseParameterEndpoints(parameter)) {
-        const { values, has_more_values } = await dispatchFetchParameterValues(
-          query,
-        );
+        const { values, has_more_values } =
+          await dispatchFetchParameterValues(query);
         newOptions = values;
         newValuesMode = has_more_values ? "search" : newValuesMode;
       } else {

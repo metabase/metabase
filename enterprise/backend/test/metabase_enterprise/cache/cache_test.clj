@@ -142,8 +142,8 @@
                                                           :config         {:schedule "0 * * * * ?"}
                                                           :invalidated_at (t/offset-date-time)}]
         (let [run-query!  (fn [card-id & params]
-                           (-> (apply mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id) params)
-                               (select-keys [:cached])))
+                            (-> (apply mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id) params)
+                                (select-keys [:cached])))
               invalidate! (fn [status & args]
                             (apply mt/user-http-request :crowberto :post status "cache/invalidate" args))]
 
@@ -151,38 +151,38 @@
                   (mt/user-http-request :crowberto :get 200 "cache/"
                                         :model "database")))
 
-            (testing "making a query will cache it"
-              (is (=? {:cached nil :data some?}
-                      (run-query! card1-id)))
-              (is (=? {:cached some? :data some?}
-                      (run-query! card1-id)))
-              (is (=? {:cached some? :data some?}
-                      (run-query! card2-id))))
+          (testing "making a query will cache it"
+            (is (=? {:cached nil :data some?}
+                    (run-query! card1-id)))
+            (is (=? {:cached some? :data some?}
+                    (run-query! card1-id)))
+            (is (=? {:cached some? :data some?}
+                    (run-query! card2-id))))
 
-            (testing "invalidation drops cache only for affected card"
-              (is (=? {:count 1}
-                      (invalidate! 200 :question card2-id :include :overrides)))
-              (is (=? {:cached some? :data some?}
-                      (run-query! card1-id)))
-              (is (=? {:cached nil :data some?}
-                      (run-query! card2-id))))
+          (testing "invalidation drops cache only for affected card"
+            (is (=? {:count 1}
+                    (invalidate! 200 :question card2-id :include :overrides)))
+            (is (=? {:cached some? :data some?}
+                    (run-query! card1-id)))
+            (is (=? {:cached nil :data some?}
+                    (run-query! card2-id))))
 
-            (testing "but invalidating a whole config drops cache for any affected card"
-              (doseq [card-id [card1-id card2-id]]
-                (is (=? {:count 1}
-                        (invalidate! 200 :database (mt/id))))
-                (is (=? {:cached nil :data some?}
-                        (run-query! card-id {:ignore_cache true})))))
-
-            (testing "when invalidating database config directly, dashboard-related queries are still cached"
+          (testing "but invalidating a whole config drops cache for any affected card"
+            (doseq [card-id [card1-id card2-id]]
               (is (=? {:count 1}
                       (invalidate! 200 :database (mt/id))))
-              (is (=? {:cached some? :data some?}
-                      (run-query! card1-id {:dashboard_id (:id dash)}))))
-
-            (testing "but with overrides - will go through every card and mark cache invalidated"
-              ;; not a concrete number here since (mt/id) can have a bit more than 2 cards we've currently defined
-              (is (=? {:count pos-int?}
-                      (invalidate! 200 :include :overrides :database (mt/id))))
               (is (=? {:cached nil :data some?}
-                      (run-query! card1-id {:dashboard_id (:id dash)})))))))))
+                      (run-query! card-id {:ignore_cache true})))))
+
+          (testing "when invalidating database config directly, dashboard-related queries are still cached"
+            (is (=? {:count 1}
+                    (invalidate! 200 :database (mt/id))))
+            (is (=? {:cached some? :data some?}
+                    (run-query! card1-id {:dashboard_id (:id dash)}))))
+
+          (testing "but with overrides - will go through every card and mark cache invalidated"
+              ;; not a concrete number here since (mt/id) can have a bit more than 2 cards we've currently defined
+            (is (=? {:count pos-int?}
+                    (invalidate! 200 :include :overrides :database (mt/id))))
+            (is (=? {:cached nil :data some?}
+                    (run-query! card1-id {:dashboard_id (:id dash)})))))))))

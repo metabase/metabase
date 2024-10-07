@@ -6,9 +6,9 @@ import Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
 import { createMockColumn, createMockDataset } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 registerVisualizations();

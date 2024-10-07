@@ -7,9 +7,9 @@ import {
 import {
   getDashboardComplete,
   getEditingParameter,
-  getTabHiddenParameterSlugs,
   getIsEditing,
   getIsNightMode,
+  getTabHiddenParameterSlugs,
   getValuePopulatedParameters,
 } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";

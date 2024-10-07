@@ -10,13 +10,13 @@
 (deftest ^:parallel summarize-column-availability-test
   (testing "summarize-column is available for column headers with no aggregations or breakouts"
     (canned/canned-test
-      :drill-thru/summarize-column
-      (fn [test-case context {:keys [click]}]
-        (and (= click :header)
-             (not (:native? test-case))
-             (zero? (:aggregations test-case))
-             (zero? (:breakouts test-case))
-             (not (lib.types.isa/structured? (:column context))))))))
+     :drill-thru/summarize-column
+     (fn [test-case context {:keys [click]}]
+       (and (= click :header)
+            (not (:native? test-case))
+            (zero? (:aggregations test-case))
+            (zero? (:breakouts test-case))
+            (not (lib.types.isa/structured? (:column context))))))))
 
 (deftest ^:parallel returns-summarize-column-test-1
   (lib.drill-thru.tu/test-returns-drill

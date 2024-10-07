@@ -21,14 +21,14 @@
 
 (defn- run-count-query [query]
   (or (ffirst
-       (mt/formatted-rows [int]
-         (qp/process-query query)))
+       (mt/formatted-rows
+        [int]
+        (qp/process-query query)))
       ;; HACK (!) Mongo returns `nil` count instead of 0 — (#5419) — workaround until this is fixed
       0))
 
 (defn- query-with-default-parameter-value [query param-name param-value]
   (assoc-in query [:native :template-tags (name param-name) :default] param-value))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Template Tag Params                                               |
@@ -109,10 +109,10 @@
       (let [q   (str "SELECT * FROM {{#" card-id "}} LIMIT 2")
             tt  (lib-native/extract-template-tags q)
             res (qp/process-query
-                  {:database (mt/id)
-                   :type     :native
-                   :native   {:query         q
-                              :template-tags tt}})]
+                 {:database (mt/id)
+                  :type     :native
+                  :native   {:query         q
+                             :template-tags tt}})]
         (is (=? {:status :completed}
                 res))))))
 
@@ -212,8 +212,9 @@
                                          :target [:dimension (mt/$ids *checkins.date)] ; expands to appropriate field-literal form
                                          :value  "2014-01-06"}])]
           (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
-                 (mt/formatted-rows :checkins
-                   (qp/process-query query)))))))))
+                 (mt/formatted-rows
+                  :checkins
+                  (qp/process-query query)))))))))
 
 (deftest ^:parallel string-escape-test
   ;; test `:sql` drivers that support native parameters
@@ -250,19 +251,19 @@
       (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (\"PUBLIC\".\"COUNTRY\".\"NAME\" = 'US')"
               :params []}
              (qp.compile/compile-with-inline-parameters
-               {:type       :native
-                :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
-                             :template-tags {"country"
-                                             {:name         "country"
-                                              :display-name "Country"
-                                              :type         :dimension
-                                              :dimension    [:field (mt/id :country :name) nil]
-                                              :options      {:case-sensitive false}
-                                              :widget-type  :string/contains}}}
-                :database   (mt/id)
-                :parameters [{:type   :string/=
-                              :target [:dimension [:template-tag "country"]]
-                              :value  ["US"]}]}))))))
+              {:type       :native
+               :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
+                            :template-tags {"country"
+                                            {:name         "country"
+                                             :display-name "Country"
+                                             :type         :dimension
+                                             :dimension    [:field (mt/id :country :name) nil]
+                                             :options      {:case-sensitive false}
+                                             :widget-type  :string/contains}}}
+               :database   (mt/id)
+               :parameters [{:type   :string/=
+                             :target [:dimension [:template-tag "country"]]
+                             :value  ["US"]}]}))))))
 
 (deftest ^:parallel native-with-param-options-different-than-tag-type-test-2
   (testing "Overriding the widget type in parameters should not drop case-senstive option when compatible"
@@ -270,19 +271,19 @@
       (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (LOWER(\"PUBLIC\".\"COUNTRY\".\"NAME\") LIKE '%us')"
               :params []}
              (qp.compile/compile-with-inline-parameters
-               {:type       :native
-                :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
-                             :template-tags {"country"
-                                             {:name         "country"
-                                              :display-name "Country"
-                                              :type         :dimension
-                                              :dimension    [:field (mt/id :country :name) nil]
-                                              :options      {:case-sensitive false}
-                                              :widget-type  :string/contains}}}
-                :database   (mt/id)
-                :parameters [{:type   :string/ends-with
-                              :target [:dimension [:template-tag "country"]]
-                              :value  ["US"]}]}))))))
+              {:type       :native
+               :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
+                            :template-tags {"country"
+                                            {:name         "country"
+                                             :display-name "Country"
+                                             :type         :dimension
+                                             :dimension    [:field (mt/id :country :name) nil]
+                                             :options      {:case-sensitive false}
+                                             :widget-type  :string/contains}}}
+               :database   (mt/id)
+               :parameters [{:type   :string/ends-with
+                             :target [:dimension [:template-tag "country"]]
+                             :value  ["US"]}]}))))))
 
 (deftest ^:parallel native-with-spliced-params-test-2
   (testing "Make sure we can convert a parameterized query to a native query with spliced params"
@@ -399,19 +400,19 @@
   (mt/test-drivers (->> (mt/normal-drivers-with-feature :native-parameters ::get-parameter-count)
                         (filter #(isa? driver/hierarchy % :sql)))
     (is (thrown-with-msg?
-          Exception
-          #"It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers."
-          (qp/process-query
-            {:type       :native
-             :native     {:query         "SELECT * FROM \n[[-- {{name}}]]\n VENUES [[WHERE {{name}} = price]]"
-                          :template-tags {"name"
-                                          {:name         "name"
-                                           :display-name "Name"
-                                           :type         :text}}}
-             :database   (mt/id)
-             :parameters [{:type   :category
-                           :target [:variable [:template-tag "name"]]
-                           :value "foobar"}]})))))
+         Exception
+         #"It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers."
+         (qp/process-query
+          {:type       :native
+           :native     {:query         "SELECT * FROM \n[[-- {{name}}]]\n VENUES [[WHERE {{name}} = price]]"
+                        :template-tags {"name"
+                                        {:name         "name"
+                                         :display-name "Name"
+                                         :type         :text}}}
+           :database   (mt/id)
+           :parameters [{:type   :category
+                         :target [:variable [:template-tag "name"]]
+                         :value "foobar"}]})))))
 
 (deftest ^:parallel ignore-parameters-for-unparameterized-native-query-test
   (testing "Parameters passed for unparameterized queries should get ignored"

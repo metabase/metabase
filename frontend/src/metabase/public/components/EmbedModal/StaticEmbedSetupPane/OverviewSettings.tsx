@@ -76,7 +76,13 @@ export const OverviewSettings = ({
           <Text>{jt`Check out the ${(
             <ExternalLink
               key="doc"
-              href={`${docsUrl}?utm_source=${plan}&utm_media=static-embed-settings-overview`}
+              href={`${docsUrl}?${new URLSearchParams({
+                utm_source: "product",
+                utm_medium: "docs",
+                utm_campaign: "embedding-static",
+                utm_content: "static-embed-settings-overview",
+                source_plan: plan,
+              })}`}
             >{t`documentation`}</ExternalLink>
           )} for more.`}</Text>
         </StaticEmbedSetupPaneSettingsContentSection>

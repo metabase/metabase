@@ -1,49 +1,67 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  FIRST_COLLECTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  type NativeQuestionDetails,
   type StructuredQuestionDetails,
+  assertQueryBuilderRowCount,
+  assertQueryBuilderRowCount,
   createNativeQuestion,
   createQuestion,
+  describeEE,
+  describeEE,
+  editDashboard,
+  editDashboard,
   enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
   getNotebookStep,
+  getPinnedSection,
+  getPinnedSection,
   hovercard,
   join,
   mapColumnTo,
   modal,
+  navigationSidebar,
+  navigationSidebar,
+  newButton,
+  newButton,
   openColumnOptions,
   openNotebook,
   openQuestionActions,
   popover,
+  questionInfoButton,
+  questionInfoButton,
   renameColumn,
   restore,
+  rightSidebar,
+  rightSidebar,
   saveMetadataChanges,
   saveQuestion,
+  setDropdownFilterType,
+  setDropdownFilterType,
+  setFilter,
+  setFilter,
+  setTokenFeatures,
+  setTokenFeatures,
+  sidebar,
+  sidebar,
+  sidesheet,
   startNewModel,
   startNewQuestion,
+  summarize,
+  summarize,
   tableHeaderClick,
+  tableInteractive,
+  tableInteractive,
   undoToast,
+  visitDashboard,
+  visitDashboard,
   visitModel,
   visualize,
-  questionInfoButton,
-  visitDashboard,
-  editDashboard,
-  setFilter,
-  setDropdownFilterType,
-  sidebar,
-  describeEE,
-  setTokenFeatures,
-  getPinnedSection,
-  summarize,
-  rightSidebar,
-  assertQueryBuilderRowCount,
-  navigationSidebar,
-  newButton,
-  tableInteractive,
 } from "e2e/support/helpers";
 import type { CardId, FieldReference } from "metabase-types/api";
 
@@ -896,7 +914,7 @@ describeEE("issue 43088", () => {
 
   it("should be able to create ad-hoc questions based on instance analytics models (metabase#43088)", () => {
     cy.visit("/");
-    navigationSidebar().findByText("Metabase analytics").click();
+    navigationSidebar().findByText("Usage analytics").click();
     getPinnedSection().findByText("People").scrollIntoView().click();
     cy.wait("@dataset");
     summarize();
@@ -977,7 +995,7 @@ describe("issue 34574", () => {
       questionInfoButton().click();
     });
 
-    cy.findByTestId("sidebar-right").within(() => {
+    sidesheet().within(() => {
       cy.log("Set the model description to a markdown text");
       cy.intercept("GET", "/api/card/*/query_metadata").as("metadata");
       cy.findByPlaceholderText("Add description").type(
@@ -993,7 +1011,7 @@ describe("issue 34574", () => {
     cy.log(
       "Make sure the markdown is properly preserved in the model details page",
     );
-    cy.findByRole("link", { name: "Model details" }).click();
+    cy.findByRole("link", { name: "See more about this model" }).click();
     cy.findByLabelText("Description").within(assertMarkdownPreview);
 
     cy.log(
@@ -1259,4 +1277,40 @@ describe.skip("issues 28270, 33708", () => {
         .and("contain.text", "Reviews");
     });
   }
+});
+
+describe("issue 46221", () => {
+  const modelDetails: NativeQuestionDetails = {
+    name: "46221",
+    native: { query: "select 42" },
+    type: "model",
+    collection_id: FIRST_COLLECTION_ID as number,
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createNativeQuestion(modelDetails, { visitQuestion: true });
+  });
+
+  it("should retain the same collection name between ad-hoc question based on a model and a model itself (metabase#46221)", () => {
+    cy.location("pathname").should("match", /^\/model\/\d+/);
+    cy.findByTestId("head-crumbs-container")
+      .should("contain", "First collection")
+      .and("contain", modelDetails.name);
+
+    cy.log("Change the viz type");
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("sidebar-left").within(() => {
+      cy.findByTestId("Table-button").click();
+    });
+
+    cy.log("Make sure we're now in an ad-hoc question mode");
+    cy.location("pathname").should("eq", "/question");
+
+    cy.findByTestId("head-crumbs-container")
+      .should("contain", "First collection")
+      .and("contain", modelDetails.name);
+  });
 });

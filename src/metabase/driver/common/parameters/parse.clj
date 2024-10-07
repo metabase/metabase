@@ -107,8 +107,8 @@
   (params/->Optional (combine-adjacent-strings parsed)))
 
 (mu/defn- parse-tokens* :- [:tuple
-                                     [:sequential ParsedToken]
-                                     [:maybe [:sequential StringOrToken]]]
+                            [:sequential ParsedToken]
+                            [:maybe [:sequential StringOrToken]]]
   [tokens         :- [:maybe [:sequential StringOrToken]]
    optional-level :- :int
    param-level    :- :int

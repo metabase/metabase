@@ -2,12 +2,16 @@
   (:require
    [cheshire.core :as json]
    [clojure.data.csv :as csv]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.models.data-permissions :as data-perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.test :as mt]
-   [metabase.test.data.dataset-definitions :as defs])
+   [metabase.test.data.dataset-definitions :as defs]
+   [metabase.util :as u])
   (:import
    (java.io BufferedOutputStream ByteArrayOutputStream)))
 
@@ -46,6 +50,23 @@
                                               (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
              (take 5 (parse-and-sort-csv result)))))))
 
+(deftest errors-not-include-visualization-settings
+  (testing "Queries that error should not include visualization settings"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query          (mt/mbql-query orders
+                                                                        {:order-by [[:asc $id]], :limit 5})
+                                              :visualization_settings {:column_settings {}
+                                                                       :notvisiblekey   :notvisiblevalue}}]
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users)
+                                             (u/the-id (mt/db))
+                                             :perms/create-queries :query-builder)
+        (let [results        (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" card-id))
+              results-string (str results)
+              illegal-strings ["notvisiblekey" "notvisiblevalue" "column_settings"
+                               "visualization-settings" "viz-settings"]]
+          (doseq [illegal illegal-strings]
+            (is (false? (str/includes? results-string illegal)))))))))
+
 (deftest check-an-empty-date-column
   (testing "NULL values should be written correctly"
     (mt/dataset defs/test-data-null-date
@@ -71,16 +92,16 @@
 (deftest geographic-coordinates-test
   (testing "Ensure CSV longitude and latitude values are correctly exported"
     (let [result (mt/user-http-request
-                   :rasta :post 200 "dataset/csv" :query
-                   (json/generate-string
-                     {:database (mt/id)
-                      :type     :query
-                      :query    {:source-table (mt/id :venues)
-                                 :fields       [[:field (mt/id :venues :id) {:base-type :type/Integer}]
-                                                [:field (mt/id :venues :longitude) {:base-type :type/Float}]
-                                                [:field (mt/id :venues :latitude) {:base-type :type/Float}]]
-                                 :order-by     [[:asc (mt/id :venues :id)]]
-                                 :limit        5}}))]
+                  :rasta :post 200 "dataset/csv" :query
+                  (json/generate-string
+                   {:database (mt/id)
+                    :type     :query
+                    :query    {:source-table (mt/id :venues)
+                               :fields       [[:field (mt/id :venues :id) {:base-type :type/Integer}]
+                                              [:field (mt/id :venues :longitude) {:base-type :type/Float}]
+                                              [:field (mt/id :venues :latitude) {:base-type :type/Float}]]
+                               :order-by     [[:asc (mt/id :venues :id)]]
+                               :limit        5}}))]
       (is (= [["1" "165.37400000° W" "10.06460000° N"]
               ["2" "118.32900000° W" "34.09960000° N"]
               ["3" "118.42800000° W" "34.04060000° N"]

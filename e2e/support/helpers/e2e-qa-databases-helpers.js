@@ -1,11 +1,11 @@
 import {
-  QA_POSTGRES_PORT,
+  QA_DB_CONFIG,
+  QA_DB_CREDENTIALS,
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
-  QA_DB_CREDENTIALS,
+  QA_POSTGRES_PORT,
   WRITABLE_DB_CONFIG,
   WRITABLE_DB_ID,
-  QA_DB_CONFIG,
 } from "e2e/support/cypress_data";
 
 /*****************************************

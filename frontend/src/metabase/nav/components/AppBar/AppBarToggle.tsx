@@ -1,5 +1,5 @@
 import { useHover } from "@mantine/hooks";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { isMac } from "metabase/lib/browser";

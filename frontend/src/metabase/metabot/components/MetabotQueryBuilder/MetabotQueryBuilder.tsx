@@ -19,10 +19,10 @@ import MetabotVisualization from "../MetabotVisualization";
 import {
   ErrorStateMessage,
   ErrorStateRoot,
-  QueryFooterRoot,
   IdleStateIcon,
   IdleStateRoot,
   QueryBuilderRoot,
+  QueryFooterRoot,
   RunningStateRoot,
 } from "./MetabotQueryBuilder.styled";
 

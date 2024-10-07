@@ -8,7 +8,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(defn- do-with-test-setup [f]
+(defn- do-with-test-setup! [f]
   (query-analysis/without-analysis
    (t2.with-temp/with-temp [:model/Table      {table-1 :id}  {:name "T1"}
                             :model/Table      {table-2 :id}  {:name "T2" :active false}
@@ -117,14 +117,14 @@
        (mt/with-temporary-setting-values [query-analysis-enabled true]
          (mt/call-with-map-params f [card-1 card-2 card-3 card-4 card-5 coll-2 coll-3]))))))
 
-(defmacro ^:private with-test-setup
+(defmacro ^:private with-test-setup!
   "Creates some non-stale QueryFields and anaphorically provides stale QueryField IDs called `qf-{1-3}` and `qf-1b` and
   their corresponding Card IDs (`card-{1-3}`). The cards are named A, B, and C. The Fields are called FA, FB, FB and
   they all point to a Table called T. Both `qf-1` and `qf-1b` refer to `card-1`.
 
   `card-4` is guaranteed not to have problems"
   [& body]
-  `(do-with-test-setup
+  `(do-with-test-setup!
     (mt/with-anaphora [card-1 card-2 card-3 card-4 card-5 coll-2 coll-3]
       ~@body)))
 
@@ -137,7 +137,7 @@
 
 (deftest collection-ancestors-test
   (testing "The response includes collection ancestors"
-    (with-test-setup
+    (with-test-setup!
       (is (= [{:collection {:id nil
                             :name nil
                             :authority_level nil
@@ -175,14 +175,14 @@
 
 (deftest setting-test
   (testing "It requires the query analysis setting"
-    (with-test-setup
+    (with-test-setup!
       (mt/with-temporary-setting-values [query-analysis-enabled false]
         (is (= "Query Analysis must be enabled to use the Query Reference Validator"
                (mt/user-http-request :crowberto :get 429 url)))))))
 
 (deftest list-invalid-cards-basic-test
   (testing "Only returns cards with problematic field refs"
-    (with-test-setup
+    (with-test-setup!
       (is (= {:total 4
               :data
               [{:id     card-1
@@ -198,13 +198,13 @@
                {:id     card-5
                 :name   "E"
                 :errors [{:type "unknown-table", :table "T5"}]}]}
-               (-> (get!)
-                   (select-keys [:data :total])
-                   (update :data (fn [data] (map #(select-keys % [:id :name :errors]) data)))))))))
+             (-> (get!)
+                 (select-keys [:data :total])
+                 (update :data (fn [data] (map #(select-keys % [:id :name :errors]) data)))))))))
 
 (deftest pagination-test
   (testing "Lets you page results"
-    (with-test-setup
+    (with-test-setup!
       (is (= {:total  4
               :limit  2
               :offset 0
@@ -216,9 +216,9 @@
                {:id     card-2
                 :name   "B"
                 :errors [{:type "inactive-table", :table "T2"}]}]}
-               (-> (get! {:limit 2})
-                   (select-keys [:total :limit :offset :data])
-                   (with-data-keys [:id :name :errors]))))
+             (-> (get! {:limit 2})
+                 (select-keys [:total :limit :offset :data])
+                 (with-data-keys [:id :name :errors]))))
       (is (= {:total  4
               :limit  3
               :offset 2
@@ -234,38 +234,41 @@
                  (with-data-keys [:id :name :errors])))))))
 
 (deftest sorting-test
-  (testing "Lets you specify the sort key"
-    (with-test-setup
-      (is (= {:total 4
-              :data
-              [{:id card-3}
-               {:id card-2}
-               {:id card-1}
-               {:id card-5}]}
-             (-> (get! {:sort_column "collection" :sort_direction "desc"})
-                 (select-keys [:total :data])
-                 (with-data-keys [:id]))))
-      (is (= {:total 4
-              :data
-              [{:id card-1}
-               {:id card-2}
-               {:id card-3}
-               {:id card-5}]}
-             (-> (get! {:sort_column "last_edited_at" :sort_direction "asc"})
-                 (select-keys [:total :data])
-                 (with-data-keys [:id]))))
-      (is (= {:total 4
-              :data
-              [{:id card-5}
-               {:id card-3}
-               {:id card-2}
-               {:id card-1}]}
-             (-> (get! {:sort_column "last_edited_at" :sort_direction "desc"})
-                 (select-keys [:total :data])
-                 (with-data-keys [:id]))))))
+  (testing "Lets you specify the sort key:\n"
+    (with-test-setup!
+      (testing "collection desc"
+        (is (= {:total 4
+                :data
+                [{:id card-3}
+                 {:id card-2}
+                 {:id card-5}
+                 {:id card-1}]}
+               (-> (get! {:sort_column "collection" :sort_direction "desc"})
+                   (select-keys [:total :data])
+                   (with-data-keys [:id])))))
+      (testing "last_edited_at asc"
+        (is (= {:total 4
+                :data
+                [{:id card-1}
+                 {:id card-2}
+                 {:id card-3}
+                 {:id card-5}]}
+               (-> (get! {:sort_column "last_edited_at" :sort_direction "asc"})
+                   (select-keys [:total :data])
+                   (with-data-keys [:id])))))
+      (testing "last_edited_at desc"
+        (is (= {:total 4
+                :data
+                [{:id card-5}
+                 {:id card-3}
+                 {:id card-2}
+                 {:id card-1}]}
+               (-> (get! {:sort_column "last_edited_at" :sort_direction "desc"})
+                   (select-keys [:total :data])
+                   (with-data-keys [:id])))))))
 
   (testing "Rejects bad keys"
-    (with-test-setup
+    (with-test-setup!
       (is (str/starts-with? (:sort_column
                              (:errors
                               (mt/user-http-request :crowberto :get 400 (str url "?sort_column=favorite_bird"))))
@@ -273,7 +276,7 @@
 
 (deftest filter-on-collection
   (testing "can filter on collection id"
-    (with-test-setup
+    (with-test-setup!
       (testing "we can just look in coll-3"
         (is (= {:total 1
                 :data
@@ -304,3 +307,25 @@
   (mt/with-premium-features #{:query-reference-validation}
     (testing "The endpoint is unavailable for normal users"
       (is (mt/user-http-request :rasta :get 403 url)))))
+
+(deftest all-expected-keys-are-present
+  (testing "All the expected keys are present"
+    (with-test-setup!
+      (is (= (repeat 4 #{:archived
+                         :collection
+                         :collection_id
+                         :collection_position
+                         :collection_preview
+                         :creator
+                         :dataset_query
+                         :description
+                         :display
+                         :entity_id
+                         :errors
+                         :id
+                         :last_used_at
+                         :name})
+             (->> (get! {})
+                  :data
+                  (map keys)
+                  (map set)))))))

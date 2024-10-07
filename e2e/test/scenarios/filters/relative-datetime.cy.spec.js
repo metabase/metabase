@@ -1,10 +1,10 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import {
-  restore,
-  popover,
   openOrdersTable,
+  popover,
   queryBuilderMain,
+  restore,
   tableHeaderClick,
 } from "e2e/support/helpers";
 

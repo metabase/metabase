@@ -1,6 +1,6 @@
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 import { createMockDatasetData } from "metabase-types/api/mocks";
-import { PRODUCTS_ID, PRODUCTS } from "metabase-types/api/mocks/presets";
+import { PRODUCTS, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 const testColumns: DatasetColumn[] = [
   {

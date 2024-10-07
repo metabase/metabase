@@ -11,12 +11,13 @@ import { trackLicenseTokenStepSubmitted } from "../analytics";
 import type { SetupOpts } from "./setup";
 import {
   clickNextStep,
-  expectSectionsToHaveLabelsInOrder,
   expectSectionToHaveLabel,
+  expectSectionsToHaveLabelsInOrder,
   getSection,
   selectUsageReason,
   setup,
   skipLanguageStep,
+  skipTokenStep,
   skipWelcomeScreen,
   submitUserInfoStep,
 } from "./setup";
@@ -36,12 +37,12 @@ const setupEnterprise = (opts?: SetupOpts) => {
 const sampleToken = "a".repeat(64);
 const airgapToken = "airgap_toucan";
 
-describe("setup (EE, no token)", () => {
+describe("setup (EE build, but no token)", () => {
   beforeEach(() => {
     fetchMock.reset();
   });
 
-  it("default step order should be correct, with the commercial step in place", async () => {
+  it("default step order should be correct, with the license step and data usage steps", async () => {
     await setupEnterprise();
     await skipWelcomeScreen();
     expectSectionToHaveLabel("What's your preferred language?", "1");
@@ -146,7 +147,7 @@ describe("setup (EE, no token)", () => {
     it("should be possible to skip the step without a token", async () => {
       await setupForLicenseStep();
 
-      await clickOnSkip();
+      await skipTokenStep();
 
       expect(trackLicenseTokenStepSubmitted).toHaveBeenCalledWith(false);
 
@@ -186,6 +187,3 @@ const submit = async () => {
   await waitFor(() => expect(fetchMock.done(settingEndpoint)).toBe(true));
   return fetchMock.lastCall(settingEndpoint);
 };
-
-const clickOnSkip = async () =>
-  await userEvent.click(screen.getByRole("button", { name: "Skip" }));

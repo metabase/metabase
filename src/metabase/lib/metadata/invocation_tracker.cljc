@@ -72,7 +72,7 @@
   #?@(:clj
       [pretty/PrettyPrintable
        (pretty [_this]
-         (list `invocation-tracker-provider metadata-provider))]))
+               (list `invocation-tracker-provider metadata-provider))]))
 
 (defn invocation-tracker-provider
   "Wraps `metadata-provider` with a provider that records all invoked ids of [[lib.metadata.protocols/MetadataProvider]] methods."

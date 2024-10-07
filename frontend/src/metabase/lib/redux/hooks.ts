@@ -1,4 +1,4 @@
-import type { ThunkDispatch, AnyAction, Store } from "@reduxjs/toolkit";
+import type { AnyAction, Store, ThunkDispatch } from "@reduxjs/toolkit";
 import type { TypedUseSelectorHook } from "react-redux";
 import {
   useDispatch as useDispatchOriginal,

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { forwardRef, useEffect } from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { isNumber } from "metabase/lib/types";
@@ -7,27 +7,24 @@ import { EChartsRenderer } from "metabase/visualizations/components/EChartsRende
 import { ResponsiveEChartsRendererStyled } from "metabase/visualizations/components/EChartsRenderer/ResponsiveEChartsRenderer.styled";
 
 export interface ResponsiveEChartsRendererProps extends EChartsRendererProps {
-  onResize: (width: number, height: number) => void;
-  // We don't use the `style` prop, but it's needed to prevent a type error due
-  // to how types work within `ExplicitSize`
-  style: any;
+  onResize?: (width: number, height: number) => void;
 }
 
-export const ResponsiveEChartsRenderer =
-  ExplicitSize<ResponsiveEChartsRendererProps>({
-    wrapped: true,
-    refreshMode: "debounceLeading",
-  })(_ResponsiveEChartsRenderer);
-
-function _ResponsiveEChartsRenderer({
-  onResize,
-  width,
-  height,
-  ...echartsRenderedProps
-}: ResponsiveEChartsRendererProps) {
+const _ResponsiveEChartsRenderer = forwardRef<
+  HTMLDivElement,
+  ResponsiveEChartsRendererProps
+>(function _ResponsiveEChartsRenderer(
+  {
+    onResize,
+    width,
+    height,
+    ...echartsRenderedProps
+  }: ResponsiveEChartsRendererProps,
+  ref,
+) {
   useEffect(() => {
     if (isNumber(width) && isNumber(height)) {
-      onResize(width, height);
+      onResize?.(width, height);
     }
   }, [width, height, onResize]);
 
@@ -38,10 +35,17 @@ function _ResponsiveEChartsRenderer({
   return (
     <ResponsiveEChartsRendererStyled>
       <EChartsRenderer
+        ref={ref}
         {...echartsRenderedProps}
         width={width}
         height={height}
       />
     </ResponsiveEChartsRendererStyled>
   );
-}
+});
+
+export const ResponsiveEChartsRendererExplicitSize =
+  ExplicitSize<ResponsiveEChartsRendererProps>({
+    wrapped: true,
+    refreshMode: "debounceLeading",
+  })(_ResponsiveEChartsRenderer);

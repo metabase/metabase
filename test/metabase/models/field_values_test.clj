@@ -211,6 +211,28 @@
             ;; double check that we deleted the correct row
             (is (= ["C" "D"] (:human_readable_values (field-values/get-latest-full-field-values field-id))))))))))
 
+(deftest implicit-deduplication-batched-test
+  (let [before (t/zoned-date-time)
+        after  (t/plus before (t/millis 1))
+        later  (t/plus after (t/millis 1))]
+    (mt/with-temp [:model/Database    {database-id :id} {}
+                   :model/Table       {table-id :id}    {:db_id database-id}
+                   ;; will have duplicated field values
+                   :model/Field       {field-id-1 :id}     {:table_id table-id}
+                   ;; have only one field values
+                   :model/Field       {field-id-2 :id}     {:table_id table-id}
+                   ;; doesn't have a a field values
+                   :model/Field       {field-id-3 :id}     {:table_id table-id}
+                   :model/FieldValues _                 {:field_id field-id-1 :type :full :values ["a" "b"] :human_readable_values ["A" "B"] :created_at before :updated_at before}
+                   :model/FieldValues _                 {:field_id field-id-1 :type :full :values ["c" "d"] :human_readable_values ["C" "D"] :created_at before :updated_at later}
+                   :model/FieldValues _                 {:field_id field-id-2 :type :full :values ["e" "f"] :human_readable_values ["E" "F"] :created_at after :updated_at after}]
+      (testing "When we have multiple FieldValues rows in the database, we always return the most recently updated row"
+        (is (=? {field-id-1 {:values ["c" "d"]}
+                 field-id-2 {:values ["e" "f"]}}
+                (field-values/batched-get-latest-full-field-values [field-id-1 field-id-2 field-id-3])))
+        (testing "and older values are implicitly deleted"
+          (is (= 1 (count (t2/select FieldValues :field_id field-id-1 :type :full)))))))))
+
 (deftest get-or-create-full-field-values!-test
   (mt/dataset test-data
     (testing "create a full Fieldvalues if it does not exist"
@@ -361,10 +383,10 @@
 
 (deftest update-field-values-hook-test
   (t2.with-temp/with-temp [FieldValues {full-id :id}    {:field_id (mt/id :venues :id)
-                                                             :type     :full}
+                                                         :type     :full}
                            FieldValues {sandbox-id :id} {:field_id (mt/id :venues :id)
-                                                             :type     :sandbox
-                                                             :hash_key "random-hash"}]
+                                                         :type     :sandbox
+                                                         :hash_key "random-hash"}]
     (testing "The model hooks prevent us changing the intrinsic identity of a field values"
       (doseq [[id update-map] [[sandbox-id {:field_id 1}]
                                [sandbox-id {:type :full}]

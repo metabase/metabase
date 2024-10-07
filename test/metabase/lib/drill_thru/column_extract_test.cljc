@@ -1,6 +1,7 @@
 (ns metabase.lib.drill-thru.column-extract-test
   "See also [[metabase.query-processor-test.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
@@ -8,8 +9,7 @@
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-util :as lib.tu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -29,12 +29,12 @@
 (deftest ^:parallel column-extract-availability-test
   (testing "column-extract is available for column clicks on temporal, URL and Email columns"
     (canned/canned-test
-      :drill-thru/column-extract
-      (fn [test-case {:keys [column] :as _context} {:keys [click column-type]}]
-        (and (= click :header)
-             (not (:native? test-case))
-             (or (= column-type :datetime)
-                 (#{:type/URL :type/Email} (:semantic-type column))))))))
+     :drill-thru/column-extract
+     (fn [test-case {:keys [column] :as _context} {:keys [click column-type]}]
+       (and (= click :header)
+            (not (:native? test-case))
+            (or (= column-type :datetime)
+                (#{:type/URL :type/Email} (:semantic-type column))))))))
 
 (deftest ^:parallel returns-column-extract-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -150,22 +150,22 @@
           query (-> (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :query])
                     (lib/expression -1 "Day of month" (lib/get-day (meta/field-metadata :orders :created-at))))]
       (lib.drill-thru.tu/test-drill-application
-        {:click-type     :header
-         :query-type     :unaggregated
-         :column-name    "CREATED_AT"
-         :drill-type     :drill-thru/column-extract
-         :custom-query   query
-         :expected       {:type         :drill-thru/column-extract
-                          :extractions  datetime-extraction-units
-                          :query        query
-                          :stage-number -1}
-         :drill-args     ["day-of-month"]
-         :expected-query {:stages [{:expressions [;; The original
-                                                  [:get-day {:lib/expression-name "Day of month"}
-                                                   [:field {} (meta/id :orders :created-at)]]
+       {:click-type     :header
+        :query-type     :unaggregated
+        :column-name    "CREATED_AT"
+        :drill-type     :drill-thru/column-extract
+        :custom-query   query
+        :expected       {:type         :drill-thru/column-extract
+                         :extractions  datetime-extraction-units
+                         :query        query
+                         :stage-number -1}
+        :drill-args     ["day-of-month"]
+        :expected-query {:stages [{:expressions [;; The original
+                                                 [:get-day {:lib/expression-name "Day of month"}
+                                                  [:field {} (meta/id :orders :created-at)]]
                                                   ;; The newly added one
-                                                  [:get-day {:lib/expression-name "Day of month_2"}
-                                                   [:field {} (meta/id :orders :created-at)]]]}]}}))))
+                                                 [:get-day {:lib/expression-name "Day of month_2"}
+                                                  [:field {} (meta/id :orders :created-at)]]]}]}}))))
 
 (deftest ^:parallel apply-column-extract-test-3-aggregated
   (testing "column-extract on an aggregated query appends a new stage"
@@ -173,19 +173,19 @@
                     (lib/aggregate (lib/max (meta/field-metadata :orders :created-at)))
                     (lib/breakout (meta/field-metadata :products :category)))]
       (lib.drill-thru.tu/test-drill-application
-        {:click-type     :header
-         :query-type     :aggregated
-         :column-name    "max"
-         :drill-type     :drill-thru/column-extract
-         :custom-query   query
-         :expected       {:type         :drill-thru/column-extract
-                          :extractions  datetime-extraction-units
-                          :query        (lib/append-stage query)
-                          :stage-number -1}
-         :drill-args     ["day-of-month"]
-         :expected-query {:stages [(get-in query [:stages 0])
-                                   {:expressions [[:get-day {:lib/expression-name "Day of month"}
-                                                   [:field {} "max"]]]}]}}))))
+       {:click-type     :header
+        :query-type     :aggregated
+        :column-name    "max"
+        :drill-type     :drill-thru/column-extract
+        :custom-query   query
+        :expected       {:type         :drill-thru/column-extract
+                         :extractions  datetime-extraction-units
+                         :query        (lib/append-stage query)
+                         :stage-number -1}
+        :drill-args     ["day-of-month"]
+        :expected-query {:stages [(get-in query [:stages 0])
+                                  {:expressions [[:get-day {:lib/expression-name "Day of month"}
+                                                  [:field {} "max"]]]}]}}))))
 
 (deftest ^:parallel column-extract-relevant-units-test-1-time
   (let [ship-time (assoc (meta/field-metadata :orders :created-at)
@@ -196,17 +196,17 @@
                          :effective-type :type/Time
                          :semantic-type  :type/Time)
         mp        (lib/composed-metadata-provider
-                    (lib.tu/mock-metadata-provider {:fields [ship-time]})
-                    meta/metadata-provider)
+                   (lib.tu/mock-metadata-provider {:fields [ship-time]})
+                   meta/metadata-provider)
         query     (lib/query mp (lib.metadata/table mp (meta/id :orders)))]
     (lib.drill-thru.tu/test-returns-drill
-      {:drill-type   :drill-thru/column-extract
-       :click-type   :header
-       :query-type   :unaggregated
-       :column-name  "SHIP_TIME"
-       :custom-query query
-       :expected     {:type        :drill-thru/column-extract
-                      :extractions time-extraction-units}})))
+     {:drill-type   :drill-thru/column-extract
+      :click-type   :header
+      :query-type   :unaggregated
+      :column-name  "SHIP_TIME"
+      :custom-query query
+      :expected     {:type        :drill-thru/column-extract
+                     :extractions time-extraction-units}})))
 
 (deftest ^:parallel column-extract-relevant-units-test-2-date
   (let [arrival   (assoc (meta/field-metadata :orders :created-at)
@@ -217,17 +217,17 @@
                          :effective-type :type/Date
                          :semantic-type  :type/Date)
         mp        (lib/composed-metadata-provider
-                    (lib.tu/mock-metadata-provider {:fields [arrival]})
-                    meta/metadata-provider)
+                   (lib.tu/mock-metadata-provider {:fields [arrival]})
+                   meta/metadata-provider)
         query     (lib/query mp (lib.metadata/table mp (meta/id :orders)))]
     (lib.drill-thru.tu/test-returns-drill
-      {:drill-type   :drill-thru/column-extract
-       :click-type   :header
-       :query-type   :unaggregated
-       :column-name  "ARRIVAL_DATE"
-       :custom-query query
-       :expected     {:type        :drill-thru/column-extract
-                      :extractions date-extraction-units}})))
+     {:drill-type   :drill-thru/column-extract
+      :click-type   :header
+      :query-type   :unaggregated
+      :column-name  "ARRIVAL_DATE"
+      :custom-query query
+      :expected     {:type        :drill-thru/column-extract
+                     :extractions date-extraction-units}})))
 
 (def ^:private homepage
   (assoc (meta/field-metadata :people :email)
@@ -242,8 +242,8 @@
   ([] (homepage-provider meta/metadata-provider))
   ([base-provider]
    (lib/composed-metadata-provider
-     (lib.tu/mock-metadata-provider {:fields [homepage]})
-     base-provider)))
+    (lib.tu/mock-metadata-provider {:fields [homepage]})
+    base-provider)))
 
 (deftest ^:parallel column-extract-url->domain-test
   ;; There's no URL columns in the same dataset, but let's pretend there's one called People.HOMEPAGE.
@@ -256,37 +256,37 @@
                                  {:tag :host,      :display-name "Host"}]}]
     (testing "Extracting Domain"
       (lib.drill-thru.tu/test-drill-application
-        {:drill-type     :drill-thru/column-extract
-         :click-type     :header
-         :query-type     :unaggregated
-         :column-name    "HOMEPAGE"
-         :custom-query   query
-         :expected       expected
-         :drill-args     ["domain"]
-         :expected-query {:stages [{:expressions [[:domain {:lib/expression-name "Domain"}
-                                                   [:field {} 9999001]]]}]}}))
+       {:drill-type     :drill-thru/column-extract
+        :click-type     :header
+        :query-type     :unaggregated
+        :column-name    "HOMEPAGE"
+        :custom-query   query
+        :expected       expected
+        :drill-args     ["domain"]
+        :expected-query {:stages [{:expressions [[:domain {:lib/expression-name "Domain"}
+                                                  [:field {} 9999001]]]}]}}))
     (testing "Extracting Subdomain"
       (lib.drill-thru.tu/test-drill-application
-        {:drill-type     :drill-thru/column-extract
-         :click-type     :header
-         :query-type     :unaggregated
-         :column-name    "HOMEPAGE"
-         :custom-query   query
-         :expected       expected
-         :drill-args     ["subdomain"]
-         :expected-query {:stages [{:expressions [[:subdomain {:lib/expression-name "Subdomain"}
-                                                   [:field {} 9999001]]]}]}}))
+       {:drill-type     :drill-thru/column-extract
+        :click-type     :header
+        :query-type     :unaggregated
+        :column-name    "HOMEPAGE"
+        :custom-query   query
+        :expected       expected
+        :drill-args     ["subdomain"]
+        :expected-query {:stages [{:expressions [[:subdomain {:lib/expression-name "Subdomain"}
+                                                  [:field {} 9999001]]]}]}}))
     (testing "Extracting Host"
       (lib.drill-thru.tu/test-drill-application
-        {:drill-type     :drill-thru/column-extract
-         :click-type     :header
-         :query-type     :unaggregated
-         :column-name    "HOMEPAGE"
-         :custom-query   query
-         :expected       expected
-         :drill-args     ["host"]
-         :expected-query {:stages [{:expressions [[:host {:lib/expression-name "Host"}
-                                                   [:field {} 9999001]]]}]}}))))
+       {:drill-type     :drill-thru/column-extract
+        :click-type     :header
+        :query-type     :unaggregated
+        :column-name    "HOMEPAGE"
+        :custom-query   query
+        :expected       expected
+        :drill-args     ["host"]
+        :expected-query {:stages [{:expressions [[:host {:lib/expression-name "Host"}
+                                                  [:field {} 9999001]]]}]}}))))
 
 (deftest ^:parallel column-extract-url-requires-regex-test
   (let [query-regex    (lib/query (homepage-provider) (meta/table-metadata :people))
@@ -294,26 +294,26 @@
         query-no-regex (lib/query no-regex (meta/table-metadata :people))]
     (testing "when the database supports :regex URL extraction is available"
       (lib.drill-thru.tu/test-drill-application
-        {:drill-type     :drill-thru/column-extract
-         :click-type     :header
-         :query-type     :unaggregated
-         :column-name    "HOMEPAGE"
-         :custom-query   query-regex
-         :expected       {:type         :drill-thru/column-extract
-                          :display-name "Extract domain, subdomain…"
-                          :extractions  [{:tag :domain,    :display-name "Domain"}
-                                         {:tag :subdomain, :display-name "Subdomain"}
-                                         {:tag :host,      :display-name "Host"}]}
-         :drill-args     ["subdomain"]
-         :expected-query {:stages [{:expressions [[:subdomain {:lib/expression-name "Subdomain"}
-                                                   [:field {} 9999001]]]}]}}))
+       {:drill-type     :drill-thru/column-extract
+        :click-type     :header
+        :query-type     :unaggregated
+        :column-name    "HOMEPAGE"
+        :custom-query   query-regex
+        :expected       {:type         :drill-thru/column-extract
+                         :display-name "Extract domain, subdomain…"
+                         :extractions  [{:tag :domain,    :display-name "Domain"}
+                                        {:tag :subdomain, :display-name "Subdomain"}
+                                        {:tag :host,      :display-name "Host"}]}
+        :drill-args     ["subdomain"]
+        :expected-query {:stages [{:expressions [[:subdomain {:lib/expression-name "Subdomain"}
+                                                  [:field {} 9999001]]]}]}}))
     (testing "when the database does not support :regex URL extraction is not available"
       (lib.drill-thru.tu/test-drill-not-returned
-        {:drill-type     :drill-thru/column-extract
-         :click-type     :header
-         :query-type     :unaggregated
-         :column-name    "HOMEPAGE"
-         :custom-query   query-no-regex}))))
+       {:drill-type     :drill-thru/column-extract
+        :click-type     :header
+        :query-type     :unaggregated
+        :column-name    "HOMEPAGE"
+        :custom-query   query-no-regex}))))
 
 (deftest ^:parallel column-extract-email-requires-regex-test
   (let [query-regex    (lib/query meta/metadata-provider (meta/table-metadata :people))
@@ -321,33 +321,33 @@
         query-no-regex (lib/query no-regex (meta/table-metadata :people))]
     (testing "when the database supports :regex email extraction is available"
       (lib.drill-thru.tu/test-drill-application
-        {:drill-type     :drill-thru/column-extract
-         :click-type     :header
-         :query-type     :unaggregated
-         :column-name    "EMAIL"
-         :custom-query   query-regex
-         :expected       {:type         :drill-thru/column-extract
-                          :display-name "Extract domain, host…"
-                          :extractions  [{:tag :domain, :display-name "Domain"}
-                                         {:tag :host,   :display-name "Host"}]}
-         :drill-args     ["domain"]
-         :expected-query {:stages [{:expressions [[:domain {:lib/expression-name "Domain"}
-                                                   [:field {} (meta/id :people :email)]]]}]}}))
+       {:drill-type     :drill-thru/column-extract
+        :click-type     :header
+        :query-type     :unaggregated
+        :column-name    "EMAIL"
+        :custom-query   query-regex
+        :expected       {:type         :drill-thru/column-extract
+                         :display-name "Extract domain, host…"
+                         :extractions  [{:tag :domain, :display-name "Domain"}
+                                        {:tag :host,   :display-name "Host"}]}
+        :drill-args     ["domain"]
+        :expected-query {:stages [{:expressions [[:domain {:lib/expression-name "Domain"}
+                                                  [:field {} (meta/id :people :email)]]]}]}}))
     (testing "when the database does not support :regex email extraction is not available"
       (lib.drill-thru.tu/test-drill-not-returned
-        {:drill-type     :drill-thru/column-extract
-         :click-type     :header
-         :query-type     :unaggregated
-         :column-name    "EMAIL"
-         :custom-query   query-no-regex}))))
+       {:drill-type     :drill-thru/column-extract
+        :click-type     :header
+        :query-type     :unaggregated
+        :column-name    "EMAIL"
+        :custom-query   query-no-regex}))))
 
 (deftest ^:parallel extractions-for-drill-test
   (let [drill (lib.drill-thru.tu/test-returns-drill
-                {:click-type     :header
-                 :query-type     :unaggregated
-                 :column-name    "CREATED_AT"
-                 :drill-type     :drill-thru/column-extract
-                 :expected       {:type         :drill-thru/column-extract
-                                  :extractions  datetime-extraction-units}})]
+               {:click-type     :header
+                :query-type     :unaggregated
+                :column-name    "CREATED_AT"
+                :drill-type     :drill-thru/column-extract
+                :expected       {:type         :drill-thru/column-extract
+                                 :extractions  datetime-extraction-units}})]
     (is (=? datetime-extraction-units
             (lib.drill-thru.column-extract/extractions-for-drill drill)))))

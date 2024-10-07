@@ -34,18 +34,18 @@
 
 (defn- delete-gtaps-for-group-table! [{:keys [group-id table-id] :as _context} changes]
   (log/debugf "Deleting unneeded GTAPs for Group %d for Table %d. Graph changes: %s"
-             group-id table-id (pr-str changes))
+              group-id table-id (pr-str changes))
   (if (not= changes :sandboxed)
     (do
       (log/debugf "Group %d now has full data perms for Table %d, deleting GTAP for this Table if one exists"
-                 group-id table-id)
+                  group-id table-id)
       (delete-gtaps-with-condition! group-id [:= :table.id table-id]))
     (log/debugf "Group %d now has full sandboxed query perms for Table %d. Do not need to delete GTAPs."
-               group-id table-id)))
+                group-id table-id)))
 
 (defn- delete-gtaps-for-group-schema! [{:keys [group-id database-id schema-name], :as context} changes]
   (log/debugf "Deleting unneeded GTAPs for Group %d for Database %d, schema %s. Graph changes: %s"
-             group-id database-id (pr-str schema-name) (pr-str changes))
+              group-id database-id (pr-str schema-name) (pr-str changes))
   (if (keyword? changes)
     (do
       (log/debugf "Group %d changes has %s perms for Database %d schema %s, deleting all sandboxes for this schema"

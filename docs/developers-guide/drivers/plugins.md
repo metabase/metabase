@@ -75,7 +75,7 @@ Place the JAR you built in your Metabase's `/plugins` directory, and you're off 
 
 Here's an example plugin manifest with comments to get you started on writing your own.
 
-```
+```txt
 # Basic user-facing information about the driver goes under the info: key
 info:
 

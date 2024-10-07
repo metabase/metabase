@@ -48,7 +48,7 @@
     (api/read-check item-model id)
     (api/check (not (t2/exists? bookmark-model item-key id
                                 :user_id api/*current-user-id*))
-      [400 "Bookmark already exists"])
+               [400 "Bookmark already exists"])
     (first (t2/insert-returning-instances! bookmark-model {item-key id :user_id api/*current-user-id*}))))
 
 (api/defendpoint DELETE "/:model/:id"

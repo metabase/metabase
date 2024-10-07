@@ -73,10 +73,10 @@
    If the expression has an original-effective-type due to bucketing, check that."
   [expression typ]
   (isa?
-    (or (and (clause? expression)
-             (:metabase.lib.field/original-effective-type (second expression)))
-        (lib.schema.expression/type-of expression))
-    typ))
+   (or (and (clause? expression)
+            (:metabase.lib.field/original-effective-type (second expression)))
+       (lib.schema.expression/type-of expression))
+   typ))
 
 (defn expression-name
   "Returns the :lib/expression-name of `clause`. Returns nil if `clause` is not a clause."
@@ -190,7 +190,7 @@
   [m legacy-key pMBQL-key]
   (cond-> m
     (contains? m legacy-key) (update legacy-key #(if (and (vector? %)
-                                                       (= (first %) :and))
+                                                          (= (first %) :and))
                                                    (vec (drop 1 %))
                                                    [%]))
     (contains? m legacy-key) (set/rename-keys {legacy-key pMBQL-key})))
@@ -541,18 +541,18 @@
         stage (query-stage query stage-number)
         new-summary? (not (or (seq (:aggregation stage)) (seq (:breakout stage))))
         new-query (update-query-stage
-                    query stage-number
-                    update location
-                    (fn [summary-clauses]
-                      (conj (vec summary-clauses) (lib.common/->op-arg a-summary-clause))))]
+                   query stage-number
+                   update location
+                   (fn [summary-clauses]
+                     (conj (vec summary-clauses) (lib.common/->op-arg a-summary-clause))))]
     (if new-summary?
       (-> new-query
           (update-query-stage
-            stage-number
-            (fn [stage]
-              (-> stage
-                  (dissoc :order-by :fields)
-                  (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
+           stage-number
+           (fn [stage]
+             (-> stage
+                 (dissoc :order-by :fields)
+                 (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
           ;; subvec holds onto references, so create a new vector
           (update :stages (comp #(into [] %) subvec) 0 (inc (canonical-stage-index query stage-number))))
       new-query)))

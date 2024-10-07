@@ -9,10 +9,10 @@ import type {
 import { Api } from "./api";
 import {
   idTag,
-  listTag,
   invalidateTags,
-  provideSnippetTags,
+  listTag,
   provideSnippetListTags,
+  provideSnippetTags,
 } from "./tags";
 
 export const snippetApi = Api.injectEndpoints({

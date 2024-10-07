@@ -16,17 +16,20 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
+   [metabase.models.data-permissions :as data-perms]
+   [metabase.models.database :as database]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.middleware.fetch-source-query-legacy :as fetch-source-query-legacy]
    [metabase.query-processor.store :as qp.store]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -63,9 +66,9 @@
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
     (let [enforced-sandboxes (mt.api.u/enforced-sandboxes-for-tables table-ids)]
-       (when (seq enforced-sandboxes)
-         (assert-one-gtap-per-table enforced-sandboxes)
-         enforced-sandboxes))))
+      (when (seq enforced-sandboxes)
+        (assert-one-gtap-per-table enforced-sandboxes)
+        enforced-sandboxes))))
 
 (defn- query->table-id->gtap [query]
   {:pre [(some? *current-user-id*)]}
@@ -121,7 +124,7 @@
     (let [query        {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                         :type     :query
                         :query    source-query}
-          preprocessed (binding [*current-user-id* nil]
+          preprocessed (mw.session/as-admin
                          ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
     (catch Throwable e
@@ -141,7 +144,7 @@
 
 (mu/defn- mbql-query-metadata :- [:+ :map]
   [inner-query]
-  (binding [*current-user-id* nil]
+  (mw.session/as-admin
     ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
      {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
       :type     :query
@@ -170,7 +173,7 @@
 
 (mu/defn- native-query-metadata :- [:+ :map]
   [source-query :- [:map [:source-query :any]]]
-  (let [result (binding [*current-user-id* nil]
+  (let [result (mw.session/as-admin
                  ((requiring-resolve 'metabase.query-processor/process-query)
                   {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                    :type     :query
@@ -182,9 +185,9 @@
                          :result       result})))))
 
 (mu/defn- source-query-form-ensure-metadata :- [:and [:map-of :keyword :any]
-                                                         [:map
-                                                          [:source-query :any]
-                                                          [:source-metadata [:+ :map]]]]
+                                                [:map
+                                                 [:source-query :any]
+                                                 [:source-metadata [:+ :map]]]]
   "Add `:source-metadata` to a `source-query` if needed. If the source metadata had to be resolved (because Card with
   `card-id`) didn't already have it, save it so we don't have to resolve it again next time around."
   [{:keys [source-metadata], :as source-query} :- [:and [:map-of :keyword :any] [:map [:source-query :any]]]
@@ -194,18 +197,18 @@
         ;; make sure source query has `:source-metadata`; add it if needed
         [metadata save?] (cond
                           ;; if it already has `:source-metadata`, we're good to go.
-                          (seq source-metadata)
-                          [source-metadata false]
+                           (seq source-metadata)
+                           [source-metadata false]
 
                           ;; if it doesn't have source metadata, but it's an MBQL query, we can preprocess the query to
                           ;; get the expected metadata.
-                          (not (get-in source-query [:source-query :native]))
-                          [(mbql-query-metadata source-query) true]
+                           (not (get-in source-query [:source-query :native]))
+                           [(mbql-query-metadata source-query) true]
 
                           ;; otherwise if it's a native query we'll have to run the query really quickly to get the
                           ;; expected metadata.
-                          :else
-                          [(native-query-metadata source-query) true])
+                           :else
+                           [(native-query-metadata source-query) true])
         metadata (reconcile-metadata metadata table-metadata)]
     (assert (seq metadata))
     ;; save the result metadata so we don't have to do it again next time if applicable
@@ -217,10 +220,9 @@
       (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column field-ids))
     (assoc source-query :source-metadata metadata)))
 
-
 (mu/defn- gtap->source :- [:map
-                                    [:source-query :any]
-                                    [:source-metadata {:optional true} [:sequential mbql.s/SourceQueryMetadata]]]
+                           [:source-query :any]
+                           [:source-metadata {:optional true} [:sequential mbql.s/SourceQueryMetadata]]]
   "Get the source query associated with a `gtap`."
   [{card-id :card_id, table-id :table_id, :as gtap} :- :map]
   (-> ((if card-id
@@ -256,11 +258,21 @@
   [{card-id :card_id :as sandbox}]
   (if card-id
     (qp.store/cached card-id
-                     (query-perms/required-perms-for-query (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
-                                                 :throw-exceptions? true))
+      (query-perms/required-perms-for-query (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
+                                            :throw-exceptions? true))
 
-    (let [table-ids (sandbox->table-ids sandbox)]
-      {:perms/view-data (zipmap table-ids (repeat :unrestricted))
+    (let [table-ids (sandbox->table-ids sandbox)
+          table-id->db-id (into {} (mapv (juxt identity database/table-id->database-id) table-ids))
+          unblocked-table-ids (filter (fn [table-id] (data-perms/user-has-permission-for-table?
+                                                      api/*current-user-id*
+                                                      :perms/view-data
+                                                      :unrestricted
+                                                      (get table-id->db-id table-id)
+                                                      table-id))
+                                      table-ids)]
+      ;; Here, we grant view-data to only unblocked table ids. Otherwise sandboxed users with a joined table that's
+      ;; _blocked_ can be queried against from the query builder
+      {:perms/view-data (zipmap unblocked-table-ids (repeat :unrestricted))
        :perms/create-queries (zipmap table-ids (repeat :query-builder))})))
 
 (defn- merge-perms
@@ -336,7 +348,7 @@
         (assoc &match ::gtap? true)))))
 
 (defn- expected-cols [query]
-  (binding [*current-user-id* nil]
+  (mw.session/as-admin
     ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols) query)))
 
 (defn- gtapped-query
@@ -375,7 +387,6 @@
               gtapped-query)))
         query)
     query))
-
 
 ;;;; Post-processing
 

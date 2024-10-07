@@ -3,32 +3,27 @@ import { useState } from "react";
 import { jt, t } from "ttag";
 
 import { unsubscribeFromAlert } from "metabase/alert/alert";
-import Modal from "metabase/components/Modal";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { UpdateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
 import type { Alert } from "metabase-types/api";
 
 import { AlertCreatorTitle } from "./AlertCreatorTitle";
 import { AlertScheduleText } from "./AlertScheduleText";
-import { UnsubscribedListItem } from "./UnsubscribedListItem";
 
 type AlertListItemProps = {
   alert: Alert;
   highlight: boolean;
-  setMenuFreeze: (freeze: boolean) => void;
-  closeMenu: () => void;
   onUnsubscribe: (alert: Alert) => void;
+  onEdit: () => void;
 };
 
 export const AlertListItem = ({
   alert,
   highlight,
-  setMenuFreeze,
-  closeMenu,
   onUnsubscribe,
+  onEdit,
 }: AlertListItemProps) => {
   const user = useSelector(getUser);
 
@@ -37,30 +32,14 @@ export const AlertListItem = ({
   const [unsubscribingProgress, setUnsubscribingProgress] = useState<
     string | null
   >(null);
-  const [hasJustUnsubscribed, setHasJustUnsubscribed] = useState(false);
-  const [editing, setEditing] = useState(false);
 
   const handleUnsubscribe = async () => {
     try {
       setUnsubscribingProgress(t`Unsubscribing...`);
       await dispatch(unsubscribeFromAlert(alert));
-      setHasJustUnsubscribed(true);
       onUnsubscribe(alert);
     } catch (e) {
       setUnsubscribingProgress(t`Failed to unsubscribe`);
-    }
-  };
-
-  const onEdit = () => {
-    setMenuFreeze(true);
-    setEditing(true);
-  };
-
-  const onEndEditing = (shouldCloseMenu = false) => {
-    setMenuFreeze(false);
-    setEditing(false);
-    if (shouldCloseMenu) {
-      closeMenu();
     }
   };
 
@@ -71,10 +50,6 @@ export const AlertListItem = ({
   const emailEnabled = emailChannel && emailChannel.enabled;
   const slackChannel = alert.channels.find(c => c.channel_type === "slack");
   const slackEnabled = slackChannel && slackChannel.enabled;
-
-  if (hasJustUnsubscribed) {
-    return <UnsubscribedListItem />;
-  }
 
   return (
     <li
@@ -131,16 +106,6 @@ export const AlertListItem = ({
           )}
         </ul>
       </div>
-
-      {editing && (
-        <Modal full onClose={onEndEditing}>
-          <UpdateAlertModalContent
-            alert={alert}
-            onCancel={onEndEditing}
-            onAlertUpdated={() => onEndEditing(true)}
-          />
-        </Modal>
-      )}
     </li>
   );
 };

@@ -53,10 +53,10 @@ import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {
-  RowVisualizationRoot,
   RowChartContainer,
   RowChartLegendLayout,
   RowLegendCaption,
+  RowVisualizationRoot,
 } from "./RowChart.styled";
 import {
   getColumnValueFormatter,

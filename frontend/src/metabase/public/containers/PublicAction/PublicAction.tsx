@@ -12,8 +12,8 @@ import type { AppErrorDescriptor } from "metabase-types/store";
 
 import {
   FormContainer,
-  FormTitle,
   FormResultMessage,
+  FormTitle,
 } from "./PublicAction.styled";
 
 interface Props {

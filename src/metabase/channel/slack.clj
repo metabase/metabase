@@ -87,7 +87,7 @@
    [:message     {:optional true} [:maybe :string]]])
 
 (mu/defmethod channel/send! :channel/slack
-  [_channel-type message :- SlackMessage]
+  [_channel message :- SlackMessage]
   (let [{:keys [channel-id attachments]} message]
     (slack/post-chat-message! channel-id nil (create-and-upload-slack-attachments! attachments))))
 
@@ -96,7 +96,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/slack :notification/alert] :- [:sequential SlackMessage]
-  [_channel-details {:keys [payload card]} channel-ids]
+  [_channel-type {:keys [payload card]} channel-ids]
   (let [attachments [{:blocks [{:type "header"
                                 :text {:type "plain_text"
                                        :text (str "🔔 " (:name card))

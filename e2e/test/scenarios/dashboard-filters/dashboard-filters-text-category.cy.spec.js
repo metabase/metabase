@@ -1,21 +1,21 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
   clearFilterWidget,
+  dashboardParametersDoneButton,
+  dashboardSaveButton,
+  editDashboard,
+  ensureDashboardCardHasText,
   filterWidget,
   getDashboardCard,
-  editDashboard,
-  saveDashboard,
-  setFilter,
-  visitDashboard,
-  selectDashboardFilter,
-  toggleRequiredParameter,
-  dashboardSaveButton,
-  ensureDashboardCardHasText,
-  toggleFilterWidgetValues,
+  popover,
   resetFilterWidgetToDefault,
-  dashboardParametersDoneButton,
+  restore,
+  saveDashboard,
+  selectDashboardFilter,
+  setFilter,
+  toggleFilterWidgetValues,
+  toggleRequiredParameter,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 import {

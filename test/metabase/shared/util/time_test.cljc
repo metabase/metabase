@@ -1,10 +1,10 @@
 (ns metabase.shared.util.time-test
   (:require
+   #?@(:cljs [["moment" :as moment]]
+       :clj  [[java-time.api :as t]])
    [clojure.test :refer [are deftest is testing]]
    [metabase.shared.util.internal.time :as internal]
-   [metabase.shared.util.time :as shared.ut]
-   #?@(:cljs [["moment" :as moment]]
-       :clj  [[java-time.api :as t]]))
+   [metabase.shared.util.time :as shared.ut])
   #?(:clj (:import java.util.Locale)))
 
 (defn- from [time-str]

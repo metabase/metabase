@@ -48,7 +48,7 @@
 
 (defsetting show-updated-permission-modal
   (deferred-tru
-    "Whether an introductory modal should be shown for admins when they first upgrade to the new data-permissions format.")
+   "Whether an introductory modal should be shown for admins when they first upgrade to the new data-permissions format.")
   :visibility :admin
   :export?    false
   :default    true
@@ -61,7 +61,7 @@
 
 (defsetting show-updated-permission-banner
   (deferred-tru
-    "Whether an informational header should be displayed in the permissions editor about the new data-permissions format.")
+   "Whether an informational header should be displayed in the permissions editor about the new data-permissions format.")
   :visibility :admin
   :export?    false
   :default    true
@@ -102,7 +102,7 @@
   "OSS implementation of `upsert-sandboxes!`. Errors since this is an enterprise feature."
   metabase-enterprise.sandbox.models.group-table-access-policy
   [_sandboxes]
- (throw (premium-features/ee-feature-error (tru "Sandboxes"))))
+  (throw (premium-features/ee-feature-error (tru "Sandboxes"))))
 
 (defenterprise insert-impersonations!
   "OSS implementation of `insert-impersonations!`. Errors since this is an enterprise feature."
@@ -255,7 +255,6 @@
   (validation/check-manager-of-group group-id)
   (t2/delete! PermissionsGroup :id group-id)
   api/generic-204-no-content)
-
 
 ;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------
 

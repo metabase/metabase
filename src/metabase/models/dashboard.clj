@@ -290,7 +290,7 @@
         active-card-ids   (when-let [card-ids (seq card-ids)]
                             (t2/select-pks-set :model/Card :id [:in card-ids] :archived false))
         inactive-card-ids (set/difference card-ids active-card-ids)]
-   (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
+    (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
 
 (defmethod revision/revert-to-revision! :model/Dashboard
   [model dashboard-id user-id serialized-dashboard]
@@ -339,7 +339,7 @@
              (nil? (:cache_ttl prev-dashboard)) (deferred-tru "added a cache ttl")
              (nil? (:cache_ttl dashboard)) (deferred-tru "removed the cache ttl")
              :else (deferred-tru "changed the cache ttl from \"{0}\" to \"{1}\""
-                     (:cache_ttl prev-dashboard) (:cache_ttl dashboard))))
+                                 (:cache_ttl prev-dashboard) (:cache_ttl dashboard))))
          (when (or (:cards changes) (:cards removals))
            (let [prev-card-ids  (set (map :id (:cards prev-dashboard)))
                  num-prev-cards (count prev-card-ids)
@@ -413,7 +413,6 @@
    This function is provided for convenience and also makes sure various cleanup steps are performed when finished,
    for example updating FieldValues for On-Demand DBs.
    Returns newly created DashboardCards."
-  {:style/indent 2}
   [dashboard-or-id dashcards]
   (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
         dashboard-cards     (map (fn [dashcard]
@@ -427,16 +426,15 @@
   [:map
    [:id ms/PositiveInt]
    [:dashcards [:sequential [:map
-                                 [:card_id {:optional true} [:maybe ms/PositiveInt]]
-                                 [:card {:optional true} [:maybe [:map
-                                                                  [:id ms/PositiveInt]]]]]]]])
+                             [:card_id {:optional true} [:maybe ms/PositiveInt]]
+                             [:card {:optional true} [:maybe [:map
+                                                              [:id ms/PositiveInt]]]]]]]])
 
 (mu/defn update-dashcards!
   "Update the `dashcards` belonging to `dashboard`.
    This function is provided as a convenience instead of doing this yourself; it also makes sure various cleanup steps
    are performed when finished, for example updating FieldValues for On-Demand DBs.
    Returns `nil`."
-  {:style/indent 1}
   [dashboard     :- DashboardWithSeriesAndCard
    new-dashcards :- [:sequential ms/Map]]
   (let [old-dashcards    (:dashcards dashboard)
@@ -457,7 +455,6 @@
         (dashboard-card/update-dashboard-card! dashboard-card old-dashcard)))
     (let [new-param-field-ids (params/dashcards->param-field-ids (t2/hydrate new-dashcards :card))]
       (update-field-values-for-on-demand-dbs! (params/dashcards->param-field-ids old-dashcards) new-param-field-ids))))
-
 
 (defn- legacy-result-metadata-for-query
   "Fetch the results metadata for a `query` by running the query and seeing what the `qp` gives us in return."
@@ -488,9 +485,9 @@
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]
   (let [c (t2/count Collection
-            :name     [:like (format "%s%%" collection-name)]
-            :location (collection/children-location (t2/select-one [Collection :location :id]
-                                                      :id parent-collection-id)))]
+                    :name     [:like (format "%s%%" collection-name)]
+                    :location (collection/children-location (t2/select-one [Collection :location :id]
+                                                                           :id parent-collection-id)))]
     (if (zero? c)
       collection-name
       (format "%s %s" collection-name (inc c)))))
@@ -507,13 +504,13 @@
                     "Automatically generated cards."
                     parent-collection-id)
         dashboard  (first (t2/insert-returning-instances!
-                            :model/Dashboard
-                            (-> dashboard
-                                (dissoc :dashcards :tabs :rule :related
-                                        :transient_name :transient_filters :param_fields :more)
-                                (assoc :description description
-                                       :collection_id (:id collection)
-                                       :collection_position 1))))
+                           :model/Dashboard
+                           (-> dashboard
+                               (dissoc :dashcards :tabs :rule :related
+                                       :transient_name :transient_filters :param_fields :more)
+                               (assoc :description description
+                                      :collection_id (:id collection)
+                                      :collection_position 1))))
         {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
     (add-dashcards! dashboard
                     (for [dashcard dashcards]
@@ -549,7 +546,7 @@
                [(u/qualified-name param-key) (assoc param :mappings (get param-key->mappings param-key))]))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :resolved-params]
- "Return map of Dashboard parameter key -> param with resolved `:mappings`.
+  "Return map of Dashboard parameter key -> param with resolved `:mappings`.
    (dashboard->resolved-params (t2/select-one Dashboard :id 62))
    ;; ->
    {\"ee876336\" {:name     \"Category Name\"
@@ -581,18 +578,21 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod serdes/make-spec "Dashboard" [_model-name opts]
-  {:copy      [:archived :archived_directly :auto_apply_filters :cache_ttl :caveats :collection_position
-               :description :embedding_params :enable_embedding :entity_id :initially_published_at :name
+  {:copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
+               :description :embedding_params :enable_embedding :entity_id :name
                :points_of_interest :position :public_uuid :show_in_getting_started :width]
    :skip      [;; those stats are inherently local state
-               :view_count :last_viewed_at]
-   :transform {:created_at        (serdes/date)
-               :collection_id     (serdes/fk :model/Collection)
-               :creator_id        (serdes/fk :model/User)
-               :made_public_by_id (serdes/fk :model/User)
-               :parameters        {:export serdes/export-parameters :import serdes/import-parameters}
-               :tabs              (serdes/nested :model/DashboardTab :dashboard_id opts)
-               :dashcards         (serdes/nested :model/DashboardCard :dashboard_id opts)}})
+               :view_count :last_viewed_at
+               ;; this is deprecated
+               :cache_ttl]
+   :transform {:created_at             (serdes/date)
+               :initially_published_at (serdes/date)
+               :collection_id          (serdes/fk :model/Collection)
+               :creator_id             (serdes/fk :model/User)
+               :made_public_by_id      (serdes/fk :model/User)
+               :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
+               :tabs                   (serdes/nested :model/DashboardTab :dashboard_id opts)
+               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id opts)}})
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings series]}]
@@ -637,7 +637,6 @@
      (set (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
             ["Card" card-id])))))
 
-
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 
 (defmethod audit-log/model-details Dashboard
@@ -650,8 +649,8 @@
     (-> (select-keys dashboard [:description :name :parameters :dashcards])
         (update :dashcards (fn [dashcards]
                              (for [{:keys [id card_id]} dashcards]
-                                  (-> (t2/select-one [Card :name :description], :id card_id)
-                                      (assoc :id id)
-                                      (assoc :card_id card_id))))))
+                               (-> (t2/select-one [Card :name :description], :id card_id)
+                                   (assoc :id id)
+                                   (assoc :card_id card_id))))))
 
     {}))

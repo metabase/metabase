@@ -1,6 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { t, jt, ngettext, msgid } from "ttag";
+import { jt, msgid, ngettext, t } from "ttag";
 
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";

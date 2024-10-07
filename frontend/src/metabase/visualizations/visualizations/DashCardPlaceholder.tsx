@@ -7,7 +7,7 @@ import {
 } from "metabase/common/components/QuestionPicker";
 import { replaceCard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
-import { Flex, Button } from "metabase/ui";
+import { Button, Flex } from "metabase/ui";
 import type { Dashboard, VirtualDashboardCard } from "metabase-types/api";
 
 import type { VisualizationProps } from "../types";

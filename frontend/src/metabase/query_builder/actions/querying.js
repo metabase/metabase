@@ -1,11 +1,9 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
-import { syncVizSettingsWithSeries } from "metabase/querying";
+import { syncVizSettingsWithSeries } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 import { getSensibleDisplays } from "metabase/visualizations";
@@ -127,22 +125,12 @@ export const runQuestionQuery = ({
     const startTime = new Date();
     const cancelQueryDeferred = defer();
 
-    const queryTimer = startTimer();
-
     apiRunQuestionQuery(question, {
       cancelDeferred: cancelQueryDeferred,
       ignoreCache: ignoreCache,
       isDirty: isQueryDirty,
     })
       .then(queryResults => {
-        queryTimer(duration =>
-          MetabaseAnalytics.trackStructEvent(
-            "QueryBuilder",
-            "Run Query",
-            question.datasetQuery().type,
-            duration,
-          ),
-        );
         return dispatch(queryCompleted(question, queryResults));
       })
       .catch(error => dispatch(queryErrored(startTime, error)));

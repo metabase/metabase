@@ -12,6 +12,8 @@ import {
   getNotebookStep,
   openOrdersTable,
   openPeopleTable,
+  openProductsTable,
+  openTable,
   popover,
   queryBuilderMain,
   restore,
@@ -20,8 +22,6 @@ import {
   tableHeaderClick,
   visitQuestionAdhoc,
   visualize,
-  openProductsTable,
-  openTable,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
@@ -85,7 +85,7 @@ describe("scenarios > question > custom column", () => {
       cy.findByText(name).click();
     });
     cy.button("Custom column").click();
-    enterCustomColumnDetails({ formula: "[cre" });
+    enterCustomColumnDetails({ formula: "[cre", blur: false });
 
     cy.findAllByTestId("expression-suggestions-list-item")
       .should("have.length", 1)
@@ -121,7 +121,7 @@ describe("scenarios > question > custom column", () => {
     getNotebookStep("summarize").findByText("Half Price").should("be.visible");
   });
 
-  it("should not show temporal units for a date/time custom column", () => {
+  it("should show temporal units for a date/time custom column", () => {
     openOrdersTable({ mode: "notebook" });
     cy.icon("add_data").click();
 
@@ -141,12 +141,12 @@ describe("scenarios > question > custom column", () => {
       .findByRole("option", { name: "Product Date" })
       .within(() => {
         cy.findByLabelText("Binning strategy").should("not.exist");
-        cy.findByLabelText("Temporal bucket").should("not.exist");
+        cy.findByLabelText("Temporal bucket").should("exist");
       })
       .click();
 
     getNotebookStep("summarize")
-      .findByText("Product Date")
+      .findByText("Product Date: Month")
       .should("be.visible");
   });
 

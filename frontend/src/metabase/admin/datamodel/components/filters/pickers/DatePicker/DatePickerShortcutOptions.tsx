@@ -3,16 +3,16 @@ import { t } from "ttag";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   getInitialExcludeShortcut,
-  getInitialSpecificDatesShortcut,
   getInitialRelativeDatesShortcut,
+  getInitialSpecificDatesShortcut,
   getLast12MonthsDateFilter,
   getLast30DaysDateFilter,
   getLast3MonthsDateFilter,
   getLast7DaysDateFilter,
   getLastMonthDateFilter,
+  getLastWeekDateFilter,
   getTodayDateFilter,
   getYesterdayDateFilter,
-  getLastWeekDateFilter,
 } from "metabase-lib/v1/queries/utils/date-filters";
 
 type Option = {

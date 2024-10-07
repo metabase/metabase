@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
@@ -29,9 +29,8 @@ function useDependentTableMetadata({
   const isMissingFields = !table.numFields();
   const isMissingFks = table.fks === undefined;
   const shouldFetchMetadata = isMissingFields || isMissingFks;
-  const [hasFetchedMetadata, setHasFetchedMetadata] = useState(
-    !shouldFetchMetadata,
-  );
+  const [hasFetchedMetadata, setHasFetchedMetadata] =
+    useState(!shouldFetchMetadata);
   const fetchDependentData = useSafeAsyncFunction(() => {
     return Promise.all([
       isMissingFields && fetchMetadata({ id: table.id }),

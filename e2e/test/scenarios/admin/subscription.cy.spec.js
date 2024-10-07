@@ -1,4 +1,4 @@
-import { restore, mockSessionProperty } from "e2e/support/helpers";
+import { mockSessionProperty, restore } from "e2e/support/helpers";
 
 describe("banner", () => {
   beforeEach(() => {

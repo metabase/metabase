@@ -1,44 +1,47 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  visitDashboard,
-  visitEmbeddedPage,
-  filterWidget,
-  visitIframe,
-  getDashboardCard,
   addOrUpdateDashboardCard,
-  openStaticEmbeddingModal,
-  downloadAndAssert,
-  assertSheetRowsCount,
-  modal,
-  getIframeBody,
-  describeEE,
-  setTokenFeatures,
-  dashboardParametersContainer,
-  goToTab,
-  editDashboard,
-  toggleRequiredParameter,
-  sidebar,
-  saveDashboard,
-  getRequiredToggle,
-  closeStaticEmbeddingModal,
-  publishChanges,
-  setEmbeddingParameter,
   assertEmbeddingParameter,
-  multiAutocompleteInput,
+  assertSheetRowsCount,
+  closeStaticEmbeddingModal,
   createDashboardWithTabs,
   createQuestion,
+  dashboardParametersContainer,
+  describeEE,
+  downloadAndAssert,
+  editDashboard,
+  filterWidget,
+  getDashboardCard,
+  getIframeBody,
+  getIframeUrl,
+  getRequiredToggle,
+  goToTab,
+  main,
+  modal,
+  multiAutocompleteInput,
+  openStaticEmbeddingModal,
+  popover,
+  publishChanges,
+  restore,
+  saveDashboard,
+  setEmbeddingParameter,
+  setTokenFeatures,
+  sidebar,
+  toggleRequiredParameter,
+  visitDashboard,
+  visitEmbeddedPage,
+  visitIframe,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 import {
-  questionDetails,
-  questionDetailsWithDefaults,
   dashboardDetails,
   mapParameters,
+  questionDetails,
+  questionDetailsWithDefaults,
 } from "./shared/embedding-dashboard";
 
 const { ORDERS, PEOPLE, PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -620,19 +623,29 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
   });
 
   it("locked parameters require a value to be specified in the JWT", () => {
-    openStaticEmbeddingModal({ activeTab: "parameters" });
+    const nameParameter = dashboardDetails.parameters.find(
+      parameter => parameter.name === "Name",
+    );
+    const sourceParameter = dashboardDetails.parameters.find(
+      parameter => parameter.name === "Source",
+    );
 
-    // ID param is disabled by default
-    setEmbeddingParameter("Name", "Editable");
-    setEmbeddingParameter("Source", "Locked");
-    publishChanges("dashboard", ({ request }) => {
-      assert.deepEqual(request.body.embedding_params, {
-        source: "locked",
-        name: "enabled",
+    cy.get("@dashboardId").then(dashboardId => {
+      cy.request("PUT", `api/dashboard/${dashboardId}`, {
+        enable_embedding: true,
+        embedding_params: {
+          [nameParameter.slug]: "enabled",
+          [sourceParameter.slug]: "locked",
+        },
       });
-    });
 
-    visitIframe();
+      const payload = {
+        resource: { dashboard: dashboardId },
+        params: { source: null },
+      };
+
+      visitEmbeddedPage(payload);
+    });
 
     // The Source parameter is 'locked', and no value has been specified in the token,
     // thus the API responds with "You must specify a value for :source in the JWT."
@@ -642,10 +655,42 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
       .findByText("There was a problem displaying this chart.")
       .should("be.visible");
   });
+
+  it("locked parameters should still render results in the preview by default (metabase#47570)", () => {
+    const nameParameter = dashboardDetails.parameters.find(
+      parameter => parameter.name === "Name",
+    );
+    const sourceParameter = dashboardDetails.parameters.find(
+      parameter => parameter.name === "Source",
+    );
+
+    cy.get("@dashboardId").then(dashboardId => {
+      cy.request("PUT", `api/dashboard/${dashboardId}`, {
+        enable_embedding: true,
+        embedding_params: {
+          [nameParameter.slug]: "enabled",
+          [sourceParameter.slug]: "locked",
+        },
+      });
+    });
+
+    visitDashboard("@dashboardId");
+    openStaticEmbeddingModal({ activeTab: "parameters" });
+    visitIframe();
+
+    cy.log("should show card results by default");
+    getDashboardCard().findByText("2").should("be.visible");
+    getDashboardCard().findByText("test question").should("be.visible");
+  });
 });
 
 describeEE("scenarios > embedding > dashboard appearance", () => {
+  const originalBaseUrl = Cypress.config("baseUrl");
   beforeEach(() => {
+    // Reset the baseUrl to the default value
+    // needed because we do `Cypress.config("baseUrl", null);` in the iframe test
+    Cypress.config("baseUrl", originalBaseUrl);
+
     restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
@@ -883,6 +928,81 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
       getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
     });
+  });
+
+  it("should resize iframe to dashboard content size (metabase#47061)", () => {
+    const dashboardDetails = {
+      name: "dashboard name",
+      enable_embedding: true,
+    };
+
+    const questionDetails = {
+      name: "Orders",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    };
+    createQuestion(questionDetails)
+      .then(({ body: { id: card_id } }) => {
+        createDashboardWithTabs({
+          ...dashboardDetails,
+          dashcards: [
+            {
+              id: -1,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 8,
+              size_y: 20,
+            },
+          ],
+        });
+      })
+      .then(dashboard => {
+        visitDashboard(dashboard.id);
+      });
+
+    openStaticEmbeddingModal({
+      activeTab: "parameters",
+      previewMode: "preview",
+      // EE users don't have to accept terms
+      acceptTerms: false,
+    });
+
+    getIframeUrl().then(iframeUrl => {
+      Cypress.config("baseUrl", null);
+      cy.visit(
+        `e2e/test/scenarios/embedding/embedding-dashboard.html?iframeUrl=${iframeUrl}`,
+      );
+    });
+
+    getIframeBody().findByText("Rows 1-21 of first 2000").should("exist");
+
+    cy.get("#iframe").should($iframe => {
+      const [iframe] = $iframe;
+      expect(iframe.clientHeight).to.be.greaterThan(1000);
+    });
+  });
+
+  it("should allow to set locale from the `locale` query parameter", () => {
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      enable_embedding: true,
+    });
+    cy.signOut();
+
+    visitEmbeddedPage(
+      {
+        resource: { dashboard: ORDERS_DASHBOARD_ID },
+        params: {},
+      },
+      { qs: { locale: "de" } },
+    );
+
+    main().findByText("Februar 11, 2025, 9:40 PM");
+    // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is
+    cy.findByText("exportieren", { exact: false });
+
+    cy.url().should("include", "locale=de");
   });
 });
 

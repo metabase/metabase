@@ -8,10 +8,10 @@ import {
   createMockSettings,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import {
   createMockSettingsState,

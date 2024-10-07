@@ -7,21 +7,22 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { Collection } from "metabase-types/api";
 
+import { CollectionAuthorityLevelDisplay } from "./components/CollectionAuthorityLevelDisplay";
 import { CollectionAuthorityLevelIcon } from "./components/CollectionAuthorityLevelIcon";
 import { CollectionInstanceAnalyticsIcon } from "./components/CollectionInstanceAnalyticsIcon";
 import { FormCollectionAuthorityLevel } from "./components/FormCollectionAuthorityLevel";
 import {
   AUTHORITY_LEVELS,
-  REGULAR_COLLECTION,
-  OFFICIAL_COLLECTION,
   CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID,
+  OFFICIAL_COLLECTION,
+  REGULAR_COLLECTION,
 } from "./constants";
+import { useGetDefaultCollectionId } from "./use-get-default-collection-id";
 import {
-  getCollectionType,
-  isRegularCollection,
-  getInstanceAnalyticsCustomCollection,
-  getIcon,
   filterOutItemsFromInstanceAnalytics,
+  getCollectionType,
+  getIcon,
+  isRegularCollection,
 } from "./utils";
 
 if (hasPremiumFeature("official_collections")) {
@@ -70,6 +71,9 @@ if (hasPremiumFeature("official_collections")) {
 
   PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon =
     CollectionAuthorityLevelIcon;
+
+  PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelDisplay =
+    CollectionAuthorityLevelDisplay;
 }
 
 if (hasPremiumFeature("audit_app")) {
@@ -77,8 +81,7 @@ if (hasPremiumFeature("audit_app")) {
     CollectionInstanceAnalyticsIcon;
 
   PLUGIN_COLLECTIONS.getCollectionType = getCollectionType;
-  PLUGIN_COLLECTIONS.getInstanceAnalyticsCustomCollection =
-    getInstanceAnalyticsCustomCollection;
+  PLUGIN_COLLECTIONS.useGetDefaultCollectionId = useGetDefaultCollectionId;
   PLUGIN_COLLECTIONS.CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID =
     CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID;
 

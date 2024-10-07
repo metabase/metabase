@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import type { WritebackAction, Database } from "metabase-types/api";
+import type { Database, WritebackAction } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockQueryAction,

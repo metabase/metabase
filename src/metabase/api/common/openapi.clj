@@ -138,8 +138,8 @@
     (when (and (pos? idx)
                (map? req-bindings))
       (let [renames (->> (keys req-bindings) ; {{c :count} :query-params} ; => [{c :count}]
-                              (filter map?)       ; no stuff like {:keys [a]}
-                              (apply merge))]
+                         (filter map?)       ; no stuff like {:keys [a]}
+                         (apply merge))]
         (update-keys renames keyword)))))
 
 (defn- schema->params

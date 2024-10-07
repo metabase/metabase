@@ -6,7 +6,7 @@ import { checkNotNull } from "metabase/lib/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import { createMockField } from "metabase-types/api/mocks";
 
-import { setup as baseSetup, type SetupOpts } from "./setup";
+import { type SetupOpts, setup as baseSetup } from "./setup";
 
 function setup(opts: Partial<SetupOpts> = {}) {
   return baseSetup({

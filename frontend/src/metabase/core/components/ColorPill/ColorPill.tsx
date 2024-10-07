@@ -1,4 +1,4 @@
-import type { MouseEvent, HTMLAttributes, Ref } from "react";
+import type { HTMLAttributes, MouseEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
 import { ColorPillContent, ColorPillRoot } from "./ColorPill.styled";

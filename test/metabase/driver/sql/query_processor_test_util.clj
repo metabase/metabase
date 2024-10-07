@@ -111,7 +111,6 @@
   "Compile MBQL query to SQL and parse it as a HoneySQL-esque map."
   (comp sql->sql-map query->sql))
 
-
 ;;;; [[testing]] context tooling
 
 (defn pprint-native-query-with-best-strategy
@@ -159,6 +158,6 @@
   "All the drivers in the :sql hierarchy."
   []
   (set
-    (for [driver (tx.env/test-drivers)
-          :when  (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver :sql))]
-      (tx/the-driver-with-test-extensions driver))))
+   (for [driver (tx.env/test-drivers)
+         :when  (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver :sql))]
+     (tx/the-driver-with-test-extensions driver))))

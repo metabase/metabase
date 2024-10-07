@@ -1,17 +1,17 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   editDashboard,
+  filterWidget,
+  getDashboardCard,
   popover,
   restore,
   saveDashboard,
   setFilter,
-  visitDashboard,
   setFilterListSource,
+  sidebar,
+  visitDashboard,
   visitEmbeddedPage,
   visitPublicDashboard,
-  getDashboardCard,
-  filterWidget,
-  sidebar,
 } from "e2e/support/helpers";
 
 const { ACCOUNTS, ORDERS_ID } = SAMPLE_DATABASE;

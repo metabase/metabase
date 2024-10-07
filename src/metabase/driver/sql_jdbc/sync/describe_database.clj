@@ -83,14 +83,14 @@
                      (pr-str table-name))
                 (pr-str sql-args))
     (try
-     (execute-select-probe-query driver conn sql-args)
-     (log/trace "SELECT privileges confirmed")
-     true
-     (catch Throwable e
-       (log/trace e "Assuming no SELECT privileges: caught exception")
-       (when-not (.getAutoCommit conn)
-         (.rollback conn))
-       false))))
+      (execute-select-probe-query driver conn sql-args)
+      (log/trace "SELECT privileges confirmed")
+      true
+      (catch Throwable e
+        (log/trace e "Assuming no SELECT privileges: caught exception")
+        (when-not (.getAutoCommit conn)
+          (.rollback conn))
+        false))))
 
 (defn- jdbc-get-tables
   [driver ^DatabaseMetaData metadata catalog schema-pattern tablename-pattern types]
@@ -190,7 +190,9 @@
       (map #(dissoc % :type)))
      (db-tables driver (.getMetaData conn) nil db-name-or-nil))))
 
-(defn- db-or-id-or-spec->database [db-or-id-or-spec]
+(defn db-or-id-or-spec->database
+  "Get database instance from `db-or-id-or-spec`."
+  [db-or-id-or-spec]
   (cond (mi/instance-of? :model/Database db-or-id-or-spec)
         db-or-id-or-spec
 

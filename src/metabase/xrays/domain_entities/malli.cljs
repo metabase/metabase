@@ -1,8 +1,8 @@
 (ns metabase.xrays.domain-entities.malli
   (:require
-    [malli.core :as mc]
-    [malli.util :as mut]
-    [metabase.xrays.domain-entities.converters])
+   [malli.core :as mc]
+   [malli.util :as mut]
+   [metabase.xrays.domain-entities.converters])
   (:require-macros [metabase.xrays.domain-entities.malli]))
 
 (clojure.core/defn schema-for-path

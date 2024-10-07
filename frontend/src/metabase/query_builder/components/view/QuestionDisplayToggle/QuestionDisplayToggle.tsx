@@ -4,9 +4,9 @@ import { Icon } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
 
-import { Well, ToggleIcon } from "./QuestionDisplayToggle.styled";
+import { ToggleIcon, Well } from "./QuestionDisplayToggle.styled";
 
-interface QuestionDisplayToggleProps {
+export interface QuestionDisplayToggleProps {
   className?: string;
   question: Question;
   isShowingRawTable: boolean;

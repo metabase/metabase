@@ -16,6 +16,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
@@ -26,15 +27,18 @@
 ;; ## TEST SETTINGS DEFINITIONS
 
 (defsetting test-setting-1
-  "Test setting - this only shows up in dev (1)")
+  "Test setting - this only shows up in dev (1)"
+  :encryption :when-encryption-key-set)
 
 (defsetting test-setting-2
   "Test setting - this only shows up in dev (2)"
-  :default "[Default Value]")
+  :default "[Default Value]"
+  :encryption :when-encryption-key-set)
 
 (defsetting test-setting-3
   "Test setting - this only shows up in dev (3)"
-  :visibility :internal)
+  :visibility :internal
+  :encryption :when-encryption-key-set)
 
 (defsetting test-boolean-setting
   "Test setting - this only shows up in dev (3)"
@@ -43,26 +47,31 @@
 
 (defsetting test-json-setting
   "Test setting - this only shows up in dev (4)"
-  :type :json)
+  :type :json
+  :encryption :when-encryption-key-set)
 
 (defsetting test-csv-setting
   "Test setting - this only shows up in dev (5)"
   :visibility :internal
-  :type :csv)
+  :type :csv
+  :encryption :when-encryption-key-set)
 
 (defsetting ^:private test-csv-setting-with-default
   "Test setting - this only shows up in dev (6)"
   :visibility :internal
   :type :csv
-  :default ["A" "B" "C"])
+  :default ["A" "B" "C"]
+  :encryption :when-encryption-key-set)
 
 (defsetting test-env-setting
   "Test setting - this only shows up in dev (7)"
-  :visibility :internal)
+  :visibility :internal
+  :encryption :when-encryption-key-set)
 
 (defsetting toucan-name
   "Name for the Metabase Toucan mascot."
-  :visibility :internal)
+  :visibility :internal
+  :encryption :when-encryption-key-set)
 
 (defsetting test-setting-calculated-getter
   "Test setting - this only shows up in dev (8)"
@@ -73,7 +82,8 @@
 (defsetting test-setting-custom-init
   "Test setting - this only shows up in dev (0)"
   :type       :string
-  :init       (comp str random-uuid))
+  :init       (comp str random-uuid)
+  :encryption :when-encryption-key-set)
 
 (def ^:private ^:dynamic *enabled?* false)
 
@@ -81,20 +91,37 @@
   "Setting to test the `:enabled?` property of settings. This only shows up in dev."
   :visibility :internal
   :type       :string
-  :enabled?   (fn [] *enabled?*))
+  :enabled?   (fn [] *enabled?*)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-enabled-setting-default
   "Setting to test the `:enabled?` property of settings. This only shows up in dev."
   :visibility :internal
   :type       :string
   :default    "setting-default"
-  :enabled?   (fn [] *enabled?*))
+  :enabled?   (fn [] *enabled?*)
+  :encryption :when-encryption-key-set)
 
 (defsetting test-feature-setting
   "Setting to test the `:feature` property of settings. This only shows up in dev."
   :visibility :internal
   :type       :string
   :default    "setting-default"
+  :feature    :test-feature
+  :encryption :when-encryption-key-set)
+
+(defsetting test-never-encrypted-setting
+  "Setting to test the `:encryption` property of settings. This only shows up in dev."
+  :visibility :internal
+  :type       :string
+  :encryption :no
+  :feature    :test-feature)
+
+(defsetting test-boolean-encrypted-setting
+  "Setting to test that a boolean setting can be encrypted, even though the default is not to. This only shows up in dev."
+  :visibility :internal
+  :type       :boolean
+  :encryption :when-encryption-key-set
   :feature    :test-feature)
 
 ;; ## HELPER FUNCTIONS
@@ -192,13 +219,13 @@
       (binding [mdb.connection/*application-db* {:status (atom @#'mdb.connection/initial-db-status)}]
         (is (= false (mdb/db-is-set-up?)))
         (is (thrown-with-msg?
-              clojure.lang.ExceptionInfo
-              #"Cannot initialize setting before the db is set up"
-              (test-setting-custom-init)))
+             clojure.lang.ExceptionInfo
+             #"Cannot initialize setting before the db is set up"
+             (test-setting-custom-init)))
         (is (thrown-with-msg?
-              clojure.lang.ExceptionInfo
-              #"Cannot initialize setting before the db is set up"
-              (setting/get :test-setting-custom-init)))))))
+             clojure.lang.ExceptionInfo
+             #"Cannot initialize setting before the db is set up"
+             (setting/get :test-setting-custom-init)))))))
 
 (def ^:private base-options
   {:setter   :none
@@ -207,13 +234,15 @@
 (defsetting test-no-default-with-base-setting
   "Setting to test the `:base` property of settings. This only shows up in dev."
   :visibility :internal
-  :base       base-options)
+  :base       base-options
+  :encryption :when-encryption-key-set)
 
 (defsetting test-default-with-base-setting
   "Setting to test the `:base` property of settings. This only shows up in dev."
   :visibility :internal
   :base       base-options
-  :default    "fully-bespoke")
+  :default    "fully-bespoke"
+  :encryption :when-encryption-key-set)
 
 (deftest ^:parallel defsetting-with-base-test
   (testing "A setting which specifies some base options"
@@ -311,54 +340,54 @@
              (setting-exists-in-db? :test-setting-2))
           "setting still shouldn't exist in the DB"))))
 
-
 ;;; --------------------------------------------- all & user-facing-info ---------------------------------------------
 
 ;; these tests are to check that settings get returned with the correct information; these functions are what feed
 ;; into the API
 
-(defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
-  (tu/do-with-temporary-setting-value setting db-value
-    (fn []
-      (tu/do-with-temp-env-var-value!
-       (setting/setting-env-map-name (keyword setting))
-       env-var-value
-       (fn []
-         (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
-                 :key :description))))))
+(defn- user-facing-info-with-db-and-env-var-values! [setting db-value env-var-value]
+  (tu/do-with-temporary-setting-value!
+   setting db-value
+   (fn []
+     (tu/do-with-temp-env-var-value!
+      (setting/setting-env-map-name (keyword setting))
+      env-var-value
+      (fn []
+        (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
+                :key :description))))))
 
 (deftest user-facing-info-test
   (testing "user-facing info w/ no db value, no env var value, no default value"
     (is (= {:value nil, :is_env_setting false, :env_name "MB_TEST_SETTING_1", :default nil}
-           (user-facing-info-with-db-and-env-var-values :test-setting-1 nil nil))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-1 nil nil))))
 
   (testing "user-facing info w/ no db value, no env var value, default value"
     (is (= {:value nil, :is_env_setting false, :env_name "MB_TEST_SETTING_2", :default "[Default Value]"}
-           (user-facing-info-with-db-and-env-var-values :test-setting-2 nil nil))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-2 nil nil))))
 
   (testing "user-facing info w/ no db value, env var value, no default value -- shouldn't leak env var value"
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_1", :default "Using value of env var $MB_TEST_SETTING_1"}
-           (user-facing-info-with-db-and-env-var-values :test-setting-1 nil "TOUCANS"))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-1 nil "TOUCANS"))))
 
   (testing "user-facing info w/ no db value, env var value, default value"
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using value of env var $MB_TEST_SETTING_2"}
-           (user-facing-info-with-db-and-env-var-values :test-setting-2 nil "TOUCANS"))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-2 nil "TOUCANS"))))
 
   (testing "user-facing info w/ db value, no env var value, no default value"
     (is (= {:value "WOW", :is_env_setting false, :env_name "MB_TEST_SETTING_1", :default nil}
-           (user-facing-info-with-db-and-env-var-values :test-setting-1 "WOW" nil))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-1 "WOW" nil))))
 
   (testing "user-facing info w/ db value, no env var value, default value"
     (is (= {:value "WOW", :is_env_setting false, :env_name "MB_TEST_SETTING_2", :default "[Default Value]"}
-           (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" nil))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-2 "WOW" nil))))
 
   (testing "user-facing info w/ db value, env var value, no default value -- the env var should take precedence over the db value, but should be obfuscated"
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_1", :default "Using value of env var $MB_TEST_SETTING_1"}
-           (user-facing-info-with-db-and-env-var-values :test-setting-1 "WOW" "ENV VAR"))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-1 "WOW" "ENV VAR"))))
 
   (testing "user-facing info w/ db value, env var value, default value -- env var should take precedence over default, but should be obfuscated"
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using value of env var $MB_TEST_SETTING_2"}
-           (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" "ENV VAR")))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-2 "WOW" "ENV VAR")))))
 
 (deftest writable-settings-test
   (testing `setting/writable-settings
@@ -411,12 +440,13 @@
                  setting)))))))
 
 (defsetting test-i18n-setting
-  (deferred-tru "Test setting - with i18n"))
+  (deferred-tru "Test setting - with i18n")
+  :encryption :when-encryption-key-set)
 
 (deftest validate-description-test
   (testing "Validate setting description with i18n string"
     (mt/with-test-user :crowberto
-      (mt/with-mock-i18n-bundles {"zz" {:messages {"Test setting - with i18n" "TEST SETTING - WITH I18N"}}}
+      (mt/with-mock-i18n-bundles! {"zz" {:messages {"Test setting - with i18n" "TEST SETTING - WITH I18N"}}}
         (letfn [(description []
                   (some (fn [{:keys [key description]}]
                           (when (= :test-i18n-setting key)
@@ -429,12 +459,13 @@
                    (description)))))))))
 
 (defsetting test-dynamic-i18n-setting
-  (deferred-tru "Test setting - with i18n: {0}" (test-i18n-setting)))
+  (deferred-tru "Test setting - with i18n: {0}" (test-i18n-setting))
+  :encryption :when-encryption-key-set)
 
 (deftest dynamic-description-test
   (testing "Descriptions with i18n string should update if it depends on another setting's value."
     (mt/with-test-user :crowberto
-      (mt/with-mock-i18n-bundles {"zz" {:messages {"Test setting - with i18n: {0}" "TEST SETTING - WITH I18N: {0}"}}}
+      (mt/with-mock-i18n-bundles! {"zz" {:messages {"Test setting - with i18n: {0}" "TEST SETTING - WITH I18N: {0}"}}}
         (letfn [(description []
                   (some (fn [{:keys [key description]}]
                           (when (= :test-dynamic-i18n-setting key)
@@ -448,7 +479,6 @@
                    (description))))
           (test-i18n-setting! nil))))))
 
-
 ;;; ------------------------------------------------ BOOLEAN SETTINGS ------------------------------------------------
 
 (deftest boolean-settings-tag-test
@@ -457,7 +487,7 @@
 
 (deftest boolean-setting-user-facing-info-test
   (is (= {:value nil, :is_env_setting false, :env_name "MB_TEST_BOOLEAN_SETTING", :default nil}
-         (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil nil))))
+         (user-facing-info-with-db-and-env-var-values! :test-boolean-setting nil nil))))
 
 (deftest boolean-setting-env-vars-test
   (testing "values set by env vars should never be shown to the User"
@@ -466,11 +496,11 @@
                     :env_name       "MB_TEST_BOOLEAN_SETTING"
                     :default        "Using value of env var $MB_TEST_BOOLEAN_SETTING"}]
       (is (= expected
-             (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil "true")))
+             (user-facing-info-with-db-and-env-var-values! :test-boolean-setting nil "true")))
 
       (testing "env var values should be case-insensitive"
         (is (= expected
-               (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil "TRUE"))))))
+               (user-facing-info-with-db-and-env-var-values! :test-boolean-setting nil "TRUE"))))))
 
   (testing "if value isn't true / false"
     (testing "getter should throw exception"
@@ -484,7 +514,7 @@
               :is_env_setting true
               :env_name       "MB_TEST_BOOLEAN_SETTING"
               :default        "Using value of env var $MB_TEST_BOOLEAN_SETTING"}
-             (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil "X"))))))
+             (user-facing-info-with-db-and-env-var-values! :test-boolean-setting nil "X"))))))
 
 (deftest set-boolean-setting-test
   (testing "should be able to set value with a string..."
@@ -499,7 +529,6 @@
       (is (= false
              (test-boolean-setting))))))
 
-
 ;;; ------------------------------------------------- JSON SETTINGS --------------------------------------------------
 
 (deftest set-json-setting-test
@@ -508,21 +537,20 @@
   (is (= {:a 100, :b 200}
          (test-json-setting))))
 
-
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
-(defn- fetch-csv-setting-value [v]
+(defn- fetch-csv-setting-value! [v]
   (with-redefs [setting/db-or-cache-value (constantly v)]
     (test-csv-setting)))
 
 (deftest get-csv-setting-test
   (testing "should be able to fetch a simple CSV setting"
     (is (= ["A" "B" "C"]
-           (fetch-csv-setting-value "A,B,C"))))
+           (fetch-csv-setting-value! "A,B,C"))))
 
   (testing "should also work if there are quoted values that include commas in them"
     (is  (= ["A" "B" "C1,C2" "ddd"]
-            (fetch-csv-setting-value "A,B,\"C1,C2\",ddd")))))
+            (fetch-csv-setting-value! "A,B,\"C1,C2\",ddd")))))
 
 (defn- set-and-fetch-csv-setting-value! [v]
   (test-csv-setting! v)
@@ -560,7 +588,6 @@
     (test-csv-setting-with-default! nil)
     (is (= nil
            (setting/user-facing-value :test-csv-setting-with-default)))))
-
 
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
 
@@ -604,7 +631,6 @@
                   :default        nil}
                  (#'setting/user-facing-info (setting/resolve-setting :test-json-setting)))))))))
 
-
 ;;; ----------------------------------------------- TIMESTAMP SETTINGS -----------------------------------------------
 
 (defsetting test-timestamp-setting
@@ -619,7 +645,6 @@
     (test-timestamp-setting! #t "2018-07-11T09:32:00.000Z")
     (is (= #t "2018-07-11T09:32:00.000Z"
            (test-timestamp-setting)))))
-
 
 ;;; ----------------------------------------------- Uncached Settings ------------------------------------------------
 
@@ -636,7 +661,8 @@
 (defsetting uncached-setting
   "A test setting that should *not* be cached."
   :visibility :internal
-  :cache? false)
+  :cache? false
+  :encryption :when-encryption-key-set)
 
 (deftest uncached-settings-test
   (encryption-test/with-secret-key nil
@@ -658,7 +684,6 @@
       (is (= nil
              (settings-last-updated-value-in-db))))))
 
-
 ;;; ---------------------------------------------- Runtime Setting Options ----------------------------------------------
 
 (def my-setter :none)
@@ -678,7 +703,6 @@
     (testing "The defsetting macro allows arbitrary code forms for values"
       (is (= :internal (:visibility setting-definition))))))
 
-
 ;;; ----------------------------------------------- Sensitive Settings -----------------------------------------------
 
 (defsetting test-sensitive-setting
@@ -697,7 +721,6 @@
     (is (= "123456"
            (test-sensitive-setting)))))
 
-
 ;;; ------------------------------------------------- CACHE SYNCING --------------------------------------------------
 
 (deftest cache-sync-test
@@ -714,28 +737,32 @@
     (is (= "Banana Beak"
            (toucan-name)))))
 
-
 ;;; ------------------------------------------------- Setting Visibility ------------------------------------------------
 
 (defsetting test-internal-setting
   "test Setting"
-  :visibility :internal)
+  :visibility :internal
+  :encryption :when-encryption-key-set)
 
 (defsetting test-public-setting
   (deferred-tru "test Setting")
-  :visibility :public)
+  :visibility :public
+  :encryption :when-encryption-key-set)
 
 (defsetting test-authenticated-setting
   (deferred-tru "test Setting")
-  :visibility :authenticated)
+  :visibility :authenticated
+  :encryption :when-encryption-key-set)
 
 (defsetting test-settings-manager-setting
   (deferred-tru "test Setting")
-  :visibility :settings-manager)
+  :visibility :settings-manager
+  :encryption :when-encryption-key-set)
 
 (defsetting test-admin-setting
   (deferred-tru "test Setting")
-  :visibility :admin)
+  :visibility :admin
+  :encryption :when-encryption-key-set)
 
 (deftest can-read-setting-test
   (testing "no authenticated user"
@@ -778,18 +805,21 @@
   "test Setting"
   :visibility     :internal
   :type           :integer
-  :database-local :only)
+  :database-local :only
+  :encryption :when-encryption-key-set)
 
 (defsetting ^:private test-database-local-allowed-setting
   (deferred-tru "test Setting")
   :visibility     :authenticated
   :type           :integer
-  :database-local :allowed)
+  :database-local :allowed
+  :encryption :when-encryption-key-set)
 
 (defsetting ^:private test-database-local-never-setting
   "test Setting"
   :visibility :internal
-  :type       :integer) ; `:never` should be the default
+  :type       :integer
+  :encryption :when-encryption-key-set) ; `:no` should be the default for `:database-local`
 
 (deftest database-local-settings-test
   (doseq [[database-local-type {:keys [setting-name setting-getter-fn setting-setter-fn returns]}]
@@ -878,7 +908,8 @@
   (deferred-tru "test Setting")
   :visibility     :authenticated
   :database-local :only
-  :default        "DEFAULT")
+  :default        "DEFAULT"
+  :encryption     :when-encryption-key-set)
 
 (deftest database-local-only-settings-test
   (testing "Disallow setting Database-local-only Settings"
@@ -916,22 +947,24 @@
           (is (= ::not-present
                  (f :test-database-local-only-setting-with-default))))))))
 
-
 ;;; ------------------------------------------------- User-local Settings ----------------------------------------------
 
 (defsetting test-user-local-only-setting
   (deferred-tru  "test Setting")
   :visibility :authenticated
-  :user-local :only)
+  :user-local :only
+  :encryption :when-encryption-key-set)
 
 (defsetting test-user-local-allowed-setting
   (deferred-tru "test Setting")
   :visibility :authenticated
-  :user-local :allowed)
+  :user-local :allowed
+  :encryption :when-encryption-key-set)
 
 (defsetting ^:private test-user-local-never-setting
   (deferred-tru "test Setting")
-  :visibility :internal) ; `:never` should be the default
+  :visibility :internal
+  :encryption :when-encryption-key-set) ; `:no` should be the default for `:user-local`
 
 (deftest user-local-settings-test
   (testing "Reading and writing a user-local-only setting in the context of a user uses the user-local value"
@@ -985,7 +1018,8 @@
          (defsetting test-user-local-and-db-local-setting
            (deferred-tru "test Setting")
            :user-local     :allowed
-           :database-local :allowed)))))
+           :database-local :allowed
+           :encryption     :when-encryption-key-set)))))
 
 (deftest identity-hash-test
   (testing "Settings are hashed based on the key"
@@ -1041,8 +1075,8 @@
            :type       :string
            :default    "setting-default"
            :enabled?   (fn [] false)
-           :feature    :test-feature)))))
-
+           :feature    :test-feature
+           :encryption :when-encryption-key-set)))))
 
 ;;; ------------------------------------------------- Misc tests -------------------------------------------------------
 
@@ -1066,7 +1100,8 @@
 (defsetting ^:private test-integer-setting
   "test Setting"
   :visibility :internal
-  :type       :integer)
+  :type       :integer
+  :encryption :when-encryption-key-set)
 
 (deftest integer-setting-test
   (testing "Should be able to set integer setting with a string"
@@ -1082,15 +1117,15 @@
   (testing "Should not be able to define a setting with a retired name"
     (with-redefs [setting/retired-setting-names #{"retired-setting"}]
       (try
-        (defsetting retired-setting (deferred-tru "A retired setting name"))
+        (defsetting retired-setting (deferred-tru "A retired setting name") :encryption :when-encryption-key-set)
         (catch Exception e
           (is (= "Setting name 'retired-setting' is retired; use a different name instead"
                  (ex-message e))))))))
 
 (deftest duplicated-setting-name
   (testing "can re-register a setting in the same ns (redefining or reloading ns)"
-    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public))
-    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public)))
+    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set))
+    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set)))
   (testing "if attempt to register in a different ns throws an error"
     (let [current-ns (ns-name *ns*)]
       (try
@@ -1098,7 +1133,7 @@
           (:require
            [metabase.models.setting :refer [defsetting]]
            [metabase.util.i18n :as i18n :refer [deferred-tru]]))
-        (defsetting foo (deferred-tru "A testing setting") :visibility :public)
+        (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set)
         (catch Exception e
           (is (=? {:existing-setting
                    {:description (deferred-tru "A testing setting")
@@ -1116,7 +1151,8 @@
 
 (defsetting test-setting-with-question-mark?
   "Test setting - this only shows up in dev (6)"
-  :visibility :internal)
+  :visibility :internal
+  :encryption :when-encryption-key-set)
 
 (deftest munged-setting-name-test
   (testing "Only valid characters used for environment lookup"
@@ -1135,29 +1171,34 @@
            (m/map-vals #(select-keys % [:name :munged-name])
                        (try (defsetting test-setting-with-question-mark????
                               "Test setting - this only shows up in dev (6)"
-                              :visibility :internal)
+                              :visibility :internal
+                              :encryption :when-encryption-key-set)
                             (catch Exception e (ex-data e)))))))
   (testing "Munge collision on first definition"
     (defsetting test-setting-normal
       "Test setting - this only shows up in dev (6)"
-      :visibility :internal)
+      :visibility :internal
+      :encryption :when-encryption-key-set)
     (is (= {:existing-setting {:name :test-setting-normal, :munged-name "test-setting-normal"},
             :new-setting {:name :test-setting-normal??, :munged-name "test-setting-normal"}}
            (m/map-vals #(select-keys % [:name :munged-name])
                        (try (defsetting test-setting-normal??
                               "Test setting - this only shows up in dev (6)"
-                              :visibility :internal)
+                              :visibility :internal
+                              :encryption :when-encryption-key-set)
                             (catch Exception e (ex-data e)))))))
   (testing "Munge collision on second definition"
     (defsetting test-setting-normal-1??
       "Test setting - this only shows up in dev (6)"
-      :visibility :internal)
+      :visibility :internal
+      :encryption :when-encryption-key-set)
     (is (= {:new-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1},
-             :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
+            :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
            (m/map-vals #(select-keys % [:name :munged-name])
                        (try (defsetting test-setting-normal-1
                               "Test setting - this only shows up in dev (6)"
-                              :visibility :internal)
+                              :visibility :internal
+                              :encryption :when-encryption-key-set)
                             (catch Exception e (ex-data e)))))))
   (testing "Removes characters not-compliant with shells"
     (is (= "aa1aa-b2b_cc3c"
@@ -1207,14 +1248,16 @@
       (try
         (walk/macroexpand-all
          `(defsetting ~'test-asdf-asdf-asdf
-            "untranslated description"))
+            "untranslated description"
+            :encryption :when-encryption-key-set))
         (catch Exception e
           (is (re-matches #"defsetting docstrings must be a \*deferred\* i18n form.*"
                           (:cause (Throwable->map e)))))))))
 
 (defsetting test-setting-audit-never
- "Test setting with no auditing"
-  :audit :never)
+  "Test setting with no auditing"
+  :audit :never
+  :encryption :when-encryption-key-set)
 
 (defsetting test-setting-audit-raw-value
   "Test setting with auditing raw values"
@@ -1223,15 +1266,17 @@
 
 (defsetting test-setting-audit-getter
   "Test setting with auditing values returned from getter"
-  :type   :string
-  :getter (constantly "GETTER VALUE")
-  :audit  :getter)
+  :type       :string
+  :getter     (constantly "GETTER VALUE")
+  :audit      :getter
+  :encryption :when-encryption-key-set)
 
 (defsetting test-sensitive-setting-audit
   "Test that a sensitive setting has its value obfuscated before being audited"
   :type       :string
   :sensitive? true
-  :audit      :getter)
+  :audit      :getter
+  :encryption :when-encryption-key-set)
 
 (deftest setting-audit-test
   (mt/with-premium-features #{:audit-app}
@@ -1290,6 +1335,7 @@
   (deferred-tru  "Audited user-local setting")
   :visibility :authenticated
   :user-local :only
+  :encryption :when-encryption-key-set
   :audit      :raw-value)
 
 (deftest user-local-settings-audit-test
@@ -1316,11 +1362,13 @@
 (defsetting exported-setting
   "This setting would be serialized"
   :export? true
+  :encryption :when-encryption-key-set
   ;; make sure it's internal so it doesn't interfere with export test
   :visibility :internal)
 
 (defsetting non-exported-setting
   "This setting would not be serialized"
+  :encryption :when-encryption-key-set
   :export? false)
 
 (deftest export?-test
@@ -1341,9 +1389,9 @@
       (is (= '(1 (2)) (#'setting/realize ok-deep)))
       (doseq [x [shallow deep]]
         (is (thrown-with-msg?
-              clojure.lang.ExceptionInfo
-              #"^Surprise!$"
-              (#'setting/realize x)))))))
+             clojure.lang.ExceptionInfo
+             #"^Surprise!$"
+             (#'setting/realize x)))))))
 
 (defn- validation-setting-symbol [format]
   (symbol (str "test-" (name format) "-validation-setting")))
@@ -1351,7 +1399,8 @@
 (defmacro define-setting-for-type [format]
   `(defsetting ~(validation-setting-symbol format)
      "Setting to test validation of this format - this only shows up in dev"
-     :type ~(keyword (name format))))
+     :type ~(keyword (name format))
+     :encryption :when-encryption-key-set))
 
 (defmacro get-parse-exception [format raw-value]
   `(mt/with-temp-env-var-value! [~(symbol (str "mb-" (validation-setting-symbol format))) ~raw-value]
@@ -1377,11 +1426,11 @@
   (testing "Validation will throw an exception if a setting has invalid JSON via an environment variable"
     (let [ex (get-parse-exception :json "[1, 2,")]
       (assert-parser-exception!
-        :json ex
+       :json ex
         ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
-        #_(str "Unexpected end-of-input within/between Array entries\n"
-               " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 7]")
-        "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
+       #_(str "Unexpected end-of-input within/between Array entries\n"
+              " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 7]")
+       "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
 
 (deftest sensitive-data-redacted-test
   (testing "The exception thrown by validation will not contain sensitive info from the config"
@@ -1389,7 +1438,7 @@
           ex (get-parse-exception :json (str "[" password))]
       (is (not (str/includes? (pr-str ex) password)))
       (assert-parser-exception!
-        :json ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
+       :json ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
 
 (deftest safe-exceptions-not-redacted-test
   (testing "An exception known not to contain sensitive info will not be redacted"
@@ -1397,10 +1446,10 @@
           ex (get-parse-exception :json "{\"a\": \"123abc\", \"b\": 2")]
       (is (not (str/includes? (pr-str ex) password)))
       (assert-parser-exception!
-        :json ex
-        (str "Unexpected end-of-input: expected close marker for Object (start marker at [Source: REDACTED"
-             " (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1])\n"
-             " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 23]")))))
+       :json ex
+       (str "Unexpected end-of-input: expected close marker for Object (start marker at [Source: REDACTED"
+            " (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1])\n"
+            " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 23]")))))
 
 (define-setting-for-type :csv)
 
@@ -1412,16 +1461,16 @@
   (testing "Validation will throw an exception if a setting has invalid CSV via an environment variable"
     (let [ex (get-parse-exception :csv "1,2,2,\",,")]
       (assert-parser-exception!
-        :csv ex "CSV error (unexpected end of file)"))))
+       :csv ex "CSV error (unexpected end of file)"))))
 
 (deftest invalid-csv-setting-char-test
   (testing "Validation will throw an exception if a setting has invalid CSV via an environment variable"
     (let [ex (get-parse-exception :csv "\"1\"$ekr3t")]
       (assert-parser-exception!
-        :csv ex
+       :csv ex
         ;; we don't expose the raw exception here, as it would give away the first character of the secret
-        #_"CSV error (unexpected character: $)"
-        "Error of type class java.lang.Exception thrown while parsing a setting"))))
+       #_"CSV error (unexpected character: $)"
+       "Error of type class java.lang.Exception thrown while parsing a setting"))))
 
 (define-setting-for-type :boolean)
 
@@ -1436,7 +1485,7 @@
     (testing (format "Validation will throw an exception when trying to parse %s as a boolean" raw-value)
       (let [ex (get-parse-exception :boolean raw-value)]
         (assert-parser-exception!
-          :boolean ex "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive).")))))
+         :boolean ex "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive).")))))
 
 (define-setting-for-type :double)
 
@@ -1452,8 +1501,8 @@
     (testing (format "Validation will throw an exception when trying to parse %s as a double" raw-value)
       (let [ex (get-parse-exception :double raw-value)]
         (assert-parser-exception!
-          #_"For input string: \"{raw-value}\""
-          :double ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
+         #_"For input string: \"{raw-value}\""
+         :double ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
 
 (define-setting-for-type :keyword)
 
@@ -1479,8 +1528,8 @@
     (testing (format "Validation will throw an exception when trying to parse %s as a integer" raw-value)
       (let [ex (get-parse-exception :integer raw-value)]
         (assert-parser-exception!
-          #_"For input string: \"{raw-value}\""
-          :integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
+         #_"For input string: \"{raw-value}\""
+         :integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
 
 (define-setting-for-type :positive-integer)
 
@@ -1495,8 +1544,8 @@
     (testing (format "Validation will throw an exception when trying to parse %s as a positive-integer" raw-value)
       (let [ex (get-parse-exception :positive-integer raw-value)]
         (assert-parser-exception!
-          #_"For input string: \"{raw-value}\""
-          :positive-integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
+         #_"For input string: \"{raw-value}\""
+         :positive-integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
 
 (define-setting-for-type :timestamp)
 
@@ -1508,8 +1557,8 @@
   (testing "Validation will throw an exception when trying to parse an invalid timestamp"
     (let [ex (get-parse-exception :timestamp "2024-01-48")]
       (assert-parser-exception!
-        #_"Text '{raw-value}' could not be parsed, unparsed text found at index 0"
-        :timestamp ex "Error of type class java.time.format.DateTimeParseException thrown while parsing a setting"))))
+       #_"Text '{raw-value}' could not be parsed, unparsed text found at index 0"
+       :timestamp ex "Error of type class java.time.format.DateTimeParseException thrown while parsing a setting"))))
 
 (defn ns-validation-setting-symbol [format]
   (symbol "metabase.models.setting-test" (name (validation-setting-symbol format))))
@@ -1528,3 +1577,29 @@
         ;; We operate on trust that tests are added along with this var
         (testing (format "We have defined a setting for the %s validation tests" format)
           (is (var? (resolve (ns-validation-setting-symbol format)))))))))
+
+(deftest migrate-encrypted-settings!-works
+  (testing "It works when a secret key is set"
+    (encryption-test/with-secret-key "ABCDEFGH12345678"
+      (t2/delete! :model/Setting :key "test-never-encrypted-setting")
+      (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")})
+      ;; Sanity check: the value is encrypted
+      (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
+      (setting/migrate-encrypted-settings!)
+      (is (= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
+      (setting/migrate-encrypted-settings!)
+      (is (= "foobar" (actual-value-in-db :test-never-encrypted-setting)))))
+  (testing "It doesn't do anything when the secret key is not set"
+    (encryption-test/with-secret-key "ABCDEFGH12345678"
+      (t2/delete! :model/Setting :key "test-never-encrypted-setting")
+      (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")}))
+    (encryption-test/with-secret-key nil
+      (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
+      (setting/migrate-encrypted-settings!)
+      (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting))))))
+
+(deftest boolean-settings-default-to-never-encrypted
+  (testing "Boolean settings default to never encrypted"
+    (is (= :no (:encryption (setting/resolve-setting :test-boolean-setting)))))
+  (testing "Boolean settings can be encrypted"
+    (is (= :when-encryption-key-set (:encryption (setting/resolve-setting :test-boolean-encrypted-setting))))))

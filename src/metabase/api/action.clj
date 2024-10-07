@@ -24,20 +24,20 @@
    string?
    (mu/with-api-error-message
     [:fn #(actions/apply-json-query {} %)]
-     (deferred-tru "must be a valid json-query, something like ''.item.title''"))])
+    (deferred-tru "must be a valid json-query, something like ''.item.title''"))])
 
 (def ^:private supported-action-type
   (mu/with-api-error-message
-    [:enum "http" "query" "implicit"]
-    (deferred-tru "Unsupported action type")))
+   [:enum "http" "query" "implicit"]
+   (deferred-tru "Unsupported action type")))
 
 (def ^:private implicit-action-kind
   (mu/with-api-error-message
-    (into [:enum]
-          (for [ns ["row" "bulk"]
-                action ["create" "update" "delete"]]
-            (str ns "/" action)))
-    (deferred-tru "Unsupported implicit action kind")))
+   (into [:enum]
+         (for [ns ["row" "bulk"]
+               action ["create" "update" "delete"]]
+           (str ns "/" action)))
+   (deferred-tru "Unsupported implicit action kind")))
 
 (def ^:private http-action-template
   [:map {:closed true}
@@ -56,9 +56,9 @@
   (letfn [(actions-for [models]
             (if (seq models)
               (t2/hydrate (action/select-actions models
-                                              :model_id [:in (map :id models)]
-                                              :archived false)
-                       :creator)
+                                                 :model_id [:in (map :id models)]
+                                                 :archived false)
+                          :creator)
               []))]
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
     (let [models (if model-id
@@ -68,10 +68,7 @@
                                      [:= :type "model"]
                                      [:= :archived false]
                                      ;; action permission keyed off of model permission
-                                     (collection/visible-collection-ids->honeysql-filter-clause
-                                      :collection_id
-                                      (collection/permissions-set->visible-collection-ids
-                                       @api/*current-user-permissions-set*))]}))]
+                                     (collection/visible-collection-filter-clause)]}))]
       (actions-for models))))
 
 (api/defendpoint GET "/public"
@@ -94,8 +91,10 @@
   [action-id]
   {action-id ms/PositiveInt}
   (let [action (api/write-check Action action-id)]
-    (snowplow/track-event! ::snowplow/action-deleted api/*current-user-id* {:type      (:type action)
-                                                                            :action_id action-id}))
+    (snowplow/track-event! ::snowplow/action
+                           {:event     :action-deleted
+                            :type      (:type action)
+                            :action_id action-id}))
   (t2/delete! Action :id action-id)
   api/generic-204-no-content)
 
@@ -132,9 +131,11 @@
       (actions/check-actions-enabled-for-database!
        (t2/select-one Database :id db-id))))
   (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
-    (snowplow/track-event! ::snowplow/action-created api/*current-user-id* {:type           type
-                                                                            :action_id      action-id
-                                                                            :num_parameters (count parameters)})
+    (snowplow/track-event! ::snowplow/action
+                           {:event          :action-created
+                            :type           type
+                            :action_id      action-id
+                            :num_parameters (count parameters)})
     (if action-id
       (action/select-action :id action-id)
       ;; t2/insert! does not return a value when used with h2
@@ -164,9 +165,11 @@
   (let [existing-action (api/write-check Action id)]
     (action/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (action/select-action :id id)]
-    (snowplow/track-event! ::snowplow/action-updated api/*current-user-id* {:type           type
-                                                                            :action_id      id
-                                                                            :num_parameters (count parameters)})
+    (snowplow/track-event! ::snowplow/action
+                           {:event          :action-updated
+                            :type           type
+                            :action_id      id
+                            :num_parameters (count parameters)})
     action))
 
 (api/defendpoint POST "/:id/public_link"
@@ -215,9 +218,11 @@
   {id         ms/PositiveInt
    parameters [:maybe [:map-of :keyword any?]]}
   (let [{:keys [type] :as action} (api/check-404 (action/select-action :id id :archived false))]
-    (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :model_detail
-                                                                             :type      type
-                                                                             :action_id id})
+    (snowplow/track-event! ::snowplow/action
+                           {:event     :action-executed
+                            :source    :model_detail
+                            :type      type
+                            :action_id id})
     (actions/execute-action! action (update-keys parameters name))))
 
 (api/define-routes)

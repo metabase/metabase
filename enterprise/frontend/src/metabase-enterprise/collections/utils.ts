@@ -1,4 +1,3 @@
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import type { IconData, ObjectWithModel } from "metabase/lib/icon";
 import { getIconBase } from "metabase/lib/icon";
 import type { ItemWithCollection } from "metabase/plugins";
@@ -12,7 +11,6 @@ import type {
 
 import {
   COLLECTION_TYPES,
-  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID,
   INSTANCE_ANALYTICS_COLLECTION,
   OFFICIAL_COLLECTION,
   REGULAR_COLLECTION,
@@ -40,13 +38,13 @@ export function getCollectionType({
   );
 }
 
-export const getInstanceAnalyticsCustomCollection = (
-  collections: Collection[],
-) =>
-  collections?.find?.(
-    collection =>
-      collection.entity_id === CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID,
-  ) ?? null;
+export function isInstanceAnalyticsCollection(
+  collection?: Pick<Collection, "type">,
+): boolean {
+  return (
+    !!collection && getCollectionType(collection).type === "instance-analytics"
+  );
+}
 
 export const getIcon = (item: ObjectWithModel): IconData => {
   if (getCollectionType({ type: item.type }).type === "instance-analytics") {

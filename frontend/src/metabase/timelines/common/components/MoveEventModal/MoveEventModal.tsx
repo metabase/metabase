@@ -9,7 +9,7 @@ import ModalFooter from "../ModalFooter";
 import ModalHeader from "../ModalHeader";
 import TimelinePicker from "../TimelinePicker";
 
-import { ModalRoot, ModalBody } from "./MoveEventModal.styled";
+import { ModalBody, ModalRoot } from "./MoveEventModal.styled";
 
 export interface MoveEventModalProps {
   event: TimelineEvent;

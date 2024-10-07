@@ -27,9 +27,18 @@ export const getSetting = <S extends State, T extends GetSettingKey<S>>(
   return setting;
 };
 
+export const isSsoEnabled = (state: State) =>
+  getSetting(state, "ldap-enabled") ||
+  getSetting(state, "google-auth-enabled") ||
+  getSetting(state, "saml-enabled") ||
+  getSetting(state, "other-sso-enabled?");
+
 export const getStoreUrl = (path = "") => {
   return `https://store.metabase.com/${path}`;
 };
+
+export const migrateToCloudGuideUrl = () =>
+  "https://www.metabase.com/cloud/docs/migrate/guide";
 
 export const getLearnUrl = (path = "") => {
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This is the implementation of getLearnUrl()
@@ -51,8 +60,7 @@ export const getDocsUrl = createSelector(
 export const getDocsSearchUrl = (query: Record<string, string>) =>
   `https://www.metabase.com/search?${new URLSearchParams(query)}`;
 
-// should be private, but exported until there are usages of deprecated MetabaseSettings.docsUrl
-export const getDocsUrlForVersion = (
+const getDocsUrlForVersion = (
   version: Version | undefined,
   page = "",
   anchor = "",
@@ -90,17 +98,29 @@ export const getDocsUrlForVersion = (
 };
 
 interface UpgradeUrlOpts {
-  utm_media: string;
+  utm_campaign?: string;
+  utm_content: string;
 }
 
 export const getUpgradeUrl = createSelector(
   (state: State) => getPlan(getSetting(state, "token-features")),
   (state: State) => getSetting(state, "active-users-count"),
-  (state: State, opts: UpgradeUrlOpts) => opts.utm_media,
-  (source, count, media) => {
+  (_state: State, utmTags: UpgradeUrlOpts) => utmTags,
+  (plan, count, utmTags) => {
     const url = new URL("https://www.metabase.com/upgrade");
-    url.searchParams.append("utm_media", media);
-    url.searchParams.append("utm_source", source);
+    const searchParams = {
+      utm_source: "product",
+      utm_medium: "upsell",
+      utm_campaign: utmTags.utm_campaign,
+      utm_content: utmTags.utm_content,
+      source_plan: plan,
+    };
+    for (const key in searchParams) {
+      const utmValue = searchParams[key as keyof typeof searchParams];
+      if (utmValue) {
+        url.searchParams.append(key, utmValue);
+      }
+    }
     if (count != null) {
       url.searchParams.append("utm_users", String(count));
     }

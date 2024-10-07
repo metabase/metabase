@@ -145,8 +145,7 @@
 
 (def ^:private ^{:arglists '([context model model-attrs entity-name])} path->context
   "Extract entities from a logical path."
-   path->context*)
-
+  path->context*)
 
 (defmethod path->context* "databases"
   [context _ _ db-name]
@@ -161,15 +160,15 @@
 (defmethod path->context* "tables"
   [context _ _ table-name]
   (assoc context :table (t2/select-one-pk Table
-                          :db_id  (:database context)
-                          :schema (:schema context)
-                          :name   table-name)))
+                                          :db_id  (:database context)
+                                          :schema (:schema context)
+                                          :name   table-name)))
 
 (defmethod path->context* "fields"
   [context _ _ field-name]
   (assoc context :field (t2/select-one-pk Field
-                          :table_id (:table context)
-                          :name     field-name)))
+                                          :table_id (:table context)
+                                          :name     field-name)))
 
 (defmethod path->context* "fks"
   [context _ _ field-name]
@@ -178,46 +177,46 @@
 (defmethod path->context* "segments"
   [context _ _ segment-name]
   (assoc context :segment (t2/select-one-pk Segment
-                            :table_id (:table context)
-                            :name     segment-name)))
+                                            :table_id (:table context)
+                                            :name     segment-name)))
 
 (defmethod path->context* "collections"
   [context _ model-attrs collection-name]
   (if (= collection-name "root")
     (assoc context :collection nil)
     (assoc context :collection (t2/select-one-pk Collection
-                                 :name      collection-name
-                                 :namespace (:namespace model-attrs)
-                                 :location  (or (letfn [(collection-location [id]
-                                                          (t2/select-one-fn :location Collection :id id))]
-                                                  (some-> context
-                                                          :collection
-                                                          collection-location
-                                                          (str (:collection context) "/")))
-                                                "/")))))
+                                                 :name      collection-name
+                                                 :namespace (:namespace model-attrs)
+                                                 :location  (or (letfn [(collection-location [id]
+                                                                          (t2/select-one-fn :location Collection :id id))]
+                                                                  (some-> context
+                                                                          :collection
+                                                                          collection-location
+                                                                          (str (:collection context) "/")))
+                                                                "/")))))
 
 (defmethod path->context* "dashboards"
   [context _ _ dashboard-name]
   (assoc context :dashboard (t2/select-one-pk Dashboard
-                              :collection_id (:collection context)
-                              :name          dashboard-name)))
+                                              :collection_id (:collection context)
+                                              :name          dashboard-name)))
 
 (defmethod path->context* "pulses"
   [context _ _ pulse-name]
   (assoc context :dashboard (t2/select-one-pk Pulse
-                              :collection_id (:collection context)
-                              :name          pulse-name)))
+                                              :collection_id (:collection context)
+                                              :name          pulse-name)))
 
 (defmethod path->context* "cards"
   [context _ _ dashboard-name]
   (assoc context :card (t2/select-one-pk Card
-                         :collection_id (:collection context)
-                         :name          dashboard-name)))
+                                         :collection_id (:collection context)
+                                         :name          dashboard-name)))
 
 (defmethod path->context* "users"
   [context _ _ email]
   (assoc context :user (t2/select-one-pk User
-                         :email email)))
+                                         :email email)))
 
 (defmethod path->context* "snippets"
   [context _ _ snippet-name]
@@ -287,7 +286,7 @@
 
      (contains? all-entities c)
      (partition-name-components (cond-> (assoc acc ::prev-model-name? true
-                                                   ::current-component [c])
+                                               ::current-component [c])
                                   (not-empty (::current-component acc))
                                   (update ::name-components conj (::current-component acc)))
                                 more-comps))))

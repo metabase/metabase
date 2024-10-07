@@ -3,8 +3,8 @@ import type { ComponentType } from "react";
 import type { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/action-buttons";
 import type {
   DashboardFullscreenControls,
-  DashboardRefreshPeriodControls,
   DashboardNightModeControls,
+  DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
 import type { Collection, Dashboard } from "metabase-types/api";
 
@@ -31,6 +31,7 @@ export type HeaderButtonProps = {
   formInput: any;
   isAdmin: boolean;
   isEmbeddingSdk: boolean;
+  openSettingsSidebar: () => void;
 } & DashboardHeaderButtonRowProps;
 
 export type DashboardActionButton = {

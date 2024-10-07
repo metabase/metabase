@@ -23,10 +23,10 @@
   (m/distinct-by
    add/normalize-clause
    (lib.util.match/match (walk/prewalk (fn [x]
-                                 (if (map? x)
-                                   (dissoc x :source-query :source-metadata)
-                                   x))
-                               inner-query)
+                                         (if (map? x)
+                                           (dissoc x :source-query :source-metadata)
+                                           x))
+                                       inner-query)
      [:field _ (_ :guard :join-alias)]
      &match)))
 
@@ -86,10 +86,11 @@
   (let [filter-clause (:filter inner-query)
         keep-filter? (nil? (lib.util.match/match-one filter-clause :expression))
         source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
-                 ;; preprocess this without a current user context so it's not subject to permissions checks. To get
-                 ;; here in the first place we already had to do perms checks to make sure the query we're transforming
-                 ;; is itself ok, so we don't need to run another check
-                 (binding [api/*current-user-id* nil]
+                 ;; preprocess this in a superuser context so it's not subject to permissions checks. To get here in the
+                 ;; first place we already had to do perms checks to make sure the query we're transforming is itself
+                 ;; ok, so we don't need to run another check.
+                 ;; (Not using mw.session/as-admin due to cyclic dependency.)
+                 (binding [api/*is-superuser?* true]
                    ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
                     {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                      :type     :query
@@ -180,7 +181,7 @@
        (seq aggregations))
    ;; 3. contains an `:expression` ref
    (lib.util.match/match-one (concat breakouts aggregations)
-                             :expression)))
+     :expression)))
 
 (defn nest-expressions
   "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a

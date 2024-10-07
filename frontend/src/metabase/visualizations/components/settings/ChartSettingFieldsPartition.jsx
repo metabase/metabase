@@ -2,7 +2,7 @@
 import cx from "classnames";
 import { splice } from "icepick";
 import { Component } from "react";
-import { Droppable, Draggable } from "react-beautiful-dnd";
+import { Draggable, Droppable } from "react-beautiful-dnd";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -13,8 +13,8 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
 import {
   DroppableContainer,
-  FieldPartitionColumn,
   EmptyColumnPlaceholder,
+  FieldPartitionColumn,
 } from "./ChartSettingFieldsPartition.styled";
 
 const columnMove = (columns, from, to) => {
@@ -128,8 +128,8 @@ class ChartSettingFieldsPartition extends Component {
                     ) : (
                       columns.map((col, index) => (
                         <Draggable
-                          key={`draggable-${col.display_name}`}
-                          draggableId={`draggable-${col.display_name}`}
+                          key={`draggable-${col.name}`}
+                          draggableId={`draggable-${col.name}`}
                           index={index}
                         >
                           {provided => (
@@ -140,7 +140,7 @@ class ChartSettingFieldsPartition extends Component {
                               className={CS.mb1}
                             >
                               <Column
-                                key={`${partitionName}-${col.display_name}`}
+                                key={`${partitionName}-${col.name}`}
                                 column={col}
                                 index={index}
                                 onEditFormatting={this.handleEditFormatting}

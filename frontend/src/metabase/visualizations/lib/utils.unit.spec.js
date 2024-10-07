@@ -3,13 +3,13 @@ import _ from "underscore";
 import {
   cardHasBecomeDirty,
   computeMaxDecimalsForValues,
+  computeSplit,
   getCardAfterVisualizationClick,
   getColumnCardinality,
-  getFriendlyName,
   getDefaultDimensionsAndMetrics,
-  preserveExistingColumnsOrder,
-  computeSplit,
   getDefaultPivotColumn,
+  getFriendlyName,
+  preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 import { createMockColumn } from "metabase-types/api/mocks";
 

@@ -24,11 +24,15 @@ const CONSUMED_PROPS = [
   "fetchType",
 ];
 
+// TODO: it's not a valid selector, it breaks rules of selectors, but we
+// suppress it's warning as it's hard to fix it and our plan is to get rid of
+// entities completely
 const getMemoizedEntityQuery = createSelector(
   (state, entityQuery) => entityQuery,
   entityQuery => entityQuery,
   {
     equalityFn: _.isEqual,
+    devModeChecks: { identityFunctionCheck: "never" },
   },
 );
 
@@ -192,14 +196,13 @@ export const entityObjectLoader =
   eolProps =>
   ComposedComponent =>
   // eslint-disable-next-line react/display-name
-  props =>
-    (
-      <EntityObjectLoader {...props} {...eolProps}>
-        {childProps => (
-          <ComposedComponent
-            {..._.omit(props, ...CONSUMED_PROPS)}
-            {...childProps}
-          />
-        )}
-      </EntityObjectLoader>
-    );
+  props => (
+    <EntityObjectLoader {...props} {...eolProps}>
+      {childProps => (
+        <ComposedComponent
+          {..._.omit(props, ...CONSUMED_PROPS)}
+          {...childProps}
+        />
+      )}
+    </EntityObjectLoader>
+  );

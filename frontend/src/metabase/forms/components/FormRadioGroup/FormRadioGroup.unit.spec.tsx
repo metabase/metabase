@@ -5,8 +5,8 @@ import * as Yup from "yup";
 import { render, screen, waitFor } from "__support__/ui";
 import {
   Form,
-  FormRadioGroup,
   FormProvider,
+  FormRadioGroup,
   FormSubmitButton,
 } from "metabase/forms";
 import { Radio } from "metabase/ui";

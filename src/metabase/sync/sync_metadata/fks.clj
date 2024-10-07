@@ -82,14 +82,14 @@
   [database :- i/DatabaseInstance
    metadata :- i/FKMetadataEntry]
   (u/prog1 (t2/query-one (mark-fk-sql (:id database) metadata))
-  (when (= <> 1)
-    (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
-                              (sync-util/table-name-for-logging :name (:fk-table-name metadata)
-                                                                :schema (:fk-table-schema metadata))
-                              (sync-util/field-name-for-logging :name (:fk-column-name metadata))
-                              (sync-util/table-name-for-logging :name (:fk-table-name metadata)
-                                                                :schema (:fk-table-schema metadata))
-                              (sync-util/field-name-for-logging :name (:pk-column-name metadata)))))))
+    (when (= <> 1)
+      (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
+                                (sync-util/table-name-for-logging :name (:fk-table-name metadata)
+                                                                  :schema (:fk-table-schema metadata))
+                                (sync-util/field-name-for-logging :name (:fk-column-name metadata))
+                                (sync-util/table-name-for-logging :name (:fk-table-name metadata)
+                                                                  :schema (:fk-table-schema metadata))
+                                (sync-util/field-name-for-logging :name (:pk-column-name metadata)))))))
 
 (mu/defn sync-fks-for-table!
   "Sync the foreign keys for a specific `table`."

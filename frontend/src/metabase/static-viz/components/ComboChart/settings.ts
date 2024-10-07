@@ -11,6 +11,7 @@ import type { LegacySeriesSettingsObjectKey } from "metabase/visualizations/echa
 import {
   getAreDimensionsAndMetricsValid,
   getDefaultBubbleSizeCol,
+  getDefaultDataLabelsFormatting,
   getDefaultDataLabelsFrequency,
   getDefaultDimensions,
   getDefaultGoalLabel,
@@ -28,33 +29,32 @@ import {
   getDefaultYAxisTitle,
   getIsXAxisLabelEnabledDefault,
   getIsYAxisLabelEnabledDefault,
+  getSeriesOrderDimensionSetting,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
   getYAxisUnpinFromZeroDefault,
-  getSeriesOrderDimensionSetting,
+  isShowStackValuesValid,
   isStackingValueValid,
   isXAxisScaleValid,
   isYAxisUnpinFromZeroValid,
-  isShowStackValuesValid,
-  getDefaultDataLabelsFormatting,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
   SERIES_COLORS_SETTING_KEY,
+  SERIES_SETTING_KEY,
   getSeriesColors,
   getSeriesDefaultDisplay,
-  getSeriesDefaultLinearInterpolate,
   getSeriesDefaultLineMarker,
   getSeriesDefaultLineMissing,
   getSeriesDefaultLineSize,
   getSeriesDefaultLineStyle,
+  getSeriesDefaultLinearInterpolate,
   getSeriesDefaultShowSeriesValues,
-  SERIES_SETTING_KEY,
 } from "metabase/visualizations/shared/settings/series";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { RawSeries, VisualizationSettings } from "metabase-types/api";
+import type { RawSeries } from "metabase-types/api";
 
 const getSeriesFunction = (
   rawSeries: RawSeries,
@@ -117,11 +117,10 @@ const getSeriesFunction = (
 // settings computation code in the static rendering environment
 export const computeStaticComboChartSettings = (
   rawSeries: RawSeries,
-  dashcardSettings: VisualizationSettings,
   renderingContext: RenderingContext,
 ): ComputedVisualizationSettings => {
   const { card: mainCard, data: mainDataset } = rawSeries[0];
-  const settings = getCommonStaticVizSettings(rawSeries, dashcardSettings);
+  const settings = getCommonStaticVizSettings(rawSeries);
   const areDimensionsAndMetricsValid =
     getAreDimensionsAndMetricsValid(rawSeries);
 
@@ -143,6 +142,7 @@ export const computeStaticComboChartSettings = (
   const seriesModels = getCardsSeriesModels(
     rawSeries,
     cardsColumns,
+    [],
     settings,
     renderingContext,
   );

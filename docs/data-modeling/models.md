@@ -140,7 +140,7 @@ See [asking questions][question].
 
 You can refer to a model in a SQL query just like you can refer to a saved question:
 
-```
+```sql
 {% raw %}
 SELECT * FROM {{#1-customer-model}}
 {% endraw %}
@@ -148,7 +148,7 @@ SELECT * FROM {{#1-customer-model}}
 
 Or as a [common table expression (CTE)][cte]:
 
-```
+```sql
 {% raw %}
 WITH model AS {{#3807-invoice-model}}
 SELECT *
@@ -162,9 +162,15 @@ You can also use the data reference sidebar to browse the models available. To o
 
 ## Model version history
 
-For [questions](../questions/start.md), [dashboards](../dashboards/start.md), and models, Metabase keeps a version history for the previous fifteen versions of that item. You can view changes, revert to previous versions, and archive outdated items.
+For [questions](../questions/start.md), [dashboards](../dashboards/start.md), and models, Metabase keeps a version history for the previous fifteen versions of that item. You can view changes and revert to previous versions.
 
 See [History](../exploration-and-organization/history.md).
+
+## Delete a model
+
+You can move outdated or unneeded models to trash, or delete them permanently. Deleting a model will affect questions that use it as a data source.
+
+See [Deleting and restoring items](../exploration-and-organization/delete-and-restore.md#delete-and-restore-items).
 
 ## Verifying a model
 

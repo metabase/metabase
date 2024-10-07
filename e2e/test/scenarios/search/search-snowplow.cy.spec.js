@@ -15,6 +15,8 @@ import {
   visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
 
+import { commandPaletteInput } from "../../../support/helpers/e2e-command-palette-helpers";
+
 describeWithSnowplow("scenarios > search > snowplow", () => {
   const NEW_SEARCH_QUERY_EVENT_NAME = "search_query";
   const SEARCH_CLICK = "search_click";
@@ -32,7 +34,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
   });
 
   describe("command palette", () => {
-    it("should send snowplow events search queries", () => {
+    it("should send snowplow events search queries on a click", () => {
       cy.visit("/");
       commandPaletteSearch("Orders", false);
 
@@ -49,6 +51,39 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
       });
 
       commandPalette().findByRole("option", { name: "Orders Model" }).click();
+      expectGoodSnowplowEvent(
+        {
+          event: SEARCH_CLICK,
+          context: "command-palette",
+          position: 2,
+        },
+        1,
+      );
+    });
+
+    it("should send snowplow events search queries on keyboard navigation", () => {
+      cy.visit("/");
+      commandPaletteSearch("Orders", false);
+
+      //Passing a function to ensure that runtime_milliseconds is populated as a number
+      expectGoodSnowplowEvent(data => {
+        if (!data) {
+          return false;
+        }
+        return (
+          data.event === NEW_SEARCH_QUERY_EVENT_NAME &&
+          data.context === "command-palette" &&
+          typeof data.runtime_milliseconds === "number"
+        );
+      });
+
+      // FIX ME: We need to slow cypress down before we start inputting keyboard events.
+      // Not clear why though :/.
+      cy.wait(500);
+      commandPaletteInput().type("{downArrow}{downArrow}{enter}", {
+        delay: 200,
+      });
+
       expectGoodSnowplowEvent(
         {
           event: SEARCH_CLICK,

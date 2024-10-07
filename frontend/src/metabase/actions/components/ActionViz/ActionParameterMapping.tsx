@@ -1,4 +1,4 @@
-import { useCallback, useState, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { sortActionParams } from "metabase/actions/utils";
@@ -12,16 +12,16 @@ import type {
   ActionDashboardCard,
   ActionParametersMapping,
   Dashboard,
-  WritebackParameter,
-  WritebackAction,
   Parameter,
   ParameterTarget,
+  WritebackAction,
+  WritebackParameter,
 } from "metabase-types/api";
 
 import {
-  ParameterFormSection,
-  ParameterFormLabel,
   ParameterFormBadge,
+  ParameterFormLabel,
+  ParameterFormSection,
 } from "./ActionParameterMapping.styled";
 import {
   getParameterDefaultValue,

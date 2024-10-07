@@ -1,7 +1,7 @@
 import type {
-  DatabaseXray,
-  DatabaseId,
   DashboardQueryMetadata,
+  DatabaseId,
+  DatabaseXray,
   GetXrayDashboardQueryMetadataRequest,
 } from "metabase-types/api";
 

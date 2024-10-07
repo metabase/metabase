@@ -57,12 +57,12 @@
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check Segment id)
         clean-body (u/select-keys-when body
-                     :present #{:description :caveats :points_of_interest}
-                     :non-nil #{:archived :definition :name :show_in_getting_started})
+                                       :present #{:description :caveats :points_of_interest}
+                                       :non-nil #{:archived :definition :name :show_in_getting_started})
         new-def    (->> clean-body :definition (mbql.normalize/normalize-fragment []))
         new-body   (merge
-                     (dissoc clean-body :revision_message)
-                     (when new-def {:definition new-def}))
+                    (dissoc clean-body :revision_message)
+                    (when new-def {:definition new-def}))
         changes    (when-not (= new-body existing)
                      new-body)
         archive?   (:archived changes)]

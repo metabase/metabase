@@ -1,1 +1,4 @@
-export { PaginationControls } from "./PaginationControls";
+export {
+  PaginationControls,
+  type PaginationControlsProps,
+} from "./PaginationControls";

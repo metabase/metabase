@@ -1,14 +1,13 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { createRef, forwardRef, Component } from "react";
-import { findDOMNode } from "react-dom";
+import { Component, createRef, forwardRef } from "react";
 import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
+import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import Button from "metabase/core/components/Button";
@@ -22,39 +21,39 @@ import { formatValue } from "metabase/lib/formatting";
 import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
 import { setUIControls, zoomInRow } from "metabase/query_builder/actions";
 import {
-  getRowIndexToPKMap,
-  getQueryBuilderMode,
-  getUiControls,
   getIsShowingRawTable,
+  getQueryBuilderMode,
+  getRowIndexToPKMap,
+  getUiControls,
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import {
-  ThemeProvider,
   Box,
-  Button as UIButton,
-  Icon,
   DelayGroup,
+  Icon,
+  ThemeProvider,
+  Button as UIButton,
 } from "metabase/ui";
 import {
   getTableCellClickedObject,
-  getTableHeaderClickedObject,
   getTableClickedObjectRowData,
+  getTableHeaderClickedObject,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
-import { isID, isPK, isFK } from "metabase-lib/v1/types/utils/isa";
+import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import { memoizeClass } from "metabase-lib/v1/utils";
 
 import MiniBar from "../MiniBar";
 
 import TableS from "./TableInteractive.module.css";
 import {
-  TableDraggable,
   ExpandButton,
   ResizeHandle,
+  TableDraggable,
   TableInteractiveRoot,
 } from "./TableInteractive.styled";
 import { getCellDataTheme } from "./table-theme-utils";
@@ -114,6 +113,8 @@ class TableInteractive extends Component {
     this.columnHasResized = {};
     this.headerRefs = [];
     this.detailShortcutRef = createRef();
+
+    this.gridRef = createRef();
 
     window.METABASE_TABLE = this;
   }
@@ -180,7 +181,7 @@ class TableInteractive extends Component {
 
     if (this.props.isEmbeddingSdk) {
       const rootElement = document.getElementById(
-        EMBEDDING_SDK_ROOT_ELEMENT_ID,
+        EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
       );
 
       if (rootElement) {
@@ -1042,7 +1043,7 @@ class TableInteractive extends Component {
       return;
     }
 
-    const scrollOffset = findDOMNode(this.grid)?.scrollTop || 0;
+    const scrollOffset = this.gridRef.current?.scrollTop || 0;
 
     // infer row index from mouse position when we hover the gutter column
     if (event?.currentTarget?.id === "gutter-column") {
@@ -1309,7 +1310,7 @@ class TableInteractive extends Component {
   }
 
   _benchmark() {
-    const grid = findDOMNode(this.grid);
+    const grid = this.gridRef.current;
     const height = grid.scrollHeight;
     let top = 0;
     let start = Date.now();

@@ -42,19 +42,15 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
   },
   [DASHBOARD_ACTION.ADD_LINK_CARD]: {
     icon: "link",
-    tooltip: "Add link card",
+    tooltip: "Add a link or iframe",
   },
   [DASHBOARD_ACTION.ADD_SECTION]: {
     icon: "section",
     tooltip: "Add section",
   },
-  [DASHBOARD_ACTION.ADD_TEMPORAL_UNIT]: {
-    icon: "clock",
-    tooltip: "Add a Unit of Time widget",
-  },
   [DASHBOARD_ACTION.ADD_FILTER_PARAMETER]: {
     icon: "filter",
-    tooltip: "Add a filter",
+    tooltip: "Add a filter or parameter",
   },
   [DASHBOARD_ACTION.ADD_ACTION_ELEMENT]: {
     icon: "click",
@@ -72,13 +68,9 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "pencil",
     tooltip: "Edit dashboard",
   },
-  [DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTION]: {
-    icon: "subscription",
-    tooltip: "Subscriptions",
-  },
-  [DASHBOARD_ACTION.DASHBOARD_EMBED_ACTION]: {
+  [DASHBOARD_ACTION.DASHBOARD_SHARING]: {
     icon: "share",
-    tooltip: "Embedding",
+    tooltip: "Sharing",
   },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
     icon: "clock",
@@ -109,7 +101,6 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "expand",
     tooltip: "Enter Fullscreen",
   },
-  [DASHBOARD_ACTION.EXPORT_AS_PDF]: {},
 };
 
 const setup = ({
@@ -280,8 +271,7 @@ describe("DashboardHeaderButtonRow", () => {
       await expectButtonsToBeInHeader({
         expectedButtons: [
           DASHBOARD_ACTION.EDIT_DASHBOARD,
-          DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTION,
-          DASHBOARD_ACTION.DASHBOARD_EMBED_ACTION,
+          DASHBOARD_ACTION.DASHBOARD_SHARING,
           DASHBOARD_ACTION.REFRESH_WIDGET,
           DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER,
           DASHBOARD_ACTION.DASHBOARD_BOOKMARK,
@@ -291,11 +281,9 @@ describe("DashboardHeaderButtonRow", () => {
       });
     });
 
-    it("should not show subscription button when user is not an admin", () => {
-      setup({ isEditing: false, isAdmin: false });
-      expectButtonsToBeInHeader({
-        expectedButtons: [DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTION],
-      });
+    it("should show sharing button", () => {
+      setup({ isEditing: false });
+      expect(screen.getByTestId("sharing-menu-button")).toBeInTheDocument();
     });
 
     it("should not show editing-related buttons", () => {

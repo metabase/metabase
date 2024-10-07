@@ -116,15 +116,15 @@
     (mt/with-temp [Dashboard {dashboard-id :id} {}
                    Card      {card-id :id} {:name "Test Card"}]
       (let [dashboard-card (first (dashboard-card/create-dashboard-cards!
-                                    [{:dashboard_id           dashboard-id
-                                      :card_id                card-id
-                                      :size_x                 4
-                                      :size_y                 3
-                                      :row                    1
-                                      :col                    1
-                                      :parameter_mappings     [{:foo "bar"}]
-                                      :visualization_settings {}
-                                      :series                 [card-id]}]))]
+                                   [{:dashboard_id           dashboard-id
+                                     :card_id                card-id
+                                     :size_x                 4
+                                     :size_y                 3
+                                     :row                    1
+                                     :col                    1
+                                     :parameter_mappings     [{:foo "bar"}]
+                                     :visualization_settings {}
+                                     :series                 [card-id]}]))]
         (testing "return value from function"
           (is (= {:size_x                 4
                   :size_y                 3

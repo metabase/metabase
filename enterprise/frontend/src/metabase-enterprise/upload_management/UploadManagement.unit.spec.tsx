@@ -80,11 +80,11 @@ describe("uploadManagementTable", () => {
     const dateColumn = screen.getByText("Created at");
 
     await userEvent.click(dateColumn);
-    expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();
+    expect(screen.getByLabelText("chevronup icon")).toBeInTheDocument();
     expect(getFirstRow()).toHaveTextContent(/Uploaded Table 99/);
 
     await userEvent.click(dateColumn);
-    expect(screen.getByLabelText("chevronup icon")).toBeInTheDocument();
+    expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();
     expect(getFirstRow()).toHaveTextContent(/Uploaded Table 2/);
   });
 

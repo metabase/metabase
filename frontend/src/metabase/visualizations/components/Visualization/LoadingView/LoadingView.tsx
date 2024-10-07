@@ -1,11 +1,11 @@
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { duration } from "metabase/lib/formatting";
 
 import {
+  Duration,
   Root,
   ShortMessage,
-  Duration,
   SlowQueryMessageContainer,
   StyledLoadingSpinner,
 } from "./LoadingView.styled";

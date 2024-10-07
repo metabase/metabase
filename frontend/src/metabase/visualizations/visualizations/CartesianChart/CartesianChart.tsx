@@ -1,14 +1,25 @@
 import type { EChartsType } from "echarts/core";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useSet } from "react-use";
 
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
+import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-import { useCartesianChartSeriesColorsClasses } from "metabase/visualizations/echarts/tooltip";
+import {
+  useCartesianChartSeriesColorsClasses,
+  useCloseTooltipOnScroll,
+} from "metabase/visualizations/echarts/tooltip";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
-  CartesianChartRenderer,
   CartesianChartRoot,
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
@@ -18,9 +29,12 @@ import { useModelsAndOption } from "./use-models-and-option";
 import { getGridSizeAdjustedSettings, validateChartModel } from "./utils";
 
 function _CartesianChart(props: VisualizationProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   // The width and height from props reflect the dimensions of the entire container which includes legend,
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
+
+  const [hiddenSeries, { toggle: toggleSeriesVisibility }] = useSet<string>();
 
   const {
     showAllLegendItems,
@@ -39,6 +53,7 @@ function _CartesianChart(props: VisualizationProps) {
     hovered,
     onChangeCardAndRun,
     onHoverChange,
+    canToggleSeriesVisibility,
     canRemoveSeries,
     onRemoveSeries,
   } = props;
@@ -48,12 +63,16 @@ function _CartesianChart(props: VisualizationProps) {
     [originalSettings, gridSize],
   );
 
-  const { chartModel, timelineEventsModel, option } = useModelsAndOption({
-    ...props,
-    width: chartSize.width,
-    height: chartSize.height,
-    settings,
-  });
+  const { chartModel, timelineEventsModel, option } = useModelsAndOption(
+    {
+      ...props,
+      width: chartSize.width,
+      height: chartSize.height,
+      hiddenSeries,
+      settings,
+    },
+    containerRef,
+  );
   useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
   const chartRef = useRef<EChartsType>();
@@ -76,6 +95,19 @@ function _CartesianChart(props: VisualizationProps) {
     chartRef.current = chart;
   }, []);
 
+  const handleToggleSeriesVisibility = useCallback(
+    (event: MouseEvent, seriesIndex: number) => {
+      const seriesModel = chartModel.seriesModels[seriesIndex];
+      const willShowSeries = hiddenSeries.has(seriesModel.dataKey);
+      const hasMoreVisibleSeries =
+        chartModel.seriesModels.length - hiddenSeries.size > 1;
+      if (hasMoreVisibleSeries || willShowSeries) {
+        toggleSeriesVisibility(seriesModel.dataKey);
+      }
+    },
+    [chartModel, hiddenSeries, toggleSeriesVisibility],
+  );
+
   const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
     chartRef,
     chartModel,
@@ -89,7 +121,12 @@ function _CartesianChart(props: VisualizationProps) {
   }, []);
 
   const canSelectTitle = !!onChangeCardAndRun;
-  const seriesColorsCss = useCartesianChartSeriesColorsClasses(chartModel);
+  const seriesColorsCss = useCartesianChartSeriesColorsClasses(
+    chartModel,
+    settings,
+  );
+
+  useCloseTooltipOnScroll(chartRef);
 
   return (
     <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
@@ -115,16 +152,17 @@ function _CartesianChart(props: VisualizationProps) {
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
         onSelectSeries={onSelectSeries}
+        onToggleSeriesVisibility={
+          canToggleSeriesVisibility && handleToggleSeriesVisibility
+        }
         canRemoveSeries={canRemoveSeries}
         onRemoveSeries={onRemoveSeries}
         onHoverChange={onHoverChange}
         width={outerWidth}
         height={outerHeight}
       >
-        {/**@ts-expect-error emotion does not properly provide prop types due */}
-        <CartesianChartRenderer
-          // to it not working with the `WrappedComponent` class defined in
-          // ExplicitSize
+        <ResponsiveEChartsRenderer
+          ref={containerRef}
           option={option}
           eventHandlers={eventHandlers}
           onResize={handleResize}

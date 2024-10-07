@@ -7,8 +7,8 @@ import {
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { trackDashcardDuplicated } from "metabase/dashboard/analytics";
 import {
-  getDashcardDataMap,
   getDashboards,
+  getDashcardDataMap,
   getDashcards,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";

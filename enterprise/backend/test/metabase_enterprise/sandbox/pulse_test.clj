@@ -34,7 +34,7 @@
       (is (= [[10]]
              (send-pulse-created-by-user! :rasta))))))
 
-(defn- alert-results
+(defn- alert-results!
   "Results for creating and running an Alert"
   [query]
   (mt/with-temp [Card                  pulse-card {:name          "Test card"
@@ -110,19 +110,20 @@
 (deftest e2e-sandboxed-pulse-test
   (testing "Sending Pulses w/ sandboxing, end-to-end"
     (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues
-                                               {:filter [:= $price 3]})}}}
+                                                {:filter [:= $price 3]})}}}
       (let [query (mt/mbql-query venues
                     {:aggregation [[:count]]
                      :breakout    [$price]})]
         (is (= [[3 13]]
-               (mt/formatted-rows [int int]
-                 (mt/with-test-user :rasta
-                   (qp/process-query query))))
+               (mt/formatted-rows
+                [int int]
+                (mt/with-test-user :rasta
+                  (qp/process-query query))))
             "Basic sanity check: make sure the query is properly set up to apply GTAPs")
         (testing "GTAPs should apply to Pulses — they should get the same results as if running that query normally"
           (is (= [[3 13]]
                  (mt/rows
-                  (alert-results query)))))))))
+                  (alert-results! query)))))))))
 
 (defn- html->row-count [html]
   (or (some->> html (re-find #"of <strong.+>(\d+)</strong> rows") second Integer/parseUnsignedInt)
@@ -151,7 +152,7 @@
 
             (testing "Pulse should be sandboxed"
               (is (= 22
-                     (count (mt/rows (alert-results query))))))))))))
+                     (count (mt/rows (alert-results! query))))))))))))
 
 (deftest pulse-preview-test
   (testing "Pulse preview endpoints should be sandboxed"
@@ -185,7 +186,7 @@
                            (csv->row-count attachment)))))))))))))
 
 (deftest csv-downloads-test
-  (testing "CSV/XLSX downloads should be sandboxed"
+  (testing "CSV/XLSX downloads attached to an email should be sandboxed"
     (met/with-gtaps! {:gtaps      {:venues {:remappings {:price [:dimension [:field (mt/id :venues :price) nil]]}}}
                       :attributes {"price" "1"}}
       (let [query (mt/mbql-query venues)]
@@ -270,7 +271,6 @@
           ;; Rasta, a non-sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]})
-
 
           ;; Crowberto should now be removed as a recipient
           (is (= [(mt/user->id :rasta)]

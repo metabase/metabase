@@ -1,7 +1,7 @@
 import {
   createCard,
-  serializeCardForUrl,
   deserializeCardFromUrl,
+  serializeCardForUrl,
 } from "metabase/lib/card";
 import {
   b64_to_utf8,

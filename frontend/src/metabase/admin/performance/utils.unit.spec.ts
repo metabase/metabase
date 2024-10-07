@@ -1,7 +1,7 @@
 import type {
   AdaptiveStrategy,
-  ScheduleSettings,
   InheritStrategy,
+  ScheduleSettings,
 } from "metabase-types/api";
 
 import {

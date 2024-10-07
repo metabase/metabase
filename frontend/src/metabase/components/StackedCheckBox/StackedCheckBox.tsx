@@ -3,15 +3,15 @@ import { useCallback } from "react";
 
 import {
   DEFAULT_CHECKED_COLOR,
-  DEFAULT_UNCHECKED_COLOR,
   DEFAULT_SIZE,
+  DEFAULT_UNCHECKED_COLOR,
 } from "metabase/components/CheckBox";
 
 import {
-  StackedCheckBoxRoot,
+  Label,
   OpaqueCheckBox,
   StackedBackground,
-  Label,
+  StackedCheckBoxRoot,
 } from "./StackedCheckBox.styled";
 
 interface StackedCheckBoxPropTypes {

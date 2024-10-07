@@ -1,5 +1,6 @@
 (ns metabase.lib.drill-thru-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
@@ -11,8 +12,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util.log :as log]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -114,9 +114,9 @@
          (testing (str "\ndrill =\n" (u/pprint-to-str drill)
                        "throws when [drill-thru] called")
            (is (thrown-with-msg?
-                 #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
-                 #"Do not call drill-thru for "
-                 (apply lib/drill-thru query -1 drill args))))
+                #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
+                #"Do not call drill-thru for "
+                (apply lib/drill-thru query -1 drill args))))
 
          (testing (str "\nquery =\n" (u/pprint-to-str query)
                        "\ndrill =\n" (u/pprint-to-str drill)
@@ -591,53 +591,49 @@
 
 ;; TODO: Restore this test once zoom-in and underlying-records are checked properly.
 ;; Tech debt issue: #39373
-#_
-(deftest ^:parallel histogram-available-drill-thrus-test
-  (testing "histogram breakout view"
-    (testing "broken out by state - click a state - underlying, zoom in, pivot (non-location), automatic insights, quick filter"
-      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
-                      (lib/aggregate (lib/count))
-                      (lib/breakout (meta/field-metadata :people :state)))
-            row   [{:column-name "STATE" :value "Wisconsin"} ; Yes, the full name here, not WI.
-                   {:column-name "count" :value 87}]
-            cols  (lib.metadata.calculation/visible-columns query)]
-        (is (=? [{:lib/type :metabase.lib.drill-thru/drill-thru,
-                  :type :drill-thru/pivot,
-                  :pivots {:category [(by-name cols "NAME")
-                                      (by-name cols "SOURCE")]
-                           :time     [(by-name cols "BIRTH_DATE")
-                                      (by-name cols "CREATED_AT")]}}
-                 {:lib/type :metabase.lib.drill-thru/drill-thru
-                  :type     :drill-thru/quick-filter
-                  :operators (for [[op label] [[:<  "<"]
-                                               [:>  ">"]
-                                               [:=  "="]
-                                               [:!= "≠"]]]
-                               {:name label
-                                :filter [op {:lib/uuid string?}
-                                         [:aggregation {:lib/uuid string?} (-> query
-                                                                               lib/aggregations
-                                                                               first
-                                                                               lib.options/uuid)]
-                                         87]})}
-                 {:lib/type   :metabase.lib.drill-thru/drill-thru
-                  :type       :drill-thru/underlying-records
-                  :row-count  87
-                  :table-name "People"}
-                 {:lib/type  :metabase.lib.drill-thru/drill-thru
-                  :type      :drill-thru/zoom
-                  :column    (meta/field-metadata :people :state)
-                  :object-id "WI"
-                  :many-pks? false}]
-                (lib/available-drill-thrus query -1 {:column     (-> query
-                                                                     lib.metadata.calculation/returned-columns
-                                                                     (by-name "count"))
-                                                     :value      87
-                                                     :row        row
-                                                     :dimensions [{:column-name "STATE" :value "WI"}]})))))))
-
-
-
+#_(deftest ^:parallel histogram-available-drill-thrus-test
+    (testing "histogram breakout view"
+      (testing "broken out by state - click a state - underlying, zoom in, pivot (non-location), automatic insights, quick filter"
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                        (lib/aggregate (lib/count))
+                        (lib/breakout (meta/field-metadata :people :state)))
+              row   [{:column-name "STATE" :value "Wisconsin"} ; Yes, the full name here, not WI.
+                     {:column-name "count" :value 87}]
+              cols  (lib.metadata.calculation/visible-columns query)]
+          (is (=? [{:lib/type :metabase.lib.drill-thru/drill-thru,
+                    :type :drill-thru/pivot,
+                    :pivots {:category [(by-name cols "NAME")
+                                        (by-name cols "SOURCE")]
+                             :time     [(by-name cols "BIRTH_DATE")
+                                        (by-name cols "CREATED_AT")]}}
+                   {:lib/type :metabase.lib.drill-thru/drill-thru
+                    :type     :drill-thru/quick-filter
+                    :operators (for [[op label] [[:<  "<"]
+                                                 [:>  ">"]
+                                                 [:=  "="]
+                                                 [:!= "≠"]]]
+                                 {:name label
+                                  :filter [op {:lib/uuid string?}
+                                           [:aggregation {:lib/uuid string?} (-> query
+                                                                                 lib/aggregations
+                                                                                 first
+                                                                                 lib.options/uuid)]
+                                           87]})}
+                   {:lib/type   :metabase.lib.drill-thru/drill-thru
+                    :type       :drill-thru/underlying-records
+                    :row-count  87
+                    :table-name "People"}
+                   {:lib/type  :metabase.lib.drill-thru/drill-thru
+                    :type      :drill-thru/zoom
+                    :column    (meta/field-metadata :people :state)
+                    :object-id "WI"
+                    :many-pks? false}]
+                  (lib/available-drill-thrus query -1 {:column     (-> query
+                                                                       lib.metadata.calculation/returned-columns
+                                                                       (by-name "count"))
+                                                       :value      87
+                                                       :row        row
+                                                       :dimensions [{:column-name "STATE" :value "WI"}]})))))))
 
 ;;;
 ;;; The tests below are adapted from frontend/src/metabase-lib/drills.unit.spec.ts
@@ -827,5 +823,5 @@
 (deftest ^:parallel drill-value->js-test
   (testing "should convert :null to nil"
     (doseq [[input expected] [[:null nil]
-                              [nil nil] ]]
+                              [nil nil]]]
       (is (= expected (lib.drill-thru.common/drill-value->js input))))))

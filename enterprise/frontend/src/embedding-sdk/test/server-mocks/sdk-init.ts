@@ -12,9 +12,9 @@ import {
 } from "embedding-sdk/test/mocks/state";
 import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 import type {
-  User,
-  TokenFeatures,
   SettingDefinition,
+  TokenFeatures,
+  User,
 } from "metabase-types/api";
 import {
   createMockSettings,
@@ -26,7 +26,7 @@ import { createMockState } from "metabase-types/store/mocks";
 export const setupSdkState = ({
   currentUser = createMockUser(),
   settingValues = createMockSettings(),
-  tokenFeatures = createMockTokenFeatures(),
+  tokenFeatures = createMockTokenFeatures({ embedding_sdk: true }),
   settingDefinitions = [],
   sdkState = createMockSdkState({
     loginStatus: createMockLoginStatusState({ status: "success" }),

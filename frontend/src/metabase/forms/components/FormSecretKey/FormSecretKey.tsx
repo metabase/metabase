@@ -7,7 +7,7 @@ import Confirm from "metabase/components/Confirm";
 import CS from "metabase/css/core/index.css";
 import { UtilApi } from "metabase/services";
 import type { TextInputProps } from "metabase/ui";
-import { Flex, TextInput, Button } from "metabase/ui";
+import { Button, Flex, TextInput } from "metabase/ui";
 
 export interface FormSecretKeyProps
   extends Omit<TextInputProps, "value" | "error"> {

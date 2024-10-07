@@ -34,9 +34,9 @@
    :visualization_settings mi/transform-visualization-settings})
 
 (t2/define-before-insert :model/DashboardCard
- [dashcard]
- (merge {:parameter_mappings     []
-         :visualization_settings {}} dashcard))
+  [dashcard]
+  (merge {:parameter_mappings     []
+          :visualization_settings {}} dashcard))
 
 (declare series)
 
@@ -81,7 +81,6 @@
    :visualization_settings
    :row :col
    :created_at])
-
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
 
@@ -375,4 +374,4 @@
                :series                 (serdes/nested :model/DashboardCardSeries :dashboardcard_id
                                                       (assoc opts
                                                              :sort-by :position
-                                                             :key-field :card_id)) }})
+                                                             :key-field :card_id))}})

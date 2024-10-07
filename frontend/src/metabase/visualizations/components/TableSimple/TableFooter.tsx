@@ -10,9 +10,9 @@ import { Icon } from "metabase/ui";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import {
-  TableFooterRoot,
-  PaginationMessage,
   PaginationButton,
+  PaginationMessage,
+  TableFooterRoot,
 } from "./TableSimple.styled";
 
 interface TableFooterProps {

@@ -3,10 +3,11 @@ import {
   appBar,
   describeEE,
   navigationSidebar,
-  setTokenFeatures,
   popover,
-  visitDashboard,
   restore,
+  setTokenFeatures,
+  updateSetting,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 describe("scenarios > navigation > navbar", () => {
@@ -71,10 +72,8 @@ describe("scenarios > navigation > navbar", () => {
 
     it("should be open when visiting home with a custom home page configured", () => {
       cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
-      cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
-        value: ORDERS_DASHBOARD_ID,
-      });
+      updateSetting("custom-homepage", true);
+      updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
       cy.visit("/");
       cy.reload();
       cy.url().should("contain", "question");
@@ -83,10 +82,8 @@ describe("scenarios > navigation > navbar", () => {
 
     it("should preserve state when clicking the mb logo and a custom home page is configured", () => {
       cy.signInAsAdmin();
-      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
-      cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
-        value: ORDERS_DASHBOARD_ID,
-      });
+      updateSetting("custom-homepage", true);
+      updateSetting("custom-homepage-dashboard", ORDERS_DASHBOARD_ID);
       visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByTestId("main-logo-link").click();
       navigationSidebar().should("not.be.visible");
@@ -101,18 +98,14 @@ describe("scenarios > navigation > navbar", () => {
     });
 
     it("should be open when logging in with a landing page configured", () => {
-      cy.request("PUT", "/api/setting/landing-page", {
-        value: "/question/76",
-      });
+      updateSetting("landing-page", "/question/76");
       cy.visit("/");
       cy.url().should("contain", "question");
       navigationSidebar().should("be.visible");
     });
 
     it("should preserve state when clicking the mb logo and landing page is configured", () => {
-      cy.request("PUT", "/api/setting/landing-page", {
-        value: "/question/76",
-      });
+      updateSetting("landing-page", "/question/76");
       visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByTestId("main-logo-link").click();
       navigationSidebar().should("not.be.visible");

@@ -1,8 +1,8 @@
 import { useContext } from "react";
 import {
-  useSelector,
   ReactReduxContext,
   type TypedUseSelectorHook,
+  useSelector,
 } from "react-redux";
 
 import type { SdkStoreState } from "embedding-sdk/store/types";

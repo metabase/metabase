@@ -21,10 +21,10 @@ import type {
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
 import type {
+  DatasetData,
   RowValue,
   RowValues,
   SeriesOrderSetting,
-  DatasetData,
 } from "metabase-types/api";
 
 import { getChartMetrics } from "./series";

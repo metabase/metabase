@@ -4,8 +4,8 @@ import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
-  ComboChartDataDensity,
   ChartDataset,
+  ComboChartDataDensity,
   DataKey,
   Datum,
   DimensionModel,
@@ -32,13 +32,13 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type {
-  SingleSeries,
-  DatasetData,
-  RowValue,
-  DatasetColumn,
-  RawSeries,
   CardId,
+  DatasetColumn,
+  DatasetData,
+  RawSeries,
+  RowValue,
   SeriesSettings,
+  SingleSeries,
 } from "metabase-types/api";
 
 import {
@@ -120,6 +120,7 @@ const getDefaultSeriesName = (
 export const getCardsSeriesModels = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
+  hiddenSeries: string[],
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) => {
@@ -130,6 +131,7 @@ export const getCardsSeriesModels = (
     return getCardSeriesModels(
       cardDataset,
       cardColumns,
+      hiddenSeries,
       hasMultipleCards,
       index === 0,
       settings,
@@ -143,7 +145,7 @@ export const getCardsSeriesModels = (
  *
  * @param {SingleSeries} singleSeries - The single card and dataset.
  * @param {CartesianChartColumns} columns - The columns model for the card.
- * @param {number} datasetIndex - Index of a dataset.
+ * @param {string[]} hiddenSeries - The list of hidden series data keys.
  * @param {boolean} hasMultipleCards — Indicates whether the chart has multiple card combined.
  * @param {ComputedVisualizationSettings} settings — Computed visualization settings.
  * @param {RenderingContext} renderingContext - The rendering context.
@@ -152,6 +154,7 @@ export const getCardsSeriesModels = (
 export const getCardSeriesModels = (
   { card, data }: SingleSeries,
   columns: CartesianChartColumns,
+  hiddenSeries: string[],
   hasMultipleCards: boolean,
   isFirstCard: boolean,
   settings: ComputedVisualizationSettings,
@@ -190,14 +193,17 @@ export const getCardSeriesModels = (
 
       const color = settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey];
 
+      const dataKey = getDatasetKey(metric.column, cardId);
+
       return {
         name,
         tooltipName,
         color,
+        visible: !hiddenSeries.includes(dataKey),
         cardId,
         column: metric.column,
         columnIndex: metric.index,
-        dataKey: getDatasetKey(metric.column, cardId),
+        dataKey,
         vizSettingsKey,
         legacySeriesSettingsObjectKey,
         bubbleSizeDataKey:
@@ -247,16 +253,19 @@ export const getCardSeriesModels = (
 
     const color = settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey];
 
+    const dataKey = getDatasetKey(metric.column, cardId, breakoutValue);
+
     return {
       name,
       tooltipName,
       color,
+      visible: !hiddenSeries.includes(dataKey),
       cardId,
       column: metric.column,
       columnIndex: metric.index,
       vizSettingsKey,
       legacySeriesSettingsObjectKey,
-      dataKey: getDatasetKey(metric.column, cardId, breakoutValue),
+      dataKey,
       breakoutColumnIndex: breakout.index,
       breakoutColumn: breakout.column,
       breakoutValue,
@@ -275,11 +284,14 @@ export const getDimensionModel = (
   return {
     column: cardsColumns[0].dimension.column,
     columnIndex: cardsColumns[0].dimension.index,
-    columnByCardId: rawSeries.reduce((columnByCardId, series, index) => {
-      const cardColumns = cardsColumns[index];
-      columnByCardId[series.card.id] = cardColumns.dimension.column;
-      return columnByCardId;
-    }, {} as Record<CardId, DatasetColumn>),
+    columnByCardId: rawSeries.reduce(
+      (columnByCardId, series, index) => {
+        const cardColumns = cardsColumns[index];
+        columnByCardId[series.card.id] = cardColumns.dimension.column;
+        return columnByCardId;
+      },
+      {} as Record<CardId, DatasetColumn>,
+    ),
   };
 };
 
@@ -534,12 +546,15 @@ export function getDisplaySeriesSettingsByDataKey(
   stackModels: StackModel[] | null,
   settings: ComputedVisualizationSettings,
 ) {
-  const seriesSettingsByKey = seriesModels.reduce((acc, seriesModel) => {
-    acc[seriesModel.dataKey] = settings.series(
-      seriesModel.legacySeriesSettingsObjectKey,
-    );
-    return acc;
-  }, {} as Record<DataKey, SeriesSettings>);
+  const seriesSettingsByKey = seriesModels.reduce(
+    (acc, seriesModel) => {
+      acc[seriesModel.dataKey] = settings.series(
+        seriesModel.legacySeriesSettingsObjectKey,
+      );
+      return acc;
+    },
+    {} as Record<DataKey, SeriesSettings>,
+  );
 
   if (stackModels != null) {
     stackModels.forEach(({ display, seriesKeys }) => {
