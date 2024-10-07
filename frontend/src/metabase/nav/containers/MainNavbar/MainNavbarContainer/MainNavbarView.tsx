@@ -16,6 +16,7 @@ import { isSmallScreen } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import type { IconName, IconProps } from "metabase/ui";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 
 import {
@@ -48,6 +49,7 @@ type Props = {
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   collections: CollectionTreeItem[];
+  databases: Database[];
   selectedItems: SelectedItem[];
   handleCloseNavbar: () => void;
   handleLogout: () => void;
@@ -67,6 +69,7 @@ export function MainNavbarView({
   currentUser,
   bookmarks,
   collections,
+  databases,
   hasOwnDatabase,
   selectedItems,
   hasDataAccess,
@@ -184,6 +187,7 @@ export function MainNavbarView({
         <WhatsNewNotification />
         <SidebarOnboardingSection
           collections={collections}
+          databases={databases}
           hasOwnDatabase={hasOwnDatabase}
           isAdmin={isAdmin}
         />

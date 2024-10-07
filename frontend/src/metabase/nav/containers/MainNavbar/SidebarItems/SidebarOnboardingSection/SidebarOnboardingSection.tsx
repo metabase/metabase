@@ -4,7 +4,6 @@ import { type ChangeEvent, useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { UploadInfoModal } from "metabase/collections/components/CollectionHeader/CollectionUploadInfoModal";
 import {
   type CollectionOrTableIdProps,
@@ -35,6 +34,7 @@ import type { OnboaringMenuItemProps, SidebarOnboardingProps } from "./types";
 
 export function SidebarOnboardingSection({
   collections,
+  databases,
   hasOwnDatabase,
   isAdmin,
 }: SidebarOnboardingProps) {
@@ -51,10 +51,6 @@ export function SidebarOnboardingSection({
   const applicationName = useSelector(getApplicationName);
   const uploadDbId = useSelector(
     state => getSetting(state, "uploads-settings")?.db_id,
-  );
-
-  const { data: database } = useGetDatabaseQuery(
-    uploadDbId ? { id: uploadDbId } : skipToken,
   );
 
   const uploadInputRef = useRef<HTMLInputElement>(null);
@@ -110,7 +106,9 @@ export function SidebarOnboardingSection({
     c => c.id === "root" || c.id === null,
   );
   const canCurateRootCollection = rootCollection?.can_write;
-  const canUploadToDatabase = database?.can_upload;
+  const canUploadToDatabase = databases
+    ?.find(db => db.id === uploadDbId)
+    ?.canUpload();
   const canUpload = canCurateRootCollection && canUploadToDatabase;
 
   function AddDatabaseButton() {

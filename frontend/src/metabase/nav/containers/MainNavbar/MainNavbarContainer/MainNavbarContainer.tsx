@@ -55,6 +55,7 @@ const mapDispatchToProps = {
 interface Props extends MainNavbarProps {
   isAdmin: boolean;
   currentUser: User;
+  databases: Database[];
   selectedItems: SelectedItem[];
   bookmarks: Bookmark[];
   rootCollection: Collection;
