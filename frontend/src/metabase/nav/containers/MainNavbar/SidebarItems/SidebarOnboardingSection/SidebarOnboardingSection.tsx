@@ -52,7 +52,6 @@ export function SidebarOnboardingSection({
   const uploadDbId = useSelector(
     state => getSetting(state, "uploads-settings")?.db_id,
   );
-  const isUploadEnabled = !!uploadDbId;
 
   const { data: database } = useGetDatabaseQuery(
     uploadDbId ? { id: uploadDbId } : skipToken,
@@ -113,6 +112,33 @@ export function SidebarOnboardingSection({
   const canCurateRootCollection = rootCollection?.can_write;
   const canUploadToDatabase = database?.can_upload;
   const canUpload = canCurateRootCollection && canUploadToDatabase;
+
+  function UploadSpreadsheetButton() {
+    const isUploadEnabled = !!uploadDbId;
+
+    const icon = "table2";
+    const title = t`Upload a spreadsheet`;
+    const subtitle = t`${UPLOAD_DATA_FILE_TYPES.join(
+      ", ",
+    )} (${MAX_UPLOAD_STRING} MB max)`;
+
+    return !isUploadEnabled ? (
+      <SidebarOnboardingMenuItem
+        icon={icon}
+        title={title}
+        subtitle={subtitle}
+        onClick={() => setShowInfoModal(true)}
+      />
+    ) : (
+      <SidebarOnboardingMenuItem
+        icon={icon}
+        title={title}
+        subtitle={subtitle}
+        onClick={() => uploadInputRef.current?.click()}
+      />
+    );
+  }
+
   return (
     <Box
       m={0}
@@ -156,25 +182,7 @@ export function SidebarOnboardingSection({
                   onClick={() => trackAddDataViaDatabase()}
                 />
               </Link>
-              {!isUploadEnabled ? (
-                <SidebarOnboardingMenuItem
-                  icon="table2"
-                  title={t`Upload a spreadsheet`}
-                  subtitle={t`${UPLOAD_DATA_FILE_TYPES.join(
-                    ", ",
-                  )} (${MAX_UPLOAD_STRING} MB max)`}
-                  onClick={() => setShowInfoModal(true)}
-                />
-              ) : (
-                <SidebarOnboardingMenuItem
-                  icon="table2"
-                  title={t`Upload a spreadsheet`}
-                  subtitle={t`${UPLOAD_DATA_FILE_TYPES.join(
-                    ", ",
-                  )} (${MAX_UPLOAD_STRING} MB max)`}
-                  onClick={() => uploadInputRef.current?.click()}
-                />
-              )}
+              {canUpload && <UploadSpreadsheetButton />}
             </Menu.Dropdown>
           </Menu>
         </Box>
