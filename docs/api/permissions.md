@@ -8,6 +8,54 @@ summary: |
 
 /api/permissions endpoints.
 
+### Entities
+* Group, or `PermissionsGroup` (at `/api/permissions/group`)
+* Membership, or `PermissionsMembership` (at `/api/permissions/membership`)
+* Graph, or `PermissionsGraph` (at `/api/permissions/graph`)
+
+#### PermissionsGroup Entity
+* A group of Metabase users which has its own set of permissions (ex: access to particular DB's)
+* Users in this `PermissionsGroup` inherit all the access from the Group as long as they're in the group.
+* A Join between a `PermissionsGroup` and a `User` is called a `PermissionsMembership` (is this correct?)
+* Example json response:
+```json
+{
+    "group": {
+      "id": "is_this_accurate?",
+      "name": "Please correct this :)"
+    }
+}
+```
+
+#### PermissionsMembership Entity
+* A `PermissionsMembership` is a join between a `PermissionsGroup` and a `User` (is this correct?)
+* It's how your Users inherit Permissions
+* Example json response: (is this correct?)
+```json
+{
+    "membership": {
+      "id": "is_this_accurate?",
+      "user_id": "aaaabbbbcccc",
+      "group_id": "aaaabbbbcccc",
+    }
+}
+```
+
+#### PermissionsGraph Entity
+* A `PermissionsGraph` is how we store all the permissions specific to a Group or User.
+* So a `PermissionsGroup` will have a `PermissionsGraph` that shows all the databases the group has access to and all the queries it can perform, etc.
+* It works like this: ______
+* Example json response: (is this correct?)
+```json
+{
+    "graph": {
+      "id": "is_this_accurate?",
+      "no_idea": "aaaabbbbcccc",
+      "confused": "aaaabbbbcccc",
+    }
+}
+```
+
 ## `DELETE /api/permissions/group/:group-id`
 
 Delete a specific `PermissionsGroup`.
