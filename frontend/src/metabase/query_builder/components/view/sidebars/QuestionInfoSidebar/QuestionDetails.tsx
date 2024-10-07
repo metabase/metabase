@@ -15,7 +15,10 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { QuestionPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
 import { Box, Flex, FixedSizeIcon as Icon, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { Database } from "metabase-types/api";
+import {
+  getQuestionIdFromVirtualTableId,
+  isVirtualCardId,
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import SidebarStyles from "./QuestionInfoSidebar.module.css";
 
@@ -87,11 +90,15 @@ function SourceDisplay({ question }: { question: Question }) {
     return null;
   }
 
-  const model = String(sourceInfo.id).includes("card__") ? "card" : "table";
+  const model = isVirtualCardId(sourceInfo.id) ? "card" : "table";
 
   const sourceUrl =
     model === "card"
-      ? Urls.browseDatabase(sourceInfo.db as Database)
+      ? Urls.question({
+          ...sourceInfo,
+          name: sourceInfo.display_name,
+          id: getQuestionIdFromVirtualTableId(sourceInfo.id) as number,
+        })
       : getTableUrl(sourceInfo, metadata);
 
   return (
@@ -100,10 +107,7 @@ function SourceDisplay({ question }: { question: Question }) {
         {sourceInfo.db && (
           <>
             <Text>
-              <Link
-                to={`/browse/databases/${sourceInfo.db.id}`}
-                variant="brand"
-              >
+              <Link to={Urls.browseDatabase(sourceInfo.db)} variant="brand">
                 {sourceInfo.db.name}
               </Link>
             </Text>

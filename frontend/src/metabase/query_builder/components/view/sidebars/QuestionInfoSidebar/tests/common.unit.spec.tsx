@@ -113,7 +113,7 @@ describe("QuestionInfoSidebar", () => {
       );
     });
 
-    it("should show source information", () => {
+    it("should show table source information", () => {
       const card = createMockCard({
         name: "Question",
       });
@@ -122,6 +122,34 @@ describe("QuestionInfoSidebar", () => {
       expect(screen.getByText("Sample Database")).toBeInTheDocument();
       expect(screen.getByText("/")).toBeInTheDocument();
       expect(screen.getByText("Products")).toBeInTheDocument();
+    });
+
+    it("should show card source information", async () => {
+      const card = createMockCard({
+        name: "My Question",
+        dataset_query: {
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": "card__2",
+          },
+        },
+      });
+
+      const sourceCard = createMockCard({
+        name: "My Source Question",
+        id: 2,
+      });
+
+      setup({ card, sourceCard });
+
+      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      expect(screen.getByText("/")).toBeInTheDocument();
+      expect(screen.getByText("My Source Question")).toBeInTheDocument();
+      expect(screen.getByText("My Source Question")).toHaveAttribute(
+        "href",
+        "/question/2-my-source-question",
+      );
     });
 
     it("should not show entity id", () => {

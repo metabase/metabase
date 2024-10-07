@@ -12,7 +12,8 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { Card, Settings } from "metabase-types/api";
+import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { Card, NormalizedTable, Settings } from "metabase-types/api";
 import {
   createMockCard,
   createMockSettings,
@@ -27,10 +28,12 @@ export interface SetupOpts {
   card?: Card;
   settings?: Settings;
   hasEnterprisePlugins?: boolean;
+  sourceCard?: Card;
 }
 
 export const setup = async ({
   card = createMockCard(),
+  sourceCard,
   settings = createMockSettings(),
   hasEnterprisePlugins,
 }: SetupOpts) => {
@@ -45,9 +48,32 @@ export const setup = async ({
     settings: mockSettings(settings),
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
-      questions: [card],
+      questions: sourceCard ? [card, sourceCard] : [card],
     }),
   });
+
+  // 😫 all this is necessary to test a card as a question source
+  if (sourceCard) {
+    const virtualTable = convertSavedQuestionToVirtualTable(sourceCard);
+
+    state.entities = {
+      ...state.entities,
+      tables: {
+        ...(state.entities.tables as Record<number, NormalizedTable>),
+        [virtualTable.id]: virtualTable,
+      },
+      databases: {
+        [state.entities.databases[1].id]: {
+          ...state.entities.databases[1],
+          tables: [
+            ...(state.entities.databases[1].tables ?? []),
+            virtualTable.id,
+          ],
+        },
+      },
+    };
+  }
+
   const metadata = getMetadata(state);
   const question = checkNotNull(metadata.question(card.id));
   const onSave = jest.fn();
