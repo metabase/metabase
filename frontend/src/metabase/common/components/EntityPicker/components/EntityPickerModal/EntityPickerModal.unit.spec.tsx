@@ -39,6 +39,8 @@ interface SetupOpts {
   defaultToRecentTab?: boolean;
   initialValue?: { model: SampleModelType };
   searchDelay?: number;
+  recentsDelay?: number;
+  isLoadingTabs?: boolean;
 }
 
 const TestPicker = ({ name }: { name: string }) => (
@@ -86,11 +88,14 @@ const setup = ({
   recentItems = [],
   recentFilter,
   searchDelay = 0,
+  recentsDelay = 0,
   ...rest
 }: SetupOpts = {}) => {
   mockGetBoundingClientRect();
   mockScrollBy();
-  setupRecentViewsAndSelectionsEndpoints(recentItems);
+  setupRecentViewsAndSelectionsEndpoints(recentItems, ["selections", "views"], {
+    delay: recentsDelay,
+  });
 
   fetchMock.get("path:/api/search", mockSearchResults, { delay: searchDelay });
 
@@ -114,6 +119,15 @@ const setup = ({
 describe("EntityPickerModal", () => {
   afterAll(() => {
     jest.restoreAllMocks();
+  });
+
+  it("should show a loading state when isLoadingTabs is true", async () => {
+    setup({
+      isLoadingTabs: true,
+    });
+
+    expect(await screen.findByTestId("loading-indicator")).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
   });
 
   it("should throw when options.hasConfirmButtons is true but onConfirm prop is missing", async () => {
@@ -407,6 +421,25 @@ describe("EntityPickerModal", () => {
 
       expect(
         await screen.findByRole("button", { name: "Click Me" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should wait until all tabs are determined before rendering", async () => {
+      setup({
+        recentsDelay: 500,
+        recentItems,
+      });
+
+      expect(
+        await screen.findByTestId("loading-indicator"),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.queryByRole("tab", { name: /Recents/ }),
+      ).not.toBeInTheDocument();
+
+      expect(
+        await screen.findByRole("tab", { name: /Recents/ }),
       ).toBeInTheDocument();
     });
   });
