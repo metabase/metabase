@@ -46,9 +46,9 @@ describe("scenarios > question > filter", () => {
     popover().within(() => {
       cy.findByText("Products").click();
       cy.findByText("Category").click();
-      cy.findByDisplayValue("Is").click();
+      cy.findByText("Is").click();
     });
-    cy.findByRole("listbox").findByText("Is not").click();
+    cy.findByRole("menu").findByText("Is not").click();
     popover().within(() => {
       cy.findByText("Gizmo").click();
       cy.button("Add filter").click();
