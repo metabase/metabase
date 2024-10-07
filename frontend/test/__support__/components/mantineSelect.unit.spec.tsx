@@ -75,7 +75,7 @@ describe("getMantineSelectOptions", () => {
 
   it("throws an error if the <Select> is not found", async () => {
     await expect(getMantineSelectOptions()).rejects.toThrow(
-      /Unable to find [role="combobox"]/,
+      /Unable to find.*role="combobox"/,
     );
   });
 });
