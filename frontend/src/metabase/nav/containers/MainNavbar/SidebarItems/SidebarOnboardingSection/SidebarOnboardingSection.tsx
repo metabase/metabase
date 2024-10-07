@@ -197,11 +197,13 @@ export function SidebarOnboardingSection({
           onClose={() => setShowInfoModal(false)}
         />
       )}
-      <UploadInput
-        id="onboarding-upload-input"
-        ref={uploadInputRef}
-        onChange={handleFileInput}
-      />
+      {canUpload && (
+        <UploadInput
+          id="onboarding-upload-input"
+          ref={uploadInputRef}
+          onChange={handleFileInput}
+        />
+      )}
       <ModelUploadModal
         collectionId="root"
         opened={isModelUploadModalOpen}
