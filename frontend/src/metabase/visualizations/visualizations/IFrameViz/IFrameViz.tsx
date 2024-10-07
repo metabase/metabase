@@ -67,7 +67,6 @@ export function IFrameViz({
             </Text>{" "}
             <Box ml="auto">
               <Button
-                disabled={!iframeOrUrl}
                 compact
                 variant="filled"
                 style={{ pointerEvents: "all" }}

@@ -21,7 +21,6 @@ import type {
   FieldId,
   ForeignKey,
   GroupListQuery,
-  ListDashboardsResponse,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
@@ -266,7 +265,7 @@ export function provideDatabaseTags(
 }
 
 export function provideDashboardListTags(
-  dashboards: ListDashboardsResponse,
+  dashboards: Pick<Dashboard, "id">[],
 ): TagDescription<TagType>[] {
   return [
     listTag("dashboard"),
