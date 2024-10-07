@@ -66,7 +66,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.log("The first section: 'Static embedding'");
       cy.findByRole("article", { name: "Static embedding" }).within(() => {
         // FE unit tests are making sure this section doesn't exist when a valid token is provided,
-        // so we don't have to do it here usign a conditional logic
+        // so we don't have to do it here using conditional logic
         assertLinkMatchesUrl("upgrade to a paid plan", upgradeUrl);
 
         cy.findByRole("link", { name: "Manage" })
@@ -80,7 +80,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.log("Standalone embeds page");
       // TODO: Remove this when the actual BE is implemented, this flag still controls the static embedding
       // I've tried to change this but it failed like 500 BE tests.
-      cy.request("PUT", "/api/setting/enable-embedding", {
+      cy.request("PUT", "/api/setting/enable-embedding-static", {
         value: true,
       });
       mainPage().within(() => {
@@ -139,6 +139,9 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     };
     ["question", "dashboard"].forEach(object => {
       it(`should be able to publish/embed and then unpublish a ${object} without filters`, () => {
+        cy.request("PUT", "/api/setting/enable-embedding-static", {
+          value: true,
+        });
         const embeddableObject = object === "question" ? "card" : "dashboard";
         const objectName =
           object === "question" ? "Orders" : "Orders in a dashboard";
@@ -245,6 +248,10 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     });
 
     it("should regenerate embedding token and invalidate previous embed url", () => {
+      cy.request("PUT", "/api/setting/enable-embedding-static", {
+        value: true,
+      });
+
       cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
         enable_embedding: true,
       });

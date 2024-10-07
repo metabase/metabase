@@ -44,7 +44,7 @@
            [:= :moderation_review.id nil]
            [:= :report_card.archived false]
            [:<= :report_card.last_used_at (-> args :cutoff-date)]
-           (when (embed.settings/enable-embedding)
+           (when (embed.settings/some-embedding-enabled?)
              [:= :report_card.enable_embedding false])
            (when (public-settings/enable-public-sharing)
              [:= :report_card.public_uuid nil])
@@ -67,7 +67,7 @@
            [:= :pulse.id nil]
            [:= :report_dashboard.archived false]
            [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
-           (when (embed.settings/enable-embedding)
+           (when (embed.settings/some-embedding-enabled?)
              [:= :report_dashboard.enable_embedding false])
            (when (public-settings/enable-public-sharing)
              [:= :report_dashboard.public_uuid nil])
