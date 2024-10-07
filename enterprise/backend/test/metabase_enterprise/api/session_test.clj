@@ -54,6 +54,7 @@
             :query_reference_validation     true
             :sandboxes                      true
             :scim                           true
+            :serialization                  true
             :session_timeout_config         true
             :snippet_collections            true
             :sso_google                     true
