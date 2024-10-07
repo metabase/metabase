@@ -996,7 +996,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("1st stage aggregation", () => {
           setup1stStageAggregationFilter();
 
-          getDashboardCard(0).scrollIntoView();
           getDashboardCard(0).findByText("Rows 1-1 of 3").should("be.visible");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
@@ -1010,7 +1009,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("1st stage breakout", () => {
           setup1stStageBreakoutFilter();
 
-          getDashboardCard(0).scrollIntoView();
           getDashboardCard(0)
             .findByText("Rows 1-1 of 1077")
             .should("be.visible");
@@ -1026,7 +1024,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("2nd stage aggregation", () => {
           setup2ndStageAggregationFilter();
 
-          getDashboardCard(0).scrollIntoView();
           getDashboardCard(0).findByText("Rows 1-1 of 6").should("be.visible");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
@@ -1040,7 +1037,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("2nd stage breakout", () => {
           setup2ndStageBreakoutFilter();
 
-          getDashboardCard(0).scrollIntoView();
           getDashboardCard(0)
             .findByText("Rows 1-1 of 1077")
             .should("be.visible");
@@ -1158,7 +1154,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("1st stage explicit join", () => {
           setup1stStageExplicitJoinFilter();
 
-          getDashboardCard(0).scrollIntoView();
           getDashboardCard(0)
             .findByTestId("cell-data")
             .should("have.text", "953");
@@ -1171,7 +1166,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("1st stage implicit join (data source)", () => {
           setup1stStageImplicitSourceJoinFilter();
 
-          getDashboardCard(0).scrollIntoView();
           getDashboardCard(0)
             .findByTestId("cell-data")
             .should("have.text", "4,292");
@@ -1190,7 +1184,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("1st stage aggregation", () => {
           setup1stStageAggregationFilter();
 
-          getDashboardCard(0).scrollIntoView();
           getDashboardCard(0)
             .findByTestId("cell-data")
             .should("have.text", "3");
@@ -1203,7 +1196,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("1st stage breakout", () => {
           setup1stStageBreakoutFilter();
 
-          getDashboardCard(0).scrollIntoView();
           getDashboardCard(0)
             .findByTestId("cell-data")
             .should("have.text", "1,077");
@@ -1216,7 +1208,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("2nd stage explicit join", () => {
           setup2ndStageExplicitJoinFilter();
 
-          getDashboardCard(0).scrollIntoView();
           getDashboardCard(0)
             .findByTestId("cell-data")
             .should("have.text", "4");
@@ -1238,7 +1229,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("2nd stage aggregation", () => {
           setup2ndStageAggregationFilter();
 
-          getDashboardCard(0).scrollIntoView();
           getDashboardCard(0)
             .findByTestId("cell-data")
             .should("have.text", "6");
@@ -1251,7 +1241,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("2nd stage breakout", () => {
           setup2ndStageBreakoutFilter();
 
-          getDashboardCard(0).scrollIntoView();
           getDashboardCard(0)
             .findByTestId("cell-data")
             .should("have.text", "1,077");
@@ -1265,7 +1254,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it.skip("3rd stage aggregation", () => {
           setup3rdStageAggregationFilter();
 
-          getDashboardCard(0).scrollIntoView();
           getDashboardCard(0)
             .findByTestId("cell-data")
             .should("have.text", "0"); // https://github.com/metabase/metabase/issues/48339#issuecomment-2393449924
