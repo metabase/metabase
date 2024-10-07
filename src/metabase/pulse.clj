@@ -274,8 +274,14 @@
 
 (defn- should-retry-sending?
   [exception channel-type]
-  (and (= :channel/slack channel-type)
-       (contains? (:errors (ex-data exception)) :slack-token)))
+  (not (and (= :channel/slack channel-type)
+            (contains? (:errors (ex-data exception)) :slack-token))))
+
+(defn- format-channel
+  [{:keys [type id]}]
+  (if id
+    (str (name type) " " id)
+    (name type)))
 
 (defn- send-retrying!
   [pulse-id channel message]
@@ -293,9 +299,9 @@
                            (catch Exception e
                              (vswap! retry-errors conj e)
                              ;; Token errors have already been logged and we should not retry.
-                             (when-not (should-retry-sending? e (:type channel))
-                               (throw e))
-                             (log/warnf "[Pulse %d] Failed to send to channel %s %d, retring..." pulse-id (:type channel) (:id channel)))))]
+                             (when (should-retry-sending? e (:type channel))
+                               (log/warnf e "[Pulse %d] Failed to send to channel %s , retrying..." pulse-id (format-channel channel))
+                               (throw e)))))]
       (task-history/with-task-history {:task            "channel-send"
                                        :on-success-info (fn [update-map _result]
                                                           (cond-> update-map
@@ -308,9 +314,9 @@
                                                          :channel-id   (:id channel)
                                                          :pulse-id     pulse-id}}
         ((retry/decorate send! (retry/random-exponential-backoff-retry (str (random-uuid)) retry-config)))
-        (log/debugf "[Pulse %d] Sent to channel %s %d with %d retires" pulse-id (:type channel) (:id channel) (count @retry-errors))))
+        (log/debugf "[Pulse %d] Sent to channel %s with %d retries" pulse-id (format-channel channel) (count @retry-errors))))
     (catch Throwable e
-      (log/error e "Error sending notification!"))))
+      (log/errorf e "[Pulse %d] Error sending notification!" pulse-id))))
 
 (defn- execute-pulse
   [{:keys [cards] pulse-id :id :as pulse} dashboard]
@@ -356,21 +362,17 @@
                                                                  (get-notification-info pulse parts pulse-channel)
                                                                  nil
                                                                  (channel-recipients pulse-channel))]
-                       (log/debugf "[Pulse %d] Rendered %d messages for %s %d to channel %s"
+                       (log/debugf "[Pulse %d] Rendered %d messages for channel %s"
                                    pulse-id
                                    (count messages)
-                                   (alert-or-pulse pulse)
-                                   (:id pulse)
-                                   (:type channel))
+                                   (format-channel channel))
                        (doseq [message messages]
-                         (log/debugf "[Pulse %d] Sending %s %d to channel %s"
+                         (log/debugf "[Pulse %d] Sending to channel %s"
                                      pulse-id
-                                     (alert-or-pulse pulse)
-                                     (:id pulse)
                                      (:channel_type pulse-channel))
                          (send-retrying! pulse-id channel message)))
                      (catch Exception e
-                       (log/errorf e "Error sending %s %d to channel %s" (alert-or-pulse pulse) (:id pulse) (:channel_type pulse-channel)))))
+                       (log/errorf e "[Pulse %d] Error sending to %s channel" (:id pulse) (:channel_type pulse-channel)))))
           (when (:alert_first_only pulse)
             (t2/delete! Pulse :id pulse-id))))
       (log/infof "Skipping sending %s %d" (alert-or-pulse pulse) (:id pulse)))))

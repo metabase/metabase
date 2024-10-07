@@ -128,14 +128,14 @@ function createOrUpdateNode(
       name: formatter(dimensionValue),
       value: metricValue,
       displayValue: metricValue,
-      normalizedPercentage: metricValue / total,
+      normalizedPercentage: 0, // placeholder
       color,
       visible: true,
       column: colDesc.column,
       rowIndex,
-      isOther: false,
+      isOther: false, // placeholder
       children: new Map(),
-      startAngle: 0,
+      startAngle: 0, // placeholders
       endAngle: 0,
     };
     parentNode.children.set(dimensionKey, dimensionNode);
@@ -144,7 +144,6 @@ function createOrUpdateNode(
     // to it.
     dimensionNode.value += metricValue;
     dimensionNode.displayValue += metricValue;
-    dimensionNode.normalizedPercentage = dimensionNode.value / total;
 
     showWarning?.(unaggregatedDataWarningPie(colDesc.column).text);
   }
@@ -152,16 +151,20 @@ function createOrUpdateNode(
   return dimensionNode;
 }
 
-function markOtherNodes(
+function calculatePercentageAndIsOther(
   node: SliceTreeNode,
   parent: SliceTreeNode,
   settings: ComputedVisualizationSettings,
 ) {
-  node.isOther =
-    node.displayValue / parent.displayValue <
-    (settings["pie.slice_threshold"] ?? 0) / 100;
+  const relativePercentage = node.displayValue / parent.displayValue;
 
-  node.children.forEach(child => markOtherNodes(child, node, settings));
+  node.normalizedPercentage = relativePercentage;
+  node.isOther =
+    relativePercentage < (settings["pie.slice_threshold"] ?? 0) / 100;
+
+  node.children.forEach(child =>
+    calculatePercentageAndIsOther(child, node, settings),
+  );
 }
 
 function aggregateSlices(
@@ -434,7 +437,9 @@ export function getPieChartModel(
   }
 
   sliceTree.forEach(node =>
-    node.children.forEach(child => markOtherNodes(child, node, settings)),
+    node.children.forEach(child =>
+      calculatePercentageAndIsOther(child, node, settings),
+    ),
   );
 
   // Only add "other" slice if there are slices below threshold with non-zero total
