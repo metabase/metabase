@@ -10,12 +10,12 @@ import {
   SidesheetCard,
   SidesheetTabPanelContainer,
 } from "metabase/common/components/Sidesheet";
+import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery } from "metabase/common/hooks";
 import { EntityIdCard } from "metabase/components/EntityIdCard";
-import EditableText from "metabase/core/components/EditableText";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -24,7 +24,6 @@ import { Stack, Tabs, Text } from "metabase/ui";
 import type { Dashboard, Revision, User } from "metabase-types/api";
 
 import { DashboardDetails } from "./DashboardDetails";
-import DashboardInfoSidebarS from "./DashboardInfoSidebar.module.css";
 
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
@@ -157,19 +156,13 @@ const OverviewTab = ({
   return (
     <Stack spacing="lg">
       <SidesheetCard title={t`Description`} pb="md">
-        <div className={DashboardInfoSidebarS.EditableTextContainer}>
-          <EditableText
-            initialValue={dashboard.description}
-            isDisabled={!canWrite}
-            onChange={handleDescriptionChange}
-            onFocus={() => setDescriptionError("")}
-            onBlur={handleDescriptionBlur}
-            isOptional
-            isMultiline
-            isMarkdown
-            placeholder={t`Add description`}
-          />
-        </div>
+        <SidesheetEditableDescription
+          description={dashboard.description}
+          onChange={handleDescriptionChange}
+          canWrite={canWrite}
+          onFocus={() => setDescriptionError("")}
+          onBlur={handleDescriptionBlur}
+        />
         {!!descriptionError && (
           <Text color="error" size="xs" mt="xs">
             {descriptionError}
