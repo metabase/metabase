@@ -10080,13 +10080,13 @@ databaseChangeLog:
               - column:
                   name: key
                   remarks: 'The key'
-                  type: ${text.type}
+                  type: varchar(254)
                   constraints:
                     nullable: false
               - column:
                   name: value
                   remarks: 'The value'
-                  type: ${text.type}
+                  type: varchar(254)
                   constraints:
                     nullable: true
               - column:
