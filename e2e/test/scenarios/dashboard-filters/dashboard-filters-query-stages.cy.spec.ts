@@ -118,6 +118,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
     createBaseQuestions();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
     cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashboardData",
@@ -1159,7 +1160,15 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("have.text", "953");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
+          cy.findAllByTestId("cell-data").last().should("have.text", "953");
 
+          goBackToDashboard();
+
+          getDashboardCard(1)
+            .findByTestId("cell-data")
+            .should("have.text", "953");
+          getDashboardCard(1).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
           cy.findAllByTestId("cell-data").last().should("have.text", "953");
         });
 
@@ -1171,7 +1180,15 @@ describe("scenarios > dashboard > filters > query stages", () => {
             .should("have.text", "4,292");
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
+          cy.findAllByTestId("cell-data").last().should("have.text", "4,292");
 
+          goBackToDashboard();
+
+          getDashboardCard(1)
+            .findByTestId("cell-data")
+            .should("have.text", "4,292");
+          getDashboardCard(1).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
           cy.findAllByTestId("cell-data").last().should("have.text", "4,292");
         });
 
@@ -1179,7 +1196,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it.skip("1st stage implicit join (joined data source)", () => {
           setup1stStageImplicitJoinFromJoinFilter();
 
-          // TODO: add assertions once the issue is fixed
+          // TODO: add assertions once the issue is fixed (for all cards)
           getDashboardCard(0)
             .findByTestId("cell-data")
             .should("have.text", "4,292");
@@ -1579,7 +1596,10 @@ function createAndVisitDashboard(cards: Card[]) {
         card_id: card.id,
       })),
     ],
-  }).then(dashboard => visitDashboard(dashboard.id));
+  }).then(dashboard => {
+    visitDashboard(dashboard.id);
+    cy.wait("@getDashboard");
+  });
 }
 
 function setup1stStageExplicitJoinFilter() {
@@ -1588,6 +1608,11 @@ function setup1stStageExplicitJoinFilter() {
   getFilter("Text").click();
 
   getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Reviewer", 0).click();
+  });
+
+  getDashboardCard(1).findByText("Select…").click();
   popover().within(() => {
     getPopoverItem("Reviewer", 0).click();
   });
@@ -1615,6 +1640,11 @@ function setup1stStageImplicitJoinFromSourceFilter() {
     getPopoverItem("Rating", 2).click(); // product rating
   });
 
+  getDashboardCard(1).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Rating", 2).click(); // product rating
+  });
+
   cy.button("Save").click();
   cy.wait("@updateDashboard");
 
@@ -1633,6 +1663,11 @@ function setup1stStageImplicitJoinFromJoinFilter() {
   getFilter("Text").click();
 
   getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Category", 1).click();
+  });
+
+  getDashboardCard(1).findByText("Select…").click();
   popover().within(() => {
     getPopoverItem("Category", 1).click();
   });
@@ -1862,6 +1897,11 @@ function getPopoverItem(name: string, index = 0) {
 
 function clickAway() {
   cy.get("body").click(0, 0);
+}
+
+function goBackToDashboard() {
+  cy.findByLabelText("Back to Test Dashboard").click();
+  cy.wait("@getDashboard");
 }
 
 function verifyDashcardMappingOptions(
