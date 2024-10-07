@@ -8,8 +8,8 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   ChartSettingFieldPickerRoot,
   FieldPickerColorPicker,
+  GrabberHandle,
   SettingsButton,
-  SettingsIcon,
 } from "./ChartSettingFieldPicker.styled";
 import ChartSettingSelect from "./ChartSettingSelect";
 
@@ -51,9 +51,10 @@ const ChartSettingFieldPicker = ({
     <ChartSettingFieldPickerRoot
       className={className}
       disabled={options.length === 1 && options[0].value === value}
+      showDragHandle={showDragHandle}
       data-testid="chartsettings-field-picker"
     >
-      {showDragHandle && <SettingsIcon name="grabber" noPointer noMargin />}
+      {showDragHandle && <GrabberHandle name="grabber" noPointer noMargin />}
       {showColorPicker && seriesKey && (
         <FieldPickerColorPicker
           pillSize="small"

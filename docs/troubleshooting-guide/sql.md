@@ -18,7 +18,7 @@ title: Troubleshooting SQL questions
 - [SQL query contains table aliases](../questions/native-editor/sql-parameters.md#field-filters-dont-work-with-table-aliases).
 - [SQL syntax error: missing `FROM` clause](../questions/native-editor/sql-parameters.md#field-filters-must-be-connected-to-fields-included-in-the-query).
 - [No option to display a filter widget](../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
-- [I don't know the SQL variable type](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-variables#the-different-types-of-variables-available-for-native-sql-queries).
+- [I don't know the SQL variable type](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-variables).
 
 ## SQL syntax errors
 

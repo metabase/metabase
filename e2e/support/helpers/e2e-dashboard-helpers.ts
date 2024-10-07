@@ -156,7 +156,7 @@ export function addIFrameWhileEditing(
   options: Partial<Cypress.TypeOptions> = {},
 ) {
   cy.findByLabelText("Add a link or iframe").click();
-  popover().findByText("IFrame").click();
+  popover().findByText("Iframe").click();
   cy.findByTestId("iframe-card-input").type(embed, options);
 }
 

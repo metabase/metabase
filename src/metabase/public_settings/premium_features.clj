@@ -558,6 +558,10 @@
   "Should we enable Collection Cleanup?"
   :collection-cleanup)
 
+(define-premium-feature ^{:added "0.51.0"} enable-database-auth-providers?
+  "Should we enable database auth-providers?"
+  :database-auth-providers)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Defenterprise Macro                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+

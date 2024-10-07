@@ -329,7 +329,10 @@ describe("scenarios > dashboard", () => {
         it("should be possible to add an iframe card", () => {
           editDashboard();
           addIFrameWhileEditing("https://example.com");
+          cy.findByTestId("dashboardcard-actions-panel").should("not.exist");
           cy.button("Done").click();
+          getDashboardCards().eq(0).realHover();
+          cy.findByTestId("dashboardcard-actions-panel").should("be.visible");
           validateIFrame("https://example.com");
           saveDashboard();
           validateIFrame("https://example.com");

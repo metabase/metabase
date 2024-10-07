@@ -16,6 +16,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Sortable } from "metabase/core/components/Sortable";
+import GrabberS from "metabase/css/components/grabber.module.css";
 import { Button, Text } from "metabase/ui";
 import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
@@ -128,12 +129,16 @@ export function DimensionsWidget({
   const [draggedDimensionIndex, setDraggedDimensionIndex] = useState<number>();
 
   const onDragStart = (event: DragStartEvent) => {
+    document.body.classList.add(GrabberS.grabbing);
+
     setDraggedDimensionIndex(
       dimensions.findIndex(d => d === String(event.active.id)),
     );
   };
 
   const onDragEnd = (event: DragEndEvent) => {
+    document.body.classList.remove(GrabberS.grabbing);
+
     setDraggedDimensionIndex(undefined);
 
     const over = event.over;
