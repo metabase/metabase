@@ -958,7 +958,14 @@ export function updateNumericFilter(
   start: number,
   end: number,
 ): Query {
-  return ML.update_numeric_filter(query, stageIndex, numericColumn, cardId, start, end);
+  return ML.update_numeric_filter(
+    query,
+    stageIndex,
+    numericColumn,
+    cardId,
+    start,
+    end,
+  );
 }
 
 /**
