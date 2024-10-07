@@ -181,12 +181,6 @@ The drill-through menu will present different options depending on what you clic
 
 When viewing a [table](../sharing/visualizations/table.md), clicking on the heading of a column gives you different options, depending on the columns data type. See [table](../sharing/visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
 
-## Returning to the editor
-
-To return to the editor for a question, click on the **Show editor** button in the upper right.
-
-![Show editor](../images/show-editor.png)
-
 ## Viewing an individual record's details
 
 To see more info about a given record (a user account, order, venue, etc.), click on a record's ID number (or primary key). You can see all fields related to that one record and all connected tables that are hidden in the table view for the sake of readability. To page through the other records in the current table, press the right or left arrow keys, or click on the arrows to the right or left of the screen.

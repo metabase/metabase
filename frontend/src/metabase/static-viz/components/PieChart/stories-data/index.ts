@@ -39,6 +39,8 @@ import singleDimension from "./single-dimension.json";
 import smallMinimumSlicePercentage from "./small-min-slice-percentage.json";
 import threeRingsNoLabels from "./three-rings-no-labels.json";
 import threeRingsOtherSlices from "./three-rings-other-slices.json";
+import threeRingsPercentagesAndLabels from "./three-rings-percentages-and-labels.json";
+import threeRingsPercentagesOnChart from "./three-rings-percentages-on-chart.json";
 import threeRings from "./three-rings.json";
 import tinySlicesDisappear43766 from "./tiny-slices-disappear-43766.json";
 import truncatedTotal from "./truncated-total.json";
@@ -92,6 +94,8 @@ export const data = {
   threeRings,
   threeRingsNoLabels,
   threeRingsOtherSlices,
+  threeRingsPercentagesAndLabels,
+  threeRingsPercentagesOnChart,
   labelsWithPercent,
   labelsOnChart,
 };

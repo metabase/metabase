@@ -9,10 +9,7 @@ import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import {
-  getPercent,
-  getTotalValue,
-} from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
+import { getTotalValue } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
 import type { EChartsSunburstSeriesMouseEvent } from "metabase/visualizations/echarts/pie/types";
@@ -57,6 +54,7 @@ export const getTooltipModel = (
       color: nodes.length === 1 ? slice.color : undefined,
       formatter: formatters.formatMetric,
       key: slice.key,
+      normalizedPercentage: slice.normalizedPercentage,
     }));
   const rowsTotal = getTotalValue(rows);
 
@@ -70,7 +68,7 @@ export const getTooltipModel = (
       name: row.name,
       values: [
         row.formatter(row.value),
-        formatPercent(getPercent(chartModel.total, row.value) ?? 0),
+        formatPercent(row.normalizedPercentage),
       ],
     };
   });
@@ -88,10 +86,7 @@ export const getTooltipModel = (
       rows.length > 1
         ? {
             name: t`Total`,
-            values: [
-              formatters.formatMetric(rowsTotal),
-              formatPercent(getPercent(chartModel.total, rowsTotal) ?? 0),
-            ],
+            values: [formatters.formatMetric(rowsTotal), formatPercent(1)],
           }
         : undefined,
   };

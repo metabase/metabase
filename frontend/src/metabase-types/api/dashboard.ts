@@ -289,3 +289,8 @@ export type CopyDashboardRequest = {
   collection_position?: number | null;
   is_deep_copy?: boolean | null;
 };
+
+export type GetPublicOrEmbeddableDashboard = Pick<
+  Dashboard,
+  "id" | "name" | "public_uuid"
+>;

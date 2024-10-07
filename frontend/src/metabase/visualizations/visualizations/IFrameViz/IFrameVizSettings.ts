@@ -21,7 +21,7 @@ export const settings = {
   settings: {
     "card.title": {
       dashboard: false,
-      default: t`IFrame card`,
+      default: t`Iframe card`,
     },
     "card.description": {
       dashboard: false,
