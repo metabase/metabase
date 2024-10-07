@@ -28,7 +28,7 @@ export function FilterOperatorPicker<T extends string>({
           rightIcon={<Icon name="chevrondown" />}
           aria-label={t`Filter operator`}
         >
-          {selectedOption?.name}
+          {selectedOption?.name ?? t`Select operator`}
         </Button>
       </Menu.Target>
       <Menu.Dropdown>
