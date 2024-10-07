@@ -13,7 +13,6 @@ import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { CollectionItemModel, Dashboard } from "metabase-types/api";
 
-import { useEnsureCollectionSelected } from "../../CollectionPicker";
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
 import { getPathLevelForItem } from "../../CollectionPicker/utils";
 import { LoadingSpinner, NestedItemPicker } from "../../EntityPicker";
@@ -41,7 +40,6 @@ interface DashboardPickerProps {
   models?: CollectionItemModel[];
   path: DashboardPickerStatePath | undefined;
   shouldDisableItem?: (item: DashboardPickerItem) => boolean;
-  onInit: (item: DashboardPickerItem) => void;
   onItemSelect: (item: DashboardPickerItem) => void;
   onPathChange: (path: DashboardPickerStatePath) => void;
 }
@@ -92,7 +90,6 @@ const DashboardPickerInner = (
     models = ["dashboard"],
     path: pathProp,
     shouldDisableItem,
-    onInit,
     onItemSelect,
     onPathChange,
   }: DashboardPickerProps,
@@ -232,14 +229,6 @@ const DashboardPickerInner = (
     },
     [currentCollection, userPersonalCollectionId, onPathChange],
   );
-
-  useEnsureCollectionSelected({
-    currentCollection,
-    enabled: path === defaultPath,
-    options,
-    useRootCollection: initialValue?.id == null,
-    onInit,
-  });
 
   if (error) {
     return <LoadingAndErrorWrapper error={error} />;

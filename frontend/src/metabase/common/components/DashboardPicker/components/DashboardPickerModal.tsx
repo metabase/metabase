@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -80,16 +80,6 @@ export const DashboardPickerModal = ({
     }
   }, []);
 
-  const finalSelectedItem = useMemo(() => {
-    if (dashboardsPath && dashboardsPath?.length > 0) {
-      const last = dashboardsPath?.[dashboardsPath.length - 1];
-      if (canSelectItem(last.selectedItem)) {
-        return last.selectedItem;
-      }
-    }
-    return selectedItem;
-  }, [dashboardsPath, selectedItem]);
-
   const { tryLogRecentItem } = useLogRecentItem();
 
   const handleOnChange = useCallback(
@@ -121,8 +111,8 @@ export const DashboardPickerModal = ({
   );
 
   const handleConfirm = () => {
-    if (finalSelectedItem && canSelectItem(finalSelectedItem)) {
-      handleOnChange(finalSelectedItem);
+    if (selectedItem && canSelectItem(selectedItem)) {
+      handleOnChange(selectedItem);
     }
   };
 
@@ -132,7 +122,7 @@ export const DashboardPickerModal = ({
       miw="21rem"
       onClick={openCreateDialog}
       leftIcon={<Icon name="add" />}
-      disabled={finalSelectedItem?.can_write === false}
+      disabled={selectedItem?.can_write === false}
     >
       {t`Create a new dashboard`}
     </Button>,
@@ -157,7 +147,6 @@ export const DashboardPickerModal = ({
           path={dashboardsPath}
           ref={pickerRef}
           shouldDisableItem={shouldDisableItem}
-          onInit={onItemSelect}
           onItemSelect={onItemSelect}
           onPathChange={handleDashboardsPathChange}
         />
@@ -169,17 +158,17 @@ export const DashboardPickerModal = ({
     pickerRef.current?.onNewDashboard(newDashboard);
   };
 
-  const parentCollectionId = getCollectionId(finalSelectedItem || value);
+  const parentCollectionId = getCollectionId(selectedItem || value);
 
   return (
     <>
       <EntityPickerModal
         title={title}
         onItemSelect={handleItemSelect}
-        canSelectItem={!isCreateDialogOpen && canSelectItem(finalSelectedItem)}
+        canSelectItem={!isCreateDialogOpen && canSelectItem(selectedItem)}
         onConfirm={handleConfirm}
         onClose={onClose}
-        selectedItem={finalSelectedItem}
+        selectedItem={selectedItem}
         initialValue={value}
         tabs={tabs}
         options={options}
