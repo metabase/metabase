@@ -1164,7 +1164,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         });
 
         it("1st stage implicit join (data source)", () => {
-          setup1stStageImplicitSourceJoinFilter();
+          setup1stStageImplicitJoinFromSourceFilter();
 
           getDashboardCard(0)
             .findByTestId("cell-data")
@@ -1175,8 +1175,18 @@ describe("scenarios > dashboard > filters > query stages", () => {
           cy.findAllByTestId("cell-data").last().should("have.text", "4,292");
         });
 
-        // TODO
-        it.skip("1st stage implicit join (joined data source)", () => {});
+        it.skip("1st stage implicit join (joined data source)", () => {
+          setup1stStageImplicitJoinFromJoinFilter();
+
+          // TODO: update assertions https://github.com/metabase/metabase/issues/46774
+          getDashboardCard(0)
+            .findByTestId("cell-data")
+            .should("have.text", "4,292");
+          getDashboardCard(0).findByTestId("legend-caption-title").click();
+          cy.wait("@dataset");
+
+          cy.findAllByTestId("cell-data").last().should("have.text", "4,292");
+        });
 
         //TODO
         it.skip("1st stage custom column", () => {});
@@ -1574,7 +1584,7 @@ function setup1stStageExplicitJoinFilter() {
   cy.wait("@dashboardData");
 }
 
-function setup1stStageImplicitSourceJoinFilter() {
+function setup1stStageImplicitJoinFromSourceFilter() {
   editDashboard();
 
   getFilter("Number").click();
@@ -1593,6 +1603,27 @@ function setup1stStageImplicitSourceJoinFilter() {
   popover().within(() => {
     cy.findAllByPlaceholderText("Enter a number").eq(0).type("0");
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
+    cy.button("Add filter").click();
+  });
+  cy.wait("@dashboardData");
+}
+
+function setup1stStageImplicitJoinFromJoinFilter() {
+  editDashboard();
+
+  getFilter("Text").click();
+
+  getDashboardCard(0).findByText("Select…").click();
+  popover().within(() => {
+    getPopoverItem("Category", 1).click();
+  });
+
+  cy.button("Save").click();
+  cy.wait("@updateDashboard");
+
+  filterWidget().eq(0).click();
+  popover().within(() => {
+    cy.findByLabelText("Gadget").click();
     cy.button("Add filter").click();
   });
   cy.wait("@dashboardData");
