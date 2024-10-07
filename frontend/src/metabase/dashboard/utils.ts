@@ -316,7 +316,7 @@ export function generateTemporaryDashcardId() {
   return tempId--;
 }
 
-type NewDashboardCard = Omit<
+export type NewDashboardCard = Omit<
   DashboardCard,
   "entity_id" | "created_at" | "updated_at"
 >;

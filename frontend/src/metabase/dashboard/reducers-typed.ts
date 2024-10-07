@@ -1,14 +1,22 @@
 import { createReducer } from "@reduxjs/toolkit";
+import { assocIn } from "icepick";
+import produce from "immer";
+import { omit } from "underscore";
 
+import Dashboards from "metabase/entities/dashboards";
 import { handleActions } from "metabase/lib/redux";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   DashCardId,
+  Dashboard,
   ParameterId,
   ParameterValueOrArray,
 } from "metabase-types/api";
-import type { DashboardSidebarName } from "metabase-types/store/dashboard";
+import type {
+  DashboardSidebarName,
+  StoreDashboard,
+} from "metabase-types/store/dashboard";
 
 import {
   CLOSE_SIDEBAR,
@@ -23,13 +31,21 @@ import {
   SET_SIDEBAR,
   SHOW_ADD_PARAMETER_POPOVER,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
+  addCardToDash,
+  addManyCardsToDash,
+  createPublicLink,
+  deletePublicLink,
   fetchDashboard,
   markCardAsSlow,
+  setDashboardAttributes,
   setDisplayTheme,
   setDocumentTitle,
   setShowLoadingCompleteFavicon,
+  updateEmbeddingParams,
+  updateEnableEmbedding,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
+import { syncParametersAndEmbeddingParams } from "./utils";
 
 export const dashboardId = createReducer(
   INITIAL_DASHBOARD_STATE.dashboardId,
@@ -231,5 +247,83 @@ export const parameterValues = createReducer(
         delete state[id];
       },
     );
+  },
+);
+
+function newDashboard(
+  before: StoreDashboard,
+  after: Partial<Dashboard>,
+  isDirty: boolean,
+): StoreDashboard {
+  return {
+    ...before,
+    // mimic the StoreDashboard type - this function is only made to update attributes
+    // rather than deep values like dashcards or tabs
+    ...omit(after, "dashcards", "tabs"),
+    embedding_params: syncParametersAndEmbeddingParams(before, after),
+    isDirty,
+  };
+}
+
+export const dashboards = createReducer(
+  INITIAL_DASHBOARD_STATE.dashboards,
+  builder => {
+    builder
+      .addCase(fetchDashboard.fulfilled, (state, { payload }) => ({
+        ...state,
+        ...payload.entities.dashboard,
+      }))
+      .addCase(
+        setDashboardAttributes,
+        (state, { payload: { id, attributes, isDirty = true } }) => ({
+          ...state,
+          [id]: newDashboard(state[id], attributes, isDirty),
+        }),
+      )
+      .addCase(addCardToDash, (state, { payload: dashcard }) => ({
+        ...state,
+        [dashcard.dashboard_id]: {
+          ...state[dashcard.dashboard_id],
+          dashcards: [...state[dashcard.dashboard_id].dashcards, dashcard.id],
+        },
+      }))
+      .addCase(addManyCardsToDash, (state, { payload: dashcards }) => {
+        const [{ dashboard_id }] = dashcards;
+        const dashcardIds = dashcards.map(({ id }) => id);
+        return {
+          ...state,
+          [dashboard_id]: {
+            ...state[dashboard_id],
+            dashcards: [...state[dashboard_id].dashcards, ...dashcardIds],
+          },
+        };
+      })
+      .addCase(updateEmbeddingParams.fulfilled, (state, { payload }) =>
+        assocIn(
+          state,
+          [payload.id, "embedding_params"],
+          payload.embedding_params,
+        ),
+      )
+      .addCase(updateEnableEmbedding.fulfilled, (state, { payload }) => {
+        const dashboard = state[payload.id];
+        dashboard.enable_embedding = payload.enable_embedding;
+        dashboard.initially_published_at = payload.initially_published_at;
+      })
+      .addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) =>
+        produce(state, draftState => {
+          const draftDashboard = draftState[payload.dashboard.id];
+          if (draftDashboard) {
+            draftDashboard.collection_id = payload.dashboard.collection_id;
+            draftDashboard.collection = payload.dashboard.collection;
+          }
+        }),
+      )
+      .addCase(createPublicLink.fulfilled, (state, { payload }) =>
+        assocIn(state, [payload.id, "public_uuid"], payload.uuid),
+      )
+      .addCase(deletePublicLink.fulfilled, (state, { payload }) =>
+        assocIn(state, [payload.id, "public_uuid"], null),
+      );
   },
 );

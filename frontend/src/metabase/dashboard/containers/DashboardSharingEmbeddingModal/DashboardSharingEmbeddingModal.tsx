@@ -5,8 +5,8 @@ import {
   EmbedModal,
   EmbedModalContent,
 } from "metabase/public/components/EmbedModal";
+import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { Dashboard } from "metabase-types/api";
-import type { EmbedOptions } from "metabase-types/store";
 
 import {
   createPublicLink,
@@ -33,11 +33,12 @@ export const DashboardSharingEmbeddingModal = (
 
   const createPublicDashboardLink = () => dispatch(createPublicLink(dashboard));
   const deletePublicDashboardLink = () => dispatch(deletePublicLink(dashboard));
-  const updateDashboardEnableEmbedding = (enableEmbedding: boolean) =>
-    dispatch(updateEnableEmbedding(dashboard, enableEmbedding));
+  const updateDashboardEnableEmbedding = (enable_embedding: boolean) =>
+    dispatch(updateEnableEmbedding({ id: dashboard.id, enable_embedding }));
 
-  const updateDashboardEmbeddingParams = (embeddingParams: EmbedOptions) =>
-    dispatch(updateEmbeddingParams(dashboard, embeddingParams));
+  const updateDashboardEmbeddingParams = (
+    embedding_params: EmbeddingParameters,
+  ) => dispatch(updateEmbeddingParams({ id: dashboard.id, embedding_params }));
 
   const getPublicUrl = (publicUuid: string) => Urls.publicDashboard(publicUuid);
 

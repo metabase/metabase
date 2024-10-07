@@ -6,7 +6,7 @@ import type {
   DashboardQueryMetadata,
   GetDashboardQueryMetadataRequest,
   GetDashboardRequest,
-  GetPublicOrEmbeddableDashboard,
+  GetPublicDashboard,
   ListDashboardsRequest,
   ListDashboardsResponse,
   SaveDashboardRequest,
@@ -109,10 +109,7 @@ export const dashboardApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("dashboard")]),
     }),
-    listEmbeddableDashboards: builder.query<
-      GetPublicOrEmbeddableDashboard[],
-      void
-    >({
+    listEmbeddableDashboards: builder.query<GetPublicDashboard[], void>({
       query: params => ({
         method: "GET",
         url: "/api/dashboard/embeddable",
@@ -123,36 +120,32 @@ export const dashboardApi = Api.injectEndpoints({
         listTag("embed-dashboard"),
       ],
     }),
-    listPublicDashboards: builder.query<GetPublicOrEmbeddableDashboard[], void>(
-      {
-        query: params => ({
-          method: "GET",
-          url: "/api/dashboard/public",
-          params,
-        }),
-        providesTags: (result = []) => [
-          ...result.map(res => idTag("public-dashboard", res.id)),
-          listTag("public-dashboard"),
-        ],
-      },
-    ),
+    listPublicDashboards: builder.query<GetPublicDashboard[], void>({
+      query: params => ({
+        method: "GET",
+        url: "/api/dashboard/public",
+        params,
+      }),
+      providesTags: (result = []) => [
+        ...result.map(res => idTag("public-dashboard", res.id)),
+        listTag("public-dashboard"),
+      ],
+    }),
     createDashboardPublicLink: builder.mutation<
-      GetPublicOrEmbeddableDashboard,
+      { uuid: Dashboard["public_uuid"] },
       Pick<Dashboard, "id">
     >({
-      query: ({ id, ...params }) => ({
+      query: ({ id }) => ({
         method: "POST",
         url: `/api/dashboard/${id}/public_link`,
-        params,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("public-dashboard")]),
     }),
     deleteDashboardPublicLink: builder.mutation<void, Pick<Dashboard, "id">>({
-      query: ({ id, ...params }) => ({
+      query: ({ id }) => ({
         method: "DELETE",
         url: `/api/dashboard/${id}/public_link`,
-        params,
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
