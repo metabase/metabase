@@ -1,10 +1,12 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import { Popover, PopoverDropdown } from "@mantine/core";
 import type { SyntheticEvent } from "react";
+
+import PopoverStyles from "./Popover.module.css";
 
 export const DEFAULT_POPOVER_Z_INDEX = 300;
 
-export const getPopoverOverrides = (): MantineThemeOverride["components"] => ({
-  Popover: {
+export const popoverOverrides = {
+  Popover: Popover.extend({
     defaultProps: {
       radius: "sm",
       shadow: "md",
@@ -12,17 +14,11 @@ export const getPopoverOverrides = (): MantineThemeOverride["components"] => ({
       middlewares: { shift: true, flip: true, size: true },
       transitionProps: { duration: 0 },
     },
-    styles: () => ({
-      dropdown: {
-        padding: 0,
-        overflow: "auto",
-        background: "var(--mb-color-background)",
-        borderColor: "var(--mb-color-border)",
-        color: "var(--mb-color-text-primary)",
-      },
-    }),
-  },
-  PopoverDropdown: {
+    classNames: {
+      dropdown: PopoverStyles.dropdown,
+    },
+  }),
+  PopoverDropdown: PopoverDropdown.extend({
     defaultProps: {
       onMouseDownCapture: (event: SyntheticEvent) => {
         // prevent nested popovers from closing each other
@@ -31,5 +27,5 @@ export const getPopoverOverrides = (): MantineThemeOverride["components"] => ({
         target.setAttribute("data-ignore-outside-clicks", "true");
       },
     },
-  },
-});
+  }),
+};
