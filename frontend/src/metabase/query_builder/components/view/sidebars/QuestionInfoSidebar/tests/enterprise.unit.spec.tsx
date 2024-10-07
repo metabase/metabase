@@ -1,4 +1,5 @@
 import { screen } from "__support__/ui";
+import type { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockModerationReview,
@@ -24,6 +25,18 @@ describe("QuestionInfoSidebar > enterprise", () => {
       });
       await setupEnterprise({ card });
       expect(screen.queryByText(/verified this/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe("entity id display", () => {
+    it("should not show entity ids without serialization feature", async () => {
+      const card = createMockCard({
+        entity_id: "jenny8675309" as Card["entity_id"],
+      });
+      await setupEnterprise({ card });
+
+      expect(screen.queryByText("Entity ID")).not.toBeInTheDocument();
+      expect(screen.queryByText("jenny8675309")).not.toBeInTheDocument();
     });
   });
 });

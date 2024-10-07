@@ -96,7 +96,7 @@ One important thing to understand when filtering on a date column is the differe
 
 ### Filtering by a segment
 
-If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called [**Segments**](../../data-modeling/segments-and-metrics.md), and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
+If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called [**Segments**](../../data-modeling/segments.md), and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
 
 ### Filter with custom expressions
 
@@ -147,7 +147,7 @@ If you summarize and add a grouping you can then summarize _again_. You can also
 
 You can also add metrics and groupings on the results page in a sidebar: the top of the sidebar where you pick the number ("metric") you want to see, and the part below is where you pick how to group that number (or how to "break it out").
 
-If your admins have created any named metrics that are specific to your company or organization, they will be in this dropdown under the **Common Metrics** section. These might be things like your company’s official way of calculating revenue.
+If your admins have created any named [metrics](../../data-modeling/metrics.md) that are specific to your company or organization, they will be in this dropdown under the **Common Metrics** section. These might be things like your company’s official way of calculating revenue.
 
 ## Grouping your metrics
 
@@ -180,12 +180,6 @@ The drill-through menu will present different options depending on what you clic
 ## Column heading drill-through
 
 When viewing a [table](../sharing/visualizations/table.md), clicking on the heading of a column gives you different options, depending on the columns data type. See [table](../sharing/visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
-
-## Returning to the editor
-
-To return to the editor for a question, click on the **Show editor** button in the upper right.
-
-![Show editor](../images/show-editor.png)
 
 ## Viewing an individual record's details
 

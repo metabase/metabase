@@ -125,6 +125,7 @@ export const createMockTokenFeatures = (
   collection_cleanup: false,
   upload_management: false,
   query_reference_validation: false,
+  serialization: false,
   ...opts,
 });
 
@@ -256,5 +257,7 @@ export const createMockSettings = (
   "notebook-native-preview-shown": false,
   "notebook-native-preview-sidebar-width": null,
   "query-analysis-enabled": false,
+  "check-for-updates": true,
+  "update-channel": "latest",
   ...opts,
 });
