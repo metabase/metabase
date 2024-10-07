@@ -14,7 +14,7 @@ const setup = ({ collection }: { collection: Collection }) =>
     enableOfficialCollections: false,
   });
 
-describe("CollectionInfoSidebar (EE without token)", () => {
+describe("CollectionInfoSidebar (EE without tokens)", () => {
   it("should render for a regular collection", async () => {
     setup({
       collection: regularCollection,
@@ -23,10 +23,14 @@ describe("CollectionInfoSidebar (EE without token)", () => {
     expect(
       await screen.findByText("Description of a normal collection"),
     ).toBeInTheDocument();
-    expect(
-      await screen.findByText("entity_id_of_normal_collection"),
-    ).toBeInTheDocument();
+
+    // Official collections are hidden without the official_collections feature
     expect(screen.queryByText("Official collection")).not.toBeInTheDocument();
+
+    // Entity ids are hidden without the serialization feature
+    expect(
+      screen.queryByText("entity_id_of_normal_collection"),
+    ).not.toBeInTheDocument();
   });
   it("should render properly for an official collection", async () => {
     setup({
@@ -36,9 +40,13 @@ describe("CollectionInfoSidebar (EE without token)", () => {
     expect(
       await screen.findByText("Description of a trusted collection"),
     ).toBeInTheDocument();
-    expect(
-      await screen.findByText("entity_id_of_trusted_collection"),
-    ).toBeInTheDocument();
+
+    // Official collections are hidden without the official_collections feature
     expect(screen.queryByText("Official collection")).not.toBeInTheDocument();
+
+    // Entity ids are hidden without the serialization feature
+    expect(
+      screen.queryByText("entity_id_of_trusted_collection"),
+    ).not.toBeInTheDocument();
   });
 });
