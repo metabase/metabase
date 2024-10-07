@@ -6,7 +6,8 @@ import type {
   CreateCardRequest,
   Dataset,
   GetCardRequest,
-  GetPublicOrEmbeddableCard,
+  GetEmbeddableCard,
+  GetPublicCard,
   ListCardsRequest,
   UpdateCardRequest,
 } from "metabase-types/api";
@@ -149,7 +150,7 @@ export const cardApi = Api.injectEndpoints({
         }, PERSISTED_MODEL_REFRESH_DELAY);
       },
     }),
-    listEmbeddableCards: builder.query<GetPublicOrEmbeddableCard[], void>({
+    listEmbeddableCards: builder.query<GetEmbeddableCard[], void>({
       query: params => ({
         method: "GET",
         url: "/api/card/embeddable",
@@ -160,7 +161,7 @@ export const cardApi = Api.injectEndpoints({
         listTag("embed-card"),
       ],
     }),
-    listPublicCards: builder.query<GetPublicOrEmbeddableCard[], void>({
+    listPublicCards: builder.query<GetPublicCard[], void>({
       query: params => ({
         method: "GET",
         url: "/api/card/public",
@@ -171,11 +172,10 @@ export const cardApi = Api.injectEndpoints({
         listTag("public-card"),
       ],
     }),
-    deleteCardPublicLink: builder.mutation<void, GetPublicOrEmbeddableCard>({
-      query: ({ id, ...params }) => ({
+    deleteCardPublicLink: builder.mutation<void, Pick<Card, "id">>({
+      query: ({ id }) => ({
         method: "DELETE",
         url: `/api/card/${id}/public_link`,
-        params,
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
@@ -189,10 +189,9 @@ export const cardApi = Api.injectEndpoints({
       },
       Pick<Card, "id">
     >({
-      query: ({ id, ...params }) => ({
+      query: ({ id }) => ({
         method: "POST",
         url: `/api/card/${id}/public_link`,
-        params,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("public-card")]),
