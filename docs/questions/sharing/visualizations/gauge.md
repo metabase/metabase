@@ -29,15 +29,15 @@ To build a gauge chart, you'll need:
   | --------------- | ---------------- | ------------ |
   | 4910            | 17.32            | 173          |
 
-  In this case only the metric in the first column will be used for the gauge chart. To change which number is used for the gauge, rearrange the metrics (for example, by dragging them in the Summarize block in the query builder).
+  In this case, the gauge chart will use the metric in the first column ("Sum of quantity"). To change the metric, go to the editor and drag the metric you want to the first position in the Summarize block.
 
 - One or more ranges for the metric, for example "Low", "Medium", "High". Currently, Metabase only supports defining static ranges (you can't set range boundaries based on another query).
-
-You can set the ranges, their colors, and optional labels in [chart settings](#gauge-chart-settings).
 
 ![Gauge chart](../../images/gauge-labeled.png)
 
 ## Gauge chart settings
+
+You can set the ranges, their colors, and optional labels in chart settings.
 
 To open the chart setting, click on the gear icon at the bottom left of the screen.
 
@@ -45,9 +45,9 @@ Format options will apply to both the result of the query and the range boundari
 
 ![Gauge format options](../../images/gauge-format.png)
 
-In particular, "Multiply by a number" option will be applied to the range boundaries, so if you want to show a range from 2000 to 4000 on the chart, and you use "Multiply by a number: 1000", then the underlying range should be from 2 to 3.
+In particular, the gauge chart will apply the "Multiply by a number" option to the range boundaries. So if you want to show a range from 2000 to 4000 on the chart, you can set "Multiply by a number: 1000", then set the underlying range to be from 2 to 4.
 
-Selecting “Style: Percent” in format options will only change how the result of the query is formatted: for example, `17` will be formatted as `1700%`. If you instead want to display the query result as a percentage of the total range of the chart, you’ll need to calculate that percentage in your query. For example, to display the count of orders as a percentage of 20, use custom expressions to return “Count of orders divided by 20”, and format the result as a percentage.
+Selecting “Style: Percent” in format options will only change how Metabase formats the results. For example, `17` will be formatted as `1700%`. If you instead want to display the query result as a percentage of the _total_ range of the chart, you’ll need to calculate that percentage in your query. Another example: to display the count of orders as a percentage of 20, use custom expressions to return “Count of orders divided by 20”, and format the result as a percentage.
 
 ## Limitations and alternatives
 
