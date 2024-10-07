@@ -174,7 +174,7 @@
                            "data_model"      false
                            "settings"        false
                            "field_values"    false
-                           "duration_ms"     pos?
+                           "duration_ms"     (every-pred number? pos?)
                            "count"           3
                            "error_count"     0
                            "source"          "api"

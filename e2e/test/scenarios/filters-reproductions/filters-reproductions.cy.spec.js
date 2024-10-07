@@ -380,9 +380,9 @@ describe("issue 22230", () => {
 
     popover().within(() => {
       cy.findByText("Max of Name").click();
-      cy.findByDisplayValue("Is").click();
+      cy.findByText("Is").click();
     });
-    cy.findByRole("listbox").findByText("Starts with").click();
+    cy.findByRole("menu").findByText("Starts with").click();
 
     popover().within(() => {
       cy.findByPlaceholderText("Enter some text").type("Zo").blur();
