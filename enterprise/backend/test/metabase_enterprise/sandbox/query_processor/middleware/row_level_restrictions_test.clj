@@ -268,6 +268,52 @@
                    {:aggregation [[:count]]}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                  UNIT TESTS                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest merge-perms-test
+  (testing "merge-perms correctly combines two sandboxing permission graphs, taking the more permissive value"
+    (is (= {:perms/create-queries :query-builder-and-native}
+           (@#'row-level-restrictions/merge-perms
+            {:perms/create-queries :query-builder}
+            {:perms/create-queries :query-builder-and-native})))
+
+    (is (= {:perms/create-queries :query-builder-and-native}
+           (@#'row-level-restrictions/merge-perms
+            {:perms/create-queries :query-builder-and-native}
+            {:perms/create-queries :query-builder})))
+
+    (is (= {:perms/create-queries :query-builder-and-native}
+           (@#'row-level-restrictions/merge-perms
+            {:perms/create-queries :query-builder-and-native}
+            {:perms/create-queries {1 :query-builder}})))
+
+    (is (= {:perms/create-queries {1 :query-builder-and-native}}
+           (@#'row-level-restrictions/merge-perms
+            {:perms/create-queries {1 :query-builder-and-native}}
+            {:perms/create-queries {1 :query-builder}})))
+
+    (is (= {:perms/create-queries {1 :query-builder-and-native}}
+           (@#'row-level-restrictions/merge-perms
+            {:perms/create-queries {1 :query-builder}}
+            {:perms/create-queries {1 :query-builder-and-native}})))
+
+    (is (= {:perms/create-queries {1 :query-builder-and-native
+                                   2 :query-builder}}
+           (@#'row-level-restrictions/merge-perms
+            {:perms/create-queries {1 :query-builder-and-native}}
+            {:perms/create-queries {2 :query-builder}}))))
+
+  (testing "The database-level perm always wins, even if it is less permissive than the table-level perm"
+    ;; Note: This case shouldn't arise in the context of sandboxing, so it's OK that the behavior is technically
+    ;; incorrect. Sandboxing queries might require :query-builder-and-native at the DB-level, but :query-builder
+    ;; will only ever be requried at the table-level.
+    (is (= {:perms/create-queries :query-builder}
+           (@#'row-level-restrictions/merge-perms
+            {:perms/create-queries {1 :query-builder-and-native}}
+            {:perms/create-queries :query-builder})))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                END-TO-END TESTS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
