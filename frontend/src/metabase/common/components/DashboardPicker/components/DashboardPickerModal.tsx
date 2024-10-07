@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -70,13 +71,12 @@ export const DashboardPickerModal = ({
   const [dashboardsPath, setDashboardsPath] =
     useState<DashboardPickerStatePath>();
 
-  useEffect(
+  useDeepCompareEffect(
     function () {
+      // sync back the value to selectedItem, but only when it changes
       setSelectedItem(canSelectItem(value) ? value : null);
     },
-    // sync back the value to selectedItem, but only when it changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [value.id, value.model],
+    [value],
   );
 
   useEffect(
