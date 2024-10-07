@@ -10,7 +10,7 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(mu/defn insert!
+(mu/defn put!
   "Upserts a KV-pair"
   [user-id :- :int
    k :- :string
@@ -18,7 +18,11 @@
   (t2/with-transaction [_]
     (if (t2/select-one :model/UserKeyValue :user_id user-id :key k)
       (t2/update! :model/UserKeyValue :user_id user-id :key k {:value v})
-      (t2/insert! :model/UserKeyValue {:user_id user-id :key k :value v})))
+      (try
+        (t2/insert! :model/UserKeyValue {:user_id user-id :key k :value v})
+        ;; in case we caught a duplicate key exception (a row was inserted between our read and write), try updating
+        (catch Exception _
+          (t2/update! :model/UserKeyValue :user_id user-id :key k {:value v})))))
   v)
 
 (mu/defn retrieve
