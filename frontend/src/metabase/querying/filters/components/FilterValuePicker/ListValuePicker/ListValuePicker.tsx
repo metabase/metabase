@@ -86,6 +86,7 @@ function CheckboxListPicker({
         value={searchValue}
         placeholder={placeholder}
         autoFocus={autoFocus}
+        icon={<Icon name="search" c="text-light" />}
         onChange={handleInputChange}
       />
       {filteredOptions.length > 0 ? (
@@ -95,7 +96,6 @@ function CheckboxListPicker({
             label={isAll ? `Select none` : t`Select all`}
             checked={isAll}
             indeterminate={!isAll && !isNone}
-            fw="bold"
             onChange={handleToggleAll}
           />
           <Checkbox.Group value={selectedValues} onChange={onChange}>
