@@ -113,6 +113,19 @@ export function SidebarOnboardingSection({
   const canUploadToDatabase = database?.can_upload;
   const canUpload = canCurateRootCollection && canUploadToDatabase;
 
+  function AddDatabaseButton() {
+    return (
+      <Link to="/admin/databases/create">
+        <SidebarOnboardingMenuItem
+          icon="database"
+          title={t`Add a database`}
+          subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
+          onClick={() => trackAddDataViaDatabase()}
+        />
+      </Link>
+    );
+  }
+
   function UploadSpreadsheetButton() {
     const isUploadEnabled = !!uploadDbId;
 
@@ -174,14 +187,7 @@ export function SidebarOnboardingSection({
               >{t`Add data`}</Button>
             </Menu.Target>
             <Menu.Dropdown>
-              <Link to="/admin/databases/create">
-                <SidebarOnboardingMenuItem
-                  icon="database"
-                  title={t`Add a database`}
-                  subtitle={t`PostgreSQL, MySQL, Snowflake, ...`}
-                  onClick={() => trackAddDataViaDatabase()}
-                />
-              </Link>
+              {canAddDatabase && <AddDatabaseButton />}
               {canUpload && <UploadSpreadsheetButton />}
             </Menu.Dropdown>
           </Menu>
