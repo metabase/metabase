@@ -9,6 +9,36 @@
 
 ;;; --------------------------------------------------- defclause ----------------------------------------------------
 
+(defn mbql-clause?
+  "True if `x` is an MBQL clause (a sequence with a keyword as its first arg). (Since this is used by the code in
+  `normalize` this handles pre-normalized clauses as well.)"
+  [x]
+  (and (sequential? x)
+       (not (map-entry? x))
+       (keyword? (first x))))
+
+(defn is-clause?
+  "If `x` is an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
+
+    (is-clause? :count [:count 10])        ; -> true
+    (is-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> true"
+  [k-or-ks x]
+  (and
+   (mbql-clause? x)
+   (if (coll? k-or-ks)
+     ((set k-or-ks) (first x))
+     (= k-or-ks (first x)))))
+
+(defn check-clause
+  "Returns `x` if it's an instance of a clause defined by keyword(s) `k-or-ks`
+
+    (check-clause :count [:count 10]) ; => [:count 10]
+    (check-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> [:+ 10 20]
+    (check-clause :sum [:count 10]) ; => nil"
+  [k-or-ks x]
+  (when (is-clause? k-or-ks x)
+    x))
+
 (defn- wrap-clause-arg-schema [arg-schema]
   [:schema (if (qualified-keyword? arg-schema)
              [:ref arg-schema]
@@ -23,21 +53,6 @@
         :optional [:? [:maybe (wrap-clause-arg-schema arg-schema)]]
         :rest     [:* (wrap-clause-arg-schema arg-schema)]
         (wrap-clause-arg-schema vector-arg-schema)))))
-
-;; TODO - this is a copy of the one in the [[metabase.legacy-mbql.util]] namespace. We need to reorganize things a bit
-;; so we can use the same fn and avoid circular refs
-(defn is-clause?
-  "If `x` an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
-
-    (is-clause? :count [:count 10])        ; -> true
-    (is-clause? #{:+ :- :* :/} [:+ 10 20]) ; -> true"
-  [k-or-ks x]
-  (and
-   (vector? x)
-   (keyword? (first x))
-   (if (coll? k-or-ks)
-     ((set k-or-ks) (first x))
-     (= k-or-ks (first x)))))
 
 (defn clause
   "Impl of [[metabase.legacy-mbql.schema.macros/defclause]] macro. Creates a Malli schema."
