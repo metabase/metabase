@@ -93,7 +93,7 @@ function CheckboxListPicker({
         <Stack>
           <Checkbox
             variant="stacked"
-            label={isAll ? `Select none` : t`Select all`}
+            label={getToggleAllLabel(searchValue, isAll)}
             checked={isAll}
             indeterminate={!isAll && !isNone}
             onChange={handleToggleAll}
@@ -118,6 +118,14 @@ function CheckboxListPicker({
       )}
     </Stack>
   );
+}
+
+function getToggleAllLabel(searchValue: string, isAll: boolean) {
+  if (isAll) {
+    return t`Select none`;
+  } else {
+    return searchValue ? t`Select these` : t`Select all`;
+  }
 }
 
 function CheckboxGridPicker({
