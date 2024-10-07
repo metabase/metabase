@@ -10,8 +10,14 @@ import { Alert, Box, Icon } from "metabase/ui";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import type { Collection } from "metabase-types/api";
 
-const translationContext =
-  "This is the heading of a banner that invites the user to clean up a collection.";
+const TEXT = {
+  CLEAN_THINGS_UP: c(
+    "This is the heading of a banner that invites the user to clean up a collection.",
+  ).t`Clean things up!`,
+  GET_RID_OF_UNUSED_CONTENT: c(
+    "This is the heading of a banner that invites the user to clean up a collection.",
+  ).t`Get rid of unused content`,
+};
 
 export const CollectionCleanupAlert = ({
   collection,
@@ -53,7 +59,7 @@ export const CollectionCleanupAlert = ({
       }}
     >
       <Box fz="md" c={"text-dark"}>
-        {c(translationContext).t`Clean things up!`}{" "}
+        {TEXT.CLEAN_THINGS_UP}{" "}
         <Box
           component={Link}
           ml="2.5rem"
@@ -61,7 +67,7 @@ export const CollectionCleanupAlert = ({
           variant="brand"
           to={`${Urls.collection(collection)}/cleanup`}
         >
-          {c(translationContext).t`Get rid of unused content`}
+          {TEXT.GET_RID_OF_UNUSED_CONTENT}
         </Box>
       </Box>
     </Alert>
