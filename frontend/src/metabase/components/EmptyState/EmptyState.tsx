@@ -1,3 +1,5 @@
+import type { HTMLAttributes } from "react";
+
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
@@ -48,6 +50,7 @@ type EmptyStateProps = {
   className?: string;
   icon?: IconName;
   image?: string;
+  titleProps?: HTMLAttributes<HTMLHeadingElement>;
 };
 
 const EmptyState = ({

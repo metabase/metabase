@@ -143,6 +143,17 @@ export const LightThemeDefaultNoResults = {
   },
 };
 
+export const LightThemeDefaultError = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    result: createMockDataset({
+      error: "Squawk",
+    }),
+  },
+};
+
 export const LightThemeDownload = {
   render: Template,
 

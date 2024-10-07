@@ -4,10 +4,11 @@ import { t } from "ttag";
 
 import { useSearchQuery } from "metabase/api";
 import EmptyState from "metabase/components/EmptyState";
+import { ErrorState } from "metabase/components/ErrorState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import { trackSearchClick } from "metabase/search/analytics";
-import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
+import { Box, Flex, Icon, Image, Stack, Tabs, TextInput } from "metabase/ui";
 import type {
   SearchModel,
   SearchRequest,
@@ -107,15 +108,20 @@ export const EntityPickerSearchResults = <
   searchResults: SearchResult[] | null;
   onItemSelect: (item: Item) => void;
   selectedItem: Item | null;
-  searchError: Error;
+  searchError: Error | null;
 }) => {
   if (searchError) {
     return (
       <Box h="100%" bg="bg-light">
         <Flex direction="column" justify="center" h="100%">
-          <EmptyState
-            title={t`It's dead Jim`}
-            message={t`Not sure why, but the search errored`}
+          <ErrorState
+            illustrationElement={
+              <Image
+                src="app/img/something_went_wrong_trees.svg"
+                height={120}
+              />
+            }
+            title={t`Something went wrong`}
           />
         </Flex>
       </Box>
