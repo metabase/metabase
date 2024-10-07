@@ -5,7 +5,7 @@ import { c } from "ttag";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import Link from "metabase/core/components/Link";
 import { getIcon } from "metabase/lib/icon";
-import { Box, Flex, Icon, type IconProps } from "metabase/ui";
+import { Box, Flex, FixedSizeIcon as Icon, type IconProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { getDataSourceParts } from "../../../ViewHeader/components/QuestionDataSource/utils";
