@@ -282,28 +282,29 @@
             execute! (fn [format-string & args]
                        (jdbc/execute! spec (apply format format-string args)))
             pk-type  (sql.tx/pk-sql-type :oracle)]
-        (with-temp-user
-          #_:clj-kondo/ignore
-          [username]
-          (execute! "CREATE TABLE \"%s\".\"messages\" (\"id\" %s, \"message\" CLOB)"            username pk-type)
-          (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
-          (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
-          (sync/sync-database! (mt/db) {:scan :schema})
-          (let [table    (t2/select-one :model/Table :schema username, :name "messages", :db_id (mt/id))
-                id-field (t2/select-one :model/Field :table_id (u/the-id table), :name "id")]
-            (testing "The CLOB is synced as a text field"
-              (let [base-type (t2/select-one-fn :base_type :model/Field :table_id (u/the-id table), :name "message")]
-                ;; type/OracleCLOB is important for skipping fingerprinting and field values scanning #44109
-                (is (= :type/OracleCLOB base-type))
-                (is (isa? base-type :type/Text))))
-            (is (= [[1M "Hello"]
-                    [2M nil]]
-                   (mt/rows
-                    (qp/process-query
-                     {:database (mt/id)
-                      :type     :query
-                      :query    {:source-table (u/the-id table)
-                                 :order-by     [[:asc [:field (u/the-id id-field) nil]]]}}))))))))))
+        (mt/with-temp [:model/Database db (dissoc (mt/db) :id :features)]
+          (mt/with-db db
+            (with-temp-user [username]
+              (execute! "CREATE TABLE \"%s\".\"messages\" (\"id\" %s, \"message\" CLOB)"            username pk-type)
+              (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
+              (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
+              (binding [oracle.tx/*override-describe-database-to-filter-by-db-name?* false]
+                (sync/sync-database! (mt/db) {:scan :schema}))
+              (let [table    (t2/select-one :model/Table :schema username, :name "messages", :db_id (mt/id))
+                    id-field (t2/select-one :model/Field :table_id (u/the-id table), :name "id")]
+                (testing "The CLOB is synced as a text field"
+                  (let [base-type (t2/select-one-fn :base_type :model/Field :table_id (u/the-id table), :name "message")]
+                    ;; type/OracleCLOB is important for skipping fingerprinting and field values scanning #44109
+                    (is (= :type/OracleCLOB base-type))
+                    (is (isa? base-type :type/Text))))
+                (is (= [[1M "Hello"]
+                        [2M nil]]
+                       (mt/rows
+                        (qp/process-query
+                         {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (u/the-id table)
+                                     :order-by     [[:asc [:field (u/the-id id-field) nil]]]}}))))))))))))
 
 (deftest handle-slashes-test
   (mt/test-driver :oracle
