@@ -6,30 +6,9 @@ global.ResizeObserver = ResizeObserver;
 global.EventTarget = function () {
   this.listeners = {};
 };
-global.EventTarget.prototype.addEventListener = function (type, callback) {
-  if (!this.listeners[type]) {
-    this.listeners[type] = [];
-  }
-  this.listeners[type].push(callback);
-};
-global.EventTarget.prototype.removeEventListener = function (type, callback) {
-  if (!this.listeners[type]) {
-    return;
-  }
-  const index = this.listeners[type].indexOf(callback);
-  if (index > -1) {
-    this.listeners[type].splice(index, 1);
-  }
-};
-global.EventTarget.prototype.dispatchEvent = function (event) {
-  if (!this.listeners[event.type]) {
-    return true;
-  }
-  for (const callback of this.listeners[event.type]) {
-    callback.call(this, event);
-  }
-  return !event.defaultPrevented;
-};
+global.EventTarget.prototype.addEventListener = function () {};
+global.EventTarget.prototype.removeEventListener = function () {};
+global.EventTarget.prototype.dispatchEvent = function () {};
 
 global.window = new global.EventTarget();
 
@@ -51,44 +30,44 @@ Object.assign(global.document, {
       getAttribute: function (name) {
         return this[name];
       },
-      addEventListener: function (type, listener, options) {},
-      removeEventListener: function (type, listener, options) {},
+      addEventListener: function () {},
+      removeEventListener: function () {},
       innerHTML: "",
     };
   },
   createTextNode: function (text) {
     return { textContent: text };
   },
-  getElementById: function (id) {
+  getElementById: function () {
     return null;
   },
-  getElementsByTagName: function (tagName) {
+  getElementsByTagName: function () {
     return [];
   },
-  querySelector: function (selector) {
+  querySelector: function () {
     return null;
   },
-  querySelectorAll: function (selector) {
+  querySelectorAll: function () {
     return [];
   },
   body: {
-    appendChild: function (child) {},
-    addEventListener: function (type, listener, options) {},
-    removeEventListener: function (type, listener, options) {},
+    appendChild: function () {},
+    addEventListener: function () {},
+    removeEventListener: function () {},
     style: {},
   },
   head: {
-    appendChild: function (child) {},
-    addEventListener: function (type, listener, options) {},
-    removeEventListener: function (type, listener, options) {},
+    appendChild: function () {},
+    addEventListener: function () {},
+    removeEventListener: function () {},
     style: {},
   },
   documentElement: {
     style: {},
   },
-  addEventListener: function (type, listener, options) {},
-  removeEventListener: function (type, listener, options) {},
-  dispatchEvent: function (event) {},
+  addEventListener: function () {},
+  removeEventListener: function () {},
+  dispatchEvent: function () {},
   readyState: "complete",
   cookie: "",
 });
@@ -129,16 +108,16 @@ Object.assign(global.document, {
   createTextNode: function (text) {
     return { textContent: text };
   },
-  getElementById: function (id) {
+  getElementById: function () {
     return null;
   },
-  getElementsByTagName: function (tagName) {
+  getElementsByTagName: function () {
     return [];
   },
-  querySelector: function (selector) {
+  querySelector: function () {
     return null;
   },
-  querySelectorAll: function (selector) {
+  querySelectorAll: function () {
     return [];
   },
   documentElement: new global.Element("html"),
@@ -153,25 +132,17 @@ global.navigator = {
   language: "en-US",
   languages: ["en-US", "en"],
   platform: "GraalJS",
-  appName: "Netscape",
-  appVersion: "5.0 (GraalJS)",
+  appName: "StaticViz",
+  appVersion: "1.0",
   cookieEnabled: false,
   geolocation: {
-    getCurrentPosition: function (success, error, options) {
-      if (typeof error === "function") {
-        error({ code: 1, message: "Geolocation not available" });
-      }
-    },
-    watchPosition: function (success, error, options) {
-      return 0;
-    },
-    clearWatch: function (id) {},
+    getCurrentPosition: function () {},
+    watchPosition: function () {},
+    clearWatch: function () {},
   },
   onLine: true,
   mediaDevices: {
-    getUserMedia: function (constraints) {
-      return Promise.reject(new Error("getUserMedia is not implemented"));
-    },
+    getUserMedia: function () {},
   },
 };
 
@@ -196,8 +167,8 @@ global.location = {
   hash: "",
   origin: "",
   reload: function () {},
-  replace: function (url) {},
-  assign: function (url) {},
+  replace: function () {},
+  assign: function () {},
 };
 
 global.history = {
@@ -205,9 +176,9 @@ global.history = {
   state: null,
   back: function () {},
   forward: function () {},
-  go: function (delta) {},
-  pushState: function (state, title, url) {},
-  replaceState: function (state, title, url) {},
+  go: function () {},
+  pushState: function () {},
+  replaceState: function () {},
 };
 
 global.screen = {
@@ -219,24 +190,24 @@ global.screen = {
   pixelDepth: 24,
 };
 
-global.setTimeout = function (callback, delay) {
+global.setTimeout = function () {
   return 0;
 };
-global.clearTimeout = function (id) {};
-global.setInterval = function (callback, delay) {
+global.clearTimeout = function () {};
+global.setInterval = function () {
   return 0;
 };
-global.clearInterval = function (id) {};
+global.clearInterval = function () {};
 
-global.requestAnimationFrame = function (callback) {};
-global.cancelAnimationFrame = function (id) {};
+global.requestAnimationFrame = function () {};
+global.cancelAnimationFrame = function () {};
 
-global.Event = function (type, eventInitDict) {
+global.Event = function (type) {
   return {
     type: type,
-    bubbles: (eventInitDict && eventInitDict.bubbles) || false,
-    cancelable: (eventInitDict && eventInitDict.cancelable) || false,
-    composed: (eventInitDict && eventInitDict.composed) || false,
+    bubbles: false,
+    cancelable: false,
+    composed: false,
     target: null,
     currentTarget: null,
     eventPhase: 0,
@@ -248,39 +219,16 @@ global.Event = function (type, eventInitDict) {
   };
 };
 
-global.CustomEvent = function (type, eventInitDict) {
-  const event = new global.Event(type, eventInitDict);
-  event.detail = (eventInitDict && eventInitDict.detail) || null;
-  return event;
+global.CustomEvent = function (type) {
+  return new global.Event(type);
 };
 
 global.EventTarget = function () {
   this.listeners = {};
 };
-global.EventTarget.prototype.addEventListener = function (type, callback) {
-  if (!this.listeners[type]) {
-    this.listeners[type] = [];
-  }
-  this.listeners[type].push(callback);
-};
-global.EventTarget.prototype.removeEventListener = function (type, callback) {
-  if (!this.listeners[type]) {
-    return;
-  }
-  const index = this.listeners[type].indexOf(callback);
-  if (index > -1) {
-    this.listeners[type].splice(index, 1);
-  }
-};
-global.EventTarget.prototype.dispatchEvent = function (event) {
-  if (!this.listeners[event.type]) {
-    return true;
-  }
-  for (const callback of this.listeners[event.type]) {
-    callback.call(this, event);
-  }
-  return !event.defaultPrevented;
-};
+global.EventTarget.prototype.addEventListener = function () {};
+global.EventTarget.prototype.removeEventListener = function () {};
+global.EventTarget.prototype.dispatchEvent = function () {};
 
 global.localStorage = {
   _data: {},
@@ -326,36 +274,6 @@ global.sessionStorage = {
   },
 };
 
-global.fetch = function (url, options) {
-  return Promise.reject(
-    new Error("Fetch API is not available in this environment."),
-  );
-};
-
-global.WebSocket = function (url, protocols) {
-  throw new Error("WebSocket is not available in this environment.");
-};
-
-global.XMLHttpRequest = function () {
-  return {
-    open: function (method, url, async, user, password) {},
-    send: function (data) {},
-    setRequestHeader: function (header, value) {},
-    getResponseHeader: function (header) {
-      return null;
-    },
-    getAllResponseHeaders: function () {
-      return "";
-    },
-    overrideMimeType: function (mime) {},
-    readyState: 4,
-    status: 200,
-    responseText: "",
-    responseXML: null,
-    onreadystatechange: function () {},
-  };
-};
-
 Object.defineProperty(global.document, "cookie", {
   get: function () {
     return this._cookie || "";
@@ -369,12 +287,12 @@ global.matchMedia = function (query) {
   return {
     matches: false,
     media: query,
-    addListener: function (listener) {},
-    removeListener: function (listener) {},
+    addListener: function () {},
+    removeListener: function () {},
   };
 };
 
-global.URL = function (url, base) {
+global.URL = function (url) {
   return {
     href: url,
     origin: "",
@@ -394,9 +312,9 @@ global.URL = function (url, base) {
   };
 };
 
-global.MutationObserver = function (callback) {
+global.MutationObserver = function () {
   return {
-    observe: function (target, options) {},
+    observe: function () {},
     disconnect: function () {},
     takeRecords: function () {
       return [];
@@ -404,10 +322,10 @@ global.MutationObserver = function (callback) {
   };
 };
 
-global.IntersectionObserver = function (callback, options) {
+global.IntersectionObserver = function () {
   return {
-    observe: function (target) {},
-    unobserve: function (target) {},
+    observe: function () {},
+    unobserve: function () {},
     disconnect: function () {},
     takeRecords: function () {
       return [];
@@ -417,10 +335,10 @@ global.IntersectionObserver = function (callback, options) {
 
 global.FileReader = function () {
   return {
-    readAsArrayBuffer: function (blob) {},
-    readAsBinaryString: function (blob) {},
-    readAsDataURL: function (blob) {},
-    readAsText: function (blob, encoding) {},
+    readAsArrayBuffer: function () {},
+    readAsBinaryString: function () {},
+    readAsDataURL: function () {},
+    readAsText: function () {},
     abort: function () {},
     result: null,
     error: null,
@@ -434,95 +352,60 @@ global.FileReader = function () {
   };
 };
 
-global.Blob = function (parts, options) {
+global.Blob = function () {
   return {
     size: 0,
-    type: (options && options.type) || "",
-    slice: function (start, end, contentType) {
+    type: "",
+    slice: function () {
       return new global.Blob();
     },
   };
 };
 
 global.File = function (parts, filename, options) {
-  const blob = new global.Blob(parts, options);
-  blob.name = filename;
-  blob.lastModified = (options && options.lastModified) || Date.now();
-  return blob;
+  return new global.Blob(parts, options);
 };
 
 global.crypto = {
-  getRandomValues: function (typedArray) {
-    for (let i = 0; i < typedArray.length; i++) {
-      typedArray[i] = Math.floor(Math.random() * 256);
-    }
-    return typedArray;
-  },
+  getRandomValues: function () {},
   subtle: {},
 };
 
-global.Headers = function (init) {
+global.Headers = function () {
   return {
-    append: function (name, value) {},
-    delete: function (name) {},
-    get: function (name) {
+    append: function () {},
+    delete: function () {},
+    get: function () {
       return null;
     },
-    has: function (name) {
+    has: function () {
       return false;
     },
-    set: function (name, value) {},
-    forEach: function (callback, thisArg) {},
+    set: function () {},
+    forEach: function () {},
   };
 };
 
-global.FormData = function (form) {
+global.FormData = function () {
   return {
-    append: function (name, value, filename) {},
-    delete: function (name) {},
-    get: function (name) {
+    append: function () {},
+    delete: function () {},
+    get: function () {
       return null;
     },
-    getAll: function (name) {
+    getAll: function () {
       return [];
     },
-    has: function (name) {
+    has: function () {
       return false;
     },
-    set: function (name, value, filename) {},
-    forEach: function (callback, thisArg) {},
+    set: function () {},
+    forEach: function () {},
   };
 };
 
 class TextEncoder {
-  encode(str) {
-    const utf8 = [];
-    for (let i = 0; i < str.length; i++) {
-      let charcode = str.charCodeAt(i);
-      if (charcode < 0x80) {
-        utf8.push(charcode);
-      } else if (charcode < 0x800) {
-        utf8.push(0xc0 | (charcode >> 6), 0x80 | (charcode & 0x3f));
-      } else if (charcode < 0xd800 || charcode >= 0xe000) {
-        utf8.push(
-          0xe0 | (charcode >> 12),
-          0x80 | ((charcode >> 6) & 0x3f),
-          0x80 | (charcode & 0x3f),
-        );
-      } else {
-        i++;
-        charcode =
-          0x10000 + (((charcode & 0x3ff) << 10) | (str.charCodeAt(i) & 0x3ff));
-        utf8.push(
-          0xf0 | (charcode >> 18),
-          0x80 | ((charcode >> 12) & 0x3f),
-          0x80 | ((charcode >> 6) & 0x3f),
-          0x80 | (charcode & 0x3f),
-        );
-      }
-    }
-    return new Uint8Array(utf8);
-  }
+  encode() {}
 }
 
 global.TextEncoder = TextEncoder;
