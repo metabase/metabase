@@ -69,34 +69,42 @@ export const InteractiveQuestionResult = ({
   } else {
     content = (
       <Stack h="100%">
-        <Flex direction="row" gap="md" px="md" align="center">
+        <Flex
+          direction="row"
+          gap="md"
+          px="md"
+          align="center"
+          data-testid="qb-header-action-panel"
+        >
+          xxxxxxxxxxx
           <InteractiveQuestion.BackButton />
+          yyyyyyyyyyy
           {withTitle && (customTitle ?? <InteractiveQuestion.Title />)}
-          {withResetButton && <InteractiveQuestion.ResetButton />}
-          <InteractiveQuestion.FilterButton
-            onClick={() =>
-              setQuestionView(
-                questionView === "filter" ? "visualization" : "filter",
-              )
-            }
-          />
-          <InteractiveQuestion.SummarizeButton
-            isOpen={questionView === "summarize"}
-            onOpen={() => setQuestionView("summarize")}
-            onClose={() => setQuestionView("visualization")}
-          />
-          <InteractiveQuestion.NotebookButton
-            isOpen={questionView === "notebook"}
-            onClick={() =>
-              setQuestionView(
-                questionView === "notebook" ? "visualization" : "notebook",
-              )
-            }
-          />
+          <Flex direction="row" data-testid="action-buttons">
+            {withResetButton && <InteractiveQuestion.ResetButton />}
+            <InteractiveQuestion.FilterButton
+              onClick={() =>
+                setQuestionView(
+                  questionView === "filter" ? "visualization" : "filter",
+                )
+              }
+            />
+            <InteractiveQuestion.SummarizeButton
+              isOpen={questionView === "summarize"}
+              onOpen={() => setQuestionView("summarize")}
+              onClose={() => setQuestionView("visualization")}
+            />
+            <InteractiveQuestion.NotebookButton
+              isOpen={questionView === "notebook"}
+              onClick={() =>
+                setQuestionView(
+                  questionView === "notebook" ? "visualization" : "notebook",
+                )
+              }
+            />
+          </Flex>
         </Flex>
-
         <InteractiveQuestion.FilterBar />
-
         <Group
           h="100%"
           pos="relative"

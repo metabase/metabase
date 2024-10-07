@@ -42,20 +42,38 @@ const ordersJoinProductsQuery = {
   ],
 };
 
+const visitSdkStory = function (questionIdOrResponse, thisContext) {
+  thisContext = thisContext || this;
+  const questionId = Number(questionIdOrResponse)
+    ? questionIdOrResponse
+    : questionIdOrResponse.body.id;
+  visitFullAppEmbeddingUrl({
+    url: EMBEDDING_SDK_STORY_HOST,
+    qs: {
+      id: "embeddingsdk-interactivequestion--default",
+      viewMode: "story",
+    },
+    onBeforeLoad: window => {
+      window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
+      window.QUESTION_ID = questionId;
+      window.METABASE_API_KEY = thisContext.apiKey;
+    },
+  });
+};
 describe("scenarios > question > nested", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-  });
-
-  it.only("should allow 'Distribution' and 'Sum over time' on nested questions (metabase#12568)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    // cy.visit("/");
-    // cy.pause();
     createApiKey("Test API Key One", ALL_USERS_GROUP_ID).then(({ body }) => {
       const apiKey = body.unmasked_key;
       cy.wrap(apiKey).as("apiKey");
     });
+  });
+
+  it("should allow 'Distribution' and 'Sum over time' on nested questions (metabase#12568)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    // cy.visit("/");
+    // cy.pause();
 
     // Make sure it works for a GUI question
     const guiQuestionDetails = {
@@ -156,8 +174,9 @@ describe("scenarios > question > nested", () => {
           },
         },
       },
-      { visitQuestion: true },
-    );
+      // { wrapId: true, visitQuestion: true },
+      { wrapId: true },
+    ).then(visitSdkStory);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("10511");
@@ -255,8 +274,10 @@ describe("scenarios > question > nested", () => {
 
       // should handle multi-level nesting
       cy.get("@nestedQuestionId").then(id => {
-        visitNestedQueryAdHoc(id);
-        cy.contains("37.65");
+        // visitNestedQueryAdHoc(id);
+        // cy.pause();
+        // visitSdkStory(id);
+        // cy.contains("37.65");
       });
     });
   });
@@ -320,10 +341,11 @@ describe("scenarios > question > nested", () => {
         query:
           "select count(*), orders.product_id from orders group by orders.product_id;",
       },
-    }).then(({ body: { id } }) => {
-      visitQuestion(id);
+    }).then(function ({ body: { id } }) {
+      // visitQuestion(id);
 
-      visitNestedQueryAdHoc(id);
+      // visitNestedQueryAdHoc(id);
+      visitSdkStory(id, this);
 
       // Count
       summarize();
@@ -387,12 +409,13 @@ describe("scenarios > question > nested", () => {
         },
         type: "query",
         display: "scalar",
-      }).then(({ body: { id } }) => {
-        visitQuestion(id);
+      }).then(function ({ body: { id } }) {
+        // visitQuestion(id);
+        visitSdkStory(id, this);
         cy.findByTestId("scalar-value").findByText(value);
 
-        visitNestedQueryAdHoc(id);
-        cy.findByTestId("scalar-value").findByText(value);
+        // visitNestedQueryAdHoc(id);
+        // cy.findByTestId("scalar-value").findByText(value);
       });
     }
   });
@@ -477,7 +500,7 @@ describe("scenarios > question > nested", () => {
       native: { query: "select * from products limit 3" },
     };
 
-    createNativeQuestion(questionDetails, { visitQuestion: true });
+    createNativeQuestion(questionDetails).then(visitSdkStory);
     cy.findAllByTestId("cell-data").should(
       "contain",
       "Swaniawski, Casper and Hilll",

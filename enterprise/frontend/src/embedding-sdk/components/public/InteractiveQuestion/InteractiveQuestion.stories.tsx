@@ -25,5 +25,6 @@ export const Default = {
 
   args: {
     questionId: QUESTION_ID,
+    withTitle: true,
   },
 };

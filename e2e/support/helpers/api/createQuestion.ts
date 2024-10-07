@@ -5,6 +5,8 @@ import type {
   NativeQuery,
   StructuredQuery,
 } from "metabase-types/api";
+import { visitFullAppEmbeddingUrl } from "../e2e-embedding-helpers";
+import { EMBEDDING_SDK_STORY_HOST } from "../e2e-embedding-sdk-helpers";
 
 export type QuestionDetails = {
   dataset_query: DatasetQuery;
