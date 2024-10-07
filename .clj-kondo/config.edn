@@ -399,7 +399,7 @@
     metabase.api                   :any
     metabase.async                 :any
     metabase.audit                 :any
-    metabase.auth-provider         #{metabase.util}
+    metabase.auth-provider         #{metabase.util metabase.public-settings}
     metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.compatibility         :any
