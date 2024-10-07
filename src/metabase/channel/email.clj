@@ -131,9 +131,10 @@
                                     :notification-recipient/external-email
                                     [(:email details)]
                                     :notification-recipient/template
-                                    [(not-empty (channel.params/substitute-params (:pattern details) payload (:is_optional details)))]
+                                    [(not-empty (channel.params/substitute-params (:pattern details) payload :ignore-missing? (:is_optional details)))]
                                     nil)]
-                     :when (seq (filter some? emails))]
+                     :let  [emails (filter some? emails)]
+                     :when (seq emails)]
                  emails)))
 
 (defn- render-body

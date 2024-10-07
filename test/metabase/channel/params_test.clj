@@ -15,4 +15,4 @@
     (is (thrown? Exception (channel.params/substitute-params "Hello {{email}}!" {}))))
 
   (testing "Do not throw an error if missing params and ignore-missing? is true"
-    (is (= "Hello !" (channel.params/substitute-params "Hello {{email}}!" {} true)))))
+    (is (= "Hello !" (channel.params/substitute-params "Hello {{email}}!" {} :ignore-missing? true)))))
