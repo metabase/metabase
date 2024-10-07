@@ -8,7 +8,7 @@
    [toucan2.core :as t2]))
 
 (defn- embedding-event?
-  "Remove the \"new_instance_created\" event that sometimes occurs in testing."
+  "Used to make sure we only test against embedding-events in `snowplow-test/pop-event-data-and-user-id!`."
   [event]
   (-> event :data (get "event") ((fn [s] (boolean (re-matches #".*embedding.*" s))))))
 
