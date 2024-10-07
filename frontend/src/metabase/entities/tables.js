@@ -306,6 +306,29 @@ const Tables = createEntity({
       }
     }
 
+    if (type === "metabase/dashboard/FETCH_DASHBOARD/fulfilled" && !error) {
+      const virtualTables = payload.dashboard.dashcards.map(dc =>
+        convertSavedQuestionToVirtualTable(dc.card),
+      );
+
+      return virtualTables.reduce((acc, vt) => {
+        if (acc[vt.id]) {
+          return {
+            ...acc,
+            [vt.id]: {
+              ...acc[vt.id],
+              ...vt,
+            },
+          };
+        } else {
+          return {
+            ...acc,
+            [vt.id]: vt,
+          };
+        }
+      }, state);
+    }
+
     return state;
   },
   objectSelectors: {
