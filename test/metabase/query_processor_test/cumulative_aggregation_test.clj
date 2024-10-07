@@ -25,7 +25,7 @@
                 (-> result :data :cols)))
         (is (= [[120]]
                (mt/formatted-rows
-                ^:mb/test-drivers [int]
+                [int]
                 result)))))))
 
 (deftest ^:parallel cumulative-sum-test-2
