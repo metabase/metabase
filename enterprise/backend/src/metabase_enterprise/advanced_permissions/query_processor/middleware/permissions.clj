@@ -25,7 +25,7 @@
         full-native-perms? (contains? table-ids ::query-perms/native)]
     (if full-native-perms?
       ;; If we can't parse individual tables from a native query, use the lowest permission for *any* table in the DB
-      (data-perms/native-download-permission-for-user api/*current-user-id* db-id)
+      (data-perms/fallback-native-download-permission-for-user api/*current-user-id* db-id)
       (let [table-perms
             (into #{}
                   (map (fn [table-id]
