@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useDeepCompareEffect } from "react-use";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -71,23 +70,25 @@ export const DashboardPickerModal = ({
   const [dashboardsPath, setDashboardsPath] =
     useState<DashboardPickerStatePath>();
 
-  useDeepCompareEffect(
-    function () {
-      // sync back the value to selectedItem, but only when it changes
-      setSelectedItem(canSelectItem(value) ? value : null);
-    },
-    [value],
-  );
+  const handleDashboardsPathChange = useCallback(function (
+    newPath: DashboardPickerStatePath,
+  ) {
+    setDashboardsPath(newPath);
+    const last = newPath?.[newPath.length - 1];
+    if (last && canSelectItem(last?.selectedItem ?? null)) {
+      setSelectedItem(last.selectedItem);
+    }
+  }, []);
 
-  useEffect(
-    function () {
+  const finalSelectedItem = useMemo(() => {
+    if (dashboardsPath && dashboardsPath?.length > 0) {
       const last = dashboardsPath?.[dashboardsPath.length - 1];
-      if (last && canSelectItem(last?.selectedItem ?? null)) {
-        setSelectedItem(last.selectedItem);
+      if (canSelectItem(last.selectedItem)) {
+        return last.selectedItem;
       }
-    },
-    [dashboardsPath],
-  );
+    }
+    return selectedItem;
+  }, [dashboardsPath, selectedItem]);
 
   const { tryLogRecentItem } = useLogRecentItem();
 
@@ -120,8 +121,8 @@ export const DashboardPickerModal = ({
   );
 
   const handleConfirm = () => {
-    if (selectedItem && canSelectItem(selectedItem)) {
-      handleOnChange(selectedItem);
+    if (finalSelectedItem && canSelectItem(finalSelectedItem)) {
+      handleOnChange(finalSelectedItem);
     }
   };
 
@@ -131,7 +132,7 @@ export const DashboardPickerModal = ({
       miw="21rem"
       onClick={openCreateDialog}
       leftIcon={<Icon name="add" />}
-      disabled={selectedItem?.can_write === false}
+      disabled={finalSelectedItem?.can_write === false}
     >
       {t`Create a new dashboard`}
     </Button>,
@@ -158,7 +159,7 @@ export const DashboardPickerModal = ({
           shouldDisableItem={shouldDisableItem}
           onInit={onItemSelect}
           onItemSelect={onItemSelect}
-          onPathChange={setDashboardsPath}
+          onPathChange={handleDashboardsPathChange}
         />
       ),
     },
@@ -168,17 +169,17 @@ export const DashboardPickerModal = ({
     pickerRef.current?.onNewDashboard(newDashboard);
   };
 
-  const parentCollectionId = getCollectionId(selectedItem || value);
+  const parentCollectionId = getCollectionId(finalSelectedItem || value);
 
   return (
     <>
       <EntityPickerModal
         title={title}
         onItemSelect={handleItemSelect}
-        canSelectItem={!isCreateDialogOpen && canSelectItem(selectedItem)}
+        canSelectItem={!isCreateDialogOpen && canSelectItem(finalSelectedItem)}
         onConfirm={handleConfirm}
         onClose={onClose}
-        selectedItem={selectedItem}
+        selectedItem={finalSelectedItem}
         initialValue={value}
         tabs={tabs}
         options={options}
