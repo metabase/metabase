@@ -1,12 +1,10 @@
 info:
-  name: Databricks driver
+  name: Metabase Databricks Driver
   version: 1.0.0
   description: Allows Metabase to connect to Databricks SQL warehouse
+dependencies:
+  - plugin: Metabase Hive Like Abstract Driver
 driver:
-  - name: hive-like
-    lazy-load: true
-    abstract: true
-    parent: sql-jdbc
   - name: databricks
     display-name: Databricks
     lazy-load: true
