@@ -48,13 +48,13 @@ export const getVersionType = (versionString: string) => {
     throw new Error(`Invalid version string: ${versionString}`);
   }
 
-  const versionParts = versionString
+  const versionPartsCount = versionString
     .replace(/\-\w.+/ig, "") // pre-release suffix
-    .replace(/\.0$/, "")
+    .replace(/\.0$/, "") // majors have a trailing .0
     .split(".")
     .length;
 
-  switch (versionParts) {
+  switch (versionPartsCount) {
     case 2: // x.88
       return "major";
     case 3: // x.88.2
@@ -256,12 +256,12 @@ export const findNextPatchVersion = (version: string) => {
     .split(".")
     .map(Number);
 
-  const baseVersion = `v0.${major}.${minor ?? 0}.${(patch ?? 0) + 1}`;
+  const baseVersion = `v0.${major}.${minor || 0}.${(patch || 0) + 1}`;
 
   return suffix ?
     `${baseVersion}-${suffix}`
     : baseVersion;
-}
+};
 
 export const getNextPatchVersion = async ({
   github,

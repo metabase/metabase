@@ -532,6 +532,7 @@ describe("version-helpers", () => {
       ["v1.50.1.2", "v0.50.1.3"],
       ["v1.50.9.21", "v0.50.9.22"],
       ["v1.50.9.99", "v0.50.9.100"],
+      ["v1.50.2-beta", "v0.50.2.1-beta"],
       ["v1.50.0-beta", "v0.50.0.1-beta"],
       ["v1.50.9.99-alpha", "v0.50.9.100-alpha"],
       ["v1.50.1.3-RC", "v0.50.1.4-RC"],
@@ -544,6 +545,9 @@ describe("version-helpers", () => {
       expect(() => findNextPatchVersion("v2.75")).toThrow();
       expect(() => findNextPatchVersion("v0.75.0-gamma")).toThrow();
       expect(() => findNextPatchVersion("v0.75")).toThrow();
+      expect(() => findNextPatchVersion("v0.75.f")).toThrow();
+      expect(() => findNextPatchVersion("v0.75.1.f")).toThrow();
+      expect(() => findNextPatchVersion("v0.75.1.2.f")).toThrow();
     });
   });
 });
