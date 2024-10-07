@@ -3,6 +3,7 @@
    [malli.core :as mc]
    [malli.util :as mut]
    [metabase.models.view-log :as view-log]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:unused-private-var]}
@@ -78,8 +79,21 @@
                       [:map {:closed true}
                        [:user-id pos-int?]])]
   (def ^:private user-events-schema
-    {:event/user-login  default-schema
-     :event/user-joined default-schema}))
+    {:event/user-login   default-schema
+     :event/user-joined  default-schema
+     :event/user-invited (mc/schema
+                          [:map {:closed true}
+                           [:object [:map
+                                     [:email ms/Email]
+                                     [:is_from_setup {:optional true} :boolean]
+                                     [:first_name    {:optional true} [:maybe :string]]
+                                     [:invite_method {:optional true} :string]
+                                     [:sso_source    {:optional true} [:maybe [:or :keyword :string]]]]]
+                           [:details {:optional true}
+                            [:map {:closed true}
+                             [:invitor [:map {:closed true}
+                                        [:email                       ms/Email]
+                                        [:first_name {:optional true} [:maybe :string]]]]]]])}))
 
 ;; metric events
 

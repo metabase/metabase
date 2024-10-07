@@ -48,9 +48,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- app-name-trs
+(defn app-name-trs
   "Return the user configured application name, or Metabase translated
-  via tru if a name isn't configured."
+  via trs if a name isn't configured."
   []
   (or (public-settings/application-name)
       (trs "Metabase")))
@@ -60,7 +60,9 @@
   (alter-meta! #'stencil/render-file assoc :style/indent 1)
   (stencil-loader/set-cache (cache/ttl-cache-factory {} :ttl 0)))
 
-(defn- logo-url []
+(defn logo-url
+  "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo."
+  []
   (let [url (public-settings/application-logo-url)]
     (cond
       (= url "app/assets/img/logo.svg") "http://static.metabase.com/email_logo.png"

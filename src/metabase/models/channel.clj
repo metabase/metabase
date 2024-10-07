@@ -7,6 +7,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -21,7 +22,6 @@
 
 (doto :model/ChannelTemplate
   (derive :metabase/model)
-  (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -77,8 +77,9 @@
 (def ^:private ChannelTemplateEmailDetails
   [:merge
    [:map
-    [:type    (into [:enum] (concat channel-template-details-type (map u/qualified-name channel-template-details-type)))]
-    [:subject string?]]
+    [:type                            (apply ms/enum-keywords-and-strings channel-template-details-type)]
+    [:subject                         string?]
+    [:recipient-type {:optional true} (ms/enum-keywords-and-strings :cc :bcc)]]
    [:multi {:dispatch (comp keyword :type)}
     [:email/resource
      [:map
@@ -116,10 +117,3 @@
   [& _]
   (or (mi/superuser?)
       (perms/current-user-has-application-permissions? :setting)))
-
-(defmethod serdes/hash-fields :model/ChannelTemplate [_instance] [:name :channel_type :details])
-
-(defmethod serdes/make-spec "ChannelTemplate"
-  [_model-name _opts]
-  {:copy      [:name :channel_type :details :entity_id]
-   :transform {:created_at (serdes/date)}})

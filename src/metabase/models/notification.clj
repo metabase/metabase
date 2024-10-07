@@ -151,7 +151,8 @@
 (def ^:private notification-recipient-types
   #{:notification-recipient/user
     :notification-recipient/group
-    :notification-recipient/external-email})
+    :notification-recipient/external-email
+    :notification-recipient/template})
 
 (t2/deftransforms :model/NotificationRecipient
   {:type    (mi/transform-validator mi/transform-keyword (partial mi/assert-enum notification-recipient-types))
@@ -177,6 +178,12 @@
      [:map
       [:details                               [:map {:closed true}
                                                [:email ms/Email]]]
+      [:user_id              {:optional true} [:fn nil?]]
+      [:permissions_group_id {:optional true} [:fn nil?]]]]
+    [:notification-recipient/template
+     [:map
+      [:details                               [:map {:closed true}
+                                               [:pattern :string]]]
       [:user_id              {:optional true} [:fn nil?]]
       [:permissions_group_id {:optional true} [:fn nil?]]]]]])
 

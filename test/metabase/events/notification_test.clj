@@ -74,8 +74,10 @@
            site-name        "Metabase Test"]
           (is (= {:event-info  {:foo :bar}
                   :event-topic :event/user-joined
-                  :settings    {:application-name "Metabase Test"
-                                :site-name        "Metabase Test"}}
+                  :context     {:application-name     "Metabase Test"
+                                :application-logo-url "http://static.metabase.com/email_logo.png"
+                                :site-name            "Metabase Test"
+                                :extra                {}}}
                  (#'events.notification/enriched-event-info :event/user-joined event-info))))))))
 
 (def user-hydra-model [:model/User :id :first_name])
