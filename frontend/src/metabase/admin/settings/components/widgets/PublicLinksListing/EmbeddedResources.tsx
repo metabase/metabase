@@ -9,8 +9,8 @@ import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { Stack, Text } from "metabase/ui";
 import type {
+  GetEmbeddableDashboard,
   GetPublicOrEmbeddableCard,
-  GetPublicOrEmbeddableDashboard,
 } from "metabase-types/api";
 
 import { PublicLinksListing } from "./PublicLinksListing";
@@ -25,7 +25,7 @@ const DashboardEmbeddedResources = () => {
         className={cx(CS.bordered, CS.rounded, CS.full)}
         style={{ maxWidth: 820 }}
       >
-        <PublicLinksListing<GetPublicOrEmbeddableDashboard>
+        <PublicLinksListing<GetEmbeddableDashboard>
           data-testid="-embedded-dashboards-setting"
           getUrl={dashboard => Urls.dashboard(dashboard)}
           noLinksMessage={t`No dashboards have been embedded yet.`}

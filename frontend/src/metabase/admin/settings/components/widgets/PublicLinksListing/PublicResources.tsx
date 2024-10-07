@@ -12,8 +12,8 @@ import { useSetting } from "metabase/common/hooks";
 import * as Urls from "metabase/lib/urls";
 import type {
   GetPublicAction,
+  GetPublicDashboard,
   GetPublicOrEmbeddableCard,
-  GetPublicOrEmbeddableDashboard,
 } from "metabase-types/api";
 
 import { PublicLinksListing } from "./PublicLinksListing";
@@ -22,10 +22,10 @@ export const PublicLinksDashboardListing = () => {
   const query = useListPublicDashboardsQuery();
   const [revoke] = useDeleteDashboardPublicLinkMutation();
   return (
-    <PublicLinksListing<GetPublicOrEmbeddableDashboard>
+    <PublicLinksListing<GetPublicDashboard>
       revoke={revoke}
       getUrl={dashboard => Urls.dashboard(dashboard)}
-      getPublicUrl={({ public_uuid }: GetPublicOrEmbeddableDashboard) => {
+      getPublicUrl={({ public_uuid }: GetPublicDashboard) => {
         if (public_uuid) {
           return Urls.publicDashboard(public_uuid);
         }
