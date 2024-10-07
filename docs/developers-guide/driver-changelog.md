@@ -121,7 +121,11 @@ title: Driver interface changelog
 
 - Drivers that use `metabase.driver.sql.query-processor/->honeysql` can implement
   `:metabase.driver.sql.query-processor/nfc-path` to include the nfc-path in the field identifier. So that record-like
-  fields can be referenced with `<table>.<record>.<record-field>`. See `bigquery-cloud-sdk` for an example. Defaults to  `nil` to indicate that the path should not be part of the identifier.
+  fields can be referenced with `<table>.<record>.<record-field>`. See `bigquery-cloud-sdk` for an example. Defaults
+  to `nil` to indicate that the path should not be part of the identifier.
+
+- `metabase.driver.sql-jdbc.execute/connection-with-timezone`, deprecated in `0.47.0`, has been removed. Implement
+  `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` instead.
 
 ## Metabase 0.50.17
 
