@@ -3,7 +3,6 @@ import { formatValue } from "metabase/lib/formatting";
 import { computeMaxDecimalsForValues } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
-  Formatter,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
 import type { RowValue } from "metabase-types/api";
@@ -85,7 +84,6 @@ export function getPieChartFormatters(
 export function getDimensionFormatter(
   settings: ComputedVisualizationSettings,
   dimensionColumn: RemappingHydratedDatasetColumn,
-  formatter: Formatter,
 ) {
   const getColumnSettings = settings["column"];
   if (!getColumnSettings) {
@@ -99,6 +97,6 @@ export function getDimensionFormatter(
       return NULL_DISPLAY_VALUE;
     }
 
-    return formatter(value, dimensionColSettings);
+    return String(formatValue(value, dimensionColSettings));
   };
 }
