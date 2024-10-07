@@ -172,10 +172,9 @@ export const cardApi = Api.injectEndpoints({
       ],
     }),
     deleteCardPublicLink: builder.mutation<void, GetPublicOrEmbeddableCard>({
-      query: ({ id, ...params }) => ({
+      query: ({ id }) => ({
         method: "DELETE",
         url: `/api/card/${id}/public_link`,
-        params,
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [
@@ -189,10 +188,9 @@ export const cardApi = Api.injectEndpoints({
       },
       Pick<Card, "id">
     >({
-      query: ({ id, ...params }) => ({
+      query: ({ id }) => ({
         method: "POST",
         url: `/api/card/${id}/public_link`,
-        params,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("public-card")]),
