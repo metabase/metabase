@@ -23,11 +23,3 @@
 .OverflowAuto {
   overflow: auto;
 }
-
-.InsightsTab {
-  &:not([data-specificity-hack]) {
-    &:disabled {
-      cursor: pointer;
-    }
-  }
-}

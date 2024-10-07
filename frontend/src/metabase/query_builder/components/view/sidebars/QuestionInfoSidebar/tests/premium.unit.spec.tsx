@@ -78,36 +78,4 @@ describe("QuestionInfoSidebar > premium", () => {
 
     expect(screen.queryByText("History")).not.toBeInTheDocument();
   });
-
-  describe("tabs", () => {
-    describe("for non-admins", () => {
-      it("should show tabs for Overview and History and no Insights link", async () => {
-        setupEnterprise({});
-        const tabs = await screen.findAllByRole("tab");
-        expect(tabs).toHaveLength(2);
-        expect(tabs.map(tab => tab.textContent)).toEqual([
-          "Overview",
-          "History",
-        ]);
-        expect(
-          screen.queryByRole("link", { name: "Insights" }),
-        ).not.toBeInTheDocument();
-      });
-    });
-
-    describe("for admins", () => {
-      it("should show tabs for Overview and History, and a link for Insights", async () => {
-        setupEnterprise({ user: { is_superuser: true } });
-        const tabs = await screen.findAllByRole("tab");
-        expect(tabs).toHaveLength(2);
-        expect(tabs.map(tab => tab.textContent)).toEqual([
-          "Overview",
-          "History",
-        ]);
-        expect(
-          await screen.findByRole("link", { name: /Insights/ }),
-        ).toBeInTheDocument();
-      });
-    });
-  });
 });

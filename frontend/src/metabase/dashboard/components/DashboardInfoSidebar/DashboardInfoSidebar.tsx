@@ -19,13 +19,11 @@ import { EntityIdCard } from "metabase/components/EntityIdCard";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { PLUGIN_AUDIT } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
 import { Stack, Tabs, Text } from "metabase/ui";
 import type { Dashboard, Revision, User } from "metabase-types/api";
 
 import { DashboardDetails } from "./DashboardDetails";
-import { InsightsUpsellTab } from "./components/InsightsUpsellTab";
 
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
@@ -39,7 +37,6 @@ interface DashboardInfoSidebarProps {
 enum Tab {
   Overview = "overview",
   History = "history",
-  Insights = "insights",
 }
 
 export function DashboardInfoSidebar({
@@ -114,7 +111,6 @@ export function DashboardInfoSidebar({
               {!isIADashboard && (
                 <Tabs.Tab value={Tab.History}>{t`History`}</Tabs.Tab>
               )}
-              <PLUGIN_AUDIT.InsightsTabOrLink dashboard={dashboard} />
             </Tabs.List>
             <SidesheetTabPanelContainer>
               <Tabs.Panel value={Tab.Overview}>
@@ -133,9 +129,6 @@ export function DashboardInfoSidebar({
                   revisions={revisions}
                   currentUser={currentUser}
                 />
-              </Tabs.Panel>
-              <Tabs.Panel value={Tab.Insights}>
-                <InsightsUpsellTab model="dashboard" />
               </Tabs.Panel>
             </SidesheetTabPanelContainer>
           </Tabs>
