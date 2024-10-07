@@ -18,7 +18,8 @@
 
 (derive :metabase/event ::notification)
 
-(def ^:private supported-topics #{:event/user-invited})
+(def ^:private supported-topics #{:event/user-invited
+                                  :event/alert-create})
 
 (def ^:private hydrate-transformer
   (mtx/transformer
@@ -78,6 +79,11 @@
     {:user-invited-today         (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
      :user-invited-email-subject (trs "You''re invited to join {0}''s {1}" (public-settings/site-name) (messages/app-name-trs))
      :user-invited-join-url      (join-url (:object event-info))}
+
+    :event/alert-create
+    {:alert-create-condition-description (->> event-info :object
+                                              messages/pulse->alert-condition-kwd
+                                              (get messages/alert-condition-text))}
     {}))
 
 (defn- enriched-event-info
@@ -86,6 +92,7 @@
   {:context     {:application-name     (public-settings/application-name)
                  :application-logo-url (messages/logo-url)
                  :site-name            (public-settings/site-name)
+                 :site-url             (public-settings/site-url)
                  :extra                (extra-context topic event-info)}
    :event-info  (cond->> event-info
                   (some? (events.schema/topic->schema topic))

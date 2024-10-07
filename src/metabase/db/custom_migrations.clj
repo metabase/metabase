@@ -1566,35 +1566,70 @@
   (update-legacy-column-keys-in-dashboard-card-viz-settings "ref" migrate-legacy-column-keys-in-viz-settings)
   (update-legacy-column-keys-in-dashboard-card-viz-settings "name" rollback-legacy-column-keys-in-viz-settings))
 
+(defn- create-notification!
+  [notification subscriptions handlers+recipients]
+  (let [noti-id (t2/insert-returning-pk! :notification
+                                         (merge {:active            true
+                                                 :created_at        :%now
+                                                 :updated_at        :%now}
+                                                notification))]
+    (when (seq subscriptions)
+      (t2/insert! :notification_subscription (map #(merge {:notification_id noti-id
+                                                           :created_at      :%now} %) subscriptions)))
+    (doseq [handler handlers+recipients]
+      (let [recipients (:recipients handler)
+            handler    (-> handler
+                           (dissoc :recipients)
+                           (assoc :notification_id noti-id))
+            handler-id (t2/insert-returning-pk! :notification_handler (merge
+                                                                       {:active      true
+                                                                        :created_at  :%now
+                                                                        :updated_at  :%now}
+                                                                       handler))]
+        (t2/insert! :notification_recipient (map #(merge {:notification_handler_id handler-id
+                                                          :created_at              :%now
+                                                          :updated_at              :%now}%)
+                                                 recipients))))))
+
 (define-migration CreateSystemNotificationUserJoined
-  (let [template-id (t2/insert-returning-pk! :channel_template
-                                             {:name         "User joined Email template"
-                                              :channel_type "channel/email"
-                                              :details      (json/generate-string {:type           "email/resource"
-                                                                                   :subject        "{{context.extra.user-invited-email-subject}}"
-                                                                                   :path           "metabase/email/new_user_invite"
-                                                                                   :recipient-type :cc})
-                                              :created_at   :%now
-                                              :updated_at   :%now})
-        noti-id (t2/insert-returning-pk! :notification
-                                         {:payload_type      "notification/system-event"
-                                          :active            true
-                                          :created_at        :%now
-                                          :updated_at        :%now})
-        handler-id (t2/insert-returning-pk! :notification_handler
-                                            {:notification_id noti-id
-                                             :channel_type    "channel/email"
-                                             :channel_id      nil
-                                             :template_id     template-id
-                                             :active          true
-                                             :created_at      :%now
-                                             :updated_at      :%now})]
-    (t2/insert! :notification_recipient {:notification_handler_id handler-id
-                                         :type                    "notification-recipient/template"
-                                         :details                 (json/generate-string {:pattern "{{event-info.object.email}}"})
-                                         :created_at              :%now
-                                         :updated_at              :%now})
-    (t2/insert! :notification_subscription {:notification_id noti-id
-                                            :type            "notification-subscription/system-event"
-                                            :event_name      "event/user-invited"
-                                            :created_at      :%now})))
+  (let [template-id (t2/insert-returning-pk!
+                     :channel_template
+                     {:name         "User joined Email template"
+                      :channel_type "channel/email"
+                      :details      (json/generate-string {:type           "email/resource"
+                                                           :subject        "{{context.extra.user-invited-email-subject}}"
+                                                           :path           "metabase/email/new_user_invite.mustache"
+                                                           :recipient-type :cc})
+                      :created_at   :%now
+                      :updated_at   :%now})]
+    (create-notification!
+     {:payload_type "notification/system-event"}
+     [{:type            "notification-subscription/system-event"
+       :event_name      "event/user-invited"}]
+     [{:channel_type    "channel/email"
+       :channel_id      nil
+       :template_id     template-id
+       :recipients      [{:type    "notification-recipient/template"
+                          :details (json/generate-string {:pattern "{{event-info.object.email}}"})}]}])))
+
+
+(define-migration CreateSystemNotificationAlertCreated
+  (let [template-id (t2/insert-returning-pk!
+                     :channel_template
+                     {:name         "Alert Created Email template"
+                      :channel_type "channel/email"
+                      :details      (json/generate-string {:type           "email/resource"
+                                                           :subject        "You set up an alert"
+                                                           :path           "metabase/email/alert_new_confirmation.mustache"
+                                                           :recipient-type :cc})
+                      :created_at   :%now
+                      :updated_at   :%now})]
+    (create-notification!
+     {:payload_type "notification/system-event"}
+     [{:type            "notification-subscription/system-event"
+       :event_name      "event/alert-create"}]
+     [{:channel_type    "channel/email"
+       :channel_id      nil
+       :template_id     template-id
+       :recipients      [{:type    "notification-recipient/template"
+                          :details (json/generate-string {:pattern "{{event-info.user.email}}"})}]}])))

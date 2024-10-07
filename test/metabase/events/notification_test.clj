@@ -71,12 +71,14 @@
       (mt/with-additional-premium-features #{:whitelabel}
         (mt/with-temporary-setting-values
           [application-name "Metabase Test"
-           site-name        "Metabase Test"]
+           site-name        "Metabase Test"
+           site-url         "https://metabase.com"]
           (is (= {:event-info  {:foo :bar}
                   :event-topic :event/user-joined
                   :context     {:application-name     "Metabase Test"
                                 :application-logo-url "http://static.metabase.com/email_logo.png"
                                 :site-name            "Metabase Test"
+                                :site-url             "https://metabase.com"
                                 :extra                {}}}
                  (#'events.notification/enriched-event-info :event/user-joined event-info))))))))
 
