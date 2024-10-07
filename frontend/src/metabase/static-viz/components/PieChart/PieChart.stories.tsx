@@ -8,20 +8,22 @@ import {
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
-import type { StaticChartProps } from "../StaticVisualization";
+import {
+  type StaticChartProps,
+  StaticVisualization,
+} from "../StaticVisualization";
 
-import { PieChart } from "./PieChart";
 import { data } from "./stories-data";
 
 export default {
   title: "static-viz/PieChart",
-  component: PieChart,
+  component: StaticVisualization,
 };
 
 const Template: StoryFn<StaticChartProps> = args => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
-      <PieChart {...args} isStorybook />
+      <StaticVisualization {...args} isStorybook />
     </div>
   );
 };
@@ -37,7 +39,6 @@ const renderingContext: RenderingContext = {
 
 export const DefaultSettings = {
   render: Template,
-
   args: {
     rawSeries: data.defaultSettings as any,
     renderingContext,
@@ -46,7 +47,6 @@ export const DefaultSettings = {
 
 export const AllSettings = {
   render: Template,
-
   args: {
     rawSeries: data.allSettings as any,
     renderingContext,
@@ -55,7 +55,6 @@ export const AllSettings = {
 
 export const AutoCompactTotal = {
   render: Template,
-
   args: {
     rawSeries: data.autoCompactTotal as any,
     renderingContext,
@@ -64,7 +63,6 @@ export const AutoCompactTotal = {
 
 export const Colors = {
   render: Template,
-
   args: {
     rawSeries: data.colors as any,
     renderingContext,
@@ -73,7 +71,6 @@ export const Colors = {
 
 export const HideLegend = {
   render: Template,
-
   args: {
     rawSeries: data.hideLegend as any,
     renderingContext,
@@ -82,7 +79,6 @@ export const HideLegend = {
 
 export const HideTotal = {
   render: Template,
-
   args: {
     rawSeries: data.hideTotal as any,
     renderingContext,
@@ -91,7 +87,6 @@ export const HideTotal = {
 
 export const ReorderedRenamedSlices = {
   render: Template,
-
   args: {
     rawSeries: data.reorderedRenamedSlices as any,
     renderingContext,
@@ -100,7 +95,6 @@ export const ReorderedRenamedSlices = {
 
 export const SmallMinimumSlicePercentage = {
   render: Template,
-
   args: {
     rawSeries: data.smallMinimumSlicePercentage as any,
     renderingContext,
@@ -109,7 +103,6 @@ export const SmallMinimumSlicePercentage = {
 
 export const LargeMinimumSlicePercentage = {
   render: Template,
-
   args: {
     rawSeries: data.largeMinimumSlicePercentage as any,
     renderingContext,
@@ -118,7 +111,6 @@ export const LargeMinimumSlicePercentage = {
 
 export const ZeroMinimumSlicePercentage = {
   render: Template,
-
   args: {
     rawSeries: data.zeroMinimumSlicePercentage as any,
     renderingContext,
@@ -127,7 +119,6 @@ export const ZeroMinimumSlicePercentage = {
 
 export const ShowPercentagesOff = {
   render: Template,
-
   args: {
     rawSeries: data.showPercentagesOff as any,
     renderingContext,
@@ -136,7 +127,6 @@ export const ShowPercentagesOff = {
 
 export const ShowPercentagesOnChart = {
   render: Template,
-
   args: {
     rawSeries: data.showPercentagesOnChart as any,
     renderingContext,
@@ -145,7 +135,6 @@ export const ShowPercentagesOnChart = {
 
 export const ShowPercentagesOnChartDense = {
   render: Template,
-
   args: {
     rawSeries: data.showPercentagesOnChartDense as any,
     renderingContext,
@@ -154,7 +143,6 @@ export const ShowPercentagesOnChartDense = {
 
 export const AllNegative = {
   render: Template,
-
   args: {
     rawSeries: data.allNegative as any,
     renderingContext,
@@ -163,7 +151,6 @@ export const AllNegative = {
 
 export const MixedPositiveNegative = {
   render: Template,
-
   args: {
     rawSeries: data.mixedPostiiveNegative as any,
     renderingContext,
@@ -172,7 +159,6 @@ export const MixedPositiveNegative = {
 
 export const ColumnFormatting = {
   render: Template,
-
   args: {
     rawSeries: data.columnFormatting as any,
     renderingContext,
@@ -181,7 +167,6 @@ export const ColumnFormatting = {
 
 export const ColumnFormattingPercentagesOnChart = {
   render: Template,
-
   args: {
     rawSeries: data.columnFormattingPercentagesOnChart as any,
     renderingContext,
@@ -190,7 +175,6 @@ export const ColumnFormattingPercentagesOnChart = {
 
 export const BooleanDimension = {
   render: Template,
-
   args: {
     rawSeries: data.booleanDimension as any,
     renderingContext,
@@ -199,7 +183,6 @@ export const BooleanDimension = {
 
 export const NumericDimension = {
   render: Template,
-
   args: {
     rawSeries: data.numericDimension as any,
     renderingContext,
@@ -208,7 +191,6 @@ export const NumericDimension = {
 
 export const BinnedDimension = {
   render: Template,
-
   args: {
     rawSeries: data.binnedDimension as any,
     renderingContext,
@@ -217,7 +199,6 @@ export const BinnedDimension = {
 
 export const DateDimension = {
   render: Template,
-
   args: {
     rawSeries: data.dateDimension as any,
     renderingContext,
@@ -226,7 +207,6 @@ export const DateDimension = {
 
 export const RelativeDateDimension = {
   render: Template,
-
   args: {
     rawSeries: data.relativeDateDimension as any,
     renderingContext,
@@ -235,7 +215,6 @@ export const RelativeDateDimension = {
 
 export const ShowPercentagesBoth = {
   render: Template,
-
   args: {
     rawSeries: data.showPercentagesBoth as any,
     renderingContext,
@@ -244,7 +223,6 @@ export const ShowPercentagesBoth = {
 
 export const NullDimension = {
   render: Template,
-
   args: {
     rawSeries: data.nullDimension as any,
     renderingContext,
@@ -253,7 +231,6 @@ export const NullDimension = {
 
 export const NumDecimalPlacesChart = {
   render: Template,
-
   args: {
     rawSeries: data.numDecimalPlacesChart as any,
     renderingContext,
@@ -262,7 +239,6 @@ export const NumDecimalPlacesChart = {
 
 export const NumDecimalPlacesLegend = {
   render: Template,
-
   args: {
     rawSeries: data.numDecimalPlacesLegend as any,
     renderingContext,
@@ -271,7 +247,6 @@ export const NumDecimalPlacesLegend = {
 
 export const TruncatedTotal = {
   render: Template,
-
   args: {
     rawSeries: data.truncatedTotal as any,
     renderingContext,
@@ -280,7 +255,6 @@ export const TruncatedTotal = {
 
 export const UnaggregatedDimension = {
   render: Template,
-
   args: {
     rawSeries: data.unaggregatedDimension as any,
     renderingContext,
@@ -289,7 +263,6 @@ export const UnaggregatedDimension = {
 
 export const SingleDimension = {
   render: Template,
-
   args: {
     rawSeries: data.singleDimension as any,
     renderingContext,
@@ -298,7 +271,6 @@ export const SingleDimension = {
 
 export const LongDimensionName = {
   render: Template,
-
   args: {
     rawSeries: data.longDimensionName as any,
     renderingContext,
@@ -307,7 +279,6 @@ export const LongDimensionName = {
 
 export const TinySlicesDisappear43766 = {
   render: Template,
-
   args: {
     rawSeries: data.tinySlicesDisappear43766 as any,
     renderingContext,
@@ -316,7 +287,6 @@ export const TinySlicesDisappear43766 = {
 
 export const MissingCurrencyFormatting44086 = {
   render: Template,
-
   args: {
     rawSeries: data.missingCurrencyFormatting44086 as any,
     renderingContext,
@@ -325,7 +295,6 @@ export const MissingCurrencyFormatting44086 = {
 
 export const MissingCurrencyFormatting2 = {
   render: Template,
-
   args: {
     rawSeries: data.missingCurrencyFormatting2 as any,
     renderingContext,
@@ -334,7 +303,6 @@ export const MissingCurrencyFormatting2 = {
 
 export const MissingCurrencyFormatting3 = {
   render: Template,
-
   args: {
     rawSeries: data.missingCurrencyFormatting3 as any,
     renderingContext,
@@ -343,7 +311,6 @@ export const MissingCurrencyFormatting3 = {
 
 export const MissingColors44087 = {
   render: Template,
-
   args: {
     rawSeries: data.missingColors44087 as any,
     renderingContext,
@@ -352,7 +319,6 @@ export const MissingColors44087 = {
 
 export const InvalidDimensionSetting44085 = {
   render: Template,
-
   args: {
     rawSeries: data.invalidDimensionSetting44085 as any,
     renderingContext,
@@ -361,7 +327,6 @@ export const InvalidDimensionSetting44085 = {
 
 export const PercentagesOnChartBooleanDimensionCrashes44085 = {
   render: Template,
-
   args: {
     rawSeries: data.percentagesOnChartBooleanDimensionCrashes44085 as any,
     renderingContext,
@@ -370,7 +335,6 @@ export const PercentagesOnChartBooleanDimensionCrashes44085 = {
 
 export const AllZeroMetric44847 = {
   render: Template,
-
   args: {
     rawSeries: data.allZeroMetric44847 as any,
     renderingContext,
@@ -379,7 +343,6 @@ export const AllZeroMetric44847 = {
 
 export const NoSingleColumnLegend45149 = {
   render: Template,
-
   args: {
     rawSeries: data.noSingleColumnLegend45149 as any,
     renderingContext,
@@ -388,7 +351,6 @@ export const NoSingleColumnLegend45149 = {
 
 export const NumericSQLColumnCrashes28568 = {
   render: Template,
-
   args: {
     rawSeries: data.numericSQLColumnCrashes28568 as any,
     renderingContext,
@@ -397,7 +359,6 @@ export const NumericSQLColumnCrashes28568 = {
 
 export const MissingLabelLargeSlice38424 = {
   render: Template,
-
   args: {
     rawSeries: data.missingLabelLargeSlice38424 as any,
     renderingContext,
