@@ -89,7 +89,7 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         input: {
           "&:after": {
             content: "''",
-            border: `1px solid ${theme.fn.themeColor("bg-dark")}`,
+            border: `${rem(1)} solid ${theme.fn.themeColor("bg-dark")}`,
             position: "absolute",
             top: rem(-2),
             left: rem(2),
@@ -102,11 +102,11 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
           },
 
           "&:checked:not([disabled]):after": {
-            border: `${rem(2)} solid ${theme.fn.themeColor("brand")}`,
+            border: `${rem(1)} solid ${theme.fn.themeColor("brand")}`,
           },
 
           "&:disabled:after": {
-            border: `${rem(2)} solid ${theme.fn.themeColor("border")}`,
+            border: `${rem(1)} solid ${theme.fn.themeColor("border")}`,
           },
         },
         labelWrapper: {
