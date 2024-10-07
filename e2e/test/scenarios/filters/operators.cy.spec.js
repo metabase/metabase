@@ -72,10 +72,10 @@ describe("operators in questions", () => {
 
       popover().within(() => {
         cy.findByText("Title").click();
-        cy.findByDisplayValue("Is").click();
+        cy.findByText("Is").click();
       });
 
-      cy.findByRole("listbox").within(() => {
+      cy.findByRole("menu").within(() => {
         expected.text.expected.map(e => cy.contains(e).should("exist"));
         expected.text.unexpected.map(e => cy.contains(e).should("not.exist"));
       });
@@ -86,10 +86,10 @@ describe("operators in questions", () => {
 
       popover().within(() => {
         cy.findByText("Price").click();
-        cy.findByDisplayValue("Between").click();
+        cy.findByText("Between").click();
       });
 
-      cy.findByRole("listbox").within(() => {
+      cy.findByRole("menu").within(() => {
         expected.number.expected.map(e => cy.contains(e).should("exist"));
         expected.number.unexpected.map(e => cy.contains(e).should("not.exist"));
       });
@@ -172,10 +172,10 @@ describe("operators in questions", () => {
 
       popover().within(() => {
         cy.findByText("ID").click();
-        cy.findByDisplayValue("Is").click();
+        cy.findByText("Is").click();
       });
 
-      cy.findByRole("listbox").within(() => {
+      cy.findByRole("menu").within(() => {
         expected.id.expected.map(e => cy.contains(e).should("exist"));
         expected.id.unexpected.map(e => cy.contains(e).should("not.exist"));
       });
@@ -186,10 +186,10 @@ describe("operators in questions", () => {
 
       popover().within(() => {
         cy.findByText("State").click({ force: true });
-        cy.findByDisplayValue("Is").click();
+        cy.findByText("Is").click();
       });
 
-      cy.findByRole("listbox").within(() => {
+      cy.findByRole("menu").within(() => {
         expected.geo.expected.map(e => cy.contains(e).should("exist"));
         expected.geo.unexpected.map(e => cy.contains(e).should("not.exist"));
       });
