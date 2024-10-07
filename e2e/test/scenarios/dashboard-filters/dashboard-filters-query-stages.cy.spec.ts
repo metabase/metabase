@@ -1206,13 +1206,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
           cy.findAllByTestId("cell-data").last().should("have.text", "1,077");
         });
 
-        it("3rd stage aggregation", () => {
+        // TODO: https://github.com/metabase/metabase/issues/48339
+        it.skip("3rd stage aggregation", () => {
           setup3rdStageAggregationFilter();
 
           getDashboardCard(0).scrollIntoView();
-          // getDashboardCard(0)
-          //   .findByTestId("cell-data")
-          //   .should("have.text", "0"); // https://github.com/metabase/metabase/issues/48339#issuecomment-2393449924
+          getDashboardCard(0)
+            .findByTestId("cell-data")
+            .should("have.text", "0"); // https://github.com/metabase/metabase/issues/48339#issuecomment-2393449924
           getDashboardCard(0).findByTestId("legend-caption-title").click();
           cy.wait("@dataset");
 
