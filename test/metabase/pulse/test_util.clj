@@ -72,7 +72,7 @@
 (defmacro slack-test-setup
   "Macro that ensures test-data is present and disables sending of all notifications"
   [& body]
-  `(with-redefs [pulse/send-notifications! realize-lazy-seqs
+  `(with-redefs [pulse/send-notifications! (fn [pulse-id notifications] (realize-lazy-seqs notifications))
                  slack/files-channel       (constantly "FOO")]
      (do-with-site-url (fn [] ~@body))))
 
