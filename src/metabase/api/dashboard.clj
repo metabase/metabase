@@ -95,19 +95,20 @@
   (span/with-span!
     {:name       "hydrate-dashboard-details"
      :attributes {:dashboard/id dashboard-id}}
-    (t2/hydrate dashboard [:dashcards
+    (binding [params/*field-id-context* (atom params/empty-field-id-context)]
+      (t2/hydrate dashboard [:dashcards
                            ;; disabled :can_run_adhoc_query for performance reasons in 50 release
-                           [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
-                           [:series :can_write #_:can_run_adhoc_query]
-                           :dashcard/action
-                           :dashcard/linkcard-info]
-                :last_used_param_values
-                :tabs
-                :collection_authority_level
-                :can_write
-                :param_fields
-                :param_values
-                [:collection :is_personal])))
+                             [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
+                             [:series :can_write #_:can_run_adhoc_query]
+                             :dashcard/action
+                             :dashcard/linkcard-info]
+                  :last_used_param_values
+                  :tabs
+                  :collection_authority_level
+                  :can_write
+                  :param_fields
+                  :param_values
+                  [:collection :is_personal]))))
 
 (api/defendpoint POST "/"
   "Create a new Dashboard."
