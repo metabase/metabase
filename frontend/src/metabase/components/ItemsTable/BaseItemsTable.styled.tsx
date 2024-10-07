@@ -8,7 +8,7 @@ import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
 import type { TextProps } from "metabase/ui";
-import { FixedSizeIcon, Text } from "metabase/ui";
+import { Icon, Text } from "metabase/ui";
 
 import { RawMaybeLink } from "../Badge/Badge.styled";
 
@@ -116,11 +116,11 @@ export const ItemNameCell = styled.td`
   }
 `;
 
-export const SortingIcon = styled(FixedSizeIcon)`
+export const SortingIcon = styled(Icon)`
   margin-inline-start: 4px;
 `;
 
-export const DescriptionIcon = styled(FixedSizeIcon)`
+export const DescriptionIcon = styled(Icon)`
   color: var(--mb-color-text-medium);
 `;
 

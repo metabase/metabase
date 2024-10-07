@@ -2,14 +2,14 @@ import styled from "@emotion/styled";
 
 import { Form } from "metabase/forms";
 import type { BoxProps } from "metabase/ui";
-import { Box, FixedSizeIcon, Group, Loader } from "metabase/ui";
+import { Box, Group, Icon, Loader } from "metabase/ui";
 
 export const LoaderInButton = styled(Loader)`
   position: relative;
   top: 1px;
 `;
 
-export const IconInButton = styled(FixedSizeIcon)`
+export const IconInButton = styled(Icon)`
   position: relative;
   top: 1px;
 `;

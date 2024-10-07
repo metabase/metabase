@@ -28,8 +28,8 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
   Button,
-  FixedSizeIcon,
   Flex,
+  Icon,
   Icon,
   type IconName,
   Menu,
@@ -274,7 +274,7 @@ function CollectionCell({ metric }: { metric?: MetricResult }) {
 
   const content = (
     <Flex gap="sm">
-      <FixedSizeIcon name="folder" />
+      <Icon name="folder" />
 
       {metric ? (
         <EllipsifiedCollectionPath collection={metric.collection} />

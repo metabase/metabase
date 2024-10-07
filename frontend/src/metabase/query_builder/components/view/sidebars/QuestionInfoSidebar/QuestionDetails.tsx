@@ -13,7 +13,7 @@ import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import { getMetadata } from "metabase/selectors/metadata";
 import { QuestionPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
-import { Box, Flex, FixedSizeIcon as Icon, Text } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Database } from "metabase-types/api";
 

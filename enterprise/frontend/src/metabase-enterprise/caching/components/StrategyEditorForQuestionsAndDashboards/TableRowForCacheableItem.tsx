@@ -7,7 +7,7 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
 import { getIcon } from "metabase/lib/icon";
 import * as Urls from "metabase/lib/urls";
-import { Box, Button, FixedSizeIcon, Flex } from "metabase/ui";
+import { Box, Button, Flex, Icon } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
 
 import type { CacheableItem, UpdateTarget } from "../types";
@@ -66,11 +66,7 @@ export const TableRowForCacheableItem = ({
             gap="sm"
             style={{ overflow: "hidden" }}
           >
-            {iconName ? (
-              <FixedSizeIcon name={iconName} />
-            ) : (
-              <Box h="sm" w="md" />
-            )}
+            {iconName ? <Icon name={iconName} /> : <Box h="sm" w="md" />}
             <Ellipsified style={{ fontWeight: "bold" }}>{name}</Ellipsified>
           </Flex>
         </MaybeLink>

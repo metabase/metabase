@@ -4,7 +4,7 @@ import { findWhere } from "underscore";
 import { rootId } from "metabase/admin/performance/constants/simple";
 import type { UpdateTargetId } from "metabase/admin/performance/types";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
-import { FixedSizeIcon, Flex, Title, Tooltip, useHover } from "metabase/ui";
+import { Flex, Icon, Title, Tooltip, useHover } from "metabase/ui";
 import type { CacheConfig } from "metabase-types/api";
 
 import { PolicyToken, StyledLauncher } from "./StrategyFormLauncher.styled";
@@ -79,7 +79,7 @@ export const StrategyFormLauncher = ({
       }`}
     >
       <Flex gap="0.5rem" color="text-medium" align="center">
-        <FixedSizeIcon name={forRoot ? "star" : "database"} color="inherit" />
+        <Icon name={forRoot ? "star" : "database"} color="inherit" />
         <Title color="inherit" order={6}>
           {title}
         </Title>

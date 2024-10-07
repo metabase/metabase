@@ -1,6 +1,6 @@
 import { color } from "metabase/lib/colors";
 import type { IconProps } from "metabase/ui";
-import { FixedSizeIcon } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import { getStatusIcon } from "metabase-enterprise/moderation/service";
 
 type ModerationStatusIconProps = {
@@ -28,10 +28,6 @@ export const ModerationStatusIcon = ({
         : iconProps.size,
   };
   return (
-    <FixedSizeIcon
-      name={iconName}
-      color={color(iconColor)}
-      {...reformattedIconProps}
-    />
+    <Icon name={iconName} color={color(iconColor)} {...reformattedIconProps} />
   );
 };

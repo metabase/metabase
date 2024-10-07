@@ -23,8 +23,8 @@ import * as Urls from "metabase/lib/urls";
 import {
   Box,
   Button,
-  FixedSizeIcon,
   Flex,
+  Icon,
   Icon,
   type IconName,
   Text,
@@ -233,7 +233,7 @@ const QueryValidatorRow = ({ row }: { row: TableRow }) => {
       <td width="100%">
         <Link to={row.collectionLink} className={S.collectionLink}>
           <Flex gap="sm">
-            <FixedSizeIcon name="folder" />
+            <Icon name="folder" />
             <Box w="calc(100% - 1.5rem)">
               <EllipsifiedPath
                 items={row.collection_path}

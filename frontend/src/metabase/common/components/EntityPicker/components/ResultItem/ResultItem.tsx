@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 import { humanize, titleize } from "metabase/lib/formatting";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
-import { FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
+import { Flex, Icon, Tooltip } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
 
 import { ENTITY_PICKER_Z_INDEX } from "../EntityPickerModal";
@@ -51,7 +51,7 @@ export const ResultItem = ({
       data-testid="result-item"
     >
       <Flex gap="md" miw="10rem" align="center" style={{ flex: 1 }}>
-        <FixedSizeIcon
+        <Icon
           color={color(icon.color ?? (isSelected ? "text-white" : "brand"))}
           name={icon.name}
           style={{
@@ -68,7 +68,7 @@ export const ResultItem = ({
             label={item.description}
             zIndex={ENTITY_PICKER_Z_INDEX}
           >
-            <FixedSizeIcon color="brand" name="info" />
+            <Icon color="brand" name="info" />
           </Tooltip>
         )}
       </Flex>
@@ -83,7 +83,7 @@ export const ResultItem = ({
           gap="sm"
           w="20rem"
         >
-          <FixedSizeIcon name={parentInfo.icon} />
+          <Icon name={parentInfo.icon} />
           <Ellipsified>{t`in ${parentInfo.name}`}</Ellipsified>
         </Flex>
       )}

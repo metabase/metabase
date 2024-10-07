@@ -10,7 +10,7 @@ import Styles from "metabase/css/core/index.css";
 import { collection as collectionUrl } from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import { DashboardPublicLinkPopover } from "metabase/sharing/components/PublicLinkPopover";
-import { Box, FixedSizeIcon, Flex, Text } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import SidebarStyles from "./DashboardInfoSidebar.module.css";
@@ -27,7 +27,7 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
       <SidesheetCardSection title={t`Creator and last editor`}>
         {creator && (
           <Flex gap="sm" align="top">
-            <FixedSizeIcon name="ai" className={SidebarStyles.IconMargin} />
+            <Icon name="ai" className={SidebarStyles.IconMargin} />
             <Text>
               {c(
                 "Describes when a dashboard was created. {0} is a date/time and {1} is a person's name",
@@ -40,7 +40,7 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
 
         {lastEditInfo && (
           <Flex gap="sm" align="top">
-            <FixedSizeIcon name="pencil" className={SidebarStyles.IconMargin} />
+            <Icon name="pencil" className={SidebarStyles.IconMargin} />
             <Text>
               {c(
                 "Describes when a dashboard was last edited. {0} is a date/time and {1} is a person's name",
@@ -62,7 +62,7 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
           ).t`Saved in`}
         >
           <Flex gap="sm" align="top">
-            <FixedSizeIcon
+            <Icon
               name="folder"
               className={SidebarStyles.IconMargin}
               color="var(--mb-color-brand)"
@@ -95,12 +95,12 @@ function SharingDisplay({ dashboard }: { dashboard: Dashboard }) {
     <SidesheetCardSection title={t`Visibility`}>
       {publicUUID && (
         <Flex gap="sm" align="center">
-          <FixedSizeIcon name="globe" color="var(--mb-color-brand)" />
+          <Icon name="globe" color="var(--mb-color-brand)" />
           <Text>{t`Shared publicly`}</Text>
 
           <DashboardPublicLinkPopover
             target={
-              <FixedSizeIcon
+              <Icon
                 name="link"
                 onClick={() => setIsPopoverOpen(prev => !prev)}
                 className={cx(
@@ -119,7 +119,7 @@ function SharingDisplay({ dashboard }: { dashboard: Dashboard }) {
       {embeddingEnabled && (
         <Flex gap="sm" align="center">
           <Box className={SidebarStyles.BrandCircle}>
-            <FixedSizeIcon name="embed" size="14px" />
+            <Icon name="embed" size="14px" />
           </Box>
           <Text>{t`Embedded`}</Text>
         </Flex>

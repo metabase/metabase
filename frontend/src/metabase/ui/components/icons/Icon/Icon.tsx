@@ -1,4 +1,3 @@
-import styled from "@emotion/styled";
 import { Box, type BoxProps } from "@mantine/core";
 import cx from "classnames";
 import type { MouseEvent, ReactNode, SVGAttributes } from "react";
@@ -6,6 +5,7 @@ import { forwardRef } from "react";
 
 import { Tooltip } from "../../overlays/Tooltip";
 
+import S from "./Icon.module.css";
 import type { IconName } from "./icons";
 import { Icons } from "./icons";
 
@@ -32,7 +32,7 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
       role="img"
       ref={ref}
       aria-label={`${name} icon`}
-      className={cx(`Icon Icon-${name}`, className)}
+      className={cx(`Icon Icon-${name}`, S.Icon, className)}
       width={size}
       height={size}
       {...restProps}
@@ -41,8 +41,3 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
 
   return tooltip ? <Tooltip label={tooltip}>{icon}</Tooltip> : icon;
 });
-
-/** An icon that does not shrink when its container is too narrow **/
-export const FixedSizeIcon = styled(Icon)`
-  flex-shrink: 0;
-`;

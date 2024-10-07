@@ -1,7 +1,7 @@
 import { c } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { FixedSizeIcon, Flex, type FlexProps, Tooltip } from "metabase/ui";
+import { Flex, type FlexProps, Icon, Tooltip } from "metabase/ui";
 import type { Dataset } from "metabase-types/api";
 
 import { getAbbreviatedRelativeTimeStrings, getTimePassedSince } from "./utils";
@@ -49,7 +49,7 @@ const QuestionLastUpdatedBody = ({
         aria-label={longExplanation}
         {...flexProps}
       >
-        <FixedSizeIcon name="calendar" />
+        <Icon name="calendar" />
         {shortExplanation}
       </Flex>
     </Tooltip>

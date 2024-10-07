@@ -5,7 +5,7 @@ import { skipToken, useGetUserQuery } from "metabase/api";
 import { alpha, color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { getRelativeTime } from "metabase/lib/time";
-import { FixedSizeIcon, Flex, Icon, Text as UIText } from "metabase/ui";
+import { Flex, Icon, Icon, Text as UIText } from "metabase/ui";
 import {
   getIconForReview,
   getLatestModerationReview,
@@ -94,7 +94,7 @@ export const ModerationReviewText = ({ question }: { question: Question }) => {
 
   return (
     <Flex gap="sm" align="top">
-      <FixedSizeIcon
+      <Icon
         name={iconName}
         color={color(iconColor)}
         size={ICON_BUTTON_SIZE}

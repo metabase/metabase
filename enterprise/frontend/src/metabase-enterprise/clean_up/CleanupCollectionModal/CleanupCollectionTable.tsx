@@ -12,7 +12,7 @@ import {
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
+import { Flex, Icon, Tooltip } from "metabase/ui";
 import type { SortingOptions } from "metabase-types/api/sorting";
 
 import type { StaleCollectionItem } from "../types";
@@ -100,7 +100,7 @@ export const CleanupCollectionTable = ({
             {/* Name */}
             <ItemCell data-testid="clean-up-table-collection">
               <Flex align="center" gap="sm">
-                <FixedSizeIcon
+                <Icon
                   name={item.getIcon().name}
                   color="var(--mb-color-brand)"
                 />
@@ -111,7 +111,7 @@ export const CleanupCollectionTable = ({
             <ItemCell data-testid="clean-up-table-collection">
               {item.collection && (
                 <Flex align="center" gap="sm">
-                  <FixedSizeIcon name="folder" />
+                  <Icon name="folder" />
                   <Ellipsified>
                     {getCollectionName(item.collection)}
                   </Ellipsified>

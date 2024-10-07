@@ -134,12 +134,12 @@ export const CollectionSummary = styled.div`
   color: var(--mb-color-text-medium);
 `;
 
-export const FixedSizeIcon = styled(Icon)<{ size?: number }>`
+export const Icon = styled(Icon)<{ size?: number }>`
   min-width: ${({ size }) => size ?? 16}px;
   min-height: ${({ size }) => size ?? 16}px;
 `;
 
-export const BannerModelIcon = styled(FixedSizeIcon)`
+export const BannerModelIcon = styled(Icon)`
   color: var(--mb-color-text-dark);
   margin-inline-end: 0.5rem;
 `;

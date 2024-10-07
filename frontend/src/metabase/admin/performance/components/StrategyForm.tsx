@@ -20,8 +20,8 @@ import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
   Button,
-  FixedSizeIcon,
   Group,
+  Icon,
   Icon,
   Radio,
   Stack,
@@ -219,7 +219,7 @@ const StrategyFormBody = ({
             <Box lh="1rem" pt="md" color="text-medium">
               <Group spacing="sm">
                 {targetModel === "database" && (
-                  <FixedSizeIcon name="database" color="inherit" />
+                  <Icon name="database" color="inherit" />
                 )}
                 <Text fw="bold" py="1rem">
                   {targetName}

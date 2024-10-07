@@ -20,7 +20,7 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { FixedSizeIcon, Flex, Icon, Skeleton } from "metabase/ui";
+import { Flex, Icon, Icon, Skeleton } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
@@ -244,7 +244,7 @@ function CollectionCell({ model }: { model?: ModelResult }) {
 
   const content = (
     <Flex gap="sm">
-      <FixedSizeIcon name="folder" />
+      <Icon name="folder" />
 
       {model ? (
         <EllipsifiedCollectionPath collection={model.collection} />

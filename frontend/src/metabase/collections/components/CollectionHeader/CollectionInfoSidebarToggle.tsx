@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { FixedSizeIcon as Icon } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 import { CollectionInfoSidebar } from "../CollectionInfoSidebar";
