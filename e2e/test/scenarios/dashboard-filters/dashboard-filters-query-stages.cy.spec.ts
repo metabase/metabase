@@ -1217,12 +1217,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
           cy.findAllByTestId("cell-data").last().should("have.text", "4");
         });
 
-        // TODO
-        it.skip("2nd stage implicit join (data source)", () => {});
-
-        // TODO
-        it.skip("2nd stage implicit join (joined data source)", () => {});
-
         //TODO
         it.skip("2nd stage custom column", () => {});
 
